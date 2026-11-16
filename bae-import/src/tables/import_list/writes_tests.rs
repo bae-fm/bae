@@ -1,29 +1,44 @@
-//! The list's view and folds: a view change returns where the new view
-//! opens, at the first selected row it shows, and which selected rows leave
-//! the selection, and a fold returns the selected rows it hid.
+//! The list's view and folds: a view change with another tab, filter or
+//! search returns where the new view opens, at the first selected row it
+//! shows, and which selected rows leave the selection; another order returns
+//! nothing; and a fold returns the selected rows it hid.
 
 use crate::tables::import_list::tests::*;
 use crate::ImportListOpening;
 use crate::ImportListOrder;
+use crate::ImportListView;
+use crate::PendingFilter;
 use crate::TriageTab;
 
 /// Where the view `view` opens in `list`, with the rows at `selected`
-/// selected, as the write that sets it returns it: the position, and the key
-/// a chain of windows starts at. The helper checks that the key is the key of
-/// the row at the position, and that the window starting at the key begins
-/// with that row.
+/// selected, as the write that narrows the list to it anew returns it: the
+/// position, and the key a chain of windows starts at. The list first shows
+/// `view` narrowed to the releases not looked up, which every release these
+/// tests scan is, so the second write narrows the list anew without hiding a
+/// selected row. The helper checks that the key is the key of the row at the
+/// position, and that the window starting at the key begins with that row.
 async fn opened_at(
     lib: &Library,
     list: crate::ImportListId,
-    view: crate::ImportListView,
+    view: ImportListView,
     selected: &[crate::CandidateKey],
 ) -> u64 {
     let tables = lib.tables();
+    assert_eq!(view.pending_filter, PendingFilter::All);
+    tables
+        .set_import_list_view(
+            list,
+            ImportListView { pending_filter: PendingFilter::NotLookedUp, ..view.clone() },
+            selected.to_vec(),
+        )
+        .await
+        .unwrap()
+        .expect("another filter entry narrows the list anew");
     let change = tables
         .set_import_list_view(list, view, selected.to_vec())
         .await
         .unwrap()
-        .expect("the view changed, so the write returns where it opens");
+        .expect("another filter entry narrows the list anew");
     match change.opening {
         ImportListOpening::Top => 0,
         ImportListOpening::At { key, position } => {
@@ -99,6 +114,32 @@ async fn a_view_opens_at_its_first_selected_row() {
             .await,
         0,
         "a view showing no selected row opens at its top"
+    );
+}
+
+/// Another order shows the same rows in a new order: it opens nowhere, so
+/// the list stays where the person has it, and the write returns nothing.
+#[tokio::test]
+async fn another_order_opens_nowhere() {
+    let lib = Library::new().await;
+    let tables = lib.tables();
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose") + lib.scan("Zed")).await;
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await;
+    assert_eq!(
+        tables
+            .set_import_list_view(
+                list,
+                ordered(TriageTab::Pending, ImportListOrder::PathAscending),
+                vec![lib.key("Loose")],
+            )
+            .await
+            .unwrap(),
+        None
+    );
+    assert_eq!(
+        sequence(&lib.read(list).await),
+        ["group Box", "candidate Box/1", "candidate Box/2", "candidate Loose", "candidate Zed"],
+        "the list shows the new order"
     );
 }
 

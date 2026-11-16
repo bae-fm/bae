@@ -18,7 +18,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     var onPersonSelected: () -> Void
     private(set) weak var tableView: ImportCandidateTableView?
     private weak var scrollView: NSScrollView?
-    /// Reveals, and the clip view's and scroll view's notifications.
+    /// Reveals, openings, and the clip view's and scroll view's
+    /// notifications.
     private var subscriptions: [AnyCancellable] = []
 
     /// How many times a cell has been given an item to draw.
@@ -28,8 +29,6 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var shownRows: ImportCandidateTableRows?
     /// The appearance the table's rows were last drawn in.
     private var drawnAppearance: HostedAppearance?
-    /// The content the table last took, which a new delivery is read against.
-    private var content: ImportCandidateTableContent?
     /// Each row in view's hold on its page, by row.
     private var rowHolds: [Int: Task<Void, Never>] = [:]
     /// Each row drawn for display before its page landed asking for the
@@ -73,8 +72,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     // MARK: Lifecycle
 
     /// Drive `tableView`, scrolled by `scrollView`: go back to the place the
-    /// person left the list at once the table is laid out, and scroll to each
-    /// position `reveals` asks to see.
+    /// person left the list at once the table is laid out, scroll to each
+    /// position `reveals` asks to see, and put each row the list opens at on
+    /// top.
     func attach(
         _ tableView: ImportCandidateTableView,
         in scrollView: NSScrollView,
@@ -100,6 +100,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         subscriptions = [
             reveals.sink { [weak self] position in
                 MainActor.assumeIsolated { self?.showCentred(position) }
+            },
+            listSlot.openings.sink { [weak self] position in
+                MainActor.assumeIsolated { self?.showOpening(position) }
             },
             center.publisher(
                 for: NSView.boundsDidChangeNotification,
@@ -136,13 +139,12 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
 
     // MARK: Updates
 
-    /// Take what the list holds now: reload the rows when they changed,
-    /// scroll as the content change asks, highlight the rows `shownSelected`
+    /// Take what the list holds now: reload the rows when they changed, keep
+    /// the person's place while they move, highlight the rows `shownSelected`
     /// names, and hold the pages of the rows in view.
     func update(
         list: PaginatedList<BridgeImportListItem>,
         rows: ImportCandidateTableRows,
-        read: ImportCandidateListContentRead,
         shownSelected: Set<Data>,
         revealing: Bool
     ) {
@@ -169,7 +171,7 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
             drawnAppearance = environment.appearance
             reloadRows()
         }
-        scroll(for: read, revealing: revealing, rowsChanged: rowsChanged)
+        keepPlace(revealing: revealing, rowsChanged: rowsChanged)
         highlight(shownSelected)
         holdRowsInView()
         refreshPinnedHeader()
@@ -260,45 +262,28 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         )
     }
 
-    private func scroll(
-        for read: ImportCandidateListContentRead,
-        revealing: Bool,
-        rowsChanged: Bool
-    ) {
-        guard var content else {
-            // The first delivery a table takes is what it opens on: at the
-            // place the person left the list, or, when the list was narrowed
-            // anew since, at the row its view opened at.
-            content = ImportCandidateTableContent(read)
-            if let place = pendingPlace, place.narrowing != read.narrowing {
-                pendingPlace = ImportListPlace(
-                    row: .unloaded,
-                    position: read.openedAt,
-                    offset: 0,
-                    narrowing: read.narrowing
-                )
-            }
-            return
-        }
-        let scrolling = content.take(
-            read,
-            revealing: revealing,
-            rowsChanged: rowsChanged
-        )
-        self.content = content
-        switch scrolling {
-        case .showOnTop(let row):
-            endPendingPlace()
-            anchorKey = nil
-            scroll(toTop: row, offset: 0)
-        case .keepPlace:
-            guard pendingPlace == nil, let place = listSlot.place,
-                let position = place.loadedPosition(in: list)
-            else { return }
-            scroll(toTop: position, offset: place.offset)
-        case nil:
-            break
-        }
+    /// Keep the person's place while the rows move: the row that was on top
+    /// stays on top. Nothing scrolls while a reveal does the scrolling, while
+    /// the table goes back to its place, or while the rows stand.
+    private func keepPlace(revealing: Bool, rowsChanged: Bool) {
+        guard !revealing, rowsChanged, pendingPlace == nil,
+            let place = listSlot.place,
+            let position = place.loadedPosition(in: list)
+        else { return }
+        scroll(toTop: position, offset: place.offset)
+    }
+
+    /// Put `row` on top: a view change opened the list there, and the slot
+    /// already holds it as the person's place, which the table does not
+    /// take from where it stands now. A table the opening's reread replaces
+    /// while the count is out goes to that place when it mounts.
+    private func showOpening(_ row: Int) {
+        placeTask?.cancel()
+        placeTask = nil
+        pendingPlace = nil
+        anchorKey = nil
+        loadCurrentRows()
+        scroll(toTop: row, offset: 0)
     }
 }
 
@@ -569,15 +554,13 @@ extension ImportCandidateTableCoordinator {
     /// scrolled, as the person's place.
     private func recordPlace() {
         guard !updating, pendingPlace == nil, let tableView,
-            let clipView = scrollView?.contentView, let row = topRow,
-            let content
+            let clipView = scrollView?.contentView, let row = topRow
         else { return }
         let top = clipView.bounds.minY
         listSlot.place = ImportListPlace(
             row: placeRow(at: row),
             position: row,
-            offset: top - tableView.rect(ofRow: row).minY,
-            narrowing: content.narrowing
+            offset: top - tableView.rect(ofRow: row).minY
         )
     }
 

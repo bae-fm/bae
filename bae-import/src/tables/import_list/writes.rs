@@ -1,9 +1,10 @@
 //! The list a surface has open (`import_list`) and the groups it folds
 //! (`import_list_collapsed`): opening and closing it, changing its view and
 //! folding its groups. Each is one write the list's live queries answer. The
-//! surface passes the keys of the rows it keeps selected: a view change
-//! answers where the new view opens and which selected rows leave the
-//! selection, and a fold answers which selected rows it hid.
+//! surface passes the keys of the rows it keeps selected: a view change with
+//! another tab, filter or search answers where the new view opens and which
+//! selected rows leave the selection, and a fold answers which selected rows
+//! it hid.
 
 use super::order::Shown;
 use super::selection::{shown_among, unshown_among};
@@ -81,11 +82,12 @@ impl ImportTables {
     }
 
     /// Show `view` in `list`, whose surface keeps the rows at `selected`
-    /// selected, and answer with where the new view opens, at the first of
-    /// those rows it shows or its top, and which of them leave the selection:
-    /// on another tab, filter or search, each one the new view doesn't show,
-    /// and none on another order. The view it already shows changes nothing
-    /// and answers nothing.
+    /// selected. When the new view has another tab, filter or search, the
+    /// write answers where it opens, at the first of those rows it shows or
+    /// its top, and which of them leave the selection: each one the new view
+    /// doesn't show. For another order, and for the view the list already
+    /// shows, the write answers nothing: the table keeps its scroll while it
+    /// draws the rows in the new order.
     pub async fn set_import_list_view(
         &self,
         list: ImportListId,
@@ -99,7 +101,7 @@ impl ImportTables {
                 };
                 let narrowed = (row.view.tab, row.view.pending_filter, &row.view.filter_text)
                     != (view.tab, view.pending_filter, &view.filter_text);
-                let changed = sql.execute(
+                sql.execute(
                     "UPDATE import_list \
                  SET tab = :tab, pending_filter = :filter, filter_text = :text, \
                      list_order = :order \
@@ -114,14 +116,11 @@ impl ImportTables {
                         ":order": order_column(view.order),
                     },
                 )?;
-                if changed == 0 {
+                if !narrowed {
                     return Ok(Some(None));
                 }
                 let opening = opening(sql, list, &selected)?;
-                let left = match narrowed {
-                    true => unshown_among(sql, list, &selected)?,
-                    false => Vec::new(),
-                };
+                let left = unshown_among(sql, list, &selected)?;
                 Ok(Some(Some(ImportListViewChange { opening, left })))
             })
             .await?

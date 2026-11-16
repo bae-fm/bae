@@ -99,7 +99,7 @@ struct ImportCandidateTablePlaceTests {
 
         slot.setFilterText("release")
         try await Wait.until {
-            slot.answersView && slot.opened.narrowing.filterText == "release"
+            slot.answersView && slot.place?.position == 0
         }
         try await ImportListHosting.withList(
             store: store,
@@ -109,6 +109,37 @@ struct ImportCandidateTablePlaceTests {
         ) { table in
             try await Wait.until(notices: [.scroll(of: table)]) {
                 Self.topRow(of: table) == 0
+            }
+        }
+    }
+
+    /// A list narrowed anew while its table is shown opens at its top,
+    /// wherever the person had scrolled.
+    @MainActor
+    @Test("a list narrowed anew while shown opens at its top")
+    func anOpeningPutsItsRowOnTop() async throws {
+        let source = MutableImportList(
+            items: (0..<80).map(Self.candidateItem)
+        )
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = try await Self.loadedSlot(source, store, uiStore)
+        try await ImportListHosting.withList(
+            store: store,
+            slot: slot,
+            uiStore: uiStore,
+            size: Self.size
+        ) { table in
+            Self.scroll(table, toRow: 30)
+            try await Wait.until { slot.place?.position == 30 }
+            let content = try #require(table.window?.contentView)
+
+            slot.setFilterText("release")
+
+            try await Wait.until {
+                slot.answersView
+                    && (try? ImportListHosting.table(in: content))
+                        .map { Self.topRow(of: $0) == 0 } ?? false
             }
         }
     }
@@ -437,112 +468,6 @@ extension ImportCandidateTablePlaceTests {
                 reading: .unidentified
             ),
             headerKey: headerKey
-        )
-    }
-}
-
-/// Where the table scrolls when what it reads of the list changes.
-@Suite("Import list content scrolling")
-struct ImportCandidateTableContentTests {
-    @Test("a delivery under the same narrowing keeps the place")
-    func sameNarrowingKeepsThePlace() {
-        var content = ImportCandidateTableContent(Self.read())
-        #expect(
-            content.take(Self.read(), revealing: false, rowsChanged: false)
-                == nil
-        )
-        #expect(
-            content.take(Self.read(), revealing: false, rowsChanged: true)
-                == .keepPlace
-        )
-    }
-
-    /// Narrowed anew — the text changed — the list opens at its top, where
-    /// the first rows and their group header are, not at the row it showed
-    /// before; with a selected row still in the result, at that row.
-    @Test("a list narrowed anew opens at its first selected row, or its top")
-    func narrowedAnewOpensAtItsTop() {
-        var content = ImportCandidateTableContent(Self.read())
-        #expect(
-            content.take(
-                Self.read(filterText: "title"),
-                revealing: false,
-                rowsChanged: true
-            ) == .showOnTop(0)
-        )
-        #expect(
-            content.take(
-                Self.read(pendingFilter: .needsYou, openedAt: 4),
-                revealing: false,
-                rowsChanged: true
-            ) == .showOnTop(4)
-        )
-    }
-
-    /// A reveal scrolls to its own row; the table takes the reveal's
-    /// deliveries without scrolling, and does not scroll for them after the
-    /// reveal finishes.
-    @Test("a reveal's deliveries scroll nothing")
-    func revealOwnsItsScroll() {
-        var content = ImportCandidateTableContent(Self.read())
-        #expect(
-            content.take(
-                Self.read(tab: .done),
-                revealing: true,
-                rowsChanged: true
-            ) == nil
-        )
-        #expect(
-            content.take(
-                Self.read(tab: .done),
-                revealing: false,
-                rowsChanged: false
-            ) == nil
-        )
-        #expect(
-            content.take(
-                Self.read(tab: .done),
-                revealing: false,
-                rowsChanged: true
-            ) == .keepPlace
-        )
-    }
-
-    /// The view opens a list narrowed anew at the row it names, whether or
-    /// not the rows the narrowing delivers are the ones shown.
-    @Test("a narrowing scrolls to the row its view opened at")
-    func narrowingScrollsToItsOpening() {
-        var content = ImportCandidateTableContent(Self.read())
-        #expect(
-            content.take(
-                Self.read(filterText: "t"),
-                revealing: false,
-                rowsChanged: false
-            ) == .showOnTop(0)
-        )
-        #expect(
-            content.take(
-                Self.read(filterText: "t"),
-                revealing: false,
-                rowsChanged: true
-            ) == .keepPlace
-        )
-    }
-
-    /// What the table reads, narrowed as given.
-    private static func read(
-        tab: BridgeTriageTab = .pending,
-        filterText: String = "",
-        pendingFilter: BridgePendingFilter = .all,
-        openedAt: Int = 0
-    ) -> ImportCandidateListContentRead {
-        ImportCandidateListContentRead(
-            narrowing: BridgeImportListNarrowing(
-                tab: tab,
-                filterText: filterText,
-                pendingFilter: pendingFilter
-            ),
-            openedAt: openedAt
         )
     }
 }

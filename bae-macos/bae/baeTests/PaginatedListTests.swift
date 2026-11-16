@@ -506,3 +506,25 @@ struct PaginatedListTests {
         #expect(idsAt(list, 0...9) == ids(0...9).map(Optional.init))
     }
 }
+
+extension PaginatedListTests {
+    /// Another order starts the windows over at the key the list now has at
+    /// the first position on screen, and the count stands.
+    @MainActor
+    @Test("another order rereads the windows from the first row on screen")
+    func reorderStartsAtTheFirstRowOnScreen() async throws {
+        let probe = ProbeList(ids(0...999))
+        let list = try await open(probe)
+        let holds = held(list, 400...410)
+        try await Wait.until { list.idAt(400) != nil }
+
+        probe.holdCount()
+        await list.reorder()
+
+        #expect(probe.keyAtReads.last == 400)
+        #expect(list.idAt(400) == "a0400")
+        #expect(list.count?.rows == 1000, "another order keeps the count")
+        for hold in holds { hold.cancel() }
+        list.cancel()
+    }
+}

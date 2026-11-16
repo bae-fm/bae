@@ -377,9 +377,9 @@ struct ImportListSlotViewChangeTests {
         try await Wait.until { slot.answersView }
     }
 
-    /// The write that sets a view returns the row where the new view opens;
-    /// the slot reads the windows again from there and tells the table which
-    /// row to show.
+    /// The write that sets a view answers where it opens; the windows are
+    /// read again from there, and the slot sends the row as an opening and
+    /// takes it as the person's place.
     @Test("a view change opens its windows at the row the write answers")
     func aViewChangeOpensAtItsOpening() async throws {
         let slot = ImportListSlot(
@@ -402,16 +402,46 @@ struct ImportListSlotViewChangeTests {
                 )
             }
         )
+        var opened: [Int] = []
+        let listening = slot.openings.sink { opened.append($0) }
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
-        #expect(slot.opened.position == 0)
+        #expect(opened == [0])
 
         slot.setTab(.done)
-        try await Wait.until { slot.answersView && slot.opened.position == 60 }
+        try await Wait.until { slot.answersView && opened == [0, 60] }
 
-        #expect(slot.opened.narrowing.tab == .done)
+        #expect(slot.place?.position == 60)
         #expect(slot.list?.row(at: 60) != nil)
         #expect(slot.list?.row(at: 0) == nil)
+        listening.cancel()
+    }
+
+    /// Core answers no opening for another order: the slot sends none, and
+    /// the person's place stands while the rows redraw in the new order.
+    @Test("a view change core answers no opening for opens nothing")
+    func aViewChangeWithNoOpeningOpensNothing() async throws {
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeHandle: { _ in
+                .stub(items: (0..<80).map(candidateItem), setView: { _ in nil })
+            }
+        )
+        var opened: [Int] = []
+        let listening = slot.openings.sink { opened.append($0) }
+        slot.startLoad()
+        try await Wait.until { slot.list?.idAt(0) != nil }
+        let place = ImportListPlace(row: .unloaded, position: 30, offset: 4)
+        slot.place = place
+
+        slot.setSortOrder(.oldestFirst)
+        try await Wait.until { slot.answersView }
+
+        #expect(opened == [0])
+        #expect(slot.place == place)
+        listening.cancel()
     }
 
     /// The slot asks core for the list under the entry the person chose, and

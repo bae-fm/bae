@@ -116,10 +116,6 @@ struct ImportCandidateTable: NSViewRepresentable {
         coordinator.update(
             list: list,
             rows: rows,
-            read: ImportCandidateListContentRead(
-                narrowing: listSlot.opened.narrowing,
-                openedAt: listSlot.opened.position
-            ),
             shownSelected: listSlot.selection.keys,
             revealing: revealInProgress
         )

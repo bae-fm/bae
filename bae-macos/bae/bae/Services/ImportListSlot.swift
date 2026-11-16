@@ -1,13 +1,7 @@
 import BaeKit
+import Combine
 import Foundation
 import Observation
-
-/// Where a view change opened the list: what the list was narrowed by, and
-/// the row it shows on top, the first selected row it shows or its top.
-struct ImportListOpened: Equatable {
-    let narrowing: BridgeImportListNarrowing
-    let position: Int
-}
 
 /// Holds the import sidebar's `PaginatedList`, the reads around it and the
 /// view they show. The list stays loaded while the view changes.
@@ -15,12 +9,12 @@ struct ImportListOpened: Equatable {
 /// The view — which tab, which filter text, which order — and the groups
 /// folded shut decide which items sit in which windows, so they are core's
 /// list's rather than applied to a window after it arrives. A view change is
-/// a write that returns the row where the new view opens; once it has, the
-/// list drops its windows and count and reads them again from that place, so
-/// core reads every value they deliver after the write. Until the first
-/// window's rows arrive, the rows the list holds are the previous view's,
-/// which the sidebar does not show as this one's. Which groups are folded is
-/// core's alone; each header says whether it is open.
+/// a write. One that narrows the list anew answers where the new view opens;
+/// once it has, the list's windows and count are dropped and read again from
+/// that place, so every value they deliver was read after the write. Until the first of them lands
+/// the rows the list holds are the previous view's, which the sidebar does
+/// not show as this one's. Which groups are folded is core's alone; each
+/// header says whether it is open.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
@@ -35,9 +29,12 @@ final class ImportListSlot {
     /// are the previous view's.
     private(set) var answersView = true
     private(set) var sortOrder: BridgeImportListOrder
-    /// Where the last view change opened the list, which the table scrolls
-    /// to when the person changes the tab, filter or search.
-    private(set) var opened: ImportListOpened
+    /// The row each opening of the list puts on top: its first selected row,
+    /// or its top. Core answers an opening only when another tab, filter or
+    /// search narrows the list anew, and the table scrolls to each one it
+    /// hears. A table not shown then finds the opening in `place`.
+    @ObservationIgnored
+    let openings = PassthroughSubject<Int, Never>()
     /// Where the person is in the list, as the table last recorded it. Held
     /// here rather than by the table so the import tab finds it again after
     /// another tab was shown. Nothing draws from it.
@@ -127,10 +124,6 @@ final class ImportListSlot {
             order: initialOrder
         )
         view = initialView
-        opened = ImportListOpened(
-            narrowing: Self.narrowing(of: initialView),
-            position: 0
-        )
     }
 
     /// What `view` narrows the list by.
@@ -183,8 +176,17 @@ final class ImportListSlot {
     func narrowedCount(
         under narrowing: BridgeImportListNarrowing
     ) -> BridgeNarrowedCount? {
-        guard narrowing == opened.narrowing else { return nil }
+        guard answersView, narrowing == Self.narrowing(of: view) else {
+            return nil
+        }
         return list?.narrowed
+    }
+
+    /// Open the list at `position`: the person's place is its row, at its
+    /// top, and the table shown scrolls there.
+    private func open(at position: Int) {
+        place = ImportListPlace(row: .unloaded, position: position, offset: 0)
+        openings.send(position)
     }
 
 }
@@ -239,10 +241,6 @@ extension ImportListSlot {
         guard let list else { return nil }
         let position = Int(location.visiblePosition)
         await list.reopen(at: location.key, position: position)
-        opened = ImportListOpened(
-            narrowing: Self.narrowing(of: next),
-            position: position
-        )
         if view == next { answersView = true }
         let stableKey = location.stableKey
         let placed = await list.holds(stableKey, at: position)
@@ -294,21 +292,17 @@ extension ImportListSlot {
                 selection.remove(change.left)
             }
             guard view == next else { return }
-            if let opening = change?.opening {
-                switch opening {
-                case .top:
-                    await list.reopen(at: nil, position: 0)
-                    opened = ImportListOpened(
-                        narrowing: Self.narrowing(of: next),
-                        position: 0
-                    )
-                case .at(let key, let position):
-                    await list.reopen(at: key, position: Int(position))
-                    opened = ImportListOpened(
-                        narrowing: Self.narrowing(of: next),
-                        position: Int(position)
-                    )
-                }
+            switch change?.opening {
+            case .top:
+                await list.reopen(at: nil, position: 0)
+                open(at: 0)
+            case .at(let key, let position):
+                await list.reopen(at: key, position: Int(position))
+                open(at: Int(position))
+            case nil:
+                // Another order opens nowhere: the table keeps its scroll,
+                // and the rows redraw in the new order under it.
+                await list.reorder()
             }
             if view == next { answersView = true }
         }
@@ -363,10 +357,8 @@ extension ImportListSlot {
         guard !Task.isCancelled else { return }
         handle = made
         list = newList
-        opened = ImportListOpened(
-            narrowing: Self.narrowing(of: requested),
-            position: 0
-        )
+        // A list built anew opens at its top.
+        open(at: 0)
         // The list was read under the view asked for when it was built; one
         // asked for since is asked for now.
         if view == requested {

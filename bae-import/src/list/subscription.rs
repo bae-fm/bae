@@ -75,13 +75,12 @@ impl LiveImportList {
     }
 
     /// Show a different tab, filter or order. `selected` holds the keys the
-    /// surface keeps selected. The answer says where the new view opens: at
-    /// the first selected row the view shows, or at its top. On another tab,
-    /// filter or search, the answer also lists the selected keys the new view
-    /// doesn't show, which leave the selection. The view the list already
-    /// shows changes nothing, and the call answers nothing. A surface that
-    /// gets an answer drops the windows it holds and opens new ones from the
-    /// place the answer names.
+    /// surface keeps selected. On another tab, filter or search, the answer
+    /// says where the new view opens, at the first selected row the view
+    /// shows or at its top, and lists the selected keys the new view doesn't
+    /// show, which leave the selection. Another order, and the view the list
+    /// already shows, answer nothing. A surface that gets an answer drops the
+    /// windows it holds and opens new ones from the place the answer names.
     pub async fn set_view(
         &self,
         view: ImportListView,
