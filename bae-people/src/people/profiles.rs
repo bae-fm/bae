@@ -65,8 +65,9 @@ impl People {
             .subscribe(move |sql| Ok(people_on(&sql, &person_sql(), params![member])?.pop()))
     }
 
-    /// Follow every profile, ordered by name in the device's language: a
-    /// change of the language lists them again.
+    /// Follow every profile, ordered by name in the device's language. The
+    /// query reads `name_sort`, so coven reruns it when the device's language
+    /// changes.
     pub fn subscribe_profiles(&self) -> coven::LiveQuery<Vec<PersonProfile>, bae_store::DbError> {
         self.inner.store.subscribe(|sql| Ok(sql.query(&profiles_sql(), [], profile_row)?))
     }

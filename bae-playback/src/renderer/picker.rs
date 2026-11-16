@@ -131,8 +131,8 @@ impl CastPicker {
     }
 
     /// Follow the receivers the picker lists, the one playback is cast to
-    /// apart from the rest, by name in the device's language: a change of
-    /// the language lists them again.
+    /// apart from the rest, by name in the device's language. The query reads
+    /// `name_sort`, so coven reruns it when the device's language changes.
     pub fn subscribe(&self) -> coven::LiveQuery<CastReceiverList, bae_store::DbError> {
         self.store.subscribe(|sql| cast_receivers_on(&sql))
     }

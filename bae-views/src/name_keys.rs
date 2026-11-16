@@ -1,7 +1,7 @@
-//! The rewrite of every stored name key when the device's language, or the
-//! collation data the keys are written with, changes: a trigger on
-//! bae-records' `name_sort` (`name_keys.sql`) over the key columns the
-//! listings' triggers write (`album/listing.sql`, `artist.sql`,
+//! The trigger on bae-records' `name_sort` (`name_keys.sql`) that writes
+//! every stored name key again when the device's language, or the version of
+//! the collation data bae writes the keys with, changes. The keys are the
+//! columns the listings' triggers write (`album/listing.sql`, `artist.sql`,
 //! `composer.sql`, `composer_detail.sql`, `storage.sql`).
 
 /// The SQL creating this part's trigger.

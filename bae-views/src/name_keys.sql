@@ -1,9 +1,9 @@
--- A change of the device's language, or of the collation data its name keys
--- are written with (`name_sort`, §2.1), writes every listing's key columns
--- again from the rows they come from, in the same write: the albums are
--- listed again, which writes their links' and releases' keys through the
--- triggers that copy them, the artists' and composers' keys are written from
--- their names, and the composers' pages' rows are listed again.
+-- When a write changes the device's language, or the version of the
+-- collation data bae writes name keys with (`name_sort`, §2.1), this trigger
+-- writes every listing's key columns again from the rows they come from, in
+-- the same write: it lists every album again, whose refresh triggers write
+-- the album's links' and releases' keys, writes the artists' and composers'
+-- keys from their names, and lists the composers' pages' rows again.
 CREATE TRIGGER IF NOT EXISTS name_keys_rewritten AFTER UPDATE OF language, data_version ON name_sort
 BEGIN
     INSERT INTO album_listing_refresh (album_id) SELECT album_id FROM album_listing;

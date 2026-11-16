@@ -26,9 +26,10 @@ async fn a_request_no_longer_stored_is_not_written_as_a_profile() {
     assert!(first(people.subscribe_profiles()).await.is_empty());
 }
 
-/// Profiles list by name in the device's language, and a change of language
-/// lists them again: the root order puts ö with o, Swedish puts it after z,
-/// and the byte order puts it after every ASCII letter.
+/// The profiles list sorts the profiles by name in the device's language, and
+/// sorts them again when the language changes: the root order puts ö with o,
+/// Swedish puts it after z, and the byte order puts it after every ASCII
+/// letter.
 #[tokio::test]
 async fn profiles_list_by_name_in_the_devices_language() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;

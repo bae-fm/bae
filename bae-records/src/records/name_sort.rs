@@ -12,7 +12,7 @@ use rusqlite::params;
 /// The SQL creating `name_sort`.
 pub(super) const SQL: &str = include_str!("name_sort.sql");
 
-/// A language the device's names could not be ordered in.
+/// A language bae cannot order the device's names in.
 #[derive(Debug, thiserror::Error)]
 pub enum SortLanguageError {
     /// The tag is not a language tag.
@@ -23,9 +23,10 @@ pub enum SortLanguageError {
 }
 
 /// The sort key of the name `name` (a SQL expression) in the device's
-/// language, for a list too small to keep keys beside its names: it orders
-/// by the same key the stored ones are. A live read that orders by it reads
-/// `name_sort`, so a change of language reruns the read.
+/// language, for a list too small to keep keys beside its names: it computes
+/// the same key that the other lists store beside their names. A live read
+/// that orders by it reads `name_sort`, so coven reruns the read when the
+/// language changes.
 pub fn sort_key_sql(name: &str) -> String {
     format!("bae_name_key({name}, (SELECT language FROM name_sort))")
 }
@@ -42,9 +43,10 @@ impl super::Records {
     }
 
     /// Write every stored name key again, in the language the device already
-    /// orders in, when they were written with other collation data than this
-    /// build's. A library opens through this before anything reads or writes
-    /// it, so no row is ever keyed by data different from the rest.
+    /// orders in, when an earlier build wrote them with other collation data
+    /// than this build's. bae calls this as a library opens, before anything
+    /// reads or writes it, so no row has a key from different data than the
+    /// rest.
     pub async fn settle_name_keys(&self) -> Result<(), DbError> {
         self.write_sort_language(None).await
     }
@@ -71,8 +73,8 @@ impl super::Records {
             .await
     }
 
-    /// Record that the stored name keys were written with collation data
-    /// other than this build's, as an earlier build leaves them.
+    /// Record that an earlier build wrote the stored name keys with other
+    /// collation data than this build's.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn age_name_keys_for_test(&self) -> Result<(), DbError> {
         self.store

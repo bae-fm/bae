@@ -158,9 +158,10 @@ async fn opening_empties_the_picker() {
     assert_eq!(picker.receivers().await.unwrap(), found(Vec::new()));
 }
 
-/// The list reads by name in the device's language, and a change of language
-/// lists it again: the root order puts ö with o, Swedish puts it after z, and
-/// the byte order puts it after every ASCII letter.
+/// The picker sorts the receivers by name in the device's language, and sorts
+/// them again when the language changes: the root order puts ö with o,
+/// Swedish puts it after z, and the byte order puts it after every ASCII
+/// letter.
 #[tokio::test]
 async fn receivers_list_by_name_in_the_devices_language() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
