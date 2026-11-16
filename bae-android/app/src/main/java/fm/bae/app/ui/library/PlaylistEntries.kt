@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,17 +51,18 @@ internal class PlaylistEntryActions(
     val onAddToPlaylist: ((trackId: String) -> Unit)?,
     /** Take the entry named by its position id out of the playlist. */
     val onRemove: (positionId: String) -> Unit,
-    /** Write the entries in [order], each named by its position id; [onFailed] runs if the write fails. */
-    val onReorder: (order: List<String>, onFailed: () -> Unit) -> Unit,
+    /** Write the entries in [order], each named by its position id; [onReturned] runs when the write returns. */
+    val onReorder: (order: List<String>, onReturned: () -> Unit) -> Unit,
 )
 
 /**
  * PlaylistReorder holds the order the page draws while the owner moves an entry: the entry being dragged
- * and where it would land, and the order just written, which it keeps until the playlist's query returns it.
+ * and where it would land, and the order just written, which it keeps until the write returns. Then the
+ * page draws the playlist's rows, in the order the library stores.
  */
 internal class PlaylistReorder(
     private val entries: List<BridgePlaylistEntryRow>,
-    private val write: (order: List<String>, onFailed: () -> Unit) -> Unit,
+    private val write: (order: List<String>, onReturned: () -> Unit) -> Unit,
     private val held: MutableState<List<String>?>,
 ) {
     private var draggedId by mutableStateOf<String?>(null)
@@ -74,8 +74,7 @@ internal class PlaylistReorder(
 
     private val ordered: List<BridgePlaylistEntryRow>
         get() {
-            val order = held.value
-            if (order == null || order.toSet() != entries.map { it.positionId }.toSet()) return entries
+            val order = held.value ?: return entries
             val byId = entries.associateBy { it.positionId }
             return order.mapNotNull { byId[it] }
         }
@@ -125,6 +124,11 @@ internal class PlaylistReorder(
         val order = ordered.map { it.positionId }.toMutableList()
         val from = order.indexOf(positionId)
         order.add(from + by, order.removeAt(from))
+        hold(order)
+    }
+
+    /** Draw [order] until its write returns. */
+    private fun hold(order: List<String>) {
         held.value = order
         write(order) { held.value = null }
     }
@@ -146,10 +150,7 @@ internal class PlaylistReorder(
         val moved = target != startIndex
         draggedId = null
         offset = 0f
-        if (moved) {
-            held.value = order
-            write(order) { held.value = null }
-        }
+        if (moved) hold(order)
     }
 
     fun cancel() {
@@ -160,15 +161,14 @@ internal class PlaylistReorder(
 
 /**
  * The reorder state of [detail]'s entries, written through [write]; the page keeps a written order until
- * the playlist's query returns it.
+ * its write returns.
  */
 @Composable
 internal fun rememberPlaylistReorder(
     detail: BridgePlaylistDetail,
-    write: (order: List<String>, onFailed: () -> Unit) -> Unit,
+    write: (order: List<String>, onReturned: () -> Unit) -> Unit,
 ): PlaylistReorder {
     val held = remember { mutableStateOf<List<String>?>(null) }
-    LaunchedEffect(detail.entries) { held.value = null }
     val latestWrite by rememberUpdatedState(write)
     return remember(detail.entries) {
         PlaylistReorder(detail.entries, { order, failed -> latestWrite(order, failed) }, held)

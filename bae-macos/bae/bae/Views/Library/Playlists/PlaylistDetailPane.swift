@@ -183,19 +183,17 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Write `order` as `playlist`'s entries; when the write fails, show the
-    /// error and return `false`.
+    /// Write `order` as `playlist`'s entries, and show the error when the
+    /// write fails.
     private func reorder(
         _ order: [String],
         in playlist: BridgePlaylistSummary
-    ) async -> Bool {
+    ) async {
         do {
             try await library.playlistWrites.reorder(playlist.id, order)
-            return true
         }
         catch {
             uiStore.showError(error)
-            return false
         }
     }
 }

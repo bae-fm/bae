@@ -42,7 +42,6 @@ import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.runTrackQueueCommand
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistSummary
 
@@ -148,13 +147,12 @@ internal fun PlaylistPage(
                         session.appHandle.removePlaylistEntry(playlistId, positionId)
                     }
                 },
-                onReorder = { order, onFailed ->
+                onReorder = { order, onReturned ->
                     session.messages.perform("reorder playlist $playlistId") {
                         try {
                             session.appHandle.reorderPlaylist(playlistId, order)
-                        } catch (e: BridgeException) {
-                            onFailed()
-                            throw e
+                        } finally {
+                            onReturned()
                         }
                     }
                 },

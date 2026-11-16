@@ -3066,7 +3066,9 @@ owner reorders the entries by dragging a row: on macOS a line marks where the
 row goes when the owner lets go, and on Android a held row lifts and the rows
 between make room. Letting go writes the new order. On Android a screen reader
 also offers *Move up* and *Move down* on each of the owner's rows that has a
-place to move to, and each writes the new order as a drag does.
+place to move to, and each writes the new order as a drag does. The row stays
+where the person let it go until the write returns; then the page draws the
+entries as stored, so a write that fails puts the row back.
 
 On Android a track's menu, on an album's page and on a playlist's, offers *Add
 to playlist…* when the person can make playlists: a sheet of their own playlists

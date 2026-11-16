@@ -12,13 +12,14 @@ struct PlaylistEntryList: View {
     let playNext: (BridgePlaylistEntryRow) -> Void
     let addToQueue: (BridgePlaylistEntryRow) -> Void
     let remove: (BridgePlaylistEntryRow) -> Void
-    /// Write the entries in `order`, each named by its position id; returns
-    /// true when bae wrote the new order.
-    let reorder: (_ order: [String]) async -> Bool
+    /// Write the entries in `order`, each named by its position id, returning
+    /// when the write returns.
+    let reorder: (_ order: [String]) async -> Void
 
     @State
     private var drag: PlaylistEntryDrag?
-    /// The order just written, drawn until the playlist's read shows it.
+    /// The order just written, drawn until its write returns. Then the list
+    /// draws the playlist's read, which shows what is stored.
     @State
     private var held: [String]?
     @State
@@ -69,17 +70,12 @@ struct PlaylistEntryList: View {
                 floatingCopy(entries[drag.index], drag: drag)
             }
         }
-        .onChange(of: detail.entries.map(\.positionId)) { _, _ in
-            held = nil
-        }
     }
 
-    /// The entries as drawn: the order just written while the playlist's
-    /// query has not yet returned that order, else the query's.
+    /// The entries as drawn: the order just written until its write returns,
+    /// else the query's rows.
     private var shown: [BridgePlaylistEntryRow] {
-        guard let held,
-            Set(held) == Set(detail.entries.map(\.positionId))
-        else {
+        guard let held else {
             return detail.entries
         }
         let byId = Dictionary(
@@ -119,9 +115,8 @@ struct PlaylistEntryList: View {
             order.insert(order.remove(at: finished.index), at: target)
             held = order
             Task {
-                if await reorder(order) == false {
-                    held = nil
-                }
+                await reorder(order)
+                held = nil
             }
         }
     }
