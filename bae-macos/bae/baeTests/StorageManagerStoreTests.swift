@@ -237,6 +237,7 @@ extension BridgeStorageSelection {
         asked: [],
         selected: [],
         sole: nil,
+        holdsAny: false,
         selectionActions: [],
         cancelOnly: false
     )
@@ -253,6 +254,7 @@ extension BridgeStorageSelection {
             asked: rows.map(\.id),
             selected: rows,
             sole: sole,
+            holdsAny: !rows.isEmpty,
             selectionActions: actions,
             cancelOnly: false
         )

@@ -533,9 +533,10 @@ extension StorageTableView.Coordinator {
 
     /// The lines of the menu for a right click on `row`.
     func contextEntries(forRow clickedRow: Int) -> [MacMenuEntry] {
-        guard clickedRow >= 0, let clickedId = list.idAt(clickedRow) else {
+        guard clickedRow >= 0, let clicked = list.row(at: clickedRow) else {
             return []
         }
+        let clickedId = clicked.id
         var entries: [MacMenuEntry] = [
             .item(
                 MacMenuItem("Inspect") { [self] in
@@ -547,8 +548,8 @@ extension StorageTableView.Coordinator {
 
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
-        let targets = menuTargets(forClickedRelease: clickedId)
-        guard !targets.rows.isEmpty else { return entries }
+        let targets = menuTargets(forClicked: clicked)
+        guard targets.holdsAny else { return entries }
         let releaseIds = targets.rows.map(\.id)
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
@@ -598,39 +599,39 @@ extension StorageTableView.Coordinator {
     /// If the clicked release is in the selection, act on the rows core
     /// answered for it, with the storage actions core says they all allow;
     /// otherwise act on and select that release, with its own. Each
-    /// target is the row the list's query returned for it.
+    /// target is the row the list's query returned for it: the clicked one
+    /// is the row the table draws at the clicked position.
     private func menuTargets(
-        forClickedRelease clickedId: String
+        forClicked clicked: BridgeStorageRow
     ) -> MenuTargets {
         if let answer = storageManagerStore.answered(
             for: selection.wrappedValue
         ),
-            selection.wrappedValue.contains(clickedId)
+            selection.wrappedValue.contains(clicked.id)
         {
             return MenuTargets(
                 rows: answer.selected,
+                holdsAny: answer.holdsAny,
                 actions: answer.selectionActions,
                 cancelOnly: answer.cancelOnly
             )
         }
-        selection.wrappedValue = [clickedId]
-        applySelection([clickedId], to: tableView)
-        guard let row = list.row(of: clickedId) else {
-            preconditionFailure(
-                "The person clicked release \(clickedId), but the list has no row for it"
-            )
-        }
+        selection.wrappedValue = [clicked.id]
+        applySelection([clicked.id], to: tableView)
         return MenuTargets(
-            rows: [row],
-            actions: row.release.storageActions,
-            cancelOnly: row.cancelOnly
+            rows: [clicked],
+            holdsAny: true,
+            actions: clicked.release.storageActions,
+            cancelOnly: clicked.cancelOnly
         )
     }
 
-    /// The releases a menu acts on, the storage actions they all allow, and
-    /// whether Cancel is the only action one of them offers.
+    /// The releases a menu acts on, whether core found any, the storage
+    /// actions they all allow, and whether Cancel is the only action one of
+    /// them offers.
     private struct MenuTargets {
         let rows: [BridgeStorageRow]
+        let holdsAny: Bool
         let actions: [BridgeReleaseStorageAction]
         let cancelOnly: Bool
     }

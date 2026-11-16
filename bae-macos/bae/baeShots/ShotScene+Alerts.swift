@@ -353,6 +353,7 @@ extension ShotScene {
                         asked: pinned.sorted(),
                         selected: selected,
                         sole: nil,
+                        holdsAny: !selected.isEmpty,
                         selectionActions: [],
                         cancelOnly: false
                     )

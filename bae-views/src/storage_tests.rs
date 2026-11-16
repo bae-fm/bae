@@ -812,6 +812,7 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     let both = answer(StorageFilter::All, ids(&[RELEASE_EARLY, RELEASE_LATE])).await;
     assert_eq!(both.selected.len(), 2);
     assert_eq!(both.sole, None, "two held releases have no sole one");
+    assert!(both.holds_any);
 
     let one = answer(StorageFilter::All, ids(&[RELEASE_EARLY])).await;
     assert_eq!(one.sole.as_deref(), Some(RELEASE_EARLY));
@@ -821,6 +822,7 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
 
     let filtered_out = answer(StorageFilter::Remote, ids(&[RELEASE_EARLY])).await;
     assert_eq!(filtered_out.sole, None);
+    assert!(!filtered_out.holds_any, "the list holds none of the releases asked about");
     assert!(filtered_out.selected.is_empty());
 
     let holds = |filter: StorageFilter, search: &'static str, asked: BTreeSet<String>| {

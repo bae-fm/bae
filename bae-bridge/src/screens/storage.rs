@@ -15,6 +15,8 @@ pub struct BridgeStorageSelection {
     /// The one release the list holds among those asked about, when it holds
     /// exactly one.
     pub sole: Option<String>,
+    /// Whether the list holds any of the releases asked about.
+    pub holds_any: bool,
     pub selection_actions: Vec<crate::types::BridgeReleaseStorageAction>,
     /// Whether a selected release is mid-transition or its move failed: the
     /// selection offers only cancelling.
@@ -69,6 +71,7 @@ impl BridgeStorageSelection {
             asked: selection.asked,
             selected: selection.selected.into_iter().map(BridgeStorageRow::from_core).collect(),
             sole: selection.sole,
+            holds_any: selection.holds_any,
             selection_actions: selection
                 .selection_actions
                 .into_iter()
