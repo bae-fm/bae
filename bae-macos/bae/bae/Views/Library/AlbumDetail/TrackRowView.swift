@@ -140,9 +140,9 @@ struct TrackRowView: View {
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
             )
-            if let stars = track.myStars {
-                Stars(value: stars.number, size: 10)
-            }
+            Stars(value: track.myStars?.number ?? 0, size: 10)
+                .opacity(track.myStars == nil ? 0 : 1)
+                .accessibilityHidden(track.myStars == nil)
         }
         .revealsAsTrackRow(track.id)
         // Keyed on the flash's `seq` so a remounted row still sees the flash
