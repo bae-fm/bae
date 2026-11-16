@@ -46,7 +46,7 @@ extension PreviewData {
         identifyState: IdentifyState
     ) -> Candidate {
         var candidate = Candidate(
-            bridge: BridgeFolderCandidate(
+            folder: BridgeFolderCandidate(
                 parts: [],
                 candidateKey: Data("\(importRootPath)/\(path)".utf8),
                 folderPath: Data("\(importRootPath)/\(path)".utf8),
@@ -56,7 +56,8 @@ extension PreviewData {
                 trackCount: trackCount,
                 skipped: false,
                 isAdded: false
-            )
+            ),
+            folders: .one(folderPath: Data("\(importRootPath)/\(path)".utf8))
         )
         candidate.resumedIdentifyState = identifyState
         return candidate

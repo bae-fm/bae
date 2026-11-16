@@ -39,9 +39,9 @@ extension ImportView {
     /// that draw it, so a progress step redraws those alone.
     func mainPane(for candidate: Candidate) -> some View {
         VStack(spacing: 0) {
-            if candidate.partCount > 0 {
+            if case .folder(_, .several(let parts)) = candidate.source {
                 ImportCombinedSourceView(
-                    parts: candidate.parts,
+                    parts: parts,
                     canSeparate: candidate.live?.actions
                         .contains(.separate) == true,
                     onSeparate: { separateSelectedCandidate() }

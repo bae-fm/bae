@@ -4,15 +4,31 @@ import Foundation
 // MARK: - CandidateSource
 
 /// Source-specific data for a candidate. Folder candidates carry the watched
-/// folder they were scanned from and their own folder, each as coven's bytes
-/// for its path; re-identify candidates carry the existing library release
-/// id.
+/// folder the scan found them in and the folders their files come from, each
+/// as coven's bytes for its path; re-identify candidates carry the existing
+/// library release id.
 enum CandidateSource: Equatable {
     case folder(
         watchedFolderPath: Data,
-        folderPath: Data
+        folders: CandidateFolders
     )
     case releaseReIdentify(releaseId: String)
+}
+
+/// The folders a folder candidate's files come from, as its read reports
+/// them: one folder, or the parts of a release that combines several.
+enum CandidateFolders: Equatable {
+    case one(folderPath: Data)
+    case several(parts: [BridgeReleasePart])
+
+    /// The candidate's read counts its parts in SQL, and a count of 0 means
+    /// one folder.
+    init(detail: BridgeImportCandidateDetail) {
+        self =
+            detail.partCount == 0
+            ? .one(folderPath: detail.candidate.folderPath)
+            : .several(parts: detail.candidate.parts)
+    }
 }
 
 // MARK: - SearchTab
@@ -306,8 +322,9 @@ struct Candidate: Equatable, Identifiable {
     var resumedIdentifyState: IdentifyState = .idle
     /// Everything the pane draws, as core reads it back for this key: the
     /// metadata draft and provenance, mapping table, cover, and the
-    /// last failed import. `nil` until the per-candidate
-    /// read has answered, and for a re-identify session, which has no folder.
+    /// last failed import. `nil` for a re-identify session, which has no
+    /// folder. The app makes each folder candidate from its read, and only a
+    /// fixture makes one without it.
     ///
     /// The pane keeps no copy of any of it. A control writes through the
     /// importer, core commits, and the next value of this lands here.
@@ -338,12 +355,6 @@ struct Candidate: Equatable, Identifiable {
         key
     }
 
-    /// The folders this release is read from, when it is several. Empty for
-    /// a release read from one folder.
-    var parts: [BridgeReleasePart] { detail?.candidate.parts ?? [] }
-    /// How many folders this release is read from when it is several, as
-    /// core counts them; 0 for one folder.
-    var partCount: UInt64 { detail?.partCount ?? 0 }
     /// Where this candidate's import stands for the pane: running now, or
     /// what the last one left.
     var importStatus: BridgeCandidateImportStatus? { detail?.importStatus }
@@ -351,21 +362,24 @@ struct Candidate: Equatable, Identifiable {
     /// release being identified again.
     var sourceFolderPaths: [Data] {
         switch source {
-        case .folder(_, let folderPath):
-            partCount == 0 ? [folderPath] : parts.map(\.folderPath)
+        case .folder(_, .one(let folderPath)):
+            [folderPath]
+        case .folder(_, .several(let parts)):
+            parts.map(\.folderPath)
         case .releaseReIdentify:
             []
         }
     }
 
-    init(bridge: BridgeFolderCandidate) {
+    /// A folder candidate, and the folders its files come from.
+    init(folder: BridgeFolderCandidate, folders: CandidateFolders) {
         source = .folder(
-            watchedFolderPath: bridge.watchedFolderPath,
-            folderPath: bridge.folderPath
+            watchedFolderPath: folder.watchedFolderPath,
+            folders: folders
         )
-        key = bridge.candidateKey
-        displayName = bridge.sourceFolderName
-        files = bridge.files
+        key = folder.candidateKey
+        displayName = folder.sourceFolderName
+        files = folder.files
     }
 
     /// One read of a selected candidate: the folder, its resumed identify
@@ -373,7 +387,10 @@ struct Candidate: Equatable, Identifiable {
     init(
         detail: BridgeImportCandidateDetail
     ) {
-        self.init(bridge: detail.candidate)
+        self.init(
+            folder: detail.candidate,
+            folders: CandidateFolders(detail: detail)
+        )
         resumedIdentifyState = IdentifyState(
             bridge: detail.resumedIdentifyState
         )

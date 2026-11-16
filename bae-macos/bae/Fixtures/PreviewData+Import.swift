@@ -206,7 +206,7 @@ extension PreviewData {
             isAdded: false
         ),
     ]
-    .map(Candidate.init(bridge:))
+    .map { Candidate(folder: $0, folders: .one(folderPath: $0.folderPath)) }
 
     /// Folders that failed validation, listed under Skipped: one whose
     /// tags name the release and whose own cover decodes, one with only
@@ -317,7 +317,7 @@ extension PreviewData {
     private static let releaseQueueCandidates = releaseQueueRows.map {
         row -> Candidate in
         var candidate = Candidate(
-            bridge: BridgeFolderCandidate(
+            folder: BridgeFolderCandidate(
                 parts: [],
                 candidateKey: row.candidateKey,
                 folderPath: row.candidateKey,
@@ -327,7 +327,8 @@ extension PreviewData {
                 trackCount: 9,
                 skipped: false,
                 isAdded: false
-            )
+            ),
+            folders: .one(folderPath: row.candidateKey)
         )
         return candidate
     }

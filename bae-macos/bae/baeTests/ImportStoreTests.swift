@@ -56,9 +56,7 @@ private func bridgeFolder(
     folderPath: Data,
     watchedFolderPath: Data,
     name: String,
-    trackCount: UInt32 = 10,
-    skipped: Bool = false,
-    isAdded: Bool = false
+    skipped: Bool = false
 ) -> BridgeFolderCandidate {
     BridgeFolderCandidate(
         parts: [],
@@ -67,28 +65,9 @@ private func bridgeFolder(
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,
         files: emptyBridgeFiles(),
-        trackCount: trackCount,
+        trackCount: 10,
         skipped: skipped,
-        isAdded: isAdded
-    )
-}
-
-/// A folder `Candidate` with the given scan flags.
-private func folderCandidate(
-    folderPath: Data,
-    watchedFolderPath: Data,
-    name: String,
-    skipped: Bool = false,
-    isAdded: Bool = false
-) -> Candidate {
-    Candidate(
-        bridge: bridgeFolder(
-            folderPath: folderPath,
-            watchedFolderPath: watchedFolderPath,
-            name: name,
-            skipped: skipped,
-            isAdded: isAdded
-        )
+        isAdded: false
     )
 }
 
@@ -222,10 +201,12 @@ struct ImportStoreCandidateDetailTests {
     @Test("a re-read keeps the editor state on its key")
     func keepsEditorState() throws {
         let store = ImportStore()
-        var existing = folderCandidate(
-            folderPath: Data("/w1/a".utf8),
-            watchedFolderPath: Data("/w1".utf8),
-            name: "A"
+        var existing = Candidate(
+            detail: detail(
+                folderPath: Data("/w1/a".utf8),
+                watchedFolderPath: Data("/w1".utf8),
+                name: "A"
+            )
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         store.selectedCandidates[Data("/w1/a".utf8)] = existing
