@@ -180,8 +180,9 @@ pub struct BridgeLibrary {
     pub is_active: bool,
 }
 
-/// The libraries registered on this device, in the order they are listed,
-/// and what the library switcher does with them. Mirrors `LibraryListing`.
+/// The libraries registered on this device, in the order the device lists
+/// them, and what the library switcher does with them. Mirrors
+/// `LibraryListing`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryListing {
     pub libraries: Vec<BridgeLibrary>,

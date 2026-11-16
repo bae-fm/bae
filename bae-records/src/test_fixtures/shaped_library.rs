@@ -420,7 +420,8 @@ fn insert_chunk(sql: &CovenWrite<'_>, start: u64, end: u64) -> Result<(), Identi
 }
 
 /// A file of the shaped library: the row, how large its original is, and
-/// where the seed places it. A file in the cloud has its upload queued.
+/// where the seed places it. The seed queues an upload for each file it
+/// places in the cloud.
 pub struct ShapedFile {
     pub file: crate::NewReleaseFile,
     pub size: u64,

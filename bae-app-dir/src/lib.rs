@@ -171,9 +171,9 @@ impl AppDir {
 
     /// The libraries registered on this device, the active one first, then by
     /// name (a library whose name can't be read last), each with whether it
-    /// opens: the stores `coven`, this directory's installation, lists. A bug
-    /// coven's listing or a library's settings read carries back is reported
-    /// to `bugs`, the crash reporter.
+    /// opens: the stores `coven`, this directory's installation, lists. This
+    /// function reports to `bugs`, the crash reporter, any bug that coven
+    /// returns when it lists the stores or reads a library's settings.
     pub async fn discover_libraries(
         &self,
         coven: &coven::Coven,
@@ -248,8 +248,8 @@ impl AppDir {
     }
 }
 
-/// The libraries registered on this device, in the order they are listed,
-/// and what the library switcher does with them.
+/// The libraries registered on this device, the active one first and then by
+/// name, and what the library switcher does with them.
 #[derive(Clone, Debug)]
 pub struct LibraryListing {
     pub libraries: Vec<LibraryInfo>,

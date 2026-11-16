@@ -7,7 +7,8 @@ fn counts(writes: u64, files: u64) -> Option<Vec<(String, u64)>> {
     })
 }
 
-/// No unsent work has no notice, and a count of zero has no sentence.
+/// When nothing is unsent, `CopyResetNotice::of` returns no notice, and the
+/// notice leaves out a count of zero.
 #[test]
 fn the_notice_names_only_what_was_not_kept() {
     assert_eq!(counts(0, 0), None);

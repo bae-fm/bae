@@ -313,8 +313,9 @@ object AppSessionHolder {
 
     /**
      * List [host]'s local libraries, publish the listing to [libraries], and
-     * return its libraries. A failed listing is published as failed and thrown, so callers
-     * can surface it rather than mistaking a failed listing for an empty device.
+     * return its libraries. When the listing fails, this function publishes
+     * the failure to [libraries] and throws it, so callers can show the error
+     * instead of taking it for an empty device.
      */
     private suspend fun listLibraries(
         host: BridgeHost,

@@ -44,11 +44,11 @@ pub(crate) const NOW_TRACK_DISPLAY_JOINS: &str = "LEFT JOIN tracks t ON t.id = n
      LEFT JOIN covers c ON c.id = r.id";
 
 /// The columns of a track's display over `tracks t` and the joins of
-/// [`TRACK_DISPLAY_JOINS`] or [`NOW_TRACK_DISPLAY_JOINS`], each named with
-/// `prefix` so it does not clash with the other columns of the statement,
-/// which [`track_display_from_row`] reads: its title, its credited artists
-/// (the album's when the track credits none), its album, the release it is
-/// on, and that release's cover. The cover is the track's own release's, not
+/// [`TRACK_DISPLAY_JOINS`] or [`NOW_TRACK_DISPLAY_JOINS`], which
+/// [`track_display_from_row`] reads: its title, its credited artists (the
+/// album's when the track credits none), its album, the release it is on,
+/// and that release's cover. Each column's name starts with `prefix`, so it
+/// does not clash with the statement's other columns. The cover is the track's own release's, not
 /// the album's primary release's, so a track from a non-primary release shows
 /// that release's art; its versioned reference is what the UI caches art
 /// under, and a release with no cover row has none.
@@ -63,8 +63,8 @@ pub(crate) fn track_display_columns(prefix: &str) -> String {
     )
 }
 
-/// The display of the track a row read with [`track_display_columns`] under
-/// `prefix` names.
+/// Read the display of the track that `row` names, from the columns that
+/// [`track_display_columns`] selected under `prefix`.
 pub(crate) fn track_display_from_row(
     row: &Row<'_>,
     prefix: &str,
