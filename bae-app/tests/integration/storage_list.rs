@@ -59,6 +59,7 @@ pub(crate) fn storage_count(
     manager.values_until_closed(views.subscribe_storage_count(filter, "").process(|counts| {
         Ok(ListCount {
             rows: counts.rows,
+            items: counts.rows,
             extra: bae_views::ListCountExtra::Storage {
                 total_size: counts.total_size,
                 searching: counts.searching,

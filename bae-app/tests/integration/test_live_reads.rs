@@ -353,6 +353,7 @@ async fn a_storage_window_moves_in_place_and_the_count_is_its_own() {
     let local_counts = crate::storage_list::storage_count(manager.manager(), &views, local);
     let counted = local_counts.next().await.unwrap();
     assert_eq!(counted.rows, views.get_storage_count(local).await.unwrap());
+    assert_eq!(counted.items, counted.rows);
     assert_eq!(
         counted.extra,
         bae_views::ListCountExtra::Storage {

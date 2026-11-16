@@ -292,9 +292,10 @@ fn an_album_count_pulls_before_any_window() {
     let count = handle.handle().subscribe_list_count(flat_albums());
     let value = handle.handle().runtime.block_on(count.clone().next()).expect("album count");
     assert_eq!(value.rows, 0);
+    assert_eq!(value.items, 0);
     assert!(matches!(
         value.extra,
-        crate::types::BridgeListCountExtra::AlbumGrid { albums: 0, can_shuffle: false }
+        crate::types::BridgeListCountExtra::AlbumGrid { can_shuffle: false }
     ));
 }
 

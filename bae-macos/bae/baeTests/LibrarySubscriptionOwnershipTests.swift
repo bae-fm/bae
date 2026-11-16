@@ -77,7 +77,7 @@ private final class AlbumListProbe: @unchecked Sendable {
                 beyond: nil
             )
         )
-        counts.emit(BridgeListCount(rows: total, extra: .none))
+        counts.emit(BridgeListCount(rows: total, items: total, extra: .none))
     }
 
     var isSubscribed: Bool {

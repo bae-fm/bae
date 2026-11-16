@@ -42,14 +42,14 @@ internal class UpcomingFeed {
     /** Show [rows] as the list: the count and every open window read again. */
     fun show(rows: List<BridgeQueueEntry>) {
         this.rows = rows
-        counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+        counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
         windows.toList().forEach(FeedWindow::deliver)
     }
 
     /** End every read open now with [error]; a list opened after it reads on. */
     fun fail(error: BridgeException) {
         failure = error
-        counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+        counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
         windows.toList().forEach(FeedWindow::wake)
     }
 
@@ -64,7 +64,7 @@ internal class UpcomingFeed {
                 FeedWindow(first).also { windows.add(it) }
             },
             count = {
-                counts.trySend(BridgeListCount(rows.size.toULong(), BridgeListCountExtra.None))
+                counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
                 object : PulledSubscription<BridgeListCount> {
                     override suspend fun next(): BridgeListCount {
                         val value = counts.receive()

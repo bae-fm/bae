@@ -185,10 +185,11 @@ impl BridgeListCount {
     pub(crate) fn from_core(count: bae_views::ListCount) -> Self {
         Self {
             rows: count.rows,
+            items: count.items,
             extra: match count.extra {
                 bae_views::ListCountExtra::None => BridgeListCountExtra::None,
-                bae_views::ListCountExtra::AlbumGrid { albums, can_shuffle } => {
-                    BridgeListCountExtra::AlbumGrid { albums, can_shuffle }
+                bae_views::ListCountExtra::AlbumGrid { can_shuffle } => {
+                    BridgeListCountExtra::AlbumGrid { can_shuffle }
                 }
                 bae_views::ListCountExtra::Storage { total_size, searching } => {
                     BridgeListCountExtra::Storage { total_size, searching }

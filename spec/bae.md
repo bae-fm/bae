@@ -5496,8 +5496,9 @@ Reads come two ways:
   position plus the rows of the windows above them; a chain that starts at the
   top starts at row 0, and otherwise at a live count of the rows before its
   first key. A list's count is its own live query delivering its row count,
-  which sizes the scroll view; the album grid's also delivers its album count,
-  which grouped by artist is less than its rows. A jump (a scrollbar drag, the end key, a reveal)
+  which sizes the scroll view, and how many distinct items the rows show: the
+  album grid's albums, which grouped by artist are fewer than its rows, and the
+  row count for every other list. A jump (a scrollbar drag, the end key, a reveal)
   reads the sort values of the row at a position once, by offset, and starts a
   chain there. A row whose sort values move it from one window to its
   neighbour can show in both or in neither until the second window's value

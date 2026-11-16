@@ -36,20 +36,17 @@ where Row.ID: Sendable {
         count.map { Int($0.rows) } ?? 0
     }
 
-    /// How many distinct items the list's count carries when a row can show an
-    /// item more than once; the row count otherwise. `nil` until the count has
-    /// answered.
+    /// How many distinct items the list's rows show, as its count says;
+    /// `nil` until the count has answered.
     public var itemCount: Int? {
-        guard let count else { return nil }
-        if case .albumGrid(let albums, _) = count.extra { return Int(albums) }
-        return Int(count.rows)
+        count.map { Int($0.items) }
     }
 
     /// Whether the library holds a track to shuffle, as the album grid's
     /// count says; `nil` until it has answered, and for a list that is not
     /// the album grid.
     public var canShuffle: Bool? {
-        guard case .albumGrid(_, let canShuffle)? = count?.extra else {
+        guard case .albumGrid(let canShuffle)? = count?.extra else {
             return nil
         }
         return canShuffle
@@ -387,7 +384,11 @@ extension PaginatedList {
         /// `rows` that carries `extra`, the extra this list's count carries.
         public func preloadRows(rows: [Row], extra: BridgeListCountExtra) {
             placed = rows.isEmpty ? [] : [Placed(start: 0, rows: rows)]
-            count = BridgeListCount(rows: UInt64(rows.count), extra: extra)
+            count = BridgeListCount(
+                rows: UInt64(rows.count),
+                items: UInt64(rows.count),
+                extra: extra
+            )
         }
     #endif
 }

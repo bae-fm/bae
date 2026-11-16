@@ -75,6 +75,10 @@ pub type LiveListWindow = LiveRead<ListWindow, ListWindowValue>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ListCount {
     pub rows: u64,
+    /// How many distinct items the rows show: the album grid's albums, which
+    /// grouped by artist show once under each of their artists, and the row
+    /// count for every other list.
+    pub items: u64,
     pub extra: ListCountExtra,
 }
 
@@ -82,11 +86,9 @@ pub struct ListCount {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ListCountExtra {
     None,
-    /// The album grid's album count, which grouped by artist is not its row
-    /// count: an album shows once under each of its artists. The variant also
-    /// says whether the library holds a track to shuffle.
+    /// Whether the library holds at least one track, so the album grid's
+    /// Shuffle has something to play.
     AlbumGrid {
-        albums: u64,
         can_shuffle: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether

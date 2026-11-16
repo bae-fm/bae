@@ -140,6 +140,10 @@ pub struct BridgeListWindowValue {
 pub struct BridgeListCount {
     /// How many rows the list has, which sizes its scroll view.
     pub rows: u64,
+    /// How many distinct items the rows show: the album grid's albums, which
+    /// grouped by artist show once under each of their artists, and the row
+    /// count for every other list.
+    pub items: u64,
     pub extra: BridgeListCountExtra,
 }
 
@@ -147,10 +151,7 @@ pub struct BridgeListCount {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeListCountExtra {
     None,
-    /// The album grid's album count; grouped by artist it is less than its
-    /// rows.
     AlbumGrid {
-        albums: u64,
         /// Whether the library holds at least one track, so Shuffle Library
         /// has something to play.
         can_shuffle: bool,

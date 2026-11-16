@@ -28,10 +28,8 @@ impl AppServices {
             self.inner.views.subscribe_album_count(group_by_artist).process(|counts| {
                 Ok(bae_views::ListCount {
                     rows: counts.rows,
-                    extra: bae_views::ListCountExtra::AlbumGrid {
-                        albums: counts.albums,
-                        can_shuffle: counts.can_shuffle,
-                    },
+                    items: counts.albums,
+                    extra: bae_views::ListCountExtra::AlbumGrid { can_shuffle: counts.can_shuffle },
                 })
             }),
         )
@@ -201,11 +199,9 @@ pub(super) fn list_rows(
     manager: &bae_library::LibraryManager,
     query: coven::LiveQuery<u64, bae_store::DbError>,
 ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
-    manager.values_until_closed(
-        query.process(|rows| {
-            Ok(bae_views::ListCount { rows, extra: bae_views::ListCountExtra::None })
-        }),
-    )
+    manager.values_until_closed(query.process(|rows| {
+        Ok(bae_views::ListCount { rows, items: rows, extra: bae_views::ListCountExtra::None })
+    }))
 }
 
 /// How many rows of a list come before the row at a key, as one live query

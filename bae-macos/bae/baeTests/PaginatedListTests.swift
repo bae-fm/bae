@@ -46,7 +46,13 @@ private final class ProbeList: @unchecked Sendable {
             countHeld = false
             return albums.count
         }
-        counts.emit(BridgeListCount(rows: UInt64(count), extra: .none))
+        counts.emit(
+            BridgeListCount(
+                rows: UInt64(count),
+                items: UInt64(count),
+                extra: .none
+            )
+        )
     }
 
     /// Replace the list's rows and deliver the change to every window and the
@@ -56,7 +62,13 @@ private final class ProbeList: @unchecked Sendable {
             albums = ids.sorted().map { makeBridgeAlbum(id: $0) }
             return (open.filter { !$0.stopped }, albums.count)
         }
-        counts.emit(BridgeListCount(rows: UInt64(count), extra: .none))
+        counts.emit(
+            BridgeListCount(
+                rows: UInt64(count),
+                items: UInt64(count),
+                extra: .none
+            )
+        )
         for window in windows { deliver(to: window) }
     }
 
@@ -123,7 +135,11 @@ private final class ProbeList: @unchecked Sendable {
                 let (held, rows) = lock.withLock { (countHeld, albums.count) }
                 if !held {
                     counts.emit(
-                        BridgeListCount(rows: UInt64(rows), extra: .none)
+                        BridgeListCount(
+                            rows: UInt64(rows),
+                            items: UInt64(rows),
+                            extra: .none
+                        )
                     )
                 }
                 return PulledValues(read: { try await self.counts.next() })
@@ -268,11 +284,25 @@ struct PaginatedListTests {
     @Test("repeated rows keep the distinct count the list's count carries")
     func distinctItemCount() async throws {
         let album = makeBridgeAlbum(id: "shared")
-        let list = PaginatedList<BridgeAlbum>(
-            queries: .fixed(
+        let rows = BridgeListQueries<BridgeAlbum>
+            .fixed(
                 [album, album],
-                answers: UnansweredCount(),
-                extra: .albumGrid(albums: 1, canShuffle: false)
+                answers: UnansweredCount()
+            )
+        let list = PaginatedList<BridgeAlbum>(
+            queries: BridgeListQueries(
+                window: rows.window,
+                count: {
+                    .fixed(
+                        BridgeListCount(
+                            rows: 2,
+                            items: 1,
+                            extra: .albumGrid(canShuffle: false)
+                        )
+                    )
+                },
+                position: rows.position,
+                keyAt: rows.keyAt
             ),
             onError: { Issue.record("List failed: \($0)") }
         )

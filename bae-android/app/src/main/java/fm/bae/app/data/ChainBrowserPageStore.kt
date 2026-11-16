@@ -18,7 +18,6 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeListCount
-import uniffi.bae_bridge.BridgeListCountExtra
 import uniffi.bae_bridge.BridgeSortValue
 
 private val logger = BaeLogger("bae.ChainBrowserPageStore")
@@ -52,7 +51,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     /** The headline for the first read failing, naming what this list holds. */
     @StringRes private val loadFailed: Int = R.string.library_load_failed,
 ) : BrowserPageState {
-    /** How many distinct items the list's count carries; its row count unless a row can show an item more than once. */
+    /** How many distinct items the list's rows show, as its count says; null until the count answers. */
     var itemCount by mutableStateOf<Int?>(null)
         private set
     override var totalCount by mutableStateOf(0)
@@ -189,7 +188,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     ) {
         if (openedGeneration != generation || !active) return
         totalCount = count.rows.toInt()
-        itemCount = (count.extra as? BridgeListCountExtra.AlbumGrid)?.albums?.toInt() ?: totalCount
+        itemCount = count.items.toInt()
         countAnswered = true
         changed(openedGeneration)
     }

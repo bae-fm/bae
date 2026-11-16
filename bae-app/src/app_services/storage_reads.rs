@@ -32,6 +32,7 @@ impl AppServices {
             self.inner.views.subscribe_storage_count(filter, search).process(|counts| {
                 Ok(bae_views::ListCount {
                     rows: counts.rows,
+                    items: counts.rows,
                     extra: bae_views::ListCountExtra::Storage {
                         total_size: counts.total_size,
                         searching: counts.searching,

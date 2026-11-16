@@ -58,7 +58,13 @@ final class PreviewQueueList: @unchecked Sendable {
             self.rows = rows
             return open.filter { !$0.stopped }
         }
-        counts.emit(BridgeListCount(rows: UInt64(rows.count), extra: .none))
+        counts.emit(
+            BridgeListCount(
+                rows: UInt64(rows.count),
+                items: UInt64(rows.count),
+                extra: .none
+            )
+        )
         for window in windows { deliver(to: window) }
     }
 
@@ -130,11 +136,9 @@ final class PreviewQueueList: @unchecked Sendable {
                     counts.fail(failure)
                 }
                 else {
+                    let count = UInt64(lock.withLock { rows.count })
                     counts.emit(
-                        BridgeListCount(
-                            rows: UInt64(lock.withLock { rows.count }),
-                            extra: .none
-                        )
+                        BridgeListCount(rows: count, items: count, extra: .none)
                     )
                 }
                 return PulledValues(read: { try await self.counts.next() })

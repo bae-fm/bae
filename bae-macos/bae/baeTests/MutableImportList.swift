@@ -108,8 +108,10 @@ final class MutableImportList: @unchecked Sendable {
     }
 
     private var count: BridgeListCount {
-        BridgeListCount(
-            rows: UInt64(lock.withLock { items.count }),
+        let rows = UInt64(lock.withLock { items.count })
+        return BridgeListCount(
+            rows: rows,
+            items: rows,
             extra: .import(narrowed: nil)
         )
     }

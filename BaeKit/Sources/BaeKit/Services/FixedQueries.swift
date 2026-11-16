@@ -265,6 +265,7 @@
             let count: @Sendable () -> PulledValues<BridgeListCount> = {
                 let value = BridgeListCount(
                     rows: UInt64(rows.count),
+                    items: UInt64(rows.count),
                     extra: extra
                 )
                 return PulledValues<BridgeListCount>.fixed(value)

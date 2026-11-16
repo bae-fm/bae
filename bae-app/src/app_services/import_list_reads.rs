@@ -33,6 +33,7 @@ pub fn import_list_count(list: &LiveImportList) -> LiveValues<bae_views::ListCou
     list.values_until_closed(list.subscribe_count().process(|count| {
         Ok(bae_views::ListCount {
             rows: count.rows,
+            items: count.rows,
             extra: bae_views::ListCountExtra::Import { narrowed: count.narrowed },
         })
     }))

@@ -56,7 +56,7 @@ internal open class FakeList<Row>(
 
     fun keyAt(position: ULong): List<BridgeSortValue>? = if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1))
 
-    fun count() = BridgeListCount(rows.size.toULong(), extra(rows.size))
+    fun count() = BridgeListCount(rows.size.toULong(), rows.size.toULong(), extra(rows.size))
 
     fun value(window: BridgeListWindow): BridgeListWindowValue {
         val held: List<Row>
@@ -212,7 +212,7 @@ internal class FakeAlbumList(
         albums,
         idOf = { it.id },
         wrap = { held -> BridgeListRows.Albums(held.map { BridgeAlbumAppearance(album = it, creditedWith = null) }) },
-        extra = { BridgeListCountExtra.AlbumGrid(it.toULong(), it > 0) },
+        extra = { BridgeListCountExtra.AlbumGrid(it > 0) },
         deliverImmediately = deliverImmediately,
         windowFailure = windowFailure,
     ) {
