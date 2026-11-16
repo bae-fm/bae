@@ -2844,8 +2844,8 @@ write. A budget no choice names is an error, never shown as the default. A
 reset or a restore in place starts it at 20 GB again.
 
 **Delete this data** (on a Mac, the Old library row's *Delete…*) deletes the
-installations resets kept on this device, after asking; it is offered while one
-is here. The library stays as it is.
+installations resets kept on this device, after asking; Storage shows it while
+one is here. The library stays as it is.
 
 On a Mac the Storage pane, after Transfers in Settings, is a box with the total
 and the bar over the parts' legend, then Cache (with Clear cache and Keep up
@@ -5111,8 +5111,8 @@ A receiver that forgets this device while casting ends the session on this
 device with the playback error "The AirPlay speaker no longer accepts this
 device.": on macOS in an alert titled "Could not cast", with Pair again… and
 Cancel, and on Android in a snackbar with Pair again…. Pair again… casts to the
-speaker again, which opens the pairing sheet. A receiver whose first pairing step is
-answered with HTTP 470 is one that asks for a PIN.
+speaker again, which opens the pairing sheet. A receiver that answers the first pairing step
+with HTTP 470 asks for a PIN.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
