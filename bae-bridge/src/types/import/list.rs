@@ -201,13 +201,7 @@ pub enum BridgeFolderScanAlertKind {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderScanActivity {
-    pub folders: Vec<BridgeActiveFolderScan>,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeActiveFolderScan {
-    pub watched_folder_path: Vec<u8>,
-    pub watched_folder_name: String,
+    pub folders: Vec<BridgeWatchedFolder>,
 }
 
 /// One candidate as the pane reads it, whole: the folder with its files, what

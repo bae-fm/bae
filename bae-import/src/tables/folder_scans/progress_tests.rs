@@ -72,10 +72,7 @@ async fn progress_follows_the_walk_in_flight() {
     assert_eq!(
         initial.activity,
         Some(crate::FolderScanActivity {
-            folders: vec![crate::ActiveFolderScan {
-                watched_folder_path: root.clone(),
-                watched_folder_name: "music".to_string(),
-            }],
+            folders: vec![crate::WatchedFolder { path: root.clone(), name: "music".to_string() }],
         })
     );
 

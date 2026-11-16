@@ -241,9 +241,8 @@ pub use event_bus::{ImportProgressFeed, ScanEvents};
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(desktop)]
 pub use folder_scan_status::{
-    ActiveFolderScan, FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress,
-    FolderScanStatus, ScanFoundCounts, StoredRootScan, StoredScan, StoredScanOutcome,
-    WatchedFolderScanStatus,
+    FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus,
+    ScanFoundCounts, StoredRootScan, StoredScan, StoredScanOutcome, WatchedFolderScanStatus,
 };
 #[cfg(desktop)]
 pub use folder_scanner::{

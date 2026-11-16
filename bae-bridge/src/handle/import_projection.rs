@@ -476,18 +476,11 @@ impl crate::types::BridgeImportListItem {
     }
 }
 
-impl crate::types::BridgeActiveFolderScan {
-    fn from_core(scan: bae_import::ActiveFolderScan) -> Self {
-        let bae_import::ActiveFolderScan { watched_folder_path, watched_folder_name } = scan;
-        Self { watched_folder_path: coven::path_bytes(&watched_folder_path), watched_folder_name }
-    }
-}
-
 mirror_struct! {
     crate::types::BridgeFolderScanActivity = bae_import::FolderScanActivity,
     from_core: fn,
     fields: {
-        folders: (each crate::types::BridgeActiveFolderScan),
+        folders: (each crate::types::BridgeWatchedFolder),
     },
 }
 

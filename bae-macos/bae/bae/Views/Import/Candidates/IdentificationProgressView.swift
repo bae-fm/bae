@@ -183,15 +183,15 @@ struct FolderScanProgressIndicator: View {
         .help(localizedCoreString("ui.import.scan.activity"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ForEach(activity.folders, id: \.watchedFolderPath) { folder in
+                ForEach(activity.folders, id: \.path) { folder in
                     HStack(spacing: ThemeSpace.group) {
-                        Text(verbatim: folder.watchedFolderName)
+                        Text(verbatim: folder.name)
                             .cutLine(.fileName)
                         Spacer(minLength: ThemeSpace.group)
                         StreamLabel(
                             stream: .scanFoundCount(
                                 foundCounts.source(
-                                    for: folder.watchedFolderPath
+                                    for: folder.path
                                 )
                             )
                         )

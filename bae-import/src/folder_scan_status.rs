@@ -92,17 +92,11 @@ pub enum FolderScanAlertKind {
     NotWatched,
 }
 
-/// Live folder-scan activity for the list chrome: the roots being scanned.
+/// Live folder-scan activity for the list chrome: the roots being scanned,
+/// in watched-folder order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanActivity {
-    pub folders: Vec<ActiveFolderScan>,
-}
-
-/// One root in [`FolderScanActivity`], in watched-folder order.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ActiveFolderScan {
-    pub watched_folder_path: std::path::PathBuf,
-    pub watched_folder_name: String,
+    pub folders: Vec<crate::WatchedFolder>,
 }
 
 /// One watched root's scan as its table row stores it.

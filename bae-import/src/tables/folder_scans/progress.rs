@@ -12,9 +12,9 @@
 
 use super::*;
 use crate::folder_scan_status::{
-    ActiveFolderScan, FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress,
-    FolderScanStatus, HeldRootScan, HeldRootScans, ScanFoundCounts, StoredRootScan, StoredScan,
-    StoredScanOutcome, WatchedFolderScanStatus,
+    FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus,
+    HeldRootScan, HeldRootScans, ScanFoundCounts, StoredRootScan, StoredScan, StoredScanOutcome,
+    WatchedFolderScanStatus,
 };
 
 /// Each watched folder's status, in the order the folders are listed (their
@@ -108,10 +108,7 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
         let folders = sql
             .query(SCANNING_FOLDERS, [], |row| path_column::get(row, 0))?
             .into_iter()
-            .map(|watched_folder_path: std::path::PathBuf| ActiveFolderScan {
-                watched_folder_name: folder_name(&watched_folder_path),
-                watched_folder_path,
-            })
+            .map(crate::WatchedFolder::from_path)
             .collect();
         Some(FolderScanActivity { folders })
     } else {
