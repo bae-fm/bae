@@ -119,8 +119,6 @@ pub(super) fn release_of_stored(
     })
 }
 
-/// Whether the person set this release aside: a grouping's own flag, or a
-/// folder's row in the skip table.
 /// Forget every grouping anchored at or taking a release from a folder at or
 /// below `folders`. Returns the keys of the grouping releases that were listed
 /// and went with them.
@@ -154,16 +152,28 @@ pub(super) fn forget_at_or_below(
     Ok(removed)
 }
 
-/// Whether the person set the release stored at `key` aside.
+/// Whether the person set the release stored at `key` aside. A release that
+/// a grouping reads as one carries the skip on its grouping's row, which the
+/// scan row's `grouping_key` names; any other release carries it as a row of
+/// its own key in the skip table. Fails when no scan row stores `key`, or when
+/// the grouping row its scan row names is missing.
 pub(super) fn skipped_on(sql: &impl coven::SqlRead, key: &CandidateKey) -> Result<bool, DbError> {
-    // A release a grouping reads as one is skipped with its grouping, whose
-    // row the scan row's foreign key keeps; any other is skipped by its own
-    // key.
-    Ok(sql.query_row(
-        "SELECT COALESCE(              (SELECT grouping.skipped FROM scan_candidate AS scan               JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key               WHERE scan.path = :key LIMIT 1),              EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = :key))",
-        named_params! { ":key": key },
-        |row| row.get(0),
-    )?)
+    let (grouping, skipped): (Option<CandidateKey>, Option<bool>) = sql
+        .query_row(
+            "SELECT scan.grouping_key, \
+                    CASE WHEN scan.grouping_key IS NOT NULL THEN grouping.skipped \
+                         ELSE EXISTS (SELECT 1 FROM skipped_import_candidates \
+                                      WHERE candidate_path = scan.path) END \
+             FROM scan_candidate AS scan \
+             LEFT JOIN release_grouping AS grouping ON grouping.key = scan.grouping_key \
+             WHERE scan.path = ? LIMIT 1",
+            [key],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?
+        .ok_or_else(|| DbError::unreadable(format!("the scan_candidate row of {key}"), 0))?;
+    skipped
+        .ok_or_else(|| DbError::unreadable(format!("the release_grouping row of {key}"), grouping))
 }
 
 /// Rebuild the release of every grouping with no anchor that takes in one of
