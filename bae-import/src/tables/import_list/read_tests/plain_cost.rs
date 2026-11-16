@@ -365,7 +365,7 @@ fn sizes() -> Vec<u64> {
 }
 
 /// What the plain reads of the import list cost at each size, each checked
-/// against the list's read today and timed beside it (`+today`). Run in
+/// against the placement-table read and timed beside it (`+placement`). Run in
 /// release with
 ///
 /// ```sh
@@ -387,8 +387,8 @@ async fn import_list_plain_cost() {
         }
         held = n;
         let size = format!("{}k", n / 1_000);
-        // What the list reads today is what the plain reads must give.
-        let today = tables.load_tab_counts().await.unwrap();
+        // The placement-table read is what the plain reads must give.
+        let placement = tables.load_tab_counts().await.unwrap();
         let plain: (i64, i64, i64) = db
             .read(|read| {
                 let rows = read.query(
@@ -405,7 +405,7 @@ async fn import_list_plain_cost() {
             .unwrap();
         assert_eq!(
             plain,
-            (i64::from(today.pending), i64::from(today.done), i64::from(today.skipped)),
+            (i64::from(placement.pending), i64::from(placement.done), i64::from(placement.skipped)),
             "the plain tab counts"
         );
         let shown = rows_shown(
@@ -414,8 +414,10 @@ async fn import_list_plain_cost() {
         )
         .await;
         assert_eq!(found_count(&db, "1", vec![]).await as u64, shown, "the plain count");
-        call_cost(&format!("import/tab-counts+today@{size}"), 50.0, || tables.load_tab_counts())
-            .await;
+        call_cost(&format!("import/tab-counts+placement@{size}"), 50.0, || {
+            tables.load_tab_counts()
+        })
+        .await;
         counts(&db, &size).await;
         let first = found_windows(&db, &PATH_ASCENDING, n, &size).await;
         let list = tables
@@ -426,7 +428,7 @@ async fn import_list_plain_cost() {
             ))
             .await
             .unwrap();
-        let today_first: Vec<String> = tables
+        let placement_first: Vec<String> = tables
             .read_import_window(
                 list,
                 bae_store::ListWindow::Forward { from: None, until: None, limit: LIMIT },
@@ -444,7 +446,7 @@ async fn import_list_plain_cost() {
         tables.close_import_list(list).await.unwrap();
         let plain_first: Vec<String> =
             first.into_iter().map(|key| crate::CandidateKey::from(key).to_string()).collect();
-        assert_eq!(plain_first, today_first, "the plain first window");
+        assert_eq!(plain_first, placement_first, "the plain first window");
         found_windows(&db, &NEWEST_FIRST, n, &size).await;
         reveal(&db, &size).await;
         typed(&db, &size).await;

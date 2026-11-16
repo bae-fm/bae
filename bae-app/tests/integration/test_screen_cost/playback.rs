@@ -1,6 +1,6 @@
 //! The playback screens' plain reads: now playing, the queue's head and its
-//! upcoming window and count, each timed beside what the screen reads today
-//! (`<metric>+today`, for reference).
+//! upcoming window and count, each timed beside the screen's public call
+//! (`<metric>+call`, for reference).
 
 use super::seed::{sizes, SEEDS};
 use bae_store::test_fixtures::screen_cost::{
@@ -33,7 +33,7 @@ async fn now_playing(db: &Store, size: u64) {
     );
     let rows = plain_cost(db, &format!("playback/now-playing@{at}"), Some(2.0), &sql, vec![]).await;
     assert_eq!(rows, 1);
-    call_cost(&format!("playback/now-playing+today@{at}"), 2.0, || {
+    call_cost(&format!("playback/now-playing+call@{at}"), 2.0, || {
         bae_playback::tables::now_playing(db)
     })
     .await;
@@ -60,7 +60,7 @@ async fn queue_head(db: &Store, size: u64) {
     );
     let rows = plain_cost(db, &format!("playback/up-next@{at}"), Some(2.0), &manual, vec![]).await;
     assert!(rows > 0, "Up Next holds tracks");
-    call_cost(&format!("playback/queue-head+today@{at}"), 2.0, || {
+    call_cost(&format!("playback/queue-head+call@{at}"), 2.0, || {
         bae_playback::tables::queue_value(db)
     })
     .await;

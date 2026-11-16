@@ -49,8 +49,8 @@ where
     report_time(metric, median(runs), bar_ms);
 }
 
-/// The median time of [`RUNS`] calls of `call`, a screen's read as it runs
-/// today (its public call), reported as `metric` against `bar_ms`.
+/// The median time of [`RUNS`] calls of `call`, the screen's public call,
+/// reported as `metric` against `bar_ms`.
 pub async fn call_cost<T, E, Fut>(metric: &str, bar_ms: f64, mut call: impl FnMut() -> Fut)
 where
     Fut: Future<Output = Result<T, E>>,
