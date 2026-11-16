@@ -622,7 +622,14 @@ extension PreviewData {
                 )
             ],
             topPlayable: nil,
-            found: true
+            found: true,
+            sectionCounts: BridgeSearchSectionCounts(
+                albums: 3,
+                artists: 1,
+                tracks: 2,
+                composers: 1,
+                works: 1
+            )
         ),
         query: "placeholder"
     )

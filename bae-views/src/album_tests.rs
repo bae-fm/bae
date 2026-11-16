@@ -529,7 +529,8 @@ async fn a_search_names_the_track_a_spoken_play_plays() {
 /// A search says whether it found anything of any kind, so no app screen
 /// tests the album, track, artist, composer and work lists to show that
 /// nothing matched: a track title, an album title and an artist's name each
-/// count, and a query that matches none does not.
+/// count, and a query that matches none does not. It also counts each
+/// section's rows.
 #[tokio::test]
 async fn a_search_says_whether_it_found_anything() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -549,6 +550,16 @@ async fn a_search_says_whether_it_found_anything() {
     assert!(found("Foo Album").await, "an album found");
     assert!(found("Needle Artist").await, "an artist found");
     assert!(!found("Nothing Matches This").await);
+
+    let views = crate::LibraryViews::new(db.clone());
+    let counts = views.search_rows("Title", 10).await.unwrap().section_counts;
+    assert_eq!(
+        counts,
+        crate::SearchSectionCounts { albums: 1, artists: 0, tracks: 1, composers: 0, works: 0 },
+        "each section counts the rows it lists"
+    );
+    let capped = views.search_rows("Title", 0).await.unwrap().section_counts;
+    assert_eq!(capped.albums, 0, "a section counts no more rows than it lists");
 }
 
 const EMPTY_ALBUM: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5001";

@@ -269,6 +269,7 @@ mirror_struct! {
         works: (each BridgeWorkSummary),
         top_playable: (opt crate::types::BridgeTopPlayable),
         found,
+        section_counts: (crate::types::BridgeSearchSectionCounts),
     },
 }
 

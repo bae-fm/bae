@@ -14,6 +14,24 @@ pub struct BridgeSearchResults {
     /// Whether the search found anything of any kind, which the empty state
     /// reads.
     pub found: bool,
+    /// How many rows each section lists; a section with none shows nothing.
+    pub section_counts: BridgeSearchSectionCounts,
+}
+
+/// How many rows each section of a search's results lists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSearchSectionCounts {
+    pub albums: u64,
+    pub artists: u64,
+    pub tracks: u64,
+    pub composers: u64,
+    pub works: u64,
+}
+
+mirror_struct! {
+    BridgeSearchSectionCounts = bae_views::SearchSectionCounts,
+    from_core: pub(crate) fn,
+    fields: { albums, artists, tracks, composers, works },
 }
 
 /// A track to play, with the release it is on.

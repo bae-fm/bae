@@ -56,6 +56,7 @@ import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSearchSectionCounts
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -291,6 +292,14 @@ object PreviewData {
             works = works,
             topPlayable = null,
             found = true,
+            sectionCounts =
+                BridgeSearchSectionCounts(
+                    albums = albums.size.toULong(),
+                    artists = artists.size.toULong(),
+                    tracks = tracks.size.toULong(),
+                    composers = composers.size.toULong(),
+                    works = works.size.toULong(),
+                ),
         )
 
     fun downloadOp(

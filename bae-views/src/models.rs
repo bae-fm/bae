@@ -19,6 +19,18 @@ pub struct DbLibrarySearchResults {
     pub top_playable: Option<DbTopPlayable>,
     /// Whether the search found anything of any kind.
     pub found: bool,
+    /// How many rows each section lists.
+    pub section_counts: SearchSectionCounts,
+}
+
+/// How many rows each section of a search's results lists.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SearchSectionCounts {
+    pub albums: u64,
+    pub artists: u64,
+    pub tracks: u64,
+    pub composers: u64,
+    pub works: u64,
 }
 
 /// A track to play, with the release it is on.

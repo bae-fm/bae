@@ -667,7 +667,54 @@ fn search_library_on(
         params![pattern],
         |row| row.get(0),
     )?;
-    Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, top_playable, found })
+    // How many rows each section above lists: the same matches, at most
+    // `limit` of each.
+    let section_counts = sql.query_row(
+        &format!(
+            "SELECT (SELECT COUNT(*) FROM (SELECT 1 FROM albums a WHERE {album_matches} LIMIT ?2)) AS albums, \
+                    (SELECT COUNT(*) FROM (SELECT 1 FROM tracks found \
+                        WHERE found.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1) \
+                        LIMIT ?2)) AS tracks, \
+                    (SELECT COUNT(*) FROM ({artists})) AS artists, \
+                    (SELECT COUNT(*) FROM ({composers})) AS composers, \
+                    (SELECT COUNT(*) FROM ({works})) AS works",
+            album_matches = album_matches_sql("a.id", "?1"),
+            artists = artist_listing_query(
+                None,
+                Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
+                Some("LIMIT ?2"),
+            ),
+            composers = composer_listing_query(
+                None,
+                Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
+                Some("LIMIT ?2"),
+            ),
+            works = work_summary_query(
+                Some("WHERE w.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)"),
+                Some("LIMIT ?2"),
+            ),
+        ),
+        params![pattern, limit],
+        |row| {
+            Ok(crate::SearchSectionCounts {
+                albums: bae_store::read::count_column(row, "albums")?,
+                artists: bae_store::read::count_column(row, "artists")?,
+                tracks: bae_store::read::count_column(row, "tracks")?,
+                composers: bae_store::read::count_column(row, "composers")?,
+                works: bae_store::read::count_column(row, "works")?,
+            })
+        },
+    )?;
+    Ok(DbLibrarySearchResults {
+        albums,
+        artists,
+        tracks,
+        composers,
+        works,
+        top_playable,
+        found,
+        section_counts,
+    })
 }
 
 /// The album `album_id`'s detail, showing the release `chosen_release_id`

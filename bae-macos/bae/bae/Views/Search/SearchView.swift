@@ -58,7 +58,12 @@ struct SearchView: View {
 
     private func resultsList(_ results: SearchResults) -> some View {
         VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-            resultsSection("Albums", results.albums, id: \.id) { album in
+            resultsSection(
+                "Albums",
+                results.albums,
+                count: results.sectionCounts.albums,
+                id: \.id
+            ) { album in
                 MacLibraryRowButton(
                     picture: album.cover,
                     title: album.title,
@@ -66,7 +71,12 @@ struct SearchView: View {
                     action: { onSelectAlbum(album.id) }
                 )
             }
-            resultsSection("Artists", results.artists, id: \.id) { artist in
+            resultsSection(
+                "Artists",
+                results.artists,
+                count: results.sectionCounts.artists,
+                id: \.id
+            ) { artist in
                 MacLibraryRowButton(
                     picture: artist.image,
                     title: artist.name,
@@ -74,7 +84,12 @@ struct SearchView: View {
                     action: { onSelectArtist(artist.artistId) }
                 )
             }
-            resultsSection("Tracks", results.tracks, id: \.id) { track in
+            resultsSection(
+                "Tracks",
+                results.tracks,
+                count: results.sectionCounts.tracks,
+                id: \.id
+            ) { track in
                 MacLibraryRowButton(
                     picture: track.cover,
                     title: track.title,
@@ -83,36 +98,54 @@ struct SearchView: View {
                     action: { onSelectTrack(track) }
                 )
             }
-            resultsSection("Composers", results.composers, id: \.id) {
-                composer in
-                MacLibraryRowButton(
-                    picture: composer.image,
-                    title: composer.name,
-                    subtitle: composer.countLine.localizedLine,
-                    action: { onSelectComposer(composer.id) }
-                )
-            }
-            resultsSection("Works", results.works, id: \.id) { work in
-                MacLibraryRowButton(
-                    picture: work.representativeCover,
-                    title: work.title,
-                    subtitle: work.composerNames,
-                    action: { onSelectWork(work.id) }
-                )
-            }
+            writingSections(results)
         }
         .padding(ThemeSpace.related)
     }
 
-    /// A header and a row per item, omitted when there are no items.
+    /// The composers and works the search found, each section omitted when
+    /// it found none.
+    @ViewBuilder
+    private func writingSections(_ results: SearchResults) -> some View {
+        resultsSection(
+            "Composers",
+            results.composers,
+            count: results.sectionCounts.composers,
+            id: \.id
+        ) { composer in
+            MacLibraryRowButton(
+                picture: composer.image,
+                title: composer.name,
+                subtitle: composer.countLine.localizedLine,
+                action: { onSelectComposer(composer.id) }
+            )
+        }
+        resultsSection(
+            "Works",
+            results.works,
+            count: results.sectionCounts.works,
+            id: \.id
+        ) { work in
+            MacLibraryRowButton(
+                picture: work.representativeCover,
+                title: work.title,
+                subtitle: work.composerNames,
+                action: { onSelectWork(work.id) }
+            )
+        }
+    }
+
+    /// A header and a row per item, omitted when the search's `count` of the
+    /// section's rows is zero.
     @ViewBuilder
     private func resultsSection<Item, ID: Hashable, Row: View>(
         _ title: LocalizedStringKey,
         _ items: [Item],
+        count: UInt64,
         id: KeyPath<Item, ID>,
         @ViewBuilder row: @escaping (Item) -> Row
     ) -> some View {
-        if !items.isEmpty {
+        if count > 0 {
             sectionHeader(title)
             ForEach(items, id: id) { row($0) }
         }

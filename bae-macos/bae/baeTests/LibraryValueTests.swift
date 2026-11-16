@@ -160,7 +160,14 @@ struct SearchResultsTests {
                     )
                 ],
                 topPlayable: nil,
-                found: true
+                found: true,
+                sectionCounts: BridgeSearchSectionCounts(
+                    albums: 0,
+                    artists: 0,
+                    tracks: 0,
+                    composers: 0,
+                    works: 1
+                )
             ),
             query: "work"
         )

@@ -120,7 +120,7 @@ private fun SearchResultsList(
 ) {
     val context = LocalContext.current
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        if (results.albums.isNotEmpty()) {
+        if (results.sectionCounts.albums > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_albums)) }
             items(results.albums, key = { "album:${it.id}" }) { album ->
                 AndroidLibraryRow(
@@ -134,7 +134,7 @@ private fun SearchResultsList(
                 )
             }
         }
-        if (results.artists.isNotEmpty()) {
+        if (results.sectionCounts.artists > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_artists)) }
             items(results.artists, key = { "artist:${it.artistId}" }) { artist ->
                 AndroidLibraryRow(
@@ -146,8 +146,8 @@ private fun SearchResultsList(
                 )
             }
         }
-        trackResults(results.tracks, onSelectAlbum)
-        if (results.composers.isNotEmpty()) {
+        if (results.sectionCounts.tracks > 0u) trackResults(results.tracks, onSelectAlbum)
+        if (results.sectionCounts.composers > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_composers)) }
             items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
                 AndroidLibraryRow(
@@ -159,7 +159,7 @@ private fun SearchResultsList(
                 )
             }
         }
-        if (results.works.isNotEmpty()) {
+        if (results.sectionCounts.works > 0u) {
             item { AndroidSearchSection(stringResource(R.string.search_section_works)) }
             items(results.works, key = { "work:${it.workId}" }) { work ->
                 AndroidLibraryRow(
@@ -177,7 +177,6 @@ private fun LazyListScope.trackResults(
     tracks: List<BridgeTrackSearchResult>,
     onSelectAlbum: (String) -> Unit,
 ) {
-    if (tracks.isEmpty()) return
     item { AndroidSearchSection(stringResource(R.string.search_section_tracks)) }
     items(tracks, key = { "track:${it.id}" }) { track ->
         AndroidLibraryRow(

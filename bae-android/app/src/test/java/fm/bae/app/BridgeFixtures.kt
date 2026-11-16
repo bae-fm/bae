@@ -52,6 +52,7 @@ import uniffi.bae_bridge.BridgeSaveFolderPiece
 import uniffi.bae_bridge.BridgeSaveFolderValue
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSearchSectionCounts
 import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSourceAudioSummary
@@ -316,6 +317,14 @@ object BridgeFixtures {
             found =
                 albums.isNotEmpty() || artists.isNotEmpty() || tracks.isNotEmpty() ||
                     composers.isNotEmpty() || works.isNotEmpty(),
+            sectionCounts =
+                BridgeSearchSectionCounts(
+                    albums = albums.size.toULong(),
+                    artists = artists.size.toULong(),
+                    tracks = tracks.size.toULong(),
+                    composers = composers.size.toULong(),
+                    works = works.size.toULong(),
+                ),
         )
 
     fun downloadOp(

@@ -20,6 +20,8 @@ pub struct SearchResults {
     pub top_playable: Option<DbTopPlayable>,
     /// Whether the search found anything of any kind.
     pub found: bool,
+    /// How many rows each section lists, which decides whether it shows.
+    pub section_counts: crate::SearchSectionCounts,
 }
 
 impl SearchResults {
@@ -33,6 +35,7 @@ impl SearchResults {
             works: raw.works,
             top_playable: raw.top_playable,
             found: raw.found,
+            section_counts: raw.section_counts,
         }
     }
 }

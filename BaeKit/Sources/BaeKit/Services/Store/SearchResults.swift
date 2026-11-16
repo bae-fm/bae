@@ -9,6 +9,8 @@ public struct SearchResults: Equatable, Sendable {
     public let works: [BridgeWorkSummary]
     /// Whether the search found anything of any kind.
     public let found: Bool
+    /// How many rows each section lists; a section with none shows nothing.
+    public let sectionCounts: BridgeSearchSectionCounts
 
     public init(bridge: BridgeSearchResults, query: String) {
         self.query = query
@@ -18,6 +20,7 @@ public struct SearchResults: Equatable, Sendable {
         composers = bridge.composers
         works = bridge.works
         found = bridge.found
+        sectionCounts = bridge.sectionCounts
     }
 }
 
