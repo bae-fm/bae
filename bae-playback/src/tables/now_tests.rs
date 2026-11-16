@@ -243,7 +243,7 @@ async fn the_row_holds_a_loads_wait_on_storage_while_it_lasts() {
     assert_eq!(column, None, "playing clears the wait");
 }
 
-/// The row holds a wait on storage exactly while it loads.
+/// The schema refuses a wait on storage unless playback is loading a track.
 #[tokio::test]
 async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
     let (db, _tmp, tracks) = release_db(1).await;

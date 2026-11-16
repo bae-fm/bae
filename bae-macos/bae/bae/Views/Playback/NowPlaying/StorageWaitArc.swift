@@ -2,8 +2,8 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// An arc turning around the play/pause control while the track's load
-/// waits on storage, as the now-playing value says.
+/// An arc turning around the play/pause control while `waits` is true: the
+/// now-playing value's `waitsOnStorage` flag.
 struct StorageWaitArc: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent

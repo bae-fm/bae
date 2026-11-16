@@ -10,8 +10,8 @@ fn playing() -> Arc<StorageFetches> {
     fetches
 }
 
-/// What coven tells `read`'s progress, into `buffer_id`, as its reporting
-/// closure tells it once the read fetches from storage.
+/// Report to `read`'s progress that the read fetches from storage into
+/// `buffer_id`, as coven's reporting closure does.
 fn tell(read: &FetchProgress, buffer_id: u64) {
     read.fetches.fetches(read.id, buffer_id);
 }
@@ -20,8 +20,8 @@ fn fetching(track_id: &str) -> Option<String> {
     Some(track_id.to_string())
 }
 
-/// The playing track fetches from storage from the first read coven tells
-/// it fetches until the last such read ends.
+/// The playing track counts as fetching from storage from the moment coven
+/// reports that one of its reads fetches until the last such read ends.
 #[test]
 fn the_playing_track_fetches_while_its_reads_from_storage_run() {
     let fetches = playing();
@@ -29,7 +29,11 @@ fn the_playing_track_fetches_while_its_reads_from_storage_run() {
 
     let first = fetches.read(PLAYING);
     let second = fetches.read(PLAYING);
-    assert_eq!(told.fetching(), None, "a read coven told nothing reads no storage");
+    assert_eq!(
+        told.fetching(),
+        None,
+        "a read that coven has not reported as fetching does not count as reading storage"
+    );
     tell(&first, PLAYING);
     tell(&second, PLAYING);
     assert_eq!(told.fetching(), fetching("track-1"));

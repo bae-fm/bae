@@ -24,8 +24,8 @@ private val arcClearance = 8.dp
 /**
  * Play/pause toggle, its glyph [iconSize], which differs between the bar and
  * the expanded player. While core loads a track it shows pause, and a press
- * lands the load paused; while the load waits on storage, as
- * [waitsOnStorage] says, an arc turns around it.
+ * makes the track start paused when it finishes loading. While
+ * [waitsOnStorage] is true, an arc turns around it.
  */
 @Composable
 fun AndroidPlayPause(

@@ -107,7 +107,7 @@ public class PlaybackStore {
     /// Enter loading for `trackId`, keeping the displayed track until
     /// `setLoadingTarget` brings the target's metadata; otherwise the
     /// now-playing bar would close on every track change. `waitsOnStorage`
-    /// while the load waits on a download.
+    /// is true while the load waits on a download.
     public func beginLoading(trackId: String, waitsOnStorage: Bool) {
         setNowPlaying(
             .loading(
@@ -121,7 +121,7 @@ public class PlaybackStore {
     /// The target's metadata arrived. It applies when already loading this
     /// track, or when playing or paused on it (core re-enters loading to buffer
     /// a seek); in any other state a newer load has moved on and it is dropped.
-    /// `waitsOnStorage` while the load waits on a download.
+    /// `waitsOnStorage` is true while the load waits on a download.
     public func setLoadingTarget(
         _ target: BridgeNowPlayingTrack,
         waitsOnStorage: Bool

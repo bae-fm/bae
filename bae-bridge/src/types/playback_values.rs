@@ -334,8 +334,8 @@ pub struct BridgePreviewTimelinePoint {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaybackValueState {
     Stopped,
-    /// `waits_on_storage` while one of the loading track's reads fetches
-    /// from storage, so the person waits on a download.
+    /// `waits_on_storage` is true while one of the loading track's reads
+    /// fetches from storage, so the person waits on a download.
     Loading {
         track: BridgeLoadingTrack,
         waits_on_storage: bool,

@@ -274,8 +274,8 @@ pub enum PlaybackState<Track = PlayingTrack> {
         track: Track,
         reason: PlaybackPauseReason,
     },
-    /// `waits_on_storage` while one of the loading track's reads fetches
-    /// from storage, so the person waits on a download.
+    /// `waits_on_storage` is true while one of the loading track's reads
+    /// fetches from storage, so the person waits on a download.
     Loading {
         track: LoadingTrack<Track>,
         waits_on_storage: bool,

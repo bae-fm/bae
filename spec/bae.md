@@ -5614,8 +5614,8 @@ stop; preview a file before import, where Pause and Play are each their own
 command and a preview already so stays so, so a pause from the lock screen or
 a media key never starts a paused preview. What playback is doing is one
 device-local row, `playback_now`, which playback writes as each value
-changes, before it tells anyone else of the change: the playing track and its
-phase, with, while it loads, whether the load waits on storage, volume, mute, where playback is going (a receiver by its id, name,
+changes, before it tells anyone else of the change: the playing track, its
+phase and whether its load waits on storage, the volume, the mute, where playback is going (a receiver by its id, name,
 kind, model, address and whether it takes a volume), the preview, and why playback last failed,
 until it next plays or the person dismisses the failure notice. Starting playback with the library resets the row to stopped, keeping
 the volume and mute only when it resumes what it played. The app pulls a

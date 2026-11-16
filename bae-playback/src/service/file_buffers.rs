@@ -37,7 +37,7 @@ pub(super) struct FileBuffers {
     /// foreground via `mark_foreground` whenever it becomes current.
     arbiter: Arc<FetchArbiter>,
     /// The current track while one of its reads fetches from storage, as
-    /// the arbiter hears it.
+    /// the arbiter reports it.
     storage_fetches: bae_track_audio::StorageFetchWatch,
     /// The current track's bytes and the buffer holding them; `None` while
     /// no track is current, or the current one plays on another device.

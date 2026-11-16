@@ -340,8 +340,8 @@ impl CovenFileReader {
 
 /// One window's read off `stream`: for playback, gated so the playing track
 /// fetches immediately and a preload waits while the playing track has a
-/// fetch in flight, and told to the arbiter's storage fetches; otherwise read
-/// as it comes. Says which kind of read it was, for the log.
+/// fetch in flight, and the read reports to the arbiter whether it fetches
+/// from storage; otherwise read as it comes. Says which kind of read it was, for the log.
 async fn read_window(
     stream: &bae_store::FileStream,
     playback: Option<&PlaybackRead>,

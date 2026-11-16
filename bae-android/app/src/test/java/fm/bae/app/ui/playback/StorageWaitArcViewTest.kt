@@ -17,7 +17,7 @@ import java.time.Duration
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class StorageWaitArcViewTest {
-    /** The arc is read out by its label and turns while it is on screen, and stops once it is taken off. */
+    /** The screen reader reads the arc's label, and the arc turns while it is in a window and stops when the test removes it. */
     @Test
     fun theArcTurnsWhileItIsShown() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()

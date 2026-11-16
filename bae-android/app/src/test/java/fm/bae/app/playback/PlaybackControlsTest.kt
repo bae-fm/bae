@@ -66,9 +66,12 @@ class PlaybackControlsTest {
         assertEquals(0, handle.resumeCount)
     }
 
-    /** A load waits on storage while its value says so, whether or not core has prepared the track, and not once it plays. */
+    /**
+     * The player reports that a load waits on storage while core's loading state says it does, whether or not
+     * core has prepared the track, and stops once the track plays.
+     */
     @Test
-    fun aLoadWaitsOnStorageWhileItsValueSaysSo() {
+    fun aLoadWaitsOnStorageWhileCoresLoadingStateSaysSo() {
         val (player, _) = player()
 
         player.applyPlaybackState(loadingState("next"))

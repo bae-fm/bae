@@ -371,8 +371,8 @@ struct PlaybackStoreBeginLoadingTests {
 
     /// The arc around Play follows the now-playing value's wait on storage.
     @MainActor
-    @Test("a load waits on storage while its value says so")
-    func waitsOnStorageWhileTheValueSaysSo() {
+    @Test("the now-playing value waits on storage when the load passes true")
+    func waitsOnStorageWhenTheLoadPassesTrue() {
         let store = PlaybackStore()
         store.beginLoading(trackId: "a", waitsOnStorage: false)
         #expect(!store.nowPlaying.waitsOnStorage)

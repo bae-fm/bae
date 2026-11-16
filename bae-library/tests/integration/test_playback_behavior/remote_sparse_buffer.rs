@@ -108,10 +108,10 @@ impl PlaybackFixture for RemoteMultiWindowPlayback {
     }
 }
 
-/// While the person waits on a track whose file is read from storage, the
-/// now-playing row shows its load waiting on storage, and none of the track
-/// is held yet; once the track plays, the row shows it playing, and its bytes
-/// go on arriving until all of them are held.
+/// While the person waits on a track whose file playback reads from storage,
+/// the now-playing row shows its load waiting on storage, and playback holds
+/// none of the track yet. Once the track plays, the row shows it playing, and
+/// playback goes on receiving its bytes until it holds all of them.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_load_from_storage_waits_on_storage() {
     with_fixture(RemoteMultiWindowPlayback::new("remote-load-wait"), async |playback| {
@@ -154,8 +154,8 @@ async fn a_load_from_storage_waits_on_storage() {
     .await;
 }
 
-/// Wait until the now-playing row shows a state `accept` takes, `what` it
-/// waits for naming it in the failure.
+/// Wait until the now-playing row shows a state that `accept` returns true
+/// for. If the wait times out, the panic message names `what`.
 async fn now_playing_until(
     values: &bae_store::live_query::LiveValues<Option<bae_playback::NowPlayingValues>>,
     what: &str,
