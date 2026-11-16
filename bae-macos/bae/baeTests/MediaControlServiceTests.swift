@@ -386,7 +386,6 @@ private func libraryTimeline(
             durationMs: 200_000,
             moving: moving
         ),
-        seekRevision: 0,
         preview: nil
     )
 }
@@ -397,7 +396,6 @@ private func previewTimeline(
 ) -> BridgePlaybackTimeline {
     BridgePlaybackTimeline(
         library: nil,
-        seekRevision: 0,
         preview: BridgePreviewTimelinePoint(
             target: target,
             positionMs: positionMs,

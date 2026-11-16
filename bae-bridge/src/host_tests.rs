@@ -10,7 +10,7 @@ fn an_opened_store_keeps_its_original_custody() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Session Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     drop(opened);
     drop(host);
@@ -177,7 +177,7 @@ fn an_open_library_stands_by_its_open_session() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Open Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     drop(opened);
 
@@ -208,7 +208,7 @@ fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     let store = crate::from_app::store(&id).unwrap();
     drop(opened);
@@ -232,7 +232,7 @@ fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closing Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     let store = crate::from_app::store(&id).unwrap();
     drop(opened);
@@ -271,7 +271,7 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Busy Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     drop(opened);
     let (reached, release) = host.library_sessions.hold_next_call();

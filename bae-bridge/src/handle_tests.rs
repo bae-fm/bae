@@ -875,7 +875,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     let host = test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = create_opened_library(&host, &caller, "Released Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let id = opened.library_id();
     drop(opened);
     let services = app.services.clone();
@@ -885,7 +885,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
         .block_on(async move { tokio::spawn(async move { drop(app) }).await })
         .expect("the handle is released on its runtime");
     let opening = crate::BridgeLibraryOpening::new(host.clone());
-    let reopened = crate::init_app(id, 50, false, host, opening).expect("the library opens again");
+    let reopened = crate::init_app(id, false, host, opening).expect("the library opens again");
 
     let read = caller.block_on(services.library_name());
     assert!(

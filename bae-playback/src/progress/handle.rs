@@ -156,7 +156,12 @@ impl PlaybackProgressHandle {
                                     }
                                 }
                                 match caught_sync("fold a playback event", || {
-                                    fold.next(&positions_tx.borrow(), &values, clock.now())
+                                    fold.next(
+                                        &positions_tx.borrow(),
+                                        &values,
+                                        matches!(progress, PlaybackProgress::Seeked { .. }),
+                                        clock.now(),
+                                    )
                                 }) {
                                     Ok(Some(timeline)) => {
                                         if let Err(e) = timeline_row.write(&timeline).await {

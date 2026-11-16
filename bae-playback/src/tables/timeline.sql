@@ -15,9 +15,6 @@ CREATE TABLE IF NOT EXISTS playback_timeline (
     position_ms INTEGER CHECK (position_ms >= 0),
     duration_ms INTEGER CHECK (duration_ms >= 0),
     moving      INTEGER CHECK (moving IN (0, 1)),
-    -- How many seeks playback has applied since it started, so a surface
-    -- that shows a seek ahead of it knows when it is applied.
-    seek_revision INTEGER NOT NULL CHECK (seek_revision >= 0),
     -- The preview clip's line: the file range it auditions (its path as
     -- coven's bytes, the end NULL for the rest of the file), where it is, its
     -- length, and whether it moves on. Set together while a preview is
@@ -38,4 +35,4 @@ CREATE TABLE IF NOT EXISTS playback_timeline (
     CHECK (preview_end_sample IS NULL OR preview_path IS NOT NULL)
 ) STRICT;
 
-INSERT OR IGNORE INTO playback_timeline (singleton, seek_revision) VALUES (1, 0);
+INSERT OR IGNORE INTO playback_timeline (singleton) VALUES (1);

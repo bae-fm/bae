@@ -3,8 +3,11 @@
 //! position and whether it moves from there, and draws the rest of it; it is
 //! told again only when playback leaves the line it holds: a seek, another
 //! track or clip, a pause or resume, a new length, or a position that lands
-//! off where the line puts it. Views that draw the position itself read the
-//! positions as they move instead.
+//! off where the line puts it.
+//!
+//! This is the only place core keeps a line, because those surfaces take a
+//! position, a time and a speed through their own APIs. bae's own views draw
+//! each position the output reports (`PlaybackPositions`), with no line.
 
 use chrono::{DateTime, Utc};
 
@@ -13,8 +16,8 @@ use crate::service::PlaybackState;
 use bae_track_audio::PreviewTarget;
 
 /// How far a position may land from where its line puts it before the line
-/// is told again: past the jitter of position ticks, which arrive a few times
-/// a second, and short of any jump a listener would notice.
+/// is told again: past the jitter of the positions an output reports, and
+/// short of any jump a listener would notice.
 pub const JUMP_THRESHOLD_MS: u64 = 1_000;
 
 /// The library track's line and the preview's, as last told.
@@ -24,9 +27,6 @@ pub struct PlaybackTimeline {
     /// controls accept: no pregap. `None` until the playing track reports a
     /// position, and again once playback moves to another track or stops.
     pub library: Option<TimelinePoint>,
-    /// The applied seeks so far; it moves with each one, so a surface that
-    /// projected a seek knows when core applied it.
-    pub seek_revision: u64,
     /// `None` while no preview is loaded.
     pub preview: Option<PreviewTimelinePoint>,
 }
@@ -134,21 +134,22 @@ fn fold_point<Point: Line + Clone>(
 /// changes.
 pub(super) struct TimelineFold {
     library: Option<Told<TimelinePoint>>,
-    seek_revision: u64,
     preview: Option<Told<PreviewTimelinePoint>>,
 }
 
 impl TimelineFold {
     pub(super) fn new() -> Self {
-        Self { library: None, seek_revision: 0, preview: None }
+        Self { library: None, preview: None }
     }
 
     /// The timeline after the positions and values read at `now`, or `None`
-    /// when neither line changed.
+    /// when neither line changed. `seeked` says the event that moved them
+    /// was a seek's (`PlaybackProgress::Seeked`).
     pub(super) fn next(
         &mut self,
         positions: &PlaybackPositions,
         values: &PlaybackValues,
+        seeked: bool,
         now: DateTime<Utc>,
     ) -> Option<PlaybackTimeline> {
         let library = positions.library.as_ref().map(|position| {
@@ -175,17 +176,15 @@ impl TimelineFold {
                 PreviewState::Playing { target, .. } if *target == preview.target
             ),
         });
-        let seeked = positions.seek_revision != self.seek_revision;
-        self.seek_revision = positions.seek_revision;
-        // A seek is a new line even when it lands where the line already was.
+        // A seek is a new line even when it lands where the line already
+        // was, so a surface that showed the seek ahead of core sees it land.
         if seeked {
             self.library = None;
         }
         let library_changed = fold_point(&mut self.library, library, now);
         let preview_changed = fold_point(&mut self.preview, preview, now);
-        (library_changed || preview_changed || seeked).then(|| PlaybackTimeline {
+        (library_changed || preview_changed).then(|| PlaybackTimeline {
             library: self.library.as_ref().map(|told| told.point.clone()),
-            seek_revision: self.seek_revision,
             preview: self.preview.as_ref().map(|told| told.point.clone()),
         })
     }

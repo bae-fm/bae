@@ -4,38 +4,31 @@ import SwiftUI
 
 /// A compact, display-only playback readout: a slim accent bar plus an elapsed
 /// label, set straight from the playing track's position stream once per
-/// display frame for the same reason as `SeekBarNSView` — the position moves
-/// every frame, too often for SwiftUI observation. Unlike the
-/// seek bar it takes no input: the queue panel's now-playing card shows where
-/// playback is; seeking stays with the transport bar, and a seek made there
-/// shows here too, held in the track's stream until core applies it.
+/// display frame for the same reason as `SeekBarNSView` — core sends positions
+/// about as often as the display draws frames, too often for SwiftUI
+/// observation. Unlike the seek bar it takes no input: the queue panel's
+/// now-playing card shows where playback is; seeking stays with the transport
+/// bar, and a seek made there shows here too, since core sends the seek's
+/// target as the track's position.
 final class ProgressStripNSView: NSView {
     private let bar: ProgressTrackNSView
     private(set) lazy var following = FrameFollowing<BridgeTrackPosition>(
-        view: self,
-        show: { [weak self] position in
-            guard let self else { return }
-            anchor = position?.anchor
-            if anchor != nil {
-                draw(atNs: FrameClock.nowNs())
-            }
-            else {
-                reset()
-            }
-        },
-        onFrame: { [weak self] _, frameNs in
-            self?.draw(atNs: frameNs)
+        view: self
+    ) { [weak self] position in
+        guard let self else { return }
+        if let position {
+            setPosition(position)
         }
-    )
+        else {
+            reset()
+        }
+    }
 
     var accent: NSColor {
         get { bar.accent }
         set { bar.accent = newValue }
     }
     private let elapsedField: NSTextField
-
-    /// Nil until a position arrives and after a reset; the label is empty then.
-    private var anchor: PlaybackAnchor?
 
     init(accent: NSColor) {
         bar = ProgressTrackNSView(progress: 0, accent: accent)
@@ -91,27 +84,24 @@ final class ProgressStripNSView: NSView {
         following.stop()
     }
 
-    /// The bar and label at a frame timed `frameNs`, from the anchor.
-    private func draw(atNs frameNs: UInt64) {
-        guard let anchor else { return }
-        let progress = anchor.progress(atFrameNs: frameNs)
-        if bar.progress != progress {
-            bar.progress = progress
+    /// The bar and label for `position`, as core sent it.
+    private func setPosition(_ position: BridgeTrackPosition) {
+        if bar.progress != position.progress {
+            bar.progress = position.progress
         }
         elapsedField.show(
             DurationClock.seekBar(
-                positionMs: anchor.positionMs(atFrameNs: frameNs),
-                durationMs: anchor.durationMs,
+                positionMs: position.positionMs,
+                durationMs: position.durationMs,
                 showRemaining: false
             )
             .leading
         )
     }
 
-    /// Clears everything: bar to 0, label empty, anchor dropped.
+    /// Clears everything: bar to 0, label empty.
     private func reset() {
         bar.progress = 0
-        anchor = nil
         elapsedField.show("")
     }
 }

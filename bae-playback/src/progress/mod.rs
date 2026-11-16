@@ -1,10 +1,8 @@
-pub mod anchor;
 pub mod handle;
 pub mod timeline;
 use crate::renderer::CastReceiver;
 use crate::service::PlaybackState;
 use crate::timeline::{StreamPosition, TrackTimeline};
-pub use anchor::{AnchorFold, TrackAnchor};
 pub use handle::{PlaybackPositionsWatch, PlaybackProgressFeed, PlaybackProgressHandle};
 pub use timeline::{PlaybackTimeline, PreviewTimelinePoint, TimelinePoint};
 use tokio::sync::mpsc as tokio_mpsc;
@@ -30,11 +28,6 @@ pub struct PlaybackPosition {
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
-    /// How fast the position moves while the track plays, as a multiple of
-    /// real time: 1.0 for this device's own output, a remote renderer's
-    /// stated rate, or 0.0 for one that states none (its position stands
-    /// until its next status).
-    pub rate: f64,
 }
 
 /// Where the preview is in its clip, and which clip that is, so a surface
@@ -92,6 +85,14 @@ pub enum PlaybackChange {
     Failed(crate::PlaybackErrorReason),
 }
 
+/// How much audio an output plays between the positions it reports, in
+/// milliseconds: one display frame at 120 Hz, the fastest display bae draws
+/// on, so a seek bar has a new position each frame. An output reports at most
+/// once per buffer it takes from playback, so one whose device takes longer
+/// buffers reports once per buffer. Core works out a remote renderer's
+/// position from the device's last status at the same interval.
+pub const POSITION_REPORT_INTERVAL_MS: u32 = 8;
+
 /// Where playback is in what it plays: the library track's position and the
 /// preview's. Each names the track or clip it is a position of.
 #[derive(Debug, Clone, PartialEq)]
@@ -99,10 +100,6 @@ pub struct PlaybackPositions {
     /// `None` until the playing track reports a position, and again once
     /// playback moves to another track or stops.
     pub library: Option<PlaybackPosition>,
-    /// Monotonic acknowledgement of an applied seek. It remains at the latest
-    /// value across ordinary position ticks so consumers cannot miss the seek
-    /// acknowledgement when watch delivery coalesces updates.
-    pub seek_revision: u64,
     /// Whether the library track is playing, so its position moves; false
     /// while it is paused, loading or stopped.
     pub playing: bool,
@@ -197,7 +194,7 @@ impl PlaybackValues {
 
 impl PlaybackPositions {
     pub(super) fn initial() -> Self {
-        Self { library: None, seek_revision: 0, playing: false, preview: None }
+        Self { library: None, playing: false, preview: None }
     }
 
     /// These positions after `event`, or `None` when `event` is not about
@@ -217,31 +214,14 @@ impl PlaybackPositions {
                 }
                 next.playing = matches!(state, PlaybackState::Playing { .. });
             }
-            PlaybackProgress::PositionUpdate {
-                track_id,
-                position_ms,
-                duration_ms,
-                progress,
-                rate,
-            } => {
+            PlaybackProgress::PositionUpdate { track_id, position_ms, duration_ms, progress }
+            | PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress } => {
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
                     duration_ms: *duration_ms,
                     progress: *progress,
-                    rate: *rate,
                 });
-            }
-            PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress, rate } => {
-                next.library = Some(PlaybackPosition {
-                    track_id: track_id.clone(),
-                    position_ms: *position_ms,
-                    duration_ms: *duration_ms,
-                    progress: *progress,
-                    rate: *rate,
-                });
-                next.seek_revision =
-                    next.seek_revision.checked_add(1).expect("playback seek revision overflow");
             }
             PlaybackProgress::PreviewStateChanged(PreviewState::Idle) => next.preview = None,
             PlaybackProgress::PreviewStateChanged(
@@ -341,9 +321,6 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
-        /// How fast the position moves while the track plays; see
-        /// [`PlaybackPosition::rate`].
-        rate: f64,
     },
     VolumeChanged {
         volume: f32,
@@ -387,9 +364,6 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
-        /// How fast the position moves while the track plays; see
-        /// [`PlaybackPosition::rate`].
-        rate: f64,
     },
     /// Decode stats for a track that finished or was stopped.
     DecodeStats {
@@ -416,37 +390,32 @@ pub enum PlaybackProgress {
 }
 
 impl PlaybackProgress {
-    /// The playing tick at `position` of a track on `timeline`, moving at
-    /// `rate`.
+    /// The playing tick at `position` of a track on `timeline`.
     pub(crate) fn position_update(
         timeline: TrackTimeline,
         track_id: String,
         position: StreamPosition,
-        rate: f64,
     ) -> Self {
         Self::PositionUpdate {
             position_ms: timeline.track_time(position).as_millis(),
             duration_ms: timeline.duration_ms(),
             track_id,
             progress: timeline.progress(position),
-            rate,
         }
     }
 
     /// The display moved to `position` of a track on `timeline` without a
-    /// state change, moving on at `rate`.
+    /// state change.
     pub(crate) fn seeked(
         timeline: TrackTimeline,
         track_id: String,
         position: StreamPosition,
-        rate: f64,
     ) -> Self {
         Self::Seeked {
             position_ms: timeline.track_time(position).as_millis(),
             duration_ms: timeline.duration_ms(),
             track_id,
             progress: timeline.progress(position),
-            rate,
         }
     }
 

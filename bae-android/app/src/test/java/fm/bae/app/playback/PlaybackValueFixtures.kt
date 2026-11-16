@@ -35,13 +35,9 @@ internal fun playbackValues(
     )
 
 /** A timeline holding [library]'s line; the preview's is not read on Android. */
-internal fun timeline(
-    library: BridgeTimelinePoint?,
-    seekRevision: ULong = 0u,
-): BridgePlaybackTimeline =
+internal fun timeline(library: BridgeTimelinePoint?): BridgePlaybackTimeline =
     BridgePlaybackTimeline(
         library = library,
-        seekRevision = seekRevision,
         preview = null,
     )
 

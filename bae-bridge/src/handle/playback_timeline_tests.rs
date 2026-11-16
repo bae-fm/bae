@@ -3,7 +3,7 @@
 
 use bae_util::test_channels::HANG_GUARD;
 
-/// A library that has played nothing reads no line and no seek; cancelling
+/// A library that has played nothing reads no line; cancelling
 /// ends the pulls.
 #[test]
 fn the_timeline_starts_with_no_line_until_cancelled() {
@@ -16,10 +16,7 @@ fn the_timeline_starts_with_no_line_until_cancelled() {
         .block_on(async { tokio::time::timeout(HANG_GUARD, timeline.clone().next()).await })
         .expect("the first value in time")
         .expect("the pull reads");
-    assert_eq!(
-        first,
-        crate::types::BridgePlaybackTimeline { library: None, seek_revision: 0, preview: None }
-    );
+    assert_eq!(first, crate::types::BridgePlaybackTimeline { library: None, preview: None });
 
     handle.handle().runtime.block_on(timeline.clone().cancel()).unwrap();
     assert!(matches!(

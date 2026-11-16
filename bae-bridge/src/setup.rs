@@ -211,22 +211,14 @@ impl OpenedLibrary {
 
     /// Open the library on the store, which the library then owns. Once one
     /// open has, the store is no longer this object's to open again.
-    pub fn open(
-        &self,
-        position_update_interval_ms: u32,
-        restore_playback: bool,
-    ) -> Result<Arc<crate::AppHandle>, BridgeError> {
+    pub fn open(&self, restore_playback: bool) -> Result<Arc<crate::AppHandle>, BridgeError> {
         let mut held = self.handle.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let handle = held.as_ref().ok_or_else(|| {
             BridgeError::from(bae_library::LibraryError::Internal(
                 "this library was already opened".to_string(),
             ))
         })?;
-        let opened = self.host.open_prepared(
-            handle.clone(),
-            position_update_interval_ms,
-            restore_playback,
-        )?;
+        let opened = self.host.open_prepared(handle.clone(), restore_playback)?;
         *held = None;
         Ok(opened)
     }

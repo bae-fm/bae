@@ -80,37 +80,6 @@ async fn a_change_is_in_the_row_before_its_event_is_forwarded() {
     );
 }
 
-#[tokio::test]
-async fn seek_revision_is_retained_across_later_position_ticks() {
-    let (handle, progress_tx, _db, _tmp) = started().await;
-    let mut events = handle.subscribe_all();
-
-    progress_tx
-        .send(PlaybackProgress::Seeked {
-            track_id: "track-1".into(),
-            position_ms: 70,
-            duration_ms: Some(100),
-            progress: 0.7,
-            rate: 1.0,
-        })
-        .unwrap();
-    progress_tx
-        .send(PlaybackProgress::PositionUpdate {
-            track_id: "track-1".into(),
-            position_ms: 71,
-            duration_ms: Some(100),
-            progress: 0.71,
-            rate: 1.0,
-        })
-        .unwrap();
-    next_event(&mut events).await;
-    next_event(&mut events).await;
-
-    let positions = handle.subscribe_positions().positions();
-    assert_eq!(positions.library.as_ref().map(|position| position.position_ms), Some(71));
-    assert_eq!(positions.seek_revision, 1);
-}
-
 /// A new line is in the timeline row by the time its event is
 /// forwarded; a tick along the line it holds writes nothing.
 #[tokio::test]
@@ -122,7 +91,6 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
         position_ms,
         duration_ms: Some(100_000),
         progress: position_ms as f64 / 100_000.0,
-        rate: 1.0,
     };
     progress_tx
         .send(PlaybackProgress::StateChanged {
@@ -151,6 +119,20 @@ async fn a_new_line_is_in_the_timeline_row_before_its_event_is_forwarded() {
         }),
         "the tick along the line left the line as told"
     );
+
+    // A seek that lands near where the line puts it is a new line all the
+    // same, so a surface that showed the seek first sees it land.
+    progress_tx
+        .send(PlaybackProgress::Seeked {
+            track_id: "track-1".into(),
+            position_ms: 10_400,
+            duration_ms: Some(100_000),
+            progress: 0.104,
+        })
+        .unwrap();
+    next_event(&mut events).await;
+    let timeline = crate::tables::playback_timeline(&db).await.unwrap();
+    assert_eq!(timeline.library.map(|line| line.position_ms), Some(10_400));
 }
 
 /// A write of what playback is doing that fails reaches the subscribers as
@@ -293,7 +275,6 @@ async fn a_position_tick_moves_only_the_positions_and_a_state_change_moves_no_po
             position_ms: 10,
             duration_ms: Some(100),
             progress: 0.1,
-            rate: 1.0,
         })
         .unwrap();
     next_event(&mut events).await;

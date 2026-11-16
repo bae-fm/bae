@@ -390,7 +390,6 @@ private func line(trackId: String, positionMs: UInt64)
             durationMs: 120_000,
             moving: true
         ),
-        seekRevision: 0,
         preview: nil
     )
 }

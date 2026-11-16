@@ -535,12 +535,7 @@ impl PlaybackService {
         }
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::position_update(
-                fmt.timeline,
-                fmt.track_id.clone(),
-                position,
-                self.renderer.play_rate(),
-            ),
+            PlaybackProgress::position_update(fmt.timeline, fmt.track_id.clone(), position),
         );
 
         // Persist the resume point once the track has played a second past the

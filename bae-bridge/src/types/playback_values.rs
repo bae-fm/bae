@@ -195,28 +195,19 @@ pub enum BridgePreviewState {
     Paused { target: BridgePreviewTarget, duration_ms: u64 },
 }
 
-/// Where the playing track is, as its seek bar draws it: an anchor, the
-/// track's position at a moment, and the rate it moves at from there. This is
-/// the value its track's key holds in the playback positions'
-/// `KeyedValueStream`, which holds a new one only as playback leaves the line
-/// it draws: a seek, a pause or resume, a change of rate, or another track.
-/// The native view works out the position each display frame as
-/// `position_ms + (frame time - anchored_at_ns) * rate`, held to the track's
-/// length. Mirrors `bae_playback::TrackAnchor`.
+/// Where the playing track is, as its seek bar draws it: the value its
+/// track's key holds in the playback positions' `KeyedValueStream`, a new one
+/// each time the output reports where it has played to. The native view
+/// draws the latest one each display frame. Mirrors
+/// `bae_playback::PlaybackPosition`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeTrackPosition {
-    /// Track-relative at the anchor: negative while pregap audio plays.
+    /// Track-relative: negative while pregap audio plays.
     pub position_ms: i64,
-    /// How fast the position moves on from the anchor, as a multiple of real
-    /// time: zero while the track is paused or loading, one while it plays
-    /// here, a remote renderer's stated rate while it plays there.
-    pub rate: f64,
-    /// When the position was read, in nanoseconds on the frame clock: the
-    /// clock the display's frames report (`CADisplayLink` timestamps on
-    /// macOS, `Choreographer` frame times on Android).
-    pub anchored_at_ns: u64,
     /// `None` when the track's length is unknown.
     pub duration_ms: Option<u64>,
+    /// The seek bar's fill; zero throughout when the length is unknown.
+    pub progress: f64,
 }
 
 /// The parts of the playing track whose bytes this device holds, as its
@@ -313,7 +304,6 @@ pub struct BridgePlaybackValues {
 pub struct BridgePlaybackTimeline {
     /// The library track's line, at or after the track's start.
     pub library: Option<BridgeTimelinePoint>,
-    pub seek_revision: u64,
     pub preview: Option<BridgePreviewTimelinePoint>,
 }
 
@@ -400,23 +390,17 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         library: (opt BridgeTimelinePoint),
-        seek_revision,
         preview: (opt BridgePreviewTimelinePoint),
     },
 }
 
 impl BridgeTrackPosition {
-    /// The track's line as told.
-    pub(crate) fn from_core(anchor: bae_playback::TrackAnchor) -> Self {
-        let bae_playback::TrackAnchor {
-            track_id: _,
-            position_ms,
-            duration_ms,
-            rate,
-            seek_revision: _,
-            at_ns,
-        } = anchor;
-        Self { position_ms, rate, anchored_at_ns: at_ns, duration_ms }
+    /// The track's position, without the track it names, which is the key
+    /// the stream holds it under.
+    pub(crate) fn from_core(position: bae_playback::PlaybackPosition) -> Self {
+        let bae_playback::PlaybackPosition { track_id: _, position_ms, duration_ms, progress } =
+            position;
+        Self { position_ms, duration_ms, progress }
     }
 }
 

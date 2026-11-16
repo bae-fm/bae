@@ -26,7 +26,9 @@ use tracing::{info, warn};
 
 /// Number of frames pulled and written per loop iteration. Interleaved across
 /// channels, so the f32 scratch buffer holds `WRITE_FRAMES * channels` samples.
-const WRITE_FRAMES: usize = 1024;
+/// The output reports a position at most once per pull, so a pull holds less
+/// audio than `POSITION_REPORT_INTERVAL_MS`: 256 frames is 5.8 ms at 44.1 kHz.
+const WRITE_FRAMES: usize = 256;
 
 /// Blocking-write timeout. The writer thread is dedicated to this stream, so a
 /// bounded block is fine; the timeout keeps the thread responsive to state

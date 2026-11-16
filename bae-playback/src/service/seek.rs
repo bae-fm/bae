@@ -80,12 +80,7 @@ impl PlaybackService {
         // stream is rebuilt. The `Seeked` below says the rebuild is done.
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::position_update(
-                cur.prepared.timeline,
-                track_id.clone(),
-                position,
-                self.renderer.play_rate(),
-            ),
+            PlaybackProgress::position_update(cur.prepared.timeline, track_id.clone(), position),
         );
 
         // On AirPlay, decode is local so the rebuild below re-fills the sink at the

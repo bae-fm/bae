@@ -65,14 +65,6 @@ import uniffi.bae_bridge.initApp
 private const val TAG = "bae.AppSessionHolder"
 private val logger = BaeLogger(TAG)
 
-/**
- * Position-update tick interval handed to the bridge, in milliseconds. bae-library
- * drives the real playback engine on Android and publishes retained playback
- * values at this cadence; the [BaeCorePlayer] re-anchors its extrapolating
- * position from each value.
- */
-private const val POSITION_UPDATE_INTERVAL_MS = 200u
-
 /** The local libraries on this device as the last listing found them. */
 sealed interface LibraryListing {
     /** No listing has run yet. */
@@ -449,7 +441,6 @@ object AppSessionHolder {
                         // resume row current either way.
                         initApp(
                             libraryId,
-                            POSITION_UPDATE_INTERVAL_MS,
                             RestorePlaybackPref.load(context),
                             app.host,
                             progress.opening,
@@ -561,7 +552,7 @@ object AppSessionHolder {
     ): OpenLibrary {
         val handle =
             withContext(Dispatchers.IO) {
-                library.open(POSITION_UPDATE_INTERVAL_MS, RestorePlaybackPref.load(context))
+                library.open(RestorePlaybackPref.load(context))
             }
         return installSession(library.libraryId(), handle, diagnostics, context, onScreen)
     }
@@ -768,7 +759,7 @@ object AppSessionHolder {
     ): BridgeLibraryRemoval {
         val handle =
             withContext(Dispatchers.IO) {
-                initApp(libraryId, POSITION_UPDATE_INTERVAL_MS, false, host, opening)
+                initApp(libraryId, false, host, opening)
             }
         try {
             return handle.removeLibrary(closing)

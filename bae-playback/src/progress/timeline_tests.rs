@@ -12,9 +12,7 @@ fn position(track_id: &str, position_ms: i64) -> PlaybackPositions {
             position_ms,
             duration_ms: Some(200_000),
             progress: position_ms as f64 / 200_000.0,
-            rate: 1.0,
         }),
-        seek_revision: 0,
         playing: false,
         preview: None,
     }
@@ -53,19 +51,19 @@ fn ticks_on_the_line_tell_nothing() {
     let mut fold = TimelineFold::new();
     let values = playing("track-1");
 
-    let first = fold.next(&position("track-1", 10_000), &values, at(0));
+    let first = fold.next(&position("track-1", 10_000), &values, false, at(0));
     assert_eq!(line(&first.expect("the first position is a line")), (10_000, true));
 
     for tick in 1..=8 {
         let elapsed = tick * 250;
         assert_eq!(
-            fold.next(&position("track-1", 10_000 + elapsed), &values, at(elapsed)),
+            fold.next(&position("track-1", 10_000 + elapsed), &values, false, at(elapsed)),
             None,
             "a tick where the line puts it tells nothing"
         );
     }
 
-    let paused = fold.next(&position("track-1", 12_000), &paused("track-1"), at(2_000));
+    let paused = fold.next(&position("track-1", 12_000), &paused("track-1"), false, at(2_000));
     assert_eq!(line(&paused.expect("a pause is a new line")), (12_000, false));
 }
 
@@ -75,30 +73,27 @@ fn ticks_on_the_line_tell_nothing() {
 fn a_position_off_the_line_tells_it_again() {
     let mut fold = TimelineFold::new();
     let values = playing("track-1");
-    fold.next(&position("track-1", 10_000), &values, at(0));
+    fold.next(&position("track-1", 10_000), &values, false, at(0));
 
-    let stalled = fold.next(&position("track-1", 10_500), &values, at(3_000));
+    let stalled = fold.next(&position("track-1", 10_500), &values, false, at(3_000));
     assert_eq!(line(&stalled.expect("a stall leaves the line")), (10_500, true));
 
     let mut fold = TimelineFold::new();
     let values = paused("track-1");
-    fold.next(&position("track-1", 10_000), &values, at(0));
-    assert_eq!(fold.next(&position("track-1", 10_400), &values, at(5_000)), None);
-    assert!(fold.next(&position("track-1", 12_000), &values, at(6_000)).is_some());
+    fold.next(&position("track-1", 10_000), &values, false, at(0));
+    assert_eq!(fold.next(&position("track-1", 10_400), &values, false, at(5_000)), None);
+    assert!(fold.next(&position("track-1", 12_000), &values, false, at(6_000)).is_some());
 }
 
-/// A seek tells a new line even where the line already was, with its
-/// revision.
+/// A seek tells a new line even where the line already was.
 #[test]
 fn a_seek_tells_a_new_line() {
     let mut fold = TimelineFold::new();
     let values = playing("track-1");
-    fold.next(&position("track-1", 10_000), &values, at(0));
+    fold.next(&position("track-1", 10_000), &values, false, at(0));
 
-    let mut seeked = position("track-1", 11_000);
-    seeked.seek_revision = 1;
-    let timeline = fold.next(&seeked, &values, at(1_000)).expect("a seek is told");
-    assert_eq!(timeline.seek_revision, 1);
+    let timeline =
+        fold.next(&position("track-1", 11_000), &values, true, at(1_000)).expect("a seek is told");
     assert_eq!(line(&timeline), (11_000, true));
 }
 
@@ -107,16 +102,16 @@ fn a_seek_tells_a_new_line() {
 #[test]
 fn another_track_and_the_pregap_and_none_are_told() {
     let mut fold = TimelineFold::new();
-    fold.next(&position("track-1", 10_000), &playing("track-1"), at(0));
+    fold.next(&position("track-1", 10_000), &playing("track-1"), false, at(0));
 
     let next = fold
-        .next(&position("track-2", -1_500), &playing("track-2"), at(500))
+        .next(&position("track-2", -1_500), &playing("track-2"), false, at(500))
         .expect("another track is a new line");
     let point = next.library.expect("the next track's line");
     assert_eq!((point.track_id.as_str(), point.position_ms), ("track-2", 0));
 
     let stopped = fold
-        .next(&PlaybackPositions::initial(), &PlaybackValues::initial(), at(800))
+        .next(&PlaybackPositions::initial(), &PlaybackValues::initial(), false, at(800))
         .expect("no track is told");
     assert_eq!(stopped.library, None);
 }
@@ -129,24 +124,24 @@ fn a_pregap_stands_at_the_start_then_moves_once() {
     let values = playing("track-1");
 
     let pregap = fold
-        .next(&position("track-1", -3_000), &values, at(0))
+        .next(&position("track-1", -3_000), &values, false, at(0))
         .expect("the pregap's first position is a line");
     assert_eq!(line(&pregap), (0, false));
     for tick in 1..12 {
         let elapsed = tick * 250;
         assert_eq!(
-            fold.next(&position("track-1", -3_000 + elapsed), &values, at(elapsed)),
+            fold.next(&position("track-1", -3_000 + elapsed), &values, false, at(elapsed)),
             None,
             "the pregap playing on tells nothing"
         );
     }
 
     let started = fold
-        .next(&position("track-1", 0), &values, at(3_000))
+        .next(&position("track-1", 0), &values, false, at(3_000))
         .expect("the track's start is a new line");
     assert_eq!(line(&started), (0, true));
     assert_eq!(
-        fold.next(&position("track-1", 1_000), &values, at(4_000)),
+        fold.next(&position("track-1", 1_000), &values, false, at(4_000)),
         None,
         "the track plays on its line"
     );
@@ -156,6 +151,6 @@ fn a_pregap_stands_at_the_start_then_moves_once() {
 #[test]
 fn a_position_of_a_track_not_playing_does_not_move() {
     let mut fold = TimelineFold::new();
-    let timeline = fold.next(&position("track-2", 0), &playing("track-1"), at(0)).unwrap();
+    let timeline = fold.next(&position("track-2", 0), &playing("track-1"), false, at(0)).unwrap();
     assert_eq!(line(&timeline), (0, false));
 }

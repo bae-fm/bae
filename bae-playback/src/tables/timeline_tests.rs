@@ -14,7 +14,6 @@ fn timeline() -> PlaybackTimeline {
             duration_ms: None,
             moving: true,
         }),
-        seek_revision: 3,
         preview: Some(PreviewTimelinePoint {
             target: PreviewTarget::sample_range("/music/Album Title/01.flac".into(), 44_100, None),
             position_ms: 2_500,
@@ -25,7 +24,7 @@ fn timeline() -> PlaybackTimeline {
 }
 
 fn nothing() -> PlaybackTimeline {
-    PlaybackTimeline { library: None, seek_revision: 0, preview: None }
+    PlaybackTimeline { library: None, preview: None }
 }
 
 /// The row reads back each line as written, a length unknown and a clip
@@ -51,7 +50,7 @@ async fn the_row_holds_each_line_as_written() {
     assert_eq!(playback_timeline(&db).await.unwrap(), ended);
 }
 
-/// Starting playback with the library leaves no line and no seek, whether it
+/// Starting playback with the library leaves no line, whether it
 /// resumes the queue or not.
 #[tokio::test]
 async fn starting_playback_leaves_no_line() {

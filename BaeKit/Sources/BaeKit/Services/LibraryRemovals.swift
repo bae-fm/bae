@@ -337,7 +337,6 @@ extension LibraryRemovals {
         let app = try await DetachedWork.run {
             try initApp(
                 libraryId: libraryId,
-                positionUpdateIntervalMs: 200,
                 restorePlayback: false,
                 host: host,
                 opening: opening

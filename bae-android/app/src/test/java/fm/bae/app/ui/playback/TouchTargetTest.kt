@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.PreviewTheme
 import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.progressAt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,7 +57,7 @@ class TouchTargetTest {
     @Test
     fun aPressAboveTheSeekLinesDrawnRowMovesThePosition() {
         val positions = LatestStream.written<BridgeTrackPosition>()
-        positions.write(KEY, BridgeTrackPosition(10_000, 0.0, 0uL, DURATION_MS.toULong()))
+        positions.write(KEY, BridgeTrackPosition(10_000, DURATION_MS.toULong(), 0.1))
         val ratios = mutableListOf<Double>()
         compose.setContent {
             PreviewTheme {
@@ -67,12 +66,7 @@ class TouchTargetTest {
                     AndroidSeekBar(
                         position = positions.source(KEY),
                         buffered = null,
-                        state = {
-                            position,
-                            frameTimeNanos,
-                            ->
-                            SeekBarState(position?.progressAt(frameTimeNanos) ?: 0.0, "", "", seekable = true)
-                        },
+                        state = { SeekBarState(it?.progress ?: 0.0, "", "", seekable = true) },
                         onSeekRatio = { ratios += it },
                         onToggleRemaining = {},
                     )

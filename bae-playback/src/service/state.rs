@@ -36,12 +36,7 @@ impl PlaybackService {
         let timeline = cur.prepared.timeline;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::seeked(
-                timeline,
-                cur.prepared.track_id.clone(),
-                cur.position,
-                self.renderer.play_rate(),
-            ),
+            PlaybackProgress::seeked(timeline, cur.prepared.track_id.clone(), cur.position),
         );
     }
 

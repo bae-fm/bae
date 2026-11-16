@@ -78,10 +78,10 @@ pub use error::PlaybackError;
 pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 pub use now_playing::{NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay};
 pub use progress::{
-    AnchorFold, MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions,
+    MediaControlPlayback, PlaybackChange, PlaybackPosition, PlaybackPositions,
     PlaybackPositionsWatch, PlaybackProgress, PlaybackProgressFeed, PlaybackTimeline,
     PlaybackValues, PreviewPosition, PreviewState, PreviewTimelinePoint, RemotePlayback,
-    TimelinePoint, TrackAnchor,
+    TimelinePoint, POSITION_REPORT_INTERVAL_MS,
 };
 pub use queue::{NextEntry, PlaybackQueue, PreviousAction, QueueEntry, QueueEntryId};
 pub use queue_values::{QueueItem, ResolvedContext, ResolvedQueueSnapshot};

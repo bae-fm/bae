@@ -70,7 +70,6 @@ fn the_in_app_position_keeps_the_pregap() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.0,
-            rate: 1.0,
         })
         .expect("position update is retained");
 
@@ -86,14 +85,12 @@ fn position_ticks_change_no_playback_value() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.01,
-            rate: 1.0,
         },
         PlaybackProgress::Seeked {
             position_ms: 50_000,
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.5,
-            rate: 1.0,
         },
         PlaybackProgress::PreviewPositionUpdate { position_ms: 1_000, progress: 0.01 },
         PlaybackProgress::PreviewSeeked { position_ms: 1_000, progress: 0.01 },
@@ -110,7 +107,6 @@ fn a_state_on_another_track_ends_the_library_position() {
             duration_ms: Some(100_000),
             track_id: "track-1".to_string(),
             progress: 0.01,
-            rate: 1.0,
         })
         .expect("position update is retained");
     let playing = |track_id: &str| PlaybackProgress::StateChanged {
@@ -214,7 +210,7 @@ fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
     );
 }
 
-/// A preview seek moves the position, and is no track's seek.
+/// A preview seek moves the preview's position.
 #[test]
 fn an_applied_preview_seek_moves_the_position() {
     let playing = PlaybackPositions::initial()
@@ -229,7 +225,6 @@ fn an_applied_preview_seek_moves_the_position() {
         .expect("a preview seek is folded");
     let preview = seeked.preview.as_ref().expect("the clip is loaded");
     assert_eq!((preview.position_ms, preview.progress), (60_000, 0.5));
-    assert_eq!(seeked.seek_revision, 0, "a preview seek is not a track's");
 
     assert!(
         PlaybackPositions::initial()

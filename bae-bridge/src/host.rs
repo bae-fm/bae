@@ -48,13 +48,12 @@ impl BridgeHost {
     pub(crate) fn open_prepared(
         self: &Arc<Self>,
         handle: coven::CovenHandle,
-        interval: u32,
         restore: bool,
     ) -> Result<Arc<crate::AppHandle>, BridgeError> {
         self.opened(bae_app::bootstrap_prepared(
             self.app_dir.clone(),
             handle,
-            interval,
+            bae_playback::POSITION_REPORT_INTERVAL_MS,
             restore,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
@@ -71,14 +70,13 @@ impl BridgeHost {
     pub(crate) fn open_app(
         self: &Arc<Self>,
         library_id: String,
-        position_update_interval_ms: u32,
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         self.opened(bootstrap(
             self.app_dir.clone(),
             library_id,
-            position_update_interval_ms,
+            bae_playback::POSITION_REPORT_INTERVAL_MS,
             restore_playback,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
@@ -98,7 +96,6 @@ impl BridgeHost {
         self: &Arc<Self>,
         fixture: std::path::PathBuf,
         library_id: String,
-        position_update_interval_ms: u32,
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
     ) -> Result<Arc<AppHandle>, BridgeError> {
@@ -106,7 +103,7 @@ impl BridgeHost {
             fixture,
             self.app_dir.clone(),
             library_id,
-            position_update_interval_ms,
+            bae_playback::POSITION_REPORT_INTERVAL_MS,
             restore_playback,
             bae_app::PlaybackOutput::System(self.audio_focus()),
             self.diagnostics.clone(),
@@ -663,33 +660,25 @@ pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
 #[uniffi::export]
 pub fn init_app(
     library_id: String,
-    position_update_interval_ms: u32,
     restore_playback: bool,
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(crate::from_app::store(&library_id)?);
-    host.open_app(library_id, position_update_interval_ms, restore_playback, &opening)
+    host.open_app(library_id, restore_playback, &opening)
 }
 
 #[cfg(all(debug_assertions, desktop))]
 #[uniffi::export]
 pub fn init_app_on_fixture(
     library_id: String,
-    position_update_interval_ms: u32,
     restore_playback: bool,
     fixture_path: String,
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
 ) -> Result<Arc<crate::AppHandle>, BridgeError> {
     host.wait_for_closing(crate::from_app::store(&library_id)?);
-    host.open_app_on_fixture(
-        fixture_path.into(),
-        library_id,
-        position_update_interval_ms,
-        restore_playback,
-        &opening,
-    )
+    host.open_app_on_fixture(fixture_path.into(), library_id, restore_playback, &opening)
 }
 
 /// This device's libraries as coven keeps them under `app_dir`, their

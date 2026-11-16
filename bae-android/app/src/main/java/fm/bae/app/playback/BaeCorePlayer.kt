@@ -255,8 +255,6 @@ class BaeCorePlayer(
 
     private var sidePausePrompt: SidePausePrompt? = null
 
-    private var lastSeekRevision: ULong = 0u
-
     /** The latest library line core's timeline told. It arrives on its own
      *  subscription, so one can come before the value that makes its track
      *  current; it is folded in once that track is. */
@@ -374,7 +372,7 @@ class BaeCorePlayer(
             }
         latestLine
             ?.takeIf { playingTrackId != previousTrackId && it.trackId == playingTrackId }
-            ?.let { fold(it, seeked = false) }
+            ?.let { fold(it) }
         media3RepeatMode =
             when (values.repeatMode) {
                 BridgeRepeatMode.OFF -> Player.REPEAT_MODE_OFF
@@ -393,14 +391,13 @@ class BaeCorePlayer(
     /**
      * Fold core's latest line into Media3's position: Media3 moves the position
      * on from the state's playing speed, so it is told only as playback leaves
-     * the line it holds, which is when core tells one.
+     * the line it holds, which is when core tells one. Core tells a new line for each seek it
+     * applies, so a seek this player sent lands with the line at its target.
      */
     fun applyTimeline(timeline: BridgePlaybackTimeline) {
-        val seeked = timeline.seekRevision != lastSeekRevision
-        lastSeekRevision = timeline.seekRevision
         latestLine = timeline.library
         val line = timeline.library ?: return
-        when (fold(line, seeked)) {
+        when (fold(line)) {
             PositionUpdate.Applied -> {
                 publish()
             }
@@ -415,20 +412,15 @@ class BaeCorePlayer(
         }
     }
 
-    /** Fold [line] into the position model, as a seek's confirmation when [seeked]. */
-    private fun fold(
-        line: BridgeTimelinePoint,
-        seeked: Boolean,
-    ): PositionUpdate {
-        val trackId = line.trackId
-        val positionMs = line.positionMs.toLong()
-        val durationMs = line.durationMs?.toLong()
-        return if (seeked) {
-            positionModel.onSeeked(playingTrackId, trackId, positionMs, durationMs, line.moving)
-        } else {
-            positionModel.onProgress(playingTrackId, trackId, positionMs, durationMs, line.moving)
-        }
-    }
+    /** Fold [line] into the position model. */
+    private fun fold(line: BridgeTimelinePoint): PositionUpdate =
+        positionModel.onLine(
+            playingTrackId,
+            line.trackId,
+            line.positionMs.toLong(),
+            line.durationMs?.toLong(),
+            line.moving,
+        )
 
     /** Enter loading for [track]; true when that made playback active. */
     private fun onLoading(track: BridgeLoadingTrack): Boolean {
@@ -702,7 +694,7 @@ class BaeCorePlayer(
 
             else -> {
                 // COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by ratio; the
-                // requested position shows until core confirms it.
+                // requested position shows until core's line lands at it.
                 val ratio = positionModel.beginInTrackSeek(playingTrackId, positionMs)
                 if (ratio != null) {
                     appHandle.seekByRatio(ratio)

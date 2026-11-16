@@ -10,7 +10,7 @@ fn a_close_writes_each_step_it_runs() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let closing = BridgeLibraryClosing::new(host);
     let stream = closing.feed_closing_steps();
 
@@ -41,7 +41,7 @@ fn a_removal_writes_each_step_it_runs() {
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Removed Library");
-    let app = opened.open(50, false).unwrap();
+    let app = opened.open(false).unwrap();
     let closing = BridgeLibraryClosing::new(host);
     let stream = closing.feed_closing_steps();
 

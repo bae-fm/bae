@@ -1,10 +1,12 @@
 package fm.bae.app.playback
 
+import kotlin.math.abs
+
 /**
  * Pure seek and position math for the Media3 playback state. Owns the position
  * anchor from the lines core's timeline tells, the current track's duration,
- * and the pending in-track seek whose dropped position wins until core
- * confirms it.
+ * and the pending in-track seek whose dropped position wins until core's line
+ * lands at it.
  *
  * Holds no Media3 or bridge types: track ids are plain strings, positions and
  * durations are milliseconds, and an unknown duration is null. [BaeCorePlayer]
@@ -42,13 +44,14 @@ internal class PlaybackPositionModel {
     }
 
     /**
-     * Fold a line into the position state. A pending in-track seek for
-     * the incoming track outranks live progress ([PositionUpdate.HeldByPendingSeek])
-     * until [onSeeked] confirms it; a position for a different track than the one
-     * playing is rejected ([PositionUpdate.StaleTrack]); otherwise the anchor
-     * and duration advance ([PositionUpdate.Applied]).
+     * Fold a line into the position state. Core tells a new line for each seek it applies, at the
+     * seek's target: a line for the pending in-track seek's track that lands within
+     * [SEEK_LANDED_WITHIN_MS] of its target confirms it, and any other line for that track is from
+     * before core applied it and is held ([PositionUpdate.HeldByPendingSeek]). A position for a
+     * different track than the one playing is rejected ([PositionUpdate.StaleTrack]); otherwise the
+     * anchor and duration advance ([PositionUpdate.Applied]).
      */
-    fun onProgress(
+    fun onLine(
         currentTrackId: String?,
         trackId: String,
         positionMs: Long,
@@ -57,27 +60,13 @@ internal class PlaybackPositionModel {
     ): PositionUpdate {
         val pendingSeek = pendingSeek
         if (pendingSeek != null && pendingSeek.matches(trackId)) {
-            return PositionUpdate.HeldByPendingSeek
+            if (abs(positionMs - pendingSeek.targetPositionMs) > SEEK_LANDED_WITHIN_MS) {
+                return PositionUpdate.HeldByPendingSeek
+            }
+            if (targetsCurrentTrack(currentTrackId, trackId)) {
+                this.pendingSeek = null
+            }
         }
-        return apply(currentTrackId, trackId, positionMs, durationMs, moving)
-    }
-
-    /**
-     * Fold a seek's line into the position state, clearing the pending
-     * seek it confirms. A position for a different track than the one playing is
-     * rejected ([PositionUpdate.StaleTrack]).
-     */
-    fun onSeeked(
-        currentTrackId: String?,
-        trackId: String,
-        positionMs: Long,
-        durationMs: Long?,
-        moving: Boolean,
-    ): PositionUpdate {
-        if (!targetsCurrentTrack(currentTrackId, trackId)) {
-            return PositionUpdate.StaleTrack
-        }
-        pendingSeek = null
         return apply(currentTrackId, trackId, positionMs, durationMs, moving)
     }
 
@@ -151,13 +140,19 @@ internal class PlaybackPositionModel {
     }
 }
 
-/** The outcome of folding a line or a seek's line into [PlaybackPositionModel]. */
+/**
+ * How far from a pending seek's target a line may land and still be the seek's: core lands a seek at
+ * the ratio this player sent, which comes back to the target give or take rounding.
+ */
+private const val SEEK_LANDED_WITHIN_MS = 1_000L
+
+/** The outcome of folding a line into [PlaybackPositionModel]. */
 internal enum class PositionUpdate {
     /** The position advanced; the player should republish its projection. */
     Applied,
 
     /** A pending in-track seek for the current track outranks this line until
-     *  core confirms the seek — the projection holds, nothing republishes. */
+     *  core's line lands at its target — the projection holds, nothing republishes. */
     HeldByPendingSeek,
 
     /** The position is for a track that is not the one playing. */

@@ -6,7 +6,7 @@ import org.junit.Test
 
 class PlaybackPositionModelTest {
     @Test
-    fun inTrackSeekProjectsDroppedPositionUntilSeekedCatchesUp() {
+    fun inTrackSeekProjectsDroppedPositionUntilALineLandsAtIt() {
         val model = playingModel(durationMs = 100_000)
         assertEquals(PositionUpdate.Applied, model.progress(positionMs = 10_000))
         assertPosition(model, positionMs = 10_000, durationMs = 100_000)
@@ -16,18 +16,19 @@ class PlaybackPositionModelTest {
         assertEquals(75_000, model.effectivePositionMs)
         assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        // Live progress is held by the projection until core confirms the seek.
+        // A line from before core applied the seek is held by the projection.
         assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 20_000))
         assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        // Progress overshooting the target is still held until the seek confirms.
+        // A line overshooting the target by more than a second is held too.
         assertEquals(PositionUpdate.HeldByPendingSeek, model.progress(positionMs = 80_000))
         assertPosition(model, positionMs = 75_000, durationMs = 100_000)
 
-        assertEquals(PositionUpdate.Applied, model.seeked(positionMs = 75_000))
-        assertPosition(model, positionMs = 75_000, durationMs = 100_000)
+        // The seek's line lands at the target, give or take rounding.
+        assertEquals(PositionUpdate.Applied, model.progress(positionMs = 74_999))
+        assertPosition(model, positionMs = 74_999, durationMs = 100_000)
 
-        // With the seek confirmed, live progress advances the anchor again.
+        // With the seek landed, each line advances the anchor again.
         assertEquals(PositionUpdate.Applied, model.progress(positionMs = 80_000))
         assertPosition(model, positionMs = 80_000, durationMs = 100_000)
     }
@@ -94,11 +95,7 @@ class PlaybackPositionModelTest {
 
         assertEquals(
             PositionUpdate.StaleTrack,
-            model.onProgress(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
-        )
-        assertEquals(
-            PositionUpdate.StaleTrack,
-            model.onSeeked(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
+            model.onLine(currentTrackId = TRACK, trackId = "other", positionMs = 30_000, durationMs = 100_000, moving = true),
         )
         // A stale update never moved the anchor.
         assertEquals(0, model.effectivePositionMs)
@@ -110,7 +107,7 @@ class PlaybackPositionModelTest {
 
         assertEquals(
             PositionUpdate.Applied,
-            model.onProgress(currentTrackId = null, trackId = TRACK, positionMs = 30_000, durationMs = 100_000, moving = true),
+            model.onLine(currentTrackId = null, trackId = TRACK, positionMs = 30_000, durationMs = 100_000, moving = true),
         )
         assertEquals(30_000, model.effectivePositionMs)
     }
@@ -132,10 +129,7 @@ class PlaybackPositionModelTest {
     private fun PlaybackPositionModel.progress(
         positionMs: Long,
         durationMs: Long? = 100_000,
-    ): PositionUpdate = onProgress(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, moving = true)
-
-    private fun PlaybackPositionModel.seeked(positionMs: Long): PositionUpdate =
-        onSeeked(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = 100_000, moving = true)
+    ): PositionUpdate = onLine(currentTrackId = TRACK, trackId = TRACK, positionMs = positionMs, durationMs = durationMs, moving = true)
 
     /** Where the model puts Media3's position, and the length it holds. */
     private fun assertPosition(

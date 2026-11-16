@@ -24,7 +24,7 @@ fn open_library_reporting(
     .unwrap();
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Subscribed Library");
-    opened.open(50, false).unwrap()
+    opened.open(false).unwrap()
 }
 
 /// Says it was dropped, so a test knows the delivery holding it ended.

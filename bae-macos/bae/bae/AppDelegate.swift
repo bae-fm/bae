@@ -40,10 +40,7 @@ private func discoverInitialLibraries(
                 deviceName: "UI Test Mac",
                 setup: BridgeLibrarySetup(host: host)
             )
-            let app = try created.open(
-                positionUpdateIntervalMs: 200,
-                restorePlayback: false
-            )
+            let app = try created.open(restorePlayback: false)
             try app.closeLibrary(closing: nil)
             libraries = try await host.listLibraries()
         }
@@ -119,7 +116,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     if let fixturePath = fixture.take() {
                         return try initAppOnFixture(
                             libraryId: libraryId,
-                            positionUpdateIntervalMs: 200,
                             restorePlayback: restorePlayback,
                             fixturePath: fixturePath,
                             host: host,
@@ -129,7 +125,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 #endif
                 return try initApp(
                     libraryId: libraryId,
-                    positionUpdateIntervalMs: 200,
                     restorePlayback: restorePlayback,
                     // Telemetry is up before the library opens.
                     host: host,
@@ -327,7 +322,6 @@ extension AppDelegate {
         opener.open(
             makeHandle: {
                 try library.open(
-                    positionUpdateIntervalMs: 200,
                     // The "Restore on launch" preference.
                     restorePlayback: UserDefaults.standard.bool(
                         forKey: "persistPlayback"

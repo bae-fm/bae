@@ -191,8 +191,10 @@ fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
 /// Build and start the application for `library_id`, the library registered
 /// under `app_dir`.
 ///
-/// `position_update_interval_ms` controls how often playback emits a position
-/// tick, and `playback_output` is where playback plays: the system's output,
+/// `position_update_interval_ms` is how much audio an output plays between the
+/// positions it reports (the bridge passes
+/// `bae_playback::POSITION_REPORT_INTERVAL_MS`), and `playback_output` is where
+/// playback plays: the system's output,
 /// shared as its `AudioFocus` says and asked before every start of playback,
 /// or a test's device. Returns once the DB is open and playback (plus the desktop import
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts

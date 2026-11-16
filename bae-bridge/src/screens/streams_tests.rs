@@ -241,57 +241,46 @@ fn every_tabs_count_is_held_under_its_name() {
     );
 }
 
-/// The positions' stream holds a new anchor on a seek, a pause and a resume,
-/// and the position ticks between them leave the value it holds as it is.
+/// The positions' stream holds each position the output reports while the
+/// track plays, a seek's target at once, and rests where a paused track
+/// stands.
 #[test]
-fn the_position_stream_holds_a_new_anchor_only_as_playback_leaves_its_line() {
-    const MS: u64 = 1_000_000;
+fn the_position_stream_holds_each_position_and_rests_while_paused() {
     let values = StreamValues::new();
     let writer = StreamWriter::new(values.clone());
-    let mut fold = bae_playback::AnchorFold::new();
-    let mut positions = bae_playback::PlaybackPositions {
-        library: None,
-        seek_revision: 0,
-        playing: false,
-        preview: None,
-    };
-    let mut at = |now_ms: u64, position_ms: i64, playing: bool, seek_revision: u64| {
+    let mut positions =
+        bae_playback::PlaybackPositions { library: None, playing: false, preview: None };
+    let mut at = |position_ms: i64, playing: bool| {
         positions.library = Some(bae_playback::PlaybackPosition {
             track_id: "track-1".into(),
             position_ms,
             duration_ms: Some(300_000),
-            progress: 0.0,
-            rate: 1.0,
+            progress: position_ms as f64 / 300_000.0,
         });
         positions.playing = playing;
-        positions.seek_revision = seek_revision;
-        write_track_anchor(&mut fold, &writer, &positions, now_ms * MS);
+        write_track_position(&writer, &positions);
         match values.latest(b"track-1") {
             Some(BridgeFastValue::TrackPosition { position }) => position,
             other => panic!("expected a track position, held {other:?}"),
         }
     };
 
-    let started = at(0, 10_000, true, 0);
-    assert_eq!((started.position_ms, started.rate, started.anchored_at_ns), (10_000, 1.0, 0));
+    for step in 0..=20 {
+        let position_ms = 10_000 + step * 8;
+        let held = at(position_ms, true);
+        assert_eq!(
+            (held.position_ms, held.progress),
+            (position_ms, position_ms as f64 / 300_000.0),
+            "the report at step {step}"
+        );
+    }
     assert!(values.moving(b"track-1"));
 
-    for step in 1..=20 {
-        let held = at(step * 200, 10_000 + step as i64 * 200, true, 0);
-        assert_eq!(held, started, "a tick along the line wrote at {step}");
-    }
+    assert_eq!(at(90_000, true).position_ms, 90_000, "a seek's target is held at once");
 
-    let seeked = at(4_200, 90_000, true, 1);
-    assert_eq!((seeked.position_ms, seeked.anchored_at_ns), (90_000, 4_200 * MS));
+    assert_eq!(at(90_008, false).position_ms, 90_008);
+    assert!(!values.moving(b"track-1"), "a paused track's position is at rest");
 
-    let paused = at(4_400, 90_000, false, 1);
-    assert_eq!((paused.position_ms, paused.rate), (90_000, 0.0));
-    assert!(!values.moving(b"track-1"), "a paused track's anchor is at rest");
-
-    let resumed = at(9_000, 90_000, true, 1);
-    assert_eq!(
-        (resumed.position_ms, resumed.rate, resumed.anchored_at_ns),
-        (90_000, 1.0, 9_000 * MS)
-    );
+    assert_eq!(at(90_016, true).position_ms, 90_016);
     assert!(values.moving(b"track-1"));
 }

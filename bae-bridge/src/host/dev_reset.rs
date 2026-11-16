@@ -109,7 +109,7 @@ impl BridgeHost {
         steps.uncounted(Step::SettingUpLibrary);
         let app = self
             .diagnostics
-            .blocking("start the new library", move || created.open(200, false))
+            .blocking("start the new library", move || created.open(false))
             .await
             .map_err(BridgeError::unfinished)??;
         let set_up = self.set_up_dev_library(&app, profile, steps).await;
