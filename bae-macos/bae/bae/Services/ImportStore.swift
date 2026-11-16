@@ -36,15 +36,10 @@ class ImportStore {
 
     /// Where each watched folder's scan stands, from the folder scans' own
     /// subscription: a scan moves its found count with every folder it walks,
-    /// which moves nothing the list shows. Empty until the first delivery,
-    /// which renders as no scan running. Core's query sends a value only when
-    /// it changed, so each delivery is written as it comes.
-    private(set) var folderScans = BridgeFolderScans(
-        statuses: [],
-        hasProblem: false,
-        activity: nil,
-        alerts: []
-    )
+    /// which moves nothing the list shows. `nil` until the first delivery.
+    /// Core's query sends a value only when it changed, so each delivery is
+    /// written as it comes.
+    private(set) var folderScans: BridgeFolderScans?
 
     /// The scan alerts this store raised whose write that marks them shown
     /// has not finished, each with the task that writes the mark. A delivery

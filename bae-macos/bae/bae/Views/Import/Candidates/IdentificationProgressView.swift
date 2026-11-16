@@ -148,7 +148,7 @@ struct FolderScanActivitySlot: View {
     let importStore: ImportStore
 
     var body: some View {
-        if let activity = importStore.folderScans.activity {
+        if let activity = importStore.folderScans?.activity {
             FolderScanProgressIndicator(
                 activity: activity,
                 foundCounts: importStore.scanFoundCounts
