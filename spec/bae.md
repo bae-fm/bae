@@ -4699,6 +4699,9 @@ reads in (its own, or the shuffled one while shuffle is on). They read the
 list's count in a query of its own, and a jump to a row reads the key at that
 row's position. coven reruns only the window whose rows a write moves; moving on
 to the next track moves the list's top.
+When shuffle turns on or off, the queue keeps showing the rows of the old order
+until the new order's count and first rows arrive, so the list never empties
+between the two.
 
 When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,

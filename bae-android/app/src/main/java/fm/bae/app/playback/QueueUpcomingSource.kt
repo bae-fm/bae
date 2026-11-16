@@ -42,8 +42,10 @@ private fun Library.upcomingList(shuffled: Boolean): ListReads<BridgeQueueEntry>
 /**
  * The context's tracks after the playing one, read as a list: a chain of windows over the order the lane reads in,
  * with its count a read of its own. The rows on screen are the places held with [hold], and the chain follows them;
- * a place far from the chain's rows is a jump, which starts the chain over at the key the list has there. [onChange]
- * hears each delivery. A failed read ends the list and is held in [failure] until [retry] opens it again.
+ * for a place far from the chain's rows, the chain starts over at the key the list has there. [onChange] hears each
+ * delivery. When the order changes, the list keeps showing the rows of the old order until the new
+ * order's count and first rows arrive. A failed read ends the list, and the tail keeps its error in [failure] until
+ * [retry] opens the list again.
  */
 internal class UpcomingTail(
     private val source: QueueUpcomingSource,
@@ -55,52 +57,43 @@ internal class UpcomingTail(
     /** Why the list stopped, until [retry] opens it again. */
     val failure: StateFlow<BridgeException?> = mutableFailure.asStateFlow()
 
-    /** The tail's length as the count last said it; 0 until it answers. */
-    var total = 0
-        private set
+    /** The reads whose rows the tail shows; null while the list is closed. */
+    private var shown: OrderReads? = null
 
-    /** The order the list is open in; null while it is closed. */
-    private var shuffled: Boolean? = null
-    private var generation = 0
-    private var reads: ListReads<BridgeQueueEntry>? = null
-    private var chain: ListChain<BridgeQueueEntry>? = null
-    private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
-    private var countAnswered = false
-    private var jump: Job? = null
+    /**
+     * The reads of the order the list changed to, until their count and first rows arrive; [shown] stays until
+     * then.
+     */
+    private var opening: OrderReads? = null
+
+    /** The tail's length as the shown count last said it; 0 until it answers. */
+    val total: Int get() = shown?.total ?: 0
 
     /** How many holds each place has: the rows on screen. */
     private val holds = mutableMapOf<Int, Int>()
 
-    /** The rows the chain holds, by index in the tail. */
+    /** The rows the shown chain holds, by index in the tail. */
     fun entries(): Map<Int, BridgeQueueEntry> =
-        chain
+        shown
+            ?.chain
             ?.placed
             .orEmpty()
             .flatMap { run -> run.rows.mapIndexed { i, entry -> run.start + i to entry } }
             .toMap()
 
-    /** Read the tail in `shuffled`'s order, starting over when it is open in the other one. */
+    /**
+     * Read the tail in `shuffled`'s order. A list open in the other order shows its rows until the new order
+     * answers.
+     */
     fun open(shuffled: Boolean) {
-        if (this.shuffled == shuffled && mutableFailure.value == null) return
-        stopReads()
-        mutableFailure.value = null
-        this.shuffled = shuffled
-        generation++
-        val current = generation
-        val opened = source.reads(shuffled)
-        reads = opened
-        countAnswered = false
-        val opening = ListChain(scope, opened, BROWSER_PAGE_SIZE, { changed(current) }, { failed(it, current) })
-        chain = opening
-        countDeliveries =
-            ScreenSubscription(
-                opened.count(),
-                scope,
-                onValue = { counted(it, current) },
-                onError = { failed(it, current) },
-            )
-        opening.restart(null, 0)
-        follow()
+        if (mutableFailure.value == null) {
+            if (opening?.shuffled == shuffled) return
+            if (shown?.shuffled == shuffled) {
+                if (opening != null) dropOpening()
+                return
+            }
+        }
+        start(shuffled)
     }
 
     /** Keep the row at [index] read until the returned release runs. */
@@ -120,95 +113,157 @@ internal class UpcomingTail(
 
     /** Open the list again after a failure stopped it. */
     fun retry() {
-        val order = shuffled ?: return
-        mutableFailure.value = null
-        shuffled = null
-        open(order)
+        val order = (opening ?: shown)?.shuffled ?: return
+        start(order)
     }
 
     /** Stop reading and forget the rows. */
     fun close() {
-        stopReads()
-        shuffled = null
-        generation++
-        chain = null
-        reads = null
-        total = 0
+        opening?.stop()
+        opening = null
+        shown?.stop()
+        shown = null
         mutableFailure.value = null
     }
 
-    private fun stopReads() {
-        jump?.cancel()
-        jump = null
-        chain?.stop()
-        countDeliveries?.stop()
-        countDeliveries = null
+    /** Open the reads of `shuffled`'s order: the shown ones when none are, else the ones the list changes to. */
+    private fun start(shuffled: Boolean) {
+        opening?.stop()
+        opening = null
+        mutableFailure.value = null
+        val reads = OrderReads(shuffled)
+        if (shown == null) shown = reads else opening = reads
+        reads.start()
+        follow()
     }
+
+    private fun dropOpening() {
+        opening?.stop()
+        opening = null
+        follow()
+    }
+
+    /** The reads that follow the rows on screen: those the list changes to, else the shown ones. */
+    private fun following(): OrderReads? = opening ?: shown
 
     /** The rows on screen changed: the chain grows towards them, or starts over from them when they are far off. */
     private fun follow() {
-        val chain = chain
+        val reads = following() ?: return
         val first = holds.keys.minOrNull()
-        if (chain != null && first != null && jump == null) {
+        if (first != null && reads.jump == null) {
             val last = holds.keys.max()
+            val chain = reads.chain
             chain.visible = first..last
             if (chain.isEmpty || !chain.reaches(first) || !chain.reaches(last)) {
-                jumpTo(first)
+                jumpTo(reads, first)
             } else {
                 chain.reconcile()
             }
         }
     }
 
-    /** Start the chain over at the row the list has at [position], a plain read of its key, not a live one. */
-    private fun jumpTo(position: Int) {
-        val chain = chain ?: return
-        val keyAt = reads?.keyAt ?: return
-        val current = generation
-        chain.stop()
-        jump =
+    /** Start [reads]' chain over at the row the list has at [position], a plain read of its key, not a live one. */
+    private fun jumpTo(
+        reads: OrderReads,
+        position: Int,
+    ) {
+        val keyAt = reads.reads.keyAt ?: return
+        reads.chain.stop()
+        reads.jump =
             scope.launch {
                 val key =
                     try {
                         keyAt(position.toULong())
                     } catch (error: BridgeException) {
-                        if (current == generation) {
-                            jump = null
-                            failed(error, current)
+                        if (reads.current) {
+                            reads.jump = null
+                            failed(error, reads)
                         }
                         return@launch
                     }
-                if (current != generation) return@launch
-                jump = null
+                if (!reads.current) return@launch
+                reads.jump = null
                 // A position past the list's end has the last row's key, which sits at the last position.
-                val known = if (countAnswered) maxOf(total - 1, 0) else position
-                chain.restart(key, minOf(position, known))
+                val known = if (reads.countAnswered) maxOf(reads.total - 1, 0) else position
+                reads.chain.restart(key, minOf(position, known))
             }
     }
 
     private fun counted(
         count: BridgeListCount,
-        openedGeneration: Int,
+        reads: OrderReads,
     ) {
-        if (openedGeneration != generation) return
-        total = count.rows.toInt()
-        countAnswered = true
-        onChange()
+        if (!reads.current) return
+        reads.total = count.rows.toInt()
+        reads.countAnswered = true
+        answered(reads)
     }
 
-    private fun changed(openedGeneration: Int) {
-        if (openedGeneration != generation) return
+    private fun changed(reads: OrderReads) {
+        if (!reads.current) return
+        answered(reads)
+    }
+
+    /**
+     * [reads] delivered: the shown ones redraw, and the ones the list changes to replace them once their count
+     * and their chain have both answered.
+     */
+    private fun answered(reads: OrderReads) {
+        if (reads === opening) {
+            if (!reads.countAnswered || !reads.chain.hasAnswered) return
+            shown?.stop()
+            shown = reads
+            opening = null
+        }
         onChange()
     }
 
     private fun failed(
         error: BridgeException,
-        openedGeneration: Int,
+        reads: OrderReads,
     ) {
-        if (openedGeneration != generation) return
+        if (!reads.current) return
         logger.error("upcoming queue read failed", error)
-        stopReads()
+        opening?.stop()
+        opening = null
+        shown?.stop()
         mutableFailure.value = error
         onChange()
+    }
+
+    /** The reads of the tail in one order: its chain of windows and its count. */
+    private inner class OrderReads(
+        val shuffled: Boolean,
+    ) {
+        val reads = source.reads(shuffled)
+        val chain = ListChain(scope, reads, BROWSER_PAGE_SIZE, { changed(this) }, { failed(it, this) })
+        var total = 0
+        var countAnswered = false
+        var jump: Job? = null
+        private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
+
+        /** Whether the tail still uses these reads: they are the shown ones or the ones the list changes to. */
+        val current: Boolean get() = this === shown || this === opening
+
+        /** Start the count and the chain at the list's top, once the tail holds these reads. */
+        fun start() {
+            countDeliveries =
+                ScreenSubscription(
+                    reads.count(),
+                    scope,
+                    onValue = { counted(it, this) },
+                    onError = { failed(it, this) },
+                )
+            chain.restart(null, 0)
+        }
+
+        /** End every read; the rows the chain last held stay. */
+        fun stop() {
+            jump?.cancel()
+            jump = null
+            chain.stop()
+            countDeliveries?.stop()
+            countDeliveries = null
+        }
     }
 }

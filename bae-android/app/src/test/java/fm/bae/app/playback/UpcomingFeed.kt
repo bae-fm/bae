@@ -23,9 +23,13 @@ internal class UpcomingFeed {
     /** The order each open of the list asked for. */
     val opened = mutableListOf<Boolean>()
 
+    /** Whether a list opened from now on answers nothing until [answerHeld]. */
+    var holdNewReads = false
+
     private var rows = emptyList<BridgeQueueEntry>()
     private val windows = mutableListOf<FeedWindow>()
-    private val counts = Channel<BridgeListCount>(Channel.UNLIMITED)
+    private val counts = mutableListOf<Channel<BridgeListCount>>()
+    private val held = mutableListOf<() -> Unit>()
     private var failure: BridgeException? = null
 
     val source: QueueUpcomingSource
@@ -39,15 +43,33 @@ internal class UpcomingFeed {
     /** Show [rows] as the list: the count and every open window read again. */
     fun show(rows: List<BridgeQueueEntry>) {
         this.rows = rows
-        counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
+        sendCounts()
         windows.toList().forEach(FeedWindow::deliver)
+    }
+
+    /** Answer the reads opened while [holdNewReads] held them, and answer each read opened from now on at once. */
+    fun answerHeld() {
+        holdNewReads = false
+        held.toList().forEach { it() }
+        held.clear()
     }
 
     /** End every read open now with [error]; a list opened after it reads on. */
     fun fail(error: BridgeException) {
         failure = error
-        counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
+        sendCounts()
         windows.toList().forEach(FeedWindow::wake)
+    }
+
+    private fun sendCounts() = counts.forEach(::sendCount)
+
+    private fun sendCount(feed: Channel<BridgeListCount>) {
+        feed.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
+    }
+
+    /** Run [answer] now, or once [answerHeld] runs while [holdNewReads] holds new reads. */
+    private fun answerOrHold(answer: () -> Unit) {
+        if (holdNewReads) held.add(answer) else answer()
     }
 
     private fun key(place: Int) = listOf<BridgeSortValue>(BridgeSortValue.Integer(place.toLong()))
@@ -60,10 +82,12 @@ internal class UpcomingFeed {
                 FeedWindow(first).also { windows.add(it) }
             },
             count = {
-                counts.trySend(BridgeListCount(rows.size.toULong(), rows.size.toULong(), BridgeListCountExtra.None))
+                val feed = Channel<BridgeListCount>(Channel.UNLIMITED)
+                counts.add(feed)
+                answerOrHold { sendCount(feed) }
                 object : PulledSubscription<BridgeListCount> {
                     override suspend fun next(): BridgeListCount {
-                        val value = counts.receive()
+                        val value = feed.receive()
                         failure?.let { throw it }
                         return value
                     }
@@ -94,7 +118,7 @@ internal class UpcomingFeed {
         private val deliveries = Channel<ListWindowDelivery<BridgeQueueEntry>>(Channel.UNLIMITED)
 
         init {
-            deliver()
+            answerOrHold(::deliver)
         }
 
         fun deliver() {
