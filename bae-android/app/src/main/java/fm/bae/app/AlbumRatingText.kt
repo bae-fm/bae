@@ -12,7 +12,7 @@ import uniffi.bae_bridge.BridgeStars
  * read them, joined by the fact separator.
  */
 fun Context.ratersText(rating: BridgeAlbumRating): String =
-    rating.raters.joinToString(coreString("core.audio.list_separator")) { rater ->
+    rating.raters.joinToString(factSeparator()) { rater ->
         when (rater) {
             BridgeRater.You -> getString(R.string.members_you)
             is BridgeRater.Person -> getString(R.string.album_rated_by, rater.name, rater.stars.number)

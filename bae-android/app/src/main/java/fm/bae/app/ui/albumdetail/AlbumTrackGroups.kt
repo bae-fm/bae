@@ -10,10 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import fm.bae.app.coreString
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
+import fm.bae.app.factsLine
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -100,9 +100,7 @@ private fun TrackWorkLine(
     onSelectWork: (String) -> Unit,
     context: android.content.Context,
 ) {
-    val text =
-        listOfNotNull(work.title, work.composerNames)
-            .joinToString(context.coreString("core.audio.list_separator"))
+    val text = context.factsLine(listOf(work.title, work.composerNames))
     Text(
         text = text,
         style = ThemeText.fine.style,
