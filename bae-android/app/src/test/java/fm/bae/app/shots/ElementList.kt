@@ -48,12 +48,14 @@ internal object ElementList {
         ) {
             val here = Listed(element(node, density), parent)
             listed.add(here)
-            // A node's children read in their traversal order, as TalkBack reads them, not in the order they are drawn.
+            // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
+            // Compose draws them in.
             inTraversalOrder(node.children).forEach { visit(it, here) }
         }
         inTraversalOrder(root.children).forEach { visit(it, null) }
-        // The tree keeps a bare, childless node where an embedded view sits; its elements are read there, in
-        // the view's order. A view with no such node is read where the reading order reaches its box.
+        // The tree keeps a bare, childless node where an embedded view sits. The element list puts the view's
+        // elements at that node, in the view's order. When the tree has no such node, the list puts the view where
+        // the reading order reaches its box.
         var from = 0
         val placed = mutableSetOf<Listed>()
         for (view in embedded) {

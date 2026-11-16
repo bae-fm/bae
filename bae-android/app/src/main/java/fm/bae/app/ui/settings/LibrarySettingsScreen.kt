@@ -136,7 +136,7 @@ internal fun AndroidSettingsLibrary(
     }
 }
 
-/** Why the storage, the name or the people couldn't be read, each with Retry. */
+/** Shows why the screen could not read the storage, the name or the people, each with Retry. */
 @Composable
 private fun LibraryNameFailures(
     model: SettingsLibraryModel,

@@ -106,7 +106,7 @@ private fun boardFile(
     audioFormat = null,
 )
 
-/** "Low Tide Hours" by Mara Quill with the six tracks the boards list, one disc, as rated by [rating]. */
+/** "Low Tide Hours" by Mara Quill with the six tracks the boards list, one disc, with [rating] as its rating. */
 internal fun boardAlbum(
     rating: BridgeAlbumRating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
 ): BridgeAlbumDetail {

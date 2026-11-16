@@ -38,8 +38,8 @@ internal fun AndroidScreen(
 }
 
 /**
- * A screen's bar, as the design draws it: 64 dp on the page's own colour, the way back named [backLabel], then the
- * [title] if the screen has one, and at the end the screen's own [actions].
+ * A screen's bar, as the design draws it: 64 dp on the page's own colour, the back button, whose accessibility label
+ * is [backLabel], then the [title] if the screen has one, and at the end the screen's own [actions].
  */
 @Composable
 internal fun AndroidTopBar(

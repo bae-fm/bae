@@ -76,7 +76,7 @@ class ChainBrowserPageStoreTest {
         fixture.idle()
         assertEquals(ids(0..59), fixture.ids(0..59))
 
-        // Rows land inside the first window's range, so it holds more than its limit.
+        // The test adds rows inside the first window's range, so that window holds more rows than its limit.
         val added = listOf("a0010x1", "a0010x2", "a0010x3", "a0010x4", "a0010x5")
         fixture.list.albums = albums((ids(0..199) + added).sorted())
         fixture.list.changed()
@@ -101,7 +101,7 @@ class ChainBrowserPageStoreTest {
         fixture.idle()
         assertEquals(ids(0..129), fixture.ids(0..129))
 
-        // Every row of the middle window goes.
+        // The test removes every row of the middle window.
         fixture.list.albums = albums(ids(0..59) + ids(120..129))
         fixture.list.changed()
         fixture.idle()
@@ -132,7 +132,7 @@ class ChainBrowserPageStoreTest {
     fun aValueForAReplacedWindowDrawsNothing() {
         val fixture = open(albums(ids(0..199)))
         val window = fixture.list.windows.first()
-        // The window opened with a request its first delivery then moved.
+        // The store opened the window with one request and changed the request after the first delivery.
         val replaced = window.requested.first()
         assertEquals(2, window.requested.size)
 
@@ -212,7 +212,7 @@ class ChainBrowserPageStoreTest {
         )
     }
 
-    /** A read core says reading again can't get past, such as a damaged database, offers no Retry. */
+    /** When core says that reading again cannot fix the failure, such as a damaged database, the store offers no Retry. */
     @Test
     fun aFailedReadNoRetryGetsPastOffersNone() {
         val noRetry =

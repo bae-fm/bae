@@ -116,7 +116,10 @@ internal fun PinQueuedText() {
     )
 }
 
-/** The files and size the pin was queued with, which the row keeps once the library no longer has the release. */
+/**
+ * The file count and size core stored when the person queued the pin. The row shows them after the library no
+ * longer has the release.
+ */
 private fun BridgeDownloadOp.detailText(context: Context): String {
     val files =
         context.resources.getQuantityString(

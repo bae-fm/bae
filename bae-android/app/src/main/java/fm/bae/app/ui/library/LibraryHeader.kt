@@ -213,7 +213,7 @@ internal fun AndroidMenuItem(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    // The choice that is on is told as the item's state in words; the design draws a menu item with no selected state.
+    // TalkBack reads Selected as the chosen item's state, because the design draws no selected state for a menu item.
     val chosen = stringResource(R.string.menu_item_chosen)
     DropdownMenuItem(
         text = {

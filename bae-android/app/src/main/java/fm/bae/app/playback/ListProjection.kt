@@ -21,8 +21,8 @@ private const val MAXIMUM_LIST_WINDOWS = 12
 /**
  * A list's items as Android Auto's browse tree asks for them, a page at a time by offset; [item] makes each row
  * the item the tree shows.
- * Media3 names a page by offset, which is a jump: the key of the album at that offset is a plain read, and
- * the page is a window read live from that key. A window stays live while it is among the last
+ * Media3 asks for a page by offset, so the projection reads the key of the row at that offset once and opens
+ * a live window from that key. A window stays live while it is among the last
  * [MAXIMUM_LIST_WINDOWS] asked for, and a window or the list's count changing tells the tree its children
  * changed.
  */

@@ -31,7 +31,7 @@ internal fun AndroidSegmentedButtons(
     label: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        // The label is drawn over the buttons and read before them.
+        // The column draws the label above the buttons, so TalkBack reads it before them.
         label?.let {
             Text(
                 text = it,

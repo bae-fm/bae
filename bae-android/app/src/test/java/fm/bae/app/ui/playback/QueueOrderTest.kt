@@ -63,7 +63,7 @@ class QueueOrderTest {
         order.moveAnswered(OrderLane.CONTEXT)
         order.apply(emptyList(), context(total = 6, read = rows("a", "c", "b", "d")))
         assertEquals(
-            "a read that doesn't draw the row where it was dropped keeps the moves",
+            "a read that does not put the row where the person dropped it keeps the moves",
             listOf("b", "c", "a", "d", null, null),
             order.context.shown(),
         )
@@ -134,7 +134,7 @@ class QueueOrderTest {
         order.moveAnswered(OrderLane.MANUAL)
         order.apply(listOf(entry("b"), entry("a")), null)
         order.apply(listOf(entry("a"), entry("b")), null)
-        assertEquals("core's later read wins once the row arrived", listOf("a", "b"), order.manual.map { it.entryId })
+        assertEquals("the lane shows core's later read once the moved row is in it", listOf("a", "b"), order.manual.map { it.entryId })
     }
 
     @Test

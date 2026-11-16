@@ -73,8 +73,8 @@ internal fun LazyListScope.albumTrackGroups(
                 }
             }
         }
-        // The header shows the total, so only a release core says shows its
-        // sides' time lists each side's play time.
+        // The header shows the total, so the list shows a side's play time
+        // only when core sets showsTime on its group.
         val groupDurationLabel = context.durationUnitsText(group.totalDuration)
         if (group.showsTime && groupDurationLabel.isNotEmpty()) {
             item {
@@ -90,8 +90,8 @@ internal fun LazyListScope.albumTrackGroups(
 }
 
 /**
- * A work the track performs, under the track's row at the title's x: the work in the accent, then its
- * composers. A tap opens the work.
+ * Shows a work the track performs under the track's row, lined up with the title: the work's title in the
+ * accent colour, then its composers. A tap opens the work.
  */
 @Composable
 private fun TrackWorkLine(

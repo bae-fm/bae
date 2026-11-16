@@ -91,7 +91,8 @@ internal fun AndroidDialog(
 
 /**
  * Dims the screen behind the dialog window with the design system's scrim. The window dims with black at the scrim's
- * opacity, which is the scrim colour laid over the screen. It draws nothing itself and runs inside the dialog's window.
+ * opacity, which is the scrim colour laid over the screen. DialogScrim draws nothing itself and runs inside the
+ * dialog's window.
  */
 @Composable
 private fun DialogScrim(scrim: Color) {

@@ -126,7 +126,8 @@ internal fun ResetOfferedScreen(
             )
         }
 
-        // A failed open of a library whose own data is wrong: what failed and what is wrong, with the way out.
+        // When the open fails because the library's data is wrong, the notice names the failed step, says the
+        // data is wrong and offers Reset from cloud.
         shown != null && reason != null && reason.resetFromCloudReplaces -> {
             Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
                 AndroidNotice(
@@ -244,8 +245,8 @@ internal fun DeletionUnfinishedScreen(
 }
 
 /**
- * A library left its store, but deleting this device's files for it failed; finishing is retried here, when
- * core says asking again can get past the failure. The library already left its store, so there is no
+ * A library left its store, but deleting this device's files for it failed; this screen offers Retry when
+ * core reports that a second attempt can succeed. The library already left its store, so there is no
  * library for Reset from cloud.
  */
 @Composable

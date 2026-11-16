@@ -77,7 +77,7 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** An album with no releases has no main one: that is a bug, reported, and an error. */
+    /** An album with no releases has no main release, so the tree reports a bug and throws an error. */
     @Test
     fun anAlbumWithNoReleasesIsReportedAndAnError() =
         runBlocking {
@@ -145,7 +145,8 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** A page is named by offset: the key of the album there is read, and the page is a window from that key. */
+    /** The car asks for a page by offset. The tree reads the key of the album at that offset and opens a window from
+     *  that key. */
     @Test
     fun aPageIsAWindowFromTheKeyAtItsOffset() =
         runBlocking {
@@ -222,7 +223,7 @@ class LibraryBrowseTreeTest {
             )
         }
 
-    /** A write that moves the count drops the pages read before it, and tells the car once. */
+    /** When a write changes the album count, the tree drops the pages it read before and tells the car once. */
     @Test
     fun aWriteThatChangesTheCountNotifiesExactlyOnce() =
         runBlocking {

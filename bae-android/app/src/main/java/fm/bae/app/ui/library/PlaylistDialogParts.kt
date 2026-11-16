@@ -23,12 +23,12 @@ import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.focusOnShow
 import uniffi.bae_bridge.BridgeSharing
 
-/** The choices of who sees a playlist, in the order they are offered; a new playlist starts on the first. */
+/** The choices of who sees a playlist, in the order the dialog shows them; a new playlist starts on the first. */
 internal val SHARING_CHOICES = listOf(BridgeSharing.PRIVATE, BridgeSharing.HOUSEHOLD)
 
 /**
- * The dialog of a playlist's name and who sees it, under [title], with a [confirmLabel] button that
- * [onConfirm] answers once [canConfirm]. The New playlist and Edit playlist dialogs share it.
+ * The dialog of a playlist's name and who sees it, under [title], with a [confirmLabel] button, enabled
+ * while [canConfirm] is true, that calls [onConfirm]. The New playlist and Edit playlist dialogs share it.
  */
 @Composable
 internal fun playlistDialogParts(

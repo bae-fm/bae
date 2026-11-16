@@ -21,9 +21,9 @@ import uniffi.bae_bridge.BridgeSortValue
 private val logger = BaeLogger("bae.ChainBrowserPageStore")
 
 /**
- * The reads of one list, which every list shares: each window of it is a live read of its own, its
- * count and the position of a key in it are others, and a jump to a position is a plain read of the key
- * there.
+ * The reads of one list, the same for every list: each window of it is a live read of its own, its
+ * count and the position of a key in it are live reads too, and a jump to a position reads the key there
+ * once with a plain read.
  */
 internal class ListReads<Row>(
     val window: (uniffi.bae_bridge.BridgeListWindow) -> ListWindowRead<Row>,
@@ -36,8 +36,8 @@ internal class ListReads<Row>(
 
 /**
  * One library list read as a chain of window reads (see [ListChain]), with its count and its headings as
- * reads of their own. The visible range decides which windows the chain keeps; a range far from the
- * chain's rows is a jump, which starts the chain over at the key the list has there.
+ * reads of their own. The visible range decides which windows the chain keeps; for a range far from the
+ * chain's rows, the store starts the chain over at the key the list has there.
  */
 internal abstract class ChainBrowserPageStore<Parameter, Row>(
     private val appContext: Context,
@@ -114,7 +114,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         opening.restart(null, 0)
     }
 
-    /** Stop reading [parameter]'s list, unless another has been activated since. */
+    /** Stop reading [parameter]'s list, unless the caller has activated another list since. */
     fun deactivate(parameter: Parameter) {
         if (this.parameter == parameter) deactivate()
     }

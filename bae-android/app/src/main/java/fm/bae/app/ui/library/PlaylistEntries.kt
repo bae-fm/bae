@@ -48,7 +48,7 @@ internal class PlaylistEntryActions(
     val onPlay: (startPositionId: String?, shuffle: Boolean) -> Unit,
     val onPlayNext: (trackId: String) -> Unit,
     val onAddToQueue: (trackId: String) -> Unit,
-    /** Offered only when the person can make playlists. */
+    /** The menu shows Add to playlist only when the person can make playlists; null hides it. */
     val onAddToPlaylist: ((trackId: String) -> Unit)?,
     /** Take the entry named by its position id out of the playlist. */
     val onRemove: (positionId: String) -> Unit,
@@ -57,8 +57,8 @@ internal class PlaylistEntryActions(
 )
 
 /**
- * The order a playlist's entries are drawn in while its owner moves one: the entry being dragged and
- * where it would land, and the order just written, held until the playlist's read shows it.
+ * PlaylistReorder holds the order the page draws while the owner moves an entry: the entry being dragged
+ * and where it would land, and the order just written, which it keeps until the playlist's query returns it.
  */
 internal class PlaylistReorder(
     private val entries: List<BridgePlaylistEntryRow>,
@@ -159,8 +159,8 @@ internal class PlaylistReorder(
 }
 
 /**
- * The reorder state of [detail]'s entries, written through [write]; a written order is held until
- * the read shows it.
+ * The reorder state of [detail]'s entries, written through [write]; the page keeps a written order until
+ * the playlist's query returns it.
  */
 @Composable
 internal fun rememberPlaylistReorder(

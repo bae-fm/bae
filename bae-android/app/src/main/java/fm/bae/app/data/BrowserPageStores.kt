@@ -110,7 +110,7 @@ internal class ComposerPageStore(
     override fun open(parameter: BridgeComposerSortCriterion) = library.composerList(parameter)
 }
 
-/** One composer's page rows; another composer is another read. */
+/** Holds the rows of one composer's page; a different composer opens a new read. */
 internal class ComposerDetailRowsPageStore(
     private val library: Library,
     appContext: Context,

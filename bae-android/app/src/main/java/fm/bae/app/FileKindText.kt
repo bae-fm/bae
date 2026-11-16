@@ -3,7 +3,8 @@ package fm.bae.app
 import android.content.Context
 import uniffi.bae_bridge.BridgeFileKind
 
-// What kind of file a release file is, in the person's language. Mirrors macOS's file details.
+// What kind of file a release file is, in the person's language. This file names file kinds the same way as the
+// macOS file details view.
 
 /** The kind in words: an audio or image file names its format, the other kinds have a name each. */
 fun Context.fileKindText(kind: BridgeFileKind): String =

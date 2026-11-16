@@ -51,7 +51,10 @@ internal fun PlaylistOptionsMenu(
     }
 }
 
-/** Asks before the playlist named [name] is deleted: that it goes from every device, and its tracks stay. */
+/**
+ * Asks before bae deletes the playlist named [name], and says that bae deletes it from every device and keeps its
+ * tracks.
+ */
 @Composable
 internal fun DeletePlaylistDialog(
     name: String,

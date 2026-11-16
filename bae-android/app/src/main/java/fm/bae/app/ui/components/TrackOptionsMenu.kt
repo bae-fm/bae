@@ -17,9 +17,9 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 
 /**
- * A track's options button and its menu: Play next, Add to queue, then Add to playlist… when
- * [onAddToPlaylist] is given (the person can make playlists) and Remove from playlist when [onRemove]
- * is (a track in a playlist of the person's own).
+ * A track's options button and its menu: Play next, Add to queue, then Add to playlist… when the caller
+ * passes [onAddToPlaylist] (the person can make playlists), and Remove from playlist when the caller
+ * passes [onRemove] (a track in a playlist of the person's own).
  */
 @Composable
 internal fun TrackOptionsMenu(

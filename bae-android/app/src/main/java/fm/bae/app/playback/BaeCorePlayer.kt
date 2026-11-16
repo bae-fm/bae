@@ -543,8 +543,8 @@ class BaeCorePlayer(
         return (manualEntries + context).map { it.toMeta() }
     }
 
-    /** The queue screen shows the context's tail from now on: it is read in the order the lane reads in, around the
-     *  rows the screen holds with [UpcomingTail.hold], until the returned closer runs. */
+    /** The queue screen shows the context's tail from now on: the upcoming tail reads it in the lane's order, around
+     *  the rows the screen holds with [UpcomingTail.hold], until the returned closer runs. */
     fun showUpcoming(): AutoCloseable {
         upcomingShown = true
         if (contextLane != null) upcoming.open(shuffled)
@@ -839,8 +839,8 @@ internal fun availableCommands(
             // Lets a controller (Android Auto / a head unit) play what it
             // sends: a tapped library item is a single-item setMediaItem, a
             // list of items is setMediaItems, and both route to
-            // handleSetMediaItems. Media3 gates setMediaItems on
-            // COMMAND_CHANGE_MEDIA_ITEMS, so it is available too; the
+            // handleSetMediaItems. Media3 accepts setMediaItems only when
+            // COMMAND_CHANGE_MEDIA_ITEMS is available, so it is available too; the
             // core-driven queue isn't editable through the raw media-item API,
             // so BaeCorePlayer fails adding, moving and removing items.
             .add(Player.COMMAND_SET_MEDIA_ITEM)

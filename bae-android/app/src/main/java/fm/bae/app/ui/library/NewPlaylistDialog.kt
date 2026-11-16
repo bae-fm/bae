@@ -19,7 +19,8 @@ import uniffi.bae_bridge.enteredNameIsBlank
 private val logger = BaeLogger("bae.NewPlaylistDialog")
 
 /**
- * Make a playlist holding [trackIds], none by default: its name and who sees it. Creating it closes
+ * Asks for a playlist's name and who sees it, then makes the playlist with [trackIds], which is empty by
+ * default. Creating it closes
  * the dialog and hands the new playlist's id to [onCreated]; a failure shows in the dialog.
  * [nameIsBlank] is core's answer to whether a typed name is blank.
  */

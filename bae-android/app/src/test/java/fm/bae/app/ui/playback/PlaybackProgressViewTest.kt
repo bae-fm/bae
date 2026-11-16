@@ -132,7 +132,7 @@ class PlaybackProgressViewTest {
         assertEquals(5_000, view.seekBar.progress)
     }
 
-    /** A seek drops back to the stream's position: core names the seek's target as the position when it accepts the seek. */
+    /** After a seek, the bar shows the stream's position; core reports the target as the position once it accepts the seek. */
     @Test
     fun aSeekLeavesTheBarOnTheStreamsPosition() {
         val view = attachedView()

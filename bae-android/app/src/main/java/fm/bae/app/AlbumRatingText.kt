@@ -5,7 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeStars
 
-// Who rated an album, in the person's language. Mirrors macOS's `BridgeAlbumRating+Text`.
+// Who rated an album, in the person's language. This file does the same work as `BridgeAlbumRating+Text` on macOS.
 
 /**
  * Who rated the album: "You" for this person, then "Ana rated it 5" for each other, in the order core
@@ -19,7 +19,10 @@ fun Context.ratersText(rating: BridgeAlbumRating): String =
         }
     }
 
-/** The stars a tap on the [tapped] star asks for: the stars the person already gave clear the rating. */
+/**
+ * Returns the stars to set when the person taps the [tapped] star, or null to clear the rating when the person taps
+ * the star they already gave.
+ */
 fun BridgeAlbumRating.starsAfterTapping(tapped: Int): BridgeStars? {
     val stars = starsOfNumber(tapped)
     return if (stars == mine) null else stars

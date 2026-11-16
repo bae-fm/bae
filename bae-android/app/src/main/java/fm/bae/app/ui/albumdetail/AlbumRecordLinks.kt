@@ -13,9 +13,9 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeReleaseRecord
 
 /**
- * Every catalog that describes the release, a chip for each in the order core lists them; a tap opens
- * the catalog's page for the release. [catalogName] words a catalog; a test, which has no native
- * library, passes its own.
+ * Shows a chip for each catalog that describes the release, in the order core lists them; a tap opens
+ * the catalog's page for the release. [catalogName] returns the name the chip shows; a test, which has
+ * no native library, passes its own.
  */
 @Composable
 internal fun AlbumRecordLinks(

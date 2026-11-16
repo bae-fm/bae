@@ -60,7 +60,7 @@ internal data class TrackRowCallbacks(
     val onClick: () -> Unit,
     val onPlayNext: () -> Unit,
     val onAddToQueue: () -> Unit,
-    /** Offered only when the person can make playlists. */
+    /** The menu shows Add to playlist only when the person can make playlists; null hides it. */
     val onAddToPlaylist: (() -> Unit)? = null,
 )
 

@@ -118,7 +118,7 @@ class MembersModelTest {
         stop()
     }
 
-    /** A person's page follows the subscription keyed by their member id; a person who left arrives as none. */
+    /** A person's page follows the subscription keyed by their member id; when the person has left, the subscription delivers null. */
     @Test
     fun aPersonsPageFollowsTheSubscriptionKeyedByTheirMemberId() {
         val handle = SilentMembersHandle()

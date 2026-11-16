@@ -58,7 +58,7 @@ class PlaylistBoardShots : BoardShot() {
     @Test
     fun androidPlaylistsPlaylist() = shot("android.playlists.playlist") { ScreenScene { Page() } }
 
-    /** Edit playlist over the page, on the playlist's own name and who sees it. */
+    /** The Edit playlist dialog over the page, showing the playlist's name and who sees it. */
     @Test
     fun androidPlaylistsEdit() =
         shot("android.playlists.edit") {
@@ -78,7 +78,7 @@ class PlaylistBoardShots : BoardShot() {
             }
         }
 
-    /** The confirmation before a playlist is deleted. */
+    /** The confirmation bae shows before it deletes a playlist. */
     @Test
     fun androidPlaylistsDelete() =
         shot("android.playlists.delete") {

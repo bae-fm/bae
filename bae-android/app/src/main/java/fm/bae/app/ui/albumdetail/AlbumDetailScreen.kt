@@ -94,7 +94,7 @@ internal data class AlbumDetailCallbacks(
     val onAddTrackToQueue: (String) -> Unit,
     val onRateAlbum: (BridgeStars?) -> Unit,
     val onSelectWork: (String) -> Unit,
-    /** Offered only when the person can make playlists. */
+    /** The menu shows Add to playlist only when the person can make playlists; null hides it. */
     val onAddTrackToPlaylist: ((String) -> Unit)? = null,
 )
 
@@ -174,8 +174,8 @@ fun AlbumDetailScreen(
 }
 
 /**
- * The release chosen, else the main one. Derived rather than stored, so a release list that arrives later needs
- * no correction.
+ * Returns the release the person chose, or else the main release. The screen works it out on each draw instead of
+ * storing it, so a release list that arrives later needs no correction.
  */
 internal fun BridgeAlbumDetail.chosenOrMainRelease(chosenId: String?): BridgeRelease? =
     releases.firstOrNull { it.id == chosenId } ?: releases.firstOrNull()

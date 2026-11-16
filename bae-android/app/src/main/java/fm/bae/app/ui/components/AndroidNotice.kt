@@ -261,7 +261,8 @@ private fun FramedNotice(
 ) {
     val hasButtons = hasDetails || action != null
     NoticeFrame(tone = tone, modifier = modifier, look = look) {
-        // Words, then the × and the buttons that sit on their line; buttons below the words come after the ×.
+        // The top row holds the words, the × and the buttons that fit on that line; the column puts any buttons
+        // below the words after the ×.
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
             Row(
                 verticalAlignment = Alignment.Top,

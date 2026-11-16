@@ -37,13 +37,13 @@ class QueueUpcomingWindowTest {
                 ?.upcomingTotal,
         )
         assertNotNull(itemAt(player, 0))
-        assertNull("rows far down are not read for the playlist", itemAt(player, 300))
+        assertNull("the playlist does not read rows far down", itemAt(player, 300))
 
         player.showUpcoming().use {
             val release = player.upcoming.hold(300)
             shadowOf(Looper.getMainLooper()).idle()
             assertNotNull("the screen reads around the row it holds", itemAt(player, 300))
-            assertEquals("the screen's list is a second open of the list", listOf(false, false), feed.opened)
+            assertEquals("the screen opens the list a second time", listOf(false, false), feed.opened)
             release()
         }
     }

@@ -23,7 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeSharing
 
-/** Editing a playlist writes its name and who sees it in one write, and the dialog closes once it is written. */
+/** Save writes the playlist's name and who sees it in one call, and the dialog closes after that write finishes. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class EditPlaylistDialogTest {

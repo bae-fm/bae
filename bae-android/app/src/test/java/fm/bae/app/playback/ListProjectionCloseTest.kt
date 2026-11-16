@@ -21,9 +21,9 @@ class ListProjectionCloseTest {
             val count = FailingCancelCount()
             val reads =
                 ListReads<String>(
-                    window = { error("no window is read") },
+                    window = { error("the test reads no window") },
                     count = { count },
-                    position = { error("no position is read") },
+                    position = { error("the test reads no position") },
                     keyAt = { null },
                 )
             val projection =

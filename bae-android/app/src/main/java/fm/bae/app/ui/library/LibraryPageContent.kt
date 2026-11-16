@@ -101,7 +101,7 @@ internal fun LibraryPageContent(
     }
 }
 
-/** A list that could not be read: the centred notice in the list's place, with Retry reopening its reads. */
+/** Shows the centred notice in the list's place when bae could not read the list, with Retry reopening its reads. */
 @Composable
 internal fun LibraryReadFailed(pageError: PageError) {
     ListPlaceholder {

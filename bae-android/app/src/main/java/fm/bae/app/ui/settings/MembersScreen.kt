@@ -116,14 +116,17 @@ internal class MembersModel(
         private set
     var error by mutableStateOf<DisplayError?>(null)
 
-    /** The person whose page is open, once it is read; Loading while no page of a person is open. */
+    /**
+     * The person whose page is open, once the person subscription answers; Loading while no page of a person is
+     * open.
+     */
     var person by mutableStateOf<PersonRead>(PersonRead.Loading)
         private set
 
     private var peopleSubscription: ScreenSubscription<BridgePeople>? = null
     private var personSubscription: ScreenSubscription<BridgePerson?>? = null
 
-    /** Which subscription a people callback belongs to; one from a replaced subscription is dropped. */
+    /** Which subscription a people callback belongs to; the model ignores a callback from a replaced subscription. */
     private var peopleGeneration = 0
     private var personGeneration = 0
 
@@ -195,7 +198,8 @@ internal class MembersModel(
         }
     }
 
-    /** Follow the profile this person asked for. The request ends in the write that makes it, which the people show. */
+    /** Follow the profile this person asked for. The request ends in the write that makes the profile, and the people
+     *  subscription shows the profile once core writes it. */
     private fun subscribeRequestedProfile(): ScreenSubscription<BridgeRequestedProfile?> =
         ScreenSubscription(
             appHandle.subscribeRequestedProfile().let { pulled(it::next, it::cancel) },

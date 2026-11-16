@@ -61,7 +61,8 @@ internal fun JoinNameStep(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.onboarding_your_name)) },
-                // The field's name is its label; the hint in the empty field is drawn but not read as part of the name.
+                // TalkBack reads the label as the field's name. Clearing the hint's semantics keeps TalkBack from
+                // reading the hint, which still shows in the empty field.
                 placeholder = {
                     Text(
                         text = stringResource(R.string.onboarding_name_placeholder),

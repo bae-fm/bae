@@ -11,7 +11,7 @@ import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeStars
 
-/** Who rated an album in the person's language, and what a tap on a star asks for. */
+/** These tests check how the album page names who rated an album, and which rating a tap on a star sets or clears. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class AlbumRatingTextTest {

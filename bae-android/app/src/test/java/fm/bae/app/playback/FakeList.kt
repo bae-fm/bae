@@ -21,15 +21,15 @@ import uniffi.bae_bridge.NoHandle
 
 /**
  * A list as the bridge lists it, over [rows] in the order of their ids: a key is a row's id, a
- * window answers the range of ids it names, and every window and count the handle opened
- * is kept so a test can change the list and deliver the change.
+ * window answers the range of ids it names, and the fake keeps every window and count the handle
+ * opened so a test can change the list and deliver the change.
  */
 internal open class FakeList<Row>(
     var rows: List<Row>,
     private val idOf: (Row) -> String,
     private val wrap: (List<Row>) -> BridgeListRows,
     private val extra: (Int) -> BridgeListCountExtra = { BridgeListCountExtra.None },
-    /** Whether a window or a count answers as soon as it is opened; otherwise a test delivers with [changed]. */
+    /** Whether a window or a count answers as soon as the handle opens it; otherwise a test delivers with [changed]. */
     var deliverImmediately: Boolean = true,
     /** The failure each window answers with instead of its rows. */
     var windowFailure: BridgeException? = null,
@@ -128,13 +128,13 @@ internal class FakeListWindowSubscription(
 ) : ListWindowSubscription(NoHandle) {
     private val events = Channel<Result<BridgeListWindowValue>>(Channel.UNLIMITED)
 
-    /** Each window this subscription was asked to read, the first one it opened with. */
+    /** Each window the handle asked this subscription to read, starting with the one it opened with. */
     val requested = mutableListOf(window)
     val window: BridgeListWindow get() = requested.last()
     var cancelled = false
         private set
 
-    /** Completes when the subscription is cancelled. */
+    /** Completes when the handle cancels the subscription. */
     val cancelledSignal = CompletableDeferred<Unit>()
 
     override fun setWindow(window: BridgeListWindow) {
@@ -166,7 +166,7 @@ internal class FakeListCountSubscription(
     var cancelled = false
         private set
 
-    /** Completes when the subscription is cancelled. */
+    /** Completes when the handle cancels the subscription. */
     val cancelledSignal = CompletableDeferred<Unit>()
 
     override suspend fun next(): BridgeListCount = events.receive().getOrThrow()

@@ -14,9 +14,9 @@ internal enum class OrderLane { MANUAL, CONTEXT }
 /**
  * The lanes as the sheet shows them: core's read of each, with the moves of a drag laid over a lane
  * until core's read shows them. A lane's moves are held while the drag runs and while a reorder it
- * sent is unanswered, then until the lane's read draws the moved row where the drag left it, or the
- * lane has changed length; a reorder core refused or that failed ends the hold at once, so a move that
- * didn't take never stays on screen.
+ * sent is unanswered, then until the lane's read has the moved row at the index where the drag left it,
+ * or the lane has changed length; a reorder core refused or that failed ends the hold at once, so a move
+ * core did not make never stays on screen.
  */
 internal class QueueOrder {
     val manual = mutableStateListOf<BridgeQueueEntry>()

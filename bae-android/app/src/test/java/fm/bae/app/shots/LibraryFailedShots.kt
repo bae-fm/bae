@@ -11,7 +11,7 @@ import org.junit.Test
 
 /** The shots of a library screen that fails as a whole. */
 class LibraryFailedShots : BoardShot() {
-    /** The albums view when its list could not be read: the library's header over the centred notice. */
+    /** The albums view when bae cannot read its list: the library's header over the centred notice. */
     @Test
     fun androidLibraryAlbumsFailed() =
         shot("android.library.albums.failed") {

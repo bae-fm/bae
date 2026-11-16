@@ -147,7 +147,7 @@ internal fun rememberReorderableQueue(
         onDispose { shown.close() }
     }
 
-    // Values wait out a drag, then re-seed the lanes.
+    // QueueOrder ignores new queue values during a drag, and replaces both lanes with core's latest rows when it ends.
     LaunchedEffect(queue, reorderState.isAnyItemDragging) {
         if (reorderState.isAnyItemDragging) {
             order.dragging()
@@ -230,9 +230,9 @@ private fun LazyListScope.contextLane(
             shuffled = queue.shuffled,
         )
     }
-    // The context tail is library-scaled and only partly read: the lazy list
-    // asks only the rows it places, each holds its place in the list while it
-    // is placed, and an unread row renders a placeholder.
+    // The context tail can be as long as the library, and core reads only part of it: the lazy list
+    // asks only for the rows it places, each row the lazy list places asks core to keep its index read
+    // until the list removes the row, and a row core has not read shows a placeholder.
     queueRows(
         session,
         QueueLane(
@@ -246,15 +246,15 @@ private fun LazyListScope.contextLane(
     item(key = "upcoming-failure") { UpcomingFailureNotice(session) }
 }
 
-/** One lane's rows for [queueRows], read per row; [hold] keeps a row's place read until the returned release
- *  runs, and is null for the manual lane, which is always read in full. */
+/** One lane's rows for [queueRows], one row per index. [hold] keeps a row's index read until the returned release
+ *  runs. It is null for the manual lane, which core reads whole. */
 private class QueueLane(
     val size: Int,
     val itemAt: (Int) -> BridgeQueueEntry?,
     val hold: ((index: Int) -> () -> Unit)?,
 )
 
-// One lane's reorderable rows, keyed by entry id; an unloaded row shows a placeholder until its place is read.
+// One lane's reorderable rows, keyed by entry id; a row shows a placeholder until core reads the row at that index.
 private fun LazyListScope.queueRows(
     session: OpenLibrary,
     lane: QueueLane,

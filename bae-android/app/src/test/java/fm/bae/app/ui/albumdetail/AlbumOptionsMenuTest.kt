@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** The album's menu offers Set as primary release only when it is given what to do, above Delete album. */
+/** The album's menu shows Set as primary release above Delete album only when the caller passes an action for it. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AlbumOptionsMenuTest {

@@ -100,7 +100,8 @@ class ResetOfferedScreenTest {
         compose.onNodeWithText("Couldn't prepare the reset.", substring = true).assertIsDisplayed()
     }
 
-    /** A failed open of a library whose own data is wrong says what failed and what is wrong, and offers the reset. */
+    /** When the open fails because the library's data is wrong, the screen names the failed step, says the data is
+     *  wrong and offers the reset. */
     @Test
     fun aDamagedLibraryOffersTheResetNotRetry() {
         val why =

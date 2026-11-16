@@ -11,9 +11,11 @@ import uniffi.bae_bridge.BridgeListPosition
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeSortValue
 
-/** One delivery of a list window: the rows of the range it answers, with the keys that chain it to its neighbours. */
+/**
+ * One delivery of a list window: the rows of the range it answers, with the keys where it meets its neighbours.
+ */
 internal data class ListWindowDelivery<Row>(
-    /** The request this answers; a delivery for a window the chain has since moved draws nothing. */
+    /** The request this answers; the chain ignores a delivery for a window it has since moved. */
     val window: BridgeListWindow,
     val rows: List<Row>,
     /** The sort values of the first row; null for a window of no rows. */
@@ -48,8 +50,8 @@ private class ChainWindow<Row>(
     var beyond: List<BridgeSortValue>? = null
 
     /**
-     * Whether any delivery has landed; a window moved to a new request keeps its last delivery until the new
-     * one replaces it.
+     * Whether the window has received a delivery; a window moved to a new request keeps its last delivery until
+     * the new one replaces it.
      */
     var answered = false
     var deliveries: ScreenSubscription<ListWindowDelivery<Row>>? = null
@@ -74,7 +76,7 @@ private class ChainWindow<Row>(
 /**
  * Where a chain's first row sits in its list: the key of that row and the count of the rows before it, a
  * live read of its own that follows the key. The list's top has no key and sits at zero; until a count
- * answers for a key, the position it was given stands in.
+ * answers for a key, the chain uses the position the caller gave with the key.
  */
 private class StartPosition(
     private val scope: CoroutineScope,
@@ -117,7 +119,7 @@ private class StartPosition(
     }
 
     private fun apply(position: BridgeListPosition) {
-        // A value for a key the chain has since left draws nothing.
+        // The chain ignores a value for a key it has since left.
         if (position.key != key) return
         val rowsBefore = position.rowsBefore.toInt()
         if (rowsBefore == value) return
@@ -133,10 +135,10 @@ private class OpenPositionRead(
 )
 
 /**
- * The windows a list reads, in the order of its rows: each a live read of a range of the order,
- * neighbours sharing a bound so every row is held once. A window owns its subscription and only its last
- * delivery, replaced whole; [placed] lays those deliveries end to end from the position of the chain's
- * first row.
+ * The windows a list reads, in the order of its rows: each a live read of a range of the order, where
+ * each window ends at the key where the next one starts, so the chain holds every row once. A window owns
+ * its subscription and only its last delivery, which the next delivery replaces whole; [placed] puts those
+ * deliveries end to end from the position of the chain's first row.
  *
  * The chain fits itself to what it delivers: an open window is closed at the row past its limit, a closed
  * window that rows were added to is split there, a window that went empty is dropped into its neighbour.
@@ -169,8 +171,9 @@ internal class ListChain<Row>(
     private val end: Int get() = placed.lastOrNull()?.let { it.start + it.rows.size } ?: start.value
 
     /**
-     * Whether the row at [position] is near enough the chain's rows for the chain to grow to it; a
-     * position farther is a jump. The last window of the list, once answered, reaches every position past it.
+     * Whether the row at [position] is near enough the chain's rows for the chain to grow to it; for a
+     * position farther away, the caller starts the chain over at that position. The last window of the
+     * list, once answered, reaches every position past it.
      */
     fun reaches(position: Int): Boolean {
         val near = 2 * pageSize
@@ -186,8 +189,8 @@ internal class ListChain<Row>(
     }
 
     /**
-     * Replace the windows with one starting at [key] (the list's top when null), [position] standing in for
-     * its count.
+     * Replace the windows with one starting at [key] (the list's top when null). The chain uses [position] as
+     * the key's position until the key's count answers.
      */
     fun restart(
         key: List<BridgeSortValue>?,
@@ -241,7 +244,7 @@ internal class ListChain<Row>(
         delivery: ListWindowDelivery<Row>,
         window: ChainWindow<Row>,
     ) {
-        // A value for a window the chain has since moved or dropped draws nothing.
+        // The chain ignores a value for a window it has since moved or dropped.
         if (window !in windows || delivery.window != window.request) return
         window.rows = delivery.rows
         window.first = delivery.first
@@ -322,8 +325,8 @@ internal class ListChain<Row>(
     }
 
     /**
-     * Grow, trim and keep the chain around the rows on screen. A window is added below or above only when the
-     * one next to it has answered, so its bound and its row count are known.
+     * Grow, trim and keep the chain around the rows on screen. The chain adds a window below or above only
+     * after the window next to it has delivered, so its bound and its row count are known.
      */
     fun reconcile() {
         val visible = visible ?: return
@@ -380,9 +383,9 @@ internal class ListChain<Row>(
     }
 
     /**
-     * Lay the windows' last deliveries end to end from the chain's start position. A window that has not
-     * answered yet ends the laying, except a first window reading upward, whose rows are not what the start
-     * position stands at.
+     * Put the windows' last deliveries end to end from the chain's start position. The first window that has
+     * not answered yet stops the placing, except a first window reading upward, whose rows do not start at the
+     * start position.
      */
     private fun layOut() {
         val first = windows.firstOrNull()

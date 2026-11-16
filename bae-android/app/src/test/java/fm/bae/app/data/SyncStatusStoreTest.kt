@@ -88,7 +88,8 @@ class SyncStatusStoreTest {
         assertEquals(UndoneSetup(7, DisplayError("line for $why", "detail of $why")), sync.undoneSetup.value)
     }
 
-    /** A copy behind another installation of its device shows what it will not keep until the status drops it. */
+    /** When another installation with newer changes uses this device's id, the store shows the unsent edits and files
+     *  until a later status no longer reports them. */
     @Test
     fun aCopyBehindShowsWhatItWillNotKeep() {
         val sync = SyncStatusStore()

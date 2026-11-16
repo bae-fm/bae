@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 
-/** One read of the database for a request: a failure is reported to [onError] and thrown. */
+/** Reads the database once for a request, and reports a failure to [onError] before it throws the failure again. */
 internal suspend fun <Value> reportingFailure(
     onError: (BridgeException) -> Unit,
     read: suspend () -> Value,

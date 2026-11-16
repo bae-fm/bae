@@ -15,7 +15,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** Finishing a removal is retried only where asking again can get past the failure. */
+/** The screen offers Retry only for a failure that a second attempt can fix. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class RemovalIncompleteScreenTest {

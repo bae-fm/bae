@@ -40,8 +40,8 @@ internal sealed interface LibraryNameRead {
 
 /**
  * What Settings reads from the open library beyond its config: its storage
- * and its name. A failed read is kept as such, so Settings shows it where the rows it decides would be; a cancelled
- * one shows nothing and leaves the read as it was.
+ * and its name. The model keeps a failed read, so Settings shows the error where that read's rows would be; a
+ * cancelled one shows nothing and leaves the read as it was.
  */
 internal class SettingsLibraryModel(
     private val appHandle: AppHandleInterface,
@@ -57,7 +57,7 @@ internal class SettingsLibraryModel(
 
     private var nameSubscription: ScreenSubscription<String>? = null
 
-    /** Which subscription a name callback belongs to; one from a replaced subscription is dropped. */
+    /** Which subscription a name callback belongs to; the model ignores a callback from a replaced subscription. */
     private var nameGeneration = 0
 
     /** Read the storage as Settings opens. A phone's library always has a cloud home; one without is a bug. */

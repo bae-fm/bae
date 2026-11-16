@@ -288,7 +288,7 @@ internal open class FakeAppHandle(
             }
         }.also(searchSubscriptions::add)
 
-    /** Plays the database: the window of the search's albums from [offset], at most [limit]. */
+    /** Returns the window of the search's albums from [offset], at most [limit], as the database would. */
     override suspend fun readSearchAlbumPage(
         query: String,
         offset: ULong,
@@ -298,7 +298,7 @@ internal open class FakeAppHandle(
         return searchResults(query).albums.drop(offset.toInt()).take(limit.toInt())
     }
 
-    /** Plays the database: the release's track with that id, as a browse item reads it. */
+    /** Returns the release's track with that id as a browse item reads it, as the database would. */
     override suspend fun readReleaseTrack(
         releaseId: String,
         trackId: String,
@@ -713,7 +713,7 @@ internal open class FakeAppHandle(
 
     override fun subscribePeople(): PeopleSubscription = FakePeopleSubscription().also { peopleReads += it }
 
-    /** The pages of one person each `subscribePerson` opened, which a test delivers to. */
+    /** The person subscriptions that `subscribePerson` opened, which a test delivers to. */
     val persons = mutableListOf<Pair<String, FakePersonSubscription>>()
 
     override fun subscribePerson(member: String): PersonSubscription = FakePersonSubscription().also { persons += member to it }
