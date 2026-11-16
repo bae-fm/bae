@@ -270,18 +270,12 @@ extension ShotScene {
                     AnyView(
                         MacMenuInPlace(
                             {
-                                MacMenuItem(
-                                    verbatim: "Off",
-                                    checked: false
-                                ) {}
-                                MacMenuItem(
-                                    verbatim: "Only me",
-                                    checked: true
-                                ) {}
-                                MacMenuItem(
-                                    verbatim: "Everyone",
-                                    checked: false
-                                ) {}
+                                MacPopUpMenu(
+                                    PeopleAndDevicesPage.historySharingOptions,
+                                    selection: BridgeHistorySharing.private,
+                                    select: { _ in }
+                                )
+                                .entries
                             },
                             highlighted: 1,
                             isPopUp: true
