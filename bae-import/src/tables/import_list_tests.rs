@@ -598,9 +598,9 @@ impl ImportTables {
 
     /// Every item a list shows, read from its tab's rows in order — Found's
     /// in runs — and another way: on Found, its items sorted with each member
-    /// in its header's place. The two reads, which a test holds to agree.
-    /// `None` for a list on Done or Skipped, whose rows are only read in
-    /// order.
+    /// in its header's place. The function returns both reads, and a test
+    /// checks that they agree. The function returns `None` for a list on Done
+    /// or Skipped, because the list reads those rows only in order.
     pub(crate) async fn import_list_read_both_ways(
         &self,
         list: ImportListId,

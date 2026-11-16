@@ -1,10 +1,11 @@
 //! The reads of a list a surface follows, each its own live query: a window
 //! (a range of the list's order, read by its keys), how many items the list
-//! holds, where a key sits in it, the chrome around it, Found's filter
-//! entries, and what the selection holds and offers. Each reruns when a
-//! write changes what it read, so a scan's rows rerun the count and the
-//! windows they land in, and nothing else. Beside them, the reads a surface
-//! makes once: the key at a position.
+//! holds, where a key sits in it, the watched folders, whether Found has
+//! groups, and what the view narrows by, Found's filter entries, and what the
+//! selection holds and offers. coven reruns each when a write changes what it
+//! read, so a scan's rows rerun the count and the windows whose ranges hold
+//! them, and nothing else. Beside them, the reads a surface makes once: the
+//! key at a position.
 
 use super::summary::closed;
 use super::*;
@@ -65,7 +66,8 @@ impl ImportTables {
         self.store.subscribe_reconfigurable(initial, move |key, sql| position_on(&sql, list, key))
     }
 
-    /// What the chrome around `list` shows, live.
+    /// The watched folders, whether Found has groups, and what the view
+    /// narrows by, for `list`, live.
     pub(crate) fn subscribe_import_summary(
         &self,
         list: ImportListId,
@@ -81,7 +83,8 @@ impl ImportTables {
         self.store.subscribe(move |sql| summary::filter_entries(&sql))
     }
 
-    /// What `list`'s selection holds and can be told to do, live.
+    /// What `list`'s selection holds and the actions the person can run on
+    /// it, live.
     pub(crate) fn subscribe_import_selection(
         &self,
         list: ImportListId,

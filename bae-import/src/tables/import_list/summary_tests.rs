@@ -550,8 +550,8 @@ async fn the_tab_counts_follow_the_placement() {
     assert_eq!(skipped, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
 }
 
-/// The tab counts and the filter entries are counted off the placement's own
-/// indexes: nothing is kept beside the placement for them, and no read walks
+/// The tab counts query and the filter entries query read only the
+/// placement's indexes, so no table stores the counts and neither query reads
 /// every placement row's table row.
 #[tokio::test]
 async fn the_counts_are_counted_off_the_placements_indexes() {

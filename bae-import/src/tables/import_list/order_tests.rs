@@ -311,10 +311,9 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
-/// Done runs in two parts, the uploading releases and the rest, and the
-/// number of parts is no number of statements: the key at a position, how
-/// many items sit before a key, and where a release is each read in one
-/// statement beyond the list's own row.
+/// Done shows two parts, the uploading releases and the rest, but bae still
+/// reads the key at a position, the count before a key and a release's
+/// position with one statement each, after it reads the list's own row.
 #[tokio::test]
 async fn positions_in_done_are_read_in_one_statement() {
     let lib = Library::new().await;
@@ -335,10 +334,10 @@ async fn positions_in_done_are_read_in_one_statement() {
     assert_eq!(log.take().len(), 2, "the list's row, then the count before the key");
 }
 
-/// A window is read in one statement beyond the list's own row, whatever its
-/// rows hold: the group header a window starts inside of, each release's rows
-/// and the item beyond the window come in the same statement as the window's
-/// keys.
+/// read_import_window reads a window in one statement after it reads the
+/// list's row, whatever the window's rows hold: the group header the window
+/// starts inside, each release's rows and the next item after the window come
+/// in the same statement as the window's keys.
 #[tokio::test]
 async fn a_window_is_read_in_one_statement() {
     let lib = Library::new().await;
@@ -529,8 +528,8 @@ impl ImportTables {
             .await
     }
 
-    /// The plan a searching list's counts are read by, one line per step:
-    /// what a test holds them to the search index with.
+    /// Returns SQLite's plan for the search counts query, one line per step,
+    /// so a test can check that the query uses the search index.
     async fn import_list_search_plan(&self, list: ImportListId) -> Result<Vec<String>, DbError> {
         self.store
             .read(move |sql| {
@@ -592,9 +591,8 @@ async fn every_order_reads_its_windows_off_its_index() {
     }
 }
 
-/// A search's counts read from the rows it finds reach them through the
-/// search index, each row by its number: they read none of the tab's rows to
-/// test them.
+/// The search counts query finds its rows through the search index by row
+/// number, and does not read every row of the tab to test it.
 #[tokio::test]
 async fn a_search_reads_the_rows_its_index_finds() {
     let lib = Library::new().await;

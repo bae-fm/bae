@@ -4,8 +4,9 @@
 //! library tables every time, with no `import_list_placement` and none of its
 //! count tables. A window is a range of the list's order bounded by the keys
 //! of the rows at its two ends, and its count is a statement of its own.
-//! Every plain number is checked against what the list reads today, then
-//! measured. Measurements, not checks; each is ignored and run in release.
+//! The test checks each plain number against what the list's placement-table
+//! read returns, then times it. The tests are ignored by default; run them in
+//! release.
 
 use super::cost::{found_view, rows_shown, SIZES};
 use super::*;
@@ -69,9 +70,9 @@ fn placed(kept: &str) -> String {
 const WINDOW_COLUMNS: &str = "watched_folder_path, item, key, group_folder, display_path, \
                               shown_title, shown_artists, pending_state, own_date";
 
-/// A list's order as one tuple of ascending terms, one row's key to the
-/// next: no term can be NULL, a descending number is negated, and a group
-/// leads its members.
+/// Each row's key is a tuple of ascending terms, and comparing two keys gives
+/// the list's order: no term can be NULL, a descending number is negated, and
+/// a group leads its members.
 struct Order {
     name: &'static str,
     key: &'static str,
@@ -128,10 +129,11 @@ async fn found_count(db: &Store, kept: &str, params: Vec<Value>) -> i64 {
     .unwrap()
 }
 
-/// Found's windows in `order`, each as a range bounded by the keys of the rows
-/// at its ends, at the top, middle and end of the list and read once by
-/// offset beside, and the count: each against its bar. Returns the first
-/// window's candidate keys, to check against what the list reads.
+/// Times Found's windows in `order`, each read by the range between the keys
+/// of the rows at its ends and once by offset, at the top, middle and end of
+/// the list, and the count, and fails when one takes longer than its limit.
+/// Returns the first window's candidate keys, to check against what the list
+/// reads.
 async fn found_windows(db: &Store, order: &'static Order, n: u64, size: &str) -> Vec<Vec<u8>> {
     let count = found_count(db, "1", vec![]).await;
     assert!(count > 0);
@@ -207,8 +209,8 @@ async fn found_windows(db: &Store, order: &'static Order, n: u64, size: &str) ->
 }
 
 /// The tab counts, Found's filter entries and its groups' entry counts, as
-/// `GROUP BY` over what each release is placed as; and where a row is
-/// revealed, which is the count of the rows before it. Each against its bar.
+/// `GROUP BY` over what each release is placed as. Each read fails when it
+/// takes longer than its limit.
 async fn counts(db: &Store, size: &str) {
     let tabs = plain_cost(
         db,
@@ -265,7 +267,7 @@ async fn counts(db: &Store, size: &str) {
         vec![],
     )
     .await;
-    // The entry count of a window's group headers, 100 of them from the
+    // This scenario times the entry counts of 100 group headers from the
     // middle of the placement's groups.
     plain_cost(
         db,
@@ -304,8 +306,8 @@ async fn reveal(db: &Store, size: &str) {
 }
 
 /// What typing "Al", "Alb" and "Album 1" costs: the first window of what the
-/// search keeps and its count, each a statement over the shown text, against
-/// the keystroke's bar.
+/// search keeps and its count, each a statement over the shown text, each
+/// within the time limit for one keystroke.
 async fn typed(db: &Store, size: &str) {
     let kept = "bae_fold_case(shown_title) GLOB bae_search_pattern(?1) \
                 OR bae_fold_case(shown_artists) GLOB bae_search_pattern(?1)";
@@ -376,8 +378,9 @@ async fn import_list_plain_cost() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let mut held = 0;
     for n in sizes() {
-        // In watched folders of 20,000 rows each, as the search scenario
-        // grows them: one scan's write passes the rows of its folder.
+        // Grow the list 20,000 rows at a time, one watched folder per batch,
+        // as the search scenario grows it, so each scan writes one folder's
+        // rows.
         for start in (held..n).step_by(20_000) {
             grow_import_list(&db, tmp.path(), start, (start + 20_000).min(n)).await;
         }

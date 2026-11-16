@@ -77,7 +77,8 @@ struct Term {
     descending: bool,
     nullable: bool,
     /// Whether the expression's text sorts in natural order (the
-    /// `natural_order` collation), so two names it calls equal are one place.
+    /// `natural_order` collation), so names the collation compares as equal
+    /// sort into the same position.
     natural: bool,
 }
 
@@ -331,7 +332,8 @@ pub(super) struct RangeStatement {
 }
 
 impl RangeStatement {
-    /// `text` with each seek value it names under a name of arm `n`'s.
+    /// Renames each `:order_key_` parameter in `text` to `:arm{n}_order_key_`,
+    /// so each part of the UNION binds its own values.
     fn own(n: usize, text: &str) -> String {
         text.replace(":order_key_", &format!(":arm{n}_order_key_"))
     }
@@ -395,10 +397,11 @@ impl<'a> Items<'a> {
         }
     }
 
-    /// Found's rows read in runs, each member in its header's place, by the
-    /// rows and the members under their headers each run reads: a header's
-    /// members only while the list does not fold it, or while it is the
-    /// group being opened. `None` for Done and Skipped, which hold no group.
+    /// The two sources each run of Found reads: the list's rows, and the
+    /// members under their headers, each member in its header's place. A run
+    /// reads a header's members only while the list does not fold the header,
+    /// or while the header is the group being opened. The function returns
+    /// `None` for Done and Skipped, which hold no group.
     fn run_sources(&self) -> Option<(&'static str, &'static str)> {
         if self.tab != TriageTab::Pending {
             return None;
@@ -711,8 +714,9 @@ impl<'a> Items<'a> {
     /// item beyond its far end, in the list's order. The list's windows are
     /// ranges of its order, each read from the index of the part it is in and
     /// running on into the next part, or back into the one before, when its
-    /// part ends: one statement of one arm per seek, which stops at the
-    /// limit. `None` for a window no part of the list has a range for.
+    /// part ends. `range_statement` joins one SELECT per seek into one
+    /// statement, and the statement stops at the limit. `None` for a window
+    /// no part of the list has a range for.
     pub(super) fn range_statement(
         &self,
         window: &ListWindow,
@@ -770,9 +774,9 @@ impl<'a> Items<'a> {
 
     /// The key of the item at `position`, read by offset, or of the last
     /// item when the list ends before it; `None` for a list with no items.
-    /// One statement: each part's item at the offset left once the parts
-    /// before it are counted, then each part's last item, the first row of
-    /// all of them the answer.
+    /// One statement selects each part's item at the offset that remains
+    /// after the parts before it, then each part's last item, and `key_at`
+    /// takes the first row.
     pub(super) fn key_at(
         &self,
         sql: &impl coven::SqlRead,
@@ -867,8 +871,9 @@ impl<'a> Items<'a> {
     /// Where the first item meeting `condition` (over the stream's columns
     /// `watched_folder_path`, `item` and `key`, and the alias `s` for the
     /// row) sits in the list and its key; `None` when no item does. One
-    /// statement: each part's first such item numbered within its part, and
-    /// the parts before it counted, the first row of all of them the answer.
+    /// statement numbers each part's first matching item within its part,
+    /// adds the count of the parts before it, and `position_where` takes the
+    /// first row.
     pub(super) fn position_where(
         &self,
         sql: &impl coven::SqlRead,
@@ -919,8 +924,8 @@ impl<'a> Items<'a> {
         .transpose()
     }
 
-    /// Where the list's first selected item sits and its key; `None` when no
-    /// selected item is shown.
+    /// Where the list's first selected item sits and its key; `None` when the
+    /// list shows no selected item.
     pub(super) fn position_of_first_selected(
         &self,
         sql: &impl coven::SqlRead,

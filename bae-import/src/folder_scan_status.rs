@@ -30,8 +30,8 @@ pub struct WatchedFolderScanStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderScanStatus {
-    /// No scan has opened a generation for the folder yet, and no failure is
-    /// held for it.
+    /// No scan has opened a generation for the folder yet, and the folder
+    /// scan coordinator holds no failure for it.
     NotScanned,
     Scanning,
     Complete,
@@ -76,13 +76,15 @@ pub struct FolderScanProgress {
 }
 
 impl FolderScanProgress {
-    /// Each watched folder as the coordinator's memory says it stands. A
-    /// failure the store would not take is the folder's status, on the
-    /// volume the failing pass found it on; then the outcome its generation
-    /// stored; a generation with none is scanning while the folder is being
-    /// read, and otherwise ended without storing it. A folder with no scan
-    /// stored and no failure held is not scanned yet: a pass reading it
-    /// stores its generation, with its volume, as it starts.
+    /// Each watched folder as the coordinator's memory says it stands. When
+    /// the coordinator holds a failure that the store would not take, that
+    /// failure is the folder's status, on the volume the failing pass found
+    /// it on. Otherwise the status is the outcome the folder's generation
+    /// stored; a generation with no outcome shows Scanning while a pass reads
+    /// the folder, and otherwise the generation ended without storing one. A
+    /// folder that has no stored scan and no held failure shows Not scanned:
+    /// a pass that reads it stores its generation, with its volume, as it
+    /// starts.
     pub(crate) fn of(stored: Vec<StoredRootScan>, in_memory: &FolderScansInMemory) -> Self {
         let statuses: Vec<WatchedFolderScanStatus> = stored
             .into_iter()

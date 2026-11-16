@@ -1,5 +1,5 @@
-//! The list's view and folds: a view change answers where the new view
-//! opens, its first selected row, and a fold answers nothing.
+//! The list's view and folds: a view change returns where the new view
+//! opens, its first selected row, and a fold returns nothing.
 
 use crate::selection::SelectionChange;
 use crate::tables::import_list::tests::*;
@@ -7,16 +7,17 @@ use crate::ImportListOpening;
 use crate::ImportListOrder;
 use crate::TriageTab;
 
-/// Where the view `view` opens in `list`, as the write that sets it answers:
-/// the position, and the key a chain of windows starts at. The key reads the
-/// row at the position back: the window from it starts with that row.
+/// Where the view `view` opens in `list`, as the write that sets it returns
+/// it: the position, and the key a chain of windows starts at. The helper
+/// checks that the key is the key of the row at the position, and that the
+/// window starting at the key begins with that row.
 async fn opened_at(lib: &Library, list: crate::ImportListId, view: crate::ImportListView) -> u64 {
     let tables = lib.tables();
     let opening = tables
         .set_import_list_view(list, view)
         .await
         .unwrap()
-        .expect("the view changed, so the write answers where it opens");
+        .expect("the view changed, so the write returns where it opens");
     match opening {
         ImportListOpening::Top => 0,
         ImportListOpening::At { key, position } => {
@@ -55,8 +56,8 @@ async fn every_group_folds_and_opens_at_once() {
 
 /// A view opens at its first selected row: the write that sets it says where
 /// that row sits in the list it shows, by key and position. A view showing no
-/// selected row opens at its top, and the view it already shows answers
-/// nothing.
+/// selected row opens at its top, and setting the view the list already
+/// shows returns nothing.
 #[tokio::test]
 async fn a_view_opens_at_its_first_selected_row() {
     let lib = Library::new().await;

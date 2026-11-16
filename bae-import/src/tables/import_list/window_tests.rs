@@ -854,9 +854,9 @@ fn with_cover(root: &std::path::Path, name: &str) -> FolderCandidate {
     )
 }
 
-/// An import deletes a candidate's draft and cover, and the release it wrote
-/// deleted from the library puts the folder back in Found holding its files'
-/// blank draft and the folder's own cover, on its row and in its pane.
+/// An import deletes a candidate's draft and cover. When the library deletes
+/// the release the import wrote, the folder returns to Found with its files'
+/// blank draft and its own cover, on its row and in its pane.
 #[tokio::test]
 async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cover() {
     let lib = Library::new().await;
@@ -924,6 +924,6 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     assert_eq!(
         lib.db.count_rows_for_test("import_candidate_cover", "content_hash", &hash).await.unwrap(),
         1,
-        "the cover the deletion seeded is the one row"
+        "the table holds only the cover row that the deletion wrote"
     );
 }

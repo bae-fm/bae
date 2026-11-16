@@ -1,6 +1,6 @@
-//! One action a selection offers: what a selection of candidates can be told
-//! to do is decided in SQL, from what each member offers, for every surface
-//! that acts on a selection (`tables::import_list::selection`).
+//! One action a selection offers. The query `tables::import_list::selection`
+//! decides, from what each member offers, which actions a selection offers on
+//! every surface.
 
 use super::CandidateAction;
 

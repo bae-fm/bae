@@ -106,7 +106,7 @@ CREATE VIEW IF NOT EXISTS import_list_shown AS
 SELECT * FROM import_list_item WHERE item <> 'group';
 
 -- A selected release a change moves out of what a list shows leaves its
--- selection, except a release whose import landed while the list is on
+-- selection, except a release whose import finished while the list is on
 -- Pending: the pane keeps it, shown as imported, until the person selects
 -- another row or changes the view.
 CREATE TRIGGER IF NOT EXISTS import_list_selected_moved AFTER UPDATE ON import_list_placement

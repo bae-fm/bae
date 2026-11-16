@@ -26,7 +26,7 @@ impl ImportServiceHandle {
     }
 
     /// Every item of the list showing `view`, once, for a caller with no
-    /// list open: a list opened for the read and closed after it.
+    /// list open: the function opens a list for the read and closes it after.
     pub async fn load_list(
         &self,
         view: crate::ImportListView,
@@ -191,8 +191,8 @@ impl ImportServiceHandle {
     }
 
     /// The list for `view`, read through every row, once `accept` admits
-    /// it. The list lands after the commit it reflects, so a test that just
-    /// observed a scan event waits here for the read.
+    /// it. The query delivers the new list after the commit it reflects, so
+    /// a test that just observed a scan event waits here for the read.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_list(
         &self,

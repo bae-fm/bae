@@ -256,7 +256,8 @@ async fn one_row_on_the_page(
     let initial = window.next().await.expect("the query stays open").result.unwrap();
     let on_page = keys_of(&initial.read.rows);
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
-    // The first delivery closes the window at the row beyond it.
+    // The test closes the window at the row the first delivery reports beyond
+    // it.
     let beyond = initial.read.beyond.clone().expect("the second row is beyond the page");
     window
         .requests()
@@ -319,9 +320,10 @@ async fn a_run_off_the_page_delivers_its_count() {
             .await;
 
     assert_eq!(counted(&moved, PendingFilter::All), Some(2));
-    // Coven does not narrow the import list's windows by their range (the placement
-    // reads headers through a correlated EXISTS, and Found members sort through a
-    // join on unit), so any write the list reads reruns every window.
+    // Coven does not narrow the import list's windows by their range (the
+    // placement reads headers through a correlated EXISTS, and Found members
+    // sort through a join on unit), so coven reruns every window after any
+    // write to a table the list reads.
     assert!(page.window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
     shut_down(handle).await;
 }
@@ -810,10 +812,10 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
 }
 
-/// Where a candidate off the page stands reaches no row and reruns no
-/// window: it moves the count the filter's entries hold. Once a new window
-/// puts the candidate on the page, its row carries its standing and the same
-/// subscription delivers its changes.
+/// A change to where a candidate off the page stands reaches no row, but
+/// coven still reruns the window, and the filter entries' count changes. Once
+/// a new window puts the candidate on the page, its row carries its standing
+/// and the same subscription delivers its changes.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let fixture = Fixture::new("live-state-off-the-page").await;
@@ -834,7 +836,8 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .map(|dir| crate::CandidateKey::folder(&dir))
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
-    // The first delivery closes the window at the row beyond it.
+    // The test closes the window at the row the first delivery reports beyond
+    // it.
     let beyond = initial.read.beyond.clone().expect("the second row is beyond");
     let requests = window.requests();
     requests.set(ListWindow::Forward { from: None, until: Some(beyond), limit: 1 }).unwrap();
@@ -848,9 +851,10 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
             break entries;
         }
     };
-    // Coven does not narrow the import list's windows by their range (the placement
-    // reads headers through a correlated EXISTS, and Found members sort through a
-    // join on unit), so any write the list reads reruns every window.
+    // Coven does not narrow the import list's windows by their range (the
+    // placement reads headers through a correlated EXISTS, and Found members
+    // sort through a join on unit), so coven reruns every window after any
+    // write to a table the list reads.
     assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
     assert_eq!(counted(&counted_off, crate::PendingFilter::All), Some(2));
 
@@ -955,9 +959,10 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let moved = entries.next().await.expect("the query stays open").unwrap();
     assert_ne!(moved, before, "the verdict moved a count");
     assert_eq!(counted(&moved, crate::PendingFilter::All), Some(2));
-    // Coven does not narrow the import list's windows by their range (the placement
-    // reads headers through a correlated EXISTS, and Found members sort through a
-    // join on unit), so any write the list reads reruns every window.
+    // Coven does not narrow the import list's windows by their range (the
+    // placement reads headers through a correlated EXISTS, and Found members
+    // sort through a join on unit), so coven reruns every window after any
+    // write to a table the list reads.
     assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
 }
 

@@ -129,9 +129,9 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     CHECK (tab <> 'done' OR own_date IS NOT NULL)
 ) STRICT;
 
--- What the list's counts read: each tab's rows of each item, and Found's
--- releases by their filter entry, and the members of a group as their
--- placement's own indexes below hold them.
+-- The list's counts use these two indexes to count each tab's rows by item
+-- and Found's releases by filter entry. They count a group's members with the
+-- folder index below.
 CREATE INDEX IF NOT EXISTS import_list_placement_by_tab ON import_list_placement (tab, item);
 
 CREATE INDEX IF NOT EXISTS import_list_placement_by_entry
@@ -371,7 +371,8 @@ FROM (
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
                     WHERE m.content_hash = v.content_hash AND m.listing = 'offered') AS pressings,
                    -- Why a found verdict picks none of its releases
-                   -- unattended, as its rows decide it.
+                   -- unattended, read from the view
+                   -- `import_candidate_verdict_decision`.
                    (SELECT decision.declined FROM import_candidate_verdict_decision AS decision
                     WHERE decision.content_hash = v.content_hash) AS declined,
                    st.identification, st.import_step AS running_import, st.save_failure_error,

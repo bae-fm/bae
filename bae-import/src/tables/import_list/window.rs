@@ -1,7 +1,7 @@
 //! A window of the list, loaded whole in one statement: the range the window
 //! reads from the placement's order indexes, and every row of each item in
-//! it, joined to that range by the item's key, so a window costs its own
-//! rows whatever the list holds.
+//! it, joined to that range by the item's key, so the statement reads only
+//! the window's rows, however many items the list holds.
 //!
 //! A release's row comes from its placement — what it shows, its state and
 //! what its commands are decided from — and the keyed rows beside it: its
@@ -44,15 +44,16 @@ use bae_store::ListWindow;
 use rusqlite::ToSql;
 use std::path::PathBuf;
 
-/// `window` of the list `list` shows, loaded whole in one statement: the
-/// items of its range, the header of the group they start inside of, and the
-/// keys of the first item and of the item beyond the window's far end.
+/// Reads the window `window` of the list `list` in one statement: the items
+/// of its range, the header of the group they start inside of, and the keys
+/// of the first item and of the item beyond the window's far end.
 ///
-/// The range is the statement's first table. Its items are numbered in the
-/// order the arms return them; the one past the limit is the item beyond,
-/// and a window read backward numbers from its far end, so its items come
-/// out in the window's order. A member of a group at the window's start
-/// leads with a row for its header, which is not one of the window's items.
+/// The range is the statement's first table. The statement numbers the
+/// range's items in the order the parts of its UNION return them; the one
+/// past the limit is the item beyond, and a window read backward numbers
+/// from its far end, so its items come out in the window's order. A member
+/// of a group at the window's start leads with a row for its header, which
+/// is not one of the window's items.
 pub(super) fn read_window(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
@@ -142,10 +143,11 @@ struct HeaderRow {
     combinable: bool,
 }
 
-/// The header columns of a row of a group whose key is the expression `key`:
-/// how many of its releases the filters keep is the members the placement
-/// holds under it, counted, unless a text filter reads the rows; whether its
-/// folder is offered to be read as one release is its placement's
+/// The header columns of a row of a group whose key is the expression `key`.
+/// The entry count counts the placement rows under the group's folder that
+/// the pending filter keeps, unless a text filter is active, when it counts
+/// the matching rows instead. The placement's `combinable` column says
+/// whether bae offers to import the folder as one release
 /// (`import_list_recombine`).
 fn header_columns(key: &str) -> String {
     format!(

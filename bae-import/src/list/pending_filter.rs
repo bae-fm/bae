@@ -3,8 +3,9 @@
 //!
 //! Every Found row is in exactly one state, and every state is under exactly
 //! one entry past All — the placement's `pending_entry` names it — so those
-//! entries split Found's rows between them and All holds them all. The counts
-//! are COUNT statements over the placement (`import_list_placement`).
+//! entries split Found's rows between them and All holds them all. COUNT
+//! queries over the placement (`import_list_placement`) give each entry's
+//! count.
 
 /// Which of Found's rows the list shows: one entry of the filter menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

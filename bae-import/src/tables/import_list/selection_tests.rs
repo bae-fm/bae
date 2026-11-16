@@ -53,8 +53,8 @@ async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
     );
 }
 
-/// A selected release whose import lands stays selected on Pending, shown as
-/// imported in its pane, until the person selects another row.
+/// A selected release whose import finishes stays selected on Pending, shown
+/// as imported in its pane, until the person selects another row.
 #[tokio::test]
 async fn a_selected_release_whose_import_lands_stays_selected_until_another_is() {
     let lib = five_rows().await;
@@ -81,8 +81,8 @@ async fn a_selected_release_whose_import_lands_stays_selected_until_another_is()
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("B") }));
 }
 
-/// A selected release whose import lands leaves the selection when the person
-/// changes the list's tab.
+/// A selected release whose import finishes leaves the selection when the
+/// person changes the list's tab.
 #[tokio::test]
 async fn a_release_kept_after_its_import_leaves_with_the_view() {
     let lib = five_rows().await;

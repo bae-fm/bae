@@ -106,8 +106,8 @@ pub struct CandidateLiveState {
 }
 
 impl CandidateLiveState {
-    /// The row's live state from the commands it offers, what is running for
-    /// it, and the state the placement puts it in with that.
+    /// Builds the row's live state from the commands the row offers, the
+    /// work running for it, and the state its placement gives it.
     pub fn of(
         actions: Vec<CandidateAction>,
         facts: TriageRuntimeFacts,

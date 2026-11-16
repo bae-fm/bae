@@ -6,8 +6,9 @@
 //! and the live queries that read them rerun on it. Each window of the list,
 //! its count, its summary, Found's filter entries and its selection are live
 //! queries of their own, opened from here and ended when the list closes.
-//! Nothing about the windows a surface holds is kept here: a window's request
-//! is the range of the list it reads, and moving it is the surface's.
+//! LiveImportList keeps nothing about the windows a surface holds: a window's
+//! request is the range of the list it reads, and the surface moves each
+//! window.
 //!
 //! Where the folder scans stand is not here: a scan moves its found count
 //! with every folder it walks, and that count moves no row, so the scans are
@@ -27,7 +28,7 @@ use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportListFailure {
-    #[error("import list closed")]
+    #[error("the import list is closed")]
     Closed,
     #[error("the list does not show both ends of the run of rows to select")]
     RunNotShown,
@@ -35,8 +36,8 @@ pub enum ImportListFailure {
     Database(#[from] DbError),
 }
 
-/// A list found closed was closed by this list's own cancel, the one write
-/// that closes a list a surface holds open.
+/// Only this list's `cancel` closes a list a surface holds open, so a list
+/// the read finds closed means `cancel` ran.
 impl From<ImportListError> for ImportListFailure {
     fn from(error: ImportListError) -> Self {
         match error {
@@ -54,7 +55,8 @@ pub struct LiveImportList {
     tables: ImportTables,
     /// Cancelled when the list closes; each live query takes a child.
     closing: CancellationToken,
-    /// Where a bug a run of one of its live queries carries goes.
+    /// Receives each bug that a run of one of the list's live queries
+    /// reports.
     bugs: coven::task::BugSinkRef,
 }
 
@@ -185,7 +187,7 @@ impl LiveImportList {
         self.tables.subscribe_import_filter_entries()
     }
 
-    /// What the selection holds and can be told to do.
+    /// What the selection holds and the actions the person can run on it.
     pub fn subscribe_selection(&self) -> coven::LiveQuery<SelectionSummary, DbError> {
         self.tables.subscribe_import_selection(self.list)
     }

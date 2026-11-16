@@ -4,8 +4,8 @@ use crate::{
     TriagePlacement, TriageRuntimeFacts, TriageTab,
 };
 
-/// What a release offers, decided by the command columns over a placement row
-/// and a standing holding the given facts.
+/// Returns the commands the command columns offer, computed over one
+/// placement row and one standing row that holds the given facts.
 trait Offered {
     fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction>;
 }

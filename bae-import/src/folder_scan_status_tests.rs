@@ -75,8 +75,9 @@ fn a_stored_outcome_stands_while_the_root_is_being_read() {
     );
 }
 
-/// A folder no scan has opened a generation for is not scanned yet, until a
-/// failure is held for it, on the volume the failing pass found it on.
+/// A folder that no scan has opened a generation for shows Not scanned until
+/// the coordinator holds a failure for it, on the volume the failing pass
+/// found it on.
 #[test]
 fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
     let never_scanned =

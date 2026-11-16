@@ -30,7 +30,7 @@ fn first(limit: u64) -> ListWindow {
     ListWindow::Forward { from: None, until: None, limit }
 }
 
-/// Everything after `from`, with no end.
+/// Up to `limit` items, starting at `key`, with no end key.
 fn from(key: &OrderKey, limit: u64) -> ListWindow {
     ListWindow::Forward { from: Some(key.clone()), until: None, limit }
 }
@@ -176,8 +176,8 @@ async fn scanned_list(names: &[&str]) -> (Library, ImportListId) {
     (lib, list)
 }
 
-/// A window that has been marked to rerun reads what it is marked for, so the
-/// next write finds it at rest.
+/// Wait for the window's next value, so the window has no pending rerun when
+/// the next write commits.
 async fn settled<T: Clone + PartialEq + Send + 'static, Request>(
     window: &mut coven::ReconfigurableLiveQuery<Request, T, DbError>,
 ) where
@@ -191,7 +191,8 @@ async fn settled<T: Clone + PartialEq + Send + 'static, Request>(
 /// (`import_list_item`, whose rows show a group's header while any member
 /// matches) read the placement through a correlated subquery coven cannot
 /// bound by a range, so only the rows the window delivers tell a rerun apart.
-/// This pins what coven narrows today; a write the list does not read
+/// The test checks that coven reruns both windows for a scan item; a write
+/// the list does not read
 /// (`import_list_withholds_a_commit_that_changes_nothing_it_reads`) reruns
 /// nothing.
 #[tokio::test]
@@ -207,7 +208,7 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
     count.next().await.expect("the query stays open").unwrap();
 
     lib.run(lib.scan("Z")).await;
-    assert!(below.is_marked_for_rerun(), "Z lands in the lower window's range");
+    assert!(below.is_marked_for_rerun(), "Z sorts into the lower window's range");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     assert!(count.is_marked_for_rerun());
     let grown = below.next().await.expect("the query stays open").result.unwrap();
@@ -215,13 +216,13 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
     assert_eq!(count.next().await.expect("the query stays open").unwrap().rows, 7);
 
     lib.run(lib.scan("A0")).await;
-    assert!(above.is_marked_for_rerun(), "A0 lands in the upper window's range");
+    assert!(above.is_marked_for_rerun(), "A0 sorts into the upper window's range");
     let grown = above.next().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&grown.read.rows), ["A", "A0", "B", "C"]);
 }
 
-/// A searching list's folders, scanned, and the list showing the ones whose
-/// name holds "wanted".
+/// Scans the folders and opens a list that shows the ones whose name contains
+/// "wanted".
 async fn searching_list(names: &[&str]) -> (Library, ImportListId) {
     let lib = Library::new().await;
     lib.run(scanned_with_states(&lib, names)).await;
@@ -267,7 +268,7 @@ async fn a_scan_item_reruns_the_search_window_holding_it_and_the_count() {
     count.next().await.expect("the query stays open").unwrap();
 
     lib.run(lib.scan("Z wanted")).await;
-    assert!(below.is_marked_for_rerun(), "Z wanted lands in the lower window's range");
+    assert!(below.is_marked_for_rerun(), "the lower window's range holds Z wanted");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     assert!(count.is_marked_for_rerun());
     let grown = below.next().await.expect("the query stays open").result.unwrap();
@@ -303,9 +304,10 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 }
 
 /// The windows are live queries over the scan tables, so a scan item written
-/// while someone is watching wakes the window it lands in. A candidate's rows
-/// span several tables; a dependency missed on any of them would leave the
-/// list showing the previous scan until something unrelated changed.
+/// while someone is watching reruns the window whose range holds it. A
+/// candidate's rows span several tables; a dependency missed on any of them
+/// would leave the list showing the previous scan until something unrelated
+/// changed.
 #[tokio::test]
 async fn import_list_wakes_on_a_scan_item() {
     let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
@@ -448,7 +450,7 @@ async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
 }
 
 /// A text-filtered list read as a chain holds what one window over it holds,
-/// to its end: the windows are read from the tab's rows in order, tested one
+/// to its end: each window reads the tab's rows in order and tests them one
 /// by one, and a jump reads the same rows the chain does.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {

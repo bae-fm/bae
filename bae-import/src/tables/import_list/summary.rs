@@ -1,9 +1,10 @@
-//! What the chrome around a list says, read beside its windows: the tab
-//! counts and Found's filter entries from the counts kept beside the
-//! placement, and how many items the list holds and how many its filters
-//! keep (a search's from the rows its index finds). And the reads a surface
-//! makes of a list on its own: where a candidate would be revealed, and the
-//! first one being identified.
+//! The reads a surface makes beside a list's windows: the watched folders,
+//! whether Found has groups, and what the view narrows by; the tab counts and
+//! Found's filter entries, which COUNT queries over the placement return; and
+//! how many items the list holds and how many its filters keep (a search
+//! counts the rows its index finds). Also the reads a surface makes of a list
+//! on its own: where a candidate would be revealed, and the first one being
+//! identified.
 
 use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::views::tab_of;
@@ -46,7 +47,8 @@ fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
 
 /// Every entry of Found's filter, in the menu's order, with how many of
 /// Found's releases it holds: `all` holds every one and the others each hold
-/// those in their states. An entry holding none cannot be chosen.
+/// those in their states. The person cannot choose an entry that holds no
+/// releases.
 pub(super) const FILTER_ENTRIES: &str = "WITH entries (position, entry) AS ( \
          VALUES (1, 'needs_you'), (2, 'in_progress'), (3, 'identified'), (4, 'unmatched'), \
                 (5, 'not_looked_up')), \
@@ -77,8 +79,8 @@ pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilt
     .collect()
 }
 
-/// What the chrome around `list` shows beside its rows: the watched folders,
-/// whether Found has any group, and what the view narrows its rows by.
+/// The summary `list` shows beside its rows: the watched folders, whether
+/// Found has any group, and what the view narrows its rows by.
 pub(super) fn summary(
     sql: &SqlReadContext<'_>,
     list: ImportListId,

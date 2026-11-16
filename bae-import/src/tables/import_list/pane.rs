@@ -251,8 +251,9 @@ impl CandidateDetailRows {
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
             verdict_folder_check = cards.folder_check.clone();
-            // The rows' judgement is stored with them against the candidate's
-            // own text, so striking a number out has already reordered them.
+            // The verdict write stores each row's judgement against the
+            // candidate's own text, so the rows are already in their new
+            // order after the person discounts a catalog number.
             resumed_identify_state = bae_identify::IdentifyStateView::of(
                 bae_identify::RunOutcome::Answered(identify.verdict.clone()),
                 cards,
@@ -320,7 +321,8 @@ impl CandidateDetailRows {
 /// pressing.
 ///
 /// A stored pick always has its releases — the pick write fetches them first —
-/// so a missing one is stated rather than served as half a pane.
+/// so when one is missing, the read fails instead of returning part of the
+/// pane.
 fn primary_release_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,

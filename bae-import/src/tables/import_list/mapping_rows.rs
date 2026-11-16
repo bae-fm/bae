@@ -3,10 +3,10 @@
 //! The scan stores the folder's audio layout with its files (the units in play
 //! order, each one's length and preview range, and what each track sheet's
 //! `FILE` lines can be bound to), and the draft stores each track's place. The
-//! statement lays them side by side: a row per draft track joined to its audio
-//! unit, the rows grouped into sides and runs, each sheet's header, the files
-//! the table carries beside its rows, the gallery of images, and the count of
-//! rows nobody has named. The code here only turns that document into the
+//! statement joins each draft track to its audio unit and returns a row per
+//! draft track, the rows grouped into sides and runs, each sheet's header, the
+//! files that are not audio, the gallery of images, and the count of rows
+//! nobody has named. The code here only turns that document into the
 //! mapping table's types and refuses a draft whose tracks are not the folder's
 //! units.
 
@@ -256,8 +256,8 @@ struct RowJson {
     #[serde(deserialize_with = "flag")]
     matches: bool,
     position: String,
-    /// The length the track's source lists, kept only when it is far from
-    /// the audio's own.
+    /// The length the track's source lists. The statement sets it only when
+    /// `bae_lengths_disagree` finds it apart from the audio's own length.
     listed_ms: Option<u64>,
     kind: Option<String>,
     audio: Option<AudioJson>,
@@ -340,8 +340,8 @@ enum CarriedJson {
     Sheet(SheetJson),
 }
 
-/// The statement's document, decoded: what the pane's mapping table is made
-/// of, before the draft's tracks are laid in.
+/// The statement's document, decoded: the statement's rows, before `table`
+/// joins the draft's tracks to them.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct MappingRows {
     document: String,
@@ -379,8 +379,8 @@ pub(super) fn load_mapping_rows_on(
 
 impl MappingRows {
     /// The mapping table over `draft`'s tracks. Refuses a draft whose tracks
-    /// are not the folder's audio units in order: the draft is redrawn with
-    /// every change to the folder's files, so a mismatch is a stored state
+    /// are not the folder's audio units in order: every write that changes
+    /// the folder's files rebuilds the draft, so a mismatch is a stored state
     /// that contradicts itself.
     pub(super) fn table(&self, draft: &CandidateDraft) -> Result<MappingTable, ImportError> {
         let internal = |detail: String| ImportError::Internal { detail };
@@ -457,7 +457,9 @@ fn track_side(
             disc: disc.parse().map_err(|error| bad(format!("a disc number {disc}: {error}")))?,
         }),
         ("flat", None) => Ok(bae_types::mediums::TrackSide::Flat),
-        (kind, value) => Err(bad(format!("a track side {kind} {value:?}"))),
+        (kind, value) => {
+            Err(bad(format!("the statement returned an unknown track side {kind} {value:?}")))
+        }
     }
 }
 
@@ -467,7 +469,9 @@ fn carried_role(role: &str) -> Result<MappingRole, ImportError> {
         "document" => Ok(MappingRole::Document),
         "damaged_image" => Ok(MappingRole::DamagedImage),
         "other" => Ok(MappingRole::Other),
-        other => Err(ImportError::Internal { detail: format!("a carried file's role {other}") }),
+        other => Err(ImportError::Internal {
+            detail: format!("the statement returned an unknown role {other} for a carried file"),
+        }),
     }
 }
 
@@ -494,14 +498,24 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         "unresolved" => SheetBound::Unresolved { requested: sheet.requested },
         "refused_timing" => SheetBound::RefusedTiming,
         "refused_codec" => SheetBound::RefusedCodec {
-            codec: sheet.codec.ok_or_else(|| internal("a refused codec has a name".to_owned()))?,
+            codec: sheet.codec.ok_or_else(|| {
+                internal(format!("{} is refused for its codec but names no codec", sheet.sheet_id))
+            })?,
         },
-        other => return Err(internal(format!("a sheet binding {other}"))),
+        other => {
+            return Err(internal(format!(
+                "the statement returned an unknown sheet binding {other}"
+            )))
+        }
     };
     let assignment = match (sheet.assignment.as_str(), sheet.disc_number) {
         ("disc", Some(number)) => SheetDisc::Disc { number },
         ("ignored", None) => SheetDisc::Ignored,
-        (other, number) => return Err(internal(format!("a sheet disc {other} {number:?}"))),
+        (other, number) => {
+            return Err(internal(format!(
+                "the statement returned an unknown sheet disc {other} {number:?}"
+            )))
+        }
     };
     let reference_options = sheet
         .references
@@ -526,7 +540,9 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
                                     SheetBindingOffer::RefusedUnreadable
                                 }
                                 (other, _) => {
-                                    return Err(internal(format!("a sheet offer {other}")))
+                                    return Err(internal(format!(
+                                        "the statement returned an unknown sheet offer {other}"
+                                    )))
                                 }
                             },
                         })
@@ -584,7 +600,11 @@ fn track_mapping(row: RowJson, draft: &CandidateDraft) -> Result<TrackMapping, I
             ),
             audio_format: audio.format(),
         }),
-        other => return Err(internal(format!("an audio unit of kind {other:?}"))),
+        other => {
+            return Err(internal(format!(
+                "the statement returned an audio unit of unknown kind {other:?}"
+            )))
+        }
     };
     Ok(TrackMapping {
         source,

@@ -1,8 +1,8 @@
-//! What a release's commands are, decided in SQL from its placement row and
-//! its standing: one column per command, `1` when the release offers it, named `can_` and the
-//! command. The
-//! window's rows, the pane, the selected rows and the selection's offers all
-//! read these columns, so every surface offers the same commands.
+//! This module decides in SQL which commands a release offers, from its
+//! placement row and what is running for it: one column per command, named
+//! `can_` and the command, `1` when the release offers it. The window's rows,
+//! the pane, the selected rows and the selection's offers all read these
+//! columns, so every surface offers the same commands.
 //!
 //! The columns follow [`CandidateAction::ALL`]. They name the placement as
 //! `p` and the candidate's standing (what is running for it) as `st`, which a
@@ -14,17 +14,19 @@ use crate::CandidateAction;
 /// The condition under which a release offers `action`, over the aliases `p`
 /// and `st`.
 ///
-/// An import owning the release leaves only cancelling it, not even a skip:
-/// the attempt decides it now, and one writing its release completes whatever
-/// is asked, so it offers no cancel either. A run for the release in flight
-/// leaves only cancelling it and the skip, and importing once the run's pick
-/// is read, until that is asked. Identifying again after a finished answer
-/// that fails the same way is not offered, and a stored lookup is shown as it
-/// stood, so only a release with none stored is offered identifying. How its
-/// folders are read is decided before any of that: a release imported, or with
-/// work running for it, is past regrouping; any other separates when a
+/// While an import runs for the release, the release offers only Cancel, not
+/// even Skip. Once the import starts writing the release, it offers nothing,
+/// because the write finishes whatever the person asks. While an identify run
+/// is in progress, the release offers only Cancel and Skip, and Import once
+/// the run reads its pick, until the person asks for the import. bae does not
+/// offer identifying again after a finished answer, which would fail the
+/// same way, and the list shows a stored lookup as it stood, so only a
+/// release with no stored lookup offers Identify. Regrouping comes before any
+/// of that: a release that is imported, or has work running for it, offers
+/// neither Separate nor Combine; any other release offers Separate when a
 /// grouping reads it, even one that cannot be worked on as it stands, and
-/// combines when it can be acted on. Revealing its folders is always there.
+/// Combine when the person can act on it. Every release offers to reveal its
+/// folders.
 pub(super) fn offers(action: CandidateAction) -> String {
     use CandidateAction as A;
     let candidate = "p.item = 'candidate'";

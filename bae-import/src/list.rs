@@ -7,8 +7,9 @@
 //! (`import_list_placement`). Each window of it is a live query of its own
 //! whose request is a range of the list's order, and the count, the summary,
 //! Found's filter entries and what the selection offers are live queries of
-//! their own: a write reruns what it changed. Changing the view, folding a
-//! group or selecting rows is a write the list's live queries answer.
+//! their own: coven reruns each live query whose reads a write changed.
+//! Changing the view, folding a group or selecting rows is a write, and coven
+//! reruns the live queries it changes.
 //!
 //! What is running for a candidate right now — a run queued or in flight, an
 //! import that owns it — is in the standings table the candidate runtime
@@ -93,9 +94,9 @@ pub enum ImportListItem {
         /// commands and state the row has with it.
         live: CandidateLiveState,
         /// The stable key of the header of the group it is listed under,
-        /// for a member of a group. Read with the row, so the header the
-        /// row sits under is known as soon as the row is, whichever window
-        /// holds the header.
+        /// for a member of a group. The list's query reads this key with the
+        /// row, so a surface knows the row's header as soon as it has the
+        /// row, whichever window holds the header.
         header_key: Option<String>,
     },
     /// A folder that failed validation, presented as what the scan read of
@@ -152,8 +153,9 @@ pub struct ImportCandidateListLocation {
     pub key: OrderKey,
 }
 
-/// What the chrome around the list shows beside its rows and counts. Its
-/// own live query: a scan's rows move none of it.
+/// The watched folders, whether Found has groups, and the narrowing, which a
+/// surface shows beside the list's rows and counts. The summary has its own
+/// live query, so the rows a scan writes do not rerun it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
     pub watched_folders: Vec<WatchedFolder>,
@@ -166,8 +168,8 @@ pub struct ImportQueueSummary {
 }
 
 /// How many items the list holds, and how many of its tab's entries its
-/// narrowing keeps. Its own live query: the count that sizes the list's
-/// scroll view, which every scan commit moves.
+/// narrowing keeps. The count has its own live query because every scan
+/// commit changes it; the surface sizes the list's scroll view from it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportListCount {
     pub rows: u64,

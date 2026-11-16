@@ -1,9 +1,10 @@
 //! A list's selection (`import_list_selection`): the rows a person points
-//! at, which are only ever rows the list shows, bar a Pending list's release
-//! whose import landed. What it holds and offers,
-//! read as a live query of its own; the selected rows a bulk action takes, in
-//! the list's order; and the writes that change it, which answer nothing: the
-//! rows they changed rerun the windows holding them.
+//! at, which are only ever rows the list shows, except a release on a
+//! Pending list whose import finished. This module holds what the selection
+//! holds and offers, read as a live query of its own; the selected rows a
+//! bulk action takes, in the list's order; and the writes that change it,
+//! which return nothing; coven reruns the windows that hold the rows a write
+//! changed.
 
 use super::actions::{action_columns, offers};
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
@@ -19,11 +20,11 @@ use crate::{CandidateAction, CandidateKey};
 /// of the rows offer it and whether it can run as the selection stands. The
 /// rows are the summary (position 0) and then each command offered, by its
 /// place in [`CandidateAction::ALL`]. Each command runs row by row over the
-/// rows that offer it, so it is offered when any does. Combining is one
-/// command over the whole selection: it is offered once there are two rows or
-/// more, and can run only when every one of them could be combined, so the
-/// reason it cannot is on the row that holds it back rather than a missing
-/// item.
+/// rows that offer it, so the selection offers it when any row does. Combine
+/// is one command over the whole selection: the selection offers Combine for
+/// two or more rows and enables it only when every row can be combined. A
+/// row that cannot be combined shows the reason, and Combine stays in the
+/// offers.
 pub(super) fn selection(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
@@ -100,8 +101,9 @@ pub(super) fn selection(
     Ok(summary)
 }
 
-/// The selected rows of the list, in its order, and of them those that offer
-/// `acting` when a command is named; `None` once the list is closed.
+/// The selected rows of the list, in its order, and, when the caller names a
+/// command in `acting`, only the rows that offer it; `None` once the list is
+/// closed.
 pub(super) fn selected(
     sql: &impl coven::SqlRead,
     list: ImportListId,
@@ -151,8 +153,8 @@ pub(super) fn selected(
 
 impl ImportTables {
     /// The rows the list `list` has selected, in the order it shows them:
-    /// what a bulk action runs over, narrowed to the rows offering `acting`
-    /// when a command is named.
+    /// what a bulk action runs over. When the caller names a command in
+    /// `acting`, only the rows that offer it.
     pub async fn load_import_list_selected(
         &self,
         list: ImportListId,
@@ -176,7 +178,7 @@ impl ImportTables {
                 let Some(row) = list_row(sql, list)? else {
                     return Ok(None);
                 };
-                // A release whose import landed while the list was on
+                // A release whose import finished while the list was on
                 // Pending stays selected until the person selects again.
                 let kept_unshown: bool = sql.query_row(
                     "SELECT EXISTS (SELECT 1 FROM import_list_selection AS s \

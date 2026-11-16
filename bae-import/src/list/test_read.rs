@@ -39,9 +39,10 @@ impl ImportListRead {
     }
 }
 
-/// A list followed through one window: each value the window delivers is
-/// read whole, with the count, summary, filter entries and selection read
-/// beside it, so a test sees one snapshot per change to the rows it holds.
+/// A list followed through one window: FollowedImportList reads each value
+/// the window delivers in full, together with the count, summary, filter
+/// entries and selection, so a test sees one snapshot per change to the rows
+/// it holds.
 pub struct FollowedImportList {
     list: super::LiveImportList,
     windows: bae_store::live_query::CancellableLiveQuery<
