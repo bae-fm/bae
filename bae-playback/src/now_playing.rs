@@ -27,8 +27,9 @@ pub struct PlayingTrack {
     pub duration_ms: Option<u64>,
 }
 
-/// What surfaces show of the track the playback row names: the library's
-/// current display of it, or that the library no longer holds it.
+/// What the apps' playback screens show of the track the playback row names:
+/// the library's current display of it, or that the library no longer holds
+/// it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum NowPlayingDisplay {
     Library(TrackDisplay),
@@ -45,9 +46,9 @@ impl NowPlayingDisplay {
     }
 }
 
-/// A track the playback row names, as surfaces show it. `Track` is what
-/// playback knows of it: the prepared [`PlayingTrack`], or the track's id
-/// alone while a load has yet to prepare it.
+/// A track the playback row names, as the apps' playback screens show it.
+/// `Track` is what playback knows of it: the prepared [`PlayingTrack`], or
+/// the track's id alone while playback has not yet prepared it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NowPlayingTrack<Track = PlayingTrack> {
     pub track: Track,

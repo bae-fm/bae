@@ -261,11 +261,12 @@ pub(crate) enum PlaybackCommand {
 /// `PlaybackProgress::PositionUpdate` and `PlaybackProgress::Seeked` instead, so
 /// the frequent position updates stay apart from this rarer event.
 ///
-/// `Track` is what the state holds of a prepared track, and `Named` what it
-/// holds of a track a load names before the service has prepared it: either
-/// the service's [`PlayingTrack`] and the track's id, or the
-/// [`NowPlayingTrack`](crate::NowPlayingTrack)s that the apps' screens show,
-/// which add the library's current display to each.
+/// `Track` is the type the state holds for a prepared track, and `Named` is
+/// the type it holds for a track that a load names before the service has
+/// prepared it. The playback service holds a [`PlayingTrack`] and the
+/// track's id. The apps' screens hold a
+/// [`NowPlayingTrack`](crate::NowPlayingTrack) for both, which adds the
+/// library's current title, artists and cover to the track.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackState<Track = PlayingTrack, Named = String> {
     Stopped,

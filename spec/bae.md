@@ -3634,9 +3634,9 @@ closes it. A pairing she declines closes the sheet. One that expires says "This 
 ended" and to choose Add device again for a new one, and one coven refuses
 because the request failed a check says the request was refused and the device
 was not added, each in the sheet with **Done**. Closing the sheet, however it
-closes, ends the pairing, which coven then forgets. Closing the sheet
-first stops it following the pairing and then ends the pairing, so the sheet
-keeps showing its last step until it closes; a
+closes, ends the pairing, which coven then forgets. When the sheet closes,
+the sheet first stops following the pairing and then ends the pairing, so the
+sheet keeps showing its last step until it closes; a
 pairing coven has forgotten while the sheet follows it says "This code has
 ended" as an expired one does. While the sheet follows it, Carol's
 device syncs every 5 seconds instead of every 30, so the request reaches her
@@ -4611,10 +4611,11 @@ playing from  Album Title, tracks 4–11
 
 When track 3 ends, Up next drains first, then the release continues at track
 4. While the next track loads, the now-playing bar, the queue's now-playing
-card, Android's full player and the system's media controls show it: the
-value that names the track it loads carries its title, artists and cover,
-before playback has prepared its audio, so a track change has no moment
-without a track to show.
+card, Android's full player and the system's media controls show it.
+Playback writes the track it loads to its row before it prepares the
+track's audio, and the row the app reads carries that track's title,
+artists and cover, so the app shows a track at every moment of a track
+change.
 The speaker mark on an album's track list is on the track loading, and Go to
 Now Playing opens its album.
 
@@ -5636,7 +5637,8 @@ until it next plays or the person dismisses the failure notice. Starting playbac
 the volume and mute only when it resumes what it played. The app pulls a
 live query of that row joined with the display of the track it names
 (loading, playing or paused) and the queue's repeat mode, a value after each
-change, every value reaching the app as it is. A track the library no longer
+change. The query passes every value to the app and skips none, a value
+for a deleted track included. A track the library no longer
 holds comes back with no display, which the value states as a removed track
 (§7.1).
 The failure notice shows wherever the person is while the row holds a failure:

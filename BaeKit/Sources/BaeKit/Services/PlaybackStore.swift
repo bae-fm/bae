@@ -296,8 +296,9 @@ extension BridgeNowPlayingDisplay {
         }
     }
 
-    /// The title the now-playing surfaces show: the track's, or the line
-    /// saying the library no longer holds it.
+    /// The title the now-playing bar, the mini player and the system media
+    /// controls show: the track's, or the line saying the library no longer
+    /// holds it.
     public var title: String {
         switch self {
         case .library(let display): display.title

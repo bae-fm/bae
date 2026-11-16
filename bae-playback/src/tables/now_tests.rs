@@ -16,7 +16,7 @@ async fn now(db: &Store) -> crate::NowPlayingValues {
     now_playing(db).await.unwrap()
 }
 
-/// The next value `values` answers.
+/// The next value the live query `values` returns.
 async fn next_value(
     values: &mut coven::LiveQuery<crate::NowPlayingValues, DbError>,
 ) -> crate::NowPlayingValues {

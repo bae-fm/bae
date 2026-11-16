@@ -32,17 +32,18 @@ impl BridgePreviewTarget {
     }
 }
 
-/// The prepared track the playback row names, as surfaces show it: the
-/// playback service's track joined with what the library shows of it.
+/// The prepared track the playback row names, as the apps' playback screens
+/// show it: the playback service's track joined with what the library shows
+/// of it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeNowPlayingTrack {
     pub track: BridgePlayingTrack,
     pub display: BridgeNowPlayingDisplay,
 }
 
-/// What surfaces show of the track the playback row names: the library's
-/// current display of it, or that the library no longer holds it. Mirrors
-/// `bae_playback::NowPlayingDisplay`.
+/// What the apps' playback screens show of the track the playback row
+/// names: the library's current display of it, or that the library no
+/// longer holds it. Mirrors `bae_playback::NowPlayingDisplay`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeNowPlayingDisplay {
     Library {
