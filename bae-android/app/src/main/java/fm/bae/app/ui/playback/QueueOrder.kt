@@ -10,10 +10,10 @@ import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeQueueLane
 
 /**
- * The lanes as the sheet shows them: core's read of each, with the moves of a drag laid over a lane
- * until the reorder the drag sent returns. A lane's moves are held while the drag runs and while its
- * reorder is in flight. When the reorder returns, moved or not, the lane shows core's read again, which
- * shows what is stored.
+ * The lanes as the sheet shows them: core's read of each, with the moves of a drag drawn over a lane
+ * until the reorder the drag sent returns. QueueOrder keeps a lane's moves on screen while the drag runs
+ * and until core returns its reorder. When the reorder returns, moved or not, the lane shows core's read
+ * again, which shows the order the queue's tables hold.
  */
 internal class QueueOrder {
     val manual = mutableStateListOf<BridgeQueueEntry>()
@@ -25,58 +25,66 @@ internal class QueueOrder {
     /** Whether a drag is moving rows now. */
     private var dragging = false
 
-    /** How many reorders each held lane has in flight, counting the drag in progress. */
+    /** How many of each lane's reorders have not returned yet, counting the drag in progress. */
     private val holds = mutableMapOf<BridgeQueueLane, Int>()
-
-    /** Where the drag's last step left its row, which its release sends core. */
-    private var pending: LaneDrop? = null
 
     /** The last value [apply] took, which a reorder's return or the end of a drag shows again. */
     private var latest: QueueValue? = null
 
-    /** The row a drag holds: its lane, its entry, and its place in the lane now. */
-    private var held: HeldRow? = null
+    /** The row the person is dragging, or null when no drag runs. */
+    private var drag: QueueDrag? = null
 
-    /** A drag took hold of the row [entryId], drawn at [index] of [lane]. */
-    fun started(
-        lane: BridgeQueueLane,
+    /** Where the sheet draws each row it has on screen now, by entry id. */
+    private val placed = mutableMapOf<String, RowPlace>()
+
+    /** The sheet draws the row [entryId] at [place]. */
+    fun placed(
         entryId: String,
-        index: Int,
+        place: RowPlace,
     ) {
-        held = HeldRow(lane, entryId, index)
+        placed[entryId] = place
+    }
+
+    /** The sheet no longer draws the row [entryId]. */
+    fun unplaced(entryId: String) {
+        placed.remove(entryId)
+    }
+
+    /** The person started dragging the row [entryId], drawn at [place]. */
+    fun started(
+        entryId: String,
+        place: RowPlace,
+    ) {
+        drag = QueueDrag(LaneDrop(entryId, place))
     }
 
     /**
-     * Move the held row [by] places in its lane, as a step of a drag does, and answer where it then sits.
-     * A step that would take the row out of its lane (over a section header or into the other lane) moves
-     * nothing and answers null. Core is told nothing until the drag ends: [released] answers the one
-     * reorder the drag's steps made, and the lane is held from the first step so core's read can't undo
-     * them before then.
+     * A step of the drag put the dragged row beside the row [onto]: move it to [onto]'s place and return
+     * where it then sits. A step onto anything but a row of the dragged row's lane (a section header, a
+     * row of the other lane, a row not read yet) moves nothing and returns null. The sheet tells core
+     * nothing until the drag ends: [released] returns the one reorder the drag's steps made, and
+     * QueueOrder holds the lane from the first step so that core's read cannot undo the steps before then.
      */
-    fun drop(by: Int): LaneDrop? {
-        val row = held?.takeIf { by != 0 && row(it.index + by, it.lane) } ?: return null
-        val to = row.index + by
-        when (row.lane) {
-            BridgeQueueLane.MANUAL -> manual.add(to, manual.removeAt(row.index))
-            BridgeQueueLane.CONTEXT -> context.move(row.index, to)
+    fun step(onto: String): LaneDrop? {
+        val drag = drag
+        val from = drag?.row?.place
+        val to = placed[onto]?.takeIf { it.lane == from?.lane && it != from }
+        if (drag == null || from == null || to == null) return null
+        when (to.lane) {
+            BridgeQueueLane.MANUAL -> manual.add(to.position, manual.removeAt(from.position))
+            BridgeQueueLane.CONTEXT -> context.move(from.position, to.position)
         }
-        row.index = to
-        val drop = LaneDrop(row.lane, row.entryId, to)
-        if (pending?.lane != drop.lane) moveSent(drop.lane)
-        pending = drop
-        return drop
+        if (!drag.moved) moveSent(to.lane)
+        drag.row = LaneDrop(drag.row.entryId, to)
+        drag.moved = true
+        return drag.row
     }
-
-    /** Whether [lane] has a row at [index]. */
-    private fun row(
-        index: Int,
-        lane: BridgeQueueLane,
-    ): Boolean = index in 0 until if (lane == BridgeQueueLane.MANUAL) manual.size else context.size
 
     /** The drag ended: the reorder to send core, where the dragged row now sits, or null when it moved nothing. */
     fun released(): LaneDrop? {
-        held = null
-        return pending.also { pending = null }
+        val ended = drag
+        drag = null
+        return ended?.takeIf { it.moved }?.row
     }
 
     /** A drag is reordering the lanes; values wait until it ends. */
@@ -84,19 +92,19 @@ internal class QueueOrder {
         dragging = true
     }
 
-    /** A reorder of a row of [lane] is held until it returns: the drag's first step makes it. */
+    /** Hold [lane] until the reorder of one of its rows returns. The drag's first step calls this. */
     private fun moveSent(lane: BridgeQueueLane) {
         holds[lane] = (holds[lane] ?: 0) + 1
     }
 
     /**
      * A reorder of a row of [lane] returned, whether it moved the row, moved nothing or failed: the lane
-     * shows core's read, unless a later drag's reorder is still in flight, which keeps its own moves held.
+     * shows core's read, unless core has not yet returned a later drag's reorder, whose moves stay.
      */
     fun reorderReturned(lane: BridgeQueueLane) {
-        val inFlight = holds[lane] ?: return
-        if (inFlight > 1) {
-            holds[lane] = inFlight - 1
+        val waiting = holds[lane] ?: return
+        if (waiting > 1) {
+            holds[lane] = waiting - 1
             return
         }
         holds.remove(lane)
@@ -185,18 +193,22 @@ internal class ContextLaneOrder {
     }
 }
 
-/** A row a drag moved, in [lane], and the [position] among the lane's rows it then sits at, as core is told it. */
-internal data class LaneDrop(
+/** Where the sheet draws a row: its [lane], and its [position] among the lane's rows as drawn now. */
+internal data class RowPlace(
     val lane: BridgeQueueLane,
-    val entryId: String,
     val position: Int,
 )
 
-/** The row a drag holds, in [lane], and its [index] among the lane's rows as the sheet draws them now. */
-private class HeldRow(
-    val lane: BridgeQueueLane,
+/** A row a drag moved, [entryId], and the [place] it then sits at, as the sheet sends it to core. */
+internal data class LaneDrop(
     val entryId: String,
-    var index: Int,
+    val place: RowPlace,
+)
+
+/** The row the person is dragging, where it sits now, and whether a step has moved it. */
+private class QueueDrag(
+    var row: LaneDrop,
+    var moved: Boolean = false,
 )
 
 /** One row taken out at [from] and put back at [to], both positions in the lane as it was shown. */

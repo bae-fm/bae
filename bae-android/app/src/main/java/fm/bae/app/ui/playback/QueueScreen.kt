@@ -123,19 +123,22 @@ internal fun rememberReorderableQueue(
     val reorderState =
         rememberReorderableLazyListState(listState) { from, to ->
             // A step of the drag moves the rows on screen only; its release sends the one reorder.
-            if (order.drop(to.index - from.index) == null) {
+            val onto = to.key as? String
+            if (onto == null || order.step(onto) == null) {
                 logger.debug("reorder: nothing moved (from=${from.key}, to=${to.key})")
             }
         }
-    // The move is held over its lane until the reorder returns; then the lane shows core's read, which
-    // shows what is stored whether the reorder moved the row, moved nothing or failed (and shows its error).
+    // QueueOrder keeps the dragged order over its lane until the reorder returns; then the lane shows core's
+    // read of the order the queue's tables hold, whether the reorder moved the row, moved nothing or failed
+    // (and the sheet shows its error).
     val onDropped: () -> Unit = {
         order.released()?.let { drop ->
+            val place = drop.place
             scope.launch {
-                failures.answer("reorderEntry ${drop.entryId} to ${drop.lane} ${drop.position}") {
-                    session.appHandle.reorderEntry(drop.entryId, drop.lane, drop.position.toULong())
+                failures.answer("reorderEntry ${drop.entryId} to ${place.lane} ${place.position}") {
+                    session.appHandle.reorderEntry(drop.entryId, place.lane, place.position.toULong())
                 }
-                order.reorderReturned(drop.lane)
+                order.reorderReturned(place.lane)
             }
         }
     }
@@ -275,6 +278,10 @@ private fun LazyListScope.queueRows(
         if (item == null) {
             AndroidQueuePlaceholderRow()
         } else {
+            DisposableEffect(item.entryId, index) {
+                queue.order.placed(item.entryId, RowPlace(lane.lane, index))
+                onDispose { queue.order.unplaced(item.entryId) }
+            }
             ReorderableItem(queue.reorderState, key = item.entryId) { isDragging ->
                 Surface(tonalElevation = if (isDragging) 4.dp else 0.dp, color = MaterialTheme.colorScheme.surface) {
                     AndroidQueueRow(
@@ -285,7 +292,7 @@ private fun LazyListScope.queueRows(
                         duration = LocalContext.current.durationClockLabel(item.durationClock),
                         dragHandleModifier =
                             Modifier.draggableHandle(
-                                onDragStarted = { queue.order.started(lane.lane, item.entryId, index) },
+                                onDragStarted = { queue.order.started(item.entryId, RowPlace(lane.lane, index)) },
                                 onDragStopped = queue.onDropped,
                             ),
                         onClick = {
