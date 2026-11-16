@@ -123,14 +123,39 @@ final class MutableImportList: @unchecked Sendable {
         )
     }
 
-    /// A handle over this list, whose view changes open at the top.
+    /// A handle over this list, whose view changes open at the top, and
+    /// which says where a candidate sits among the items as they are now.
     var handle: ImportListHandle {
         .stub(
             queries: queries,
             setView: { _, _ in
                 BridgeImportListViewChange(opening: .top, left: [])
-            }
+            },
+            locateCandidate: { [self] key in locate(key) }
         )
+    }
+
+    /// Where the candidate `key` sits among the items now, on Found.
+    private func locate(_ key: Data) -> BridgeImportCandidateListLocation? {
+        lock.withLock {
+            items.firstIndex { item in
+                if case .candidate(_, let row, _) = item {
+                    row.candidateKey == key
+                }
+                else {
+                    false
+                }
+            }
+            .map { position in
+                BridgeImportCandidateListLocation(
+                    stableKey: items[position].id,
+                    tab: .pending,
+                    groupKey: nil,
+                    visiblePosition: UInt64(position),
+                    key: self.key(items[position])
+                )
+            }
+        }
     }
 
     private var queries: BridgeListQueries<BridgeImportListItem> {

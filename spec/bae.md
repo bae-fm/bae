@@ -1239,7 +1239,9 @@ order it was read in, and keeps its count, since another order moves the rows
 and not how many there are; the table keeps its own scroll while the rows
 redraw in the new order under it. Nothing keeps the place on the list: selecting rows
 since moves no place, and the list otherwise keeps the person's place as rows
-come and go. The write finds the first selected row among the keys the screen
+come and go: when the rows change, core says where the release on top sits now
+and the table puts it back on top, unless the person scrolls before core
+answers. A header or a broken folder on top keeps its position. The write finds the first selected row among the keys the screen
 passes alone, and counts the rows before it by the same index seeks bae uses to read a
 window that starts at a row, as a count over index ranges and not a numbering of
 each row, and a view with nothing selected opens at its top without reading its

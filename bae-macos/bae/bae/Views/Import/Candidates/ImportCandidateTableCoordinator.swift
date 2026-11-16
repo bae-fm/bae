@@ -46,6 +46,10 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private var pendingPlace: ImportListPlace?
     /// Core's answer for where the pending place's row is now.
     private var placeTask: Task<Void, Never>?
+    /// Core's answer for where the place's row sits after the rows moved.
+    /// The table records no place while it waits, since the rows moved under
+    /// a table that has not scrolled, until the person scrolls.
+    private var keepTask: Task<Void, Never>?
     /// The rows last told to the table as header rows, whose height is a
     /// header's.
     private var headerRows = IndexSet()
@@ -134,6 +138,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         releaseHolds()
         placeTask?.cancel()
         placeTask = nil
+        keepTask?.cancel()
+        keepTask = nil
         subscriptions = []
     }
 
@@ -262,15 +268,27 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         )
     }
 
-    /// Keep the person's place while the rows move: the row that was on top
-    /// stays on top. Nothing scrolls while a reveal does the scrolling, while
-    /// the table goes back to its place, or while the rows stand.
+    /// Keep the person's place while the rows move: core says where the
+    /// candidate that was on top sits now, and the table puts it back on
+    /// top. Nothing scrolls while a reveal does the scrolling, while the
+    /// table goes back to its place, or when the rows did not change. A
+    /// place at a position alone stays at that position.
     private func keepPlace(revealing: Bool, rowsChanged: Bool) {
         guard !revealing, rowsChanged, pendingPlace == nil,
-            let place = listSlot.place,
-            let position = place.loadedPosition(in: list)
+            let place = listSlot.place, case .candidate = place.row
         else { return }
-        scroll(toTop: position, offset: place.offset)
+        keepTask?.cancel()
+        let listSlot = listSlot
+        keepTask = Task { [weak self] in
+            let located = await listSlot.position(ofPlace: place)
+            guard let self, !Task.isCancelled else { return }
+            keepTask = nil
+            if let located {
+                loadCurrentRows()
+                scroll(toTop: located, offset: place.offset)
+            }
+            recordPlace()
+        }
     }
 
     /// Put `row` on top: a view change opened the list there, and the slot
@@ -280,6 +298,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     private func showOpening(_ row: Int) {
         placeTask?.cancel()
         placeTask = nil
+        keepTask?.cancel()
+        keepTask = nil
         pendingPlace = nil
         anchorKey = nil
         loadCurrentRows()
@@ -493,9 +513,17 @@ extension ImportCandidateTableCoordinator {
 // MARK: - Scrolling and place
 
 extension ImportCandidateTableCoordinator {
+    /// A scroll during an update comes from the rows moving under the table.
+    /// Any other scroll is the person's, or one the table makes after it
+    /// stops keeping the place, so the table stops keeping the place and
+    /// records where it is now.
     private func clipViewScrolled() {
         holdRowsInView()
         refreshPinnedHeader()
+        if !updating {
+            keepTask?.cancel()
+            keepTask = nil
+        }
         recordPlace()
     }
 
@@ -512,14 +540,9 @@ extension ImportCandidateTableCoordinator {
         }
     }
 
-    /// Go back to `place` in a table mounted anew: to its row where the list
-    /// holds it, else to where the row was while core says where it is now.
+    /// Go back to `place` in a table mounted anew: to where the row was,
+    /// then, for a candidate's row, to where core says it is now.
     private func goBack(to place: ImportListPlace) {
-        if let position = place.loadedPosition(in: list) {
-            scroll(toTop: position, offset: place.offset)
-            endPendingPlace()
-            return
-        }
         scroll(toTop: place.position, offset: place.offset)
         guard case .candidate = place.row else {
             endPendingPlace()
@@ -540,11 +563,14 @@ extension ImportCandidateTableCoordinator {
         }
     }
 
-    /// Stop going back to the pending place — the table is there, or the
-    /// person or a reveal moved it — and take where it is as the place.
+    /// Stop going back to the pending place and stop keeping the place, since
+    /// the table is there or the person or a reveal moved it, and take where
+    /// it is as the place.
     func endPendingPlace() {
         placeTask?.cancel()
         placeTask = nil
+        keepTask?.cancel()
+        keepTask = nil
         guard pendingPlace != nil else { return }
         pendingPlace = nil
         recordPlace()
@@ -553,7 +579,7 @@ extension ImportCandidateTableCoordinator {
     /// Take the row on top of the table, and how far into it the table is
     /// scrolled, as the person's place.
     private func recordPlace() {
-        guard !updating, pendingPlace == nil, let tableView,
+        guard !updating, pendingPlace == nil, keepTask == nil, let tableView,
             let clipView = scrollView?.contentView, let row = topRow
         else { return }
         let top = clipView.bounds.minY
@@ -565,14 +591,13 @@ extension ImportCandidateTableCoordinator {
     }
 
     private func placeRow(at row: Int) -> ImportListPlace.Row {
-        guard let stableKey = list.idAt(row) else { return .unloaded }
-        if let candidate = list.row(of: stableKey)?.triageRow {
-            return .candidate(
-                stableKey: stableKey,
-                candidateKey: candidate.candidateKey
-            )
-        }
-        return .entry(stableKey: stableKey)
+        guard let stableKey = list.idAt(row),
+            let candidate = list.row(of: stableKey)?.triageRow
+        else { return .atPosition }
+        return .candidate(
+            stableKey: stableKey,
+            candidateKey: candidate.candidateKey
+        )
     }
 
     /// Put `row` at the top of the table, scrolled `offset` into it.

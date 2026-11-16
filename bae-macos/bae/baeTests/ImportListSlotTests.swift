@@ -433,7 +433,7 @@ struct ImportListSlotViewChangeTests {
         let listening = slot.openings.sink { opened.append($0) }
         slot.startLoad()
         try await Wait.until { slot.list?.idAt(0) != nil }
-        let place = ImportListPlace(row: .unloaded, position: 30, offset: 4)
+        let place = ImportListPlace(row: .atPosition, position: 30, offset: 4)
         slot.place = place
 
         slot.setSortOrder(.oldestFirst)

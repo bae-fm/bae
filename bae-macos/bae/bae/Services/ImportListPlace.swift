@@ -10,11 +10,10 @@ struct ImportListPlace: Equatable {
     enum Row: Equatable {
         /// A candidate's row, which core can say where it sits now.
         case candidate(stableKey: String, candidateKey: Data)
-        /// A group header or a broken folder's row, found again while the
-        /// list holds it.
-        case entry(stableKey: String)
-        /// A row whose page had not landed, known by its position alone.
-        case unloaded
+        /// A group header's row, a broken folder's, or a row whose page had
+        /// not landed: core can't say where it sits now, so the place is
+        /// its position.
+        case atPosition
     }
 
     let row: Row
@@ -22,17 +21,4 @@ struct ImportListPlace: Equatable {
     let position: Int
     /// How far into the row the table was scrolled, in points.
     let offset: CGFloat
-
-    /// Where the row sits in `list` now, when `list` has loaded it.
-    @MainActor
-    func loadedPosition(
-        in list: PaginatedList<BridgeImportListItem>
-    ) -> Int? {
-        switch row {
-        case .candidate(let stableKey, _), .entry(let stableKey):
-            list.position(of: stableKey)
-        case .unloaded:
-            nil
-        }
-    }
 }

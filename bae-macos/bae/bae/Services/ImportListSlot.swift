@@ -185,7 +185,7 @@ final class ImportListSlot {
     /// Open the list at `position`: the person's place is its row, at its
     /// top, and the table shown scrolls there.
     private func open(at position: Int) {
-        place = ImportListPlace(row: .unloaded, position: position, offset: 0)
+        place = ImportListPlace(row: .atPosition, position: position, offset: 0)
         openings.send(position)
     }
 
