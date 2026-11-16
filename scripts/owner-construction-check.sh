@@ -10,19 +10,27 @@ cd "$ROOT"
 # owner-construction-check.toml. This tool pin is independent of the runtime
 # dependency in Cargo.toml.
 checker_revision="374daef5c43950b622bf382587204a3da7c6af6f"
-target_directory="$(cargo metadata --format-version 1 --locked --no-deps | python3 -c '
+# Every checkout on this machine runs the one checker installed for its
+# revision. The first checkout that needs a revision builds the checker in its
+# own target folder, installs it into a new folder beside the shared ones, and
+# renames the executable into place, so no checkout runs a partly written
+# checker.
+checker_directory="${XDG_CACHE_HOME:-$HOME/.cache}/owner-construction-check"
+checker="$checker_directory/$checker_revision"
+if [ ! -x "$checker" ]; then
+    target_directory="$(cargo metadata --format-version 1 --locked --no-deps | python3 -c '
 import json
 import sys
 
 print(json.load(sys.stdin)["target_directory"])
 ')"
-# Isolate the executable and Cargo artifacts by the exact checker revision.
-checker_target="$target_directory/owner-construction-check/$checker_revision"
-checker_install="$checker_target/install"
-if [ ! -x "$checker_install/bin/owner-construction-check" ]; then
+    mkdir -p "$checker_directory"
+    install_root="$(mktemp -d "$checker_directory/.install.XXXXXX")"
+    trap 'rm -rf "$install_root"' EXIT
     scripts/cargo.sh install --locked --git https://github.com/bae-fm/coven \
-        --rev "$checker_revision" --root "$checker_install" \
-        --target-dir "$checker_target" owner-construction-check
+        --rev "$checker_revision" --root "$install_root" \
+        --target-dir "$target_directory/owner-construction-check" owner-construction-check
+    mv -f "$install_root/bin/owner-construction-check" "$checker"
 fi
 
-"$checker_install/bin/owner-construction-check"
+"$checker"
