@@ -125,7 +125,9 @@ extension ShotScene {
     ) {
         let content = CoverGalleryContent(
             boardCoverGallery(
-                remotes: [("front", 1, .front)],
+                remotes: [
+                    BoardRemoteCover(name: "front", position: 1, type: .front)
+                ],
                 files: ["cover.jpg", "back.jpg"],
                 releaseId: editedReleaseId
             )

@@ -78,59 +78,28 @@ extension ShotScene {
         }
     }
 
+    /// A cover the board's release has on Discogs: its image's name, its
+    /// place in the release's Discogs gallery and the side it shows.
+    struct BoardRemoteCover {
+        let name: String
+        let position: UInt32
+        let type: BridgeCoverImageType
+    }
+
     /// What core reads for the board's release: its cover, two Discogs
     /// covers and the image files in its folder.
     static func boardCoverGallery(
-        remotes remoteNames: [(String, UInt32, BridgeCoverImageType)] = [
-            ("front", 1, .front), ("back", 2, .back),
+        remotes remoteCovers: [BoardRemoteCover] = [
+            BoardRemoteCover(name: "front", position: 1, type: .front),
+            BoardRemoteCover(name: "back", position: 2, type: .back),
         ],
         files fileNames: [String] = ["cover.jpg", "back.jpg", "disc.jpg"],
         releaseId: String = "rel-board-0"
     ) -> BridgeCoverGallery {
-        func remote(
-            _ name: String,
-            position: UInt32,
-            type: BridgeCoverImageType
-        )
-            -> BridgeGalleryCover
-        {
-            let image = BridgeRemoteImageSet(
-                url: "https://images.example/\(name).png",
-                downscaled: []
-            )
-            return BridgeGalleryCover(
-                selection: .remoteCover(
-                    selection: BridgeRemoteCoverSelection(
-                        image: image,
-                        source: .discogs
-                    )
-                ),
-                image: .remote(image: image),
-                label: .remote(
-                    sourceName: "Discogs",
-                    label: .gallery(
-                        reference: nil,
-                        position: position,
-                        types: [type],
-                        comment: ""
-                    )
-                )
-            )
+        let remotes = remoteCovers.map(boardGalleryCover)
+        let files = fileNames.map {
+            boardGalleryCover(file: $0, releaseId: releaseId)
         }
-        func file(_ name: String) -> BridgeGalleryCover {
-            BridgeGalleryCover(
-                selection: .releaseImage(fileId: name),
-                image: .releaseImage(
-                    releaseId: releaseId,
-                    source: .releaseFile(fileId: name)
-                ),
-                label: .file(name: name)
-            )
-        }
-        let remotes = remoteNames.map {
-            remote($0.0, position: $0.1, type: $0.2)
-        }
-        let files = fileNames.map(file)
         return BridgeCoverGallery(
             current: BridgeGalleryCover(
                 selection: nil,
@@ -160,6 +129,50 @@ extension ShotScene {
                 ),
             ],
             total: UInt32(1 + remotes.count + files.count)
+        )
+    }
+
+    /// The gallery entry core reads for `cover`, a Discogs cover.
+    private static func boardGalleryCover(
+        _ cover: BoardRemoteCover
+    ) -> BridgeGalleryCover {
+        let image = BridgeRemoteImageSet(
+            url: "https://images.example/\(cover.name).png",
+            downscaled: []
+        )
+        return BridgeGalleryCover(
+            selection: .remoteCover(
+                selection: BridgeRemoteCoverSelection(
+                    image: image,
+                    source: .discogs
+                )
+            ),
+            image: .remote(image: image),
+            label: .remote(
+                sourceName: "Discogs",
+                label: .gallery(
+                    reference: nil,
+                    position: cover.position,
+                    types: [cover.type],
+                    comment: ""
+                )
+            )
+        )
+    }
+
+    /// The gallery entry core reads for the image file `name` in the folder
+    /// of the release `releaseId`.
+    private static func boardGalleryCover(
+        file name: String,
+        releaseId: String
+    ) -> BridgeGalleryCover {
+        BridgeGalleryCover(
+            selection: .releaseImage(fileId: name),
+            image: .releaseImage(
+                releaseId: releaseId,
+                source: .releaseFile(fileId: name)
+            ),
+            label: .file(name: name)
         )
     }
 }
