@@ -96,12 +96,17 @@ final class CoverGalleryState {
 
     /// Take a value only while it answers the request shown now.
     private func receive(_ snapshot: BridgeCoverGallerySnapshot) {
-        guard let request = snapshot.request, request.owner == owner,
-            request.filter == filter.bridge, request.focus == focusedCover,
-            let gallery = snapshot.gallery
-        else { return }
-        content = CoverGalleryContent(gallery)
-        fetch = gallery.fetch
+        let request = snapshot.request
+        guard request.owner == owner, request.filter == filter.bridge,
+            request.focus == focusedCover
+        else {
+            baeAppLogger.debug(
+                "Dropping the covers read under \(String(describing: request.filter)), focused on \(String(describing: request.focus)), which the picker no longer shows"
+            )
+            return
+        }
+        content = CoverGalleryContent(snapshot.gallery)
+        fetch = snapshot.gallery.fetch
         readFailure = nil
     }
 

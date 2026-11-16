@@ -279,15 +279,12 @@ impl AppServices {
     /// Return a live read of the covers that the cover picker shows for the
     /// library release or candidate this subscription names, updated as
     /// they change. To show another release, candidate or source, set a new
-    /// request on the same read.
+    /// request on the same read. The read delivers nothing while it names
+    /// no release or candidate.
     pub fn subscribe_cover_gallery(&self) -> crate::live_reads::LiveCoverGallery {
-        crate::live_reads::follow_request(
-            &self.inner.manager,
-            self.inner.import.subscribe_cover_gallery(None),
-            |request, gallery| bae_import::CoverGallerySnapshot {
-                request: request.clone(),
-                gallery,
-            },
+        bae_store::live_query::LiveRead::new(
+            self.inner.manager.until_closed(self.inner.import.subscribe_cover_gallery(None)),
+            |_read, snapshot| snapshot,
         )
     }
 

@@ -6,13 +6,14 @@ use crate::types::{
 
 impl crate::types::BridgeCoverGallerySnapshot {
     fn from_core(snapshot: bae_import::CoverGallerySnapshot) -> Self {
+        let bae_import::CoverGallerySnapshot { request, gallery } = snapshot;
         Self {
-            request: snapshot.request.map(|request| crate::types::BridgeCoverGalleryRequest {
+            request: crate::types::BridgeCoverGalleryRequest {
                 owner: BridgeCoverGalleryOwner::from_core(request.owner),
                 filter: BridgeCoverFilter::from_core(request.filter),
                 focus: request.focus.map(BridgeCoverKey::from_core),
-            }),
-            gallery: snapshot.gallery.map(BridgeCoverGallery::from_core),
+            },
+            gallery: BridgeCoverGallery::from_core(gallery),
         }
     }
 }

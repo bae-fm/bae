@@ -398,7 +398,7 @@ extension CoverGalleryQuery {
             values: PulledValues(
                 read: {
                     let snapshot = try await pulls.next()
-                    delivered?.record(snapshot.request?.focus)
+                    delivered?.record(snapshot.request.focus)
                     return snapshot
                 },
                 cancel: { continuation.finish() }

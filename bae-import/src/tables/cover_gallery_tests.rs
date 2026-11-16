@@ -88,7 +88,7 @@ async fn seeded() -> (ImportTables, Store, tempfile::TempDir, tempfile::TempDir)
 
 type Gallery = coven::ReconfigurableLiveQuery<
     Option<CoverGalleryRequest>,
-    Option<CoverGallery>,
+    Option<CoverGallerySnapshot>,
     bae_store::DbError,
 >;
 
@@ -113,9 +113,10 @@ async fn gallery_until(
             if event.request.as_ref() != Some(asked) {
                 continue;
             }
-            let value = event.result.unwrap().expect("the live query answers the request");
-            if accept(&value) {
-                break value;
+            let snapshot = event.result.unwrap().expect("the live query answers the request");
+            assert_eq!(&snapshot.request, asked, "the snapshot names the request it answers");
+            if accept(&snapshot.gallery) {
+                break snapshot.gallery;
             }
         }
     })

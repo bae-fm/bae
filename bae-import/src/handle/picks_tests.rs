@@ -587,7 +587,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
     let gallery = loop {
         let event = gallery.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("the live query answers the request");
+            break event.result.unwrap().expect("the live query answers the request").gallery;
         }
     };
     assert_eq!(

@@ -210,6 +210,6 @@ pub struct BridgeCoverGalleryRequest {
 /// covers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGallerySnapshot {
-    pub request: Option<BridgeCoverGalleryRequest>,
-    pub gallery: Option<BridgeCoverGallery>,
+    pub request: BridgeCoverGalleryRequest,
+    pub gallery: BridgeCoverGallery,
 }

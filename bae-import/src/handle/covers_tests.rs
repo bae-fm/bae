@@ -51,7 +51,7 @@ async fn focused_gallery(
     loop {
         let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("the live query answers the request");
+            break event.result.unwrap().expect("the live query answers the request").gallery;
         }
     }
 }
@@ -312,7 +312,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let gallery = loop {
         let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("the live query answers the request");
+            break event.result.unwrap().expect("the live query answers the request").gallery;
         }
     };
     shut_down(handle).await;
@@ -350,7 +350,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let gallery = loop {
         let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("the live query answers the request");
+            break event.result.unwrap().expect("the live query answers the request").gallery;
         }
     };
     shut_down(handle).await;

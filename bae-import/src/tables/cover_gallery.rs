@@ -201,11 +201,11 @@ pub struct CoverGalleryRequest {
 }
 
 /// What a read of a picker delivered: the request it answered, and its
-/// covers. A read for no request delivers neither.
+/// covers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGallerySnapshot {
-    pub request: Option<CoverGalleryRequest>,
-    pub gallery: Option<CoverGallery>,
+    pub request: CoverGalleryRequest,
+    pub gallery: CoverGallery,
 }
 
 /// The covers `request`'s picker offers, as one read of the library's tables.
@@ -246,18 +246,24 @@ fn cover_gallery_on(
 
 impl ImportTables {
     /// Follow the covers that the picker shows for the release or candidate
-    /// and the source `initial` names, or nothing. A new request changes them
-    /// on the same query, and coven reruns the query when a write changes
-    /// the fetched covers, a release's files or saved cover, or a
-    /// candidate's link, draft or folder.
+    /// and the source `initial` names, each with the request it answers, or
+    /// nothing. A new request changes them on the same query, and coven
+    /// reruns the query when a write changes the fetched covers, a release's
+    /// files or saved cover, or a candidate's link, draft or folder.
     pub fn subscribe_cover_gallery(
         &self,
         initial: Option<CoverGalleryRequest>,
-    ) -> coven::ReconfigurableLiveQuery<Option<CoverGalleryRequest>, Option<CoverGallery>, DbError>
-    {
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<CoverGalleryRequest>,
+        Option<CoverGallerySnapshot>,
+        DbError,
+    > {
         self.store.subscribe_reconfigurable(initial, |request, sql| match request {
             None => Ok(None),
-            Some(request) => Ok(Some(cover_gallery_on(&sql, request)?)),
+            Some(request) => Ok(Some(CoverGallerySnapshot {
+                request: request.clone(),
+                gallery: cover_gallery_on(&sql, request)?,
+            })),
         })
     }
 

@@ -82,7 +82,7 @@ impl ImportServiceHandle {
         initial: Option<crate::CoverGalleryRequest>,
     ) -> coven::ReconfigurableLiveQuery<
         Option<crate::CoverGalleryRequest>,
-        Option<crate::CoverGallery>,
+        Option<crate::CoverGallerySnapshot>,
         bae_store::DbError,
     > {
         self.services.tables.subscribe_cover_gallery(initial)

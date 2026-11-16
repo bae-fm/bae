@@ -565,7 +565,7 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
     let gallery = loop {
         let event = live.next_inline().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("the live query answers the request");
+            break event.result.unwrap().expect("the live query answers the request").gallery;
         }
     };
 
