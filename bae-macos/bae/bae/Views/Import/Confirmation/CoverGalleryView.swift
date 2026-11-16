@@ -2,11 +2,12 @@ import BaeKit
 import SwiftUI
 
 /// Shared cover browser. Preview focus is separate from the saved selection.
-/// It draws the content it is given under the filter it is given, and counts
-/// nothing: whoever owns the filter reads the content for it.
+/// The view draws the content and filter that its caller passes in, and
+/// counts nothing. The filter's owner reads the content for that filter.
 struct CoverGalleryView: View {
     let content: CoverGalleryContent
-    /// Where the catalog lookup stands; its items are not drawn from here.
+    /// The state of the catalog lookup. The view draws remote covers from
+    /// `content`, not from this value.
     let remoteItems: RemoteCoverItems
     @Binding
     var filter: ArtworkBrowserState.Filter
@@ -146,11 +147,12 @@ struct CoverGalleryView: View {
             }
             .onChange(of: content) { _, _ in rebuild() }
             .onChange(of: content.current?.image) { _, _ in rebuild() }
-            // The grid's preview takes the keys whenever it comes on screen: when
+            // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
-            // closes back to it. It never gives them up by hand: the lightbox
-            // takes them as it opens, and clearing the preview's focus in the
-            // same update would clear the lightbox's too.
+            // closes back to it. The code never clears the preview's focus
+            // itself: the lightbox gets focus when it opens, and clearing the
+            // preview's focus in the same update would clear the lightbox's
+            // too.
             .onChange(of: gridPreviewShown, initial: true) { _, shown in
                 if shown { previewFocused = true }
             }

@@ -219,7 +219,8 @@ private struct LibraryRow: View {
                 Text(library.title)
                     .themeText(.strong)
                     .foregroundStyle(Theme.textPrimary)
-                // Under the name only when there is something to put there:
+                // The row shows the line under the name only when it has
+                // something to show:
                 // an empty container still takes the stack's spacing.
                 if removalSteps != nil || openSteps != nil
                     || library.stateLine != nil

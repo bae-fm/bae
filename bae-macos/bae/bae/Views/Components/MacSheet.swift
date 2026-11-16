@@ -42,8 +42,10 @@ struct MacSheet<Content: View, Footer: View>: View {
     }
 
     var body: some View {
-        // The boards' sheet: the title 18 down, the body 12 under it with 10
-        // between its parts, and the footer's own 4 above its buttons.
+        // The boards' sheet: the title starts 18 points below the top edge,
+        // the body starts 12 points below the title, the body's parts have 10
+        // points between them, and the footer has its own 4 above its
+        // buttons.
         VStack(
             alignment: .leading,
             spacing: ThemeSpace.related + ThemeSpace.line

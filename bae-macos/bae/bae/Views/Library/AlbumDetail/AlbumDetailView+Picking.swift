@@ -1,9 +1,9 @@
 import BaeKit
 
 extension AlbumDetailView {
-    /// What the album's track menus do with the picked tracks: each action
-    /// hands core the ids and acts on what core answers, the tracks in the
-    /// order their release lists them.
+    /// What the album's track menus do with the picked tracks. Each action
+    /// sends the picked track ids to core, which returns the tracks in the
+    /// order their release lists them, and then plays or queues them.
     var trackPicking: TrackPicking {
         TrackPicking(
             picked: uiStore.pickedTracks,
@@ -19,9 +19,9 @@ extension AlbumDetailView {
         )
     }
 
-    /// Call `apply` with `trackIds` in the order their release lists them,
-    /// which core reads; a failed read says why and calls nothing. A lone
-    /// track needs no read.
+    /// Call `apply` with `trackIds` in the order their release lists them.
+    /// Core reads the release order. If that read fails, this shows the error
+    /// and does not call `apply`. A single track skips the read.
     func inReleaseOrder(
         _ trackIds: [String],
         then apply: @escaping @MainActor ([String]) -> Void

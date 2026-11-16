@@ -11,11 +11,11 @@ private let importStoreLogger = Logger.bae("ImportStore")
 /// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
 /// per store.
 ///
-/// The list itself is the list slot's: `selectedCandidates` holds the whole
-/// folder for each row the user selected. Keys are unique across the
-/// selected folders and the re-identify sessions (a folder path or
-/// `reidentify:{releaseId}`), so the cross-type helpers below look a candidate
-/// up by key without knowing its source.
+/// `ImportListSlot` holds the list's rows and their order:
+/// `selectedCandidates` holds the whole folder for each row the user
+/// selected. Keys are unique across the selected folders and the re-identify
+/// sessions (a folder path or `reidentify:{releaseId}`), so the cross-type
+/// helpers below look a candidate up by key without knowing its source.
 @Observable
 class ImportStore {
     /// An empty store, made on the main actor, where the streams it holds

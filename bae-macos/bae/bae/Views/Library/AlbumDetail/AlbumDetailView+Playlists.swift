@@ -15,7 +15,8 @@ extension AlbumDetailView {
     }
 
     /// Add `trackIds` to the end of the playlist `playlistId`, in their
-    /// release's order; a failure says why and adds none.
+    /// release's order; if the write fails, the view shows the error and adds
+    /// no tracks.
     private func addToPlaylist(trackIds: [String], playlistId: String) {
         let library = library
         inReleaseOrder(trackIds) { ordered in

@@ -2,7 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The composer/artist browser's master list: virtualized rows over a
-/// `PaginatedList`, each visible row holding its position while it shows.
+/// `PaginatedList`; each row on screen keeps the list loading that row until
+/// the row leaves the screen.
 struct BrowseList<Row: Identifiable & Sendable & Equatable, RowView: View>: View
 where Row.ID: Sendable {
     let list: PaginatedList<Row>

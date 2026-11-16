@@ -203,10 +203,10 @@ private struct SettingsFormBox: View {
 }
 
 /// A switch the size the boards draw (the mini one), its label to the left in
-/// the row's own text size: a control size also sets the label's. A chosen
-/// switch is filled with the chosen accent's swatch colour, the design
-/// system's `accent-fill`, not with the system accent, which is the standard
-/// accent's selection colour whichever accent the person chose.
+/// the row's own text size: a control size also sets the label's. This style
+/// fills a switch that is on with the chosen accent's swatch colour, the
+/// design system's `accent-fill`, not with the system accent, which is the
+/// standard accent's selection colour whichever accent the person chose.
 private struct SettingsSwitchStyle: ToggleStyle {
     @Environment(\.accentChoice)
     private var accent

@@ -2404,175 +2404,175 @@
         }
       }
     },
-    "Move failed: %@ changed since import" : {
+    "Could not move: %@ changed after you imported it." : {
       "comment" : "Storage Manager row: a release's move to the cloud failed because this file's original changed after import; %@ is the file's name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "فشل النقل: تغيّر %@ منذ الاستيراد"
+            "value" : "تعذّر النقل: تغيّر %@ بعد أن استوردته."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Преместването е неуспешно: %@ е променен след импортирането"
+            "value" : "Преместването не беше възможно: %@ е променен, след като го импортирахте."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přesun selhal: %@ se od importu změnil"
+            "value" : "Nelze přesunout: %@ se změnil poté, co jste jej importovali."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flytning mislykkedes: %@ er ændret siden importen"
+            "value" : "Kunne ikke flytte: %@ er ændret, efter du importerede den."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Move failed: %@ changed since import"
+            "value" : "Could not move: %@ changed after you imported it."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verschieben fehlgeschlagen: %@ wurde seit dem Import geändert"
+            "value" : "Verschieben nicht möglich: %@ wurde geändert, nachdem du es importiert hast."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Η μετακίνηση απέτυχε: το %@ άλλαξε μετά την εισαγωγή"
+            "value" : "Δεν ήταν δυνατή η μετακίνηση: το %@ άλλαξε αφού το εισαγάγατε."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Error al mover: %@ ha cambiado desde la importación"
+            "value" : "No se pudo mover: %@ cambió después de que lo importaras."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Siirto epäonnistui: %@ on muuttunut tuonnin jälkeen"
+            "value" : "Siirto ei onnistunut: %@ muuttui sen jälkeen, kun toit sen."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Échec du déplacement : %@ a été modifié depuis l’importation"
+            "value" : "Impossible de déplacer : %@ a été modifié après que vous l’avez importé."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ההעברה נכשלה: %@ השתנה מאז הייבוא"
+            "value" : "לא ניתן להעביר: %@ השתנה אחרי שייבאת אותו."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Premještanje nije uspjelo: %@ je promijenjen od uvoza"
+            "value" : "Premještanje nije moguće: %@ se promijenio nakon što ste ga uvezli."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az áthelyezés sikertelen: a(z) %@ megváltozott az importálás óta"
+            "value" : "Nem sikerült áthelyezni: a(z) %@ megváltozott, miután importáltad."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spostamento non riuscito: %@ è cambiato dopo l’importazione"
+            "value" : "Impossibile spostare: %@ è cambiato dopo che l’hai importato."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移動に失敗しました: %@ は取り込み後に変更されました"
+            "value" : "移動できませんでした: %@ は取り込んだ後に変更されました。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이동 실패: 가져온 이후 %@ 파일이 변경되었습니다"
+            "value" : "이동할 수 없습니다: 가져온 후에 %@ 파일이 변경되었습니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flyttingen mislyktes: %@ er endret siden importen"
+            "value" : "Kunne ikke flytte: %@ er endret etter at du importerte den."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verplaatsen mislukt: %@ is gewijzigd sinds het importeren"
+            "value" : "Kan niet verplaatsen: %@ is gewijzigd nadat je het hebt geïmporteerd."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenoszenie nie powiodło się: plik %@ zmienił się od importu"
+            "value" : "Nie można przenieść: plik %@ zmienił się po zaimportowaniu."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Falha na mudança: %@ foi alterado desde a importação"
+            "value" : "Não foi possível mover: %@ foi alterado depois que você o importou."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Falha na mudança: %@ foi alterado desde a importação"
+            "value" : "Não foi possível mover: %@ foi alterado depois de o ter importado."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mutarea a eșuat: %@ s-a modificat de la import"
+            "value" : "Nu s-a putut muta: %@ s-a modificat după ce l-ai importat."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presun zlyhal: %@ sa od importu zmenil"
+            "value" : "Nedá sa presunúť: %@ sa zmenil po tom, ako ste ho importovali."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Flytten misslyckades: %@ har ändrats sedan importen"
+            "value" : "Kunde inte flytta: %@ har ändrats sedan du importerade den."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taşıma başarısız: %@ içe aktarıldıktan sonra değişti"
+            "value" : "Taşınamadı: %@, içe aktardıktan sonra değişti."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося перемістити: %@ змінено після імпорту"
+            "value" : "Не вдалося перемістити: %@ змінено після того, як ви його імпортували."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移动失败：%@ 自导入后已更改"
+            "value" : "无法移动：%@ 在你导入后已更改。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移動失敗：%@ 自匯入後已變更"
+            "value" : "無法移動：%@ 在你匯入後已變更。"
           }
         }
       }

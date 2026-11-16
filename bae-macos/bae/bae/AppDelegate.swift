@@ -708,9 +708,9 @@ extension AppDelegate {
         )
     }
 
-    /// Open the library after the active one that opens when `offset` is
-    /// positive, and the one before it otherwise; core names both on the
-    /// active library and wraps at the ends.
+    /// Open the next library that opens when `offset` is positive, and the
+    /// previous one otherwise. Core puts both ids on the active library and
+    /// wraps at the ends of the list.
     func switchLibrary(byOffset offset: Int) {
         guard let active = libraries.first(where: \.isActive),
             let id = offset > 0

@@ -3,8 +3,9 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// The import list table's rows, scrolling and window holds. Its selection
-/// handling is in `ImportCandidateTableCoordinator+Selection.swift`.
+/// The coordinator loads the import list table's rows, scrolls it, and holds
+/// the pages of the rows in view. Its selection handling is in
+/// `ImportCandidateTableCoordinator+Selection.swift`.
 @MainActor
 final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     NSTableViewDelegate

@@ -116,7 +116,8 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
             // Both go from the current value, unknown until core says it.
             return target.playbackStore.settings != nil
         case #selector(shuffleLibrary(_:)):
-            // Not known while the library is not counted yet.
+            // Core has not yet said whether the library has a track to
+            // shuffle.
             return target.libraryBrowseSession.canShuffle ?? false
         default:
             return true

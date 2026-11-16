@@ -32,8 +32,8 @@ struct DraftAlbumRow: View {
     @State
     private var searchError: DisplayError?
 
-    /// What the pop-up chooses between: the album the draft files under as
-    /// it stands, the release's own album again after a pick, or a search of
+    /// What the pop-up chooses between: the album the draft files under now,
+    /// the release's own album again after a pick, or a search of
     /// the library's albums.
     private enum Choice: Hashable {
         case standing

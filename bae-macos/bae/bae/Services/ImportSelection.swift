@@ -96,7 +96,7 @@ enum ImportListSelectionOwnerError: Error {
 /// The import list's selection. Core's import list holds it, and only ever
 /// with rows the list shows, so a selection of any size is one core call to
 /// change and one to act on; what it holds and can be told to do arrives here
-/// as its own read, and this keeps no selection of its own.
+/// as its own read, and ImportSelection keeps no selection of its own.
 @MainActor
 @Observable
 final class ImportSelection {

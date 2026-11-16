@@ -170,7 +170,8 @@ struct MainWindowRoot: View {
                 )
             ) { sheet in
                 RenameLibrarySheet(
-                    // The dismissal frame shows the last real value.
+                    // While the sheet closes, it shows the state it had before
+                    // `renameLibrarySheet` became nil.
                     state: Binding(
                         get: { appDelegate.renameLibrarySheet ?? sheet },
                         set: { appDelegate.renameLibrarySheet = $0 }

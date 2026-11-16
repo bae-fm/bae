@@ -1,8 +1,9 @@
 import BaeKit
 
 extension AlbumDetailView {
-    /// Give the album or a track these stars, or clear the person's rating
-    /// with none; a failure says why.
+    /// Sets the person's rating on the album or a track to these stars, or
+    /// clears it when stars is nil. When the write fails, the app shows the
+    /// error.
     func rate(_ target: BridgeRatingTarget, _ stars: BridgeStars?) {
         let library = library
         let uiStore = uiStore

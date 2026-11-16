@@ -56,7 +56,7 @@ enum ImportListContentScroll: Equatable {
     case showOnTop(Int)
 }
 
-/// The content the table last took, which a new read is compared against.
+/// The content the table last took, which `take` compares a new read against.
 struct ImportCandidateTableContent {
     private var taken: ImportCandidateListContentRead
 
@@ -71,8 +71,8 @@ struct ImportCandidateTableContent {
     /// reveal does the scrolling. Narrowed anew — a different tab, filter
     /// text or filter entry — the list shows the row its view opened at, its
     /// first selected row or its top: the row on top before may be gone, or
-    /// anywhere. Otherwise the person's place is kept while the rows move,
-    /// and nothing scrolls while they stand.
+    /// anywhere. Otherwise the table keeps the person's place when the rows
+    /// change, and does not scroll when they are the same.
     mutating func take(
         _ read: ImportCandidateListContentRead,
         revealing: Bool,

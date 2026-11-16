@@ -5,8 +5,8 @@ import Observation
 
 private let logger = Logger.bae("BrowseListSlot")
 
-/// A list a slot keeps warm: it reads its first rows when asked, and stops
-/// reading when the slot replaces it.
+/// A list a slot keeps open between mode switches: it reads its first rows
+/// when asked, and stops reading when the slot replaces it.
 @MainActor
 protocol WarmList: AnyObject {
     func loadInitial() async
@@ -15,7 +15,7 @@ protocol WarmList: AnyObject {
 
 extension PaginatedList: WarmList {}
 
-/// One library-browse mode's list machinery: the warm list, its
+/// What one library-browse mode keeps: its open list, its
 /// live subscriptions, the persisted sort criteria, and the
 /// reload task that rebuilds the list when the criteria change. The album,
 /// composer, and artist modes are three instances of this shape; whether a

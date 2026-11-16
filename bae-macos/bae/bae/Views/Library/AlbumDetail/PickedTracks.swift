@@ -1,11 +1,11 @@
 import Observation
 
 /// The tracks picked on an album's page: which rows are picked and the row a
-/// shift-click extends from. Pure logic, no SwiftUI and no bridge. Picking is
-/// modifier-driven (cmd-click picks or unpicks a row, shift-click picks the
-/// range from the anchor) and a plain click clears it. What the picked set
-/// plays, queues or adds, and in what order, is core's: the ids go to core
-/// in no order.
+/// shift-click extends from. This class holds only logic and uses neither
+/// SwiftUI nor the bridge. Cmd-click picks or unpicks a row, shift-click
+/// picks the range from the anchor, and a plain click clears the picks. Core
+/// decides what the picked set plays, queues or adds, and in what order: the
+/// ids go to core in no order.
 @Observable
 final class PickedTracks {
     private(set) var ids: Set<String> = []

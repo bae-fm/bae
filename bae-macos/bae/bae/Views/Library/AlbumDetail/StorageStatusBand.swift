@@ -147,7 +147,8 @@ struct StorageStatusBand: View {
     }
 }
 
-/// A release whose files only wait to upload: nothing is moving to fill.
+/// The chip for a release whose files wait to upload. No file is uploading
+/// yet, so the chip draws no fill.
 struct QueuedUploadChip: View {
     var body: some View {
         StatusChip(
@@ -157,10 +158,10 @@ struct QueuedUploadChip: View {
     }
 }
 
-/// The band's pill for the change on its way, in the words the band spells
-/// out where the Storage column's chip says one: Queued to pin, Queued to move
-/// to This Mac, Moving to This Mac…. Only the states `transfer` returns reach
-/// it.
+/// The band's pill for the release's pending upload, pin or move to This Mac,
+/// with longer words than the Storage column's chip: Queued to pin, Queued to
+/// move to This Mac, Moving to This Mac…. StorageStatusBand passes only the
+/// states that `transfer` returns.
 struct StorageBandPill: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus

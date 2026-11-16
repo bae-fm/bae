@@ -2,13 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// The context lane as the panel draws it: its length, the rows read so far,
-/// and how to hold a row's place in its list. A value the container builds
-/// from the store, so the panel draws without one.
+/// and how to hold a row's place in its list. The container builds this
+/// value from the store, so the panel draws without the store.
 struct QueueUpcoming {
     let total: Int
     /// `nil` for a row not yet read.
     let itemAt: (Int) -> BridgeQueueEntry?
-    /// Names the list the rows are read from; `nil` while none is open.
+    /// Names the list the store reads the rows from; `nil` while none is
+    /// open.
     let epoch: LoadEpoch?
     let holdRow: @MainActor (_ index: Int) async -> Void
     /// Why the read failed, when it did.
@@ -47,8 +48,8 @@ struct MacQueuePanel: View {
     let upcoming: QueueUpcoming
     /// Where the playing track is; `nil` while none plays.
     let position: LatestSource<BridgeTrackPosition>?
-    /// Opens the context's list in the order it reads in, which waits for its
-    /// length before any of its rows is shown.
+    /// Opens the context's list in the lane's current order and waits for its
+    /// length before the panel shows any of its rows.
     let onShowUpcoming: () async -> Void
     var width: CGFloat = 420
 
@@ -76,8 +77,8 @@ struct MacQueuePanel: View {
     /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
 
-    /// What the context's list is opened for: it follows the order the lane
-    /// reads in.
+    /// The panel opens the context's list again when a context appears or
+    /// shuffle changes.
     private struct UpcomingOpening: Hashable {
         let hasContext: Bool
         let shuffled: Bool

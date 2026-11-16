@@ -617,7 +617,7 @@ extension StorageTableView.Coordinator {
         applySelection([clickedId], to: tableView)
         guard let row = list.row(of: clickedId) else {
             preconditionFailure(
-                "Release \(clickedId) is clicked but has no row"
+                "The person clicked release \(clickedId), but the list has no row for it"
             )
         }
         return MenuTargets(
@@ -628,7 +628,7 @@ extension StorageTableView.Coordinator {
     }
 
     /// The releases a menu acts on, the storage actions they all allow, and
-    /// whether any of them can only be cancelled.
+    /// whether Cancel is the only action one of them offers.
     private struct MenuTargets {
         let rows: [BridgeStorageRow]
         let actions: [BridgeReleaseStorageAction]

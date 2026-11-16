@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The album's stars and who rated it. The stars rate only for a person who
-/// can; a person who can't still reads who did.
+/// The album's stars and who rated it. A person who can rate the album taps
+/// the stars to rate it. Everyone sees who rated it.
 struct AlbumRatingRow: View {
     let rating: BridgeAlbumRating
     /// Rate the album with these stars, or clear its rating with none.

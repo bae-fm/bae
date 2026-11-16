@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 extension View {
-    /// Sits the window's close, minimise and zoom buttons where the boards
+    /// Moves the window's close, minimise and zoom buttons to where the boards
     /// draw them: inset from the sidebar panel's top left corner, in the room
     /// the sidebar leaves at its top. The window's title bar is transparent,
     /// which puts the buttons where a title bar's buttons sit, tight against
@@ -37,8 +37,9 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
             guard let window else { return }
             place(in: window)
             // The window lays its title bar out again when it resizes, becomes
-            // key or leaves full screen, and puts the buttons back; each of
-            // those is followed by an update, which places them again.
+            // key or leaves full screen, and puts the buttons back; after each
+            // of those the window posts an update, and this view moves the
+            // buttons again.
             updates = NotificationCenter.default.addObserver(
                 forName: NSWindow.didUpdateNotification,
                 object: window,
@@ -52,8 +53,8 @@ private struct SettingsWindowButtonsPlacer: NSViewRepresentable {
         }
 
         /// Moves all three buttons by what moves the first to `inset`, so the
-        /// space the system leaves between them stays. A window that already
-        /// has them there is left alone.
+        /// space the system leaves between them stays. When the buttons are
+        /// already there, the function does not move them.
         private func place(in window: NSWindow) {
             let kinds: [NSWindow.ButtonType] = [
                 .closeButton, .miniaturizeButton, .zoomButton,

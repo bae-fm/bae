@@ -1,11 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// What a library release's cover picker shows: the gallery core reads live
-/// for the chosen source, and where the lookup of the catalogs' covers
-/// stands. A lookup stores its covers in core, and a change to the release's
-/// files or saved cover is a write, so each reaches the open picker as a new
-/// value; the filter is the request, changed in place.
+/// Holds the gallery that core's live query returns for the chosen source,
+/// and the status of the catalog cover lookup. A lookup, or a change to the
+/// release's files or saved cover, writes the library, so the query delivers
+/// a new value. Changing `filter` sets the query's request.
 @MainActor
 @Observable
 final class LibraryCoverState {

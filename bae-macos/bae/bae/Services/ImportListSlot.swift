@@ -9,17 +9,17 @@ struct ImportListOpened: Equatable {
     let position: Int
 }
 
-/// The import sidebar's list machinery: the warm `PaginatedList`, the reads
-/// around it, and the view they are showing.
+/// The import sidebar's `PaginatedList`, which stays loaded while the view
+/// changes, the reads around it, and the view they show.
 ///
 /// The view — which tab, which filter text, which order — and the groups
 /// folded shut decide which items sit in which windows, so they are core's
 /// list's rather than applied to a window after it arrives. A view change is
-/// a write that answers where the new view opens; once it has, the list's
-/// windows and count are dropped and read again from that place, so every
-/// value they deliver was read after the write. Until the first of them lands
-/// the rows the list holds are the previous view's, which the sidebar does
-/// not show as this one's. Which groups are folded is core's alone; each
+/// a write that answers where the new view opens; once it has, the list
+/// drops its windows and count and reads them again from that place, so
+/// every value they deliver was read after the write. Until the first
+/// window's rows arrive, the rows the list holds are the previous view's,
+/// which the sidebar does not show as this one's. Which groups are folded is core's alone; each
 /// header says whether it is open.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
@@ -31,12 +31,12 @@ final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
     /// Whether the rows the list holds answer the view it shows: false from
     /// the moment another tab, filter or order is asked for until the windows
-    /// that read it have landed. Before then the list's rows are the previous
-    /// view's.
+    /// read under it have delivered their rows. Before then the list's rows
+    /// are the previous view's.
     private(set) var answersView = true
     private(set) var sortOrder: BridgeImportListOrder
     /// Where the last view change opened the list, which the table scrolls
-    /// to when it is narrowed anew.
+    /// to when the person changes the tab, filter or search.
     private(set) var opened: ImportListOpened
     /// Where the person is in the list, as the table last recorded it. Held
     /// here rather than by the table so the import tab finds it again after
@@ -85,7 +85,7 @@ final class ImportListSlot {
     private var viewChange: Task<Void, Never>?
     /// Set when a read failed. The reads behind a failed one are finished,
     /// so the next view change has to build a new list rather than reopen
-    /// the dead one.
+    /// the list whose reads have ended.
     @ObservationIgnored
     private var sourceFailed = false
 
@@ -179,10 +179,10 @@ final class ImportListSlot {
         updateView { $0.order = order }
     }
 
-    /// How many of the tab's rows the list shows, when the list's count was
-    /// read for `narrowing` — the filter the field holds now — and nothing
-    /// while it was read for another or has not arrived: a count stands only
-    /// beside the filter it is for.
+    /// How many of the tab's rows the list shows, when core counted the list
+    /// under `narrowing`, the filter the field holds now; nil when core
+    /// counted the rows for another filter or has not counted them yet, so
+    /// the field shows a count only next to the filter core counted it for.
     func narrowedCount(
         under narrowing: BridgeImportListNarrowing
     ) -> BridgeNarrowedCount? {

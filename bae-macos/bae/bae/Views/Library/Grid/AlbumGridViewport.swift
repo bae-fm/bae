@@ -89,8 +89,9 @@ final class AlbumGridViewport {
         let minY: CGFloat?
         let scroll: AlbumGridScroll
 
-        // Written out, because the dead-code check reads the compiler's
-        // equality of a struct as assigning its properties without using them.
+        // This struct defines == itself because periphery treats the
+        // compiler-generated == as assigning the properties without reading
+        // them.
         static func == (left: HoldScroll, right: HoldScroll) -> Bool {
             left.slot == right.slot
                 && left.columnCount == right.columnCount

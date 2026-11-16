@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The alert that asks before a playlist is deleted: that it goes from every
-/// device, and that its tracks stay in the library.
+/// The alert that asks before bae deletes a playlist, and says that bae
+/// deletes it from every device and keeps its tracks in the library.
 enum DeletePlaylistConfirmation {
     /// The alert for the playlist named `name`; Delete runs `onDelete`.
     static func alert(

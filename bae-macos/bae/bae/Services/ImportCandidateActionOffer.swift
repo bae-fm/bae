@@ -14,8 +14,8 @@ struct ImportCandidateActionOffer: Identifiable {
     let rowKey: Data?
     var id: BridgeCandidateAction { action }
 
-    /// The count shown beside the action, absent for combining: it reads every
-    /// selected row as one release, so a count says nothing.
+    /// The count shown beside the action, absent for combining: combining
+    /// makes every selected row one release, so a count says nothing.
     var count: Int? { action == .combine ? nil : applicable }
 
     /// What the selection offers, as core's summary of it says.
@@ -33,8 +33,8 @@ struct ImportCandidateActionOffer: Identifiable {
     }
 
     /// What the row at `key` offers on its own: each action its live state
-    /// lists, in the order every surface lists them. Combining reads several
-    /// rows as one release, so a lone row's menu leaves it out.
+    /// lists, in the order every surface lists them. Combining makes several
+    /// rows one release, so a lone row's menu leaves it out.
     static func row(
         _ key: Data,
         actions: [BridgeCandidateAction]

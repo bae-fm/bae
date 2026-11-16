@@ -3,8 +3,9 @@ import BaeKit
 import Observation
 import SwiftUI
 
-/// What the Library/Import strip shows and does, held once: the pills read it
-/// to draw and the strip's tabs read it to report.
+/// This model holds the selected section and the press action. The pills
+/// read it to draw, and the tabs read it to tell assistive technology which
+/// section is selected.
 @MainActor
 @Observable
 final class SectionTabsModel {
@@ -75,8 +76,8 @@ final class SectionTabStripView: NSView {
         super.init(frame: .zero)
         // The strip's own intrinsic size and the four edge constraints below
         // size the pills; the hosting view's minimum and maximum size
-        // constraints would fight them, each change of one asking the strip
-        // to measure again.
+        // constraints would conflict with them, and each change to one would
+        // make the strip measure itself again.
         pills.sizingOptions = [.intrinsicContentSize]
         pills.translatesAutoresizingMaskIntoConstraints = false
         addSubview(pills)

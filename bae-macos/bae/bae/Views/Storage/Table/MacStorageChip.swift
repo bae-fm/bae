@@ -2,10 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// The Storage column's chip: one word of what core says the row's storage
-/// shows, with no icon. Files on the move fill their chip as far as they have
-/// come, as does a release moving to This Mac. A change that waits its turn
-/// reads Queued, a failure Error, and an upload held by a missing original
-/// Waiting; the tooltip says which and why.
+/// shows, with no icon. While files upload, pin or move to This Mac, the chip
+/// fills by the share of bytes bae has transferred. The chip shows Queued for
+/// a change that has not started, Error for a failure, and Waiting for an
+/// upload that needs a missing original; the tooltip says which and why.
 struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
@@ -20,7 +20,7 @@ struct MacStorageChip: View {
                 .help(
                     String(
                         localized:
-                            "Move failed: \(fileName) changed since import"
+                            "Could not move: \(fileName) changed after you imported it."
                     )
                 )
         case .uploading:

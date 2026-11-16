@@ -4,15 +4,16 @@ import SwiftUI
 /// A playlist's entries in order, each with the menu of a track in a
 /// playlist. The playlist's owner moves an entry by dragging its row: the row
 /// stays in place and dims, a copy follows the pointer, and a line over the
-/// gap marks where the entry lands; letting go writes the new order.
+/// gap marks where the entry goes when the owner lets go; letting go writes
+/// the new order.
 struct PlaylistEntryList: View {
     let detail: BridgePlaylistDetail
     let play: (BridgePlaylistEntryRow) -> Void
     let playNext: (BridgePlaylistEntryRow) -> Void
     let addToQueue: (BridgePlaylistEntryRow) -> Void
     let remove: (BridgePlaylistEntryRow) -> Void
-    /// Write the entries in `order`, each named by its position id; answers
-    /// whether it was written.
+    /// Write the entries in `order`, each named by its position id; returns
+    /// true when bae wrote the new order.
     let reorder: (_ order: [String]) async -> Bool
 
     @State
@@ -73,8 +74,8 @@ struct PlaylistEntryList: View {
         }
     }
 
-    /// The entries as drawn: the order just written while the read has not
-    /// caught up with it, else the read's.
+    /// The entries as drawn: the order just written while the playlist's
+    /// query has not yet returned that order, else the query's.
     private var shown: [BridgePlaylistEntryRow] {
         guard let held,
             Set(held) == Set(detail.entries.map(\.positionId))
@@ -125,8 +126,8 @@ struct PlaylistEntryList: View {
         }
     }
 
-    /// The line over the gap the dragged entry would land in; nothing while
-    /// it would stay where it is.
+    /// The line over the gap the dragged entry moves to when the owner lets
+    /// go; nothing while it would stay where it is.
     @ViewBuilder
     private func insertLine(drag: PlaylistEntryDrag, count: Int) -> some View {
         let target = drag.target(rowHeight: rowHeight, count: count)

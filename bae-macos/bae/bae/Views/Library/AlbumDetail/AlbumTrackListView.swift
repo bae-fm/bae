@@ -68,8 +68,8 @@ struct AlbumTrackListView: View {
                 }
             }
         }
-        // A track the page no longer lists is no longer picked: another
-        // release shown, or the track deleted.
+        // When the page shows another release or someone deletes a track,
+        // the view drops the picks of tracks the page no longer lists.
         .onChange(of: release.tracks.map(\.id)) { _, rows in
             picking?.picked.keep(Set(rows))
         }

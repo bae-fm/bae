@@ -65,9 +65,10 @@ final class StorageActionRunner {
         self.openSaveAsSettings = openSaveAsSettings
     }
 
-    /// `releaseIds`, when core says the list still holds every one of them;
-    /// `nil` when one left it (uploaded out of the Local list, filtered out,
-    /// deleted), so a release the list doesn't hold is never acted on.
+    /// Returns `releaseIds` when core says the list still holds all of them,
+    /// and nil when one has left it (uploaded out of the Local list, filtered
+    /// out, deleted), so the runner never acts on a release the list does
+    /// not hold.
     private func listed(_ releaseIds: [String]) async -> [String]? {
         do {
             return try await storageManagerStore.holdsAll(releaseIds)

@@ -300,8 +300,9 @@ enum WelcomeLayout {
 
 /// Why a removal left this Mac's files for a library it already left, or why
 /// reading or finishing that failed, with Retry while there is something to
-/// finish and core says asking again can get past the failure. The library
-/// already left its store, so there is no library for Reset from cloud….
+/// finish and core reports that a second attempt can fix the failure. This
+/// Mac already removed the library from its storage, so the notice does not
+/// offer Reset from cloud….
 private struct UnfinishedRemovalNotice: View {
     let error: DisplayError
     let removals: LibraryRemovals

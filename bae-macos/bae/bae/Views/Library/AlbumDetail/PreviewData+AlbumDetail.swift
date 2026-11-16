@@ -80,12 +80,12 @@
         /// Injects every service the `AlbumDetailView` tree reads from the
         /// environment so its real body — and the modal sheets it can present
         /// (images, the release editor, storage) — render without a
-        /// missing-environment trap. Eight `.stub` domain services, a
-        /// `Library` whose album read answers from the shot albums, the
-        /// projection store over it, the four the modals reach (`Importer`,
-        /// `ImportStore`, `OutboxStore`, `ConfigStore`), and fresh
-        /// `PlaybackStore`/`UiStore`. Nothing about the view is
-        /// reconstructed.
+        /// missing-environment trap. It injects eight `.stub` domain
+        /// services, a `Library` whose album read answers from the shot
+        /// albums, the projection store over it, the four the modals reach
+        /// (`Importer`, `ImportStore`, `OutboxStore`, `ConfigStore`), and a
+        /// new `PlaybackStore` and `UiStore`. The helper rebuilds no part of
+        /// the view.
         @MainActor
         func albumDetailPreviewEnvironment() -> some View {
             let library = PreviewData.albumDetailLibrary()

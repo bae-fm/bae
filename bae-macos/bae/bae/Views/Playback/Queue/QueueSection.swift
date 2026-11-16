@@ -21,9 +21,8 @@ private struct QueueRowSlot: Identifiable {
 
 /// One queue lane (the manual "Up next" lane or the context) as a labelled
 /// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
-/// row, which shows a placeholder; each row holds its place in the lane's
-/// list through `holdRow` while it is drawn, and the list reads the windows
-/// around the rows held.
+/// row, which shows a placeholder; each row the lazy stack draws asks the
+/// lane's list, through `holdRow`, to read the window around its index.
 struct QueueSection: View {
     /// A row's inset from the lane's edges, and the gap under it.
     private static let rowInset = ThemeSpace.related
@@ -39,7 +38,7 @@ struct QueueSection: View {
     let count: Int
     let itemAt: (Int) -> BridgeQueueEntry?
     /// Names the list the lane reads, which restarts the rows' holds when the
-    /// list is replaced. `nil` for the manual lane, which is never windowed.
+    /// store replaces the list. `nil` for the manual lane, which is never windowed.
     let loadEpoch: LoadEpoch?
     /// Hold the row at an index in the lane's list for as long as the call
     /// runs, so the list reads around it. `nil` for the manual lane.

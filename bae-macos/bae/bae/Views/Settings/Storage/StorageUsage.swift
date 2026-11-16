@@ -98,7 +98,8 @@ struct MacStorageUsage: View {
             }
         }
         .frame(height: 8)
-        // The bar is one picture; it reads as the kinds and their sizes.
+        // VoiceOver reads the bar as one image, labelled with each kind and
+        // its size.
         .accessibilityElement()
         .accessibilityAddTraits(.isImage)
         .accessibilityLabel(

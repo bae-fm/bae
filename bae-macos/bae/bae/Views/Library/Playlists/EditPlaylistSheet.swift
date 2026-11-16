@@ -17,8 +17,8 @@ struct EditPlaylistSheetState: Identifiable {
     }
 }
 
-/// Modal for changing a playlist's name and who sees it; the caller saves it
-/// and writes any error back into `state`.
+/// A sheet that changes a playlist's name and who sees it. The caller saves
+/// the changes and writes any error back into `state`.
 struct EditPlaylistSheet: View {
     @Binding
     var state: EditPlaylistSheetState

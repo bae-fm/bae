@@ -195,15 +195,15 @@ final class LibraryBrowseSession {
     }
 
     /// How many albums the open library holds, as the album list's query
-    /// counted them, or `nil` before it has. Read by chrome that has no list
-    /// of its own: an empty composer or artist list says why it is empty.
+    /// counted them, or `nil` before it has. An empty composer or artist list
+    /// reads this count to say why it is empty.
     var albumTotal: Int? {
         albums.list?.itemCount
     }
 
     /// Whether the library holds a track to shuffle, as the album list's
-    /// count says it, or `nil` before it has counted. The Playback menu's
-    /// Shuffle Library item is enabled by it.
+    /// count says it, or `nil` before it has counted. The Playback menu
+    /// enables Shuffle Library while this is true.
     var canShuffle: Bool? {
         albums.list?.canShuffle
     }

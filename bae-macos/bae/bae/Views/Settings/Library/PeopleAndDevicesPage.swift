@@ -330,7 +330,8 @@ struct PeopleAndDevicesPage: View {
         }
     }
 
-    /// The person whose page is open, read by the member id the page holds.
+    /// Returns the person whose page is open when the store's shown person
+    /// has the member id this page holds.
     private func person(_ memberId: String) -> BridgePerson? {
         guard let shown = store.shownPerson, shown.memberId == memberId
         else { return nil }

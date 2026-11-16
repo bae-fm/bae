@@ -147,9 +147,9 @@ class UiStore: @unchecked Sendable {
     // ── Overlays ────────────────────────────────────────────────────────
 
     var lightbox: Cursor<LightboxItem>?
-    /// The open modals, the first presented at the bottom. Each is drawn over
-    /// the one before it, which stays open beneath: the release editor's
-    /// Change cover opens over the editor.
+    /// The open modals, the first presented at the bottom. The window draws
+    /// each modal over the one before it, which stays open beneath: the
+    /// release editor's Change cover opens over the editor.
     private(set) var modalStack: [() -> AnyView] = []
     /// The document open in the viewer. It has a layer of its own, over the
     /// modal: a document opened from the release editor's modal leaves the

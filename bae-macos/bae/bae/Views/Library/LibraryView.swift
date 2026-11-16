@@ -92,7 +92,8 @@ struct LibraryView: View {
             )
         ) { sheet in
             NewPlaylistSheet(
-                // The dismissal frame shows the last real value.
+                // While the sheet closes, it shows the state it had before
+                // `newPlaylistSheet` became nil.
                 state: Binding(
                     get: { uiStore.newPlaylistSheet ?? sheet },
                     set: { uiStore.newPlaylistSheet = $0 }

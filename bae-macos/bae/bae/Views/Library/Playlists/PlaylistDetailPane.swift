@@ -65,7 +65,8 @@ struct PlaylistDetailPane: View {
         .background(Theme.surface)
         .sheet(item: $editing) { sheet in
             EditPlaylistSheet(
-                // The dismissal frame shows the last real value.
+                // While the sheet closes, it shows the state it had before
+                // `editing` became nil.
                 state: Binding(
                     get: { editing ?? sheet },
                     set: { editing = $0 }
@@ -125,8 +126,8 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Save the name and who sees `sheet`'s playlist in one write; a failure
-    /// stays in the sheet, which stays open.
+    /// Save the name and who sees `sheet`'s playlist in one write; when the
+    /// write fails, the sheet stays open and shows the error.
     private func save(_ sheet: EditPlaylistSheetState) {
         let library = library
         Task {
@@ -144,8 +145,8 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Delete `playlist`; its page shows the Playlists placeholder once the
-    /// list drops it. A failure says why.
+    /// Delete `playlist` and clear the selection if it names that playlist.
+    /// When the delete fails, show the error.
     private func delete(_ playlist: BridgePlaylistSummary) {
         let library = library
         let uiStore = uiStore
@@ -182,8 +183,8 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Write `order` as `playlist`'s entries; says why and answers `false`
-    /// when it fails.
+    /// Write `order` as `playlist`'s entries; when the write fails, show the
+    /// error and return `false`.
     private func reorder(
         _ order: [String],
         in playlist: BridgePlaylistSummary

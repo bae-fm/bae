@@ -4,9 +4,9 @@ import SwiftUI
 
 /// What the candidate list's menu shows.
 struct CandidateListMenuState {
-    /// Every watched root with where its scan stands and whether it is on a
-    /// network volume, which is checked on a schedule rather than reported
-    /// the moment it changes: core's folder scans.
+    /// Each watched root, its scan status and whether it is on a network
+    /// volume, from core's folder scans. Core checks network volumes on a
+    /// schedule.
     let folders: [BridgeWatchedFolderScanStatus]
     /// Whether any root's last scan failed or left it not watched, which
     /// also marks the trigger.

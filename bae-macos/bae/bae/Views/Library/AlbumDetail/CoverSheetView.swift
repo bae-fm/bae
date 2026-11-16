@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A library release's cover picker: the covers core reads for it under the
-/// source chosen, with a lookup of the catalogs' covers that core stores.
+/// Shows the covers that core reads for a library release under the source
+/// the person picks, and the catalog lookup whose covers core stores.
 /// Scanned candidate paths never enter this picker.
 struct CoverSheetView: View {
     let releaseId: String

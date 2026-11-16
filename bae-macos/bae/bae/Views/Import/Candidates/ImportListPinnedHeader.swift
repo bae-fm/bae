@@ -9,11 +9,12 @@ import BaeKit
 struct ImportListPinnedHeader: Equatable {
     /// The header's key.
     let key: String
-    /// The header, when a loaded row or a window's leading header is it.
+    /// The header, when the list holds it as a loaded row or as a window's
+    /// leading header.
     let header: BridgeImportListItem?
 
     /// The header pinned while the row at `top` is on top: a header on top
-    /// pins itself, and a release in no group, or a row that has not landed,
+    /// pins itself, and a release in no group, or a row that is not loaded,
     /// pins none. `header` finds the header of a key among the rows and
     /// leading headers the list holds.
     static func over(

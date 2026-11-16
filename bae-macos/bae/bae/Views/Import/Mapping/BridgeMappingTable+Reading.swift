@@ -51,8 +51,8 @@ extension BridgeMappingFile {
 }
 
 extension BridgeSheetBound {
-    /// A container's name is cut like a folder name; every other bound reads
-    /// as a sentence.
+    /// The row cuts a container's name in the middle, like a file name, and
+    /// every other bound at the end.
     var lineCut: LineCut {
         switch self {
         case .describes: .fileName

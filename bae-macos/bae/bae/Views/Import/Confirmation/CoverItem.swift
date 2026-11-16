@@ -58,7 +58,8 @@ struct CoverItem: LightboxImage {
         self.label = label
     }
 
-    /// A cover of a library release's picker, worded from core's label.
+    /// Makes an item for a cover in a library release's picker, labeled with
+    /// the text for core's label.
     init(gallery cover: BridgeGalleryCover) {
         content = .library(cover)
         label =
