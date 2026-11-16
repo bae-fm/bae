@@ -8,7 +8,7 @@ extension ShotScene {
     /// line, a group's header and the band of identifiers.
     static let importComponentScenes: [ShotScene] = [
         component("mac.component.import-folder-line.default", height: 50) {
-            CandidateFolderLine(
+            MacImportFolderLine(
                 tab: .pending,
                 folderName: "Mara Quill - Low Tide Hours (1992) [FLAC]",
                 folderPaths: [],

@@ -24,7 +24,7 @@ struct TriageTabBar: View {
             activeTab = tab
         } label: {
             HStack(spacing: ThemeSpace.inline) {
-                Text(verbatim: CandidateFolderLine.label(for: tab))
+                Text(verbatim: MacImportFolderLine.label(for: tab))
                     .themeText(.strong)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The folder the pane is about: the queue tab it is on, which goes there, a
 /// glyph that reveals it in Finder, and its selectable name.
-struct CandidateFolderLine: View {
+struct MacImportFolderLine: View {
     /// The tab the queue places the folder on. `nil` for a folder the queue
     /// does not hold.
     let tab: BridgeTriageTab?

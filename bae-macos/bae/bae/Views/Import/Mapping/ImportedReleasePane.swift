@@ -29,7 +29,7 @@ struct ImportedReleasePane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            CandidateFolderLine(
+            MacImportFolderLine(
                 tab: candidate.tab,
                 folderName: candidate.displayName,
                 folderPaths: candidate.sourceFolderPaths,
@@ -124,7 +124,7 @@ struct ImportingCandidatePane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
-                CandidateFolderLine(
+                MacImportFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
                     folderPaths: candidate.sourceFolderPaths,

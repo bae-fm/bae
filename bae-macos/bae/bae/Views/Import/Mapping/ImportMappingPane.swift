@@ -48,7 +48,7 @@ struct ImportMappingPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
-                CandidateFolderLine(
+                MacImportFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
                     folderPaths: candidate.sourceFolderPaths,

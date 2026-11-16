@@ -18,7 +18,7 @@ struct InvalidCandidatePane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
-                CandidateFolderLine(
+                MacImportFolderLine(
                     tab: .skipped,
                     folderName: invalid.sourceFolderName,
                     folderPaths: [invalid.folderPath],
