@@ -62,6 +62,7 @@ class LibraryComponentShots : BoardShot() {
                 Box(Modifier.width(380.dp).height(240.dp)) {
                     AndroidAlbumGrid(
                         count = rows.size,
+                        grouped = false,
                         sections = emptyList(),
                         rowAt = rows::get,
                         gridState = rememberLazyGridState(),

@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeListCount
+import uniffi.bae_bridge.BridgeListCountExtra
 import uniffi.bae_bridge.BridgeSortValue
 
 private val logger = BaeLogger("bae.ChainBrowserPageStore")
@@ -60,6 +61,9 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     override var error by mutableStateOf<PageError?>(null)
         private set
     override val hasRows: Boolean get() = firstReadReturned && totalCount > 0
+
+    /** Whether the album grid's count says the grid groups its rows by artist; other lists never do. */
+    val grouped: Boolean get() = (reader?.count?.extra as? BridgeListCountExtra.AlbumGrid)?.grouped == true
 
     /** The artist headings of the album grid grouped by artist, from their own read. */
     var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())

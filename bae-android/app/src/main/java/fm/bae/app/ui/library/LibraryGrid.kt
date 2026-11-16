@@ -39,7 +39,6 @@ internal fun AndroidAlbumGridContainer(
     session: OpenLibrary,
     page: AlbumPageStore,
     gridState: LazyGridState,
-    groupByArtist: Boolean,
     onSelectAlbum: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
 ) {
@@ -50,7 +49,8 @@ internal fun AndroidAlbumGridContainer(
     ) {
         AndroidAlbumGrid(
             count = page.totalCount,
-            sections = if (groupByArtist) page.sections else emptyList(),
+            grouped = page.grouped,
+            sections = page.sections,
             rowAt = page::rowAt,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
@@ -61,13 +61,14 @@ internal fun AndroidAlbumGridContainer(
 
 /**
  * The album grid, taking its rows by index so the screenshot scenes can render
- * it without a live session. With [sections] it is grouped by artist: each
- * group opens with the artist's header, pinned at the top while its albums
- * scroll by.
+ * it without a live session. [grouped], as the grid's count says, groups it by
+ * artist under [sections]: each group opens with the artist's header, pinned
+ * at the top while its albums scroll by.
  */
 @Composable
 internal fun AndroidAlbumGrid(
     count: Int,
+    grouped: Boolean,
     sections: List<BridgeLibraryBrowseSection>,
     rowAt: (Int) -> BridgeAlbumAppearance?,
     gridState: LazyGridState,
@@ -82,7 +83,7 @@ internal fun AndroidAlbumGrid(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (sections.isEmpty()) {
+        if (!grouped) {
             albumItems(0 until count, rowAt, grouped = false, onSelectAlbum)
         } else {
             sections.forEach { section ->

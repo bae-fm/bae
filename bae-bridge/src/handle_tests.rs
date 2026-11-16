@@ -296,7 +296,7 @@ fn an_album_count_pulls_before_any_window() {
     assert_eq!(value.items, 0);
     assert!(matches!(
         value.extra,
-        crate::types::BridgeListCountExtra::AlbumGrid { can_shuffle: false }
+        crate::types::BridgeListCountExtra::AlbumGrid { can_shuffle: false, grouped: false }
     ));
 }
 

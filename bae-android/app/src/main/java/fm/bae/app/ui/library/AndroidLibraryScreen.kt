@@ -246,7 +246,6 @@ private fun AlbumBrowserContent(
             session = session,
             page = page,
             gridState = gridState,
-            groupByArtist = groupByArtist,
             onSelectAlbum = onSelectAlbum,
             onSelectArtist = onSelectArtist,
         )

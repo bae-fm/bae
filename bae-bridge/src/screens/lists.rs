@@ -203,8 +203,8 @@ impl BridgeListCount {
             items: count.items,
             extra: match count.extra {
                 bae_views::ListCountExtra::None => BridgeListCountExtra::None,
-                bae_views::ListCountExtra::AlbumGrid { can_shuffle } => {
-                    BridgeListCountExtra::AlbumGrid { can_shuffle }
+                bae_views::ListCountExtra::AlbumGrid { can_shuffle, grouped } => {
+                    BridgeListCountExtra::AlbumGrid { can_shuffle, grouped }
                 }
                 bae_views::ListCountExtra::Storage { total_size, searching } => {
                     BridgeListCountExtra::Storage { total_size, searching }

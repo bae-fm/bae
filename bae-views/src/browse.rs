@@ -94,9 +94,11 @@ pub struct ListCount {
 pub enum ListCountExtra {
     None,
     /// Whether the library holds at least one track, so the album grid's
-    /// Shuffle has something to play.
+    /// Shuffle has something to play, and whether the grid groups its rows
+    /// by artist.
     AlbumGrid {
         can_shuffle: bool,
+        grouped: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether
     /// a search narrows the list.

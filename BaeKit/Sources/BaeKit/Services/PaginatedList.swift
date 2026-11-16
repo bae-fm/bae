@@ -46,7 +46,7 @@ where Row.ID: Sendable {
     /// count says; `nil` until it has answered, and for a list that is not
     /// the album grid.
     public var canShuffle: Bool? {
-        guard case .albumGrid(let canShuffle)? = count?.extra else {
+        guard case .albumGrid(let canShuffle, _)? = count?.extra else {
             return nil
         }
         return canShuffle

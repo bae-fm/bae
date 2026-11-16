@@ -122,7 +122,7 @@ struct LibraryMenuCommandsTests {
                     .fixed(
                         albums,
                         answers: UnansweredCount(),
-                        extra: .albumGrid(canShuffle: true)
+                        extra: .albumGrid(canShuffle: true, grouped: false)
                     )
                 }),
                 uiStore: uiStore

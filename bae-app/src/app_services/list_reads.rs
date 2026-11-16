@@ -29,7 +29,10 @@ impl AppServices {
                 Ok(bae_views::ListCount {
                     rows: counts.rows,
                     items: counts.albums,
-                    extra: bae_views::ListCountExtra::AlbumGrid { can_shuffle: counts.can_shuffle },
+                    extra: bae_views::ListCountExtra::AlbumGrid {
+                        can_shuffle: counts.can_shuffle,
+                        grouped: counts.grouped,
+                    },
                 })
             }),
         )

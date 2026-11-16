@@ -368,7 +368,7 @@ struct PaginatedListTests {
                         BridgeListCount(
                             rows: 2,
                             items: 1,
-                            extra: .albumGrid(canShuffle: false)
+                            extra: .albumGrid(canShuffle: false, grouped: false)
                         )
                     )
                 },

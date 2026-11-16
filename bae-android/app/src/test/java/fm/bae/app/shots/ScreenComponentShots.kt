@@ -49,6 +49,7 @@ class ScreenComponentShots : BoardShot() {
                         Box(modifier) {
                             AndroidAlbumGrid(
                                 count = previewAlbums.size,
+                                grouped = false,
                                 sections = emptyList(),
                                 rowAt = previewAlbums::get,
                                 gridState = state.gridState,

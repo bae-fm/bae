@@ -263,7 +263,7 @@ impl LibraryViews {
             let rows = if group_by_artist { album_appearance_count_on(&sql)? } else { albums };
             let can_shuffle =
                 sql.query_row("SELECT EXISTS (SELECT 1 FROM tracks)", [], |row| row.get(0))?;
-            Ok(AlbumCounts { albums, rows, can_shuffle })
+            Ok(AlbumCounts { albums, rows, can_shuffle, grouped: group_by_artist })
         })
     }
 
@@ -806,6 +806,9 @@ pub struct AlbumCounts {
     /// Whether the library holds at least one track, so Shuffle Library has
     /// something to play.
     pub can_shuffle: bool,
+    /// Whether the grid groups its rows by artist, so the grid lays them out
+    /// from the read that counts them.
+    pub grouped: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

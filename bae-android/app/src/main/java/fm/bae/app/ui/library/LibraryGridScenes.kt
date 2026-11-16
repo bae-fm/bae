@@ -122,6 +122,7 @@ private fun BoxScope.SceneMenu(
 private fun SceneGroupedAlbums(gridState: LazyGridState) {
     AndroidAlbumGrid(
         count = SCENE_SECTIONS.sumOf { it.albumCount.toInt() },
+        grouped = true,
         sections = SCENE_SECTIONS,
         rowAt = ::sceneGroupedRow,
         gridState = gridState,
@@ -139,6 +140,7 @@ private fun SceneGroupedAlbums(gridState: LazyGridState) {
 internal fun LibraryGridSceneAlbums(gridState: LazyGridState) {
     AndroidAlbumGrid(
         count = SCENE_ALBUM_COUNT,
+        grouped = false,
         sections = emptyList(),
         rowAt = ::sceneFlatRow,
         gridState = gridState,

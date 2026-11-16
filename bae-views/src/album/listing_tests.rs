@@ -91,6 +91,16 @@ async fn counts_of(db: &Store, group_by_artist: bool) -> AlbumCounts {
         .unwrap()
 }
 
+/// The grid's count says whether the grid groups its rows by artist, so the
+/// grid lays them out from the read that counts them, even while it has none.
+#[tokio::test]
+async fn the_grid_count_says_whether_the_grid_groups() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    for grouped in [false, true] {
+        assert_eq!(counts_of(&db, grouped).await.grouped, grouped);
+    }
+}
+
 const SHUFFLE_ARTIST: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c01";
 const SHUFFLE_ALBUM: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c02";
 const SHUFFLE_RELEASE: &str = "1f5e2a30-5b7e-4a52-9c3a-6a0f1d2b3c03";

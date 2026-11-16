@@ -174,6 +174,9 @@ pub enum BridgeListCountExtra {
         /// Whether the library holds at least one track, so Shuffle Library
         /// has something to play.
         can_shuffle: bool,
+        /// Whether the grid groups its rows by artist, so the grid lays them
+        /// out from the read that counts them.
+        grouped: bool,
     },
     /// The Storage Manager's total size of its releases' files, and whether
     /// a search narrows the list.
