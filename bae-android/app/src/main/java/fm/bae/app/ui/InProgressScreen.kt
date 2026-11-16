@@ -18,7 +18,6 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.OpenProgressLine
-import fm.bae.app.ui.components.stepFraction
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeClosingProgress
@@ -119,7 +118,7 @@ internal fun SetupStepScreen(
         AndroidProgress(
             steps = steps,
             title = { context.coreString(it.key) },
-            fraction = { stepFraction(it.done, it.total)?.toDouble() },
+            fraction = { it.fraction },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
             AndroidSpinner(text = stringResource(title))

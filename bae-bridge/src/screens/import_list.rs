@@ -421,10 +421,9 @@ impl ImportList {
                         action.into_core(),
                         |completed, total| {
                             progress.set(crate::types::BridgeFastValue::SelectionActionProgress {
-                                progress: crate::types::BridgeSelectionActionProgress {
-                                    completed,
-                                    total,
-                                },
+                                progress: crate::types::BridgeSelectionActionProgress::new(
+                                    completed, total,
+                                ),
                             });
                         },
                     )

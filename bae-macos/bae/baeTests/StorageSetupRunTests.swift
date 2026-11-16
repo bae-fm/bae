@@ -46,7 +46,8 @@ struct StorageSetupRunTests {
                     step: .connecting,
                     key: "core.library.storage_setup_step.connecting",
                     done: 0,
-                    total: 1
+                    total: 1,
+                    fraction: nil
                 ),
                 finishing: false
             ),
@@ -84,7 +85,8 @@ struct StorageSetupRunTests {
                     step: .creatingStore,
                     key: "core.library.storage_setup_step.creating_store",
                     done: 0,
-                    total: 1
+                    total: 1,
+                    fraction: nil
                 ),
                 finishing: true
             ),

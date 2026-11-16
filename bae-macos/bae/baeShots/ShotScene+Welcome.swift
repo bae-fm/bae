@@ -148,7 +148,8 @@ extension ShotScene {
                                     step: .rebuilding,
                                     key: "core.library.open_step.rebuilding",
                                     done: 45,
-                                    total: 100
+                                    total: 100,
+                                    fraction: 0.45
                                 )
                             )
                             .only,
@@ -174,7 +175,8 @@ extension ShotScene {
                 step: .streamingLibrary,
                 key: "core.library.load_step.streaming_library",
                 done: 5,
-                total: 10
+                total: 10,
+                fraction: 0.5
             )
             return ShotStage(
                 MacWelcomeWindow {
@@ -362,7 +364,8 @@ extension ShotScene {
                                         key:
                                             "core.library.load_step.streaming_library",
                                         done: 3,
-                                        total: 10
+                                        total: 10,
+                                        fraction: 0.3
                                     )
                                 )
                             )

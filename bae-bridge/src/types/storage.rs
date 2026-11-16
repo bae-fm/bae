@@ -252,10 +252,11 @@ impl BridgeStorageSetupStep {
     }
 }
 
-/// How far a storage setup has come: its step, and how many of the step's
-/// units are done out of its total. A step other than `Loading` is one unit.
-/// Its stream's one key, `""`, holds it while a step runs.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+/// How far a storage setup has come: its step, how many of the step's units
+/// are done out of its total, and the share of them done that its bar fills
+/// to. A step other than `Loading` is one unit. Its stream's one key, `""`,
+/// holds it while a step runs.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeStorageSetupProgress {
     pub step: BridgeStorageSetupStep,
     /// The `Core` table key of the step's line, over the progress bar; a
@@ -263,11 +264,15 @@ pub struct BridgeStorageSetupProgress {
     pub key: String,
     pub done: u64,
     pub total: u64,
+    /// The share of the step's units done, from 0 to 1; `None` for a step of
+    /// one unit, whose bar moves without a count.
+    pub fraction: Option<f64>,
 }
 
 impl BridgeStorageSetupProgress {
     pub(crate) fn new(step: BridgeStorageSetupStep, done: u64, total: u64) -> Self {
-        Self { key: step.key().to_string(), step, done, total }
+        let fraction = if total > 1 { crate::types::step_fraction(done, total) } else { None };
+        Self { key: step.key().to_string(), step, done, total, fraction }
     }
 
     pub(crate) fn from_core(value: coven::Progress<coven::StorageSetupStep>) -> Self {

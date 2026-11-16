@@ -438,11 +438,21 @@ mirror_enum! {
     variants: { Candidate { key: (into) }, InvalidCandidate { key: (into) } },
 }
 
-/// How many of the candidates a bulk action runs on it has finished.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+/// How many of the candidates a bulk action runs on it has finished, and
+/// the share of them finished that its bar fills to.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeSelectionActionProgress {
     pub completed: u64,
     pub total: u64,
+    /// The share of the candidates finished, from 0 to 1; `None` before the
+    /// action has counted them, while its bar moves without a count.
+    pub fraction: Option<f64>,
+}
+
+impl BridgeSelectionActionProgress {
+    pub(crate) fn new(completed: u64, total: u64) -> Self {
+        Self { completed, total, fraction: crate::types::step_fraction(completed, total) }
+    }
 }
 
 /// One selected candidate a bulk action could not run on, and why.

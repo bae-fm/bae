@@ -130,7 +130,7 @@ class OnboardingProgressTest {
     fun loadingTheLibraryNamesItsStep() {
         val loading =
             BridgeBootstrapStep.Loading(
-                BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", done = 2uL, total = 8uL),
+                BridgeLoadProgress(BridgeLoadStep.READING, "core.library.load_step.reading", done = 2uL, total = 8uL, fraction = 0.25),
             )
         val steps = LatestStream.written<BridgeBootstrapStep>()
         compose.setContent {

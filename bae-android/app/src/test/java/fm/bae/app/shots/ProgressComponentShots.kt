@@ -29,7 +29,7 @@ private fun Progress(fraction: Double?) {
         remember {
             LatestStream
                 .openProgress(
-                    BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 1uL, 3uL),
+                    BridgeOpenProgress(BridgeOpenStep.MIGRATING, "core.library.open_step.migrating", 1uL, 3uL, 1.0 / 3),
                 ).only
         }
     AndroidProgress(

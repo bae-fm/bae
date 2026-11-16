@@ -90,6 +90,7 @@ class SetupStepScreenTest {
                 key = "core.library.setup_step.finishing_removals",
                 done = 1uL,
                 total = 2uL,
+                fraction = 0.5,
             )
     }
 }

@@ -156,7 +156,11 @@ struct ImportSelectionTests {
                 progressStream: { progress.stream },
                 run: { _, _, _ in
                     progress.set(
-                        BridgeSelectionActionProgress(completed: 1, total: 3)
+                        BridgeSelectionActionProgress(
+                            completed: 1,
+                            total: 3,
+                            fraction: 1.0 / 3
+                        )
                     )
                     for await _ in release.stream { break }
                     return []
@@ -182,7 +186,12 @@ struct ImportSelectionTests {
         }
         following.follow(running.progress)
         try await Wait.until {
-            shown.last == BridgeSelectionActionProgress(completed: 1, total: 3)
+            shown.last
+                == BridgeSelectionActionProgress(
+                    completed: 1,
+                    total: 3,
+                    fraction: 1.0 / 3
+                )
         }
         following.stop()
         release.continuation.yield(())

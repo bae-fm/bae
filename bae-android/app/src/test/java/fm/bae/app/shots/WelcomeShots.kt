@@ -242,7 +242,7 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeOpeningSteps() =
         shot("android.welcome.opening.steps") {
-            val progress = BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 4uL, 9uL)
+            val progress = BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 4uL, 9uL, 4.0 / 9)
             ScreenScene { InProgressScreen(AppScreen.Opening(LatestStream.openProgress(progress).only)) }
         }
 
@@ -346,6 +346,7 @@ private fun loadingSteps() =
                     "core.library.load_step.streaming_library",
                     3uL,
                     10uL,
+                    0.3,
                 ),
             ),
         ).only

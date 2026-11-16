@@ -1210,7 +1210,9 @@ shows. The pane a selection opens reads only that selection,
 so with nothing selected it shows nothing selected. A bulk action, combining,
 keeping separate and showing the folders take the selected keys, and each runs in core over
 the selected rows the list shows that offer it, in the order the list shows
-them; a bulk action answers with the rows it failed on; how many it has done moves
+them; a bulk action answers with the rows it failed on; how many it has done,
+with the share of the rows done its bar fills to (none before it has counted
+them, while its bar moves without a count), moves
 with each row, so it reaches the app only in a `KeyedValueStream` (§10.2)
 the list hands out, holding it while the action runs. A broken folder offers
 no action, so selected among others it counts
@@ -5654,7 +5656,10 @@ profile's library, setting it up, and connecting it to its storage, and the
 first step that fails stops it. The apps read these steps from the stream
 like an open's, never from a callback, and show the step's name over a bar:
 counted where the step is counted, moving without a count where it is not,
-never a bare spinner.
+never a bare spinner. Core decides which with each step it sends: the share of
+the step's units done, or none for a step of no units (and, for a storage
+setup, for a step of one unit), and the apps fill the bar to it or move it
+without a count.
 
 A restore, a join and a device reset load the library from storage, and say
 where they stand state by state: a new installation's database opening, then

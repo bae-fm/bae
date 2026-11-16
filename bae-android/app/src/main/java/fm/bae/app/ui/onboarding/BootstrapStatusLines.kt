@@ -26,7 +26,6 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.stepFraction
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
@@ -54,9 +53,9 @@ internal fun BootstrapStepLine(
         },
         fraction = { step ->
             when (step) {
-                is BridgeBootstrapStep.Opening -> stepFraction(step.progress.done, step.progress.total)
-                is BridgeBootstrapStep.Loading -> stepFraction(step.progress.done, step.progress.total)
-            }?.toDouble()
+                is BridgeBootstrapStep.Opening -> step.progress.fraction
+                is BridgeBootstrapStep.Loading -> step.progress.fraction
+            }
         },
         modifier = modifier,
         onStepping = onStepping,

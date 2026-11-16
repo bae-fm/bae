@@ -11,9 +11,6 @@ protocol ProgressStep: Sendable, Equatable {
 
 extension BridgeOpenProgress: ProgressStep {
     var title: String { localizedCoreString(key) }
-    var fraction: Double? {
-        total > 0 ? Double(done) / Double(total) : 0
-    }
 }
 
 extension BridgeBootstrapStep: ProgressStep {
@@ -30,8 +27,7 @@ extension BridgeBootstrapStep: ProgressStep {
         case .opening(let progress):
             progress.fraction
         case .loading(let progress):
-            Double(min(progress.done, progress.total))
-                / Double(max(progress.total, 1))
+            progress.fraction
         }
     }
 }
@@ -52,17 +48,10 @@ extension BridgeStorageSetupProgress: ProgressStep {
     var title: String {
         localizedCoreString(key)
     }
-    /// A step of one unit moves without a count; loading's steps count.
-    var fraction: Double? {
-        total > 1 ? Double(done) / Double(total) : nil
-    }
 }
 
 extension BridgeSetupProgress: ProgressStep {
     var title: String { localizedCoreString(key) }
-    var fraction: Double? {
-        total > 0 ? Double(done) / Double(total) : nil
-    }
 }
 
 extension SetupLine: ProgressStep {

@@ -24,7 +24,7 @@ internal fun OpenProgressLine(
     AndroidProgress(
         steps = steps,
         title = { context.coreString(it.key) },
-        fraction = { if (it.total > 0uL) it.done.toDouble() / it.total.toDouble() else 0.0 },
+        fraction = { it.fraction },
         modifier = modifier,
         bar = bar,
         onStepping = onStepping,

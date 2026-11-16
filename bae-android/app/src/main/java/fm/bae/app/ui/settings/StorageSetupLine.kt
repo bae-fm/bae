@@ -18,6 +18,6 @@ internal fun StorageSetupLine(steps: LatestSource<BridgeStorageSetupProgress>) {
     AndroidProgress(
         steps = steps,
         title = { context.coreString(it.key) },
-        fraction = { if (it.total > 1uL) it.done.toDouble() / it.total.toDouble() else null },
+        fraction = { it.fraction },
     ) {}
 }

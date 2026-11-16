@@ -57,14 +57,11 @@ final class SelectionActionProgressNSView: NSView {
         following.stop()
     }
 
-    /// Before the action counts its folders, it names none and fills
-    /// nothing.
+    /// Before the action counts its folders, it names none, and its bar
+    /// moves without a count.
     private func show(_ progress: BridgeSelectionActionProgress?) {
-        let total = Int(progress?.total ?? 0)
-        label.stringValue = action.label(count: total)
-        bar.progress =
-            total > 0
-            ? Double(progress?.completed ?? 0) / Double(total) : 0
+        label.stringValue = action.label(count: Int(progress?.total ?? 0))
+        bar.progress = progress == nil ? 0 : progress?.fraction
     }
 }
 
