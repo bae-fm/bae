@@ -143,7 +143,7 @@ fn names(section: &CoverSection) -> Vec<String> {
         .items
         .iter()
         .map(|item| match &item.label {
-            GalleryLabel::File(name) => name.clone(),
+            GalleryLabel::File { name, .. } => name.clone(),
             GalleryLabel::Remote { .. } => match &item.image {
                 CoverImageSource::Remote { image } => image.url.clone(),
                 other => panic!("a remote cover draws from {other:?}"),
@@ -159,7 +159,7 @@ async fn all_sources_show_the_saved_cover_the_offered_covers_and_the_image_files
     let gallery = read(&tables, CoverFilter::All).await;
 
     let current = gallery.current.clone().expect("the saved cover");
-    assert_eq!(current.selection, None);
+    assert_eq!(current.label, GalleryLabel::Current);
     assert!(matches!(
         current.image,
         CoverImageSource::ReleaseImage { source: bae_records::GallerySource::Cover(_), .. }

@@ -67,7 +67,7 @@ fn sections(gallery: &crate::CoverGallery) -> Vec<(crate::CoverSectionSource, u3
                 .items
                 .iter()
                 .map(|item| match (&item.label, &item.image) {
-                    (crate::GalleryLabel::File(name), _) => name.clone(),
+                    (crate::GalleryLabel::File { name, .. }, _) => name.clone(),
                     (_, crate::CoverImageSource::Remote { image }) => image.url.clone(),
                     other => panic!("a candidate's gallery holds {other:?}"),
                 })

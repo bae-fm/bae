@@ -586,12 +586,12 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
             source: crate::CoverSectionSource::Remote,
             items: vec![crate::GalleryCover {
                 key: crate::CoverKey::Remote(front.to_string()),
-                selection: Some(crate::CoverSelection::Remote(image.clone(), Catalog::MusicBrainz)),
-                image: crate::CoverImageSource::Remote { image },
                 label: crate::GalleryLabel::Remote {
                     label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
                     source: Catalog::MusicBrainz,
+                    selection: crate::CoverSelection::Remote(image.clone(), Catalog::MusicBrainz),
                 },
+                image: crate::CoverImageSource::Remote { image },
             }],
             count: 1,
         }]

@@ -49,15 +49,20 @@ mirror_enum! {
     variants: { Remote, ReleaseFiles },
 }
 
-/// What names a cover in the picker; the app words it.
+/// What names a cover in the picker, which the app words, and what saving it
+/// selects. Saving the cover the release has now selects nothing.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverItemLabel {
     /// The cover the release has now.
     Current,
     /// An image file of the release or the folder, by its name there.
-    File { name: String },
+    File { name: String, selection: super::BridgeCoverSelection },
     /// A cover a catalog offers: the service that serves it, and what it shows.
-    Remote { source_name: String, label: super::BridgeCoverLabel },
+    Remote {
+        source_name: String,
+        label: super::BridgeCoverLabel,
+        selection: super::BridgeCoverSelection,
+    },
 }
 
 /// What names one cover of a picker: the saved cover, a catalog's image by
@@ -76,12 +81,11 @@ mirror_enum! {
     variants: { Saved, Remote(url), File(file_id) },
 }
 
-/// One cover the picker shows: its key, what saving it selects (none for the
-/// saved cover), where its image comes from, and its label.
+/// One cover the picker shows: its key, where its image comes from, and its
+/// label, which holds what saving it selects.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryCover {
     pub key: BridgeCoverKey,
-    pub selection: Option<super::BridgeCoverSelection>,
     pub image: super::BridgeCoverImageSource,
     pub label: BridgeCoverItemLabel,
 }
@@ -158,15 +162,18 @@ impl BridgeGalleryCover {
     fn from_core(cover: bae_import::GalleryCover) -> Self {
         Self {
             key: BridgeCoverKey::from_core(cover.key),
-            selection: cover.selection.map(super::BridgeCoverSelection::from_core),
             image: super::BridgeCoverImageSource::from_core(cover.image),
             label: match cover.label {
                 bae_import::GalleryLabel::Current => BridgeCoverItemLabel::Current,
-                bae_import::GalleryLabel::File(name) => BridgeCoverItemLabel::File { name },
-                bae_import::GalleryLabel::Remote { label, source } => {
+                bae_import::GalleryLabel::File { name, selection } => BridgeCoverItemLabel::File {
+                    name,
+                    selection: super::BridgeCoverSelection::from_core(selection),
+                },
+                bae_import::GalleryLabel::Remote { label, source, selection } => {
                     BridgeCoverItemLabel::Remote {
                         source_name: source.cover_source_name().to_string(),
                         label: super::BridgeCoverLabel::from_core(label),
+                        selection: super::BridgeCoverSelection::from_core(selection),
                     }
                 }
             },

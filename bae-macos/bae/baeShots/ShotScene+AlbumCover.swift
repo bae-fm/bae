@@ -99,7 +99,6 @@ extension ShotScene {
         return BridgeCoverGallery(
             current: BridgeGalleryCover(
                 key: .saved,
-                selection: nil,
                 image: .releaseImage(
                     releaseId: releaseId,
                     source: .cover(
@@ -141,12 +140,6 @@ extension ShotScene {
         )
         return BridgeGalleryCover(
             key: .remote(url: image.url),
-            selection: .remoteCover(
-                selection: BridgeRemoteCoverSelection(
-                    image: image,
-                    source: .discogs
-                )
-            ),
             image: .remote(image: image),
             label: .remote(
                 sourceName: "Discogs",
@@ -155,6 +148,12 @@ extension ShotScene {
                     position: cover.position,
                     types: [cover.type],
                     comment: ""
+                ),
+                selection: .remoteCover(
+                    selection: BridgeRemoteCoverSelection(
+                        image: image,
+                        source: .discogs
+                    )
                 )
             )
         )
@@ -168,12 +167,14 @@ extension ShotScene {
     ) -> BridgeGalleryCover {
         BridgeGalleryCover(
             key: .file(fileId: name),
-            selection: .releaseImage(fileId: name),
             image: .releaseImage(
                 releaseId: releaseId,
                 source: .releaseFile(fileId: name)
             ),
-            label: .file(name: name)
+            label: .file(
+                name: name,
+                selection: .releaseImage(fileId: name)
+            )
         )
     }
 }

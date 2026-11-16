@@ -255,9 +255,11 @@ extension CoverLightboxTests {
         CoverItem(
             gallery: BridgeGalleryCover(
                 key: .file(fileId: "scan-file"),
-                selection: .releaseImage(fileId: "scan-file"),
                 image: .local(file: file),
-                label: .file(name: "scans/booklet.png")
+                label: .file(
+                    name: "scans/booklet.png",
+                    selection: .releaseImage(fileId: "scan-file")
+                )
             )
         )
     }
@@ -275,12 +277,6 @@ extension CoverLightboxTests {
         return CoverItem(
             gallery: BridgeGalleryCover(
                 key: .remote(url: image.url),
-                selection: .remoteCover(
-                    selection: BridgeRemoteCoverSelection(
-                        image: image,
-                        source: .discogs
-                    )
-                ),
                 image: .remote(image: image),
                 label: .remote(
                     sourceName: "Discogs",
@@ -289,6 +285,12 @@ extension CoverLightboxTests {
                         position: 1,
                         types: [],
                         comment: name
+                    ),
+                    selection: .remoteCover(
+                        selection: BridgeRemoteCoverSelection(
+                            image: image,
+                            source: .discogs
+                        )
                     )
                 )
             )

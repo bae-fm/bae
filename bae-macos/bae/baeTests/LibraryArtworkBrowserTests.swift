@@ -316,7 +316,6 @@ extension LibraryArtworkBrowserTests {
     {
         BridgeGalleryCover(
             key: .saved,
-            selection: nil,
             image: .releaseImage(
                 releaseId: "release",
                 source: .cover(
@@ -340,9 +339,12 @@ extension LibraryArtworkBrowserTests {
             }
         return BridgeGalleryCover(
             key: .remote(url: url),
-            selection: cover.coverChoice.selection,
             image: cover.coverChoice.image,
-            label: .remote(sourceName: cover.sourceName, label: cover.label)
+            label: .remote(
+                sourceName: cover.sourceName,
+                label: cover.label,
+                selection: cover.coverChoice.selection
+            )
         )
     }
 

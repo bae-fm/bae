@@ -34,10 +34,21 @@ struct CoverItem: LightboxImage {
         label =
             switch cover.label {
             case .current: String(localized: "Cover")
-            case .file(let name): name
-            case .remote(let sourceName, let label):
+            case .file(let name, _): name
+            case .remote(let sourceName, let label, _):
                 coverLabelText(sourceName: sourceName, label: label)
             }
+    }
+}
+
+extension BridgeGalleryCover {
+    /// What saving the cover selects, which its label holds: none for the
+    /// cover the release has now.
+    var selection: BridgeCoverSelection? {
+        switch label {
+        case .current: nil
+        case .file(_, let selection), .remote(_, _, let selection): selection
+        }
     }
 }
 

@@ -75,15 +75,16 @@ pub enum CoverSectionSource {
     ReleaseFiles,
 }
 
-/// What names a gallery cover to the person.
+/// What names a gallery cover to the person, and what saving it selects.
+/// Saving the cover the release has now selects nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GalleryLabel {
     /// The cover the release has now.
     Current,
     /// An image file of the release or the folder, by its name there.
-    File(String),
+    File { name: String, selection: CoverSelection },
     /// A cover a catalog offers.
-    Remote { label: CoverLabel, source: Catalog },
+    Remote { label: CoverLabel, source: Catalog, selection: CoverSelection },
 }
 
 /// What names one cover of a picker: the saved cover, a catalog's image by
@@ -95,12 +96,11 @@ pub enum CoverKey {
     File(String),
 }
 
-/// One cover the picker shows: its key, what saving it selects (none for the
-/// saved cover), where its image comes from, and its label.
+/// One cover the picker shows: its key, where its image comes from, and its
+/// label, which holds what saving it selects.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GalleryCover {
     pub key: CoverKey,
-    pub selection: Option<CoverSelection>,
     pub image: CoverImageSource,
     pub label: GalleryLabel,
 }

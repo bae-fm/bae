@@ -74,12 +74,14 @@ struct CoverPickerTests {
         let files = release.coverFiles.map {
             BridgeGalleryCover(
                 key: .file(fileId: $0.id),
-                selection: .releaseImage(fileId: $0.id),
                 image: .releaseImage(
                     releaseId: release.id,
                     source: .releaseFile(fileId: $0.id)
                 ),
-                label: .file(name: $0.originalFilename)
+                label: .file(
+                    name: $0.originalFilename,
+                    selection: .releaseImage(fileId: $0.id)
+                )
             )
         }
         return BridgeCoverGallery(
@@ -191,11 +193,11 @@ struct CoverPickerTests {
         let remoteItem = CoverItem(
             gallery: BridgeGalleryCover(
                 key: .remote(url: "front"),
-                selection: remote.coverChoice.selection,
                 image: remote.coverChoice.image,
                 label: .remote(
                     sourceName: remote.sourceName,
-                    label: remote.label
+                    label: remote.label,
+                    selection: remote.coverChoice.selection
                 )
             )
         )
@@ -205,9 +207,11 @@ struct CoverPickerTests {
         let fileItem = CoverItem(
             gallery: BridgeGalleryCover(
                 key: .file(fileId: "front.png"),
-                selection: .releaseImage(fileId: "front.png"),
                 image: .local(file: PreviewData.previewArtFile("front.png")),
-                label: .file(name: "front.png")
+                label: .file(
+                    name: "front.png",
+                    selection: .releaseImage(fileId: "front.png")
+                )
             )
         )
         #expect(fileItem.sourceLabel == String(localized: "Release files"))

@@ -131,9 +131,12 @@ impl ItemJson {
         };
         let remote = |cover: RemoteCover| GalleryCover {
             key: CoverKey::Remote(cover.image.url.clone()),
-            selection: Some(CoverSelection::Remote(cover.image.clone(), cover.source)),
+            label: GalleryLabel::Remote {
+                label: cover.label,
+                source: cover.source,
+                selection: CoverSelection::Remote(cover.image.clone(), cover.source),
+            },
             image: CoverImageSource::Remote { image: cover.image },
-            label: GalleryLabel::Remote { label: cover.label, source: cover.source },
         };
         Ok(match self {
             Self::Saved { version } => {
@@ -142,7 +145,6 @@ impl ItemJson {
                     .ok_or_else(|| DbError::unreadable("a release's saved cover", release_id))?;
                 GalleryCover {
                     key: CoverKey::Saved,
-                    selection: None,
                     image: release_image(release_id, bae_records::GallerySource::Cover(image)),
                     label: GalleryLabel::Current,
                 }
@@ -151,18 +153,19 @@ impl ItemJson {
             Self::Offered { cover } => remote(cover.cover()?),
             Self::ReleaseFile { id, name } => GalleryCover {
                 key: CoverKey::File(id.clone()),
-                selection: Some(CoverSelection::Local(id.clone())),
+                label: GalleryLabel::File { name, selection: CoverSelection::Local(id.clone()) },
                 image: release_image(
                     release("release_file")?,
                     bae_records::GallerySource::ReleaseFile { file_id: id },
                 ),
-                label: GalleryLabel::File(name),
             },
             Self::FolderFile { id, path, size, modified_at_ns } => GalleryCover {
                 key: CoverKey::File(id.clone()),
-                selection: Some(CoverSelection::Local(id.clone())),
+                label: GalleryLabel::File {
+                    name: id.clone(),
+                    selection: CoverSelection::Local(id),
+                },
                 image: CoverImageSource::Local { file: FileVersion { path, size, modified_at_ns } },
-                label: GalleryLabel::File(id),
             },
         })
     }
