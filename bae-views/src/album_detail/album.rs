@@ -8,6 +8,23 @@ use super::*;
 use crate::DbAlbumAppearance;
 use bae_records::{DbAlbum, DbAlbumSummary};
 
+/// What the album page reads: the album, and the release the person chose on
+/// its page.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AlbumDetailRequest {
+    pub album_id: String,
+    /// The release the person chose on the album's page, or `None` to show
+    /// the primary release.
+    pub chosen_release_id: Option<String>,
+}
+
+impl AlbumDetailRequest {
+    /// The album `album_id`, showing its primary release.
+    pub fn album(album_id: String) -> Self {
+        AlbumDetailRequest { album_id, chosen_release_id: None }
+    }
+}
+
 /// An album with its releases, each carrying tracks, files, and gallery.
 #[derive(Debug, Clone)]
 pub struct AlbumDetail {
@@ -20,6 +37,14 @@ pub struct AlbumDetail {
     pub artist_line: bae_types::credits::CreditLine,
     /// The album's releases in album order: the primary release first.
     pub releases: Vec<ReleaseDetail>,
+    /// The release the page shows: the one its request chose while the album
+    /// holds it, else the primary release.
+    pub shown_release: ReleaseDetail,
+    /// The shown release's place in `releases`.
+    pub shown_release_index: u32,
+    /// Whether the shown release is not the primary release, so the page
+    /// offers to make it the primary one.
+    pub shown_release_can_become_primary: bool,
     /// Whether the album has more than one release, so its page offers a
     /// choice between them.
     pub shows_release_choices: bool,

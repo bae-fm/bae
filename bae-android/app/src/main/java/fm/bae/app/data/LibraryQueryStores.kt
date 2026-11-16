@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeException
@@ -30,23 +31,28 @@ internal data class LiveQueryState<Value>(
 
 /**
  * One detail pane's live read, open while the pane shows an item: [activate] opens it or moves it to
- * the item the pane shows, [deactivate] ends it when the pane stops showing that item, and only a
- * value answering the item shown now reaches [state].
+ * the request the pane shows, [deactivate] ends it when the pane stops showing that item, and only a
+ * value answering the request shown now reaches [state]. Two requests name the same item when
+ * [sameItem] says so; moving between them keeps the last value until the new request's arrives.
  */
-internal class DetailQueryStore<Value>(
+internal class DetailQueryStore<Id, Value>(
     private val scope: CoroutineScope,
-    private val open: () -> DetailRead<Value>,
+    private val open: () -> DetailRead<Id, Value>,
+    private val sameItem: (Id, Id) -> Boolean = { a, b -> a == b },
 ) {
     private val mutableState = MutableStateFlow(LiveQueryState<Value>())
     val state: StateFlow<LiveQueryState<Value>> = mutableState.asStateFlow()
-    private var parameter: String? = null
-    private var read: DetailRead<Value>? = null
-    private var deliveries: ScreenSubscription<DetailDelivery<Value>>? = null
+    private var parameter: Id? = null
+    private var read: DetailRead<Id, Value>? = null
+    private var deliveries: ScreenSubscription<DetailDelivery<Id, Value>>? = null
 
-    fun activate(value: String) {
-        if (parameter == value && read != null) return
+    fun activate(value: Id) {
+        val shown = parameter
+        if (shown == value && read != null) return
         parameter = value
-        mutableState.value = LiveQueryState()
+        if (shown == null || !sameItem(shown, value)) {
+            mutableState.value = LiveQueryState()
+        }
         request(value)
     }
 
@@ -58,8 +64,10 @@ internal class DetailQueryStore<Value>(
         request(current)
     }
 
-    fun deactivate(value: String) {
-        if (parameter != value) return
+    /** End the read when it still shows the item [value] names. */
+    fun deactivate(value: Id) {
+        val shown = parameter ?: return
+        if (!sameItem(shown, value)) return
         cancel()
     }
 
@@ -68,7 +76,7 @@ internal class DetailQueryStore<Value>(
         closeRead()
     }
 
-    private fun request(value: String) {
+    private fun request(value: Id) {
         val current = read ?: openRead()
         try {
             current.setId(value)
@@ -77,7 +85,7 @@ internal class DetailQueryStore<Value>(
         }
     }
 
-    private fun openRead(): DetailRead<Value> {
+    private fun openRead(): DetailRead<Id, Value> {
         val opened = open()
         read = opened
         deliveries = ScreenSubscription(opened, scope, ::deliver, ::report)
@@ -85,7 +93,7 @@ internal class DetailQueryStore<Value>(
     }
 
     /** Only a value answering the item shown now reaches [state]. */
-    private fun deliver(delivery: DetailDelivery<Value>) {
+    private fun deliver(delivery: DetailDelivery<Id, Value>) {
         val shown = parameter
         if (shown != null && delivery.id == shown) {
             mutableState.value = LiveQueryState(value = delivery.value, delivered = true)
@@ -195,11 +203,15 @@ internal class LibraryQueryStores(
     library: Library,
     scope: CoroutineScope,
 ) {
-    val album = DetailQueryStore<BridgeAlbumDetail>(scope, library::albumDetail)
-    val artist = DetailQueryStore<BridgeArtistDetail>(scope, library::artistDetail)
-    val composer = DetailQueryStore<BridgeComposerDetail>(scope, library::composerDetail)
-    val work = DetailQueryStore<BridgeWorkDetail>(scope, library::workDetail)
-    val playlist = DetailQueryStore<BridgePlaylistDetail>(scope, library::playlistDetail)
+    /** The album page's read: another release of the same album keeps the page drawn until it arrives. */
+    val album =
+        DetailQueryStore<BridgeAlbumDetailRequest, BridgeAlbumDetail>(scope, library::albumDetail) { a, b ->
+            a.albumId == b.albumId
+        }
+    val artist = DetailQueryStore<String, BridgeArtistDetail>(scope, library::artistDetail)
+    val composer = DetailQueryStore<String, BridgeComposerDetail>(scope, library::composerDetail)
+    val work = DetailQueryStore<String, BridgeWorkDetail>(scope, library::workDetail)
+    val playlist = DetailQueryStore<String, BridgePlaylistDetail>(scope, library::playlistDetail)
     val search = SearchQueryStore(library, scope)
 
     fun cancel() {

@@ -124,7 +124,9 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     };
     let before = browse.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);
-    let mut detail = views(manager).subscribe_album_detail(Some(album_id.clone()));
+    let mut detail = views(manager).subscribe_album_detail(Some(
+        bae_views::album_detail::AlbumDetailRequest::album(album_id.clone()),
+    ));
     let shown = detail.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(shown.detail.expect("the album shows").releases.len(), 2);
 

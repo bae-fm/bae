@@ -82,6 +82,12 @@ pub struct DbAlbumDetail {
     pub artists: Vec<bae_records::credits::LibraryCredit>,
     /// The album's releases in album order.
     pub releases: Vec<ReleaseDetailRead>,
+    /// The place in `releases` of the release the page shows: the one its
+    /// request chose while the album holds it, else the primary release.
+    pub shown_release_index: u32,
+    /// Whether the shown release is not the primary release, so the person
+    /// can make it the primary one.
+    pub shown_release_can_become_primary: bool,
     /// Whether the album has more than one release.
     pub shows_release_choices: bool,
     /// The album's lowest-ordered release.

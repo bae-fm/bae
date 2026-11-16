@@ -35,11 +35,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
-import fm.bae.app.LocalBugReports
-import fm.bae.app.MissingMainRelease
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
@@ -53,7 +50,6 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.StatusChip
@@ -70,6 +66,7 @@ import fm.bae.app.ui.runTrackQueueCommand
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRatingTarget
@@ -124,11 +121,11 @@ fun AlbumDetailScreen(
             session.appHandle.deleteAlbum(albumId)
         }
     val adding = rememberTrackPlaylistAdd(session)
+    val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
+    // The page's one read follows the release chosen on it, and ends when the page leaves the album.
+    LaunchedEffect(request, session) { session.libraryQueries.album.activate(request) }
     DisposableEffect(albumId, session) {
-        session.libraryQueries.album.activate(albumId)
-        onDispose {
-            session.libraryQueries.album.deactivate(albumId)
-        }
+        onDispose { session.libraryQueries.album.deactivate(request) }
     }
 
     val loadError = query.error?.let(LocalContext.current::displayError)
@@ -136,7 +133,7 @@ fun AlbumDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        actions = { if (detail != null) AlbumBarActions(session, detail, selectedReleaseId, deletion) },
+        actions = { if (detail != null) AlbumBarActions(session, detail, deletion) },
     ) {
         PageDeletionShown(deletion) { _, onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
         TrackPlaylistAddShown(session, adding)
@@ -154,31 +151,20 @@ fun AlbumDetailScreen(
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
                 }
-                val release = loaded.chosenOrMainRelease(selectedReleaseId)
-                if (release == null) {
-                    MissingMainReleaseNotice(loaded)
-                } else {
-                    AlbumDetailContent(
-                        detail = loaded,
-                        selectedRelease = release,
-                        cover = release.cover,
-                        playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                        callbacks =
-                            buildAlbumDetailCallbacks(session, release, adding, onOpenWork) { selectedReleaseId = it },
-                        releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
-                    )
-                }
+                val release = loaded.shownRelease
+                AlbumDetailContent(
+                    detail = loaded,
+                    selectedRelease = release,
+                    cover = release.cover,
+                    playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
+                    callbacks =
+                        buildAlbumDetailCallbacks(session, release, adding, onOpenWork) { selectedReleaseId = it },
+                    releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
+                )
             }
         }
     }
 }
-
-/**
- * Returns the release the person chose, or else the main release. The screen works it out on each draw instead of
- * storing it, so a release list that arrives later needs no correction.
- */
-internal fun BridgeAlbumDetail.chosenOrMainRelease(chosenId: String?): BridgeRelease? =
-    releases.firstOrNull { it.id == chosenId } ?: releases.firstOrNull()
 
 /** What the album page shows while it has no album to draw. */
 internal sealed interface AlbumDetailPlaceholder {
@@ -231,20 +217,6 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
         // The album is a local read; nothing shows until it lands.
         AlbumDetailPlaceholder.Loading -> {}
     }
-}
-
-/**
- * An album whose named main release isn't among its releases: a bug, reported
- * once per detail, and "Something went wrong" where the album would be.
- */
-@Composable
-private fun BoxScope.MissingMainReleaseNotice(detail: BridgeAlbumDetail) {
-    val bugs = LocalBugReports.current
-    LaunchedEffect(detail) { bugs.reportShownInPlace("show album ${detail.album.id}", MissingMainRelease(detail)) }
-    ErrorText(
-        message = LocalContext.current.coreString("core.error.category.internal"),
-        modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-    )
 }
 
 /** The page's commands, each run in the session, which shows a failure as a message. */
@@ -367,8 +339,8 @@ internal fun AlbumDetailContent(
         if (detail.showsReleaseChoices) {
             block {
                 Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    detail.releases.forEach { rel ->
-                        val chosen = rel.id == selectedRelease.id
+                    detail.releases.forEachIndexed { index, rel ->
+                        val chosen = index == detail.shownReleaseIndex.toInt()
                         StatusChip(
                             text = rel.name.text(context),
                             tone = if (chosen) StatusTone.ACCENT else StatusTone.NEUTRAL,

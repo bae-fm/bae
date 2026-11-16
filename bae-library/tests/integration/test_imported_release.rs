@@ -197,7 +197,7 @@ impl Drop for HeldImport<'_> {
 /// view shows it.
 async fn next_detail(
     values: &mut coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<bae_views::album_detail::AlbumDetailRequest>,
         bae_views::AlbumDetailProjection,
         bae_store::DbError,
     >,
@@ -229,7 +229,9 @@ async fn an_album_opened_while_another_release_imports_shows_at_once() {
         .expect("the import reaches its measurement");
 
     let mut values = bae_views::LibraryViews::new(fixture.library.store().clone())
-        .subscribe_album_detail(Some(shown_album.clone()));
+        .subscribe_album_detail(Some(bae_views::album_detail::AlbumDetailRequest::album(
+            shown_album.clone(),
+        )));
     let shown =
         next_detail(&mut values, "the album detail arrives while the other import runs").await;
     assert_eq!(shown.album.id, shown_album);

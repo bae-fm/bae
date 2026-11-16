@@ -4,15 +4,18 @@
 
 use super::*;
 
-/// The detail view's album as it changes, read for the id the
-/// subscription is set to: its rows, with each release's pin marker,
-/// download-queue entry and storage transition, and whether the library syncs —
-/// the state it is resolved against. Another album is a
-/// new id on the same read.
+/// The detail view's album as it changes, read for the album and chosen
+/// release the subscription is set to: its rows, with each release's pin
+/// marker, download-queue entry and storage transition, and whether the
+/// library syncs — the state it is resolved against. Another album or release
+/// is a new request on the same read.
 pub fn subscribe_album_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,
-) -> bae_library::LiveDetail<bae_views::album_detail::AlbumDetail> {
+) -> bae_library::LiveDetail<
+    bae_views::album_detail::AlbumDetail,
+    bae_views::album_detail::AlbumDetailRequest,
+> {
     detail_read(
         library,
         library_views.subscribe_album_detail(None),

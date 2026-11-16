@@ -354,7 +354,7 @@ async fn the_detail_views_follow_a_releases_pin() {
     let release = bae_app::live_reads::subscribe_release_detail(mgr.manager(), &views);
     release.set(Some(release_id.clone())).unwrap();
     let album = bae_app::live_reads::subscribe_album_detail(mgr.manager(), &views);
-    album.set(Some(album_id)).unwrap();
+    album.set(Some(bae_views::album_detail::AlbumDetailRequest::album(album_id))).unwrap();
     let shown = |pinned: bool| {
         let (release, album) = (&release, &album);
         async move {

@@ -7,13 +7,10 @@ struct AlbumExpansionContent: View {
     /// The album and its releases as its detail read returned them; the
     /// release picker names each release from here.
     let detail: AlbumDetail
-    /// Fat detail for the release the user is currently viewing.
-    let selectedRelease: ReleaseDetail
     let onBrowseImages: () -> Void
-    /// Cursor over the album's releases, one item per release of
-    /// `detail.releases` in its order; drives the release picker.
-    @Binding
-    var releaseCursor: Cursor<ReleaseRef>
+    /// Show the release with this id, which the person picked in the release
+    /// picker.
+    let onSelectRelease: (String) -> Void
     let currentTrackId: String?
     let isPlaying: Bool
     let onClose: () -> Void
@@ -50,6 +47,9 @@ struct AlbumExpansionContent: View {
 
     private var album: BridgeAlbum { detail.album }
 
+    /// The release the page shows, as its detail read chose it.
+    private var selectedRelease: ReleaseDetail { detail.shownRelease }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: ThemeSpace.page) {
@@ -77,7 +77,7 @@ struct AlbumExpansionContent: View {
                     }
                     .themeText(.heading)
                     .lineLimit(1)
-                    if releaseCursor.canCycle {
+                    if detail.showsReleaseChoices {
                         releasePicker
                     }
                     ReleaseFactsLine(
@@ -149,10 +149,6 @@ struct AlbumExpansionContent: View {
         }
     }
 
-    private var canSetAsPrimaryRelease: Bool {
-        selectedRelease.id != album.primaryReleaseId
-    }
-
     private var albumMenu: some View {
         MacMenuButton {
             MacMenuItem("Play", action: onPlay)
@@ -165,7 +161,7 @@ struct AlbumExpansionContent: View {
             MacMenuItem("Storage…") { onOpenStorage() }
             MacMenuItem("Export…") { onExportRelease() }
             MacMenuItem("Save as…") { onSaveReleaseAs() }
-            if releaseCursor.canCycle, canSetAsPrimaryRelease {
+            if detail.shownReleaseCanBecomePrimary {
                 MacMenuDivider()
                 MacMenuItem("Set as primary release") { onSetPrimaryRelease() }
             }
@@ -193,18 +189,15 @@ struct AlbumExpansionContent: View {
     }
 
     private var releasePicker: some View {
-        MacSegmentedControl(
+        // The segments and the binding read the same releases, so a clicked
+        // segment's index names one of them.
+        let releases = detail.releases
+        return MacSegmentedControl(
             selectedIndex: Binding(
-                get: { releaseCursor.index },
-                set: { newIndex in
-                    // Releases can change while a click is on its way.
-                    guard releaseCursor.items.indices.contains(newIndex) else {
-                        return
-                    }
-                    releaseCursor.select(id: releaseCursor.items[newIndex].id)
-                },
+                get: { detail.shownReleaseIndex },
+                set: { newIndex in onSelectRelease(releases[newIndex].id) },
             ),
-            segments: pickerReleases.map { release in
+            segments: releases.map { release in
                 MacSegmentedControl.Segment(
                     label: release.displayName,
                     systemImage: release.tracks.contains {
@@ -215,17 +208,6 @@ struct AlbumExpansionContent: View {
         )
         .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.line)
-    }
-
-    /// The releases the picker's segments name, one per cursor item. The
-    /// cursor is built over `detail.releases`; one built over anything else
-    /// would name the wrong release under a segment.
-    private var pickerReleases: [ReleaseDetail] {
-        precondition(
-            releaseCursor.items.map(\.id) == detail.releases.map(\.id),
-            "The release cursor is not over the album's releases"
-        )
-        return detail.releases
     }
 }
 

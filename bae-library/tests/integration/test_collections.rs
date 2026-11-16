@@ -441,8 +441,9 @@ async fn rating_delivers_a_new_album_detail() {
     )
     .await;
 
-    let mut values = bae_views::LibraryViews::new(library.store().clone())
-        .subscribe_album_detail(Some(album.clone()));
+    let mut values = bae_views::LibraryViews::new(library.store().clone()).subscribe_album_detail(
+        Some(bae_views::album_detail::AlbumDetailRequest::album(album.clone())),
+    );
     let first = next_detail(&mut values).await;
     assert!(first.rating.can_rate);
     assert!(first.rating.shown);
@@ -465,7 +466,7 @@ async fn rating_delivers_a_new_album_detail() {
 
 async fn next_detail(
     values: &mut coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<bae_views::album_detail::AlbumDetailRequest>,
         bae_views::AlbumDetailProjection,
         bae_store::DbError,
     >,
@@ -480,7 +481,7 @@ async fn next_detail(
 
 async fn next_detail_matching(
     values: &mut coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<bae_views::album_detail::AlbumDetailRequest>,
         bae_views::AlbumDetailProjection,
         bae_store::DbError,
     >,

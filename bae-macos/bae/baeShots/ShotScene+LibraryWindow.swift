@@ -51,8 +51,11 @@ extension ShotScene {
                     .map(UInt64.init)
             },
             albumDetail: {
-                .fixed(answers: UnansweredCount()) {
-                    $0 == detail.album.id ? detail : nil
+                .fixed(answers: UnansweredCount()) { request in
+                    request.albumId == detail.album.id
+                        ? detail.showing(
+                            chosenReleaseId: request.chosenReleaseId
+                        ) : nil
                 }
             },
             releaseDetail: {

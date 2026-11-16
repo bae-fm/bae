@@ -31,6 +31,7 @@ import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeAlbumDetailSnapshot
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailSnapshot
@@ -155,19 +156,19 @@ class PlaybackServiceTest {
  * A detail read that answers each id it is pointed at with what [lookup] finds for it, recording
  * every id and whether it was cancelled.
  */
-internal class FakeDetailRead<Value>(
-    private val lookup: (String) -> Value?,
+internal class FakeDetailRead<Id, Value>(
+    private val lookup: (Id) -> Value?,
 ) {
-    private val events = Channel<Pair<String?, Value?>>(Channel.UNLIMITED)
-    val requestedIds = mutableListOf<String>()
+    private val events = Channel<Pair<Id?, Value?>>(Channel.UNLIMITED)
+    val requestedIds = mutableListOf<Id>()
     var cancelled = false
 
-    fun setId(id: String) {
+    fun setId(id: Id) {
         requestedIds += id
         events.trySend(id to lookup(id))
     }
 
-    suspend fun next(): Pair<String?, Value?> = events.receive()
+    suspend fun next(): Pair<Id?, Value?> = events.receive()
 
     fun cancel() {
         cancelled = true
@@ -176,9 +177,9 @@ internal class FakeDetailRead<Value>(
 }
 
 internal class FakeAlbumDetailSubscription(
-    val read: FakeDetailRead<BridgeAlbumDetail>,
+    val read: FakeDetailRead<BridgeAlbumDetailRequest, BridgeAlbumDetail>,
 ) : AlbumDetailSubscription(NoHandle) {
-    override fun setId(id: String) = read.setId(id)
+    override fun setId(id: BridgeAlbumDetailRequest) = read.setId(id)
 
     override suspend fun next(): BridgeAlbumDetailSnapshot = read.next().let { (id, value) -> BridgeAlbumDetailSnapshot(id, value) }
 
@@ -188,7 +189,7 @@ internal class FakeAlbumDetailSubscription(
 }
 
 internal class FakeComposerDetailSubscription(
-    val read: FakeDetailRead<BridgeComposerDetail>,
+    val read: FakeDetailRead<String, BridgeComposerDetail>,
 ) : ComposerDetailSubscription(NoHandle) {
     override fun setId(id: String) = read.setId(id)
 
@@ -200,7 +201,7 @@ internal class FakeComposerDetailSubscription(
 }
 
 internal class FakeWorkDetailSubscription(
-    val read: FakeDetailRead<BridgeWorkDetail>,
+    val read: FakeDetailRead<String, BridgeWorkDetail>,
 ) : WorkDetailSubscription(NoHandle) {
     override fun setId(id: String) = read.setId(id)
 
@@ -212,7 +213,7 @@ internal class FakeWorkDetailSubscription(
 }
 
 internal class FakeReleaseDetailSubscription(
-    val read: FakeDetailRead<BridgeRelease>,
+    val read: FakeDetailRead<String, BridgeRelease>,
 ) : ReleaseDetailSubscription(NoHandle) {
     override fun setId(id: String) = read.setId(id)
 

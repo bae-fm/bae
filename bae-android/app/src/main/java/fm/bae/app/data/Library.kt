@@ -6,6 +6,7 @@ import fm.bae.screensubscription.pulled
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -35,8 +36,8 @@ import uniffi.bae_bridge.LibrarySearchSubscription
  * One value a detail read delivered: the id it was read for, and that item's detail, or none once
  * no such item exists.
  */
-internal data class DetailDelivery<Value>(
-    val id: String?,
+internal data class DetailDelivery<Id, Value>(
+    val id: Id?,
     val value: Value?,
 )
 
@@ -44,20 +45,20 @@ internal data class DetailDelivery<Value>(
  * A detail view's live read: the id it shows changes in place, and each value it is pulled for
  * names the id it answers.
  */
-internal interface DetailRead<Value> : PulledSubscription<DetailDelivery<Value>> {
-    fun setId(id: String)
+internal interface DetailRead<Id, Value> : PulledSubscription<DetailDelivery<Id, Value>> {
+    fun setId(id: Id)
 
     /** Free the read without waiting, from a scope that is already ending. */
     fun release()
 }
 
-private class BridgeDetailRead<Value>(
-    private val set: (String) -> Unit,
-    pulls: PulledSubscription<DetailDelivery<Value>>,
+private class BridgeDetailRead<Id, Value>(
+    private val set: (Id) -> Unit,
+    pulls: PulledSubscription<DetailDelivery<Id, Value>>,
     private val free: () -> Unit,
-) : DetailRead<Value>,
-    PulledSubscription<DetailDelivery<Value>> by pulls {
-    override fun setId(id: String) = set(id)
+) : DetailRead<Id, Value>,
+    PulledSubscription<DetailDelivery<Id, Value>> by pulls {
+    override fun setId(id: Id) = set(id)
 
     override fun release() = free()
 }
@@ -121,8 +122,11 @@ class Library(
             sections = sections,
         )
 
-    /** A detail view's live reads, each moved to every item its view shows in place. */
-    internal fun albumDetail(): DetailRead<BridgeAlbumDetail> =
+    /**
+     * A detail view's live reads, each moved to every item its view shows in place. The album
+     * page's read names the album and the release chosen on its page.
+     */
+    internal fun albumDetail(): DetailRead<BridgeAlbumDetailRequest, BridgeAlbumDetail> =
         handle.subscribeAlbumDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
@@ -131,7 +135,7 @@ class Library(
             )
         }
 
-    internal fun releaseDetail(): DetailRead<BridgeRelease> =
+    internal fun releaseDetail(): DetailRead<String, BridgeRelease> =
         handle.subscribeReleaseDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
@@ -140,7 +144,7 @@ class Library(
             )
         }
 
-    internal fun artistDetail(): DetailRead<BridgeArtistDetail> =
+    internal fun artistDetail(): DetailRead<String, BridgeArtistDetail> =
         handle.subscribeArtistDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
@@ -149,7 +153,7 @@ class Library(
             )
         }
 
-    internal fun composerDetail(): DetailRead<BridgeComposerDetail> =
+    internal fun composerDetail(): DetailRead<String, BridgeComposerDetail> =
         handle.subscribeComposerDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
@@ -158,7 +162,7 @@ class Library(
             )
         }
 
-    internal fun workDetail(): DetailRead<BridgeWorkDetail> =
+    internal fun workDetail(): DetailRead<String, BridgeWorkDetail> =
         handle.subscribeWorkDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
@@ -167,7 +171,7 @@ class Library(
             )
         }
 
-    internal fun playlistDetail(): DetailRead<BridgePlaylistDetail> =
+    internal fun playlistDetail(): DetailRead<String, BridgePlaylistDetail> =
         handle.subscribePlaylistDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,

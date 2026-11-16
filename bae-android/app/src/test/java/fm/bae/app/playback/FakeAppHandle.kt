@@ -313,7 +313,7 @@ internal open class FakeAppHandle(
     override fun subscribeStorageQueues(): StorageQueuesSubscription = unfaked("subscribeStorageQueues")
 
     override fun subscribeAlbumDetail(): AlbumDetailSubscription =
-        FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it] }).also(albumDetailSubscriptions::add)
+        FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it.albumId] }).also(albumDetailSubscriptions::add)
 
     override fun subscribeComposerDetail(): ComposerDetailSubscription =
         FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })

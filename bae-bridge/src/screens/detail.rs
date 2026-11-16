@@ -169,6 +169,7 @@ detail_subscription! {
     built by album_detail,
     snapshot: BridgeAlbumDetailSnapshot,
     value: crate::types::BridgeAlbumDetail,
+    id: crate::types::BridgeAlbumDetailRequest = bae_views::album_detail::AlbumDetailRequest,
 }
 
 detail_subscription! {

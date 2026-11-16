@@ -37,7 +37,11 @@ public final class Library: Sendable, Observable {
     /// One live library search, pointed at each new query in place.
     public let librarySearch: @Sendable () -> LibrarySearch
     /// Open a detail view's live read, pointed at each item it shows in place.
-    public let albumDetail: @Sendable () -> DetailQuery<BridgeAlbumDetail>
+    /// The album page's read names the album and the release chosen on it.
+    public let albumDetail:
+        @Sendable () -> KeyedDetailQuery<
+            BridgeAlbumDetail, BridgeAlbumDetailRequest
+        >
     public let releaseDetail: @Sendable () -> DetailQuery<BridgeRelease>
     public let artistDetail: @Sendable () -> DetailQuery<BridgeArtistDetail>
     public let composerDetail: @Sendable () -> DetailQuery<BridgeComposerDetail>
@@ -152,7 +156,9 @@ public final class Library: Sendable, Observable {
             fatalError("Library search is not installed")
         },
         albumDetail:
-            @escaping @Sendable () -> DetailQuery<BridgeAlbumDetail> = {
+            @escaping @Sendable () -> KeyedDetailQuery<
+                BridgeAlbumDetail, BridgeAlbumDetailRequest
+            > = {
                 fatalError("Library album detail is not installed")
             },
         releaseDetail: @escaping @Sendable () -> DetailQuery<BridgeRelease> = {
@@ -300,7 +306,7 @@ extension Library {
                 librarySearch: {
                     LibrarySearch(handle.subscribeLibrarySearch())
                 },
-                albumDetail: { DetailQuery(handle.subscribeAlbumDetail()) },
+                albumDetail: Self.albumDetail(handle),
                 releaseDetail: { DetailQuery(handle.subscribeReleaseDetail()) },
                 artistDetail: { DetailQuery(handle.subscribeArtistDetail()) },
                 composerDetail: {
@@ -442,6 +448,16 @@ extension Library {
         }
 
         /// The playlist page's read through `handle`.
+        private static func albumDetail(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable () -> KeyedDetailQuery<
+                BridgeAlbumDetail, BridgeAlbumDetailRequest
+            >
+        {
+            { KeyedDetailQuery(handle.subscribeAlbumDetail()) }
+        }
+
         private static func playlistDetail(
             _ handle: any AppHandleProtocol
         ) -> @Sendable () -> DetailQuery<BridgePlaylistDetail> {
@@ -649,12 +665,13 @@ extension Library {
     #endif
 }
 
-extension KeyedDetailQuery where Id == String, Value == BridgeAlbumDetail {
+extension KeyedDetailQuery
+where Id == BridgeAlbumDetailRequest, Value == BridgeAlbumDetail {
     init(_ subscription: AlbumDetailSubscription) {
         self.init(
             setId: { try subscription.setId(id: $0) },
             values: PulledValues(subscription) {
-                DetailDelivery(id: $0.id, value: $0.value)
+                KeyedDetailDelivery(id: $0.id, value: $0.value)
             }
         )
     }

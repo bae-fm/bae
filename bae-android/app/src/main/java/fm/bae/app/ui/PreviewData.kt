@@ -198,6 +198,9 @@ object PreviewData {
         BridgeAlbumDetail(
             album = album,
             releases = releases,
+            shownRelease = releases.first(),
+            shownReleaseIndex = 0u,
+            shownReleaseCanBecomePrimary = false,
             showsReleaseChoices = releases.size > 1,
             rating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
         )

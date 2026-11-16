@@ -397,8 +397,8 @@ impl LibraryViews {
         self.store.read(|sql| album_count_on(&sql)).await
     }
 
-    /// The album's detail as its view shows it. `None` for an unknown album,
-    /// or one with no releases.
+    /// The album's detail as its view shows it, showing its primary release.
+    /// `None` for an unknown album, or one with no releases.
     pub async fn find_album_detail(
         &self,
         album_id: &str,
@@ -406,22 +406,30 @@ impl LibraryViews {
         let album_id = album_id.to_string();
         Ok(self
             .store
-            .read(move |sql| find_album_detail_on(&sql, &album_id))
+            .read(move |sql| find_album_detail_on(&sql, &album_id, None))
             .process(|rows| Ok::<_, DbError>(rows.map(AlbumDetailRows::process)))
             .await?
             .map(resolve_album_detail))
     }
 
-    /// Follow the album `initial` names, or none. The detail view moves to
-    /// another album through the request handle, not another query.
+    /// Follow the album `initial` names, or none, showing the release it
+    /// chose. The detail view moves to another album or release through the
+    /// request handle, not another query.
     pub fn subscribe_album_detail(
         &self,
-        initial: Option<String>,
-    ) -> coven::ReconfigurableLiveQuery<Option<String>, AlbumDetailProjection, bae_store::DbError>
-    {
+        initial: Option<crate::album_detail::AlbumDetailRequest>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::album_detail::AlbumDetailRequest>,
+        AlbumDetailProjection,
+        bae_store::DbError,
+    > {
         self.store
-            .subscribe_reconfigurable(initial, |album_id, sql| match album_id {
-                Some(album_id) => find_album_detail_on(&sql, album_id),
+            .subscribe_reconfigurable(initial, |request, sql| match request {
+                Some(request) => find_album_detail_on(
+                    &sql,
+                    &request.album_id,
+                    request.chosen_release_id.as_deref(),
+                ),
                 None => Ok(None),
             })
             .process(|detail| {
@@ -460,7 +468,8 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
     let primary_release_id = raw.primary_release_id;
 
     let cover = bae_records::cover_ref(&primary_release_id, raw.primary_cover_version);
-    let mut releases = Vec::with_capacity(raw.releases.len());
+    let mut releases: Vec<crate::album_detail::ReleaseDetail> =
+        Vec::with_capacity(raw.releases.len());
     for ReleaseDetailRead { detail, download, actions } in raw.releases {
         let ctx = crate::album_detail::ReleaseResolveCtx {
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
@@ -471,11 +480,17 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
             .push(crate::album_detail::ReleaseDetail::from_raw(detail, download, actions, &ctx));
     }
 
+    // One read returned the releases and the shown release's place among
+    // them, so the place always names one of them.
+    let shown_release = releases[raw.shown_release_index as usize].clone();
     crate::album_detail::AlbumDetail {
         album: raw.album,
         artists: raw.artists,
         artist_line,
         releases,
+        shown_release,
+        shown_release_index: raw.shown_release_index,
+        shown_release_can_become_primary: raw.shown_release_can_become_primary,
         shows_release_choices: raw.shows_release_choices,
         primary_release_id,
         cover,
@@ -655,9 +670,12 @@ fn search_library_on(
     Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, top_playable, found })
 }
 
+/// The album `album_id`'s detail, showing the release `chosen_release_id`
+/// while the album holds it and the primary release otherwise.
 fn find_album_detail_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
+    chosen_release_id: Option<&str>,
 ) -> Result<Option<AlbumDetailRows>, DbError> {
     let Some(album) = find_album_by_id_on(sql, album_id)? else {
         return Ok(None);
@@ -667,20 +685,27 @@ fn find_album_detail_on(
     if releases.is_empty() {
         return Ok(None);
     }
-    let (primary_release_id, primary_cover_version, shows_release_choices): (
+    // The shown release is the chosen one when the album holds it, else the
+    // first in the album's order, which is the primary release.
+    let (primary_release_id, primary_cover_version, shows_release_choices, shown_release_index): (
         String,
         Option<String>,
         bool,
+        u32,
     ) = sql.query_row(
         &format!(
             "SELECT {primary}, {cover}, \
-                    (SELECT COUNT(*) > 1 FROM releases WHERE album_id = a.id) \
-             FROM albums a WHERE a.id = ?",
+                    (SELECT COUNT(*) > 1 FROM releases WHERE album_id = a.id), \
+                    (SELECT place FROM ( \
+                        SELECT id, ROW_NUMBER() OVER (ORDER BY album_order, id) - 1 AS place \
+                        FROM releases WHERE album_id = a.id \
+                     ) ORDER BY id IS ?2 DESC, place LIMIT 1) \
+             FROM albums a WHERE a.id = ?1",
             primary = album_primary_release_sql(),
             cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
         ),
-        params![album_id],
-        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        params![album_id, chosen_release_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
     let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
@@ -688,6 +713,7 @@ fn find_album_detail_on(
         album,
         artists,
         releases,
+        shown_release_index,
         shows_release_choices,
         primary_release_id,
         primary_cover_version,
@@ -699,6 +725,7 @@ struct AlbumDetailRows {
     album: DbAlbum,
     artists: Vec<LibraryCredit>,
     releases: Vec<ReleaseDetailRows>,
+    shown_release_index: u32,
     shows_release_choices: bool,
     primary_release_id: String,
     primary_cover_version: Option<String>,
@@ -711,6 +738,8 @@ impl AlbumDetailRows {
             album: self.album,
             artists: self.artists,
             releases: self.releases.into_iter().map(ReleaseDetailRows::process).collect(),
+            shown_release_index: self.shown_release_index,
+            shown_release_can_become_primary: self.shown_release_index > 0,
             shows_release_choices: self.shows_release_choices,
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
@@ -801,3 +830,6 @@ mod track_list_tests;
 #[cfg(test)]
 #[path = "album_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod detail_tests;

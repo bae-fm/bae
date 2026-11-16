@@ -55,9 +55,11 @@ struct AlbumDetailView: View {
     private var exportError: DisplayError?
     @State
     private var exportTask: Task<Void, Never>?
-    /// The view's one album read, moved as `albumId` changes.
+    /// The view's one album read, moved as `albumId` or the release chosen
+    /// on its page changes.
     @State
-    private var detailReader: DetailReader<BridgeAlbumDetail>?
+    private var detailReader:
+        KeyedDetailReader<BridgeAlbumDetail, BridgeAlbumDetailRequest>?
     /// What the read last returned for the album shown, or why it failed.
     @State
     private var albumRead = LibraryProjectionState<AlbumDetail>()
@@ -65,15 +67,16 @@ struct AlbumDetailView: View {
     var body: some View {
         Group {
             if let detail = albumRead.value {
-                let selectedDetail = activeRelease(in: detail)
+                let selectedDetail = detail.shownRelease
                 let selectedReleaseId = selectedDetail.id
                 AlbumExpansionContent(
                     detail: detail,
-                    selectedRelease: selectedDetail,
                     onBrowseImages: {
                         presentImages(release: selectedDetail)
                     },
-                    releaseCursor: releaseCursorBinding(detail: detail),
+                    onSelectRelease: { releaseId in
+                        selectRelease(releaseId, in: detail)
+                    },
                     currentTrackId: playbackStore.nowPlaying.trackId,
                     isPlaying: playbackStore.nowPlaying.isPlaying,
                     onClose: { uiStore.closeAlbumDetail() },
@@ -149,8 +152,8 @@ struct AlbumDetailView: View {
                 detailPlaceholder
             }
         }
-        .onAppear { showAlbum(albumId) }
-        .onChange(of: albumId) { _, newId in showAlbum(newId) }
+        .onAppear { showAlbum() }
+        .onChange(of: albumRequest) { showAlbum() }
         .onDisappear {
             detailReader?.close()
             uiStore.dismissAllModals()
@@ -195,15 +198,26 @@ struct AlbumDetailView: View {
 
     // MARK: - Data helpers
 
-    /// Point the view's one read at `albumId`. What the read returned for
-    /// the album shown before is not this album's, so it goes.
-    private func showAlbum(_ albumId: String) {
-        if detailReader?.id != albumId {
+    /// What the view reads: the album, and the release chosen on its page.
+    private var albumRequest: BridgeAlbumDetailRequest {
+        BridgeAlbumDetailRequest(
+            albumId: albumId,
+            chosenReleaseId: uiStore.selectedReleaseIdByAlbum[albumId]
+        )
+    }
+
+    /// Point the view's one read at `albumRequest`. What the read returned
+    /// for another album is not this album's, so it goes; what it returned
+    /// for another release of this album stays until the new release's
+    /// value arrives.
+    private func showAlbum() {
+        let request = albumRequest
+        if detailReader?.id?.albumId != request.albumId {
             albumRead = LibraryProjectionState()
         }
         let reader =
             detailReader
-            ?? DetailReader(
+            ?? KeyedDetailReader(
                 open: library.albumDetail,
                 onValue: { _, value in
                     albumRead = LibraryProjectionState(
@@ -220,7 +234,7 @@ struct AlbumDetailView: View {
                 }
             )
         detailReader = reader
-        reader.show(albumId)
+        reader.show(request)
     }
 
     /// What shows before the album detail subscription delivers its first
@@ -242,43 +256,15 @@ struct AlbumDetailView: View {
         }
     }
 
-    /// The selected release when it belongs to the album, else the primary one.
-    private func activeRelease(in detail: AlbumDetail) -> ReleaseDetail {
-        uiStore.selectedReleaseIdByAlbum[albumId].flatMap(detail.release)
-            ?? detail.primaryRelease
-    }
-
-    /// The cursor over the album's releases, one item per release of
-    /// `detail.releases` in its order, which the release picker names.
-    private func releaseCursorBinding(detail: AlbumDetail) -> Binding<
-        Cursor<ReleaseRef>
-    > {
-        Binding(
-            get: {
-                // An album detail holds its primary release, so the list is
-                // not empty.
-                guard
-                    let cursor = Cursor(
-                        items: detail.releases.map { ReleaseRef(id: $0.id) },
-                        preferring: activeRelease(in: detail).id
-                    )
-                else {
-                    fatalError("an album detail holds no release")
-                }
-                return cursor
-            },
-            set: { newCursor in
-                let newId = newCursor.current.id
-                // "Default" is the primary release — if the user selects that,
-                // clear the override instead of storing a redundant entry.
-                if newId == detail.primaryRelease.id {
-                    uiStore.clearSelectedRelease(inAlbum: albumId)
-                }
-                else {
-                    uiStore.selectRelease(newId, inAlbum: albumId)
-                }
-            },
-        )
+    /// Show the release `releaseId`, which the person picked. Picking the
+    /// primary release clears the choice instead of storing it.
+    private func selectRelease(_ releaseId: String, in detail: AlbumDetail) {
+        if releaseId == detail.album.primaryReleaseId {
+            uiStore.clearSelectedRelease(inAlbum: albumId)
+        }
+        else {
+            uiStore.selectRelease(releaseId, inAlbum: albumId)
+        }
     }
 }
 
@@ -617,11 +603,4 @@ extension AlbumDetailView {
             }
         }
     }
-}
-
-/// Identifiable wrapper around a release id, for use with `Cursor`. The id
-/// is the only field — `String` itself isn't `Identifiable` in stdlib and
-/// retroactive conformance is fragile.
-struct ReleaseRef: Identifiable, Equatable {
-    let id: String
 }

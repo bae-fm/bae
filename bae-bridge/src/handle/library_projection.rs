@@ -352,6 +352,9 @@ impl BridgeAlbumDetail {
             artists: _,
             artist_line,
             releases,
+            shown_release,
+            shown_release_index,
+            shown_release_can_become_primary,
             shows_release_choices,
             primary_release_id,
             cover,
@@ -383,6 +386,9 @@ impl BridgeAlbumDetail {
         BridgeAlbumDetail {
             album,
             releases: releases.into_iter().map(BridgeRelease::from_core).collect(),
+            shown_release: BridgeRelease::from_core(shown_release),
+            shown_release_index,
+            shown_release_can_become_primary,
             shows_release_choices,
             rating: crate::types::BridgeAlbumRating::from_core(rating),
         }

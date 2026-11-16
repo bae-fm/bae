@@ -144,7 +144,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     }));
 
     let values = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views(&manager));
-    values.set(Some(album.id.clone())).unwrap();
+    values.set(Some(bae_views::album_detail::AlbumDetailRequest::album(album.id.clone()))).unwrap();
     let delivered = tokio::time::timeout(HANG_GUARD, async {
         loop {
             match values.next().await {
@@ -184,7 +184,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         albums.push(album);
     }
     let values = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views(&manager));
-    let next_for = |id: Option<String>| {
+    let next_for = |id: Option<bae_views::album_detail::AlbumDetailRequest>| {
         let values = &values;
         async move {
             loop {
@@ -199,12 +199,14 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         }
     };
 
-    values.set(Some(albums[0].id.clone())).unwrap();
-    let first = next_for(Some(albums[0].id.clone())).await;
+    let request = Some(bae_views::album_detail::AlbumDetailRequest::album(albums[0].id.clone()));
+    values.set(request.clone()).unwrap();
+    let first = next_for(request).await;
     assert_eq!(first.value.expect("present").album.title, "Album One");
 
-    values.set(Some(albums[1].id.clone())).unwrap();
-    let second = next_for(Some(albums[1].id.clone())).await;
+    let request = Some(bae_views::album_detail::AlbumDetailRequest::album(albums[1].id.clone()));
+    values.set(request.clone()).unwrap();
+    let second = next_for(request).await;
     assert_eq!(second.value.expect("present").album.title, "Album Two");
 
     values.set(None).unwrap();
@@ -385,7 +387,7 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
 
     let views = views(&manager);
     let album_detail = bae_app::live_reads::subscribe_album_detail(manager.manager(), &views);
-    album_detail.set(Some(album_id)).unwrap();
+    album_detail.set(Some(bae_views::album_detail::AlbumDetailRequest::album(album_id))).unwrap();
     let release_detail = bae_app::live_reads::subscribe_release_detail(manager.manager(), &views);
     release_detail.set(Some(release_id.clone())).unwrap();
     let storage_browse = crate::storage_list::storage_top(
@@ -397,7 +399,10 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
     );
     let waiting = Some(bae_views::album_detail::MoveToThisDeviceStatus::Queued);
     let album_shows = |status: Option<bae_views::album_detail::MoveToThisDeviceStatus>| {
-        move |snapshot: &bae_library::DetailSnapshot<bae_views::album_detail::AlbumDetail>| {
+        move |snapshot: &bae_library::DetailSnapshot<
+            bae_views::album_detail::AlbumDetail,
+            bae_views::album_detail::AlbumDetailRequest,
+        >| {
             snapshot.value.as_ref().is_some_and(|detail| {
                 detail.releases[0].move_to_this_device == status
                     && detail.releases[0].summary.transitioning == status.is_some()

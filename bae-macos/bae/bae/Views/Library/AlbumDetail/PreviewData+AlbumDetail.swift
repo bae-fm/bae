@@ -14,7 +14,10 @@
         static func albumDetailLibrary() -> Library {
             Library(
                 albumDetail: {
-                    .fixed(answers: UnansweredCount()) { albumDetails[$0] }
+                    .fixed(answers: UnansweredCount()) { request in
+                        albumDetails[request.albumId]?
+                            .showing(chosenReleaseId: request.chosenReleaseId)
+                    }
                 },
                 releaseDetail: {
                     .fixed(answers: UnansweredCount()) { id in

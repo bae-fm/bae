@@ -241,6 +241,9 @@
                     cover: nil,
                 ),
                 releases: releases,
+                shownRelease: releases[0],
+                shownReleaseIndex: 0,
+                shownReleaseCanBecomePrimary: false,
                 showsReleaseChoices: releases.count > 1,
                 rating: BridgeAlbumRating(
                     canRate: false,
@@ -302,7 +305,7 @@
             ]
             release.totalDuration = groupDuration(release.tracks)
             detail.releases = [release]
-            return detail
+            return detail.showing(chosenReleaseId: nil)
         }
 
         private static func makeDetail(
@@ -708,6 +711,20 @@
         static let albumDetails: [String: BridgeAlbumDetail] = Dictionary(
             uniqueKeysWithValues: albumDetailList.map { ($0.album.id, $0) }
         )
+    }
+
+    extension BridgeAlbumDetail {
+        /// This album as core's read answers a request that chose
+        /// `chosenReleaseId`: the chosen release while the album holds it,
+        /// else the primary release, which a fixture lists first.
+        func showing(chosenReleaseId: String?) -> BridgeAlbumDetail {
+            var detail = self
+            let index = releases.firstIndex { $0.id == chosenReleaseId } ?? 0
+            detail.shownRelease = releases[index]
+            detail.shownReleaseIndex = UInt32(index)
+            detail.shownReleaseCanBecomePrimary = index > 0
+            return detail
+        }
     }
 
     extension PreviewData {

@@ -11,17 +11,18 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 internal fun AlbumBarActions(
     session: OpenLibrary,
     detail: BridgeAlbumDetail,
-    selectedReleaseId: String?,
     deletion: PageDeletion<BridgeAlbum>,
 ) {
-    val release = detail.chosenOrMainRelease(selectedReleaseId)
+    val shown = detail.shownRelease
     val setPrimary =
-        release?.takeIf { detail.showsReleaseChoices && it.id != detail.album.primaryReleaseId }?.let { chosen ->
+        if (detail.shownReleaseCanBecomePrimary) {
             {
-                session.messages.perform("setPrimaryRelease ${chosen.id}") {
-                    session.appHandle.setPrimaryRelease(detail.album.id, chosen.id)
+                session.messages.perform("setPrimaryRelease ${shown.id}") {
+                    session.appHandle.setPrimaryRelease(detail.album.id, shown.id)
                 }
             }
+        } else {
+            null
         }
     AlbumOptionsMenu(onSetPrimaryRelease = setPrimary, onDelete = { deletion.ask(detail.album) })
 }

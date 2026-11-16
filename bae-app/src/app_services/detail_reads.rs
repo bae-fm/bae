@@ -6,13 +6,13 @@ use super::*;
 use crate::live_reads;
 use bae_library::LiveDetail;
 use bae_views::album_detail::{
-    AlbumDetail, ArtistDetail, ComposerDetail, ReleaseDetail, WorkDetail,
+    AlbumDetail, AlbumDetailRequest, ArtistDetail, ComposerDetail, ReleaseDetail, WorkDetail,
 };
 
 impl AppServices {
     /// The detail view's album as it changes; see
     /// [`live_reads::subscribe_album_detail`].
-    pub fn subscribe_album_detail(&self) -> LiveDetail<AlbumDetail> {
+    pub fn subscribe_album_detail(&self) -> LiveDetail<AlbumDetail, AlbumDetailRequest> {
         live_reads::subscribe_album_detail(&self.inner.manager, &self.inner.views)
     }
 

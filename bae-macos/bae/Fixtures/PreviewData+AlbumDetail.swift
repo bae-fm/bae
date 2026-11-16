@@ -20,41 +20,18 @@ extension PreviewData {
         return AlbumDetail(bridge: bridge)
     }
 
-    /// The release cursor over an album's releases, as the detail view
-    /// builds it, preferring one id.
-    @MainActor
-    static func releaseCursor(
-        detail: AlbumDetail,
-        preferring: String
-    ) -> Cursor<ReleaseRef> {
-        guard
-            let cursor = Cursor(
-                items: detail.releases.map { ReleaseRef(id: $0.id) },
-                preferring: preferring,
-            )
-        else {
-            fatalError("an album detail holds no release")
-        }
-        return cursor
-    }
-
     /// Builds an `AlbumExpansionContent` over a shot album with no-op
     /// callbacks — the shared body of `AlbumExpansionContent`'s shots.
-    /// The cursor is a `Binding` so callers can pass a constant cursor or a
-    /// live `@State`-backed one (for the release picker to cycle).
     @MainActor
     static func albumExpansionContent(
         detail: AlbumDetail,
-        selectedRelease: ReleaseDetail,
-        releaseCursor: Binding<Cursor<ReleaseRef>>,
         currentTrackId: String? = nil,
         isPlaying: Bool = false,
     ) -> some View {
         AlbumExpansionContent(
             detail: detail,
-            selectedRelease: selectedRelease,
             onBrowseImages: {},
-            releaseCursor: releaseCursor,
+            onSelectRelease: { _ in },
             currentTrackId: currentTrackId,
             isPlaying: isPlaying,
             onClose: {},
@@ -83,8 +60,7 @@ extension PreviewData {
     /// The expanded album detail for one seeded fixture album, sized to its
     /// natural width over the dark background — the shared body of
     /// `AlbumExpansionContent`'s shots and the `album-detail` gallery
-    /// scene. Builds the content over the album's primary release and a
-    /// constant cursor.
+    /// scene. Builds the content over the album's primary release.
     @MainActor
     static func albumExpansionScene(
         albumId: String,
@@ -115,7 +91,7 @@ extension PreviewData {
         }
         bridge.releases[primary].playability = primaryPlayability
         return albumExpansionScene(
-            detail: AlbumDetail(bridge: bridge),
+            detail: AlbumDetail(bridge: bridge.showing(chosenReleaseId: nil)),
             currentTrackId: nil,
             isPlaying: false
         )
@@ -127,21 +103,16 @@ extension PreviewData {
         currentTrackId: String?,
         isPlaying: Bool
     ) -> some View {
-        let primary = detail.primaryRelease
-        let cursor = releaseCursor(detail: detail, preferring: primary.id)
-        return
-            albumExpansionContent(
-                detail: detail,
-                selectedRelease: primary,
-                releaseCursor: .constant(cursor),
-                currentTrackId: currentTrackId,
-                isPlaying: isPlaying
-            )
-            .padding()
-            .frame(width: 1100)
-            .background(Theme.background)
-            .environment(UiStore())
-            .environment(ImageStore.stub())
+        albumExpansionContent(
+            detail: detail,
+            currentTrackId: currentTrackId,
+            isPlaying: isPlaying
+        )
+        .padding()
+        .frame(width: 1100)
+        .background(Theme.background)
+        .environment(UiStore())
+        .environment(ImageStore.stub())
     }
 
     /// The primary release's fat detail for a seeded shot album — tracks,
@@ -150,7 +121,7 @@ extension PreviewData {
     /// (track list, track row).
     @MainActor
     static func releaseDetail(albumId: String) -> ReleaseDetail {
-        albumDetail(albumId: albumId).primaryRelease
+        albumDetail(albumId: albumId).shownRelease
     }
 
     /// One `Track` for the `TrackRowView` shots. `displayArtist` non-nil

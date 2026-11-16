@@ -5,7 +5,7 @@ use bae_views::album_detail::Rater;
 /// The album's next detail that `wanted` accepts, failing when none comes.
 async fn detail_matching(
     values: &mut coven::ReconfigurableLiveQuery<
-        Option<String>,
+        Option<bae_views::album_detail::AlbumDetailRequest>,
         bae_views::AlbumDetailProjection,
         bae_store::DbError,
     >,
@@ -60,7 +60,9 @@ fn a_removed_person_s_rating_still_names_them() {
 
         // Rowan's device rates the album once it has the album.
         let mut rowans = bae_views::LibraryViews::new(rowan_library.store().clone())
-            .subscribe_album_detail(Some(album.clone()));
+            .subscribe_album_detail(Some(bae_views::album_detail::AlbumDetailRequest::album(
+                album.clone(),
+            )));
         detail_matching(&mut rowans, |detail| detail.rating.can_rate).await;
         rowan_library
             .people()
@@ -76,7 +78,9 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap();
         let mut robins = bae_views::LibraryViews::new(owner.store().clone())
-            .subscribe_album_detail(Some(album.clone()));
+            .subscribe_album_detail(Some(bae_views::album_detail::AlbumDetailRequest::album(
+                album.clone(),
+            )));
         let both = detail_matching(&mut robins, |detail| detail.rating.raters.len() == 2).await;
         assert_eq!(both.rating.mine, Some(Stars::Four));
         assert_eq!(

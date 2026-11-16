@@ -108,11 +108,12 @@ private func makeBridgeReleaseSummary(
 }
 
 /// An album detail as core reads one: never without a release, its primary
-/// release first.
+/// release first, showing the release at `shownReleaseIndex`.
 func makeBridgeAlbumDetail(
     albumId: String = "album-1",
     title: String = "Album Title",
-    releases: [BridgeRelease] = [makeBridgeRelease()]
+    releases: [BridgeRelease] = [makeBridgeRelease()],
+    shownReleaseIndex: Int = 0
 ) -> BridgeAlbumDetail {
     BridgeAlbumDetail(
         album: makeBridgeAlbum(
@@ -122,6 +123,9 @@ func makeBridgeAlbumDetail(
             primaryReleaseId: releases[0].id
         ),
         releases: releases,
+        shownRelease: releases[shownReleaseIndex],
+        shownReleaseIndex: UInt32(shownReleaseIndex),
+        shownReleaseCanBecomePrimary: shownReleaseIndex > 0,
         showsReleaseChoices: releases.count > 1,
         rating: BridgeAlbumRating(
             canRate: false,
@@ -289,22 +293,24 @@ struct ReleaseDetailTests {
     }
 
     @MainActor
-    @Test("an album detail holds the album and each release in album order")
+    @Test("an album detail holds each release in album order and the one shown")
     func albumDetailHoldsItsReleases() {
         let detail = AlbumDetail(
             bridge: makeBridgeAlbumDetail(
                 releases: [
                     makeBridgeRelease(id: "r-1"),
                     makeBridgeRelease(id: "r-2", displayName: "Release Two"),
-                ]
+                ],
+                shownReleaseIndex: 1
             )
         )
 
         #expect(detail.album.id == "album-1")
         #expect(detail.releases.map(\.id) == ["r-1", "r-2"])
-        #expect(detail.release("r-2")?.displayName == "Release Two")
-        #expect(detail.release("r-3") == nil)
-        #expect(detail.primaryRelease.id == "r-1")
+        #expect(detail.shownRelease.displayName == "Release Two")
+        #expect(detail.shownReleaseIndex == 1)
+        #expect(detail.shownReleaseCanBecomePrimary)
+        #expect(detail.showsReleaseChoices)
     }
 }
 

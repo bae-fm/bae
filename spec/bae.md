@@ -172,6 +172,11 @@ release on two lines: its pressing (its own year when that differs from the
 album's, where it was released, its media and details, its audio and its
 length), and its labels, each with the catalog numbers it gives the pressing.
 
+The person picks which of an album's releases its page shows. The page's read
+carries the release picked, and core answers with that release while the album
+holds it and with the primary release otherwise, together with the release's
+place among the album's releases and whether it can become the primary release.
+
 The album page's pressing line starts with the release's year only when it
 differs from the album's year shown above it (a 2001 reissue of a 1992 album
 says 2001; the 1992 original says nothing); core decides this once and hands
