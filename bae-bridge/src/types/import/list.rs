@@ -149,6 +149,15 @@ pub struct BridgeNarrowedCount {
     pub total: u32,
 }
 
+/// How many entries each import tab holds. Mirrors
+/// `bae_import::TriageTabCounts`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTriageTabCounts {
+    pub pending: u32,
+    pub done: u32,
+    pub skipped: u32,
+}
+
 /// How far the identifications and imports in flight have got, whoever
 /// started them. Mirrors `bae_import::ImportCounts`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -200,7 +209,14 @@ pub enum BridgeFolderScanAlertKind {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderScanActivity {
-    pub folders: Vec<BridgeWatchedFolder>,
+    pub folders: Vec<BridgeActiveFolderScan>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeActiveFolderScan {
+    pub folder: BridgeWatchedFolder,
+    /// How many folders the scan has stored so far.
+    pub found: u64,
 }
 
 /// One candidate as the pane reads it, whole: the folder with its files, what

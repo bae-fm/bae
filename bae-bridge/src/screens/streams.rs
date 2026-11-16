@@ -439,43 +439,6 @@ pub(crate) fn import_percents(
     })
 }
 
-#[cfg(desktop)]
-/// The stream [`AppHandle::feed_tab_counts`](crate::AppHandle::feed_tab_counts) hands out.
-pub(crate) fn tab_counts(runtime: OperationRuntime, run: impl RunFeed) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let counts = services.subscribe_tab_counts();
-        async move {
-            loop {
-                match counts.next().await {
-                    Ok(counts) => writer.reset(tab_counts_held(counts)),
-                    Err(bae_store::live_query::LiveQueryError::Cancelled) => return,
-                    Err(error) => writer.fail(BridgeError::from(error)),
-                }
-            }
-        }
-    })
-}
-
-#[cfg(desktop)]
-/// The stream [`AppHandle::feed_scan_found_counts`](crate::AppHandle::feed_scan_found_counts) hands out.
-pub(crate) fn scan_found_counts(
-    runtime: OperationRuntime,
-    run: impl RunFeed,
-) -> Arc<KeyedValueStream> {
-    feed(runtime, run, move |services, writer| {
-        let counts = services.subscribe_scan_found_counts();
-        async move {
-            loop {
-                match counts.next().await {
-                    Ok(counts) => writer.reset(scan_found_held(counts)),
-                    Err(bae_store::live_query::LiveQueryError::Cancelled) => return,
-                    Err(error) => writer.fail(BridgeError::from(error)),
-                }
-            }
-        }
-    })
-}
-
 // Gated on the target, not on `desktop`: bae-library gates `mod export` itself on
 // the target.
 #[cfg(desktop)]
@@ -494,28 +457,6 @@ pub(crate) fn export_percents(
             }
         }
     })
-}
-
-/// Each tab's count as their stream holds them: under the tab's name, all
-/// three always.
-#[cfg(desktop)]
-fn tab_counts_held(counts: bae_import::TriageTabCounts) -> HashMap<Vec<u8>, BridgeFastValue> {
-    let bae_import::TriageTabCounts { pending, done, skipped } = counts;
-    HashMap::from([
-        (b"pending".to_vec(), BridgeFastValue::TabCount { count: pending }),
-        (b"done".to_vec(), BridgeFastValue::TabCount { count: done }),
-        (b"skipped".to_vec(), BridgeFastValue::TabCount { count: skipped }),
-    ])
-}
-
-/// Each scan under way's stored folders as their stream holds them: under
-/// its root's path.
-#[cfg(desktop)]
-fn scan_found_held(counts: bae_import::ScanFoundCounts) -> HashMap<Vec<u8>, BridgeFastValue> {
-    counts
-        .into_iter()
-        .map(|(root, count)| (coven::path_bytes(&root), BridgeFastValue::ScanFoundCount { count }))
-        .collect()
 }
 
 /// Write each position the audio output reports for the playing track. A

@@ -5,15 +5,14 @@
 //! for. Also the coordinator's writes of what it holds, and the app's record
 //! of the alerts it raised.
 //!
-//! The found count moves with every folder a scan walks, so it is not read
-//! here: it has a read of its own, [`ImportTables::subscribe_scan_found_counts`],
-//! and nothing a scan's write wakes here costs a read of the queue or of the
-//! candidates.
+//! The query also counts the folders each scan under way has stored, off the
+//! candidates' index, so each folder a scan stores runs this query again and
+//! never a read of the queue.
 
 use super::*;
 use crate::folder_scan_status::{
-    FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus,
-    HeldRootScan, HeldRootScans, ScanFoundCounts, StoredRootScan, StoredScan, StoredScanOutcome,
+    ActiveFolderScan, FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress,
+    FolderScanStatus, HeldRootScan, HeldRootScans, StoredRootScan, StoredScan, StoredScanOutcome,
     WatchedFolderScanStatus,
 };
 
@@ -28,9 +27,17 @@ const FOLDER_SCAN_FLAGS: &str = "SELECT \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status IN ('failed', 'unwatched')), \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status = 'scanning')";
 
-/// The folders being scanned, in the order the folders are listed.
-const SCANNING_FOLDERS: &str = "SELECT watched_folder_path FROM folder_scan_status \
-     WHERE status = 'scanning' ORDER BY position";
+/// The folders being scanned, in the order the folders are listed, each
+/// with the folders its scan's current generation has stored, counted off
+/// the candidates' index.
+const SCANNING_FOLDERS: &str = "SELECT folder.watched_folder_path, \
+            (SELECT COUNT(*) FROM scan_candidate AS candidate \
+             WHERE candidate.watched_folder_path = roots.watched_folder_path \
+               AND candidate.generation = roots.generation \
+               AND candidate.source_kind = 'folder') \
+     FROM folder_scan_status AS folder \
+     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = folder.watched_folder_path \
+     WHERE folder.status = 'scanning' ORDER BY folder.position";
 
 /// Each folder's problem with no alert shown for it, in the order the folders
 /// are listed.
@@ -100,11 +107,15 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
     let (has_problem, scanning) =
         sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get::<_, bool>(1)?)))?;
     let activity = if scanning {
-        let folders = sql
-            .query(SCANNING_FOLDERS, [], |row| path_column::get(row, 0))?
-            .into_iter()
-            .map(crate::WatchedFolder::from_path)
-            .collect();
+        let mut folders = Vec::new();
+        for (path, found) in sql.query(SCANNING_FOLDERS, [], |row| {
+            Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?))
+        })? {
+            folders.push(ActiveFolderScan {
+                folder: crate::WatchedFolder::from_path(path),
+                found: to_u64(found, "a folder scan's found count")?,
+            });
+        }
         Some(FolderScanActivity { folders })
     } else {
         None
@@ -242,36 +253,7 @@ fn stored_outcome(
     })
 }
 
-/// How many folders each scan still under way has stored, by its root: the
-/// roots whose current generation has stored no outcome.
-const SCAN_FOUND_COUNTS: &str = "SELECT roots.watched_folder_path, \
-            (SELECT COUNT(*) FROM scan_candidate AS candidate \
-             WHERE candidate.watched_folder_path = roots.watched_folder_path \
-               AND candidate.generation = roots.generation \
-               AND candidate.source_kind = 'folder') \
-     FROM folder_scan_roots AS roots WHERE roots.status IS NULL";
-
-fn load_scan_found_counts_on(sql: &SqlReadContext<'_>) -> Result<ScanFoundCounts, DbError> {
-    sql.query(SCAN_FOUND_COUNTS, [], |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)))?
-        .into_iter()
-        .map(|(path, found)| Ok((path, to_u64(found, "current folder-scan candidate count")?)))
-        .collect()
-}
-
 impl ImportTables {
-    /// How many folders each scan under way has stored now.
-    pub async fn load_scan_found_counts(&self) -> Result<ScanFoundCounts, DbError> {
-        self.store.read(move |sql| load_scan_found_counts_on(&sql)).await
-    }
-
-    /// How many folders each scan under way has stored, live: a value for
-    /// every write that moves one.
-    pub fn subscribe_scan_found_counts(
-        &self,
-    ) -> coven::LiveQuery<ScanFoundCounts, bae_store::DbError> {
-        self.store.subscribe(move |sql| load_scan_found_counts_on(&sql))
-    }
-
     /// What each watched folder's scan has stored now.
     pub async fn load_stored_folder_scans(&self) -> Result<Vec<StoredRootScan>, DbError> {
         self.store.read(move |sql| load_stored_folder_scans_on(&sql)).await
@@ -287,6 +269,15 @@ impl ImportTables {
         &self,
     ) -> coven::LiveQuery<FolderScanProgress, bae_store::DbError> {
         self.store.subscribe(move |sql| load_folder_scan_progress_on(&sql))
+    }
+
+    /// Hold `root`'s scan as running, as the folder scan coordinator holds a
+    /// root that a pass reads, for a test that writes a scan straight to the
+    /// tables with no coordinator.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn hold_root_running_for_test(&self, root: &std::path::Path) -> Result<(), DbError> {
+        self.hold_root_scans(HeldRootScans::from([(root.to_path_buf(), HeldRootScan::Running)]))
+            .await
     }
 
     /// What the folder scan coordinator holds of each root's scan now.

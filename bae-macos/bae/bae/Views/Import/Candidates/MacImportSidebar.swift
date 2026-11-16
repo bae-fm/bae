@@ -8,7 +8,8 @@ import SwiftUI
 struct MacImportSidebar<Trailing: View, Content: View>: View {
     @Binding
     var activeTab: BridgeTriageTab
-    let counts: LatestStream<UInt32>
+    /// Every tab's count; `nil` until the list's count arrives.
+    let counts: BridgeTriageTabCounts?
     @Binding
     var filterText: String
     /// Reads the count for the filter the field holds now; `nil` while

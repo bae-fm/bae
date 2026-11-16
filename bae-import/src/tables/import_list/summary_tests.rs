@@ -566,32 +566,33 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     );
 }
 
-/// The tab counts are a live read of their own: a candidate placed on Found
-/// moves Found's count, and skipping it moves the count to Skipped, without
-/// any list open.
+/// A list's count carries every tab's count, whatever the list is narrowed
+/// to: a candidate placed on Found moves Found's count, and skipping it moves
+/// the count to Skipped, in the count of a list open on Imported.
 #[tokio::test]
-async fn the_tab_counts_follow_the_placement() {
+async fn the_list_count_carries_the_tab_counts() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let mut live = tables.subscribe_tab_counts();
+    let list = lib.open(view(TriageTab::Done)).await;
+    let mut live = tables.subscribe_import_count(list);
     let none = live.next_inline().await.expect("the query stays open").unwrap();
-    assert_eq!(none, crate::TriageTabCounts::default());
+    assert_eq!(none.tabs, crate::TriageTabCounts::default());
 
     lib.run(lib.scan("Release")).await;
     let found = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
         .await
-        .expect("a placed candidate wakes the counts")
+        .expect("a placed candidate wakes the count")
         .expect("the query stays open")
         .unwrap();
-    assert_eq!(found, crate::TriageTabCounts { pending: 1, done: 0, skipped: 0 });
+    assert_eq!(found.tabs, crate::TriageTabCounts { pending: 1, done: 0, skipped: 0 });
 
     lib.run(lib.skip("Release")).await;
     let skipped = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
         .await
-        .expect("a skip wakes the counts")
+        .expect("a skip wakes the count")
         .expect("the query stays open")
         .unwrap();
-    assert_eq!(skipped, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
+    assert_eq!(skipped.tabs, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
 }
 
 /// The tab counts query and the filter entries query read only the

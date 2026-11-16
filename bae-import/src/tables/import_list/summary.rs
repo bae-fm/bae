@@ -97,8 +97,8 @@ pub(super) fn summary(
     })
 }
 
-/// How many items `list` holds and how many of its tab's entries its
-/// narrowing keeps.
+/// How many items `list` holds, how many of its tab's entries its narrowing
+/// keeps, and every tab's count.
 pub(super) fn count(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
@@ -106,7 +106,7 @@ pub(super) fn count(
     let list = list_row(sql, list)?.ok_or_else(|| closed(list))?;
     let tabs = tab_counts_on(sql)?;
     let listed = listed(sql, &list, &tabs)?;
-    Ok(ImportListCount { rows: listed.total, narrowed: listed.narrowed })
+    Ok(ImportListCount { rows: listed.total, narrowed: listed.narrowed, tabs })
 }
 
 /// The error a read of a list that is no longer open fails with: a surface
@@ -318,10 +318,9 @@ impl ImportTables {
         self.store.read(move |sql| tab_counts_on(&sql)).await
     }
 
-    /// How many entries each tab holds, live: a value for every write that
-    /// moves one. Read apart from the list, and sent on its own, because a
-    /// scan moves them at every commit and a list narrowed to one tab has no
-    /// other use for the rest.
+    /// How many entries each tab holds, live, for a test that waits on a
+    /// scan: a screen reads them in its list's count.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_tab_counts(&self) -> coven::LiveQuery<TriageTabCounts, bae_store::DbError> {
         self.store.subscribe(move |sql| tab_counts_on(&sql))
     }

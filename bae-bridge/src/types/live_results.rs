@@ -185,10 +185,11 @@ pub enum BridgeListCountExtra {
         searching: bool,
     },
     /// How many of the import list's tab entries its filters keep, while
-    /// they narrow it.
+    /// they narrow it, and every tab's count, which the tab bar shows.
     #[cfg(desktop)]
     Import {
         narrowed: Option<crate::types::BridgeNarrowedCount>,
+        tabs: crate::types::BridgeTriageTabCounts,
     },
 }
 

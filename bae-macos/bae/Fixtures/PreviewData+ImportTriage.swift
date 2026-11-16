@@ -553,11 +553,6 @@ extension PreviewData {
     static func importTabScene() -> ImportPreviewFixture {
         let store = ImportStore()
         store.applySummary(importTabSummary)
-        store.tabCounts = tabCounts(
-            pending: importTabCounts.pending,
-            done: importTabCounts.done,
-            skipped: importTabCounts.skipped
-        )
         let rows = importTabRowsByKey()
         for var candidate in importTabCandidates {
             candidate.placement = rows[candidate.key]
@@ -572,7 +567,12 @@ extension PreviewData {
                 .pending: importTabItems(.pending),
                 .done: importTabItems(.done),
                 .skipped: importTabItems(.skipped),
-            ]
+            ],
+            tabCounts: BridgeTriageTabCounts(
+                pending: importTabCounts.pending,
+                done: importTabCounts.done,
+                skipped: importTabCounts.skipped
+            )
         )
     }
 }

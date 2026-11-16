@@ -188,35 +188,6 @@ fn a_track_held_from_start_to_end_in_one_stretch_is_at_rest() {
     assert!(!track_is_fully_buffered(&held(vec![])));
 }
 
-/// A scan's stored folders are held under its root's path, and a scan that
-/// has ended holds nothing.
-#[cfg(desktop)]
-#[test]
-fn a_scans_found_count_is_held_under_its_root() {
-    let root = std::path::PathBuf::from("/music");
-    let held = scan_found_held(bae_import::ScanFoundCounts::from([(root.clone(), 7)]));
-    assert_eq!(
-        held,
-        HashMap::from([(coven::path_bytes(&root), BridgeFastValue::ScanFoundCount { count: 7 })])
-    );
-    assert!(scan_found_held(bae_import::ScanFoundCounts::new()).is_empty());
-}
-
-/// Every tab's count is held under the tab's name, a tab with none too.
-#[cfg(desktop)]
-#[test]
-fn every_tabs_count_is_held_under_its_name() {
-    let held = tab_counts_held(bae_import::TriageTabCounts { pending: 5, done: 0, skipped: 2 });
-    assert_eq!(
-        held,
-        HashMap::from([
-            (b"pending".to_vec(), BridgeFastValue::TabCount { count: 5 }),
-            (b"done".to_vec(), BridgeFastValue::TabCount { count: 0 }),
-            (b"skipped".to_vec(), BridgeFastValue::TabCount { count: 2 }),
-        ])
-    );
-}
-
 /// The positions' stream holds each position the output reports while the
 /// track plays and a seek's target at once, and keeps a paused track's
 /// position without marking it as moving.

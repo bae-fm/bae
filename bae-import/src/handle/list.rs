@@ -68,21 +68,10 @@ impl ImportServiceHandle {
             .await?)
     }
 
-    /// How many folders each scan under way has stored, by its root: the
+    /// How many entries each tab holds, for a test that waits on a scan: the
     /// first value at once, then a value after each write that moves one.
-    /// Closing the library ends it.
-    pub fn subscribe_scan_found_counts(
-        &self,
-    ) -> bae_store::live_query::LiveValues<crate::ScanFoundCounts> {
-        bae_store::live_query::LiveValues::new(
-            self.services.tables.subscribe_scan_found_counts(),
-            self.services.closing.child_token(),
-            self.bugs(),
-        )
-    }
-
-    /// How many entries each tab holds: the first value at once, then a
-    /// value after each write that moves one. Closing the library ends it.
+    /// Closing the library ends it. A screen reads them in its list's count.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_tab_counts(
         &self,
     ) -> bae_store::live_query::LiveValues<crate::TriageTabCounts> {

@@ -9,8 +9,8 @@
 //! and a failure the scan could not store. The coordinator writes those rows
 //! in the step that changes them, and the import service empties them as the
 //! library opens, so a folder never shows as scanning with nothing scanning
-//! it. The count of folders a scan has found changes each time the scan
-//! stores a folder, and a live query of its own reads it.
+//! it. The same query counts the folders each scan under way has stored, so
+//! each folder a scan stores runs the query again.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -45,17 +45,13 @@ pub enum FolderScanStatus {
     },
 }
 
-/// How many folders each scan under way has stored, by its root.
-pub type ScanFoundCounts = BTreeMap<PathBuf, u64>;
-
 /// Each watched folder's scan status, for the chrome around the list.
 ///
 /// Read apart from the list, by its own live query, and sent on its own
 /// subscription: a scan re-confirms every folder it walks by moving its row
 /// to the scan's generation, which moves the found count and nothing the list
-/// shows. This query does not read the found count: the count has its own
-/// query and stream, so the writes that change it neither rerun this query
-/// nor reach the screen with it.
+/// shows. Each of those writes runs only this query again, which counts the
+/// folders the scan has stored off the candidates' index.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every watched root, in watched-folder order.
@@ -95,7 +91,15 @@ pub enum FolderScanAlertKind {
 /// in watched-folder order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanActivity {
-    pub folders: Vec<crate::WatchedFolder>,
+    pub folders: Vec<ActiveFolderScan>,
+}
+
+/// One root in [`FolderScanActivity`], in watched-folder order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActiveFolderScan {
+    pub folder: crate::WatchedFolder,
+    /// How many folders the scan has stored so far.
+    pub found: u64,
 }
 
 /// One watched root's scan as its table row stores it.

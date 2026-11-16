@@ -82,7 +82,10 @@ struct ImportListPinnedHeaderTests {
             queries: .fixed(
                 Self.list,
                 answers: UnansweredCount(),
-                extra: BridgeListCountExtra.import(narrowed: nil),
+                extra: BridgeListCountExtra.import(
+                    narrowed: nil,
+                    tabs: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0)
+                ),
                 leadingHeader: { position in
                     position > 0 && position < 80 ? header : nil
                 }

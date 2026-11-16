@@ -202,9 +202,13 @@ impl BridgeListCount {
                     BridgeListCountExtra::Storage { total_size, searching }
                 }
                 #[cfg(desktop)]
-                bae_views::ListCountExtra::Import { narrowed } => BridgeListCountExtra::Import {
-                    narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
-                },
+                bae_views::ListCountExtra::Import { narrowed, tabs } => {
+                    let bae_import::TriageTabCounts { pending, done, skipped } = tabs;
+                    BridgeListCountExtra::Import {
+                        narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
+                        tabs: crate::types::BridgeTriageTabCounts { pending, done, skipped },
+                    }
+                }
             },
         }
     }

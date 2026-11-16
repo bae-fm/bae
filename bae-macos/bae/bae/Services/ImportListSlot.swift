@@ -191,6 +191,17 @@ final class ImportListSlot {
         openings.send(position)
     }
 
+    /// Every tab's count, as the list's count says; `nil` until it arrives.
+    var tabCounts: BridgeTriageTabCounts? {
+        guard let count = list?.count else { return nil }
+        guard case .import(_, let tabs) = count.extra else {
+            preconditionFailure(
+                "the import list's count carried \(count.extra)"
+            )
+        }
+        return tabs
+    }
+
 }
 
 // MARK: - Revealing, view changes and loading
@@ -406,30 +417,37 @@ extension ImportListSlot {
 #if DEBUG
     extension ImportListSlot {
         // periphery:ignore - called by baeTests, through the fixtures' `preview`
-        /// A slot over a fixed set of items. The list is seeded synchronously
-        /// so a canvas draws without a live query; `pendingFilterEntries` are
-        /// what the import store holds as the filter's pending entries.
+        /// A slot over a fixed set of items, with `tabCounts` as the list's
+        /// count carries them. The list is seeded synchronously so a canvas
+        /// draws without a live query.
         static func seededWithItems(
             importStore: ImportStore,
             uiStore: UiStore,
             items: [BridgeImportListItem],
-            selection: ImportSelection,
-            pendingFilterEntries: [BridgePendingFilterEntry]
+            tabCounts: BridgeTriageTabCounts,
+            selection: ImportSelection
         ) -> ImportListSlot {
             let tab = uiStore.importCandidateTab
-            let handle = ImportListHandle.fixed(items: items, tab: tab)
+            let extra = BridgeListCountExtra.import(
+                narrowed: nil,
+                tabs: tabCounts
+            )
+            let handle = ImportListHandle.fixed(
+                items: items,
+                tab: tab,
+                extra: extra
+            )
             let slot = ImportListSlot(
                 importStore: importStore,
                 uiStore: uiStore,
                 selection: selection,
                 makeHandle: { _ in handle }
             )
-            importStore.applyPendingFilterEntries(pendingFilterEntries)
             let list = PaginatedList<BridgeImportListItem>(
                 queries: handle.queries,
                 onError: { _ in }
             )
-            list.preloadRows(rows: items, extra: .import(narrowed: nil))
+            list.preloadRows(rows: items, extra: extra)
             slot.list = list
             slot.handle = handle
             return slot
@@ -546,7 +564,7 @@ extension PaginatedList<BridgeImportListItem> {
     /// until core delivers the count.
     fileprivate var narrowed: BridgeNarrowedCount? {
         guard let count else { return nil }
-        guard case .import(let narrowed) = count.extra else {
+        guard case .import(let narrowed, _) = count.extra else {
             preconditionFailure(
                 "the import list's count carried \(count.extra)"
             )

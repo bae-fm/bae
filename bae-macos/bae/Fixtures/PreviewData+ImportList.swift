@@ -9,13 +9,16 @@ import Foundation
 struct ImportPreviewFixture {
     let store: ImportStore
     let itemsByTab: [BridgeTriageTab: [BridgeImportListItem]]
+    /// Every tab's count, as the list's count carries it.
+    let tabCounts: BridgeTriageTabCounts
 
     @MainActor
     func slot(uiStore: UiStore) -> ImportListSlot {
         ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
-            items: itemsByTab[uiStore.importCandidateTab] ?? []
+            items: itemsByTab[uiStore.importCandidateTab] ?? [],
+            tabCounts: tabCounts
         )
     }
 }
@@ -97,20 +100,6 @@ extension PreviewData {
                 selectable: count > 0
             )
         }
-    }
-
-    /// The tab counts a shot's tab bar reads, as the stream core feeds
-    /// holds them.
-    static func tabCounts(
-        pending: UInt32,
-        done: UInt32,
-        skipped: UInt32
-    ) -> LatestStream<UInt32> {
-        .tabCounts(holding: [
-            BridgeTriageTab.pending.countKey: pending,
-            BridgeTriageTab.done.countKey: done,
-            BridgeTriageTab.skipped.countKey: skipped,
-        ])
     }
 
     static func importQueueSummary(

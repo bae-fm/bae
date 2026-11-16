@@ -15,16 +15,16 @@ struct ImportCandidateSelectionTests {
             FolderScanProgressIndicator(
                 activity: BridgeFolderScanActivity(
                     folders: [
-                        BridgeWatchedFolder(
-                            path: Data("/imports/incoming".utf8),
-                            pathText: "/imports/incoming",
-                            name: "Incoming"
+                        BridgeActiveFolderScan(
+                            folder: BridgeWatchedFolder(
+                                path: Data("/imports/incoming".utf8),
+                                pathText: "/imports/incoming",
+                                name: "Incoming"
+                            ),
+                            found: 179
                         )
                     ]
-                ),
-                foundCounts: .scanFoundCounts(holding: [
-                    Data("/imports/incoming".utf8): 179
-                ])
+                )
             )
             .frame(width: size.width, height: size.height),
             size: size

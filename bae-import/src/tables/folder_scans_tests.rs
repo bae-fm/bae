@@ -561,9 +561,17 @@ async fn a_grouping_is_found_when_combined_only() {
     assert!(rebuilt.iter().all(|changes| changes.found.is_empty()));
 }
 
-/// How many folders the scan under way of the only root has stored.
+/// How many folders the scan under way of `root` has stored, as the
+/// progress lists it while the coordinator holds `root` as running.
 async fn found_counts(tables: &crate::tables::ImportTables, root: &std::path::Path) -> usize {
-    tables.load_scan_found_counts().await.unwrap()[root] as usize
+    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let activity = progress.activity.expect("a scan is under way");
+    let scan = activity
+        .folders
+        .iter()
+        .find(|scan| scan.watched_folder_path == root)
+        .expect("the scan of root is under way");
+    scan.found as usize
 }
 
 /// The count of the folders a scan has stored follows every kind of write a
@@ -577,6 +585,13 @@ async fn the_found_count_matches_the_current_generations_folders() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let music = host_root("/music");
     tables.add_watched_import_folder(&music).await.unwrap();
+    tables
+        .hold_root_scans(crate::folder_scan_status::HeldRootScans::from([(
+            music.clone(),
+            crate::folder_scan_status::HeldRootScan::Running,
+        )]))
+        .await
+        .unwrap();
     let first = tables.begin_folder_scan(&music, crate::VolumeKind::Local).await.unwrap();
     assert_eq!(found_counts(&tables, &music).await, 0);
 

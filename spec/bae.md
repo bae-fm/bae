@@ -941,10 +941,10 @@ scans list every watched folder with its status and whether it is on a network
 volume, say whether any folder's last scan failed or left it not watched, and
 list the folders being scanned, so the list's menu draws them without joining
 anything; one live query reads them all. Until that query sends its first value,
-the menu's Folders section says *Reading…* and lists no folder. How many folders the scan
-has stored moves with every folder it walks, so it is not part of that status:
-it has a stream of its own, keyed by the folder's path, which the scan
-indicator's list of folders reads each display frame. A pass whose failure the
+the menu's Folders section says *Reading…* and lists no folder. Each folder being scanned also
+carries how many folders its scan has stored, which the same query counts off
+the index of the scan's candidates, and the scan indicator's list of folders
+shows it. A pass whose failure the
 store won't take, a whole scan's or a changed folder's reading's, still shows as
 failed with its error: the coordinator writes that failure to `folder_scan_held` as the
 folder's status until the folder's next pass starts, with the volume the pass found the
@@ -1284,8 +1284,8 @@ rows, how many items the list holds, how many releases its filters keep and how
 many rows each group's header counts with COUNT queries over the placement's
 rows, which read the placement's indexes. No table stores the counts. The list's count, with the narrowed count it carries, is a live
 query of its own, apart from the windows: a scan's commit changes it without
-resending every window. Each tab's count is a read of its own as well, sent on a
-stream keyed by tab, and the tab bar's labels read it each display frame. Coven
+resending every window. The list's count also carries every tab's count,
+whatever the list is narrowed by, and the tab bar shows them from it. Coven
 bounds a window's read by its range only where the statement compares a column
 with the window's keys; the list's items read a group's header through a
 correlated subquery of the placement, so a scan item or a fold reruns every

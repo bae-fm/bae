@@ -149,20 +149,15 @@ struct FolderScanActivitySlot: View {
 
     var body: some View {
         if let activity = importStore.folderScans?.activity {
-            FolderScanProgressIndicator(
-                activity: activity,
-                foundCounts: importStore.scanFoundCounts
-            )
+            FolderScanProgressIndicator(activity: activity)
         }
     }
 }
 
 /// The filter row's watched-folder scan indicator; clicking it lists each
-/// root's found count, which a label reads from `foundCounts` each display
-/// frame.
+/// root's found count.
 struct FolderScanProgressIndicator: View {
     let activity: BridgeFolderScanActivity
-    let foundCounts: LatestStream<UInt64>
 
     @State
     private var detailsShown = false
@@ -183,18 +178,19 @@ struct FolderScanProgressIndicator: View {
         .help(localizedCoreString("ui.import.scan.activity"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ForEach(activity.folders, id: \.path) { folder in
+                ForEach(activity.folders, id: \.folder.path) { scan in
                     HStack(spacing: ThemeSpace.group) {
-                        Text(verbatim: folder.name)
+                        Text(verbatim: scan.folder.name)
                             .cutLine(.fileName)
                         Spacer(minLength: ThemeSpace.group)
-                        StreamLabel(
-                            stream: .scanFoundCount(
-                                foundCounts.source(
-                                    for: folder.path
-                                )
+                        Text(
+                            verbatim: localizedCoreString(
+                                "ui.import.scan.found",
+                                Int(scan.found)
                             )
                         )
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
                     }
                 }
             }

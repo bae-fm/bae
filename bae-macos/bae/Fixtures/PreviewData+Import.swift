@@ -334,13 +334,17 @@ extension PreviewData {
     ) -> ImportPreviewFixture {
         let store = ImportStore()
         store.applySummary(summary)
-        store.tabCounts = tabCounts(pending: pending, done: 0, skipped: 0)
         for candidate in releaseQueueCandidates {
             store.selectedCandidates[candidate.key] = candidate
         }
         return ImportPreviewFixture(
             store: store,
-            itemsByTab: [.pending: items, .done: [], .skipped: []]
+            itemsByTab: [.pending: items, .done: [], .skipped: []],
+            tabCounts: BridgeTriageTabCounts(
+                pending: pending,
+                done: 0,
+                skipped: 0
+            )
         )
     }
 
@@ -368,7 +372,8 @@ extension PreviewData {
         )
         return ImportPreviewFixture(
             store: scene.store,
-            itemsByTab: scene.itemsByTab
+            itemsByTab: scene.itemsByTab,
+            tabCounts: scene.tabCounts
         )
     }
 }

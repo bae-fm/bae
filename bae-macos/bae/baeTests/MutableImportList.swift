@@ -112,7 +112,10 @@ final class MutableImportList: @unchecked Sendable {
         return BridgeListCount(
             rows: rows,
             items: rows,
-            extra: .import(narrowed: nil)
+            extra: .import(
+                narrowed: nil,
+                tabs: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0)
+            )
         )
     }
 

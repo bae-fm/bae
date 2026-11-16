@@ -329,14 +329,14 @@
             /// candidate at its place in `items`.
             public static func fixed(
                 items: [BridgeImportListItem],
-                tab: BridgeTriageTab
+                tab: BridgeTriageTab,
+                extra: BridgeListCountExtra = .import(
+                    narrowed: nil,
+                    tabs: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0)
+                )
             ) -> ImportListHandle {
                 let queries = BridgeListQueries<BridgeImportListItem>
-                    .fixed(
-                        items,
-                        answers: UnansweredCount(),
-                        extra: BridgeListCountExtra.import(narrowed: nil)
-                    )
+                    .fixed(items, answers: UnansweredCount(), extra: extra)
                 return ImportListHandle(
                     queries: queries,
                     summary: {

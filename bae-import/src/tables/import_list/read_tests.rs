@@ -343,11 +343,18 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     }
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     let rescan = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    tables
+        .hold_root_scans(crate::folder_scan_status::HeldRootScans::from([(
+            root.clone(),
+            crate::folder_scan_status::HeldRootScan::Running,
+        )]))
+        .await
+        .unwrap();
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
     let mut window = tables.subscribe_import_window(list, first(50));
     let mut count = tables.subscribe_import_count(list);
-    let mut scans = tables.subscribe_scan_found_counts();
+    let mut scans = tables.subscribe_folder_scan_progress();
     settled(&mut window).await;
     count.next_inline().await.expect("the query stays open").unwrap();
     scans.next_inline().await.expect("the query stays open").unwrap();
@@ -511,8 +518,11 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     assert_eq!(before.rows, whole(&tables, list).await.len() as u64);
     let mut follows = async |what: &str| {
         let fresh = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
-        let fresh =
-            crate::list::ImportListCount { rows: fresh.total_count, narrowed: fresh.narrowed };
+        let fresh = crate::list::ImportListCount {
+            rows: fresh.total_count,
+            narrowed: fresh.narrowed,
+            tabs: tables.load_tab_counts().await.unwrap(),
+        };
         count_until(&mut query, &format!("{fresh:?} after {what}"), |count| *count == fresh).await
     };
     tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();

@@ -438,58 +438,6 @@ extension LatestStream where Value == UInt32 {
             fed { appHandle.feedImportPercents() }
         }
     #endif
-
-    /// How many entries each tab of the import list holds, by the tab's
-    /// name; a shot's holds `values` and nothing feeds it.
-    public static func tabCounts(holding values: [Data: Value] = [:])
-        -> LatestStream
-    {
-        LatestStream(holding: values) {
-            if case .tabCount(let count) = $0 {
-                count
-            }
-            else {
-                nil
-            }
-        }
-    }
-
-    #if os(macOS)
-        /// Fill from core, telling `onError` each failed read.
-        public func feed(
-            from appHandle: AppHandle,
-            onError: @escaping @MainActor @Sendable (any Error) -> Void
-        ) -> LatestFeed {
-            fed(onFailedRead: onError) { appHandle.feedTabCounts() }
-        }
-    #endif
-}
-
-extension LatestStream where Value == UInt64 {
-    /// How many folders each scan under way has stored, by the watched
-    /// folder's path; a shot's holds `values` and nothing feeds it.
-    public static func scanFoundCounts(holding values: [Data: Value] = [:])
-        -> LatestStream
-    {
-        LatestStream(holding: values) {
-            if case .scanFoundCount(let count) = $0 {
-                count
-            }
-            else {
-                nil
-            }
-        }
-    }
-
-    #if os(macOS)
-        /// Fill from core, telling `onError` each failed read.
-        public func feed(
-            from appHandle: AppHandle,
-            onError: @escaping @MainActor @Sendable (any Error) -> Void
-        ) -> LatestFeed {
-            fed(onFailedRead: onError) { appHandle.feedScanFoundCounts() }
-        }
-    #endif
 }
 
 #if os(macOS)

@@ -39,15 +39,21 @@ pub(crate) async fn scan_albums(services: &AppServices, collection: &Path, count
     tab_counts_until(services, |counts| counts.pending as usize == count).await;
 }
 
-/// The tab counts until `accept` admits some.
+/// The tab counts, as a list's count carries them, until `accept` admits
+/// some.
 async fn tab_counts_until(
     services: &AppServices,
     accept: impl Fn(&bae_import::TriageTabCounts) -> bool,
 ) {
-    let counts = services.subscribe_tab_counts();
+    let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
+    let counts = bae_app::import_list_count(&list);
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            if accept(&counts.next().await.expect("the tab counts answer")) {
+            let count = counts.next().await.expect("the list's count answers");
+            let bae_views::ListCountExtra::Import { tabs, .. } = count.extra else {
+                panic!("an import list's count carries the tab counts: {count:?}");
+            };
+            if accept(&tabs) {
                 return;
             }
         }

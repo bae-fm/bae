@@ -164,9 +164,10 @@ pub struct ImportQueueSummary {
     pub narrowing: ImportListNarrowing,
 }
 
-/// How many items the list holds, and how many of its tab's entries its
-/// narrowing keeps. The count has its own live query because every scan
-/// commit changes it; the surface sizes the list's scroll view from it.
+/// How many items the list holds, how many of its tab's entries its
+/// narrowing keeps, and how many entries each tab holds. The count has its own
+/// live query because every scan commit changes it; the surface sizes the
+/// list's scroll view from it, and the tab bar shows the tabs' counts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportListCount {
     pub rows: u64,
@@ -174,6 +175,8 @@ pub struct ImportListCount {
     /// while the text filter or the filter entry narrows it; `None` while
     /// nothing does.
     pub narrowed: Option<NarrowedCount>,
+    /// Every tab's count, whatever the list is narrowed by.
+    pub tabs: crate::TriageTabCounts,
 }
 
 /// Where a list's view opens once it is set: what a list narrowed anew shows

@@ -34,7 +34,7 @@ pub fn import_list_count(list: &LiveImportList) -> LiveValues<bae_views::ListCou
         Ok(bae_views::ListCount {
             rows: count.rows,
             items: count.rows,
-            extra: bae_views::ListCountExtra::Import { narrowed: count.narrowed },
+            extra: bae_views::ListCountExtra::Import { narrowed: count.narrowed, tabs: count.tabs },
         })
     }))
 }

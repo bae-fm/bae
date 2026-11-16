@@ -11,14 +11,22 @@ extension ImportListSlot {
         importStore: ImportStore,
         uiStore: UiStore,
         items: [BridgeImportListItem],
+        tabCounts: BridgeTriageTabCounts = BridgeTriageTabCounts(
+            pending: 0,
+            done: 0,
+            skipped: 0
+        ),
         selection: ImportSelection = ImportSelection()
     ) -> ImportListSlot {
-        seededWithItems(
+        importStore.applyPendingFilterEntries(
+            PreviewData.pendingFilterEntries()
+        )
+        return seededWithItems(
             importStore: importStore,
             uiStore: uiStore,
             items: items,
-            selection: selection,
-            pendingFilterEntries: PreviewData.pendingFilterEntries()
+            tabCounts: tabCounts,
+            selection: selection
         )
     }
 }

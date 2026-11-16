@@ -5,7 +5,6 @@ import SwiftUI
 /// Which stream a `StreamLabel` follows, whatever its source.
 enum StreamLabelKind: CaseIterable {
     case uploadRate, pinRate, exportPercent
-    case scanFoundCount, tabCount
 }
 
 /// A label that reads a fast stream's latest value once per display frame
@@ -24,16 +23,6 @@ final class StreamLabelNSView: NSTextField {
     private lazy var uploads = FrameFollowing<BridgeUploadTransfer>(
         view: self
     ) { [weak self] transfer in self?.showRate(transfer?.throughputBps) }
-    private lazy var tabCounts = FrameFollowing<UInt32>(view: self) {
-        [weak self] count in
-        self?.stringValue = count.map { $0.formatted() } ?? ""
-    }
-    private lazy var foundCounts = FrameFollowing<UInt64>(view: self) {
-        [weak self] count in
-        self?.stringValue =
-            count.map { localizedCoreString("ui.import.scan.found", Int($0)) }
-            ?? ""
-    }
 
     init() {
         super.init(frame: .zero)
@@ -56,7 +45,7 @@ final class StreamLabelNSView: NSTextField {
     }
 
     /// The label only shows a value: a click on it is the click of the view
-    /// it sits in, such as the tab a count belongs to.
+    /// it sits in.
     override func hitTest(_: NSPoint) -> NSView? { nil }
 
     func follow(_ stream: StreamLabel.Stream) {
@@ -68,14 +57,6 @@ final class StreamLabelNSView: NSTextField {
             downloads.follow(source)
         case .exportPercent(let source):
             percents.follow(source)
-        case .scanFoundCount(let source):
-            alignment = .right
-            foundCounts.follow(source)
-        case .tabCount(let source, let tone):
-            alignment = .center
-            textColor = NSColor(tone.color)
-            font = Self.chipFont
-            tabCounts.follow(source)
         }
     }
 
@@ -98,17 +79,7 @@ final class StreamLabelNSView: NSTextField {
         case .uploadRate: uploads.stop()
         case .pinRate: downloads.stop()
         case .exportPercent: percents.stop()
-        case .scanFoundCount: foundCounts.stop()
-        case .tabCount: tabCounts.stop()
         }
-    }
-
-    /// The font a chip's text is set in, with digits of one width.
-    static var chipFont: NSFont {
-        NSFont.monospacedDigitSystemFont(
-            ofSize: ThemeText.chip.nsFont.pointSize,
-            weight: ThemeText.chip.nsWeight
-        )
     }
 
     /// A zero or unknown rate shows nothing rather than a stalled speed.
@@ -132,19 +103,12 @@ struct StreamLabel: NSViewRepresentable {
         case pinRate(LatestSource<BridgeDownloadTransferProgress>)
         /// How far the export queue's running release has been written.
         case exportPercent(LatestSource<UInt8>)
-        /// How many folders the scan of one watched folder has stored.
-        case scanFoundCount(LatestSource<UInt64>)
-        /// How many entries one tab of the import list holds, as a chip of
-        /// `tone` shows it.
-        case tabCount(LatestSource<UInt32>, tone: StatusTone)
 
         var kind: StreamLabelKind {
             switch self {
             case .uploadRate: .uploadRate
             case .pinRate: .pinRate
             case .exportPercent: .exportPercent
-            case .scanFoundCount: .scanFoundCount
-            case .tabCount: .tabCount
             }
         }
     }
@@ -176,10 +140,6 @@ struct StreamLabel: NSViewRepresentable {
                 TransferThroughput.text(bytesPerSecond: 999_900_000)
             case .exportPercent:
                 (1.0).formatted(.percent)
-            case .scanFoundCount:
-                localizedCoreString("ui.import.scan.found", 9_999_999)
-            case .tabCount:
-                (99_999 as UInt32).formatted()
             }
         let font = view.font ?? .systemFont(ofSize: NSFont.systemFontSize)
         let size = (widest as NSString).size(withAttributes: [.font: font])

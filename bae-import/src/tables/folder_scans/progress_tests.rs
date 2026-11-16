@@ -4,12 +4,6 @@ use crate::tables::tests::*;
 use bae_records::test_fixtures::live_query::live_db;
 use bae_util::test_channels::HANG_GUARD;
 
-/// The only root's stored outcome.
-fn only_outcome(scans: Vec<crate::StoredRootScan>) -> crate::StoredScanOutcome {
-    let [scan] = <[_; 1]>::try_from(scans).expect("one root is watched");
-    scan.last_scan.expect("a scan opened the root's generation").outcome
-}
-
 /// The tables of a library watching `/music`, with its root.
 async fn watching_music() -> (crate::tables::ImportTables, std::path::PathBuf, tempfile::TempDir) {
     let (db, temp) = live_db(crate::TEST_SCHEMA).await;
@@ -42,6 +36,11 @@ fn unstored(
     )])
 }
 
+/// The found count of each folder that the progress lists as scanning.
+fn found_counts(progress: &crate::FolderScanProgress) -> Vec<u64> {
+    progress.activity.iter().flat_map(|activity| &activity.folders).map(|f| f.found).collect()
+}
+
 /// The only watched folder's status.
 async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanStatus {
     let progress = tables.load_folder_scan_progress().await.unwrap();
@@ -54,9 +53,9 @@ async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanS
 const STOPPED: &str = "the scan stopped before bae stored its result";
 
 /// An open generation is scanning while the coordinator holds its folder as
-/// running, until the walk stores its outcome. The walk's stored folders do
-/// not wake the progress, whose next value is the outcome: the count has a
-/// read of its own.
+/// running, until the walk stores its outcome. Each folder the walk stores
+/// runs the progress again with one more folder found, and the walk's end
+/// replaces the scanning folder with the outcome.
 #[tokio::test]
 async fn progress_follows_the_walk_in_flight() {
     let (tables, root, _temp) = watching_music().await;
@@ -72,11 +71,20 @@ async fn progress_follows_the_walk_in_flight() {
     assert_eq!(
         initial.activity,
         Some(crate::FolderScanActivity {
-            folders: vec![crate::WatchedFolder { path: root.clone(), name: "music".to_string() }],
+            folders: vec![crate::ActiveFolderScan {
+                folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
+                found: 1,
+            }],
         })
     );
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
+    let grown = tokio::time::timeout(HANG_GUARD, live.next_inline())
+        .await
+        .expect("a stored folder wakes the progress")
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(found_counts(&grown), [2]);
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     let complete = tokio::time::timeout(HANG_GUARD, live.next_inline())
@@ -347,38 +355,6 @@ async fn stored_scans_read_the_volume_their_scan_recorded() {
     assert!(scans[0].last_scan.as_ref().expect("the scan began").on_network_volume);
 }
 
-/// An open generation counts the folders its walk has stored, live, and
-/// holds no count once the walk finishes.
-#[tokio::test]
-async fn found_counts_follow_the_walk_in_flight() {
-    let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
-    let tables = crate::tables::ImportTables::new(db.clone());
-    let root = &crate::tables::watched_path::host_root("/music");
-    tables.add_watched_import_folder(root).await.unwrap();
-    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
-    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
-
-    let mut live = tables.subscribe_scan_found_counts();
-    let initial = live.next_inline().await.expect("the query stays open").unwrap();
-    assert_eq!(initial, crate::ScanFoundCounts::from([(root.clone(), 1)]));
-
-    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("a scan item wakes the found counts")
-        .expect("the query stays open")
-        .unwrap();
-    assert_eq!(grown, crate::ScanFoundCounts::from([(root.clone(), 2)]));
-
-    tables.finish_folder_scan(root, generation, None).await.unwrap();
-    let done = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("finishing the scan wakes the found counts")
-        .expect("the query stays open")
-        .unwrap();
-    assert!(done.is_empty(), "a finished scan holds no count");
-}
-
 /// A rescan retains the previous generation until the new walk succeeds, but
 /// the found count is only the entries encountered by the generation in
 /// flight.
@@ -404,14 +380,9 @@ async fn found_counts_count_only_the_generation_in_flight() {
         .await
         .unwrap();
 
-    assert_eq!(
-        only_outcome(tables.load_stored_folder_scans().await.unwrap()),
-        crate::StoredScanOutcome::Unfinished
-    );
-    assert_eq!(
-        tables.load_scan_found_counts().await.unwrap(),
-        crate::ScanFoundCounts::from([(root.clone(), 1)])
-    );
+    tables.hold_root_scans(running(root)).await.unwrap();
+
+    assert_eq!(found_counts(&tables.load_folder_scan_progress().await.unwrap()), [1]);
 }
 
 /// The stored scans list the watched folders in the order they are listed,
@@ -517,21 +488,19 @@ async fn stored_scans_list_a_folder_no_scan_has_begun() {
     );
 }
 
-/// Reading the stored scans runs the same SQLite steps however many
-/// candidates the generation in flight holds, since every scan write wakes
-/// this read. Reading the found counts walks one index entry for each
-/// candidate, and no more than a few steps for each: counting them off the
-/// tables cost nine steps a candidate.
+/// Every scan write runs the progress again. The progress counts the
+/// running scan's candidates off an index and takes at most a few steps for
+/// each one. Counting them off the tables took nine steps for each candidate.
 #[tokio::test]
-async fn reading_the_stored_scans_does_not_grow_and_counting_walks_an_index() {
+async fn reading_the_progress_counts_the_found_folders_off_an_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
     tables.add_watched_import_folder(root).await.unwrap();
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     let counter = db.track_work_for_test().await.unwrap();
+    tables.hold_root_scans(running(root)).await.unwrap();
     let mut stored = 0;
-    let mut stored_steps = Vec::new();
     let mut found_steps = Vec::new();
     for size in [10, 1_000] {
         while stored < size {
@@ -546,14 +515,10 @@ async fn reading_the_stored_scans_does_not_grow_and_counting_walks_an_index() {
             stored += 1;
         }
         counter.take();
-        let scans = tables.load_stored_folder_scans().await.unwrap();
-        assert_eq!(only_outcome(scans), crate::StoredScanOutcome::Unfinished);
-        stored_steps.push(counter.take().app_read_steps);
-        let found = tables.load_scan_found_counts().await.unwrap();
-        assert_eq!(found, crate::ScanFoundCounts::from([(root.clone(), size)]));
+        let progress = tables.load_folder_scan_progress().await.unwrap();
+        assert_eq!(found_counts(&progress), [size]);
         found_steps.push(counter.take().app_read_steps);
     }
-    assert_eq!(stored_steps[0], stored_steps[1], "steps per read at 10 and at 1,000 candidates");
     assert!(
         found_steps[1] <= 4 * 1_000,
         "counting 1,000 candidates took {} steps, over four each",
@@ -569,7 +534,7 @@ async fn the_found_count_is_counted_off_the_found_folders_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let plan = db
         .read(|sql| {
-            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::SCAN_FOUND_COUNTS), [], |row| {
+            sql.query(&format!("EXPLAIN QUERY PLAN {}", super::SCANNING_FOLDERS), [], |row| {
                 row.get::<_, String>(3)
             })
             .map_err(bae_store::DbError::from)

@@ -19,7 +19,12 @@ struct NarrowedCountTests {
                 [],
                 answers: UnansweredCount(),
                 extra: BridgeListCountExtra.import(
-                    narrowed: BridgeNarrowedCount(shown: 7, total: 84)
+                    narrowed: BridgeNarrowedCount(shown: 7, total: 84),
+                    tabs: BridgeTriageTabCounts(
+                        pending: 84,
+                        done: 0,
+                        skipped: 0
+                    )
                 )
             )
         )

@@ -2,13 +2,12 @@ import BaeKit
 import SwiftUI
 
 /// The Found / Imported / Skipped tab bar above the candidate list, with
-/// counts from core's tab counts stream, which a filter does not change. A
-/// count moves with every commit of a scan, so each is a label that reads its
-/// tab's latest value each display frame, not text SwiftUI redraws.
+/// every tab's count from the list's count, which a filter does not change.
 struct TriageTabBar: View {
     @Binding
     var activeTab: BridgeTriageTab
-    let counts: LatestStream<UInt32>
+    /// `nil` until the list's count arrives; each chip is empty until then.
+    let counts: BridgeTriageTabCounts?
 
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
@@ -29,12 +28,13 @@ struct TriageTabBar: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 let tone: StatusTone = isActive ? .accent : .neutral
-                StreamLabel(
-                    stream: .tabCount(
-                        counts.source(for: tab.countKey),
-                        tone: tone
-                    )
+                Text(
+                    verbatim: counts.map { tab.count(in: $0).formatted() } ?? ""
                 )
+                .themeText(.chip)
+                .monospacedDigit()
+                .foregroundStyle(tone.color)
+                .lineLimit(1)
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.line)
                 .background(
@@ -59,12 +59,12 @@ struct TriageTabBar: View {
 }
 
 extension BridgeTriageTab {
-    /// The key the tab's count is under in the tab counts stream.
-    var countKey: Data {
+    /// The tab's count among `counts`.
+    func count(in counts: BridgeTriageTabCounts) -> UInt32 {
         switch self {
-        case .pending: Data("pending".utf8)
-        case .done: Data("done".utf8)
-        case .skipped: Data("skipped".utf8)
+        case .pending: counts.pending
+        case .done: counts.done
+        case .skipped: counts.skipped
         }
     }
 }
