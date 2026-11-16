@@ -658,7 +658,11 @@ extension PreviewData {
         identifyState: .failed(
             run: identifyRunProviderFailed,
             // The band's cell shows the failure.
-            failureLines: [],
+            failureLines: BridgeFailureLines(
+                all: [],
+                pickFailures: [],
+                missingSearches: []
+            ),
             groups: [searchGroupExact],
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
@@ -695,7 +699,11 @@ extension PreviewData {
                 readingArtwork: false
             ),
             // The band's cells show both failures.
-            failureLines: [],
+            failureLines: BridgeFailureLines(
+                all: [],
+                pickFailures: [],
+                missingSearches: []
+            ),
             groups: [],
             agreements: [:],
             narrowedOutCount: 0,
@@ -707,10 +715,17 @@ extension PreviewData {
     static let searchStateFailedWithoutRun = searchState(
         identifyState: .failed(
             run: nil,
-            failureLines: [
-                .discId(failure: .network),
-                .barcode(source: .discogs, failure: .provider(status: 503)),
-            ],
+            failureLines: BridgeFailureLines(
+                all: [
+                    .discId(failure: .network),
+                    .barcode(source: .discogs, failure: .provider(status: 503)),
+                ],
+                pickFailures: [],
+                missingSearches: [
+                    BridgeMissingSearch(step: .discId, source: .musicBrainz),
+                    BridgeMissingSearch(step: .barcode, source: .discogs),
+                ]
+            ),
             groups: [],
             agreements: [:],
             narrowedOutCount: 0,

@@ -334,7 +334,7 @@ pub enum BridgeIdentifyState {
         run: Option<BridgeIdentifyRun>,
         /// The failures no cell of `run` shows, each said in a line of its
         /// own: a failure a cell shows is said there, beside its retry.
-        failure_lines: Vec<BridgeIdentifyFailure>,
+        failure_lines: BridgeFailureLines,
         groups: Vec<BridgeReleaseGroup>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
@@ -342,6 +342,44 @@ pub enum BridgeIdentifyState {
         /// for `Found`.
         offers_shared_album: bool,
     },
+}
+
+/// The failures of a failed verdict that no cell of its ledger shows, as a
+/// surface says them. Mirrors `bae_identify::FailureLines`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFailureLines {
+    /// Every one, in the order the run met them: the lines of a page that
+    /// offers no releases.
+    pub all: Vec<BridgeIdentifyFailure>,
+    /// The failed fetches of the release the run picked, which say why the
+    /// pick was not applied and leave no results missing from the list.
+    pub pick_failures: Vec<BridgeIdentifyFailure>,
+    /// Each lookup among the other failures, once, in the order the run first
+    /// met it: the lines closing a list of offered releases.
+    pub missing_searches: Vec<BridgeMissingSearch>,
+}
+
+/// A lookup that failed, so a list of offered releases is missing its
+/// results. Mirrors `bae_identify::MissingSearch`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMissingSearch {
+    pub step: BridgeLookupStep,
+    pub source: BridgeCatalog,
+}
+
+/// A step of identification that asks a catalog. Mirrors
+/// `bae_identify::LookupStep`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeLookupStep {
+    DiscId,
+    Barcode,
+    Catalog,
+    Isrc,
+    /// The title search the run fell back on.
+    TitleSearch,
+    /// The lookup of an offered row's pressing on a catalog that has no
+    /// record of it.
+    Pressing,
 }
 
 /// Which lookup failed, and which provider where several answer it.

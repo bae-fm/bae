@@ -64,9 +64,12 @@ enum SignalBadgeStyle {
 
     /// The same, for a step a provider was asked: the identifiers, or the
     /// title the run searched by.
-    static func sentenceLabel(for step: FailedSearch.Step) -> String {
+    static func sentenceLabel(for step: BridgeLookupStep) -> String {
         switch step {
-        case .signal(let kind): sentenceLabel(for: kind)
+        case .discId: sentenceLabel(for: Signal.discId)
+        case .barcode: sentenceLabel(for: Signal.barcode)
+        case .catalog: sentenceLabel(for: Signal.catalog)
+        case .isrc: sentenceLabel(for: Signal.isrc)
         case .titleSearch: String(localized: "title search")
         case .pressing: String(localized: "pressing lookup")
         }

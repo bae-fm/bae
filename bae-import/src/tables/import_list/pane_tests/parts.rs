@@ -401,22 +401,30 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
     else {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
+    assert_eq!(failure_lines.all, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
 }
 
 /// A failed verdict with no ledger has no cell that shows a failure, so the
-/// pane says each failure in a line of its own.
+/// pane says each failure in a line of its own. Beneath offered releases it
+/// says the failed fetches of the picked release apart, and each other
+/// lookup once, as the list missing its results, in the order the run first
+/// met it.
 #[tokio::test]
 async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
     use bae_catalogs::search::SourceFailure;
     use bae_catalogs::LookupFailure;
-    use bae_identify::IdentifyFailure;
+    use bae_identify::{IdentifyFailure, LookupStep, MissingSearch};
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
-    let failures = vec![IdentifyFailure::Search(SourceFailure {
-        source: Catalog::Discogs,
-        failure: LookupFailure::Network,
-    })];
+    let failed = |source, failure| SourceFailure { source, failure };
+    let cover = IdentifyFailure::Cover(failed(Catalog::MusicBrainz, LookupFailure::Network));
+    let failures = vec![
+        IdentifyFailure::Search(failed(Catalog::Discogs, LookupFailure::Network)),
+        cover.clone(),
+        IdentifyFailure::DiscId(LookupFailure::Timeout),
+        IdentifyFailure::Search(failed(Catalog::Discogs, LookupFailure::Timeout)),
+        IdentifyFailure::Pressing(failed(Catalog::MusicBrainz, LookupFailure::Network)),
+    ];
     store_verdict(
         &db,
         &candidate,
@@ -439,7 +447,17 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
     else {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines, failures);
+    assert_eq!(failure_lines.all, failures);
+    assert_eq!(failure_lines.pick_failures, vec![cover]);
+    let missing = |step, catalog| MissingSearch { step, catalog };
+    assert_eq!(
+        failure_lines.missing_searches,
+        vec![
+            missing(LookupStep::TitleSearch, Catalog::Discogs),
+            missing(LookupStep::DiscId, Catalog::MusicBrainz),
+            missing(LookupStep::Pressing, Catalog::MusicBrainz),
+        ]
+    );
 }
 
 /// The candidate's picker offers the covers the linked release states, each

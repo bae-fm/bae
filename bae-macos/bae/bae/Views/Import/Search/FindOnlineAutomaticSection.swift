@@ -147,9 +147,9 @@ struct FindOnlineAutomaticSection: View {
             identifiedList {
                 // The run picked a release and could not apply it: why, with
                 // the retry, since the band has no failed cell to offer one.
-                if !pickFailures.isEmpty {
+                if !state.failureLines.pickFailures.isEmpty {
                     FindOnlineFailureLines(
-                        failures: pickFailures,
+                        failures: state.failureLines.pickFailures,
                         onRetry: onRetryFailed
                     )
                 }
@@ -164,8 +164,8 @@ struct FindOnlineAutomaticSection: View {
                 linkSharedAlbum
                     .padding(.leading, ThemeSpace.group)
                 narrowedOut
-                ForEach(missingSourceNotes, id: \.search) { note in
-                    MissingSourceNote(text: note.text)
+                ForEach(state.failureLines.missingSearches, id: \.self) {
+                    MissingSourceNote(text: Self.missingText($0))
                 }
                 keepOwnDraft
                     .padding(.leading, ThemeSpace.group)
@@ -178,11 +178,11 @@ struct FindOnlineAutomaticSection: View {
                 keepOwnDraft
             }
         case .failureLines:
-            if !state.failureLines.isEmpty {
+            if !state.failureLines.all.isEmpty {
                 // No cell shows these, so none offers their retry: the lines
                 // do.
                 FindOnlineFailureLines(
-                    failures: state.failureLines,
+                    failures: state.failureLines.all,
                     onRetry: onRetryFailed
                 )
             }
@@ -277,32 +277,15 @@ struct FindOnlineAutomaticSection: View {
         )
     }
 
-    /// The failed fetches of the release the run picked, which leave no
-    /// results missing from the list: they are why the pick was not applied.
-    private var pickFailures: [BridgeIdentifyFailure] {
-        state.failureLines.filter { $0.failedSearch == nil }
-    }
-
-    /// One line per failed lookup whose results the list is missing and no
-    /// cell of the band shows, closing it. Named by step as well as source:
-    /// the source's other steps may have answered, and those results are on
-    /// the list.
-    private var missingSourceNotes: [(search: FailedSearch, text: String)] {
-        var seen: Set<FailedSearch> = []
-        return state.failureLines.compactMap { failure in
-            guard let search = failure.failedSearch,
-                seen.insert(search).inserted
-            else { return nil }
-            let source = bridgeCatalogName(catalog: search.source)
-            let step = SignalBadgeStyle.sentenceLabel(for: search.step)
-            return (
-                search: search,
-                text: String(
-                    localized:
-                        "\(source) \(step) results are missing from this list."
-                )
-            )
-        }
+    /// The line closing the list for a failed lookup whose results the list
+    /// is missing. Named by step as well as source: the source's other steps
+    /// may have answered, and those results are on the list.
+    static func missingText(_ search: BridgeMissingSearch) -> String {
+        let source = bridgeCatalogName(catalog: search.source)
+        let step = SignalBadgeStyle.sentenceLabel(for: search.step)
+        return String(
+            localized: "\(source) \(step) results are missing from this list."
+        )
     }
 }
 

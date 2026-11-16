@@ -67,11 +67,12 @@ enum IdentifyState: Equatable {
     /// provider failing leaves the other's matches standing, live or resumed
     /// from the stored verdict. `groups` is empty when nothing that answered
     /// returned anything. `failureLines` are the failures no cell of `run`
-    /// shows, each said in a line of its own — core's answer; a failure a
-    /// cell shows is said there, beside its retry.
+    /// shows, each said in a line of its own, and how the list of offered
+    /// releases says them: core's answer. A failure a cell shows is said
+    /// there, beside its retry.
     case failed(
         run: BridgeIdentifyRun?,
-        failureLines: [BridgeIdentifyFailure],
+        failureLines: BridgeFailureLines,
         groups: [ReleaseGroup],
         agreements: [String: BridgeAgreements],
         narrowedOutCount: UInt32,

@@ -233,7 +233,7 @@ pub enum IdentifyStateView {
         /// offered row's pressing, the fetches applying the release the run
         /// picked — and, with no ledger, every one. A failure a cell shows is
         /// said there, beside its retry — see `IdentifyRunView::shows`.
-        failure_lines: Vec<super::IdentifyFailure>,
+        failure_lines: FailureLines,
         groups: Vec<ReleaseGroup>,
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
@@ -273,9 +273,47 @@ pub struct VerdictCards {
     /// What a found verdict decides; `None` for every other shape.
     pub decision: Option<FoundDecision>,
     /// The failures of a failed verdict that no cell of its ledger shows,
-    /// which a surface says in lines of their own beneath it, in the order
-    /// the run met them. Empty for every other shape.
-    pub failure_lines: Vec<super::IdentifyFailure>,
+    /// which a surface says in lines of their own beneath it. Empty for every
+    /// other shape.
+    pub failure_lines: FailureLines,
+}
+
+/// The failures of a failed verdict that no cell of its ledger shows, as a
+/// surface says them: every one, in the order the run met them, for a page
+/// that offers no releases; and for a page that offers releases, the
+/// fetches of the release the run picked, and each lookup whose results the
+/// list is missing.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct FailureLines {
+    pub all: Vec<super::IdentifyFailure>,
+    /// The failed fetches of the release the run picked: its cover. They
+    /// leave no results missing from the list, and they are why the pick was
+    /// not applied.
+    pub pick_failures: Vec<super::IdentifyFailure>,
+    /// Each lookup among the other failures, once, in the order the run first
+    /// met it.
+    pub missing_searches: Vec<MissingSearch>,
+}
+
+/// A lookup that failed, so a list of the releases a run offers is missing
+/// its results: which step of identification asked it, and which catalog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MissingSearch {
+    pub step: LookupStep,
+    pub catalog: bae_catalogs::catalog::Catalog,
+}
+
+/// A step of identification that asks a catalog: an identifier the folder
+/// carries, the title search the run fell back on, or the lookup of an
+/// offered row's pressing on a catalog that has no record of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LookupStep {
+    DiscId,
+    Barcode,
+    Catalog,
+    Isrc,
+    TitleSearch,
+    Pressing,
 }
 
 /// What a found verdict decides about its releases, as the view

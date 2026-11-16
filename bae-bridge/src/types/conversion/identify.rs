@@ -498,7 +498,7 @@ impl BridgeIdentifyState {
                 offers_shared_album,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
-                failure_lines: failure_lines.into_iter().map(identify_failure).collect(),
+                failure_lines: failure_lines_of(failure_lines),
                 groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
                 agreements: agreements
                     .into_iter()
@@ -508,6 +508,30 @@ impl BridgeIdentifyState {
                 offers_shared_album,
             },
         }
+    }
+}
+
+fn failure_lines_of(lines: bae_identify::FailureLines) -> crate::types::BridgeFailureLines {
+    let bae_identify::FailureLines { all, pick_failures, missing_searches } = lines;
+    crate::types::BridgeFailureLines {
+        all: all.into_iter().map(identify_failure).collect(),
+        pick_failures: pick_failures.into_iter().map(identify_failure).collect(),
+        missing_searches: missing_searches
+            .into_iter()
+            .map(|search| crate::types::BridgeMissingSearch {
+                step: match search.step {
+                    bae_identify::LookupStep::DiscId => crate::types::BridgeLookupStep::DiscId,
+                    bae_identify::LookupStep::Barcode => crate::types::BridgeLookupStep::Barcode,
+                    bae_identify::LookupStep::Catalog => crate::types::BridgeLookupStep::Catalog,
+                    bae_identify::LookupStep::Isrc => crate::types::BridgeLookupStep::Isrc,
+                    bae_identify::LookupStep::TitleSearch => {
+                        crate::types::BridgeLookupStep::TitleSearch
+                    }
+                    bae_identify::LookupStep::Pressing => crate::types::BridgeLookupStep::Pressing,
+                },
+                source: BridgeCatalog::from_core(search.catalog),
+            })
+            .collect(),
     }
 }
 
