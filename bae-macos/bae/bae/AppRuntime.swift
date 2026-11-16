@@ -1,4 +1,3 @@
-import BaeKit
 import Foundation
 
 /// What this process is running as: the installed app, an Xcode preview, or a
@@ -35,18 +34,6 @@ enum AppRuntime: Equatable {
             }
         #endif
         return environment["XCTestConfigurationFilePath"] != nil
-    }
-
-    /// The file a UI test names in `BAE_UI_TESTING_LOG`, opened empty, for
-    /// the loggers to append every message to; `nil` without the variable.
-    /// Stops the app when it cannot open the file, since the test would then
-    /// read no log.
-    static func uiTestLog(environment: [String: String]) -> LogFile? {
-        guard let path = environment["BAE_UI_TESTING_LOG"] else { return nil }
-        guard let file = LogFile(path: path) else {
-            preconditionFailure("cannot open the UI test log at \(path)")
-        }
-        return file
     }
 
     #if BAE_TEST_KEYRING
