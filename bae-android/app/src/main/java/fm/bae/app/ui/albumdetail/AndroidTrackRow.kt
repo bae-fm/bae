@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.TrackOptionsMenu
 
 /** The position column's least width, which the now-playing icon in the
  *  number's place also fits. */

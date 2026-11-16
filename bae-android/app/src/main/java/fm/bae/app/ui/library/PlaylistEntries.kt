@@ -36,8 +36,8 @@ import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
-import fm.bae.app.ui.albumdetail.TrackOptionsMenu
 import fm.bae.app.ui.components.AndroidLibraryRow
+import fm.bae.app.ui.components.TrackOptionsMenu
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistEntryRow
 import kotlin.math.roundToInt
