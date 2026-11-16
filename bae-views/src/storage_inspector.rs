@@ -160,6 +160,27 @@ impl LibraryViews {
     }
 }
 
+/// Where this device's pin of each file of the release `?1` stands while the
+/// download queue pins the release without having failed (kept, downloading,
+/// or waiting), NULL while it doesn't, as the CTE `pins` with each file row's
+/// id. A pin's download lists its file in `coven_downloading` before
+/// `coven_pins` holds a row for it. A macro so the files statement and the
+/// counts statement build on the one rule.
+macro_rules! file_pins {
+    () => {
+        "WITH pins AS (SELECT f.id AS file_row, \
+            CASE WHEN queued.kind = 'pin' AND queued.state <> 'failed' THEN \
+                CASE WHEN pin.file IS NOT NULL THEN 'kept' \
+                     WHEN downloading.file IS NOT NULL THEN 'downloading' \
+                     ELSE 'waiting' END END AS pin_state \
+         FROM release_files AS f \
+         LEFT JOIN download_queue AS queued ON queued.release_id = f.release_id \
+         LEFT JOIN coven_pins AS pin ON pin.file = f.file \
+         LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
+         WHERE f.release_id = ?1) "
+    };
+}
+
 /// A release's files as the inspector shows them, in the order of
 /// `RELEASE_FILES_IN_ORDER`, each with where this device's pin of it stands
 /// while the download queue pins the release (kept, downloading, or waiting)
@@ -168,23 +189,18 @@ impl LibraryViews {
 /// row references, the text of the error behind the upload's record when
 /// coven keeps one (`coven_pending`); a file with no upload record of its own
 /// shows the record of the move whose upload found its original, named by its
-/// path, missing or changed. A pin's download lists its file in
-/// `coven_downloading` before `coven_pins` holds a row for it.
+/// path, missing or changed. Each file's pin is the one `file_pins!` states.
 pub(crate) const INSPECTOR_FILES: &str = concat!(
+    file_pins!(),
     "SELECT ",
     bae_records::release_file_columns!(),
-    ", CASE WHEN queued.kind = 'pin' AND queued.state <> 'failed' THEN \
-            CASE WHEN pin.file IS NOT NULL THEN 'kept' \
-                 WHEN downloading.file IS NOT NULL THEN 'downloading' \
-                 ELSE 'waiting' END END AS pin_state, \
+    ", pins.pin_state AS pin_state, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
         COALESCE(upload.pending, move_record.record) AS upload_pending, \
         CASE WHEN upload.pending IS NOT NULL THEN upload_record.cause \
              ELSE move_record.cause END AS upload_cause \
      FROM release_files AS f \
-     LEFT JOIN download_queue AS queued ON queued.release_id = f.release_id \
-     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
+     JOIN pins ON pins.file_row = f.id \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
      LEFT JOIN coven_pending AS upload_record \
         ON upload_record.file = f.file AND upload_record.record = upload.pending \
@@ -198,19 +214,16 @@ pub(crate) const INSPECTOR_FILES: &str = concat!(
 );
 
 /// How many of the release's files this device keeps, is downloading and has
-/// yet to download, and whether the download queue holds the release to pin it
-/// without having failed, which is when those counts show.
-const PIN_COUNTS: &str = "SELECT \
-        EXISTS (SELECT 1 FROM download_queue AS queued \
-                WHERE queued.release_id = ?1 AND queued.kind = 'pin' \
-                  AND queued.state <> 'failed') AS pinning, \
-        COUNT(*) FILTER (WHERE pin.file IS NULL AND downloading.file IS NOT NULL), \
-        COUNT(*) FILTER (WHERE pin.file IS NULL AND downloading.file IS NULL), \
-        COUNT(*) FILTER (WHERE pin.file IS NOT NULL) \
-     FROM release_files AS f \
-     LEFT JOIN coven_pins AS pin ON pin.file = f.file \
-     LEFT JOIN coven_downloading AS downloading ON downloading.file = f.file \
-     WHERE f.release_id = ?1";
+/// yet to download, from each file's pin (`file_pins!`), and whether the
+/// download queue pins the release, which is when those counts show.
+const PIN_COUNTS: &str = concat!(
+    file_pins!(),
+    "SELECT COALESCE(MAX(pin_state IS NOT NULL), 0) AS pinning, \
+        COUNT(*) FILTER (WHERE pin_state = 'downloading'), \
+        COUNT(*) FILTER (WHERE pin_state = 'waiting'), \
+        COUNT(*) FILTER (WHERE pin_state = 'kept') \
+     FROM pins"
+);
 
 fn pin_counts_on(
     sql: &SqlReadContext<'_>,
