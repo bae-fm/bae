@@ -167,10 +167,7 @@ impl ImportServiceHandle {
         steps: &crate::CatalogApplySteps,
     ) -> Result<crate::CandidateMetadataDraft, crate::ImportError> {
         let draft = crate::pane::external_candidate_draft(values, current, pressing_year)?;
-        let cover = self
-            .fetch_release_cover(release, &partners, steps)
-            .await
-            .map_err(|failure| failure.error)?;
+        let cover = self.fetch_release_cover(release, &partners, steps).await?;
         Ok(external_metadata_with_cover(draft, release, cover))
     }
 
@@ -192,13 +189,15 @@ impl ImportServiceHandle {
         else {
             return Ok(None);
         };
-        let image = steps
-            .during(
-                crate::CatalogApplyStep::FetchingCover(remote.source),
-                self.services.remote_images.fetch(&remote.image.url),
-            )
-            .await
-            .map_err(|error| CoverFetchFailure { source: remote.source, error })?;
+        let fetch = async {
+            self.services
+                .remote_images
+                .fetch(&remote.image.url)
+                .await
+                .map_err(|error| CoverFetchFailure::Fetch { source: remote.source, error })
+        };
+        let image =
+            steps.during(crate::CatalogApplyStep::FetchingCover(remote.source), fetch).await?;
         Ok(image.map(|fetched| crate::cover_art::PreparedCover::Remote {
             image: remote.image,
             source: remote.source,
@@ -377,12 +376,31 @@ impl ImportServiceHandle {
     }
 }
 
-/// A fetch of an external release's cover that failed, naming the catalog
-/// that offered it.
+/// Why a fetch of an external release's cover failed.
 #[derive(Debug)]
-pub(crate) struct CoverFetchFailure {
-    pub(crate) source: bae_catalogs::catalog::Catalog,
-    pub(crate) error: bae_catalogs::remote_image::RemoteImageError,
+pub(crate) enum CoverFetchFailure {
+    /// The fetch from the catalog that offered the cover failed.
+    Fetch {
+        source: bae_catalogs::catalog::Catalog,
+        error: bae_catalogs::remote_image::RemoteImageError,
+    },
+    /// The write of the fetch's step to its apply's row failed.
+    StepRow(bae_store::DbError),
+}
+
+impl From<bae_store::DbError> for CoverFetchFailure {
+    fn from(error: bae_store::DbError) -> Self {
+        Self::StepRow(error)
+    }
+}
+
+impl From<CoverFetchFailure> for crate::ImportError {
+    fn from(failure: CoverFetchFailure) -> Self {
+        match failure {
+            CoverFetchFailure::Fetch { error, .. } => error.into(),
+            CoverFetchFailure::StepRow(error) => error.into(),
+        }
+    }
 }
 
 /// The metadata `draft`, read from the external `release`, makes with the

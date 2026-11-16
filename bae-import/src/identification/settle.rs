@@ -241,25 +241,33 @@ async fn lead_metadata(
         .await
     {
         Ok(cover) => cover,
-        Err(failure) => {
-            let Some(lookup) = bae_catalogs::search::remote_image_failure(&failure.error) else {
+        Err(crate::handle::CoverFetchFailure::StepRow(error)) => {
+            return Err(Settled::Unwritable {
+                error: format!(
+                    "could not write the step of the cover fetch of {}: {error}",
+                    release.release().key
+                ),
+            });
+        }
+        Err(crate::handle::CoverFetchFailure::Fetch { source, error }) => {
+            let Some(lookup) = bae_catalogs::search::remote_image_failure(&error) else {
                 return Err(Settled::Unwritable {
                     error: format!(
                         "could not fetch the {} cover of {}: {}",
-                        failure.source.as_str(),
+                        source.as_str(),
                         release.release().key,
-                        failure.error
+                        error
                     ),
                 });
             };
             warn!(
                 "identification: could not fetch the {} cover of {} ({}); storing the failure",
-                failure.source.as_str(),
+                source.as_str(),
                 release.release().key,
-                failure.error
+                error
             );
             verdict.fail(bae_identify::IdentifyFailure::Cover(
-                bae_catalogs::search::SourceFailure { source: failure.source, failure: lookup },
+                bae_catalogs::search::SourceFailure { source, failure: lookup },
             ));
             return Ok(None);
         }

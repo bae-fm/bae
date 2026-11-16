@@ -2,6 +2,7 @@
 
 use bae_catalogs::catalog::Catalog;
 use bae_store::test_fixtures::empty_db;
+use bae_store::DbError;
 use bae_util::test_channels::HANG_GUARD;
 
 use crate::tables::ImportTables;
@@ -50,13 +51,17 @@ async fn the_row_holds_each_step_while_its_read_runs() {
         step_until(&mut query, Some(reading)).await;
         finish.send(()).expect("the read waits");
     };
-    let (read, ()) = tokio::join!(steps.during(reading, finished), watch);
-    read.expect("the read ends when it is told to");
+    let read = async {
+        finished.await.expect("the test tells the read to end");
+        Ok::<_, DbError>(())
+    };
+    let (read, ()) = tokio::join!(steps.during(reading, read), watch);
+    read.expect("the step's row is written and deleted");
     step_until(&mut query, None).await;
 
     let cover = CatalogApplyStep::FetchingCover(Catalog::MusicBrainz);
-    let fetched = steps.during(cover, async { "the cover" }).await;
-    assert_eq!(fetched, "the cover");
+    let fetched = steps.during(cover, async { Ok::<_, DbError>("the cover") }).await;
+    assert_eq!(fetched.expect("the step's row is written and deleted"), "the cover");
     // The query may never see a step this short, so a new one reads the row
     // as the step left it.
     let mut after = tables.subscribe_catalog_apply_step(&apply);
@@ -73,9 +78,9 @@ async fn a_dropped_apply_leaves_no_step() {
     let mut query = tables.subscribe_catalog_apply_step(&apply);
     let reading = CatalogApplyStep::ReadingRelease(Catalog::MusicBrainz);
 
-    let read = steps.during(reading, std::future::pending::<()>());
+    let read = steps.during(reading, std::future::pending::<Result<(), DbError>>());
     tokio::select! {
-        () = read => unreachable!("the read never ends"),
+        _ = read => unreachable!("the read never ends"),
         () = step_until(&mut query, Some(reading)) => {}
     }
     step_until(&mut query, None).await;
@@ -97,4 +102,21 @@ async fn the_open_empties_every_step() {
 
     tables.clear_catalog_apply_steps().await.unwrap();
     step_until(&mut query, None).await;
+}
+
+/// A step replaces the step its apply's row holds, so a row that a step left
+/// behind never blocks the next one.
+#[tokio::test]
+async fn a_step_replaces_the_step_its_row_holds() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = ImportTables::new(db);
+    let apply = CatalogApplyId::new(&coven::UuidIds);
+    let reading = CatalogApplyStep::ReadingRelease(Catalog::Discogs);
+    tables.start_catalog_apply_step(&apply, reading).await.unwrap();
+
+    let cover = CatalogApplyStep::FetchingCover(Catalog::Discogs);
+    tables.start_catalog_apply_step(&apply, cover).await.unwrap();
+
+    let mut query = tables.subscribe_catalog_apply_step(&apply);
+    step_until(&mut query, Some(cover)).await;
 }

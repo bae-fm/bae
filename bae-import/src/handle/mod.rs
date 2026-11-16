@@ -39,7 +39,7 @@ mod watch;
 pub use commit::CandidateStanding;
 pub use covers::RemoteCoverGallery;
 pub use import::ImportStart;
-pub(crate) use picks::external_metadata_with_cover;
+pub(crate) use picks::{external_metadata_with_cover, CoverFetchFailure};
 pub use runtime::ImportCandidateSnapshot;
 pub use search::GroupedSearchResults;
 pub(crate) use verdict_write::VerdictWrite;

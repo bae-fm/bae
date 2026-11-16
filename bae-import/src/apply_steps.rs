@@ -1,10 +1,11 @@
-//! What an apply of a catalog release waits on over the network, written to
-//! the apply's row in `import_catalog_apply_step` while it waits, for the
-//! screen that started it.
+//! The network read that an apply of a catalog release waits on. The apply
+//! writes the read to its row in `import_catalog_apply_step` while it waits,
+//! and the screen that started the apply reads the row.
 
 use std::sync::Arc;
 
 use bae_catalogs::catalog::Catalog;
+use bae_store::DbError;
 
 /// A network read an apply of a catalog release waits on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,8 +34,8 @@ impl CatalogApplyId {
 }
 
 /// Where an apply of a catalog release writes the step it waits on: the
-/// apply's row, which holds each step from its start to its end. A release or
-/// cover the library already holds is read without a step.
+/// apply's row, which holds each step from its start to its end. The apply
+/// reads a release or cover the library already holds without a step.
 #[derive(Clone)]
 pub struct CatalogApplySteps {
     written: StepsWritten,
@@ -53,7 +54,8 @@ enum StepsWritten {
     Recorded(Arc<dyn Fn(Option<CatalogApplyStep>) + Send + Sync>),
 }
 
-/// An apply a screen shows: its row's key and where the row is written.
+/// An apply a screen shows: its row's key, and the tables the apply writes
+/// its row to.
 struct ShownApply {
     id: CatalogApplyId,
     tables: crate::tables::ImportTables,
@@ -62,9 +64,10 @@ struct ShownApply {
 }
 
 impl CatalogApplySteps {
-    /// The steps of the apply `id` names, written to its row in `tables`.
-    /// When the apply is dropped mid-step, a task on `runtime`, run under
-    /// `diagnostics`, deletes the row.
+    /// The steps of the apply `id` names, which the apply writes to its row
+    /// in `tables`. When the caller drops the apply mid-step, a task on
+    /// `runtime` deletes the row, and `diagnostics` reports a delete that
+    /// fails.
     pub(crate) fn shown(
         id: CatalogApplyId,
         tables: crate::tables::ImportTables,
@@ -76,7 +79,7 @@ impl CatalogApplySteps {
         }
     }
 
-    /// Where nothing reads an apply's steps, so nothing is written.
+    /// The steps of an apply that nothing reads, so the apply writes none.
     pub fn unread() -> Self {
         Self { written: StepsWritten::Unread }
     }
@@ -89,17 +92,18 @@ impl CatalogApplySteps {
     }
 
     /// Run `work` while its apply's row holds `step`. The apply writes the
-    /// row before `work` starts and deletes it once `work` ends. When the
-    /// caller drops this mid-step, a task deletes the row.
+    /// row before `work` starts, replacing any step the row holds, and
+    /// deletes it once `work` ends. When the caller drops this mid-step, a
+    /// task deletes the row.
     ///
-    /// The row only shows the step, and the apply's result doesn't depend on
-    /// it, so a failed write of the row is logged and `work` runs all the
-    /// same.
-    pub(crate) async fn during<T>(
+    /// A failed write of the row is a failed local write, and fails the
+    /// apply with its error: a failed start before `work` runs, a failed
+    /// delete in place of what `work` returned.
+    pub(crate) async fn during<T, E: From<DbError>>(
         &self,
         step: CatalogApplyStep,
-        work: impl std::future::Future<Output = T>,
-    ) -> T {
+        work: impl std::future::Future<Output = Result<T, E>>,
+    ) -> Result<T, E> {
         let shown = match &self.written {
             StepsWritten::Unread => return work.await,
             StepsWritten::Row(shown) => shown,
@@ -111,19 +115,21 @@ impl CatalogApplySteps {
                 return done;
             }
         };
-        // The guard is made before the write, so a drop during the write
-        // deletes the row after the write commits: coven commits a write
-        // whose caller is gone, and runs the library's writes in the order
-        // they were asked.
+        // The guard exists before the write starts, so a drop during the
+        // write deletes the row after the write commits: coven commits a
+        // write whose caller is gone, and runs the library's writes in the
+        // order the callers asked for them.
         let mut running = RunningStep { shown, ended: false };
         if let Err(error) = shown.tables.start_catalog_apply_step(&shown.id, step).await {
-            tracing::error!("the apply's step {step:?} was not written: {error}");
+            // The failed write rolled back, so the row holds no step.
+            running.ended = true;
+            return Err(error.into());
         }
         let done = work.await;
-        if let Err(error) = shown.tables.end_catalog_apply_step(&shown.id).await {
-            tracing::error!("the apply's step {step:?} was not deleted as it ended: {error}");
-        }
+        // Coven commits the delete even when the caller drops this while it
+        // waits, so the guard has nothing left to delete.
         running.ended = true;
+        shown.tables.end_catalog_apply_step(&shown.id).await?;
         done
     }
 }
@@ -140,14 +146,14 @@ impl Drop for RunningStep<'_> {
             return;
         }
         let shown = self.shown.clone();
-        // Nothing waits on the delete, so a panic in it has nothing to end;
-        // the panic hook reports the panic.
+        // No caller waits on the delete, so the panic callback has no
+        // waiter to fail and does nothing; the panic hook reports the panic.
         let _task = self.shown.diagnostics.spawn_reported(
             &self.shown.runtime,
             "delete a dropped apply's step",
             async move {
                 if let Err(error) = shown.tables.end_catalog_apply_step(&shown.id).await {
-                    tracing::error!("a dropped apply's step was not deleted: {error}");
+                    shown.diagnostics.report_bug("delete a dropped apply's step", &error);
                 }
             },
             |_panic| {},

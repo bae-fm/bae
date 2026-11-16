@@ -46,7 +46,8 @@ fn load_step_on(
 }
 
 impl ImportTables {
-    /// Write that `apply` waits on `step` now.
+    /// Write that `apply` waits on `step` now, in place of any step its row
+    /// holds.
     pub(crate) async fn start_catalog_apply_step(
         &self,
         apply: &CatalogApplyId,
@@ -58,7 +59,9 @@ impl ImportTables {
             .call(move |sql| {
                 sql.execute(
                     "INSERT INTO import_catalog_apply_step (apply_id, step, catalog) \
-                     VALUES (?, ?, ?)",
+                     VALUES (?, ?, ?) \
+                     ON CONFLICT (apply_id) DO UPDATE SET \
+                         step = excluded.step, catalog = excluded.catalog",
                     params![apply.as_str(), step, catalog.as_str()],
                 )?;
                 Ok(())
