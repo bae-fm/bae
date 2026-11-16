@@ -13,20 +13,6 @@ import fm.bae.app.ui.components.AndroidSegmentedButtons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** This device's download concurrency: how many files a pin fetches at once. */
-@Composable
-internal fun DownloadConcurrencyRow(
-    session: OpenLibrary,
-    value: UInt,
-    limit: UInt,
-) {
-    DownloadConcurrencySelector(
-        value = value,
-        limit = limit,
-        onSelect = { option -> setDownloadConcurrency(session, option) },
-    )
-}
-
 /** Sets how many files a pin fetches at once, reporting a failure to the person. */
 internal fun setDownloadConcurrency(
     session: OpenLibrary,

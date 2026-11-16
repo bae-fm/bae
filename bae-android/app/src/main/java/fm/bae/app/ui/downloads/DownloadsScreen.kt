@@ -2,6 +2,7 @@ package fm.bae.app.ui.downloads
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,34 +62,61 @@ internal fun DownloadsScreen(
         page.activate(Unit)
         onDispose(page::deactivate)
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        AndroidDownloadsBar(
-            paused = paused,
-            hasDownloads = counts?.hasEntries == true,
-            hasFailures = counts?.hasFailures == true,
-            onBack = onBack,
-            onPauseToggle = {
-                if (counts != null) {
-                    session.messages.perform("pause or resume downloads") {
-                        session.appHandle.setDownloadsPaused(!paused)
-                    }
+    AndroidStoragePinning(
+        paused = paused,
+        hasDownloads = counts?.hasEntries == true,
+        hasFailures = counts?.hasFailures == true,
+        concurrency = config.maxConcurrentDownloads,
+        concurrencyLimit = config.maxConcurrentTransfers,
+        onBack = onBack,
+        onPauseToggle = {
+            if (counts != null) {
+                session.messages.perform("pause or resume downloads") {
+                    session.appHandle.setDownloadsPaused(!paused)
                 }
-            },
-            onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
-        )
-        DownloadConcurrencyRow(
-            session = session,
-            value = config.maxConcurrentDownloads,
-            limit = config.maxConcurrentTransfers,
-        )
-        HorizontalDivider()
+            }
+        },
+        onRetry = { session.messages.perform("retry downloads") { session.appHandle.retryDownloads() } },
+        onSelectConcurrency = { option -> setDownloadConcurrency(session, option) },
+    ) {
         DownloadsBody(
             session = session,
             state = state,
             summary = counts?.let { queueSummaryText(context, it) }.orEmpty(),
             page = page,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * The Pinning screen's layout: its bar with Retry and Pause or Resume, how many pins fetch at once, then the
+ * [body] under a divider, which fills the rest of the screen.
+ */
+@Composable
+internal fun AndroidStoragePinning(
+    paused: Boolean,
+    hasDownloads: Boolean,
+    hasFailures: Boolean,
+    concurrency: UInt,
+    concurrencyLimit: UInt,
+    onBack: () -> Unit,
+    onPauseToggle: () -> Unit,
+    onRetry: () -> Unit,
+    onSelectConcurrency: (UInt) -> Unit,
+    body: @Composable BoxScope.() -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        AndroidDownloadsBar(
+            paused = paused,
+            hasDownloads = hasDownloads,
+            hasFailures = hasFailures,
+            onBack = onBack,
+            onPauseToggle = onPauseToggle,
+            onRetry = onRetry,
+        )
+        DownloadConcurrencySelector(value = concurrency, limit = concurrencyLimit, onSelect = onSelectConcurrency)
+        HorizontalDivider()
+        Box(modifier = Modifier.weight(1f).fillMaxWidth(), content = body)
     }
 }
 
@@ -97,57 +125,54 @@ internal fun DownloadsScreen(
  * window failing, an empty queue; nothing while the first window loads.
  */
 @Composable
-private fun DownloadsBody(
+private fun BoxScope.DownloadsBody(
     session: OpenLibrary,
     state: LiveValue<BridgeDownloadCounts>,
     summary: String,
     page: DownloadPageStore,
-    modifier: Modifier,
 ) {
-    Box(modifier = modifier) {
-        val pageError = page.error
-        when {
-            state is LiveValue.Failed -> {
-                AndroidNotice(
-                    error = state.error,
-                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
-                )
-            }
+    val pageError = page.error
+    when {
+        state is LiveValue.Failed -> {
+            AndroidNotice(
+                error = state.error,
+                modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+            )
+        }
 
-            pageError != null && !page.hasRows -> {
-                AndroidNotice(
-                    error = pageError.error,
-                    look = NoticeLook.CENTERED,
-                    action = pageError.error.retryAction(onClick = pageError.onRetry),
-                )
-            }
+        pageError != null && !page.hasRows -> {
+            AndroidNotice(
+                error = pageError.error,
+                look = NoticeLook.CENTERED,
+                action = pageError.error.retryAction(onClick = pageError.onRetry),
+            )
+        }
 
-            // The first window is a local read; nothing shows until it lands.
-            page.loading && !page.hasRows -> {}
+        // The first window is a local read; nothing shows until it lands.
+        page.loading && !page.hasRows -> {}
 
-            page.totalCount == 0 -> {
-                DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
-            }
+        page.totalCount == 0 -> {
+            DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
+        }
 
-            else -> {
-                val listState = rememberLazyListState()
-                ReportVisibleDownloads(page, listState)
-                DownloadsList(
-                    summary = summary,
-                    count = page.totalCount,
-                    row = { index -> page.rowAt(index) },
-                    downloads = session.downloadStore,
-                    listState = listState,
-                    onCancel = { releaseId ->
-                        session.messages.perform("cancel download") {
-                            session.appHandle.cancelDownload(releaseId)
-                        }
-                    },
-                    onRetry = { releaseId ->
-                        session.messages.perform("retry download") { session.appHandle.retryDownload(releaseId) }
-                    },
-                )
-            }
+        else -> {
+            val listState = rememberLazyListState()
+            ReportVisibleDownloads(page, listState)
+            DownloadsList(
+                summary = summary,
+                count = page.totalCount,
+                row = { index -> page.rowAt(index) },
+                downloads = session.downloadStore,
+                listState = listState,
+                onCancel = { releaseId ->
+                    session.messages.perform("cancel download") {
+                        session.appHandle.cancelDownload(releaseId)
+                    }
+                },
+                onRetry = { releaseId ->
+                    session.messages.perform("retry download") { session.appHandle.retryDownload(releaseId) }
+                },
+            )
         }
     }
 }

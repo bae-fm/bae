@@ -1,16 +1,11 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.downloads.AndroidDownloadsBar
-import fm.bae.app.ui.downloads.DownloadConcurrencySelector
+import fm.bae.app.ui.downloads.AndroidStoragePinning
 import fm.bae.app.ui.downloads.DownloadsEmpty
 import fm.bae.app.ui.downloads.DownloadsList
 import org.junit.Test
@@ -79,31 +74,29 @@ private fun Pinning(
             downloadingReleaseId = "rel-1",
             transfer = PreviewData.downloadTransferProgress(bytesDone = 120_000_000UL, bytesTotal = 344_000_000UL, fraction = 0.35),
         )
-    Column(modifier = Modifier.fillMaxSize()) {
-        AndroidDownloadsBar(
-            paused = false,
-            hasDownloads = ops.isNotEmpty(),
-            hasFailures = failed,
-            onBack = {},
-            onPauseToggle = {},
-            onRetry = {},
-        )
-        DownloadConcurrencySelector(value = 3u, limit = 6u, onSelect = {})
-        HorizontalDivider()
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-            if (ops.isEmpty()) {
-                DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
-            } else {
-                DownloadsList(
-                    summary = summary,
-                    count = ops.size,
-                    row = { ops[it] },
-                    downloads = downloads,
-                    listState = rememberLazyListState(),
-                    onCancel = {},
-                    onRetry = {},
-                )
-            }
+    AndroidStoragePinning(
+        paused = false,
+        hasDownloads = ops.isNotEmpty(),
+        hasFailures = failed,
+        concurrency = 3u,
+        concurrencyLimit = 6u,
+        onBack = {},
+        onPauseToggle = {},
+        onRetry = {},
+        onSelectConcurrency = {},
+    ) {
+        if (ops.isEmpty()) {
+            DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
+        } else {
+            DownloadsList(
+                summary = summary,
+                count = ops.size,
+                row = { ops[it] },
+                downloads = downloads,
+                listState = rememberLazyListState(),
+                onCancel = {},
+                onRetry = {},
+            )
         }
     }
 }
