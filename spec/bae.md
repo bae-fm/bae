@@ -3728,21 +3728,21 @@ S3 storage. Give it read and write access, or use another key."
 
 **Replacing the S3 key.** The Sync page of an S3 library, on the Mac and on
 Android, shows the id of the library's access key in its Cloud home rows (the
-secret never shows), with **Replace key…** (on Android, **Replace key**). It
-opens the S3 key sheet: *Enter a key that can use this library's S3 storage.*
-over Access key ID and Secret access key, with **Cancel** and **Save**, which
-stays off until both fields hold text. The welcome's S3 key sheet draws the same
-two fields. **Save** calls coven's one call for a new S3 key, which checks the
-key with S3 storage and replaces the one the library uses; while it checks, the
-sheet says *Checking the key with S3 storage…* in place of the fields, with only
-**Cancel**. A key S3 storage refuses keeps the typed text and says *This key was
-not accepted.* / *Check the access key ID and secret access key.* above the
-fields. After a save the sheet closes, the page shows the new key's id, and a
-line the person can dismiss says *Saved the new S3 key.* / *Delete the old key,
-AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming the old key's id.
-bae never deletes the old key and keeps no record of its id once the line is
-dismissed or the page closes
-([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
+secret never shows), with **Replace key…** (on Android, **Replace key**).
+Replace key opens the S3 key sheet: *Enter a key that can use this library's S3
+storage.* over Access key ID and Secret access key, with **Cancel** and
+**Save**, which stays off until both fields hold text. The welcome's S3 key
+sheet draws the same two fields. **Save** calls coven's one call for a new S3
+key, which checks the key with S3 storage and replaces the one the library uses;
+while it checks, the sheet says *Checking the key with S3 storage…* in place of
+the fields, with only **Cancel**. A key S3 storage refuses keeps the typed text
+and says *This key was not accepted.* / *Check the access key ID and secret
+access key.* above the fields. After a save the sheet closes, the page shows the
+new key's id, and a line the person can dismiss says *Saved the new S3 key.* /
+*Delete the old key, AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming
+the old key's id. bae never deletes the old key and keeps no record of its id
+once the person dismisses the line or the page closes ([coven
+§14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
 The words for the place are always "S3 storage", never "bucket".
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
@@ -3959,55 +3959,55 @@ attention*, one row each, a line between rows: the app's own problems (the
 sign-in settings it can't read; on macOS a library that failed to open while
 another stays open), each its title alone, saying what failed; a failure to read sync's state;
 sync's failure, with *Open sync settings*, which closes the panel and opens the
-Sync page. A file that can't move or a change that can't go out shows where it
-is handled, on its release in Storage Manager or in its change box, never in
-the panel. Nothing in the panel retries. A row shows
-no error: clicking it closes the panel and opens the alert with what to do and the causes
-(§9.7); on Android a tap closes the sheet and opens a dialog with the same words and causes. Each problem has an × that takes it out of the panel, without fixing
-it: it still shows where it is fixed, and a problem that leaves the list and
-comes back shows again. While a library is open these problems show only
-there. Then, under a
-*Transfers* label, one row per
-thing moving, each its words, how far it has got and a bar, with no icon:
-Syncing changes, while coven's sync state says Syncing (a pass receiving or
-sending, a file a write waits for uploading, or the next pass's turn with
-nothing holding it), with no count, so its bar moves; Uploading
-("1 of 2 releases"); Pinning ("1 of 3 releases"), which on the phones opens
-the Pinning screen; and on the desktop Moving to This Mac on a line of its own ("0 of
-1 release"): a move-to-this-device changes where files live for every device, while a
-pin only keeps a copy on this one. Every count is in releases, a release done
-once all its files are, and every bar is filled by the bytes of the batch done
-(for uploads, the bytes the providers confirmed), each release counting its
-size: a done release all of it, an upload its stored files and its files'
-shares on the way, the pin or move-to-this-device downloading its share. The
-tables give the bytes done and the files and releases still on the move; the
-bar adds each one's size times its latest share and is worked out again when
-the tables or a transfer change, with no value held from an earlier one. coven
-ends a file's upload progress only after the commit that records it stored, but the
-read can deliver that commit after the progress ends, so the bar keeps a file's last upload share
-until a read arrives that no longer lists the file as sending; a file whose upload failed or was
-held keeps none. A download's transfer ends the same way: the download queue says how each
-transfer ended (finished, failed, held by a pause, or dropped by a cancel), a finished release keeps
-its last download share until a read arrives that no longer lists it as waiting, and a release whose
-download failed, was held or was dropped keeps none. A
-release removed from the library counts none of its bytes. A bar moves while a release's files transfer
-and its count waits. A batch is everything the
-queue has held since it was last empty, so a count only grows, and it starts
-over once the queue empties. Pinning and Moving to This Mac share the download
-queue but each counts its own batch: the releases queued to pin, or to make
-local, since none of that kind waited or downloaded. Uploading counts the
-releases with files queued to upload; a cover or picture on its way counts in
-no line. A release that leaves its batch without finishing, cancelled, failed
-or removed from the library, stays in the count and never counts as done. A
-queue's hold (Paused, Waiting for network, and for uploads Waiting for Wi-Fi or
-Retrying at its time) stands in place of its count. On
-the desktop each queue's line ends in Pause, or Resume while that queue is
-paused; pinning and moving to This Mac are one queue, as in Transfers settings, so
-their lines pause and resume together. Under the lines, *Open Storage Manager*
-opens the Storage manager. On the phones the Pinning line ends in Pause or
-Resume too, and opens the Pinning screen. With nothing to show it says
-everything is up to date. The panel doesn't offer *Retry now*: the Sync page's
-fix does.
+Sync page. A file that can't move or a change that can't go out shows where the
+person can retry or cancel it, on its release in Storage Manager or in its
+change box, never in the panel. Nothing in the panel retries. A row shows no
+error: clicking it closes the panel and opens the alert with what to do and the
+causes (§9.7); on Android a tap closes the sheet and opens a dialog with the
+same words and causes. Each problem has an × that takes it out of the panel,
+without fixing it: it still shows where it is fixed, and a problem that leaves
+the list and comes back shows again. While a library is open these problems show
+only there. Then, under a *Transfers* label, one row per thing moving, each its
+words, how far it has got and a bar, with no icon: Syncing changes, while
+coven's sync state says Syncing (a pass receiving or sending, a file a write
+waits for uploading, or the next pass's turn with nothing holding it), with no
+count, so its bar moves; Uploading ("1 of 2 releases"); Pinning ("1 of 3
+releases"), which on the phones opens the Pinning screen; and on the desktop
+Moving to This Mac on a line of its own ("0 of 1 release"): a
+move-to-this-device changes where files live for every device, while a pin only
+keeps a copy on this one. Every count is in releases, a release done once all
+its files are, and every bar is filled by the bytes of the batch done (for
+uploads, the bytes the providers confirmed), each release counting its size: a
+done release all of it, an upload its stored files and its files' shares on the
+way, the pin or move-to-this-device downloading its share. The tables give the
+bytes done and the files and releases still on the move; the bar adds each one's
+size times its latest share, and core works it out again when the tables or a
+transfer change, with no value held from an earlier one. coven ends a file's
+upload progress only after the commit that records it stored, but the read can
+deliver that commit after the progress ends, so the bar keeps a file's last
+upload share until a read arrives that no longer lists the file as sending; a
+file whose upload failed or was held keeps none. A download's transfer ends the
+same way: the download queue says how each transfer ended (finished, failed,
+held by a pause, or dropped by a cancel), a finished release keeps its last
+download share until a read arrives that no longer lists it as waiting, and a
+release whose download failed, was held or was dropped keeps none. A release
+removed from the library counts none of its bytes. A bar moves while a release's
+files transfer and its count waits. A batch is everything the queue has held
+since it was last empty, so a count only grows, and it starts over once the
+queue empties. Pinning and Moving to This Mac share the download queue but each
+counts its own batch: the releases queued to pin, or to make local, since none
+of that kind waited or downloaded. Uploading counts the releases with files
+queued to upload; a cover or picture on its way counts in no line. A release
+that leaves its batch without finishing, cancelled, failed or removed from the
+library, stays in the count and never counts as done. A queue's hold (Paused,
+Waiting for network, and for uploads Waiting for Wi-Fi or Retrying at its time)
+stands in place of its count. On the desktop each queue's line ends in Pause, or
+Resume while that queue is paused; pinning and moving to This Mac are one queue,
+as in Transfers settings, so their lines pause and resume together. Under the
+lines, *Open Storage Manager* opens the Storage manager. On the phones the
+Pinning line ends in Pause or Resume too, and opens the Pinning screen. With
+nothing to show it says everything is up to date. The panel doesn't offer *Retry
+now*: the Sync page's fix does.
 
 **The Sync page.** Sync has a page of its own, off the Library page. Its top
 is one block: *Status* with the state in words, then a line that says what
@@ -4044,10 +4044,10 @@ storage* where the line names the place the library is kept.
     place of any state that is no problem (§6.2), on the Mac only: *Creating
     the library in Dropbox.* / *Your music stays on this Mac until you move it
     to the cloud.*
-  - Syncing…, only while something is sent or received, not on quiet passes:
-    *Receiving changes from your other devices.* while a pass applies incoming
-    changes, and *Sending your changes.* while a change goes out or waits next
-    in line, with any cover, artist image or profile picture it names.
+  - Syncing…, only while something is sent or received: *Receiving changes from
+    your other devices.* while a pass applies incoming changes, and *Sending
+    your changes.* while a change goes out or waits next in line, with any
+    cover, artist image or profile picture it names.
 - **Green.** Synced, with a dot: *Your library is up to date.* Synced means
   data and files both: a file still uploading is Syncing….
 - **Amber.**
@@ -4142,14 +4142,14 @@ release in the Storage manager, not on the Sync page.
 The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
 read the block says "Could not read sync status", with *bae could not read
-this library’s sync status.* / *Restart bae.* That state is the app's own,
-made around the read, with the words in the app's own catalog: core sends
-only the status it read. The Library page's Sync row shows the state only,
-and the Library row in Android's settings and the Library item in the Mac's
-settings sidebar show it only while it is amber or red.
+this library’s sync status.* / *Restart bae.* The app shows this state itself
+when it cannot read the status, with words from its own catalog: core sends only
+the status it read. The Library page's Sync row shows the state only, and the
+Library row in Android's settings and the Library item in the Mac's settings
+sidebar show it only while it is amber or red.
 
-The Sync page lists no pending records: what stops sync is its status, a
-file's upload, pin, download or move shows on its release in Storage Manager,
+The Sync page lists no pending records: the page's status says what stops sync,
+a file's upload, pin, download or move shows on its release in Storage Manager,
 a change the person made (an invite, a role, a rename) shows in its change box
 where it happens, and what only waits for coven to retry shows nowhere but the
 status's Waiting to sync. On the Mac, a read of this device's own record of the
@@ -4227,8 +4227,9 @@ and a read of a file that fails leaves nothing pending, so no pending record
 is about another device's upload.
 
 Ben's laptop has two problems: Dropbox wants him to sign in again, which the
-Sync page's status says with *Sign in*, and a file of his vinyl rip moved
-before it uploaded, which its release's row in Storage Manager names. *Sign in*: core signs in with the access the library's folder needs, then
+Sync page's status names, with a *Sign in* button, and a file of his vinyl rip
+moved before it uploaded, which its release's row in Storage Manager names.
+*Sign in*: core signs in with the access the library's folder needs, then
 connects that location again. On a library in
 S3 storage, *Sign in* asks for a new access key for that S3 storage instead, the same
 form Settings shows a device that lost its key, and connects the S3 storage again
@@ -4361,14 +4362,14 @@ its control says so in core's words for that transfer.
   waits to be sent. That image's pending record names the image as the file
   holding sync, and core can give the image up: its row (the cover's, the
   artist image's, or the profile's avatar reference) drops the file, which
-  leaves the file with no reference, so coven retires the upload and sends the
-  held writes and the one that gave the image up in one slot, and no other
+  leaves the file with no reference, so coven stops the upload and sends the
+  held writes together with the write that gave the image up, and no other
   device sees the file
   ([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)).
-  Giving up asks for the file the record named: a row that references another
-  file by then, or none, is refused as changed meanwhile and nothing is
-  written. A release file's upload trails its row and holds no write, so its
-  record names no holding file.
+  Giving up asks for the file the record named: when the row references another
+  file by then, or none, core refuses the give-up as changed meanwhile and
+  writes nothing. coven sends a release file's row without waiting for its
+  upload, so the upload holds no write and its record names no holding file.
 
 **Resetting a device.** Opening can fail because the database is damaged, and
 sync can find that another installation replaced this one
@@ -4403,10 +4404,10 @@ bae reset this copy from the cloud.", then "bae did not keep N edits that had
 not synced." when N is above zero, then "bae did not keep M files that had not
 uploaded." when M is above zero, each with its own plural forms in every
 language. The counts come from the snapshot. With none unsent, no notice shows. A reset
-that fails returns to the screen that offers Reset from cloud, saying why. A
-device another installation replaced (`ResetReason::Replaced`) and replaced
-member keys still ask first. The app starts this reset once for each open
-library.
+that fails returns to the screen that offers Reset from cloud, saying why. When
+another installation replaced this device (`ResetReason::Replaced`), or the
+member's keys changed, bae still asks before it resets. The app starts this
+reset once for each open library.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
 person's current code, loads the new copy beside this device's copy, records
@@ -4639,16 +4640,17 @@ removable, reorderable and skipped to on its own.
 | Clear up next | empties Up next only |
 | Clear playing from | drops what's playing from; the current track plays on, then Up next, then playback stops |
 
-*Shuffle library* is offered while the library holds a track: the album grid's
-count says it, as it says how many albums there are.
+bae offers *Shuffle library* while the library holds a track; the album grid's
+count says whether it does, beside how many albums there are.
 
 A spoken request to play something ("play" and a name, from a car's controls)
 plays the first track the library search finds, else the first track of the
 first album it finds that has a track on its main release. The search says
 which, and nothing plays when it finds neither. Android Auto reads that answer,
 and each item it opens, once from the database, not through a live query. The
-database picks the one track an item names and cuts the page of albums a search
-shows, so Android Auto never picks or pages over rows it already holds.
+database picks the one track an item names and returns only the albums of the
+page a search shows, so Android Auto never filters or pages through rows it
+already holds.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
@@ -4676,19 +4678,19 @@ deleted), playback stops with an error shown. It shows nothing for a command tha
 changed: that is rare, and the screen already shows the queue as it now is,
 so the gesture just ends.
 
-What's playing from's tracks are a list the queue screens read as any other
-list: the tracks after the current one, in the order the part reads in (its
-own, or the shuffled one while shuffle is on), read as windows that are ranges
-of that order, with the list's count a read of its own and a jump to a row read
-as the key at its position. A write that moves rows inside one window reads that
-window again and no other; moving on to the next track moves the list's top.
+The queue screens read What's playing from's tracks as any other list. They read
+the tracks after the current one in windows, each a range of the order the part
+reads in (its own, or the shuffled one while shuffle is on). They read the
+list's count in a query of its own, and a jump to a row reads the key at that
+row's position. coven reruns only the window whose rows a write moves; moving on
+to the next track moves the list's top.
 
 When the read of what's playing from's tracks fails, the rows it hasn't read
 stay placeholders, and under them the queue says it couldn't read the rest,
-with *Details* and *Retry*, which reads them again. On Android, the read of the
-first tracks that feed the system's playlist (the notification, the lock screen
-and Android Auto) shows its failure there too, and *Retry* reads that one again
-as well.
+with *Details* and *Retry*, which reads them again. On Android, when bae cannot
+read the first tracks of the system's playlist (the notification, the lock
+screen and Android Auto), the queue shows that failure under its rows too, and
+*Retry* reads them again as well.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
 one reorder, however many rows the held row passed. While it is held, the Mac
@@ -4697,12 +4699,12 @@ show a drop (no line over a gap that leaves it where it is, or before a row not
 read yet); Android's held row follows the finger and the other rows slide apart
 around an open slot where it will land.
 
-The queue screens keep a row dragged to a new place there until the part's
-rows draw it in the slot it was dropped in (or the part has changed length),
-so it never jumps back while the move is on its way, and a move that failed or
-moved nothing puts the part back to its rows at once. A move names the entry
-it goes before, or the part's end, so a row dragged to just before a row the
-screen hasn't read yet stays where it was.
+The queue screens keep a row dragged to a new place there until the part's read
+has the row in the slot where the person dropped it (or the part has changed
+length), so it never jumps back while the move is on its way, and when a move
+fails or moves nothing, the screen shows the part's read rows again at once. A
+move names the entry it goes before, or the part's end, so a row dragged to just
+before a row the screen hasn't read yet stays where it was.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
@@ -4994,11 +4996,11 @@ where it was until its next status.
 for no PIN or password pairs with the password-less transient pairing. A
 receiver that asks for a PIN (on every cast, or once), a password, or AirPlay 1
 device verification pairs when the person enters the code it asks for, as
-described under Pairing below. A receiver that offers only an encryption bae
-doesn't implement is refused with that reason before bae connects. So is a
-receiver whose AirPlay advertisement says it plays only from people in its home,
-only from its home's admins, or only from its owner's account; an AirPlay 1
-receiver takes that from its AirPlay advertisement too.
+described under Pairing below. bae refuses a receiver that offers only an
+encryption it does not implement, with that reason, before it connects, and
+refuses the same way a receiver whose AirPlay advertisement says it plays only
+from people in its home, only from its home's admins, or only from its owner's
+account; an AirPlay 1 receiver takes that from its AirPlay advertisement too.
 
 A receiver that advertises on both AirPlay service types is one entry, whichever
 advertisement arrives first. An AirPlay 1 receiver is connected at the port and
@@ -5017,10 +5019,10 @@ until the receiver ends it.
 
 The sheet is titled Pair with and the receiver's name, with a line under the
 title that says why it asks and what to enter, a field, Cancel and Pair.
-A PIN field has one box for each digit, as many as the receiver's PIN has (four
-today, stated by core, never by the app), takes digits only, and keeps leading
-zeros. A password field shows dots. Pair stays off until the PIN has all its
-digits, or the password has a character. The lines under the title are:
+A PIN field has one box for each digit, as many as the receiver's PIN has
+(stated by core, never by the app), takes digits only, and keeps leading zeros.
+A password field shows dots. Pair stays off until the PIN has all its digits, or
+the password has a character. The lines under the title are:
 
 - first pairing: "Enter the PIN that Kitchen shows."
 - a receiver that asks for a PIN every time: "Kitchen asks for a PIN every
@@ -5036,7 +5038,7 @@ that Kitchen shows now." under "That PIN did not match." (a password says "That
 password did not work." under its field), since a wrong PIN makes the receiver
 show a new one. bae never tries again by itself. While bae pairs, the field is
 off, "Pairing…" shows under it with a spinner, Pair is off and Cancel still
-works. A code of the wrong shape is refused before connecting, with "Enter the
+works. bae refuses a code of the wrong shape before it connects, with "Enter the
 4-digit PIN." or "Enter the password." under the field.
 
 A receiver that refuses fails the cast with a line that says what is wrong and
@@ -5520,42 +5522,38 @@ Reads come two ways:
   window of it is a range of that order read as the others are, from every
   artist its text finds.
   The Storage manager's count delivers its row count and its files' total
-  size, and whether a search narrows it; a new sort, filter or search is new
-  queries. Its selection is a live query of its own, told which releases are
-  selected, whose each value carries the row of each one the list holds, on
-  screen or not, and the storage actions every one of those allows: a
-  selection is offered only those. The transfer queues holding work are
-  another. Its inspector
-  shows, and its storage actions act on, a selected release only while the
-  list holds it: a release
-  that finishes uploading out of the Local list, no longer matches the filter,
-  or is deleted leaves the inspector and the actions' targets as it leaves the
-  list, including while an action's confirmation or folder prompt is open.
-  The inspector reads its release live by id: the release's files, each beside
-  its upload while one waits (whether it is being sent, and what it waits for
-  with the error behind that while this process holds it; how far it has got
-  arrives apart, by file; and while the release waits in or runs through the
-  download queue, whether the file is kept whole on this device yet, as
-  coven's `coven_pins` says;
-  and whether coven is downloading the file now to be kept, as
-  `coven_downloading` says, how far it has got arriving apart, by file, from
-  coven's download watch), and its entry in the download, export and upload
-  queues, a download with how many of its files are downloading, wait and
-  are kept, all read for that release alone and at once, so its queue entries
-  and its files' pins are as they stood together. The read itself decides
-  that the release is pinning (its download entry pins and has not failed) and
-  counts its files by pin state, and bae keeps no earlier value to compare
-  with: the live query sends a value only when it differs from the last. It
-  shows nothing of a
-  whole queue, which the list's footer pauses (§4.2): its upload shows how
-  many of its files are uploading, queued and stored, a count of none left
-  out, so a release with nothing being sent reads only what waits and what
-  is stored; a control that
-  cancels it, and while files are sent, the bytes of its size stored or sent
-  and how fast they go. Each file is one line, its name and size after a
-  mark: none for a file at rest, a dashed circle for one waiting its turn, a
-  ring filling as it is sent; a file waiting on a reason says why when the
-  pointer rests on it. While the release pins, its download shows the same
+  size, and whether a search narrows it; a new sort, filter or search opens new
+  queries. Its selection is a live query of its own. The app tells it which
+  releases the person selected, and each value carries the row of each selected
+  release the list holds, on screen or not, and the storage actions all of them
+  allow. The app offers only those actions. Another live query reads which
+  transfer queues hold work. Its inspector shows, and its storage actions act
+  on, a selected release only while the list holds it: a release that finishes
+  uploading out of the Local list, no longer matches the filter, or is deleted
+  leaves the inspector and the actions' targets as it leaves the list, including
+  while an action's confirmation or folder prompt is open. The inspector reads
+  its release live by id: the release's files, each beside its upload while one
+  waits (whether it is being sent, and what it waits for with the error behind
+  that while this process holds it; how far it has got arrives apart, by file;
+  and while the release waits in or runs through the download queue, whether the
+  file is kept whole on this device yet, as coven's `coven_pins` says; and
+  whether coven is downloading the file now to be kept, as `coven_downloading`
+  says, how far it has got arriving apart, by file, from coven's download
+  watch), and its entry in the download, export and upload queues, a download
+  with how many of its files are downloading, wait and are kept, all read for
+  that release alone and at once, so its queue entries and its files' pins are
+  as they stood together. The read itself decides that the release is pinning
+  (its download entry pins and has not failed) and counts its files by pin
+  state, and bae keeps no earlier value to compare with: the live query sends a
+  value only when it differs from the last. The inspector shows nothing of a
+  whole queue, which the list's footer pauses (§4.2): its upload shows how many
+  of its files are uploading, queued and stored, a count of none left out, so a
+  release with nothing being sent reads only what waits and what is stored; a
+  control that cancels it, and while files are sent, the bytes of its size
+  stored or sent and how fast they go. Each file is one line, its name and size
+  after a mark: none for a file at rest, a dashed circle for one waiting its
+  turn, a ring filling as it is sent; a file waiting on a reason says why when
+  the pointer rests on it. While the release pins, its download shows the same
   way: how many of its files are pinning, waiting and pinned, again leaving
   out a count of none; a control that
   cancels the pin, and while it downloads the bytes it holds of its size and
@@ -5667,12 +5665,12 @@ status every 8 ms. While playback is paused or loading, it sends the position
 once. The native view draws the latest position each display frame, with no
 arithmetic of its own. A preview's position reaches an app the same way, in a
 `KeyedValueStream` too. So do the parts of the playing track its buffer holds (§7.6), as
-fractions of its length under its id. When playback accepts a seek the person made, it reports the seek's
-target as the track's position, or the preview's, before it rebuilds the
-stream, so the track's position, or the preview's, moves to the target at once,
-every view drawing that track (the seek bar, the queue's strip) or that preview
-shows where they dropped it meanwhile, and no earlier position follows it. No
-view keeps the drop.
+fractions of its length under its id. When playback accepts a seek the person
+made, it reports the target as the track's or the preview's position before it
+rebuilds the audio stream. The track's position, or the preview's, moves to the
+target at once, so every view that draws the track (the seek bar, the queue's
+strip) or the preview shows the dropped position. No earlier position follows.
+No view keeps the position the person dropped the thumb at.
 
 Playback's thread outlives the service it runs. A service that ends on a bug
 of its own, or because the audio output won't open as it starts, is told once:
@@ -5982,22 +5980,21 @@ release's or track's id as UTF-8, or a candidate's key.
   in place, and a detail view showing nothing has no read, since a read is
   never pointed at nothing. The library's name, its people, this device's
   open invites, the requested profile and the admin changes are read while
-  the settings screen showing them does. The people are one read of this
-  device's person, the other people in member-id order, and the counts of
-  people and of active devices that the Library row shows ("2 people · 3
-  devices"), drawn from the same moment; a person's page is its own read keyed
-  by that person's member id, which answers none once they have left the
-  library, and the page then closes to the first one, on both apps, so neither
-  searches the list for a person; Rename Library starts from the name
-  as it stands when it opens. The macOS menu bar always shows Rename Library,
-  enabled for an admin, so the Mac reads whether this device's person is one
-  for as long as the library is open. Closing or
-  removing the library cancels every one before the store closes: a read
-  waiting on one, or asked of it after, answers that it was cancelled, never
-  with the closed store, and it takes no new request. One opened as the
-  library closes is cancelled from the start. One whose task breaks on a bug,
-  or whose read coven ends on a bug, answers with that failure, "Something
-  went wrong", and ends; the bug is reported.
+  the settings screen showing them does. One read returns this device's person,
+  the other people in member-id order, and the counts of people and of active
+  devices that the Library row shows ("2 people · 3 devices"), all from the same
+  database state; a person's page is its own read keyed by that person's member
+  id, which answers none once they have left the library, and the app then
+  closes the person's page and shows the people page, on both apps, so neither
+  searches the list for a person; Rename Library starts from the name as it
+  stands when it opens. The macOS menu bar always shows Rename Library, enabled
+  for an admin, so the Mac reads whether this device's person is one for as long
+  as the library is open. Closing or removing the library cancels every one
+  before the store closes: a read waiting on one, or asked of it after, answers
+  that it was cancelled, never with the closed store, and it takes no new
+  request. One opened as the library closes is cancelled from the start. One
+  whose task breaks on a bug, or whose read coven ends on a bug, answers with
+  that failure, "Something went wrong", and ends; the bug is reported.
 - **Callbacks the app provides**: the crash reporter core hands each bug it
   finds to, from startup on; the artwork reader; and on phones the audio
   focus and the sign-in presenter, which shows the provider's page and returns
@@ -6403,7 +6400,7 @@ reads it again once.
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a scan is reading the folder is never stored (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when no tag is read (its blank cover, written with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
@@ -6441,16 +6438,16 @@ Beside them, keyed by the candidate's key as the import list names it:
 |---|---|
 | `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (drafting the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it or to start (what a run starts from, or whether an answer is stored already, could not be read), for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, each step of the import, written before the worker starts it — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far through its step an import is, is not stored; what each run published is `import_identify_run`'s. No row outlives the process: the table is emptied as the library opens |
 | `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
-| `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, each stored in the write of the state the run reached from them. Its pane and the release editor's search draw the run from these rows, its rows judged against the text of those signals, the judgement stored with the rows and read back by one statement that answers the cards, never folded as the pane or the editor reads. A folder candidate's run has its rows only while its standing names the run: its first state is written in the write that starts it, a later one only while the standing still names it, and the write that moves the standing off the run deletes them, so no read finds a run the standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. Every row a run owns goes with its row here, and the table is emptied as the library opens |
-| `import_candidate_search`, `import_candidate_search_source`, `import_candidate_search_pick`, `import_candidate_search_pick_album` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). Each answer, pick and switch lays the whole list of the search's releases out again in its own write, and stores each release's pressing row, its card and its place among its row's records, the text of each card and what each row lists (A.6), and the pane reads the search's cards from them in one statement: the cards in the order of their best row, each card's rows by the year their lead record states, a card that holds two albums of one catalog in one section for each album, and its cover and the catalogs it names. Each catalog's answer is a write of its own that lands only on a part still searching, of the search it was asked for: a new search for the key replaces the row on a run number never used again, so an answer to the replaced search, a second answer, or one for a part switched off lands nowhere. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list stores what its documents state its album is on the other catalog, and the write lays the list out with every pick together: each MusicBrainz row states what its album was read to be; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
+| `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, each stored in the write of the state the run reached from them. Its pane and the release editor's search draw the run from these rows, its rows judged against the text of those signals; the write that stores the rows also stores their judgement, and one statement returns the cards, so neither the pane nor the editor judges the rows when it reads them. A folder candidate's run has its rows only while its standing names the run: its first state is written in the write that starts it, a later one only while the standing still names it, and the write that moves the standing off the run deletes them, so no read finds a run the standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. Every row a run owns goes with its row here, and the table is emptied as the library opens |
+| `import_candidate_search`, `import_candidate_search_source`, `import_candidate_search_pick`, `import_candidate_search_pick_album` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). Each answer, pick and switch lays the whole list of the search's releases out again in its own write, and stores each release's pressing row, its card and its place among its row's records, the text of each card and what each row lists (A.6), and the pane reads the search's cards from them in one statement: the cards in the order of their best row, each card's rows by the year their lead record states, a card that holds two albums of one catalog in one section for each album, and its cover and the catalogs it names. Each catalog's answer is a write of its own that lands only on a part still searching, of the search it was asked for: a new search for the key replaces the row on a run number never used again, so an answer to the replaced search, a second answer, or one for a part switched off lands nowhere. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list stores what its documents state its album is on the other catalog, and the write lays the list out with every pick together: each MusicBrainz row holds the album bae works out for its group from every pick and the list; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
 
 Beside them, keyed by the release an import made:
 
 | Table | One row per |
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
-| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Written and read as `release_sheet_bindings` is; deleting the sheet deletes it. It syncs (Appendix B) |
-| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); identifying the release again reads them. Deleting either file deletes the row. It syncs (Appendix B) |
+| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
+| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
 
 ### A.6 Identification
 
@@ -6458,10 +6455,10 @@ Beside them, keyed by the release an import made:
 |---|---|
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3), or those a run in flight last read (A.5) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
-| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict. Owned by a candidate's files, or by a run in flight (A.5), whose row may be `running`; this table, its matches and its ledger rows name their owner the same way. What a found verdict decides is not stored: the view `import_candidate_verdict_decision` says it from the verdict's rows (§3.5), as why it picks nothing, the check against the folder that declined it (the medium the folder's files rule out, or a tracklist that cannot be checked) and the release it picks, and the import list, the pane's cards statement and the pane's opening on the draft all read that one view |
-| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A search's release states its pressing row, its card (the list place of the card's first release) and its place among its row's records; a ledger cell's release states the same for the cell's own list. A release a verdict or run lists also states which of its fields the folder's text agrees with (disc ID, barcode, catalog number, label, year, country, album title, album artist), judged and written by the write that stores the verdict, the signals or the numbers struck out, and states its card and place the same way. A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), as that release is stored now |
+| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict. Owned by a candidate's files, or by a run in flight (A.5), whose row may be `running`; this table, its matches and its ledger rows name their owner the same way. bae stores no decision for a found verdict. The view `import_candidate_verdict_decision` computes it from the verdict's rows (§3.5): why the verdict picks nothing, the check against the folder that failed (the medium the folder's files rule out, or a tracklist bae cannot check), and the release it picks. The import list, the pane's cards statement and the pane's opening on the draft all read that view |
+| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A search's release states its pressing row, its card (the list place of the card's first release) and its place among its row's records; a ledger cell's release states the same for the cell's own list. A release a verdict or run lists also states which of its fields the folder's text agrees with (Disc ID, barcode, catalog number, label, year, country, album title, album artist), which the write that stores the verdict, the signals or the discounted numbers works out and writes, and states its card and place the same way. A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), as that release is stored now |
 | `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from. The pane reads each answered cell's cards from the layout stored with it, in the one statement that reads the ledger |
-| `import_candidate_card_text`, `import_candidate_row_statement` | what the rules decided of a list of releases, stored where the list is laid out: the titles, artists and labels each card names, and what each row lists where its records state a fact (years, label lines with their catalog numbers, barcodes, areas, media), each value once with the catalogs that state it where the records differ. A typed search's list and each ledger cell's list have them |
+| `import_candidate_card_text`, `import_candidate_row_statement` | what the card rules decided for a list of releases, which the write that groups the list stores: the titles, artists and labels each card names, and what each row lists where its records state a fact (years, label lines with their catalog numbers, barcodes, areas, media), each value once with the catalogs that state it where the records differ. A typed search's list and each ledger cell's list have them |
 | `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
 ### A.7 The import list
@@ -6472,7 +6469,7 @@ Beside them, keyed by the release an import made:
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
-| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out, bar a Found row whose import landed, which stays until another row is selected or the view changes |
+| `import_list_selection` | the rows a list has selected: only rows it shows, since the write that stops it showing one takes it out, except a Found row whose import finished, which stays until another row is selected or the view changes |
 
 No list outlives the process that opened it: the import service empties
 `import_list` and the tables hanging off it as the library opens, with the
@@ -6498,7 +6495,7 @@ write commits, so the release and the row naming it land in either order.
 | `source_release_link`, `source_release_album_link`, `source_release_record`, `release_group_album_link` | what it says it is on other catalogs |
 | `source_release_cover`, `source_release_cover_copy`, `source_release_archive_group` | the images it offers a picker |
 | `source_release_unfetched` | linked documents the fetch didn't get, and why: the source failed, its catalog was not asked (switched off, or Discogs had no key), or a run's read stopped short of it (the release's own page, where the run read it from a Disc ID answer) |
-| `release_cover_fetch` | the library release a picker fetched covers for, and whether it names a catalog release; a release's deletion takes its rows |
+| `release_cover_fetch` | the library release a picker fetched covers for, and whether it names a catalog release; deleting a release deletes its rows |
 | `release_cover_entry` | the covers a fetch found for a release, in the order offered, each as a stored cover with its catalog beside it for the picker's source filter |
 
 ### A.9 Transfer queues
@@ -6534,16 +6531,16 @@ Never synced (§6.4).
 
 ## Appendix B. Synced tables
 
-From each schema part's synced tables: records' (`bae_records::synced`), people's (`bae_people::synced`) and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
+The table below lists each schema part's synced tables: records' (`bae_records::synced`), people's (`bae_people::synced`) and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, whether the reference is trailing or
-bound (§6.3), and the namespace its files are in. `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
+bound (§6.3), and the namespace its files are in. No schema part declares `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
 `import_candidate_standing`, `import_identification_batch` and
-`import_identify_run` among them, and
-the transfer queues (A.9) are not declared, so they never sync.
+`import_identify_run` among them, or the transfer queues (A.9), so they never
+sync.
 
 | Table | Identity | Audience | Owner | File |
 |---|---|---|---|---|
@@ -6671,33 +6668,31 @@ that a control or the words beside it already name (the ⓘ, a close or remove
 cross, the folder, speaker or arrow beside a name) is hidden from VoiceOver; a
 symbol that says something nothing else says is read as that: the speaker on the
 playing track as Now playing, a failed lookup's mark as Failed. On the Mac
-every progress bar and spinner is read by the words it counts ("Pinning",
-"Finding your libraries…"), and a spinner with no words beside it is read as
-Loading. The parts macOS draws itself,
-such as the menu bar's menus and the save panel's Format pop-up, take
-the Pink accent the app declares, as long as the Mac's own accent is
-Multicolor, and the person's Mac accent otherwise; they do not follow the
-accent chosen here. Checkboxes, switches, sliders, radio buttons, the keyboard focus ring,
-selected text in fields and a list's or table's selected row show the chosen
-accent and never the Mac's own accent colour. On the Mac Theme and Tone are pop-up buttons; on
-Android the Appearance page has no heading over its card, the top bar names it.
-Android's Settings rows each say where that setting stands under their title:
-Appearance's theme, tone and accent, the library's name and its sync state,
-which of pausing between sides and restoring on launch are on, how many pins
-run at once, the total this phone keeps for the library (§4.7, "3.9 GB on this
-phone", nothing until the first measurement), whether casting is on, and the
-version. The Mac's Settings is one window with no title bar: its panes' names,
-as text alone, down a sidebar that holds the window's buttons at its top,
-inset 12 points from the panel's top left corner, and
-each pane's title in bold at the top left of the pane. A page inside a pane
-puts a round button, 24 points across and named "Back to" and the page it goes
-back to, before its title. It opens on Appearance,
-the first pane. The sidebar names the
-sync state beside Library only while it is amber or red, and Offline beside
-Subsonic while it is on and not running, each as a chip tinted in its tone.
-About shows the bae
-logo, the sheep over the word, 96 points wide and still, over the version:
-Android's Version is a row on a card, the Mac's a line with Check for updates….
+VoiceOver reads each progress bar and spinner by the words beside it ("Pinning",
+"Finding your libraries…"), and reads a spinner with no words beside it as
+Loading. The parts macOS draws itself, such as the menu bar's menus and the save
+panel's Format pop-up, take the Pink accent the app declares, as long as the
+Mac's own accent is Multicolor, and the person's Mac accent otherwise; they do
+not follow the accent chosen here. Checkboxes, switches, sliders, radio buttons,
+the keyboard focus ring, selected text in fields and a list's or table's
+selected row show the chosen accent and never the Mac's own accent colour. On
+the Mac Theme and Tone are pop-up buttons; on Android the Appearance page has no
+heading over its card, the top bar names it. Android's Settings rows each say
+where that setting stands under their title: Appearance's theme, tone and
+accent, the library's name and its sync state, which of pausing between sides
+and restoring on launch are on, how many pins run at once, the total this phone
+keeps for the library (§4.7, "3.9 GB on this phone", nothing until the first
+measurement), whether casting is on, and the version. The Mac's Settings is one
+window with no title bar: its panes' names, as text alone, down a sidebar that
+holds the window's buttons at its top, inset 12 points from the panel's top left
+corner, and each pane's title in bold at the top left of the pane. A page inside
+a pane puts a round button, 24 points across and named "Back to" and the page it
+goes back to, before its title. It opens on Appearance, the first pane. The
+sidebar names the sync state beside Library only while it is amber or red, and
+Offline beside Subsonic while it is on and not running, each as a chip tinted in
+its tone. About shows the bae logo, the sheep over the word, 96 points wide and
+still, over the version: Android's Version is a row on a card, the Mac's a line
+with Check for updates….
 
 ---
 
