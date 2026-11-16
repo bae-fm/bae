@@ -8,14 +8,15 @@ private let logger = Logger.bae("StorageTable")
 // MARK: - Representable
 
 /// An `NSTableView`-backed storage table: AppKit handles the table
-/// mechanics (resizable / reorderable columns, header sort indicators,
-/// shift/cmd selection) with SwiftUI-hosted cell content so covers and the
-/// storage badge reuse `ImageView` / `Theme`. The columns' order, widths and
-/// which are hidden are `layout`, which the table applies and writes back.
+/// mechanics (resizable / reorderable columns, header sort indicators) with
+/// SwiftUI-hosted cell content so covers and the storage badge reuse
+/// `ImageView` / `Theme`. The columns' order, widths and which are hidden are
+/// `layout`, which the table applies and writes back.
 ///
 /// Releases load a page at a time, each page held while a row of it is in
 /// view. Their files belong to the selected-release inspector, not to child
-/// rows in this table. Selection binds to release ids; column sorting maps to
+/// rows in this table. The selection is the release ids the view keeps, which
+/// each row in view draws its highlight from; column sorting maps to
 /// `BridgeStorageSort`.
 struct StorageTableView: NSViewRepresentable {
     let list: StorageList
@@ -66,6 +67,9 @@ struct StorageTableView: NSViewRepresentable {
         let coordinator = context.coordinator
         let tableView = StorageTable()
         tableView.menus = coordinator
+        tableView.onSelectAll = { [weak coordinator] in
+            coordinator?.selectAllShown()
+        }
         tableView.dataSource = coordinator
         tableView.delegate = coordinator
         tableView.target = coordinator
@@ -172,7 +176,12 @@ extension StorageTableView {
         NSTableViewDelegate
     {
         private(set) var list: StorageList
-        private let selection: Binding<Set<String>>
+        /// The release ids the view keeps selected, which each row in view
+        /// draws its highlight from.
+        let selection: Binding<Set<String>>
+        /// The release a Shift gesture extends from: the one the last gesture
+        /// without Shift landed on.
+        var anchorId: String?
         private let sort: Binding<BridgeStorageSort>
         private let inspectorPresented: Binding<Bool>
         /// The column layout the table shows, which column changes write.
@@ -186,8 +195,9 @@ extension StorageTableView {
         var applyingLayout = false
         /// Narrows the selection to the releases the list holds, and answers
         /// with each one's row: nothing here acts on or counts a selected
-        /// release the list no longer shows.
-        private let storageManagerStore: StorageManagerStore
+        /// release the list no longer shows. It reads the ids of a Shift run
+        /// and of Select All.
+        let storageManagerStore: StorageManagerStore
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
         private var downloadStore: DownloadStore
@@ -198,14 +208,13 @@ extension StorageTableView {
         weak var tableView: NSTableView?
 
         private var rootEpoch: LoadEpoch?
-        private var rootCount = 0
+        private(set) var rootCount = 0
         /// Each row in view's hold on its page, by row.
         private var rowHolds: [Int: Task<Void, Never>] = [:]
 
-        /// True while we push selection into the table view, so the
-        /// resulting `selectionDidChange` delegate callback doesn't write the
-        /// same value back through the binding (and fight the next update).
-        private var applyingSelection = false
+        /// True while the coordinator sets the table's highlight, which is
+        /// no person's change to the selection.
+        var applyingSelection = false
 
         init(
             list: StorageList,
@@ -289,9 +298,12 @@ extension StorageTableView {
             }
         }
 
+        /// A scroll brings other rows into view, each highlighted when the
+        /// kept ids name its release.
         @objc
         private func clipViewMoved() {
             holdRowsInView()
+            applySelection(selection.wrappedValue, to: tableView)
         }
 
         /// Each row in view holds its page; a row leaving the view lets its
@@ -389,25 +401,6 @@ extension StorageTableView.Coordinator {
         }
     }
 
-    // MARK: Selection
-
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !applyingSelection,
-            let tableView = notification.object as? NSTableView
-        else {
-            return
-        }
-        var ids: Set<String> = []
-        for row in tableView.selectedRowIndexes {
-            if let id = list.idAt(row) {
-                ids.insert(id)
-            }
-        }
-        if ids != selection.wrappedValue {
-            selection.wrappedValue = ids
-        }
-    }
-
     @objc
     func handleInspectorDoubleClick(_ sender: NSTableView) {
         let row =
@@ -419,38 +412,6 @@ extension StorageTableView.Coordinator {
             inspectorPresented.wrappedValue
             && storageManagerStore.soleRelease == releaseId
         setInspectorPresented(!isOpenForRelease, releaseId: releaseId)
-    }
-
-    /// Push the bound release-id selection into the table view's row
-    /// selection, mapping each id to its loaded position. Guarded so the
-    /// resulting delegate callback doesn't echo back through the binding.
-    func applySelection(
-        _ ids: Set<String>,
-        to tableView: NSTableView?
-    ) {
-        guard let tableView else { return }
-        var rows = IndexSet()
-        for id in ids {
-            // `position(of:)` reads loaded segments, which can briefly hold a
-            // position past a freshly-rebuilt row count while a live page is
-            // being installed. A selected id whose row isn't loaded can't be
-            // highlighted yet; skip it.
-            guard let position = list.position(of: id),
-                position < rootCount
-            else {
-                logger.debug(
-                    "Selected release \(id) has no loaded row to highlight"
-                )
-                continue
-            }
-            rows.insert(position)
-        }
-        guard rows != tableView.selectedRowIndexes else {
-            return
-        }
-        applyingSelection = true
-        tableView.selectRowIndexes(rows, byExtendingSelection: false)
-        applyingSelection = false
     }
 }
 
@@ -621,6 +582,7 @@ extension StorageTableView.Coordinator {
             )
         }
         selection.wrappedValue = [clicked.id]
+        anchorId = clicked.id
         applySelection([clicked.id], to: tableView)
         return MenuTargets(
             rows: [clicked],
@@ -645,15 +607,49 @@ extension StorageTableView.Coordinator {
         releaseId: String
     ) {
         selection.wrappedValue = [releaseId]
+        anchorId = releaseId
         applySelection([releaseId], to: tableView)
         inspectorPresented.wrappedValue = presented
     }
 }
 
 /// The storage table, whose right click opens bae's menu in place of
-/// AppKit's.
+/// AppKit's. It names the event it is handling, for the selection it
+/// proposes to be read against, and it takes Select All to core, which
+/// selects every release the list shows rather than the rows the table has
+/// loaded.
 final class StorageTable: NSTableView {
     weak var menus: StorageTableView.Coordinator?
+    /// The mouse or key press the table is handling, while it handles it.
+    private(set) var handlingEvent: NSEvent?
+    /// Select every release the list shows, loaded or not.
+    var onSelectAll: (() -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        handling(event) { super.mouseDown(with: event) }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        handling(event) { super.keyDown(with: event) }
+    }
+
+    override func selectAll(_ sender: Any?) {
+        onSelectAll?()
+    }
+
+    /// The row `event` pressed, for a click on a row.
+    func pressedRow(_ event: NSEvent) -> Int? {
+        guard event.type == .leftMouseDown else { return nil }
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        return row >= 0 ? row : nil
+    }
+
+    private func handling(_ event: NSEvent, _ handle: () -> Void) {
+        let outer = handlingEvent
+        handlingEvent = event
+        defer { handlingEvent = outer }
+        handle()
+    }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let row = row(at: convert(event.locationInWindow, from: nil))

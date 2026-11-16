@@ -75,6 +75,19 @@ public final class Library: Sendable, Observable {
             _ filter: BridgeStorageFilter, _ search: String,
             _ releaseIds: [String]
         ) async throws -> Bool
+    /// The releases the Storage Manager list under one sort, filter and
+    /// search text shows from one release to another, both included: what a
+    /// Shift-click selects.
+    public let storageIdsBetween:
+        @Sendable (
+            _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
+            _ search: String, _ from: String, _ to: String
+        ) async throws -> [String]
+    /// Every release the Storage Manager list under one filter and search
+    /// text shows: what Select All selects.
+    public let storageIds:
+        @Sendable (_ filter: BridgeStorageFilter, _ search: String)
+            async throws -> [String]
     /// The transfer queues holding work, as the Storage Manager shows them.
     public let storageQueues: @Sendable () -> PulledValues<BridgeStorageQueues>
     /// Open the Storage Manager inspector's live read of the release it
@@ -190,6 +203,15 @@ public final class Library: Sendable, Observable {
             @escaping @Sendable (BridgeStorageFilter, String, [String])
             async
             throws -> Bool = { _, _, _ in throw StubError.notImplemented },
+        storageIdsBetween:
+            @escaping @Sendable (
+                BridgeStorageSort, BridgeStorageFilter, String, String, String
+            ) async throws -> [String] = { _, _, _, _, _ in
+                throw StubError.notImplemented
+            },
+        storageIds:
+            @escaping @Sendable (BridgeStorageFilter, String) async throws
+            -> [String] = { _, _ in throw StubError.notImplemented },
         storageQueues:
             @escaping @Sendable () -> PulledValues<BridgeStorageQueues> = {
                 fatalError("Library storage queues are not installed")
@@ -242,6 +264,8 @@ public final class Library: Sendable, Observable {
         self.storageList = storageList
         self.storageSelection = storageSelection
         self.storageHoldsAll = storageHoldsAll
+        self.storageIdsBetween = storageIdsBetween
+        self.storageIds = storageIds
         self.storageQueues = storageQueues
         self.storageInspector = storageInspector
         self.storageFile = storageFile
@@ -299,13 +323,9 @@ extension Library {
                         )
                     )
                 },
-                storageHoldsAll: {
-                    try await handle.storageHoldsAll(
-                        filter: $0,
-                        search: $1,
-                        releaseIds: $2
-                    )
-                },
+                storageHoldsAll: Self.storageHoldsAll(handle),
+                storageIdsBetween: Self.storageIdsBetween(handle),
+                storageIds: Self.storageIds(handle),
                 storageQueues: {
                     PulledValues(handle.subscribeStorageQueues())
                 },
@@ -335,6 +355,50 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable ([String]) async throws -> [String] {
             { try await handle.resolveToTrackIds(ids: $0) }
+        }
+
+        /// Whether a Storage Manager list holds every one of some releases,
+        /// read through `handle`.
+        private static func storageHoldsAll(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (BridgeStorageFilter, String, [String]) async throws ->
+            Bool
+        {
+            {
+                try await handle.storageHoldsAll(
+                    filter: $0,
+                    search: $1,
+                    releaseIds: $2
+                )
+            }
+        }
+
+        /// The releases a Storage Manager list shows between two releases,
+        /// read through `handle`.
+        private static func storageIdsBetween(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (
+                BridgeStorageSort, BridgeStorageFilter, String, String, String
+            ) async throws -> [String]
+        {
+            {
+                try await handle.storageIdsBetween(
+                    sort: $0,
+                    filter: $1,
+                    search: $2,
+                    from: $3,
+                    to: $4
+                )
+            }
+        }
+
+        /// Every release a Storage Manager list shows, read through `handle`.
+        private static func storageIds(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (BridgeStorageFilter, String) async throws -> [String] {
+            { try await handle.storageIds(filter: $0, search: $1) }
         }
 
         /// Where an album sits in the album list, read through `handle`.

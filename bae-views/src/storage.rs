@@ -136,6 +136,42 @@ impl LibraryViews {
             .await
     }
 
+    /// The releases the Storage Manager list under `sort`, `filter` and the
+    /// `search` text shows from the release `from` to the release `to`, both
+    /// included, in the list's order: what a Shift-click selects. The one
+    /// the list holds when it holds only one of the two, and none when it
+    /// holds neither.
+    pub async fn storage_ids_between(
+        &self,
+        sort: &StorageSortCriterion,
+        filter: StorageFilter,
+        search: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<Vec<String>, DbError> {
+        let order = storage_order(sort);
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
+        let (from, to) = (from.to_string(), to.to_string());
+        self.store
+            .read(move |sql| {
+                storage_ids_between_on(&sql, &order, filter, pattern.as_deref(), &from, &to)
+            })
+            .await
+    }
+
+    /// Every release the Storage Manager list under `filter` and the `search`
+    /// text shows: what Select All selects.
+    pub async fn storage_ids(
+        &self,
+        filter: StorageFilter,
+        search: &str,
+    ) -> Result<Vec<String>, DbError> {
+        let pattern =
+            crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
+        self.store.read(move |sql| storage_ids_on(&sql, filter, pattern.as_deref())).await
+    }
+
     /// The key of the release at `position` of the Storage Manager list, or
     /// of its last row when it ends before it; `None` for an empty list.
     pub async fn storage_key_at(
@@ -618,6 +654,58 @@ pub(crate) fn storage_holds_all_on(
         params.push((":search", pattern));
     }
     Ok(sql.query_row(&statement, params.as_slice(), |row| row.get(0))?)
+}
+
+/// The releases the list under `filter` and the search `pattern` shows from
+/// the release `from` to the release `to`, both included, in `order`: one
+/// statement numbers the list's rows in its order and keeps the ones between
+/// the two releases' numbers.
+pub(crate) fn storage_ids_between_on(
+    sql: &SqlReadContext<'_>,
+    order: &ListOrder,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+    from: &str,
+    to: &str,
+) -> Result<Vec<String>, DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let statement = format!(
+        "WITH ranked AS ( \
+             SELECT listing.release_id AS id, ROW_NUMBER() OVER (ORDER BY {ordering}) AS n \
+             FROM release_listing listing \
+             WHERE {filter} AND {searched}), \
+         ends AS (SELECT MIN(n) AS low, MAX(n) AS high FROM ranked WHERE id IN (:from, :to)) \
+         SELECT ranked.id FROM ranked, ends \
+         WHERE ranked.n BETWEEN ends.low AND ends.high \
+         ORDER BY ranked.n",
+        ordering = order.clause(),
+        filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
+    );
+    let mut params: Vec<(&str, &dyn rusqlite::ToSql)> = vec![(":from", &from), (":to", &to)];
+    if let Some(pattern) = &pattern {
+        params.push((":search", pattern));
+    }
+    Ok(sql.query(&statement, params.as_slice(), |row| row.get(0))?)
+}
+
+/// Every release the list under `filter` and the search `pattern` shows.
+pub(crate) fn storage_ids_on(
+    sql: &SqlReadContext<'_>,
+    filter: StorageFilter,
+    pattern: Option<&str>,
+) -> Result<Vec<String>, DbError> {
+    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let statement = format!(
+        "SELECT listing.release_id FROM release_listing listing WHERE {filter} AND {searched}",
+        filter = storage_filter(filter),
+        searched = storage_search_condition(rows, "listing.album_id"),
+    );
+    let search: Vec<(&str, &dyn rusqlite::ToSql)> = match &pattern {
+        Some(pattern) => vec![(":search", pattern)],
+        None => Vec::new(),
+    };
+    Ok(sql.query(&statement, search.as_slice(), |row| row.get(0))?)
 }
 
 /// The one release of the `release_ids` the list under `filter` and the

@@ -850,3 +850,41 @@ async fn a_storage_selection_answers_which_releases_the_list_holds() {
     assert!(!holds(StorageFilter::Remote, "", ids(&[RELEASE_EARLY])).await);
     assert!(!holds(StorageFilter::All, "no album has this title", ids(&[RELEASE_EARLY])).await);
 }
+
+/// A Shift run and Select All take their releases from SQL: every release
+/// the list shows from one release to another, both included, in the list's
+/// order whichever end comes first, the one it holds when it holds only one
+/// end, and every release it shows.
+#[tokio::test]
+async fn the_storage_list_answers_the_releases_between_two_and_all_of_them() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    db.write(|sql| {
+        bulk_library::insert_on(&sql, 0, 6)?;
+        Ok::<(), bae_records::IdentityWriteError>(())
+    })
+    .await
+    .unwrap();
+    let views = crate::LibraryViews::new(db.clone());
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    };
+    let all = page(&db, StorageSortField::AlbumTitle).await;
+    assert_eq!(all.len(), 6);
+    let between = |from: &str, to: &str| {
+        let (views, from, to) = (views.clone(), from.to_string(), to.to_string());
+        async move {
+            views.storage_ids_between(&sort, StorageFilter::All, "", &from, &to).await.unwrap()
+        }
+    };
+    assert_eq!(between(&all[1], &all[4]).await, all[1..=4]);
+    assert_eq!(between(&all[4], &all[1]).await, all[1..=4]);
+    assert_eq!(between(&all[2], "no-such-release").await, all[2..=2]);
+    assert!(between("no-such-release", "nor-this-one").await.is_empty());
+
+    let mut every = views.storage_ids(StorageFilter::All, "").await.unwrap();
+    every.sort();
+    let mut shown = all.clone();
+    shown.sort();
+    assert_eq!(every, shown);
+}

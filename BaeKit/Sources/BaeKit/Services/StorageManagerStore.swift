@@ -4,6 +4,13 @@ import Observation
 @MainActor
 @Observable
 public final class StorageManagerStore {
+    /// The sort, filter and search text a list shows.
+    private struct ShownList {
+        let sort: BridgeStorageSort
+        let filter: BridgeStorageFilter
+        let search: String
+    }
+
     public private(set) var list: StorageList?
     /// The transfer queues holding work, by core's last answer; `nil` until
     /// it answers.
@@ -34,10 +41,11 @@ public final class StorageManagerStore {
     @ObservationIgnored
     private var queueDeliveries:
         ScreenSubscription<PulledValues<BridgeStorageQueues>>?
-    /// The filter and search text the list shows, which `holdsAll` passes to
-    /// core when it asks about the list's releases.
+    /// The sort, filter and search text the list shows, which `holdsAll`,
+    /// `idsBetween` and `allIds` pass to core when they ask about the list's
+    /// releases.
     @ObservationIgnored
-    private var shown: (filter: BridgeStorageFilter, search: String)?
+    private var shown: ShownList?
     /// The releases selected in the list. The store asks the selection read
     /// for their rows.
     @ObservationIgnored
@@ -88,7 +96,7 @@ public final class StorageManagerStore {
         list?.cancel()
         generation += 1
         let currentGeneration = generation
-        shown = (filter, search)
+        shown = ShownList(sort: sort, filter: filter, search: search)
         openQueues()
         openSelection(filter: filter, search: search)
         let newList = StorageList(
@@ -162,6 +170,41 @@ public final class StorageManagerStore {
             shown.search,
             releaseIds
         )
+    }
+
+    /// The releases the list, as core reads it now, shows from the release
+    /// `from` to the release `to`, both included: what a Shift gesture
+    /// selects. `nil` before `update` shows the list, and when the read
+    /// fails, which goes to `onError`.
+    public func idsBetween(from: String, to: String) async -> [String]? {
+        guard let shown else { return nil }
+        do {
+            return try await library.storageIdsBetween(
+                shown.sort,
+                shown.filter,
+                shown.search,
+                from,
+                to
+            )
+        }
+        catch {
+            onError(error)
+            return nil
+        }
+    }
+
+    /// Every release the list, as core reads it now, shows: what Select All
+    /// selects. `nil` before `update` shows the list, and when the read
+    /// fails, which goes to `onError`.
+    public func allIds() async -> [String]? {
+        guard let shown else { return nil }
+        do {
+            return try await library.storageIds(shown.filter, shown.search)
+        }
+        catch {
+            onError(error)
+            return nil
+        }
     }
 
     /// Core's answer, when it is for `selection` and not for an earlier

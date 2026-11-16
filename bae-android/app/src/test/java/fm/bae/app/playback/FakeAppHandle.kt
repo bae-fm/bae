@@ -68,6 +68,7 @@ import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeStorageFilter
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
+import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.BridgeTopPlayable
@@ -268,6 +269,19 @@ internal open class FakeAppHandle(
         search: String,
         releaseIds: List<String>,
     ): Boolean = unfaked("storageHoldsAll")
+
+    override suspend fun storageIdsBetween(
+        sort: BridgeStorageSort,
+        filter: BridgeStorageFilter,
+        search: String,
+        from: String,
+        to: String,
+    ): List<String> = unfaked("storageIdsBetween")
+
+    override suspend fun storageIds(
+        filter: BridgeStorageFilter,
+        search: String,
+    ): List<String> = unfaked("storageIds")
 
     override fun subscribeStorageQueues(): StorageQueuesSubscription = unfaked("subscribeStorageQueues")
 

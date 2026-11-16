@@ -259,6 +259,28 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
+    /// The releases the Storage Manager list under `sort`, `filter` and the
+    /// `search` text shows from the release `from` to the release `to`, both
+    /// included: what a Shift-click selects.
+    fn storage_ids_between(
+        sort: crate::types::BridgeStorageSort,
+        filter: crate::types::BridgeStorageFilter,
+        search: String,
+        from: String,
+        to: String,
+    ) -> Vec<String> {
+        this.services
+            .storage_ids_between(&sort.into_core(), filter.into_core(), &search, &from, &to)
+            .await
+            .map_err(BridgeError::from)
+    }
+
+    /// Every release the Storage Manager list under `filter` and the `search`
+    /// text shows: what Select All selects.
+    fn storage_ids(filter: crate::types::BridgeStorageFilter, search: String) -> Vec<String> {
+        this.services.storage_ids(filter.into_core(), &search).await.map_err(BridgeError::from)
+    }
+
     fn set_primary_release(album_id: String, release_id: String) -> () {
         this.services
             .set_album_primary_release(&album_id, &release_id)

@@ -22,12 +22,26 @@ private final class OpenedReads: @unchecked Sendable {
         let search: String
     }
 
+    /// A Shift run's read: the list it asked about, and its two ends.
+    struct Run: Equatable {
+        let list: List
+        let from: String
+        let to: String
+    }
+
     private let lock = NSLock()
     private var lists: [List] = []
     private var selections: [[String]] = []
+    private var runs: [Run] = []
+    private var everyAsks: [(filter: BridgeStorageFilter, search: String)] =
+        []
 
     var opened: [List] { lock.withLock { lists } }
     var selected: [[String]] { lock.withLock { selections } }
+    var runsAsked: [Run] { lock.withLock { runs } }
+    var allAsked: [(filter: BridgeStorageFilter, search: String)] {
+        lock.withLock { everyAsks }
+    }
 
     /// A library over `rows` whose selection read answers each set of ids
     /// with its entry in `answers`.
@@ -66,6 +80,17 @@ private final class OpenedReads: @unchecked Sendable {
                 )
             },
             storageHoldsAll: Library.fixedStorageHoldsAll(),
+            storageIdsBetween: { [self] sort, filter, search, from, to in
+                lock.withLock {
+                    let list = List(sort: sort, filter: filter, search: search)
+                    runs.append(Run(list: list, from: from, to: to))
+                }
+                return [from, to]
+            },
+            storageIds: { [self] filter, search in
+                lock.withLock { everyAsks.append((filter, search)) }
+                return rows.map(\.id)
+            },
             storageQueues: {
                 .fixed(
                     BridgeStorageQueues(
@@ -219,6 +244,43 @@ struct StorageManagerStoreTests {
             store.answered(for: [rows[0].id, rows[1].id]) != nil
         }
         #expect(store.soleRelease == nil)
+        store.cancel()
+    }
+
+    @MainActor
+    @Test(
+        "a Shift run and Select All ask core about the list on screen, loaded or not"
+    )
+    func runAndSelectAllAskCore() async throws {
+        let reads = OpenedReads()
+        let rows = Array(PreviewData.storageRows.prefix(3))
+        let store = StorageManagerStore(
+            library: reads.library(rows: rows),
+            onError: { _ in }
+        )
+        #expect(
+            await store.idsBetween(from: rows[0].id, to: rows[2].id) == nil,
+            "before the list shows, there is no list to ask about"
+        )
+        store.update(filter: .local, sort: bySize, search: "tide")
+        let run = await store.idsBetween(from: rows[0].id, to: rows[2].id)
+        #expect(run == [rows[0].id, rows[2].id])
+        #expect(
+            reads.runsAsked == [
+                OpenedReads.Run(
+                    list: OpenedReads.List(
+                        sort: bySize,
+                        filter: .local,
+                        search: "tide"
+                    ),
+                    from: rows[0].id,
+                    to: rows[2].id
+                )
+            ]
+        )
+        #expect(await store.allIds() == rows.map(\.id))
+        #expect(reads.allAsked.map(\.filter) == [.local])
+        #expect(reads.allAsked.map(\.search) == ["tide"])
         store.cancel()
     }
 
