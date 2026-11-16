@@ -11,9 +11,11 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
     let counts: LatestStream<UInt32>
     @Binding
     var filterText: String
-    /// The count for the filter the field holds now; `nil` while nothing
-    /// narrows the list, and while core has not counted under this filter.
-    let narrowed: BridgeNarrowedCount?
+    /// Reads the count for the filter the field holds now; `nil` while
+    /// nothing narrows the list, and while core has not counted under this
+    /// filter. The filter field reads it, so a new count redraws only the
+    /// field.
+    let narrowed: () -> BridgeNarrowedCount?
     /// Whether the list shows the view the person asked for. Until the read
     /// answering it lands, the list holds the previous view's rows: they stay
     /// unshown and out of reach rather than standing in for this view's.

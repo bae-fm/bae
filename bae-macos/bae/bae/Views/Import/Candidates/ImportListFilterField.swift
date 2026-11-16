@@ -7,10 +7,10 @@ struct ImportListFilterField: View {
     @Binding
     var text: String
     var focused: FocusState<Bool>.Binding
-    /// The count for the filter the field holds now; `nil` while nothing
-    /// narrows the list, and while core has not counted under this filter.
-    /// The field shows nothing while core has not counted the rows.
-    let narrowed: BridgeNarrowedCount?
+    /// Reads the count for the filter the field holds now; `nil` while
+    /// nothing narrows the list, and while core has not counted under this
+    /// filter. Nothing stands in for a count still being read.
+    let narrowed: () -> BridgeNarrowedCount?
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
@@ -21,7 +21,7 @@ struct ImportListFilterField: View {
                 .textFieldStyle(.plain)
                 .themeText(.body)
                 .focused(focused)
-            if let narrowed {
+            if let narrowed = narrowed() {
                 narrowedText(
                     shown: narrowed.shown.formatted(),
                     total: narrowed.total.formatted()

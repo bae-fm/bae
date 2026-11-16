@@ -148,7 +148,7 @@ struct MacImportSidebarContainer: View {
             activeTab: activeTabBinding,
             counts: importStore.tabCounts,
             filterText: filterTextBinding,
-            narrowed: listSlot.narrowedCount(under: shownNarrowing),
+            narrowed: { listSlot.narrowedCount(under: shownNarrowing) },
             answersView: listSlot.answersView
         ) {
             IdentificationProgressSlot(
