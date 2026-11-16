@@ -149,7 +149,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val lock = Any()
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
 
-    /** The live count of the children of each retained parent whose pages are each read once, by its media id. */
+    /** The live count of each retained parent's children whose pages the tree reads once each, by its media id. */
     private val childCounts = mutableMapOf<String, ChildCount>()
     private val searchesByOwner = mutableMapOf<Owner, OwnerSearch>()
     private var albums: ListProjection<BridgeAlbumAppearance, BridgeAlbum>? = null

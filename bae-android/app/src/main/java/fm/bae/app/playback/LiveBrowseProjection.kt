@@ -39,7 +39,7 @@ internal object BrowsePaging {
         pageSize: Int,
     ): ULong = page.toULong() * pageSize.toULong()
 
-    /** The page asked for of the root's [categories], a list the app fixes, not rows a read returned. */
+    /** The requested page of the root's [categories], a fixed list the app defines rather than rows a read returned. */
     fun categoryPage(
         categories: List<MediaItem>,
         page: Int,
@@ -54,7 +54,7 @@ internal object BrowsePaging {
 /**
  * A browse parent's live count of its children, read while a controller is interested in the parent. Each
  * count after the first tells the tree, through [onChanged], that the parent's children changed; the
- * children themselves are read once per page.
+ * tree reads the children themselves once per page.
  */
 internal class ChildCount(
     scope: CoroutineScope,

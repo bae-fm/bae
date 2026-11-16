@@ -65,7 +65,7 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** An album's live track count tells the controller each time it changes, but not at its first answer. */
+    /** The tree tells the controller each time an album's live track count changes, but not when the read delivers its first count. */
     @Test
     fun anAlbumsTrackCountTellsTheControllerEachChange() =
         runBlocking {
@@ -105,7 +105,7 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** A work's live child count tells the controller each time it changes, but not at its first answer. */
+    /** The tree tells the controller each time a work's live child count changes, but not when the read delivers its first count. */
     @Test
     fun aWorksChildCountTellsTheControllerEachChange() =
         runBlocking {

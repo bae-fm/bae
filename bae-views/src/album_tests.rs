@@ -643,8 +643,8 @@ const PAGED_ARTIST: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5021";
 
 /// `search_album_page` returns a search's albums one page at a time, in title
 /// order; the page past the last album is empty. The search's album count is
-/// a live query of its own, which counts a new album the search finds, and
-/// no query counts none.
+/// a live query of its own, which counts a new album the search finds. With
+/// no query, the count is zero.
 #[tokio::test]
 async fn a_search_pages_and_counts_its_albums_in_sql() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;

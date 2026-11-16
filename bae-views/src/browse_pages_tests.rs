@@ -37,9 +37,9 @@ async fn work_children(views: &LibraryViews, offset: u64, limit: u64) -> Vec<Str
 
 /// A work's children are its parts, in their place among its parts whatever
 /// their titles, then each release that performs it once however many of its
-/// tracks do, the albums by title. Each page is read at its offset, and the
-/// count of the children is a live query that counts a release that comes to
-/// perform the work.
+/// tracks do. bae sorts the releases by their album's title. The test reads
+/// each page at its offset, and the count of the children is a live query
+/// that counts a release that comes to perform the work.
 #[tokio::test]
 async fn a_works_children_are_its_parts_then_its_releases_paged_and_counted_in_sql() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -98,9 +98,9 @@ async fn album_tracks(views: &LibraryViews, offset: u64, limit: u64) -> Vec<Stri
 }
 
 /// An album's tracks are its main release's, in playing order, never another
-/// release's. Each page is read at its offset, and the count of the tracks is
-/// a live query that follows the album to the release that becomes its main
-/// one when the first is deleted.
+/// release's. The test reads each page at its offset, and the count of the
+/// tracks is a live query that follows the album to the release that becomes
+/// its main one when the test deletes the first release.
 #[tokio::test]
 async fn an_albums_tracks_are_its_main_releases_paged_and_counted_in_sql() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
