@@ -55,8 +55,10 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.rememberPageDeletion
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.TrackPlaylistAdd
@@ -115,7 +117,10 @@ fun AlbumDetailScreen(
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
-    val deletion = rememberAlbumDeletion(session, albumId, rememberScreenScope(), onDeleted = onBack)
+    val deletion =
+        rememberPageDeletion(session, "delete album $albumId", rememberScreenScope(), onDeleted = onBack) {
+            session.appHandle.deleteAlbum(albumId)
+        }
     val adding = rememberTrackPlaylistAdd(session)
     DisposableEffect(albumId, session) {
         session.libraryQueries.album.activate(albumId)
@@ -131,7 +136,7 @@ fun AlbumDetailScreen(
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
         actions = { if (detail != null) AlbumBarActions(session, detail, selectedReleaseId, deletion) },
     ) {
-        AlbumDeletionShown(deletion)
+        PageDeletionShown(deletion) { onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
         TrackPlaylistAddShown(session, adding)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail

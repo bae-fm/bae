@@ -1,11 +1,10 @@
-package fm.bae.app.ui.albumdetail
+package fm.bae.app.ui.components
 
 import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.diagnosticDetail
-import fm.bae.app.playback.FakeAppHandle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,18 +23,18 @@ import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
- * Deleting an album from its page asks first; Delete deletes that album and
- * leaves the page, Cancel deletes nothing, and a failed delete stays on the
- * page saying why.
+ * Deleting what a page shows asks first; Delete deletes it and leaves the
+ * page, Cancel deletes nothing, and a failed delete stays on the page saying
+ * why.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
-class AlbumDeletionTest {
+class PageDeletionTest {
     @Test
-    fun confirmingDeletesTheAlbumAndLeavesThePage() {
-        val handle = DeletingHandle(failure = null)
+    fun confirmingDeletesAndLeavesThePage() {
+        val call = Deleting(failure = null)
         var left = 0
-        val deletion = deletion(handle) { left++ }
+        val deletion = deletion(call) { left++ }
 
         deletion.ask()
         assertTrue(deletion.confirming)
@@ -43,49 +42,49 @@ class AlbumDeletionTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertFalse(deletion.confirming)
-        assertEquals(listOf("album-id"), handle.deleted)
+        assertEquals(1, call.deletes)
         assertEquals(1, left)
         assertNull(deletion.error)
     }
 
     @Test
     fun dismissingDeletesNothing() {
-        val handle = DeletingHandle(failure = null)
+        val call = Deleting(failure = null)
         var left = 0
-        val deletion = deletion(handle) { left++ }
+        val deletion = deletion(call) { left++ }
 
         deletion.ask()
         deletion.dismiss()
         shadowOf(Looper.getMainLooper()).idle()
 
         assertFalse(deletion.confirming)
-        assertEquals(emptyList<String>(), handle.deleted)
+        assertEquals(0, call.deletes)
         assertEquals(0, left)
     }
 
     @Test
     fun aFailedDeleteStaysOnThePageSayingWhy() {
-        val handle = DeletingHandle(failure = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "changed after planning"))
+        val call = Deleting(failure = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "changed after planning"))
         var left = 0
-        val deletion = deletion(handle) { left++ }
+        val deletion = deletion(call) { left++ }
 
         deletion.ask()
         deletion.confirm()
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(listOf("album-id"), handle.deleted)
+        assertEquals(1, call.deletes)
         assertEquals(0, left)
         assertEquals(DisplayError("couldn't delete", "changed after planning"), deletion.error)
     }
 
     private fun deletion(
-        handle: DeletingHandle,
+        call: Deleting,
         onDeleted: () -> Unit,
-    ) = AlbumDeletion(
-        albumId = "album-id",
-        appHandle = handle,
+    ) = PageDeletion(
+        operation = "delete album album-id",
         errors = TestErrorDisplays,
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        delete = call::delete,
         onDeleted = onDeleted,
     )
 
@@ -99,13 +98,14 @@ class AlbumDeletionTest {
         override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
-    private class DeletingHandle(
+    /** A delete call that counts its runs and throws [failure] when one is given. */
+    private class Deleting(
         private val failure: BridgeException?,
-    ) : FakeAppHandle() {
-        val deleted = mutableListOf<String>()
+    ) {
+        var deletes = 0
 
-        override suspend fun deleteAlbum(albumId: String) {
-            deleted.add(albumId)
+        suspend fun delete() {
+            deletes++
             failure?.let { throw it }
         }
     }

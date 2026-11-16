@@ -1,7 +1,6 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
@@ -14,85 +13,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import fm.bae.app.BaeLogger
-import fm.bae.app.DisplayError
-import fm.bae.app.ErrorDisplays
-import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.performBridgeAction
-import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMenu
-import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import uniffi.bae_bridge.AppHandleInterface
-
-private val logger = BaeLogger("bae.AlbumDeletion")
-
-/**
- * Deleting the album [albumId] from its page: whether the confirmation is up,
- * and why the last delete failed. A delete that succeeds leaves the page
- * through [onDeleted]; one that fails keeps the album in view with its error.
- */
-internal class AlbumDeletion(
-    private val albumId: String,
-    private val appHandle: AppHandleInterface,
-    private val errors: ErrorDisplays,
-    private val scope: CoroutineScope,
-    private val onDeleted: () -> Unit,
-) {
-    var confirming by mutableStateOf(false)
-        private set
-
-    var error by mutableStateOf<DisplayError?>(null)
-        private set
-
-    /** Show the confirmation. */
-    fun ask() {
-        confirming = true
-    }
-
-    /** Close the confirmation without deleting. */
-    fun dismiss() {
-        confirming = false
-    }
-
-    /** Close the confirmation and delete the album. */
-    fun confirm() {
-        confirming = false
-        error = null
-        scope.launch {
-            performBridgeAction(logger, "delete album $albumId", errors, { error = it }) {
-                appHandle.deleteAlbum(albumId)
-                onDeleted()
-            }
-        }
-    }
-}
-
-/** The deletion of the album [albumId] the page shows, run in [scope], leaving the page through [onDeleted]. */
-@Composable
-internal fun rememberAlbumDeletion(
-    session: OpenLibrary,
-    albumId: String,
-    scope: CoroutineScope,
-    onDeleted: () -> Unit,
-): AlbumDeletion {
-    val errors = session.errors
-    val leave by rememberUpdatedState(onDeleted)
-    return remember(albumId, session, scope) {
-        AlbumDeletion(albumId, session.appHandle, errors, scope) { leave() }
-    }
-}
 
 /**
  * The album's own actions, at the end of the page's bar: [onSetPrimaryRelease] makes the release in view
@@ -127,20 +56,6 @@ internal fun AlbumOptionsMenu(
                 },
             )
         }
-    }
-}
-
-/** Why the last delete failed, under the page's bar, and the confirmation while it is up. */
-@Composable
-internal fun AlbumDeletionShown(deletion: AlbumDeletion) {
-    deletion.error?.let {
-        AndroidNotice(
-            error = it,
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        )
-    }
-    if (deletion.confirming) {
-        DeleteAlbumDialog(onConfirm = deletion::confirm, onDismiss = deletion::dismiss)
     }
 }
 

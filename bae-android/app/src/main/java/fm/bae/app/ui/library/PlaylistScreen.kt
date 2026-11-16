@@ -35,7 +35,9 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.PlaylistPicture
+import fm.bae.app.ui.components.rememberPageDeletion
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
@@ -62,7 +64,10 @@ internal fun PlaylistScreen(
     }
     val loadError = query.error?.let(LocalContext.current::displayError)
     val scope = rememberScreenScope()
-    val deletion = rememberPlaylistDeletion(session, playlistId, scope, onDeleted = onBack)
+    val deletion =
+        rememberPageDeletion(session, "delete playlist $playlistId", scope, onDeleted = onBack) {
+            session.appHandle.deletePlaylist(playlistId)
+        }
     var editing by remember { mutableStateOf(false) }
     AndroidDetailScreen(
         onBack = onBack,
@@ -74,7 +79,9 @@ internal fun PlaylistScreen(
             }
         },
     ) {
-        PlaylistDeletionShown(deletion, name = detail?.summary?.name.orEmpty())
+        PageDeletionShown(deletion) { onConfirm, onDismiss ->
+            DeletePlaylistDialog(name = detail?.summary?.name.orEmpty(), onConfirm = onConfirm, onDismiss = onDismiss)
+        }
         if (editing && detail != null) {
             EditPlaylistDialog(session = session, playlist = detail.summary, onDismiss = { editing = false })
         }
