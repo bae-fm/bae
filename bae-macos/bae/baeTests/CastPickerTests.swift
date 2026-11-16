@@ -18,7 +18,7 @@ struct CastPickerTests {
     func spinsWhileConnecting(connectingName: String?) async throws {
         let size = NSSize(width: 300, height: 160)
         try await SnapshotTestSupport.withHostedWindow(
-            CastPickerPopover(
+            MacCastPopover(
                 receivers: BridgeCastReceiverList(
                     casting: nil,
                     found: [

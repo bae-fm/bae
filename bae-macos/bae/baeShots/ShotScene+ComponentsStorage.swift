@@ -130,12 +130,12 @@ extension ShotScene {
         )
     }
 
-    /// `CastPickerPopover`, the cast button's popover, over a receiver
+    /// `MacCastPopover`, the cast button's popover, over a receiver
     /// cast to with a short name and with a long one.
     private static let castPopoverScenes: [ShotScene] = [
         component("mac.component.cast-popover.default", height: 560) {
             VStack(alignment: .leading, spacing: 20) {
-                CastPickerPopover(
+                MacCastPopover(
                     receivers: BridgeCastReceiverList(
                         casting: castReceiver("Living Room", .cast),
                         found: [
@@ -147,7 +147,7 @@ extension ShotScene {
                     connectingName: nil,
                     onDisconnect: {}
                 )
-                CastPickerPopover(
+                MacCastPopover(
                     receivers: BridgeCastReceiverList(
                         casting: castReceiver(
                             "Upstairs Living Room Sonos Arc Soundbar",

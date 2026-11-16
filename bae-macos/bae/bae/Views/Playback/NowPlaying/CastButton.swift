@@ -28,7 +28,7 @@ struct CastButton: View {
         .help(help(casting: castingName, connecting: connectingName))
         .accessibilityLabel("Cast")
         .macPopover(isPresented: $showPicker, arrowEdge: .top) {
-            CastPickerPopover(
+            MacCastPopover(
                 receivers: castStore.receivers,
                 endedFailure: castStore.endedFailure,
                 connectingName: connectingName,
@@ -74,7 +74,7 @@ struct CastButton: View {
 /// The device picker: why the last device stopped when its link was lost, the
 /// receiver a cast is connecting to, then each receiver once, the one cast to
 /// first with Disconnect.
-struct CastPickerPopover: View {
+struct MacCastPopover: View {
     let receivers: BridgeCastReceiverList
     let endedFailure: DisplayError?
     /// The receiver a cast is connecting to, while it does.
