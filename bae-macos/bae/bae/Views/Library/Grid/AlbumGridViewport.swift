@@ -82,22 +82,20 @@ final class AlbumGridViewport {
 
     /// What decides whether the held slot needs a scroll: where it sits, and
     /// where the scroll stands.
+    ///
+    /// The dead-code check reads the compiler's equality of a struct as
+    /// assigning its properties without using them, so each property tells
+    /// it to skip the property.
     private struct HoldScroll: Equatable {
+        // periphery:ignore
         let slot: AlbumGridSlot
+        // periphery:ignore
         let columnCount: Int
+        // periphery:ignore
         /// The slot's top in the visible area, nil while it is not drawn.
         let minY: CGFloat?
+        // periphery:ignore
         let scroll: AlbumGridScroll
-
-        // This struct defines == itself because periphery treats the
-        // compiler-generated == as assigning the properties without reading
-        // them.
-        static func == (left: HoldScroll, right: HoldScroll) -> Bool {
-            left.slot == right.slot
-                && left.columnCount == right.columnCount
-                && left.minY == right.minY
-                && left.scroll == right.scroll
-        }
     }
 
     private enum RevealScroll {
