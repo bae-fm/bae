@@ -108,8 +108,8 @@ impl Pressing {
     }
 
     /// The row whose records, in the order they lead, and whose statements a
-    /// store holds: the rows a list laid out are read as they were formed,
-    /// with what the list's candidate has picked among them.
+    /// store holds. The list's SQL query reads each row as the grouping
+    /// formed it, with what the list's candidate picked among the rows.
     pub fn stored(
         releases: Vec<MetadataResult>,
         statements: Statements,

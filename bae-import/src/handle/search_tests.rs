@@ -59,8 +59,8 @@ fn chosen_rows(runtime: &crate::CandidateRuntimeSnapshot) -> Vec<(String, bool)>
 }
 
 /// The typed search's SQL query marks the row that holds the release bae
-/// linked the candidate to. It marks no row before the person picks a release,
-/// and it marks the picked row after bae stores the link.
+/// linked the candidate to. The query marks no row before the person picks a
+/// release, and marks the picked row after bae stores the link.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_row_holding_the_linked_release_reads_as_chosen() {
     let fixture = Fixture::new("search-row-chosen").await;

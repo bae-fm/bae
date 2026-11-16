@@ -34,11 +34,11 @@ struct Pressing: Equatable, Identifiable {
     /// "Promo · Reissue".
     let detailsText: String
     /// Whether the row holds the release core linked the candidate to, or,
-    /// before core links it, the release identification picked by itself
-    /// while core reads that release. The list draws this row selected.
+    /// before core links it, the release that identification picked on its
+    /// own while core reads that release. The list draws this row selected.
     let chosen: Bool
-    /// Whether the row holds the pick identification made on its own, which
-    /// core reads in full before it stores the answer.
+    /// Whether the row holds the release that identification picked on its
+    /// own, which core reads in full before it stores the answer.
     let pickBeingRead: Bool
 
     /// Where it was released and what it is made of, as one line of text:

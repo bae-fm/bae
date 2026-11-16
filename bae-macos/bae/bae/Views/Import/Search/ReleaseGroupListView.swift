@@ -10,7 +10,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
     /// What the candidate's own text agrees with about each release, keyed by
     /// release id; empty for typed-search results.
     var agreements: [String: BridgeAgreements] = [:]
-    /// The person's pick being read, if any.
+    /// The pick the person made that core is reading, if any.
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
@@ -124,7 +124,7 @@ struct ReleaseGroupSection: View {
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
-    /// The person's pick being read right now, if any.
+    /// The pick the person made that core is reading right now, if any.
     var loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -193,9 +193,10 @@ struct ReleaseGroupSection: View {
     }
 
     /// How core reads a pick on this row right now. When the person picked
-    /// this row and core is still reading it, returns their pick. When core
-    /// reads no pick of the person's, returns the pick identification made by
-    /// itself, if core says this row holds it.
+    /// this row and core is still reading it, returns `.followed` with the
+    /// apply that holds the step core's read is at. When core reads no pick
+    /// of the person's, returns `.unattended` if core says this row holds the
+    /// release that identification picked on its own and core is reading.
     func loading(_ pressing: Pressing) -> PickReading? {
         if let loadingPick {
             return loadingPick.pressing == pressing.link.record
