@@ -1,10 +1,11 @@
-//! The release sheet decisions' declaration: both tables sync, keyed by their
-//! sheet file (and `FILE` reference).
+//! The release sheet decisions' declaration. Both tables sync:
+//! `release_sheet_discs` is keyed by the sheet file, and
+//! `release_sheet_bindings` by the sheet file and the `FILE` reference.
 
 use std::collections::BTreeSet;
 
-/// The part's two tables are declared synced, each a shared key over its
-/// primary key, and no table the part creates is left undeclared.
+/// The part's SCHEMA declares both of its tables synced, each with a shared
+/// key on its primary-key columns, and declares every table the part creates.
 #[test]
 fn the_sheet_decision_tables_are_the_part_s_synced_tables() {
     let create =

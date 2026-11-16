@@ -173,8 +173,8 @@ impl<'a, R: DirectoryReader + ?Sized> Walk<'a, R> {
         match self.read_ahead.borrow_mut().remove(relative) {
             Some(listing) => Ok(listing),
             None => {
-                // The listing holds the directory open while it reads, so it
-                // holds a place of the budget meanwhile.
+                // Reading the directory keeps it open, so the read holds one
+                // place of the budget until it ends.
                 let _place = self.scan.reads.place()?;
                 self.reader.read(self.scan.root, relative, self.scan.cancellation)
             }

@@ -358,7 +358,7 @@ async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
 }
 
 /// A sheet the person unbound from its audio in the import pane stays unbound
-/// when the release is identified again: a second copy of the image sits
+/// when re-identify reads the release again: a second copy of the image sits
 /// beside it, the scan binds the sheet to the image it names and hashes one
 /// disc, and the stored cleared binding leaves the library's sheet with none.
 #[tokio::test]
@@ -380,13 +380,13 @@ async fn a_library_sheet_the_person_unbound_hashes_no_disc() {
         crate::folder_scanner::UserSheetBinding::Cleared,
     );
     let (_, unbound) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
-    assert!(unbound.is_empty(), "the person's cleared binding is read: {unbound:?}");
+    assert!(unbound.is_empty(), "re-identify reads the person's cleared binding: {unbound:?}");
 }
 
-/// A sheet the person bound to another file than the one it names reads that
-/// file when the release is identified again: the sheet names a WAV beside
-/// two FLAC copies, which the scan cannot choose between, and the stored
-/// binding picks one.
+/// When re-identify reads the release again, it reads the file the person
+/// bound a sheet to rather than the one the sheet names: the sheet names a
+/// WAV beside two FLAC copies, which the scan cannot choose between, and the
+/// stored binding picks one.
 #[tokio::test]
 async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
     let folder = tempfile::TempDir::new().unwrap();
@@ -409,12 +409,12 @@ async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
         crate::folder_scanner::UserSheetBinding::Describes { file_id: "b.flac".to_string() },
     );
     let (_, bound) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
-    assert_eq!(bound.len(), 1, "the person's binding is read: {bound:?}");
+    assert_eq!(bound.len(), 1, "re-identify reads the person's binding: {bound:?}");
 }
 
-/// A sheet the person ignored in the import pane stays ignored when the
-/// release is identified again: two sheets lay out two images, the scan hashes
-/// two discs, and the stored decision leaves the library one.
+/// A sheet the person ignored in the import pane stays ignored when
+/// re-identify reads the release again: two sheets lay out two images, the
+/// scan hashes two discs, and the stored decision leaves the library one.
 #[tokio::test]
 async fn a_library_sheet_the_person_ignored_hashes_no_disc() {
     let folder = tempfile::TempDir::new().unwrap();
@@ -438,5 +438,5 @@ async fn a_library_sheet_the_person_ignored_hashes_no_disc() {
     let mut decided = crate::folder_scanner::CandidateFileEdits::default();
     decided.sheet_discs.set("Second.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored);
     let (_, ignored) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
-    assert_eq!(ignored.len(), 1, "the person's ignored sheet is read: {ignored:?}");
+    assert_eq!(ignored.len(), 1, "re-identify reads the person's ignored sheet: {ignored:?}");
 }

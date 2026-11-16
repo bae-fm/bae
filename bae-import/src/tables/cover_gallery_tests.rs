@@ -1,6 +1,6 @@
 //! The covers a library release's picker offers: what one read shows under
-//! each source, how each section and the whole are counted, and how a fetch
-//! replaces what the last one stored.
+//! each source, how the query counts each section and the total, and how a
+//! fetch replaces what the last one stored.
 
 use super::*;
 use bae_catalogs::remote_image::{CoverStanding, RemoteImageSet};
@@ -109,7 +109,7 @@ async fn gallery_until(
             if event.request.as_ref() != Some(asked) {
                 continue;
             }
-            let value = event.result.unwrap().expect("a request is answered");
+            let value = event.result.unwrap().expect("the live query answers the request");
             if accept(&value) {
                 break value;
             }

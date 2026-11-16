@@ -1,9 +1,10 @@
 //! The covers a candidate's picker offers, read in one statement.
 //!
-//! While the draft was read from the pressing the candidate is linked to, the
-//! picker offers every claimed release's own images first (in claim order,
-//! then position), then the albums' images, each image once however many
-//! releases offer it, and only the images a catalog stated when any is stated.
+//! While the candidate's draft is the one the import read from its linked
+//! pressing, the picker offers every claimed release's own images first (in
+//! claim order, then position), then the albums' images, each image once
+//! however many releases offer it, and only the images a catalog stated when
+//! any is stated.
 //! A MusicBrainz release group a kept statement joins to a claimed release
 //! offers its front image after that release's own album images.
 //!
@@ -16,7 +17,8 @@ use super::*;
 
 /// The offered covers as a JSON array of `{url, label, source, standing,
 /// copies}` objects in the order the picker lists them, for the candidate
-/// bound to `:hash`; `[]` unless its draft was read from its linked pressing.
+/// bound to `:hash`; `[]` unless the import read its draft from its linked
+/// pressing.
 pub(crate) fn offered_covers_sql() -> String {
     let copies = super::super::downscaled_copies::copies_json_sql(
         "source_release_cover_copy",

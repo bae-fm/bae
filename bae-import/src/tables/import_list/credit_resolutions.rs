@@ -5,9 +5,10 @@
 //! `artist_resolution` and `catalog_match`) as a read of the credits alone, in
 //! SQL: a credit's catalog ids name the library artist holding them, followed
 //! through merges to the smallest id and filled with the ids and sort name the
-//! other holders have; ids that disagree leave the MusicBrainz id to decide;
-//! Various Artists is one artist in both catalogs; a credit no id places is
-//! the one library artist of its folded name, or ambiguous between several.
+//! other holders have; when the ids name different artists, the statement
+//! takes the artist the MusicBrainz id names; Various Artists is one artist
+//! in both catalogs; a credit no id places is the one library artist of its
+//! folded name, or ambiguous between several.
 //! `credit_resolutions_tests` runs the statement and the rule's own function
 //! over the same credits and libraries and requires the same answers.
 
@@ -20,9 +21,9 @@ use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
 /// SQLite copies a WITH name's whole definition at every place that names it,
 /// and a statement holding more than `SQLITE_LIMIT_EXPR_DEPTH` (1000) cursors
 /// in all stops with "VIEWs and/or subqueries nested too deep" (as
-/// `cards_sql` explains). So each name below is named once, the artists
-/// holding a catalog id travel as a JSON column, and the four tries of a
-/// credit's ids are columns of one row.
+/// `cards_sql` explains). So each name below is named once, the statement
+/// collects the artists holding a catalog id into one JSON column, and the
+/// four tries of a credit's ids are columns of one row.
 const CREDIT_RESOLUTIONS: &str = "
 WITH
 raw AS (
@@ -48,9 +49,10 @@ credit AS (
 ),
 -- The ids a credit is tried by: as it is (0); with the other catalog's Various
 -- Artists id beside the one it names (1); and each by its MusicBrainz id alone
--- (2, 3), which is where ids that disagree settle. With each try, the shown
--- artists holding its Discogs id and its MusicBrainz id, or named by the id
--- either derives, as JSON arrays in id order.
+-- (2, 3); the statement uses these tries when the ids name different
+-- artists. With each try, the shown artists holding its Discogs id and its
+-- MusicBrainz id, or named by the id either derives, as JSON arrays in id
+-- order.
 stage AS (
     SELECT t.*,
            CASE WHEN t.dg IS NULL THEN '[]' ELSE (

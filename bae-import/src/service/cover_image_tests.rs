@@ -283,9 +283,8 @@ fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
     }
 }
 
-/// The cover file of an import opens in a place of the budget: with the only
-/// place of a budget of one held, the read waits, and stores the cover once
-/// the place goes back.
+/// While the test holds the only place of a budget of one, the import waits
+/// to read the cover, and stores it once the test drops its lease.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_import_cover_read_waits_for_a_place() {
     let temp = tempfile::tempdir().unwrap();
@@ -321,12 +320,12 @@ async fn the_import_cover_read_waits_for_a_place() {
     );
     tokio::pin!(storing);
     tokio::select! {
-        _ = &mut storing => panic!("the cover was read without a place"),
+        _ = &mut storing => panic!("the import read the cover without a place"),
         () = waited => {}
     }
     drop(held);
 
-    let (image, bytes) = storing.await.expect("the cover is stored");
+    let (image, bytes) = storing.await.expect("the import stores the cover");
     assert_eq!(image.id, "release-1");
     assert!(!bytes.is_empty());
     assert_eq!(watch.holding(), 0);

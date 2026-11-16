@@ -521,8 +521,7 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
 
 /// Run the pass at `parallelism` over tracks whose sources were copied into
 /// `dir`, returning the most places the budget saw holding an open file at
-/// once. Every source
-/// is closed by the time the pass returns.
+/// once. The pass closes every source before it returns.
 async fn peak_open_sources(
     dir: &std::path::Path,
     budget: coven::FileBudget,
@@ -656,8 +655,8 @@ async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
     );
 }
 
-/// A budget of one place measures every track: each track's file opens in
-/// the one place after the track before it has closed its file.
+/// With a budget of one place, the pass measures every track: it opens each
+/// track's file after it closes the one before.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
     bae_audio::init();
@@ -691,12 +690,15 @@ async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
     .await;
 
     assert_eq!(peak, 1, "one place held one file at a time");
-    assert!(track_loudness(&audio_formats).iter().all(Option::is_some), "every track is measured");
+    assert!(
+        track_loudness(&audio_formats).iter().all(Option::is_some),
+        "the pass measures every track"
+    );
 }
 
-/// A track whose audio is in two files (a pregap in the file before) opens
-/// both at once, so it needs two places: a budget of two measures it, and a
-/// budget of one fails the pass before any file opens.
+/// The pass opens both files of a track whose audio is in two files (a
+/// pregap in the file before), so with a budget of two it measures the
+/// track, and with a budget of one it fails before it opens any file.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     bae_audio::init();
@@ -733,7 +735,7 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     )
     .await;
     assert_eq!(peak, 2, "the track held both its files open");
-    assert!(formats[0].track_loudness_lufs.is_some(), "the track is measured");
+    assert!(formats[0].track_loudness_lufs.is_some(), "the pass measures the track");
 
     let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
     let source_file_sizes: HashMap<PathBuf, u64> = file_ids
@@ -759,7 +761,7 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     )
     .await
     .err()
-    .expect("a track needing two places fails a budget of one");
+    .expect("the pass fails when a track needs two places and the budget has one");
     assert!(
         matches!(error, crate::ImportError::TooManyFilesAtOnce(too_many) if too_many.requested == 2 && too_many.size == 1),
         "{error:?}"

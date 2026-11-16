@@ -147,8 +147,8 @@ pub(super) fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
     valid_candidates(scan_items(root))
 }
 
-/// [`scan_valid`] for a test that already runs on a runtime, which cannot
-/// start the runtime `scan_valid` scans on.
+/// Return what [`scan_valid`] returns, for a test that already runs on a
+/// runtime and so cannot start the runtime `scan_valid` starts.
 pub(super) async fn scan_valid_on_this_runtime(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
     valid_candidates(stored_scan(root.into(), FolderReleaseDecisions::default()).await)
 }

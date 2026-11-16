@@ -20,9 +20,10 @@ impl ReleaseReads {
         Self { tables, catalogs }
     }
 
-    /// What the library release `release_id` was copied from and what its
-    /// audio is ([`crate::extraction::release::resolve_release_identity`]),
-    /// its stored sheet bindings read from the import's tables.
+    /// Returns what the import copied the library release `release_id` from
+    /// and what its audio is
+    /// ([`crate::extraction::release::resolve_release_identity`]), reading the
+    /// release's stored sheet bindings from the import's tables.
     pub async fn library_release_identity(
         &self,
         records: &bae_records::Records,

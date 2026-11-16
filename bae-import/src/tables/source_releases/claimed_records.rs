@@ -1,5 +1,5 @@
-//! The records the releases a candidate's link claims describe together,
-//! merged by one statement over the stored releases.
+//! One SQL statement merges the records of every release a candidate's link
+//! claims, over the stored releases.
 //!
 //! A pressing link claims its primary release and at most one partner per
 //! other catalog. Each claimed release names its own record, what its rows say
@@ -54,8 +54,8 @@ albums (claim_pos, catalog, release_id, pos, album_catalog, album_key) AS (
     FROM stated
     WHERE record_catalog <> catalog AND (kind = 'album' OR album_key IS NOT NULL)
 ),
--- The album each kept statement says one of those is, on a catalog the
--- release's own records do not reach; one per catalog, the first.
+-- For each catalog the release's own records do not name, this table selects
+-- the first album a kept statement links to one of those albums.
 joined_candidates (claim_pos, catalog, joined_catalog, joined_key, pos, k_catalog, k_key, k_group) AS (
     SELECT a.claim_pos, a.catalog, k.catalog, k.key, a.pos, k.catalog, k.key, k.release_group
     FROM albums AS a
@@ -89,7 +89,8 @@ pub(super) use claimed_tables;
 /// The merged records as a JSON array of `{catalog, kind, key, album}`
 /// objects, in the order surfaces list them, for the candidate whose
 /// content hash the expression `hash` names (`:hash` for a bound one, a
-/// column of a larger statement for each of its rows). Usable as a column.
+/// column of a larger statement for each of its rows). A larger statement can
+/// use this SQL as one of its columns.
 pub(crate) fn claimed_records_sql(hash: &str) -> String {
     concat!(
         "WITH ",

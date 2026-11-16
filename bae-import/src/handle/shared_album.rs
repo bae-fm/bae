@@ -50,7 +50,7 @@ impl ImportServiceHandle {
         let cards =
             self.services.tables.load_verdict_cards(&content_hash, &identify.verdict).await?;
         let shared = cards.shared_album.ok_or_else(|| crate::ImportError::Internal {
-            detail: format!("{candidate_key}'s lookup offers no several pressings of one album"),
+            detail: format!("{candidate_key}'s lookup did not find several pressings of one album"),
         })?;
         let lease = self.services.store.lease_one().await;
         let files = candidate.files.clone();

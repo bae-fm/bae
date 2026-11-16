@@ -28,13 +28,15 @@ pub struct ImportCandidateDetailProjection {
     pub source_error: Option<super::GroupingBlock>,
     pub actionable: bool,
     pub skipped: bool,
-    /// The identify state the stored verdict stands back up as, its cards as its
-    /// rows stored them — the answer a row shows when no run is in flight.
+    /// The identify state that bae rebuilds from the stored verdict, with the
+    /// cards its rows hold: what a row shows when no run is running.
     pub resumed_identify_state: IdentifyStateView,
-    /// Whether a verdict is stored for the candidate's current file shape.
+    /// Whether the tables hold a verdict for the candidate's current file
+    /// shape.
     pub verdict_stored: bool,
     /// The check against the folder the stored verdict's found release
-    /// failed, as its rows decide it.
+    /// failed, as the view `import_candidate_verdict_decision` computes it
+    /// from the verdict's rows.
     pub verdict_folder_check: Option<bae_identify::FolderCheck>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,

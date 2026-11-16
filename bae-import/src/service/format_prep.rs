@@ -148,9 +148,10 @@ pub fn build_audio_formats(
     files: &bae_store::FileLeases,
 ) -> Result<BuiltAudioFormats, ImportError> {
     let now = bae_store::utc_now(clock);
-    // The places a CUE image's landing search opens its file in, taken in one
-    // wait when the first image needs them and held until the build ends.
-    // Blocking: this runs off the async workers.
+    // The build takes the places for finding the byte each track of a CUE
+    // image starts on in one wait when the first image needs them, and keeps
+    // them until it ends.
+    // build_audio_formats runs on the blocking pool, so it may wait here.
     let mut landing_places: Option<coven::FileLease> = None;
     let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
     let mut audio_segments = Vec::new();

@@ -30,9 +30,9 @@ use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
 
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
-/// the id of its `release_files` row). A decision naming a path that is no
-/// file of the release describes nothing, as the scan reads it, and writes no
-/// row.
+/// the id of its `release_files` row). When a decision names a path that is
+/// not one of the release's files, the scan reads it as describing nothing,
+/// so `store_on` writes no row for it.
 pub(super) fn store_on(
     sql: &CovenWrite<'_>,
     decided: &CandidateFileEdits,
@@ -75,8 +75,9 @@ pub(super) fn store_on(
 
 impl ImportTables {
     /// The decisions the person made about `release_id`'s sheets, naming each
-    /// file by its path in the release, as the import's decisions did; at
-    /// revision zero, which a release has no use for.
+    /// file by its path in the release, as the import's decisions did. The
+    /// returned edits have revision zero, because a stored release does not
+    /// track edit revisions.
     pub(crate) async fn load_release_sheet_decisions(
         &self,
         release_id: &str,

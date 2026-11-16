@@ -19,7 +19,7 @@ pub(crate) fn line_column(
         .map_err(|error| bae_store::read::column_conversion_error(row, column, error))
 }
 
-/// The line stored credits text holds, `None` for none.
+/// The credit line in stored credits text, or `None` when there is no text.
 pub(crate) fn line_of(json: Option<&str>) -> Result<Option<CreditLine>, serde_json::Error> {
     json.map(|json| {
         serde_json::from_str::<Vec<StoredCredit>>(json)

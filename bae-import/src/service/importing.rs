@@ -387,9 +387,9 @@ impl ImportService {
             .await?;
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
-        // One place for the whole read loop: each file opens in it after the
-        // one before has closed. The lease goes back before the steps that
-        // follow take theirs.
+        // The read loop holds one place for all its files: it opens each file
+        // after it closes the one before. The loop drops the lease before the
+        // steps that follow take theirs.
         let read_lease = self.records.lease_one().await;
         for (idx, entry) in discovered_files.iter().enumerate() {
             let file = &entry.file;

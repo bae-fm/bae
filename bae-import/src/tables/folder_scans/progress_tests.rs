@@ -233,9 +233,9 @@ async fn reading_the_stored_scans_does_not_grow_and_counting_walks_an_index() {
     );
 }
 
-/// A scan's folder count is the candidates of its root's current generation
-/// counted off the index of the folders' candidates, with nothing kept
-/// beside them.
+/// The progress read counts the folders of a scan's root and current
+/// generation from the index of folder candidates, and bae stores no separate
+/// count.
 #[tokio::test]
 async fn the_found_count_is_counted_off_the_found_folders_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;

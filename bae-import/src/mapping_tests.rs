@@ -138,7 +138,7 @@ async fn mapping_table(
 pub(crate) async fn blank_table(files: &CategorizedFiles) -> MappingTable {
     mapping_table(files, &blank_candidate_draft(files))
         .await
-        .expect("a blank draft is drawn over its own folder")
+        .expect("the blank draft's tracks play the folder's audio units in order")
 }
 
 /// The draft over `files` on `mediums`, each track at its (medium, side,
@@ -231,8 +231,9 @@ async fn mapping_statement_counts_untitled_tracks_as_str_trim_does() {
     let mut draft = blank_candidate_draft(&files);
     draft.tracks[0].edit.title = "Intro".into();
     draft.tracks[1].edit.title = "   ".into();
-    let table =
-        mapping_table(&files, &draft).await.expect("the draft is drawn over its own folder");
+    let table = mapping_table(&files, &draft)
+        .await
+        .expect("the draft's tracks play the folder's audio units in order");
     assert_eq!(table.untitled_track_count, 2);
 
     // Every character `str::trim` removes counts as blank, and a zero-width
@@ -292,7 +293,7 @@ async fn a_listed_length_shows_only_past_three_seconds() {
     assert_eq!(rows[1].listed_length_ms, Some(1_000 + LENGTH_DISAGREEMENT_MS + 1));
 }
 
-/// Sides past Z are lettered AA, AB, … as `side_letters` writes them.
+/// The table letters the sides after Z AA, AB, …, as `side_letters` does.
 #[tokio::test]
 async fn mapping_statement_letters_sides_past_z() {
     let tmp = tempfile::TempDir::new().expect("tempdir");

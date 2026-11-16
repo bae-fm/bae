@@ -90,7 +90,7 @@ fn zero_byte_images_are_rejected() {
         let file = write_temp_file(ext, &[]);
         assert!(
             !is_valid_image(file.path(), bae_util::test_files::place()).unwrap(),
-            "zero-byte .{ext} image must be rejected",
+            "is_valid_image must reject a zero-byte .{ext} image",
         );
     }
 }

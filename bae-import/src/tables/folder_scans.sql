@@ -100,8 +100,8 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
 
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_path ON scan_candidate (path);
 
--- A scan's progress counts the folder candidates of its root's current
--- generation: the candidates of one root and generation that are a folder's.
+-- This index lets the progress read count the candidates of one root and
+-- generation whose source_kind is 'folder'.
 CREATE INDEX IF NOT EXISTS idx_scan_candidate_found
     ON scan_candidate (watched_folder_path, generation) WHERE source_kind = 'folder';
 
@@ -406,13 +406,13 @@ CREATE TABLE IF NOT EXISTS scan_sheet_audio_file (
 ) STRICT;
 
 -- Each audio unit of a candidate, in the order its tracks play: a whole file,
--- or one slice a bound CUE sheet carves out of a container. Written with the
--- file rows, since the layout is a fact of those files. `cue_track_position`
--- names the `scan_cue_track` of a slice; `start_sample` and `end_sample` are
--- the slice's preview range in its container (`end_sample` is NULL for the
--- last slice of a container, and both for a whole file). `disc` and `number`
--- are the folder's own: the disc its sheet or folder gives it, and its number
--- on that disc.
+-- or one slice of a file whose start and end a bound CUE sheet marks. The
+-- write that stores the file rows also writes these rows, because the files
+-- decide the layout. `cue_track_position` names the `scan_cue_track` of a
+-- slice; `start_sample` and `end_sample` are the slice's preview range in its
+-- container (`end_sample` is NULL for the last slice of a container, and
+-- both for a whole file). `disc` and `number` are the folder's own: the disc
+-- its sheet or folder gives it, and its number on that disc.
 CREATE TABLE IF NOT EXISTS scan_candidate_unit (
     watched_folder_path BLOB NOT NULL,
     candidate_path      BLOB NOT NULL,
@@ -439,8 +439,8 @@ CREATE TABLE IF NOT EXISTS scan_candidate_unit (
 ) STRICT;
 
 -- The audio each FILE reference of a track sheet can be bound to, and whether
--- bae offers it: the choices the sheet's header lists. Written with the file
--- rows.
+-- bae offers it: the choices the sheet's header lists. The write that stores
+-- the file rows also writes these rows.
 CREATE TABLE IF NOT EXISTS scan_candidate_sheet_offer (
     watched_folder_path BLOB NOT NULL,
     candidate_path      BLOB NOT NULL,

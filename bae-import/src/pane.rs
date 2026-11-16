@@ -21,8 +21,8 @@ pub(crate) fn candidate_track_id(position: usize) -> String {
 
 /// The draft a test starts from: one blank track per audio unit of the
 /// folder, on the medium of its disc. The scan stores the same draft with the
-/// folder (`blank_draft_*` views); this builds it from files held in memory,
-/// and a test checks the two are one draft.
+/// folder (`blank_draft_*` views); this function builds the same draft from
+/// files held in memory, and a test checks that the two drafts match.
 #[cfg(test)]
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> CandidateDraft {
     let layout = crate::audio_layout::folder_tracks(files);

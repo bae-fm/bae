@@ -6,7 +6,8 @@ use crate::tables::folder_scans::tests::stored_folder;
 use crate::tables::tests::*;
 use crate::tables::ImportTables;
 
-/// A loose bonus track and a disc image carved by its sheet into three.
+/// A loose bonus track, and a disc image that its CUE sheet splits into three
+/// tracks.
 fn bonus_and_disc(folder: &std::path::Path) {
     write_flac(&folder.join("a bonus.flac"));
     write_flac(&folder.join("disc.flac"));

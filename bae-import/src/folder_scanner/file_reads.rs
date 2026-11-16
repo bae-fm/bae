@@ -114,8 +114,8 @@ pub(crate) struct FileReads {
 }
 
 impl FileReads {
-    /// Nothing read yet; a track's tags are read through `tags`, and each
-    /// file read opens in a place of `files`.
+    /// A FileReads that has read nothing yet. FileReads reads a track's tags
+    /// through `tags` and opens each file in a place of `files`.
     pub(crate) fn new(tags: Arc<dyn FileTagReader>, files: FileLeases) -> Self {
         Self { known: Mutex::new(Known::default()), tags, files }
     }

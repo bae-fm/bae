@@ -13,7 +13,8 @@ use std::path::Path;
 
 /// Whether an image file's magic bytes match its extension. An extension with
 /// no known magic is assumed valid — an unrecognized format is not evidence of
-/// corruption, so it must not block the import. The file opens in `place`.
+/// corruption, so it must not block the import. is_valid_image opens the
+/// file in `place`.
 pub(super) fn is_valid_image(path: &Path, place: LeasePlace) -> io::Result<bool> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::ImageCheck, path);

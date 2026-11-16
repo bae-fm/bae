@@ -96,7 +96,8 @@ pub enum ImportError {
     SourceRead { track: String, error: bae_audio::sparse_buffer::SourceReadError },
 
     /// A track's audio is in more files than the app's budget of open files
-    /// holds, so the import cannot read the track. Nothing was committed.
+    /// holds, so the import cannot read the track. The import commits
+    /// nothing.
     #[cfg(desktop)]
     #[error("the audio of one track is in more files than bae may open at once: {0}")]
     TooManyFilesAtOnce(coven::LeaseTooLarge),

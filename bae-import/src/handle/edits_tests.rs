@@ -46,9 +46,9 @@ async fn a_picked_album_shows_over_what_the_records_name() {
     assert_eq!(after, crate::DraftAlbum::New);
 }
 
-/// A new album can be picked over a library album, and the pick holds until
-/// another is made: the pane shows it as a picked new album, and a library
-/// album picked after it replaces it.
+/// The person can pick a new album over a library album, and the pick stays
+/// until they pick another: the pane shows it as a picked new album, and a
+/// library album picked after it replaces it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_new_album_can_be_picked_and_replaced() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;

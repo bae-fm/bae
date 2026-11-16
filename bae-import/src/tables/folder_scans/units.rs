@@ -1,8 +1,7 @@
-//! A candidate's audio layout, written with its file rows: the audio units in
-//! play order with each one's length and preview range, and the audio each
-//! track sheet's FILE references can be bound to. The layout is a fact of the
-//! files, so the write that stores the files stores it, and every reader
-//! selects it.
+//! `insert_units` writes a candidate's audio layout in the same write as its
+//! file rows: the audio units in play order, each one's length and preview
+//! range, and the audio files the person can bind to each FILE line of a
+//! track sheet.
 
 use super::*;
 use crate::folder_scanner::{CategorizedFiles, SheetBindingOffer};
@@ -10,8 +9,9 @@ use crate::types::AudioFile;
 use crate::CandidateKey;
 
 /// Write the units and sheet offers of `files`, the files of the candidate
-/// `candidate_path`, whose file rows are written. A folder whose audio the
-/// scan has not read yet has no layout to store.
+/// `candidate_path`. `insert_candidate_files` writes their file rows first,
+/// in the same write. A folder whose audio the scan has not read yet has no
+/// layout to store.
 pub(super) fn insert_units(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,

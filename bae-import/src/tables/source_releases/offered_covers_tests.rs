@@ -1,6 +1,6 @@
-//! The statement that offers a candidate's covers says what `pick_covers`
-//! says over the same stored releases, while the draft was read from the
-//! linked pressing.
+//! The statement that offers a candidate's covers returns the same covers as
+//! `pick_covers` over the same stored releases, while the import's draft
+//! comes from the linked pressing.
 
 use super::claimed_records::tests::{discogs_release, linked, musicbrainz_primary, pressing};
 use super::*;
@@ -31,7 +31,7 @@ fn with_covers(
     release
 }
 
-/// The candidate's draft read from the pressing `record` names.
+/// Reads the candidate's draft from the pressing that `record` names.
 async fn read_from(
     db: &Store,
     candidate: &crate::folder_scanner::FolderCandidate,

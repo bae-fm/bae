@@ -1,8 +1,9 @@
-//! The covers a library release's picker offers, as the tables read them: the
-//! release's saved cover, the covers its catalogs offered when this device
-//! last fetched them, and its image files, filtered by source, each section
-//! with its count and the whole with its total. Its tables are
-//! `cover_gallery.sql`; fetching writes them, and a refetch replaces them.
+//! The covers a library release's picker offers, as one query reads them from
+//! the library's tables: the release's saved cover, the covers its catalogs
+//! offered when this device last fetched them, and its image files, filtered
+//! by source, each section with its count and the whole with its total. Its
+//! tables are `cover_gallery.sql`; fetching writes them, and a refetch
+//! replaces them.
 
 use super::*;
 use crate::{CoverImageSource, CoverSelection};
@@ -40,8 +41,8 @@ pub enum CoverFetch {
     NotFetched,
     /// The release names no catalog release, so there is nothing to offer.
     Unlinked,
-    /// The release is linked; the covers stored are what its catalogs offered,
-    /// possibly none.
+    /// The release names a catalog release, and the last fetch stored the
+    /// covers its catalogs offered, which can be none.
     Linked,
 }
 
@@ -90,9 +91,9 @@ pub struct CoverGallery {
     pub total: u32,
 }
 
-/// The release's gallery under one filter: one row. The saved cover is
-/// offered with every source; remote covers when the filter is all or their
-/// catalog; image files when it is all or the release's files.
+/// The release's gallery under one filter: one row. The query returns the
+/// saved cover only under all; remote covers under all or their catalog;
+/// image files under all or the release's files.
 const GALLERY: &str = "\
 SELECT cover_version, fetched, shows_remote, remote_count, remote_covers, \
        shows_files, files_count, files, \
@@ -234,10 +235,10 @@ fn cover_gallery_on(
 }
 
 impl ImportTables {
-    /// Follow the covers the picker of the release `initial` names offers
-    /// under its source, or none. Another release or source is a new request
-    /// on the same query, and a write to what the picker reads (a fetch's
-    /// covers, the release's files or saved cover) reaches it by itself.
+    /// Follow the covers that the picker shows for the release and source
+    /// `initial` names, or nothing. A new request changes the release or
+    /// source on the same query, and coven reruns the query when a write
+    /// changes the fetched covers, the release's files or its saved cover.
     pub fn subscribe_cover_gallery(
         &self,
         initial: Option<CoverGalleryRequest>,

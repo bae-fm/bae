@@ -63,11 +63,12 @@ impl ReleaseIdentity {
 }
 
 /// Read the release's local files the way a folder's scan reads its rip files
-/// (`folder_scanner::categorize_library_files`), so a sheet is
-/// bound to the audio the person bound it to, else the scan would, and the release hashes the
-/// discs its folder did. The track count and lengths come from the release's
-/// track rows, not the files — those rows are the user's truth. A panic
-/// reading the files is reported to `diagnostics`.
+/// (`folder_scanner::categorize_library_files`), so the function binds each
+/// sheet to the audio the person chose for it, or else to the audio the scan
+/// would choose, and the release hashes the discs its folder did. The track
+/// count and lengths come from the release's track rows, not the files —
+/// those rows are the user's truth. The function reports a panic reading the
+/// files to `diagnostics`.
 ///
 /// A cloud-only release with no local copy has no files to read, so its
 /// reading proves nothing and computes no disc ID. A file that is there and

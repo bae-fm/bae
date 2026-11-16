@@ -67,8 +67,8 @@ pub(crate) fn cover_refusal(
 /// The joins that read the version of the file a cover selection names, for a
 /// statement that names the candidate's scan row as `c` and the selection's
 /// kind and file by the expressions `kind` and `file_id`: one of the folder's
-/// images as the scan read it, or the file an embedded cover was read from
-/// with the file-tag snapshot's reading of it.
+/// images as the scan read it, or the file the scan read the embedded cover
+/// from with the file-tag snapshot's reading of it.
 pub(crate) fn cover_version_joins(kind: &str, file_id: &str) -> String {
     format!(
         "LEFT JOIN scan_candidate_file AS cover_local \
@@ -129,9 +129,9 @@ impl CoverVersionColumns {
     /// The choice `selection` names for the candidate at `candidate_path`: a
     /// catalog's image as the selection holds it, one of the folder's images
     /// at the version the scan read, or the artwork the file-tag snapshot
-    /// stored with the version of the file it was read from.
+    /// stored with the version of the file the scan read it from.
     ///
-    /// The selection is stored under the candidate's content hash, which
+    /// bae stores the selection under the candidate's content hash, which
     /// fixes its files, so a selection naming a file or artwork the scan did
     /// not store is a damaged row, and the read fails naming it.
     pub(crate) fn choice(
@@ -146,7 +146,9 @@ impl CoverVersionColumns {
             CoverSelection::Local(file_id) => {
                 let (Some(path), Some(size), Some(modified_at_ns)) = self.local else {
                     return Err(DbError::unreadable(
-                        format!("the file candidate {candidate_path}'s stored cover choice names"),
+                        format!(
+                            "the file that candidate {candidate_path}'s stored cover choice names"
+                        ),
                         file_id,
                     ));
                 };

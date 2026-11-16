@@ -457,8 +457,8 @@ async fn shown_row(test: &TestService) -> Vec<String> {
 
 /// An imported candidate holds no draft, and a scan seeds none for it. The
 /// write that deletes its release seeds the folder's blank draft and cover,
-/// so the folder is back in Found as a new one is when its tags are not read:
-/// its blank draft, which nobody wrote, under its folder's name.
+/// so the folder is back in Found as a new folder is when the scan reads no
+/// tags: its blank draft, which nobody wrote, under its folder's name.
 #[tokio::test]
 async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
     let test = setup_import_service().await;
@@ -495,7 +495,7 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
             .await
             .unwrap()
     };
-    assert_eq!(covers().await, 0, "or cover");
+    assert_eq!(covers().await, 0, "a scan seeds no cover for files imported here");
 
     let release_id = test
         .service
@@ -510,7 +510,7 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
     )
     .await;
     assert_eq!(drafts().await, 1, "the deletion seeds the blank draft");
-    assert_eq!(covers().await, 1, "and the folder's cover");
+    assert_eq!(covers().await, 1, "the deletion stores the folder's cover");
     assert_eq!(shown_row(&test).await, vec!["pending|Box Set Renamed|-".to_string()]);
     let pane = tables
         .load_import_candidate(&candidate_key)

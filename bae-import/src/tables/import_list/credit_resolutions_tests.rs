@@ -1,5 +1,5 @@
-//! The statement over a draft's credits answers what the rule every write
-//! commits by answers, for each credit, over the libraries the rule's own
+//! For each credit, the query over a draft's credits returns the same artist
+//! as the rule every write commits by, over the libraries the rule's own
 //! tests build: a name, a catalog id, ids that disagree, ids two artists
 //! hold, an artist a merge absorbed, and Various Artists in both catalogs.
 
@@ -32,10 +32,10 @@ fn credit(name: &str, discogs: Option<&str>, musicbrainz: Option<&str>) -> Artis
     }
 }
 
-/// A library of `artists`, in which each credit of `merging` is first written
-/// as an import commits it (which merges artists holding one id), then
-/// `credits` the album of a draft credits, and `track_credits` the one track
-/// of the draft credits by itself: the rule and the statement read them.
+/// Write `artists`, write each credit of `merging` as an import commits it
+/// (which merges artists holding one id), then give the draft's album the
+/// `credits` and its one track the `track_credits`: the rule and the
+/// statement read them.
 async fn answers_alike(
     artists: Vec<DbArtist>,
     merging: Vec<DbArtist>,
@@ -131,7 +131,8 @@ async fn a_name_two_artists_share_is_ambiguous_unless_a_catalog_id_tells_them_ap
     )
     .await;
     assert!(matches!(resolution(&resolved, 0), CreditResolution::Ambiguous { .. }));
-    // A MusicBrainz id the second artist contradicts leaves the first alone.
+    // The second artist holds a different MusicBrainz id, so the credit
+    // matches only the first artist.
     assert!(
         matches!(resolution(&resolved, 1), CreditResolution::Library { artist } if artist.artist_id == "first")
     );

@@ -206,7 +206,7 @@ pub(crate) fn observe_audio_files(
 /// `file`'s tags as `reader` reads them, or why they do not parse, with the
 /// file as it was while they were read: the scanned size, at the modification
 /// time it has now. A read that fails at the file itself says nothing of the
-/// file, and fails. The file opens in `place`.
+/// file, and fails. `reader` opens the file in `place`.
 pub(crate) fn read_observed(
     file: &ScannedFile,
     reader: &dyn FileTagReader,
@@ -233,8 +233,8 @@ pub(crate) struct DeliveredFileTags {
 }
 
 /// The tags of each of `audio_files` as `reader` reads them now, in their
-/// order, each file opened in a place of `lease`, one after the other. Call it
-/// off the async workers.
+/// order. `reader` opens each file in a place of `lease`, one after the
+/// other. Call it on the blocking pool, never in an async task.
 pub(crate) fn read_delivered_file_tags(
     audio_files: &[ScannedFile],
     reader: &dyn FileTagReader,

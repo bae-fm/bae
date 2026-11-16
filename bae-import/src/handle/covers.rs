@@ -1,7 +1,8 @@
 //! The covers the picker offers a candidate or a library release, and the
-//! provider images it draws them from. A candidate's gallery is fetched and
-//! returned; a library release's is fetched into the release's cover tables,
-//! which `ImportTables::subscribe_cover_gallery` follows.
+//! provider images it draws them from. The handle fetches a candidate's
+//! gallery and returns it, and stores a library release's gallery in the
+//! release's cover tables, which `ImportTables::subscribe_cover_gallery`
+//! follows.
 
 use super::*;
 use bae_catalogs::catalog::LookupCatalog;

@@ -191,10 +191,10 @@ pub(crate) fn folder_cover<'a>(
         .or_else(|| default_local_cover_file(artwork).map(local_selection))
 }
 
-/// The file of the folder the cover rules pick when no tag is read: what
-/// [`folder_cover`] picks with nothing embedded. The scan stores it with the
-/// folder's files (`scan_candidate.blank_cover_file`), where the blank draft
-/// reads it.
+/// The file of the folder the cover rules pick when the scan reads no tags:
+/// what [`folder_cover`] picks with nothing embedded. The scan stores it with
+/// the folder's files (`scan_candidate.blank_cover_file`), where the blank
+/// draft reads it.
 pub(crate) fn blank_cover_file<'a>(
     artwork: impl IntoIterator<Item = &'a ScannedFile>,
 ) -> Option<String> {

@@ -571,8 +571,9 @@ impl Fixture {
     }
 }
 
-/// A file decision rewrites the candidate's file rows, and the audio units
-/// stored with them follow: ignoring the sheet leaves its container one unit.
+/// A file decision rewrites the candidate's file rows, and bae rewrites the
+/// audio units stored with them: ignoring the sheet leaves its container one
+/// unit.
 #[tokio::test(flavor = "multi_thread")]
 async fn file_decision_rewrites_the_units_with_the_files() {
     let (fixture, hash) = three_track_draft().await;
@@ -589,7 +590,11 @@ async fn file_decision_rewrites_the_units_with_the_files() {
         }
     };
     let carved = units(&fixture).await;
-    assert_eq!(carved.len(), 3, "the sheet carves one container into two, beside the other file");
+    assert_eq!(
+        carved.len(),
+        3,
+        "the sheet splits one file into two units, and the other file stays one unit"
+    );
 
     fixture
         .handle

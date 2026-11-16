@@ -118,15 +118,16 @@ struct RipArtifacts<'a> {
 /// Read the artifacts. Every log whose table of contents reads is a disc ID
 /// and the proof of a CD rip — the most accurate disc ID, since EAC and XLD
 /// put the disc's sector offsets in it directly. Without one the proof is an
-/// AccurateRip report or a sheet a CD ripper wrote. The audio's rate is read
-/// whatever proves a rip, and the sheets are hashed unless the rate rules a
-/// CD out and nothing proves one — every sheet but one beside a log that
+/// AccurateRip report or a sheet a CD ripper wrote. `read` reads the audio's
+/// rate whatever proves a rip, and hashes the sheets unless the rate rules a
+/// CD out and nothing proves one — every sheet except one beside a log that
 /// read, which describes the disc that log already hashed. A folder holding
-/// one rip per disc yields one disc ID per disc; one hashed twice is kept
-/// once. A document that cannot be read fails the reading, as does a log or
-/// sheet that cannot be hashed to a disc; a log that reads but holds no table
-/// of contents states no disc, and is passed over, logged. Each document opens
-/// in a place of `lease`, one after the other.
+/// one rip per disc yields one disc ID per disc; `read` keeps a disc it
+/// hashed twice once. A document `read` cannot read fails the reading, as
+/// does a log or sheet `read` cannot hash to a disc; a log that reads but
+/// holds no table of contents states no disc, and `read` skips that log and
+/// logs a warning. `read` opens each document in a place of `lease`, one
+/// after the other.
 fn read(artifacts: RipArtifacts<'_>, lease: &FileLease) -> Result<RipReading, ImportError> {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
@@ -232,7 +233,8 @@ fn discid_from_cue_audio(
 /// the person took out of the tracklist describes a disc this folder is no
 /// longer presenting. A folder whose sheet is unbound can still identify
 /// itself from its log. Each disc and proof names the file it was read off.
-/// Each document opens in a place of `lease`: call it off the async workers.
+/// This function opens each document in a place of `lease`. Call it on the
+/// blocking pool, never in an async task.
 pub fn read_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
     lease: &FileLease,

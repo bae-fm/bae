@@ -811,7 +811,7 @@ pub struct DbFolderScanSnapshot {
 mod write_cost;
 
 /// Scan the folder `name` below `root`, holding the files `setup` writes,
-/// and store it as a valid candidate; its content hash.
+/// store it as a valid candidate, and return its content hash.
 pub(crate) async fn stored_folder(
     db: &bae_store::Store,
     root: &std::path::Path,

@@ -151,7 +151,7 @@ async fn unlinked_cover_gallery_for_library_release() {
     let gallery = loop {
         let event = live.next().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("a request is answered");
+            break event.result.unwrap().expect("the live query answers the request");
         }
     };
     shut_down(handle).await;
@@ -188,7 +188,7 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
     let gallery = loop {
         let event = live.next().await.expect("the read runs");
         if event.request.as_ref() == Some(&asked) {
-            break event.result.unwrap().expect("a request is answered");
+            break event.result.unwrap().expect("the live query answers the request");
         }
     };
     shut_down(handle).await;

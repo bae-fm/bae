@@ -1,5 +1,6 @@
-//! The statement that merges the records of the releases a link claims says
-//! what `claimed_records` says over the same stored releases.
+//! The SQL statement that merges the records of the releases a link claims
+//! returns the same records that `claimed_records` returns for the same
+//! stored releases.
 
 use super::*;
 use crate::tables::import_list::tests::*;
