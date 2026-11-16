@@ -63,3 +63,36 @@ async fn a_result_whose_reader_stopped_waiting_goes_to_the_next_read() {
     assert_eq!(results.next().await, Some(1));
     assert_eq!(results.next().await, Some(2));
 }
+
+/// A query whose run panics outside the query's own run.
+struct Panics;
+
+impl LiveQueryEvent for Panics {
+    type Event = u8;
+}
+
+impl CovenLiveQuery for Panics {
+    fn changed(&self) -> impl Future<Output = ()> + Send + 'static {
+        std::future::ready(())
+    }
+
+    fn run_changed(&mut self) -> Option<u8> {
+        panic!("coven's code around the run panicked")
+    }
+
+    fn has_ended(&self) -> bool {
+        false
+    }
+}
+
+/// A run that panics goes to the bug sink and ends the query: the panic
+/// poisons the lock that holds the query, and no later read runs it.
+#[tokio::test]
+async fn a_run_that_panics_ends_the_query() {
+    let heard = coven::task::HeardBugs::shared();
+    let mut results = LiveResults::new(Panics, heard.clone());
+    assert_eq!(results.next().await, None);
+    assert_eq!(heard.take().len(), 1);
+    assert_eq!(results.next().await, None);
+    assert_eq!(heard.take().len(), 0);
+}
