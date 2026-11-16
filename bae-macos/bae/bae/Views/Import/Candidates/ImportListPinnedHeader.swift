@@ -97,7 +97,7 @@ final class ImportListPinnedHeaderStrip: NSView {
         )
         if entry.item != shown {
             shown = entry.item
-            cell.show(entry)
+            cell.show(entry, displayScale: window?.backingScaleFactor)
         }
         isHidden = false
     }

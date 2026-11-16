@@ -70,6 +70,9 @@ final class ImportListGroupRowView: NSTableRowView {
 final class ImportListEntryCell: NSTableCellView {
     private var hosting: NSHostingView<ImportListEntryView>?
     private var entry: ImportListEntry?
+    /// The decode of the shown row's cover, which starts when the cell is
+    /// given the row, before the table puts it on screen.
+    private var coverDecode: Task<Void, Never>?
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
         self.identifier = identifier
@@ -83,9 +86,29 @@ final class ImportListEntryCell: NSTableCellView {
     /// The item the cell draws now.
     var shownItem: BridgeImportListItem? { entry?.item }
 
-    func show(_ entry: ImportListEntry) {
+    /// Draw `entry`, and ask the image store to decode its cover at
+    /// `displayScale`, the scale of the window the cell goes on, so the
+    /// cover is ready when the cell is on screen. With no scale the row's
+    /// image view loads the cover when it is drawn.
+    func show(_ entry: ImportListEntry, displayScale: CGFloat?) {
         self.entry = entry
+        decodeCover(at: displayScale)
         render()
+    }
+
+    private func decodeCover(at displayScale: CGFloat?) {
+        coverDecode?.cancel()
+        coverDecode = nil
+        guard let entry, let cover = entry.coverContent, let displayScale
+        else { return }
+        let imageStore = entry.environment.imageStore
+        coverDecode = Task {
+            await imageStore.warm(
+                [cover],
+                pointSize: MacImportRow.coverPointSize,
+                displayScale: displayScale
+            )
+        }
     }
 
     private func render() {

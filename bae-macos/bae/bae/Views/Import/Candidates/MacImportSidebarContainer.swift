@@ -199,9 +199,6 @@ struct MacImportSidebarContainer: View {
                 table: { tabList }
             )
         }
-        .background {
-            ImportCoverWarmer(listSlot: listSlot)
-        }
         .onDisappear {
             cancelReveal()
         }
@@ -314,29 +311,6 @@ extension MacImportSidebarContainer {
                 uiStore.showError(error)
             }
         }
-    }
-}
-
-/// Decodes the covers of the rows the list has loaded as they land, so a page
-/// scrolled to is not a column of spinners. A view of its own so that the
-/// covers moving redraws this and not the list's chrome.
-private struct ImportCoverWarmer: View {
-    let listSlot: ImportListSlot
-
-    @Environment(ImageStore.self)
-    private var imageStore
-    @Environment(\.displayScale)
-    private var displayScale
-
-    var body: some View {
-        Color.clear
-            .task(id: listSlot.list?.covers ?? []) {
-                await imageStore.warm(
-                    Array(listSlot.list?.covers ?? []),
-                    pointSize: MacImportRow.coverPointSize,
-                    displayScale: displayScale
-                )
-            }
     }
 }
 

@@ -368,7 +368,8 @@ extension ImportCandidateTableCoordinator {
                 },
                 actions: actions,
                 environment: environment
-            )
+            ),
+            displayScale: tableView.window?.backingScaleFactor
         )
         return cell
     }

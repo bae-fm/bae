@@ -593,14 +593,4 @@ extension PaginatedList<BridgeImportListItem> {
         }
         return narrowed
     }
-
-    /// The covers the loaded rows draw, to decode before they are on screen.
-    var covers: Set<ImageContent> {
-        Set(
-            loadedRows.compactMap { item -> ImageContent? in
-                guard case .candidate(_, let row, _) = item else { return nil }
-                return row.cover.map(ImageContent.init(bridge:))
-            }
-        )
-    }
 }
