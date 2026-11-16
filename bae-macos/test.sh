@@ -5,10 +5,17 @@
 # name ran no tests: xcodebuild passes a filter that matches nothing, such as a
 # file name.
 #
-# `--build-only` compiles the app and its test targets, then the screenshot
-# scenes (baeShots) into their own tree (scripts/xcode-trees.sh), and stops,
-# running nothing: the check after a change to a bridge shape or Swift code,
-# which `run.sh` alone misses because it never builds the test target.
+# A run builds only the scheme of the bundle it runs: the `bae` scheme (the app,
+# baeTests and baeUITests) in the unsigned tree, or with `--bundle baeShots`
+# the `baeShots` scheme (the screenshot scenes) in the shots tree
+# (scripts/xcode-trees.sh). Each scheme takes as long to compile as the other,
+# so a run of the unit tests never compiles the scenes.
+#
+# `--build-only` compiles that scheme and stops, running nothing: the check
+# after a change to a bridge shape or Swift code, which `run.sh` alone misses
+# because it never builds the test target. `.app-build`'s `macos-tests` step
+# compiles the `bae` scheme with it, and its `macos-shots-tests` step the
+# `baeShots` scheme, for a change to the scenes.
 #
 # `--run-only` runs the tests a `--build-only` run already built, without
 # compiling anything: the `macos-tests-run` step of `.app-build` follows the
@@ -21,9 +28,10 @@
 # (the UI tests would, in `setUp`).
 #
 # `--bundle baeShots` (after the action flag) names the tests of the shot
-# scenes' bundle instead: `builds app-build --test <Class>` runs a class
-# declared under bae-macos/bae/baeShots through it (`.app-build`'s
-# `test mac:shots` line), since the `bae` scheme never runs that bundle.
+# scenes' bundle instead: `builds app-build --test <Class>` builds and runs a
+# class declared under bae-macos/bae/baeShots through it (`.app-build`'s
+# `test mac:shots` line), since the `bae` scheme never runs that bundle and the
+# `macos-tests` step never builds it.
 # `--bundle baeUITests` names the UI tests, which the `bae` scheme builds with
 # baeTests: `builds app-build --test <Class>` runs a class declared under
 # bae-macos/bae/baeUITests through it (`.app-build`'s `test mac:ui` line), on a
@@ -34,10 +42,6 @@ set -euo pipefail
 
 ACTION=test
 if [[ "${1:-}" == "--build-only" ]]; then
-    if [[ $# -ne 1 ]]; then
-        echo "--build-only takes no test names" >&2
-        exit 2
-    fi
     ACTION=build-for-testing
     shift
 elif [[ "${1:-}" == "--run-only" ]]; then
@@ -57,6 +61,11 @@ if [[ "${1:-}" == "--bundle" ]]; then
         ;;
     esac
     shift 2
+fi
+
+if [[ "$ACTION" == build-for-testing && $# -ne 0 ]]; then
+    echo "--build-only takes no test names" >&2
+    exit 2
 fi
 
 cd "$(dirname "$0")/.."
@@ -129,15 +138,13 @@ UI_TEST_RUNNER="$XCODE_MACOS_UNSIGNED_TREE/Build/Products/Debug/baeUITests-Runne
 
 status=0
 if [[ "$ACTION" != test-without-building ]]; then
-    rm -rf "$UI_TEST_RUNNER"
-    xcodebuild_tests baeTests build-for-testing
-    # Without `--bundle baeShots`, this script runs nothing from the shot
-    # scenes' bundle: the scenes need an unlocked screen, and bae-shots runs
-    # them. Compiling the bundle here fails a change that breaks a scene before
-    # CI's Screenshots run does, and leaves it built for a `--run-only --bundle
-    # baeShots` run.
-    xcodebuild_tests baeShots build-for-testing
-    codesign --force --sign - "$UI_TEST_RUNNER"
+    if [[ "$BUNDLE_NAME" == baeShots ]]; then
+        xcodebuild_tests baeShots build-for-testing
+    else
+        rm -rf "$UI_TEST_RUNNER"
+        xcodebuild_tests baeTests build-for-testing
+        codesign --force --sign - "$UI_TEST_RUNNER"
+    fi
 fi
 if [[ "$ACTION" != build-for-testing ]]; then
     xcodebuild_tests "$BUNDLE_NAME" -resultBundlePath "$BUNDLE" \
