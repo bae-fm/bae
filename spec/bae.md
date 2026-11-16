@@ -214,9 +214,9 @@ any more (§2.4) and an artist nothing credits any more (§2.3), each with what
 hangs on it. The write reads what it may empty before it changes anything and
 deletes those that nothing references at its end, so a save that takes a credit
 out and writes it again deletes nothing. Both
-deletes ask first, saying that the release, or every release of the album, will be
-permanently deleted from the person's devices and the cloud, and that the
-original files in their folders won't be touched. On macOS the
+deletes ask first, saying that bae permanently deletes the release, or every
+release of the album, from the person's devices and the cloud, and keeps the
+original files in their folders. On macOS the
 album detail's menu offers *Delete release* and *Delete album…*, and a grid
 card's menu offers *Delete album…* when it acts on one album; on Android the
 album page's menu offers *Delete album…*.
@@ -2820,14 +2820,14 @@ always:
   being kept (the partial downloads a stopped pin keeps). Pinned releases don't
   count toward the cache (§4.3).
 - **Cache**: tracks played from the cloud, covers and pictures, and on a
-  desktop the catalog images found while importing. They download again when
-  needed.
+  desktop the catalog images found while importing. bae downloads them again
+  when the person plays or opens them.
 - **Library**: the library's database, its settings and keys, and the copies
   of files coven keeps until they are stored.
 - **From before the reset**: the installation a reset of this device kept
   (§6.4), while one is here. Nothing uses it.
 
-Releases imported as local stay in their folders and are not counted.
+Releases imported as local stay in their folders, and bae does not count them.
 
 **Clear cache** removes every unpinned file and chunk in every kind of file the
 library keeps, and the catalog images on a desktop. Pinned releases and pins on
@@ -2843,18 +2843,18 @@ lower limit removes the least recently played files down to it in the same
 write. A budget no choice names is an error, never shown as the default. A
 reset or a restore in place starts it at 20 GB again.
 
-**Delete data from before the reset** deletes the installations resets kept
-on this device, after asking; it is offered while one is here. The library
-isn't affected.
+**Delete this data** (on a Mac, the Old library row's *Delete…*) deletes the
+installations resets kept on this device, after asking; it is offered while one
+is here. The library stays as it is.
 
 On a Mac the Storage pane, after Transfers in Settings, is a box with the total
 and the bar over the parts' legend, then Cache (with Clear cache and Keep up
 to), Pinned (with Ask before unpinning, Appendix C) and, while one is here, From
-before the reset (its Delete asks first). Android's Storage page, after
+before the reset (an Old library row, whose Delete… asks first). Android's Storage page, after
 Transfers in Settings, holds the same in a card and sections: Clear cache and
 Keep up to (a dialog of radio rows) under Cache, the switch under Pinned, and a
-Delete data from before the reset row under From before the reset while one is
-here. Its rows follow the measurement as it changes, and a failed measurement
+Delete this data row under From before the reset while one is here. Its rows
+follow the measurement as it changes, and a failed measurement
 shows its error in place of the page.
 
 **Edge cases.**
@@ -3047,8 +3047,8 @@ track.
 A playlist's owner changes it from its page; no one else sees these controls.
 The page's options menu (the ⋯ button after Shuffle on macOS, the bar's menu on
 Android) offers *Edit playlist…*, which changes its name and who sees it, and
-*Delete playlist…*, which asks first ("It is deleted from every device. The
-tracks in it stay in the library.") and then deletes it on every device. Saving
+*Delete playlist…*, which asks first ("bae deletes this playlist from every
+device. Its tracks stay in the library.") and then deletes it on every device. Saving
 an edit writes the name and who sees it in one write, so a failure changes
 neither and leaves the dialog open with its error. A track's menu on a playlist's page offers Play
 next and Add to queue to everyone, and *Remove from playlist* to the owner. The
@@ -3759,14 +3759,14 @@ storage.* over Access key ID and Secret access key, with **Cancel** and
 **Save**, which stays off until both fields hold text. The welcome's S3 key
 sheet draws the same two fields. **Save** calls coven's one call for a new S3
 key, which checks the key with S3 storage and replaces the one the library uses;
-while it checks, the sheet says *Checking the key with S3 storage…* in place of
-the fields, with only **Cancel**. A key S3 storage refuses keeps the typed text
-and says *This key was not accepted.* / *Check the access key ID and secret
-access key.* above the fields. After a save the sheet closes, the page shows the
-new key's id, and a line the person can dismiss says *Saved the new S3 key.* /
-*Delete the old key, AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming
-the old key's id. bae never deletes the old key and keeps no record of its id
-once the person dismisses the line or the page closes ([coven
+while it checks, the sheet says *Checking the key…* in place of the fields, with
+only **Cancel**. A key S3 storage refuses keeps the typed text and says *Key
+refused* / *S3 storage does not accept this access key.* above the fields. After
+a save the sheet closes, the page shows the new key's id, and a line the person
+can dismiss says *Saved the new S3 key.* / *Delete the old key, AKIA4EXAMPLEOLD,
+in your S3 provider's console.*, naming the old key's id. bae never deletes the
+old key and keeps no record of its id once the person dismisses the line or the
+page closes ([coven
 §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
 The words for the place are always "S3 storage", never "bucket".
 
@@ -4088,21 +4088,21 @@ storage* where the line names the place the library is kept.
   - A paused upload, or one held for the network, puts no state on the Sync
     page: Transfers shows it (§4.2).
   - Waiting for access, while a change received waits for a key this device
-    doesn't hold, naming the devices that hold it: *This Mac needs access from
-    your iPhone or Ana’s Pixel, which comes when either device syncs.* / *To get
-    it now, scan one of them.*, with *Scan device…*. The button opens a sheet,
-    *Scan another device*: *On your iPhone or Ana’s Pixel, open bae’s Sync
-    settings and choose Share access. Then hold its code up to this Mac’s
+    doesn't hold, naming the devices that hold it: *Your iPhone or Ana’s Pixel
+    gives this Mac access the next time either one syncs.* / *To get it now,
+    scan one of them.*, with *Scan device…*. The button opens a sheet, *Scan
+    another device*: *On the other device, open bae’s Sync settings and choose
+    Share access. Then hold its code up to this Mac’s
     camera.*, over the camera and *Cancel*. When no device holds the key any
     more, coven deletes the library for everyone, and this device says so once.
-  - Offline: *This Mac is offline.* / *Syncing resumes when it reconnects.*
+  - Offline: *Syncing resumes when this Mac reconnects.*
   - Offline · unsent changes, while changes or files wait to go out, with no
-    count: *This Mac is offline.* / *Syncing resumes when it reconnects. Your
-    changes stay here until then.*
+    count: *Syncing resumes when this Mac reconnects.* / *Your changes stay here
+    until then.*
   - New restore code, after another of the person's devices made a new
-    restore code, naming that device: *You made a new restore code on your
-    iPhone.* / *Your changes stay on this Mac until you scan the new code from
-    your iPhone.*, with *Scan restore code…*. Sync stays stopped until the
+    restore code, naming that device: *You made it on your iPhone.* / *Your
+    changes stay on this Mac until you scan the new code.*, with *Scan restore
+    code…*. Sync stays stopped until the
     person scans the code, and the device takes on the new keys in place.
   - Update needed: *Another device uses a newer bae.* / *Update this one to
     keep syncing with it.*, with *Update…*, which opens bae's updater on the
@@ -4112,8 +4112,8 @@ storage* where the line names the place the library is kept.
   - Signed out of iCloud, on the Mac only: *Your changes stay on this Mac until
     you sign in to iCloud in System Settings.*, with *Open System Settings…*.
   - Signed out of S3, while storage refuses the library's access key: *Your
-    changes stay on this Mac until you sign in to S3 storage.*, with *Sign in to
-    S3…* (on Android, *Sign in to S3*), which opens the same S3 key sheet as
+    changes stay on this Mac.*, with *Sign in to S3…* (on Android, *Sign in to
+    S3*), which opens the same S3 key sheet as
     *Replace key…* (§6.2). The page keeps showing the recorded key's id, and a
     saved key shows the same line about deleting the old one.
   - A sign-in that expired reads the same as none saved.
@@ -5063,17 +5063,17 @@ A PIN field has one box for each digit, as many as the receiver's PIN has
 A password field shows dots. Pair stays off until the PIN has all its digits, or
 the password has a character. The lines under the title are:
 
-- first pairing: "Enter the PIN that Kitchen shows."
+- first pairing: "Enter the PIN it shows."
 - a receiver that asks for a PIN every time: "Kitchen asks for a PIN every
   time. Enter the PIN that it shows."
 - a receiver that no longer knows this device: "Kitchen no longer knows this
   device. Enter the PIN that it shows." A receiver that asks for a password
   says "Kitchen no longer knows this device. Enter the password set on it."
-- a password receiver: "Enter the password set on Kitchen."
+- a password receiver: "Enter the password set on it."
 
 A wrong code keeps the sheet open, with the digits as typed, every box and the
 line under them in red, and the line under the title changed to "Enter the PIN
-that Kitchen shows now." under "That PIN did not match." (a password says "That
+it shows now." under "That PIN did not match." (a password says "That
 password did not work." under its field), since a wrong PIN makes the receiver
 show a new one. bae never tries again by itself. While bae pairs, the field is
 off, "Pairing…" shows under it with a spinner, Pair is off and Cancel still
@@ -5100,8 +5100,8 @@ snackbar otherwise. The lines are:
   home. Join that home to cast to it."
 - plays only from the admins of its home: "Kitchen plays only from the admins
   of its home. Change who can play on it in its settings."
-- plays only from the account it is set up with: "Kitchen plays only from the
-  account it is set up with. Change who can play on it in its settings."
+- plays only from the account that set it up: "Kitchen plays only from the
+  account that set it up. Change who can play on it in its settings."
 - a reply that doesn't check out: "Kitchen did not complete the pairing. Cast
   to it again."
 - a receiver that can't be reached: "Kitchen did not answer. Check that it is
@@ -5109,7 +5109,9 @@ snackbar otherwise. The lines are:
 
 A receiver that forgets this device while casting ends the session on this
 device with the playback error "The AirPlay speaker no longer accepts this
-device. Cast to it again to pair." A receiver whose first pairing step is
+device.": on macOS in an alert titled "Could not cast", with Pair again… and
+Cancel, and on Android in a snackbar with Pair again…. Pair again… casts to the
+speaker again, which opens the pairing sheet. A receiver whose first pairing step is
 answered with HTTP 470 is one that asks for a PIN.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
