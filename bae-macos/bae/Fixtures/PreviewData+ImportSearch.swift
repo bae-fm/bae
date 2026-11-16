@@ -571,7 +571,6 @@ extension PreviewData {
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: nil,
-            unattendedPick: nil,
             offersSharedAlbum: false
         ),
         signals: settledSignals
@@ -617,7 +616,6 @@ extension PreviewData {
             ) { offered, _ in offered },
             narrowedOutCount: 3,
             folderCheck: nil,
-            unattendedPick: nil,
             offersSharedAlbum: false
         ),
         signals: settledSignals
@@ -636,7 +634,6 @@ extension PreviewData {
         agreements: disagreementAgreements,
         narrowedOutCount: 0,
         folderCheck: nil,
-        unattendedPick: nil,
         offersSharedAlbum: false
     )
 
@@ -745,7 +742,7 @@ extension PreviewData {
                         sections: [
                             BridgePressingSection(
                                 album: nil,
-                                pressings: [exactPressings[1]],
+                                pressings: [pressingBeingRead],
                                 narrowedOut: []
                             )
                         ]
@@ -756,12 +753,19 @@ extension PreviewData {
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: nil,
-            unattendedPick: "rel-456",
             offersSharedAlbum: false
         ),
-        signals: settledSignals,
-        isReadingPick: true
+        signals: settledSignals
     )
+
+    /// The later exact pressing as identification's own pick, while core
+    /// reads it.
+    static let pressingBeingRead: BridgePressing = {
+        var pressing = exactPressings[1]
+        pressing.chosen = true
+        pressing.pickBeingRead = true
+        return pressing
+    }()
 
     /// A sole match whose release lists no tracks: offered, not picked,
     /// with the check it failed under its row.
@@ -793,7 +797,6 @@ extension PreviewData {
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: .sourceTracksUnknown,
-            unattendedPick: nil,
             offersSharedAlbum: false
         ),
         signals: settledSignals
@@ -805,19 +808,15 @@ extension PreviewData {
         search: BridgeCandidateSearch? = nil,
         signals: Signals? = nil,
         libraryStatuses: [String: BridgeLibraryStatus] = [:],
-        selectedReleaseId: String? = nil,
         loadingPick: LoadingPick? = nil,
-        isReadingPick: Bool = false,
         needsYou: BridgeNeedsYouReason? = nil,
     ) -> ImportSearchState {
         ImportSearchState(
             identifyState: identifyState,
             error: nil,
             search: search,
-            selectedReleaseId: selectedReleaseId,
             loadingPick: loadingPick,
             isImporting: false,
-            isReadingPick: isReadingPick,
             libraryStatuses: libraryStatuses,
             signals: signals,
             needsYou: needsYou,

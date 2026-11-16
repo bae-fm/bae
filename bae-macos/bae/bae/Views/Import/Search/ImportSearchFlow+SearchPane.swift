@@ -12,13 +12,11 @@ extension ImportSearchFlow {
         let importStore: ImportStore
     }
 
-    /// Which candidate a search pane renders, and the selection state it shows:
-    /// `selectedReleaseId` is the pressing whose confirm pane is open, so its
-    /// row renders selected.
+    /// Which candidate a search pane renders. Its rows say which of them
+    /// the candidate is linked to.
     struct SearchPaneInput {
         let candidate: Candidate
         let key: Data
-        let selectedReleaseId: String?
         /// What is in flight for this key: the run whose verdict and ledger
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
@@ -308,9 +306,8 @@ extension ImportSearchFlow {
         )
     }
 
-    /// The pane's read-only state snapshot from the candidate, the pick the
-    /// store is reading for it, and the open-confirm selection the pane
-    /// renders against.
+    /// The pane's read-only state snapshot from the candidate and the pick the
+    /// store is reading for it.
     @MainActor
     private static func searchPaneState(
         input: SearchPaneInput,
@@ -325,13 +322,11 @@ extension ImportSearchFlow {
             identifyState: identifyState,
             error: candidate.error,
             search: input.runtime?.search,
-            selectedReleaseId: input.selectedReleaseId,
             loadingPick: importStore.loadingPick(forKey: input.key),
             releaseSelectionFailure: importStore.releaseSelectionFailure(
                 forKey: input.key
             ),
             isImporting: isImporting(candidate),
-            isReadingPick: candidate.live?.readingPick == true,
             // Each offered release's library status, from the candidate's
             // live read of them.
             libraryStatuses: candidate.libraryStatuses,

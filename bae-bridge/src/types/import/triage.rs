@@ -448,9 +448,6 @@ mirror_struct! {
 pub struct BridgeCandidateLiveState {
     /// The lookup at work the row shows: only a row Identifying shows one.
     pub identifying: Option<BridgeIdentifyingStep>,
-    /// Whether the release the run picked unattended is being read in full
-    /// before its answer is stored, which the pane shows on that release.
-    pub reading_pick: bool,
     /// The step of the import that owns the candidate; `None` when none does.
     pub import: Option<BridgeImportStep>,
     pub actions: Vec<BridgeCandidateAction>,

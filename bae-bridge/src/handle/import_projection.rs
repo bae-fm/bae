@@ -311,14 +311,12 @@ mirror_enum! {
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_import::CandidateLiveState) -> Self {
         let identifying = live.identifying().map(crate::types::BridgeIdentifyingStep::from_core);
-        let reading_pick = live.reading_pick();
         let bae_import::CandidateLiveState { facts, actions, standing } = live;
         // What identification is doing reaches the UI as what the row and
         // the pane show of it, and as the actions the row offers.
         let bae_import::TriageRuntimeFacts { identification: _, import } = facts;
         Self {
             identifying,
-            reading_pick,
             import: import.map(crate::types::BridgeImportStep::from_core),
             actions: actions
                 .into_iter()

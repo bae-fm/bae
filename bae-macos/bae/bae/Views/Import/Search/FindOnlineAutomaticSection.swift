@@ -267,9 +267,7 @@ struct FindOnlineAutomaticSection: View {
             isImporting: state.isImporting,
             libraryStatuses: state.libraryStatuses,
             agreements: state.identifiedAgreements,
-            selectedReleaseId: state.selectedReleaseId
-                ?? state.pickBeingRead,
-            loadingPick: state.identifiedLoadingPick,
+            loadingPick: state.loadingPick,
             releaseSelectionFailure: state.releaseSelectionFailure,
             onRetryUnread: onRetryFailed,
             onSelect: onSelect,

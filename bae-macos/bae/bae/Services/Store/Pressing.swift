@@ -33,6 +33,13 @@ struct Pressing: Equatable, Identifiable {
     /// What sets it apart beyond that, as its lead record states it:
     /// "Promo · Reissue".
     let detailsText: String
+    /// Whether the row is the one the candidate's draft is linked to, or the
+    /// pick identification made on its own while core reads it: the row the
+    /// list draws selected.
+    let chosen: Bool
+    /// Whether the row holds the pick identification made on its own, which
+    /// core reads in full before it stores the answer.
+    let pickBeingRead: Bool
 
     /// Where it was released and what it is made of, as one line of text:
     /// "2×CD · Japan".
@@ -64,5 +71,7 @@ struct Pressing: Equatable, Identifiable {
         link = bridge.pick
         sources = bridge.sources
         detailsText = PressingText.line(bridge.details)
+        chosen = bridge.chosen
+        pickBeingRead = bridge.pickBeingRead
     }
 }

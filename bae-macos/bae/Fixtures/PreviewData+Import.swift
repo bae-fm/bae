@@ -277,7 +277,6 @@ extension PreviewData {
             placement: .pending,
             live: BridgeCandidateLiveState(
                 identifying: nil,
-                readingPick: false,
                 import: nil,
                 actions: [
                     .import, .identify, .resetToFileMetadata,

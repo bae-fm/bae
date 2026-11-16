@@ -93,11 +93,12 @@ enum MetadataApplication: Equatable, Sendable {
     case fileTags
 }
 
-/// A pick being read: the release whose row it was made on, and how that row
-/// names what the read waits on.
+/// A person's pick being read: the row it was made on, named by the record
+/// the row leads with, and the steps its read reports.
 struct LoadingPick {
-    let releaseId: String
-    let reading: PickReading
+    let pressing: BridgeLookupRef
+    /// `nil` where no bridge is behind the pick.
+    let apply: (any CatalogApplySource)?
 }
 
 /// Whose read a pick is, which says what its row can name.

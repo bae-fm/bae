@@ -180,6 +180,13 @@ pub struct BridgePressing {
     /// What sets it apart beyond that, as its lead record states it, worded as
     /// `bridge_pressing_details` words it.
     pub details: Vec<crate::types::BridgeFactTerm>,
+    /// Whether the row holds the release the candidate is linked to, or, while
+    /// the candidate is linked to no pressing, the release identification
+    /// picked on its own and is reading: the row the list shows selected.
+    pub chosen: bool,
+    /// Whether the row holds the release identification picked on its own,
+    /// which bae reads in full before it stores the answer.
+    pub pick_being_read: bool,
 }
 
 /// A label line of a pressing with each catalog number as the records state

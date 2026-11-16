@@ -33,13 +33,16 @@ extension PreviewData {
 }
 extension BridgePressing {
     /// A fixture's pressing row, stating what its lead record states: its
-    /// records agree, so no value names a catalog.
+    /// records agree, so no value names a catalog. Unless a fixture says so,
+    /// the candidate has picked none of it.
     init(
         releases: [BridgeMetadataResult],
         sources: [BridgeLookupCatalog],
         labels: [BridgeLabelLine] = [],
         documentFailure: BridgeLookupFailure? = nil,
-        pick: BridgePressingLink
+        pick: BridgePressingLink,
+        chosen: Bool = false,
+        pickBeingRead: Bool = false
     ) {
         let lead = releases.first
         let facts = lead?.facts ?? PreviewData.pressingFacts()
@@ -78,7 +81,9 @@ extension BridgePressing {
                 ? [] : [BridgeTermsStatement(terms: area, catalogs: [])],
             media: media.isEmpty
                 ? [] : [BridgeTermsStatement(terms: media, catalogs: [])],
-            details: bridgePressingDetails(facts: facts)
+            details: bridgePressingDetails(facts: facts),
+            chosen: chosen,
+            pickBeingRead: pickBeingRead
         )
     }
 }

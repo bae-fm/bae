@@ -213,7 +213,9 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
             .unwrap()
             .expect("the pane reads the candidate")
             .live
-            .reading_pick()
+            .facts
+            .identification
+            .is_some_and(|status| matches!(status, crate::IdentificationStatus::ReadingPick { .. }))
     };
     assert!(pane_reads_pick().await, "the pane shows the pick being read");
 

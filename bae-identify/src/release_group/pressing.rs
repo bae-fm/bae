@@ -33,6 +33,20 @@ impl PressingLink {
     }
 }
 
+/// What the candidate a list is for has picked among its rows, for one row,
+/// as the list's statement reads it from the candidate's link and from where
+/// its identification stands. A row formed in memory holds neither.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RowChoice {
+    /// The row holds the release the candidate is linked to, or, while the
+    /// candidate is linked to no pressing, the release identification picked
+    /// on its own and is reading.
+    pub chosen: bool,
+    /// The row holds the release identification picked on its own, which bae
+    /// reads in full before it stores the answer.
+    pub pick_being_read: bool,
+}
+
 /// One physical pressing, under every record that names it. A row is picked
 /// whole: `releases[0]` is the release the draft is read from, and each
 /// further entry is the same pressing as another record has it — another
@@ -44,6 +58,7 @@ pub struct Pressing {
     /// What the row lists where its records state a fact, as the grouping
     /// worked it out when the row was formed.
     statements: Statements,
+    choice: RowChoice,
 }
 
 impl Pressing {
@@ -89,19 +104,29 @@ impl Pressing {
     /// The row of `releases`, in the order they are given: the first leads.
     pub fn over(releases: Vec<MetadataResult>) -> Self {
         assert!(!releases.is_empty(), "a pressing is built from at least one release");
-        Self { statements: Statements::of(&releases), releases }
+        Self { statements: Statements::of(&releases), releases, choice: RowChoice::default() }
     }
 
     /// The row whose records, in the order they lead, and whose statements a
-    /// store holds: the rows a list laid out are read as they were formed.
-    pub fn stored(releases: Vec<MetadataResult>, statements: Statements) -> Self {
+    /// store holds: the rows a list laid out are read as they were formed,
+    /// with what the list's candidate has picked among them.
+    pub fn stored(
+        releases: Vec<MetadataResult>,
+        statements: Statements,
+        choice: RowChoice,
+    ) -> Self {
         assert!(!releases.is_empty(), "a pressing is built from at least one release");
-        Self { releases, statements }
+        Self { releases, statements, choice }
     }
 
     /// What the row lists where its records state a fact.
     pub fn statements(&self) -> &Statements {
         &self.statements
+    }
+
+    /// What the list's candidate has picked, for this row.
+    pub fn choice(&self) -> RowChoice {
+        self.choice
     }
 
     /// Every catalog listing this pressing, in the order surfaces list

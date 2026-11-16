@@ -73,7 +73,6 @@ extension PreviewData {
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: nil,
-            unattendedPick: nil,
             offersSharedAlbum: false
         )
     )
@@ -123,7 +122,6 @@ extension PreviewData {
             agreements: [:],
             narrowedOutCount: 0,
             folderCheck: .sourceTracksUnknown,
-            unattendedPick: nil,
             offersSharedAlbum: false
         )
     )
@@ -154,7 +152,6 @@ extension PreviewData {
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
-                unattendedPick: nil,
                 offersSharedAlbum: false
             )
         )
@@ -236,7 +233,6 @@ extension PreviewData {
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
             folderCheck: nil,
-            unattendedPick: nil,
             offersSharedAlbum: false
         )
     )
@@ -252,7 +248,6 @@ extension PreviewData {
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 folderCheck: nil,
-                unattendedPick: nil,
                 offersSharedAlbum: false
             )
         )
@@ -611,7 +606,6 @@ extension PreviewData {
     ) -> BridgeCandidateLiveState {
         BridgeCandidateLiveState(
             identifying: identifying,
-            readingPick: false,
             import: importStep,
             actions: actions,
             standing: standing,

@@ -110,8 +110,6 @@ private struct ImportOnlineMetadataBrowser: View {
                     input: ImportSearchFlow.SearchPaneInput(
                         candidate: candidate,
                         key: candidateKey,
-                        selectedReleaseId: candidate.releaseLink?.pressing?
-                            .record.key,
                         runtime: runtime,
                         openSection: candidate.session.findOnlineSection,
                         onOpenSection: {

@@ -308,6 +308,7 @@ impl BridgePressing {
         // every record is listed for. Each record's own facts stay on it, in
         // `releases`.
         let facts = BridgePressingFacts::from_core(pressing.lead().facts());
+        let choice = pressing.choice();
         let bae_identify::release_group::Statements { years, labels, barcodes, areas, media } =
             pressing.statements().clone();
         BridgePressing {
@@ -324,6 +325,8 @@ impl BridgePressing {
             sources: pressing.sources().into_iter().map(BridgeLookupCatalog::from_core).collect(),
             details: crate::types::bridge_pressing_details(facts),
             releases: pressing.releases.into_iter().map(BridgeMetadataResult::from_core).collect(),
+            chosen: choice.chosen,
+            pick_being_read: choice.pick_being_read,
         }
     }
 }
@@ -477,7 +480,6 @@ impl BridgeIdentifyState {
                     .folder_check()
                     .cloned()
                     .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
-                unattended_pick: decision.pick().map(str::to_string),
                 offers_shared_album,
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {

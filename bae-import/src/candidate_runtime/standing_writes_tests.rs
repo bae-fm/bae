@@ -708,6 +708,52 @@ async fn an_answer_that_picks_reads_as_its_pick_being_read_and_carries_an_import
     );
 }
 
+/// Each row of the answer `key` stands at, by its lead release, with what the
+/// candidate picked among them.
+async fn row_choices(
+    runtime: &CandidateRuntime,
+    key: &crate::CandidateKey,
+) -> Vec<(String, bae_identify::release_group::RowChoice)> {
+    let Some(IdentificationRuntime::Saving(SavingAnswer { state, .. })) =
+        runtime.snapshot(key).await.unwrap().and_then(|runtime| runtime.identification)
+    else {
+        panic!("the answer is being written");
+    };
+    state
+        .cards
+        .groups
+        .iter()
+        .flat_map(|group| &group.sections)
+        .flat_map(|section| &section.pressings)
+        .map(|pressing| (pressing.lead().release_id.clone(), pressing.choice()))
+        .collect()
+}
+
+/// While bae reads the release an answer picked on its own, the answer's
+/// statement says which row holds it, and that row is the one chosen, since
+/// the candidate is linked to no pressing yet. An answer that picks nothing
+/// leaves every row unchosen.
+#[tokio::test]
+async fn the_row_holding_the_pick_being_read_reads_as_chosen() {
+    let runtime = CandidateRuntime::for_test().await;
+    let picking = &crate::CandidateKey::test_rooted("/watch/a/rel1");
+    let files = scanned_key(&runtime, picking).await;
+    runtime.admit(vec![(picking.clone(), files.clone())], Admission::Automatic).await.unwrap();
+    report(&runtime, picking, &files, run(1), found_over(vec![0])).await;
+    let being_read = bae_identify::release_group::RowChoice { chosen: true, pick_being_read: true };
+    assert_eq!(row_choices(&runtime, picking).await, [("mb-0".to_string(), being_read)]);
+
+    let open = &crate::CandidateKey::test_rooted("/watch/a/rel2");
+    let files = scanned_key(&runtime, open).await;
+    runtime.admit(vec![(open.clone(), files.clone())], Admission::Automatic).await.unwrap();
+    report(&runtime, open, &files, run(2), found_over(vec![0, 1])).await;
+    let unchosen = bae_identify::release_group::RowChoice::default();
+    assert_eq!(
+        row_choices(&runtime, open).await,
+        [("mb-0".to_string(), unchosen), ("mb-1".to_string(), unchosen)]
+    );
+}
+
 /// An answer that picks nothing reads as finalizing, and an Import is not
 /// asked of it.
 #[tokio::test]

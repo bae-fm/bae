@@ -144,7 +144,6 @@ struct ReleaseEditorView: View {
                     input: ImportSearchFlow.SearchPaneInput(
                         candidate: candidate,
                         key: searchKey,
-                        selectedReleaseId: nil,
                         runtime: runtime,
                         openSection: section,
                         onOpenSection: { searchSection = $0 },

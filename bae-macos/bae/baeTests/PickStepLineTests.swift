@@ -24,12 +24,9 @@ struct PickStepLineTests {
                 isImporting: false,
                 libraryStatus: nil,
                 isSelected: false,
-                loading: LoadingPick(
-                    releaseId: pressing.lead.releaseId,
-                    reading: .followed(
-                        FixedCatalogApply(
-                            step: .readingRelease(catalog: .discogs)
-                        )
+                loading: .followed(
+                    FixedCatalogApply(
+                        step: .readingRelease(catalog: .discogs)
                     )
                 ),
                 onSelect: { _ in }

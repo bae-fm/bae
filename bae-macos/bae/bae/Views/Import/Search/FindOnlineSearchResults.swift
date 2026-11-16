@@ -8,7 +8,6 @@ struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
-    let selectedReleaseId: String?
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onRetry: () -> Void
@@ -46,7 +45,6 @@ struct FindOnlineSearchResults: View {
             groups: groups,
             isImporting: isImporting,
             libraryStatuses: libraryStatuses,
-            selectedReleaseId: selectedReleaseId,
             loadingPick: loadingPick,
             releaseSelectionFailure: releaseSelectionFailure,
             onSelect: onSelect,

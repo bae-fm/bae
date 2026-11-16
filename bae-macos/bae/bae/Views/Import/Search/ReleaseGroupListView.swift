@@ -10,9 +10,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
     /// What the candidate's own text agrees with about each release, keyed by
     /// release id; empty for typed-search results.
     var agreements: [String: BridgeAgreements] = [:]
-    /// Release id of the pressing whose confirm pane is open, if any.
-    let selectedReleaseId: String?
-    /// The pick being read, if any.
+    /// The person's pick being read, if any.
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
@@ -26,7 +24,6 @@ struct ReleaseGroupListView<Trailing: View>: View {
                 isImporting: isImporting,
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
-                selectedReleaseId: selectedReleaseId,
                 loadingPick: loadingPick,
                 releaseSelectionFailure: releaseSelectionFailure,
                 onSelect: onSelect,
@@ -45,7 +42,6 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
-    let selectedReleaseId: String?
     let loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -64,7 +60,6 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     isImporting: isImporting,
                     libraryStatuses: libraryStatuses,
                     agreements: agreements,
-                    selectedReleaseId: selectedReleaseId,
                     loadingPick: loadingPick,
                     releaseSelectionFailure: releaseSelectionFailure,
                     onRetryUnread: onRetryUnread,
@@ -129,8 +124,7 @@ struct ReleaseGroupSection: View {
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     var agreements: [String: BridgeAgreements] = [:]
-    let selectedReleaseId: String?
-    /// The pick being read right now, if any.
+    /// The person's pick being read right now, if any.
     var loadingPick: LoadingPick?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
@@ -184,7 +178,7 @@ struct ReleaseGroupSection: View {
                             isImporting: isImporting,
                             libraryStatus: libraryStatuses[pressing.id],
                             agreements: agreements[pressing.id],
-                            isSelected: isSelected(pressing),
+                            isSelected: pressing.chosen,
                             loading: loading(pressing),
                             failure: releaseSelectionFailure,
                             onRetryUnread: onRetryUnread,
@@ -198,18 +192,15 @@ struct ReleaseGroupSection: View {
         .padding(.leading, Self.ruleInset)
     }
 
-    /// Whether any of the pressing's releases is the one the draft carries.
-    func isSelected(_ pressing: Pressing) -> Bool {
-        pressing.releases.contains { $0.releaseId == selectedReleaseId }
-    }
-
-    /// The pick being read right now on this pressing, while one is.
-    func loading(_ pressing: Pressing) -> LoadingPick? {
-        guard let loadingPick,
-            pressing.releases.contains(where: {
-                $0.releaseId == loadingPick.releaseId
-            })
-        else { return nil }
-        return loadingPick
+    /// The pick being read right now on this pressing, while one is: the
+    /// person's pick of this row, else, while the person has none being read,
+    /// the pick identification made on its own, which core says the row
+    /// holds.
+    func loading(_ pressing: Pressing) -> PickReading? {
+        if let loadingPick {
+            return loadingPick.pressing == pressing.link.record
+                ? .followed(loadingPick.apply) : nil
+        }
+        return pressing.pickBeingRead ? .unattended : nil
     }
 }

@@ -231,10 +231,7 @@ class ImportStore {
         guard let session = metadataApplicationSession(forKey: key),
             case .pick(let link) = session.application
         else { return nil }
-        return LoadingPick(
-            releaseId: link.record.key,
-            reading: .followed(session.apply)
-        )
+        return LoadingPick(pressing: link.record, apply: session.apply)
     }
 
     /// How this candidate's last pick failed, on the pressing it was about.

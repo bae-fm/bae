@@ -1707,6 +1707,12 @@ writes each of those reads to its apply's row in
 ends, and the row's line reads that row through a live query. A release the
 library already holds whole is read without a line, and the rest of the
 pick, which is local, shows none; the row takes no second pick meanwhile.
+Each row of the pane's cards says whether it holds the release the candidate
+is linked to, and the pane shows that row selected. While bae reads the
+release a run picked unattended, the row that holds it says the release is
+being read, and shows selected too while the candidate is linked to no
+pressing. The cards statement reads both from the candidate's link and its
+standing, so the pane never looks for a release among the rows it shows.
 A pick claims its release and, where the pick pairs another catalog's, that
 catalog's release. The pane reads the claimed releases' records merged by one
 query over the stored releases: each claimed release's own record outranks what

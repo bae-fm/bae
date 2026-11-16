@@ -377,7 +377,6 @@ extension PreviewData {
                 placement: .pending(folderCheck: nil, records: []),
                 live: BridgeCandidateLiveState(
                     identifying: nil,
-                    readingPick: false,
                     import: nil,
                     actions: (metadataProvenance == nil
                         && edit.albumTitle.isEmpty ? [] : [.import])

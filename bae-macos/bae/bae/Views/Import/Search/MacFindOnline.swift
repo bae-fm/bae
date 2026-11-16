@@ -215,7 +215,6 @@ struct MacFindOnline: View {
                     search: search,
                     isImporting: state.isImporting,
                     libraryStatuses: state.libraryStatuses,
-                    selectedReleaseId: state.selectedReleaseId,
                     loadingPick: state.loadingPick,
                     releaseSelectionFailure: state.releaseSelectionFailure,
                     onRetry: onRetrySearch,

@@ -192,7 +192,6 @@ struct NarrowedOutDisclosureTests {
                 showsNarrowedOut: showsNarrowedOut,
                 isImporting: false,
                 libraryStatuses: [:],
-                selectedReleaseId: nil,
                 onSelect: { _ in }
             )
             .shownSections
@@ -473,13 +472,36 @@ struct FindOnlineResultAreaTests {
 @Suite("The pick the pane shows being read")
 struct FindOnlineReadingPickTests {
     /// The sole match core picked on its own is the row that holds the
-    /// spinner while it is read; with no pick being read none does.
+    /// spinner while it is read, as its row says; with no pick being read
+    /// none does.
     @Test("a sole match selects itself while core reads it")
-    func aSoleMatchSelectsItself() {
-        #expect(
-            PreviewData.searchStateReadingPick.pickBeingRead == "rel-456"
+    func aSoleMatchSelectsItself() throws {
+        let reading = try #require(
+            PreviewData.searchStateReadingPick.identifiedGroups.first
         )
-        #expect(PreviewData.searchStateFoundExact.pickBeingRead == nil)
+        let read = try #require(reading.pressings.first)
+        #expect(read.chosen)
+        guard case .unattended = section(reading).loading(read) else {
+            Issue.record("the row being read shows no unattended read")
+            return
+        }
+
+        let found = try #require(
+            PreviewData.searchStateFoundExact.identifiedGroups.first
+        )
+        for pressing in found.pressings {
+            #expect(!pressing.chosen)
+            #expect(section(found).loading(pressing) == nil)
+        }
+    }
+
+    private func section(_ group: ReleaseGroup) -> ReleaseGroupSection {
+        ReleaseGroupSection(
+            group: group,
+            isImporting: false,
+            libraryStatuses: [:],
+            onSelect: { _ in }
+        )
     }
 }
 
@@ -523,17 +545,11 @@ struct PickedRowTests {
         )
 
         let reading = section(
-            loadingPick: LoadingPick(
-                releaseId: pressing.lead.releaseId,
-                reading: .followed(nil)
-            )
+            loadingPick: LoadingPick(pressing: pressing.link.record, apply: nil)
         )
         #expect(reading.loading(pressing) != nil)
-        #expect(!reading.isSelected(pressing))
-
-        let picked = section(selectedReleaseId: pressing.lead.releaseId)
-        #expect(picked.isSelected(pressing))
-        #expect(picked.loading(pressing) == nil)
+        #expect(!pressing.chosen)
+        #expect(section().loading(pressing) == nil)
     }
 
     @Test("the row being read cannot be picked again")
@@ -542,23 +558,17 @@ struct PickedRowTests {
             PreviewData.searchGroupExact.pressings.first
         )
 
-        let loading = LoadingPick(
-            releaseId: pressing.lead.releaseId,
-            reading: .followed(nil)
-        )
-        #expect(!row(pressing, loading: loading).isPickable)
+        #expect(!row(pressing, loading: .followed(nil)).isPickable)
         #expect(row(pressing, loading: nil).isPickable)
     }
 
     private func section(
-        selectedReleaseId: String? = nil,
         loadingPick: LoadingPick? = nil
     ) -> ReleaseGroupSection {
         ReleaseGroupSection(
             group: PreviewData.searchGroupExact,
             isImporting: false,
             libraryStatuses: [:],
-            selectedReleaseId: selectedReleaseId,
             loadingPick: loadingPick,
             onSelect: { _ in }
         )
@@ -566,7 +576,7 @@ struct PickedRowTests {
 
     private func row(
         _ pressing: Pressing,
-        loading: LoadingPick?
+        loading: PickReading?
     ) -> ImportSearchResultRow {
         ImportSearchResultRow(
             pressing: pressing,

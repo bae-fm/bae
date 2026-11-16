@@ -86,8 +86,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         }
 
         #expect(
-            store.loadingPick(forKey: MappingFixtures.candidateKey)?.releaseId
-                == MappingFixtures.releaseId
+            store.loadingPick(forKey: MappingFixtures.candidateKey)?.pressing
+                == MappingFixtures.link.record
         )
 
         releaseGate.finish()

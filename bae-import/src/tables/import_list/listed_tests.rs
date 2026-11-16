@@ -422,9 +422,9 @@ async fn a_row_shows_its_lookup_at_work_only_while_in_progress_counts_it() {
     );
 }
 
-/// The pane shows the release a run picked as being read exactly while that
-/// pick is read in full, an Import asked of it or not: never while the lookup
-/// waits, runs, or writes an answer that picks nothing.
+/// A row reads as its run's pick being read exactly while that pick is read
+/// in full, an Import asked of it or not: never while the lookup waits, runs,
+/// or writes an answer that picks nothing.
 #[tokio::test]
 async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
     let lib = Library::new().await;
@@ -448,7 +448,12 @@ async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
         ("Asked", true),
         ("Idle", false),
     ] {
-        assert_eq!(row_at(&read, display_path).1.reading_pick(), reading, "{display_path}");
+        let identification = &row_at(&read, display_path).1.facts.identification;
+        assert_eq!(
+            matches!(identification, Some(crate::IdentificationStatus::ReadingPick { .. })),
+            reading,
+            "{display_path}"
+        );
     }
 }
 

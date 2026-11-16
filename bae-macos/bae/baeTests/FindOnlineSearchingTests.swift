@@ -24,7 +24,6 @@ struct FindOnlineSearchingTests {
                 search: search,
                 isImporting: false,
                 libraryStatuses: [:],
-                selectedReleaseId: nil,
                 loadingPick: nil,
                 onRetry: {},
                 onSelect: { _ in }

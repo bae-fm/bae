@@ -34,7 +34,7 @@ use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
 use bae_catalogs::remote_image::RemoteCover;
 use bae_catalogs::search::MetadataResult;
-pub use pressing::{Judgements, Pressing, PressingLink};
+pub use pressing::{Judgements, Pressing, PressingLink, RowChoice};
 use pressing_sets::{formed_pressings, gather_pressings};
 pub use statements::{StatedLabelLine, Statement, Statements};
 

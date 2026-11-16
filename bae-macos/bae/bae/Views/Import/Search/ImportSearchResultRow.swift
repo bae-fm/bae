@@ -16,7 +16,7 @@ struct ImportSearchResultRow: View {
     let isSelected: Bool
     /// The pick being read on this row, while one is: the row names the
     /// network read it waits on.
-    var loading: LoadingPick?
+    var loading: PickReading?
     var failure: ReleaseSelectionFailure?
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
@@ -84,12 +84,12 @@ struct ImportSearchResultRow: View {
     /// The apply of the person's pick being read on this row; `nil` while
     /// the row reads no such pick.
     private var followedApply: (any CatalogApplySource)? {
-        guard case .followed(let apply) = loading?.reading else { return nil }
+        guard case .followed(let apply) = loading else { return nil }
         return apply
     }
 
     private var isReadingUnattended: Bool {
-        if case .unattended = loading?.reading { return true }
+        if case .unattended = loading { return true }
         return false
     }
 

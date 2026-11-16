@@ -111,7 +111,6 @@ func identifiedRow(
         placement: .pending,
         live: BridgeCandidateLiveState(
             identifying: nil,
-            readingPick: false,
             import: nil,
             actions: [],
             standing: .notLookedUp,
@@ -158,7 +157,6 @@ private func detail(
         placement: .pending(folderCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identifying: nil,
-            readingPick: false,
             import: nil,
             actions: [
                 .import, .identify, .resetToFileMetadata, .clearMetadata,

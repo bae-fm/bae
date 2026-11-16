@@ -21,8 +21,8 @@ struct ImportStorePickTests {
 
         #expect(store.metadataApplicationSession(forKey: Self.key) === session)
         #expect(
-            store.loadingPick(forKey: Self.key)?.releaseId
-                == MappingFixtures.releaseId
+            store.loadingPick(forKey: Self.key)?.pressing
+                == MappingFixtures.link.record
         )
     }
 

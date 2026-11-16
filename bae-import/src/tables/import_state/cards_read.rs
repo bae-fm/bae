@@ -16,8 +16,8 @@ use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::{LookupRef, MetadataRef};
 use bae_catalogs::search::MetadataResult;
 use bae_identify::release_group::{
-    AlbumHeading, Pressing, PressingSection, ReleaseGroup, ReleaseGroupSource, StatedLabelLine,
-    Statement, Statements,
+    AlbumHeading, Pressing, PressingSection, ReleaseGroup, ReleaseGroupSource, RowChoice,
+    StatedLabelLine, Statement, Statements,
 };
 use bae_identify::{Agreements, AlbumLink, RowAgreements, SharedAlbum, VerdictCards};
 use bae_types::pressing::{MediaCount, ReleaseArea};
@@ -33,7 +33,9 @@ use std::str::FromStr;
 /// JSON list of the albums its statements name), `named_note`, and the eight
 /// flags `a_disc_id`, `a_barcode`, `a_catalog`, `a_label`, `a_year`,
 /// `a_country`, `a_title` and `a_artist` the folder's text agrees with it by
-/// (all 0 for a list nothing judges). `records` selects the same releases'
+/// (all 0 for a list nothing judges), and the two flags `chosen` and
+/// `pick_being_read` of what the list's candidate picked
+/// ([`choice_columns_sql`]). `records` selects the same releases'
 /// `ord` and `record` (the release as [`match_record_sql`] holds it, which a
 /// card carries whole). `text_owner` is a condition over `t` selecting the
 /// list's rows of the card text and row statement tables.
@@ -72,6 +74,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
               SELECT r.card, r.pressing, r.kind, MIN(r.bidx) AS album, MAX(r.splits) AS splits, \
                      MIN(r.bidx * 4294967296 + r.ord) AS place, \
                      MAX(r.year) FILTER (WHERE r.record_order = 0) AS lead_year, \
+                     MAX(r.chosen) AS chosen, MAX(r.pick_being_read) AS pick_being_read, \
                      json_group_array(json(rc.record) ORDER BY r.record_order) AS records, \
                      MAX(json_object('catalog', r.source, 'key', r.release_id)) \
                          FILTER (WHERE r.record_order = 0) AS lead, \
@@ -110,6 +113,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
                      json_object( \
                          'records', json(p.records), \
                          'agreed', json(p.agreed), \
+                         'chosen', p.chosen, 'pick_being_read', p.pick_being_read, \
                          'notes', json(COALESCE(n.notes, '[]')), \
                          'statements', json((SELECT json_group_array(json_object( \
                                  'fact', t.fact, 'line', t.line, 'ordinal', t.ordinal, \
@@ -200,6 +204,51 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
     )
 }
 
+/// The SQL of the member columns `chosen` and `pick_being_read` of the match
+/// row `found`, for a list whose candidate's files `files` names (NULL for a
+/// library release's list, whose rows hold neither). `pick` is the SQL of the
+/// release the list's verdict picks on its own; a list that is no verdict's
+/// has none.
+///
+/// A release is chosen when the candidate is linked to it, or when it is the
+/// verdict's own pick, which bae is reading in full, while the candidate is
+/// linked to no pressing.
+fn choice_columns_sql(found: &str, files: &str, pick: Option<&str>) -> String {
+    let linked = format!("release_link.content_hash = {files} AND release_link.kind = 'pressing'");
+    // The standing comes first, so a list whose pick no one reads never
+    // computes the pick.
+    let being_read = match pick {
+        Some(pick) => format!(
+            "(EXISTS (SELECT 1 FROM import_candidate_standing AS reading \
+                      WHERE reading.content_hash = {files} \
+                        AND reading.identification = 'reading_pick') \
+              AND {found}.release_id IS {pick})"
+        ),
+        None => "0".to_string(),
+    };
+    format!(
+        "(EXISTS (SELECT 1 FROM import_candidate_release_link AS release_link \
+                  WHERE {linked} AND release_link.source = {found}.source \
+                    AND release_link.release_id = {found}.release_id) \
+          OR ({being_read} \
+              AND NOT EXISTS (SELECT 1 FROM import_candidate_release_link AS release_link \
+                              WHERE {linked}))) AS chosen, \
+         {being_read} AS pick_being_read"
+    )
+}
+
+/// The SQL of the content hash of the folder candidate a run's match row
+/// `found` (or a stored verdict's) is of: the verdict's own, or the one the
+/// standing of the run in flight names. NULL for a library release's run.
+fn run_files_sql(found: &str) -> String {
+    format!(
+        "COALESCE({found}.content_hash, \
+                  (SELECT run_standing.content_hash \
+                   FROM import_candidate_standing AS run_standing \
+                   WHERE run_standing.identify_run = {found}.identify_run))"
+    )
+}
+
 /// The SQL of a scalar subquery reading the cards of the typed search whose
 /// number `search_run` names, the SQL of a column of the search's own row.
 pub(super) fn search_cards_sql(search_run: &str) -> String {
@@ -218,13 +267,19 @@ pub(super) fn search_cards_sql(search_run: &str) -> String {
                     found.year, found.source_group_id, found.album_links, found.cover_url, \
                     found.cover_standing, 0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, \
                     0 AS a_label, 0 AS a_year, 0 AS a_country, 0 AS a_title, 0 AS a_artist, \
-                    NULL AS named_note, \
+                    NULL AS named_note, {choice}, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, 'key', link.key) \
                                              ORDER BY link.ordinal) \
                      FROM import_candidate_match_album_link AS link \
                      WHERE link.search_run = found.search_run \
                        AND link.position = found.position) AS links \
-             {from}"
+             {from}",
+            choice = choice_columns_sql(
+                "found",
+                "(SELECT asked.content_hash FROM import_candidate_search AS asked \
+                  WHERE asked.search_run = found.search_run)",
+                None,
+            ),
         ),
         &format!(
             "SELECT {ord} AS ord, {record} AS record {from}",
@@ -259,7 +314,7 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
                     matched.release_id, matched.title, matched.year, matched.source_group_id, \
                     matched.album_links, matched.cover_url, matched.cover_standing, \
                     0 AS a_disc_id, 0 AS a_barcode, 0 AS a_catalog, 0 AS a_label, 0 AS a_year, \
-                    0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, \
+                    0 AS a_country, 0 AS a_title, 0 AS a_artist, NULL AS named_note, {choice}, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, \
                                                          'key', link.key) \
                                              ORDER BY link.ordinal) \
@@ -267,7 +322,8 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
                      WHERE link.content_hash IS matched.content_hash \
                        AND link.identify_run IS matched.identify_run \
                        AND link.position = matched.position) AS links \
-             {from}"
+             {from}",
+            choice = choice_columns_sql("matched", &run_files_sql("matched"), None),
         ),
         &format!(
             "SELECT found.ordinal AS ord, {record} AS record {from}",
@@ -304,14 +360,24 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                     found.agrees_catalog AS a_catalog, found.agrees_label AS a_label, \
                     found.agrees_year AS a_year, found.agrees_country AS a_country, \
                     found.agrees_title AS a_title, found.agrees_artist AS a_artist, \
-                    found.named_note, \
+                    found.named_note, {choice}, \
                     (SELECT json_group_array(json_object('catalog', link.catalog, 'key', link.key) \
                                              ORDER BY link.ordinal) \
                      FROM import_candidate_match_album_link AS link \
                      WHERE link.content_hash IS found.content_hash \
                        AND link.identify_run IS found.identify_run \
                        AND link.position = found.position) AS links \
-             {from}"
+             {from}",
+            choice = choice_columns_sql(
+                "found",
+                &run_files_sql("found"),
+                Some(&format!(
+                    "(SELECT decision.unattended_pick \
+                      FROM import_candidate_verdict_decision AS decision \
+                      WHERE decision.content_hash IS {verdict}.content_hash \
+                        AND decision.identify_run IS {verdict}.identify_run)"
+                )),
+            ),
         ),
         &format!(
             "SELECT found.position AS ord, {record} AS record {from}",
@@ -588,6 +654,8 @@ struct StoredRow {
     statements: Vec<StoredStatement>,
     agreed: StoredAgreed,
     notes: Vec<StoredNote>,
+    chosen: i64,
+    pick_being_read: i64,
 }
 
 /// Which of its fields the folder's text agrees with about a row.
@@ -722,7 +790,9 @@ pub(super) fn groups_from(cards: Vec<StoredCard>) -> Result<Vec<ReleaseGroup>, D
     };
     let row = |stored: StoredRow| -> Result<Pressing, DbError> {
         let records = stored.records.into_iter().map(release).collect::<Result<Vec<_>, _>>()?;
-        Ok(Pressing::stored(records, statements_of(stored.statements)?))
+        let choice =
+            RowChoice { chosen: stored.chosen != 0, pick_being_read: stored.pick_being_read != 0 };
+        Ok(Pressing::stored(records, statements_of(stored.statements)?, choice))
     };
     cards
         .into_iter()

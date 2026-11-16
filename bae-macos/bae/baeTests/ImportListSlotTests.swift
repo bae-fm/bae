@@ -104,7 +104,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             placement: .skipped,
             live: BridgeCandidateLiveState(
                 identifying: nil,
-                readingPick: false,
                 import: nil,
                 actions: [],
                 standing: .notLookedUp,

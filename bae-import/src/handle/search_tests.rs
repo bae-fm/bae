@@ -43,3 +43,75 @@ async fn an_answer_that_cannot_be_saved_fails_its_source() {
         })
         .await;
 }
+
+/// Each row of `key`'s typed search, by its lead release, and whether it is
+/// the row the candidate is linked to.
+fn chosen_rows(runtime: &crate::CandidateRuntimeSnapshot) -> Vec<(String, bool)> {
+    let mut rows: Vec<(String, bool)> = runtime
+        .search
+        .iter()
+        .flat_map(|search| &search.groups)
+        .flat_map(|group| &group.sections)
+        .flat_map(|section| &section.pressings)
+        .map(|pressing| (pressing.lead().release_id.clone(), pressing.choice().chosen))
+        .collect();
+    rows.sort();
+    rows
+}
+
+/// The typed search's own statement says which of its rows holds the release
+/// the candidate is linked to: none before the person picks, the picked row
+/// once the pick stores the link.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_row_holding_the_linked_release_reads_as_chosen() {
+    let fixture = Fixture::new("search-row-chosen").await;
+    fixture.set_identify_automatically(false).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/release?",
+        200,
+        r#"{"releases":[
+            {"id":"mb-picked","title":"Album","artist-credit":[{"name":"Artist"}],
+             "release-group":{"id":"rg-typed"},"label-info":[]},
+            {"id":"mb-other","title":"Album","artist-credit":[{"name":"Artist"}],
+             "release-group":{"id":"rg-typed"},"label-info":[]}]}"#
+            .to_string(),
+    );
+    fixture.provider.route(
+        "/release/mb-picked?",
+        200,
+        mb_release_json("mb-picked", "rg-typed", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+
+    fixture
+        .import
+        .start_candidate_search(
+            key.clone(),
+            SearchQuery::General { artist: "Artist".to_string(), album: "Album".to_string() },
+        )
+        .await
+        .unwrap();
+    let rows =
+        |picked: bool| vec![("mb-other".to_string(), false), ("mb-picked".to_string(), picked)];
+    fixture.await_runtime(&key, |runtime| chosen_rows(runtime) == rows(false)).await;
+
+    fixture
+        .import
+        .select_candidate_release(
+            key.clone(),
+            bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    LookupCatalog::MusicBrainz,
+                    "mb-picked".to_string(),
+                ),
+                partners: vec![],
+            },
+            crate::CatalogApplySteps::unread(),
+        )
+        .await
+        .unwrap();
+    fixture.await_runtime(&key, |runtime| chosen_rows(runtime) == rows(true)).await;
+}
