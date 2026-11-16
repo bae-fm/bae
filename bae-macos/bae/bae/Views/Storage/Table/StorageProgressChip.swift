@@ -21,15 +21,6 @@ struct StorageProgressChip: View {
         self.init(text: Text(label), kind: kind, fill: fill)
     }
 
-    /// A chip whose words are already in the person's language.
-    init(
-        verbatim label: String,
-        kind: StorageTransferKind,
-        fill: ReleaseProgressSource?
-    ) {
-        self.init(text: Text(verbatim: label), kind: kind, fill: fill)
-    }
-
     /// A chip whose words are a `Text` already.
     init(
         text: Text,
