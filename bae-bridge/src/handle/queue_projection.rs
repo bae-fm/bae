@@ -1,7 +1,7 @@
-mirror_struct! {
-    crate::types::BridgeUploadBar = bae_library::UploadBar,
-    from_core: pub(super) fn,
-    fields: { bytes_done, bytes_total },
+impl crate::types::BridgeUploadBar {
+    pub(super) fn from_core(bar: bae_library::UploadBar) -> Self {
+        Self { bytes_done: bar.bytes_done, bytes_total: bar.bytes_total, fraction: bar.fraction() }
+    }
 }
 
 mirror_struct! {
@@ -38,7 +38,7 @@ mirror_struct! {
 mirror_struct! {
     crate::types::BridgeMoveToThisDeviceProgress = bae_transfers::MoveToThisDeviceTransferProgress,
     from_core: pub(crate) fn,
-    fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total },
+    fields: { file_bytes_done, file_bytes_total, bytes_done, bytes_total, fraction },
 }
 
 impl crate::types::BridgeDownloadState {

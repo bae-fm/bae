@@ -44,6 +44,15 @@ fn a_release_has_come_as_far_as_its_files_before_and_its_file() {
             file_bytes_total: 200,
             bytes_done: 350,
             bytes_total: 1_000,
+            fraction: 0.35,
         }
     );
+}
+
+/// A release that has downloaded nothing has come no way, and so has one
+/// with no bytes to download.
+#[test]
+fn a_release_with_nothing_down_has_come_no_way() {
+    assert_eq!(MoveToThisDeviceTransferProgress::begin(1_000).fraction, 0.0);
+    assert_eq!(MoveToThisDeviceTransferProgress::of(step(0, 0, 0, 0)).fraction, 0.0);
 }

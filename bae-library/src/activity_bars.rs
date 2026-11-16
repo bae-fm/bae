@@ -211,10 +211,7 @@ fn pin_share(transfer: &DownloadTransfer) -> Option<f64> {
 /// move-to-this-device; one with no bytes to download has downloaded none.
 fn move_to_this_device_share(transfer: &DownloadTransfer) -> Option<f64> {
     match transfer {
-        DownloadTransfer::MoveToThisDevice(progress) if progress.bytes_total == 0 => Some(0.0),
-        DownloadTransfer::MoveToThisDevice(progress) => {
-            Some(progress.bytes_done as f64 / progress.bytes_total as f64)
-        }
+        DownloadTransfer::MoveToThisDevice(progress) => Some(progress.fraction),
         DownloadTransfer::Pin(_) => None,
     }
 }

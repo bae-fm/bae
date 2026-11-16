@@ -266,7 +266,8 @@ extension PreviewData {
         "rel-row-1": BridgeReleaseUploadTransfer(
             bar: BridgeUploadBar(
                 bytesDone: 12_400_000,
-                bytesTotal: 36_400_000
+                bytesTotal: 36_400_000,
+                fraction: 12.4 / 36.4
             ),
             throughputBps: 3_200_000
         )
@@ -276,7 +277,8 @@ extension PreviewData {
     static let uploadTotal = BridgeUploadTransfer(
         bar: BridgeUploadBar(
             bytesDone: 22_400_000,
-            bytesTotal: 57_100_000
+            bytesTotal: 57_100_000,
+            fraction: 22.4 / 57.1
         ),
         throughputBps: 6_800_000
     )

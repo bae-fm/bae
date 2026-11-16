@@ -25,7 +25,11 @@ struct OutboxStoreTransferTests {
         _ throughputBps: UInt64
     ) -> BridgeReleaseUploadTransfer {
         BridgeReleaseUploadTransfer(
-            bar: BridgeUploadBar(bytesDone: bytesDone, bytesTotal: 100),
+            bar: BridgeUploadBar(
+                bytesDone: bytesDone,
+                bytesTotal: 100,
+                fraction: Double(bytesDone) / 100
+            ),
             throughputBps: throughputBps
         )
     }
@@ -59,7 +63,7 @@ struct OutboxStoreTransferTests {
     @Test("a file's view and the total's view read their own streams")
     func fileAndTotalViewsReadTheirStreams() {
         let total = BridgeUploadTransfer(
-            bar: BridgeUploadBar(bytesDone: 10, bytesTotal: 100),
+            bar: BridgeUploadBar(bytesDone: 10, bytesTotal: 100, fraction: 0.1),
             throughputBps: 5
         )
         let store = OutboxStore(

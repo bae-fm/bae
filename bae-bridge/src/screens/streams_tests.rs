@@ -10,7 +10,11 @@ fn the_upload_total_is_held_only_while_files_are_sent() {
         upload_total(sending),
         Some(BridgeFastValue::UploadTotal {
             transfer: crate::types::BridgeUploadTransfer {
-                bar: Some(crate::types::BridgeUploadBar { bytes_done: 10, bytes_total: 40 }),
+                bar: Some(crate::types::BridgeUploadBar {
+                    bytes_done: 10,
+                    bytes_total: 40,
+                    fraction: 0.25,
+                }),
                 throughput_bps: 5,
             },
         })

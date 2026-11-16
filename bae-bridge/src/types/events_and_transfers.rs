@@ -78,10 +78,14 @@ mirror_enum! {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+/// How far uploading files have got: their bytes done of their bytes in
+/// all, and the share of them done, from 0 to 1, which the bar fills to.
+/// Mirrors `UploadBar`.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeUploadBar {
     pub bytes_done: u64,
     pub bytes_total: u64,
+    pub fraction: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -101,7 +105,7 @@ pub struct BridgeUploadProgress {
 
 /// How far the files being sent have gone together and how fast they go.
 /// Mirrors `UploadTransfer`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeUploadTransfer {
     pub bar: Option<BridgeUploadBar>,
     /// Bytes per second.
@@ -110,7 +114,7 @@ pub struct BridgeUploadTransfer {
 
 /// How far a release's upload has got, of its whole size, and how fast its
 /// files being sent go together. Mirrors `ReleaseUploadTransfer`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeReleaseUploadTransfer {
     pub bar: BridgeUploadBar,
     /// Bytes per second.
@@ -192,14 +196,16 @@ pub struct BridgeDownloadTransferProgress {
 }
 
 /// How far a release being moved to this device has downloaded: the bytes of the file
-/// coven is downloading, and of every file of the release. Mirrors
-/// `MoveToThisDeviceTransferProgress`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+/// coven is downloading, and of every file of the release, with the share
+/// of the release's bytes down, from 0 to 1, which its bar fills to.
+/// Mirrors `MoveToThisDeviceTransferProgress`.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeMoveToThisDeviceProgress {
     pub file_bytes_done: u64,
     pub file_bytes_total: u64,
     pub bytes_done: u64,
     pub bytes_total: u64,
+    pub fraction: f64,
 }
 
 /// What the library holds now for a queued release: what its queue row

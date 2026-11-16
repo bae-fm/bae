@@ -92,7 +92,7 @@ impl DownloadRate {
 /// coven is downloading into the person's folder, and of the whole release.
 /// Held only in memory while the copies download, before the write that
 /// switches the files; no table holds it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MoveToThisDeviceTransferProgress {
     /// The bytes of the file being downloaded that are down.
     pub file_bytes_done: u64,
@@ -102,22 +102,27 @@ pub struct MoveToThisDeviceTransferProgress {
     pub bytes_done: u64,
     /// The bytes of every file the release downloads.
     pub bytes_total: u64,
+    /// The share of the release's bytes that are down, from 0 to 1, which
+    /// its bar fills to. A release with no bytes to download has none down.
+    pub fraction: f64,
 }
 
 impl MoveToThisDeviceTransferProgress {
     /// Nothing down yet, of a release of `bytes_total`.
     pub fn begin(bytes_total: u64) -> Self {
-        Self { file_bytes_done: 0, file_bytes_total: 0, bytes_done: 0, bytes_total }
+        Self { file_bytes_done: 0, file_bytes_total: 0, bytes_done: 0, bytes_total, fraction: 0.0 }
     }
 
     /// The progress coven reports of one step of preparing the copies.
     pub fn of(progress: coven::Progress<coven::DeviceOnlyStep>) -> Self {
         let coven::DeviceOnlyStep::Downloading { before, all, .. } = progress.step;
+        let bytes_done = before + progress.done;
         Self {
             file_bytes_done: progress.done,
             file_bytes_total: progress.total,
-            bytes_done: before + progress.done,
+            bytes_done,
             bytes_total: all,
+            fraction: if all == 0 { 0.0 } else { bytes_done as f64 / all as f64 },
         }
     }
 }

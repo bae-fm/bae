@@ -104,7 +104,8 @@ extension ShotScene {
                             "rel-summary": BridgeReleaseUploadTransfer(
                                 bar: BridgeUploadBar(
                                     bytesDone: 96_000_000,
-                                    bytesTotal: 221_200_000
+                                    bytesTotal: 221_200_000,
+                                    fraction: 96 / 221.2
                                 ),
                                 throughputBps: 6_400_000
                             )
@@ -241,7 +242,8 @@ extension ShotScene {
                             bridge.id: BridgeReleaseUploadTransfer(
                                 bar: BridgeUploadBar(
                                     bytesDone: 96_000_000,
-                                    bytesTotal: 221_200_000
+                                    bytesTotal: 221_200_000,
+                                    fraction: 96 / 221.2
                                 ),
                                 throughputBps: 6_400_000
                             )
