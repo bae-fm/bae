@@ -20,7 +20,6 @@ struct CoverGalleryView: View {
     let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the gallery.
     let lightboxLoad: LightboxImageLoad
-    var initialLayout: ArtworkBrowserState.Layout = .grid
     var isSaving = false
     var error: DisplayError?
     var onRefresh: (() -> Void)?
@@ -149,7 +148,6 @@ struct CoverGalleryView: View {
             .disabled(browser.layout == .lightbox)
             .accessibilityHidden(browser.layout == .lightbox)
             .overlay { lightboxOverlay }
-            .onAppear { browser.layout = initialLayout }
             // The grid's preview gets keyboard focus whenever it appears: when
             // the sheet opens on the grid, its covers arrive, or the lightbox
             // closes back to it. The code never clears the preview's focus
@@ -189,14 +187,7 @@ struct CoverGalleryView: View {
                         ),
                         load: lightboxLoad,
                         onSelect: { focusedCover = $0 },
-                        onDismiss: {
-                            if initialLayout == .lightbox {
-                                onDone()
-                            }
-                            else {
-                                showGrid()
-                            }
-                        },
+                        onDismiss: showGrid,
                         onBrowseAll: showGrid
                     )
                 }

@@ -11,7 +11,6 @@ struct CoverSheetView: View {
     let selectedCover: BridgeCoverSelection?
     /// The lightbox's image as it loads, owned by whoever shows the sheet.
     let lightboxLoad: LightboxImageLoad
-    let initialLayout: ArtworkBrowserState.Layout
     let onFindRelease: (() -> Void)?
     let onSelect: (BridgeCoverSelection) async throws -> Void
     let onDone: () -> Void
@@ -27,7 +26,6 @@ struct CoverSheetView: View {
         owner: BridgeCoverGalleryOwner,
         selectedCover: BridgeCoverSelection? = nil,
         lightboxLoad: LightboxImageLoad,
-        initialLayout: ArtworkBrowserState.Layout = .grid,
         onFindRelease: (() -> Void)? = nil,
         refreshCovers: @escaping () async throws -> Void,
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
@@ -36,7 +34,6 @@ struct CoverSheetView: View {
         self.owner = owner
         self.selectedCover = selectedCover
         self.lightboxLoad = lightboxLoad
-        self.initialLayout = initialLayout
         self.onFindRelease = onFindRelease
         self.onSelect = onSelect
         self.onDone = onDone
@@ -58,7 +55,6 @@ struct CoverSheetView: View {
             focusedCover: $covers.focusedCover,
             selectedCover: selectedCover,
             lightboxLoad: lightboxLoad,
-            initialLayout: initialLayout,
             isSaving: state.isSaving,
             error: state.error ?? covers.readFailure,
             onRefresh: { covers.startRefresh() },

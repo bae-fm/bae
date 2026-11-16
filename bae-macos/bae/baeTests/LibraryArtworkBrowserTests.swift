@@ -7,44 +7,6 @@ import Testing
 
 @MainActor
 struct LibraryArtworkBrowserTests {
-    /// Library artwork opens in the lightbox, where Return saves nothing and
-    /// Escape leaves without saving. The lightbox's words are the
-    /// `artwork-lightbox` shot's.
-    @Test("Library artwork opens in the lightbox without saving")
-    func libraryEntry() async throws {
-        let art = remote("Booklet", source: .discogs)
-        var lookups = 0
-        var saved: BridgeCoverSelection?
-        var dismissed = false
-        try await withLibraryBrowser(
-            layout: .lightbox,
-            gallery: gallery(remote: [art]),
-            calls: SheetCalls(
-                lookup: {
-                    lookups += 1
-                    Wait.happened()
-                },
-                onSelect: { saved = $0 },
-                onDone: {
-                    dismissed = true
-                    Wait.happened()
-                }
-            ),
-            body: { window, host, lightbox in
-                // The release's cover, which the lightbox opens on.
-                try await Wait.until { lightbox.ended() }
-                try await SnapshotTestSupport.settle(host)
-                try HostedInput.keyEquivalent(.return, in: host)
-                try await SnapshotTestSupport.settle(host)
-                #expect(saved == nil)
-                try HostedInput.keyDown(.escape, in: window)
-                try await Wait.until { dismissed }
-                #expect(saved == nil)
-                #expect(lookups == 1)
-            }
-        )
-    }
-
     /// Space opens the image the grid focuses, the release's cover, in the
     /// lightbox, and Escape brings the grid back with the keyboard on it,
     /// without looking the covers up again; Return then saves the image the
@@ -57,7 +19,6 @@ struct LibraryArtworkBrowserTests {
         var saved: BridgeCoverSelection?
         var dismissed = false
         try await withLibraryBrowser(
-            layout: .grid,
             gallery: gallery(remote: [art]),
             delivered: delivered,
             calls: SheetCalls(
@@ -97,37 +58,6 @@ struct LibraryArtworkBrowserTests {
                 #expect(lookups == 1, "looked up \(lookups) times")
             }
         )
-    }
-
-    /// The empty lightbox offers to find the release (the
-    /// `artwork-lightbox-unlinked` shot); its Find release… runs
-    /// `onFindRelease` as is, so where that button sits is no longer tested.
-    @Test("The empty library lightbox can be left")
-    func emptyLightbox() async throws {
-        var dismissed = false
-        let size = NSSize(width: 800, height: 520)
-        try await SnapshotTestSupport.withHostedWindow(
-            CoverGalleryView(
-                content: .empty,
-                remoteItems: .unlinked,
-                filter: .constant(.all),
-                focusedCover: .constant(nil),
-                selectedCover: nil,
-                lightboxLoad: LightboxImageLoad(),
-                initialLayout: .lightbox,
-                onFindRelease: {},
-                onSelect: { _ in Issue.record("Empty artwork cannot be saved")
-                },
-                onDone: { dismissed = true }
-            )
-            .environment(ImageStore.stub())
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            try HostedInput.keyEquivalent(.escape, in: host)
-            #expect(dismissed)
-        }
     }
 
     @Test("An updated library cover reloads in the open lightbox")
@@ -172,57 +102,7 @@ struct LibraryArtworkBrowserTests {
 }
 
 extension LibraryArtworkBrowserTests {
-    /// What the lightbox says of each state is the `artwork-lightbox-fetching`,
-    /// `-unlinked`, `-none-found` and `-lookup-failed` shots'. The grid is
-    /// laid out behind it with its saving spinner in every state, so a
-    /// lookup still out spins more than the rest.
-    @Test("The lightbox spins only while its lookup is out")
-    func lookupStateInLightbox() async throws {
-        let settled = [
-            RemoteCoverItems.unlinked, .linked([]),
-            .failed([], failure: DisplayError(line: "Lookup failed")),
-        ]
-        let resting = try await lightboxSpinners(.linked([]))
-        for remoteItems in settled {
-            #expect(
-                try await lightboxSpinners(remoteItems) == resting,
-                "\(remoteItems)"
-            )
-        }
-        #expect(try await lightboxSpinners(.loading([])) > resting)
-    }
-
-    private func lightboxSpinners(_ remoteItems: RemoteCoverItems)
-        async throws -> Int
-    {
-        let size = NSSize(width: 800, height: 520)
-        return try await SnapshotTestSupport.withHostedWindow(
-            CoverGalleryView(
-                content: .empty,
-                remoteItems: remoteItems,
-                filter: .constant(.all),
-                focusedCover: .constant(nil),
-                selectedCover: nil,
-                lightboxLoad: LightboxImageLoad(),
-                initialLayout: .lightbox,
-                onSelect: { _ in },
-                onDone: {}
-            )
-            .environment(ImageStore.stub())
-            .frame(width: size.width, height: size.height),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-            return SnapshotTestSupport.descendants(of: host)
-                .filter { $0 is NSProgressIndicator }
-                .count
-        }
-    }
-}
-
-extension LibraryArtworkBrowserTests {
     private func withLibraryBrowser<Value>(
-        layout: ArtworkBrowserState.Layout,
         gallery: BridgeCoverGallery,
         delivered: DeliveredFocuses? = nil,
         calls: SheetCalls,
@@ -247,7 +127,6 @@ extension LibraryArtworkBrowserTests {
                 CoverSheetView(
                     owner: .release(releaseId: releaseId),
                     lightboxLoad: lightbox,
-                    initialLayout: layout,
                     refreshCovers: calls.lookup,
                     onSelect: calls.onSelect,
                     onDone: calls.onDone
