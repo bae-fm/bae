@@ -2,21 +2,23 @@
 //!
 //! A person's search asks every configured provider, and the providers
 //! answer at their own pace. So the run is not one awaited call with one
-//! answer: each source lands its own part of it, and the pane draws whatever
-//! has landed. MusicBrainz answering first shows its groups while Discogs is
-//! still looking; Discogs answering merges its rows into them; a provider that
-//! fails is named beside what the other found rather than blanking the pane.
+//! answer: each source stores its own part of it, and the pane draws whatever
+//! has arrived. When MusicBrainz answers first, the pane shows its groups
+//! while Discogs is still looking; when Discogs answers, bae merges its rows
+//! into them; the pane names a provider that fails beside what the other
+//! found, rather than going blank.
 //!
-//! Nothing more is read about a result until the person picks it: the cards
+//! bae reads nothing more about a result until the person picks it: the cards
 //! show at once, each catalog's albums apart. Picking a MusicBrainz result
-//! reads its release's documents, and what they state its album is on Discogs
-//! joins the cards by the one rule set an identify run's rows are joined by
-//! (see [`bae_catalogs::album_links`]).
+//! reads its release's documents, and bae joins the Discogs album they name
+//! to the cards by the same rules that join an identify run's rows (see
+//! [`bae_catalogs::album_links`]).
 //!
-//! The search is stored as rows (`import_candidate_search` and the tables
-//! beside it), each landing a write that lays the list out again; this is
-//! the value a read of them makes, its cards the ones the rows state. The driver that runs
-//! the lookups is [`crate::ImportServiceHandle::start_candidate_search`].
+//! bae stores the search as rows (`import_candidate_search` and the tables
+//! beside it), and each answer writes the list's layout again.
+//! `CandidateSearch` holds what a read of those rows returns, and its cards
+//! are the ones the rows state. The driver that runs the lookups is
+//! [`crate::ImportServiceHandle::start_candidate_search`].
 
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SearchQuery};
@@ -136,7 +138,7 @@ impl CandidateSearch {
     }
 
     /// The search that asked `query`, with each source's part as it stands
-    /// and the cards its answers laid out.
+    /// and the album cards stored for its results.
     pub(crate) fn of(
         query: SearchQuery,
         sources: Vec<(LookupCatalog, SourceSearch)>,
@@ -151,9 +153,9 @@ impl CandidateSearch {
         self.sources.iter().find(|(candidate, _)| *candidate == source).map(|(_, state)| state)
     }
 
-    /// The MusicBrainz release group of `release`, the album its pick reads
-    /// the documents of; `None` where `release` is no MusicBrainz result on the
-    /// list, or names no group, which no pick of this search reads.
+    /// The MusicBrainz release group of `release`, whose documents bae reads
+    /// when the person picks `release`; `None` when `release` is not a
+    /// MusicBrainz result on the list or names no group.
     pub(crate) fn pickable_group(
         &self,
         release: &bae_catalogs::records::LookupRef,

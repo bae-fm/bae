@@ -77,17 +77,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     CHECK ((search_album IS NULL) = (search_artist IS NULL))
 ) STRICT;
 
--- What a verdict row decides about its releases, said from its stored rows:
--- why a found verdict picks none of its releases unattended (`declined`:
+-- What a verdict row decides about its releases, computed from its stored
+-- rows: why a found verdict picks none of its releases unattended (`declined`:
 -- 'medium_disagrees', 'nothing_found', 'several', 'unread_document' or
 -- 'source_tracks_unknown'; NULL when it picks one, and for every kind but
 -- 'found'), the check against the folder that declined it where one did
 -- (`folder_check`: the medium the folder's files rule out, or
 -- 'source_tracks_unknown'), and the release it picks (`unattended_pick`).
--- Judged from the releases the verdict offers (listing 'offered'), led by the
--- lowest position: the folder's own files rule out none of them, they make
--- exactly one pressing (two catalogs' records of it count once), every record
--- was read, and the lead's tracklist lists as many tracks as the folder holds.
+-- The view picks the lead release, the offered one (listing 'offered') with
+-- the lowest position, only when the folder's own files rule out none of the
+-- offered releases, they make exactly one pressing (two catalogs' records of
+-- it count once), bae read every record, and the lead's tracklist lists as
+-- many tracks as the folder holds.
 CREATE VIEW IF NOT EXISTS import_candidate_verdict_decision AS
 SELECT content_hash, identify_run, declined,
        CASE declined WHEN 'medium_disagrees' THEN medium_conflict

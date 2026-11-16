@@ -255,7 +255,8 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     let state = barcode_half_answered();
     tables.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
     let outcome = bae_identify::RunOutcome::of(&state).unwrap();
-    // The run's rows hold the cards the rules fold against its signals' text.
+    // The run's rows hold the cards that `reference_cards_of` builds from the
+    // run's outcome, checked against the text its signals read.
     let text = bae_identify::CandidateText::of(&signals.text_pool, &[], signals.barcode.codes());
     let expected = bae_identify::PublishedRun {
         cards: bae_identify::view::reference_cards_of(&outcome, &text),
@@ -380,10 +381,10 @@ fn typed_search() -> crate::candidate_search::CandidateSearch {
     )
 }
 
-/// One statement answers every key together: a folder candidate holding only
-/// its standing and a search, a release holding two runs, a release holding
-/// one, and a release holding only a search; each under its own key, its
-/// runs in run order, and the keys in key order.
+/// One query loads the runtime of every key at once: a folder candidate
+/// holding only its standing and a search, a release holding two runs, a
+/// release holding one, and a release holding only a search; each under its
+/// own key, its runs in run order, and the keys in key order.
 #[tokio::test]
 async fn every_key_read_together_holds_what_it_holds_alone() {
     let (tables, key, files, _tmp) = scanned().await;
@@ -391,7 +392,8 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
     let first = CandidateKey::reidentify("release-1");
     let second = CandidateKey::reidentify("release-2");
     let third = CandidateKey::reidentify("release-3");
-    // Published out of order: the read gives them back in run order.
+    // The test publishes the runs out of order, and the read returns them in
+    // run order.
     tables.publish_release_run(&first, run(2), &search_waiting(), None).await.unwrap();
     tables
         .publish_release_run(&first, run(1), &barcode_half_answered(), Some(&scanning_signals()))
@@ -434,6 +436,6 @@ async fn every_key_read_together_holds_what_it_holds_alone() {
     assert_eq!(
         tables.load_candidate_runtime(&CandidateKey::reidentify("nothing")).await.unwrap(),
         StoredRuntime::default(),
-        "a key with nothing running reads as nothing"
+        "loading a key with nothing running returns an empty runtime"
     );
 }

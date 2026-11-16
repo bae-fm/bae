@@ -154,8 +154,8 @@ pub(super) fn store_match(
     listing: Written<'_>,
 ) -> Result<(), DbError> {
     let position = ordinal_column(position)?;
-    // A search's release is written alone in its row and card, and the write
-    // that lands it lays the whole list out before it ends.
+    // `store_match` writes a search's release into its own row and card, and
+    // the same write then groups the whole list again before it ends.
     let (listing, pressing, named_note, placed) = match (owner, listing) {
         (MatchOwner::Verdict(_), Written::Offered(pressing, placed, named_note)) => {
             (LISTING_OFFERED, Some(i64::from(pressing)), named_note, Some(placed))

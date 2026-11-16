@@ -125,7 +125,7 @@ struct StoredPart {
 }
 
 /// The parts of the search a column names as one JSON list column in the
-/// order the catalogs are listed, each with the releases it returned.
+/// order of their positions, each with the releases it returned.
 fn parts_column(search_run: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
@@ -278,7 +278,7 @@ pub(super) fn search_in(
 }
 
 /// A MusicBrainz result a pick read: what its documents state its album is on
-/// the other lookup catalog, `Unread` where they could not be had.
+/// the other lookup catalog, `Unread` where bae could not fetch them.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct PickedResult {
     pub(super) release_id: String,
@@ -286,7 +286,7 @@ pub(super) struct PickedResult {
 }
 
 /// The picks of the search a column names, as one JSON list column in the
-/// order they were stored, each with the albums its documents named.
+/// order bae stored them, each with the albums its documents named.
 fn picks_column(search_run: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
@@ -335,7 +335,7 @@ fn picks_of(json: &str) -> Result<Vec<PickedResult>, DbError> {
         .collect()
 }
 
-/// What the picks of the search `run` read, in the order they were stored.
+/// What the picks of the search `run` read, in the order bae stored them.
 pub(super) fn load_picks_on(
     sql: &impl coven::SqlRead,
     run: i64,
@@ -509,8 +509,8 @@ fn land_on(
             Written::Returned,
         )?;
     }
-    // Every catalog's answer pairs with the others', so the whole list lays
-    // out again.
+    // Every catalog's answer pairs with the others', so this write groups the
+    // whole list again.
     lay_out_search_on(sql, run.number())?;
     Ok(true)
 }
@@ -613,7 +613,7 @@ impl ImportTables {
                 )?;
                 super::match_rows::delete_search_matches_of(sql, catalog)?;
                 if catalog == LookupCatalog::MusicBrainz {
-                    // Only a MusicBrainz release is picked.
+                    // A person can pick only a MusicBrainz release.
                     sql.execute("DELETE FROM import_candidate_search_pick", [])?;
                 }
                 for run in held {

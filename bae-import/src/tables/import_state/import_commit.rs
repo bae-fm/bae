@@ -466,11 +466,13 @@ impl ImportTables {
                         insert_release_file_row(tx, row, file).map_err(commit_error)?;
                     }
 
-                    // What the person decided about the folder's CUE sheets
-                    // (the audio of each `FILE` line, the disc of each sheet)
-                    // stays with the release, so identifying it again reads them. The candidate's decisions are
-                    // still stored here (`delete_what_the_import_spent_on`
-                    // keeps them), at the revision the guard checked.
+                    // The commit copies the person's decisions about the
+                    // folder's CUE sheets (the audio of each `FILE` line, the
+                    // disc of each sheet) to the release, so a later
+                    // identification of the release reads them. The
+                    // candidate's decision rows still exist here, because
+                    // `delete_what_the_import_spent_on` keeps them, at the
+                    // revision the guard checked.
                     let decided = super::file_decision_rows::load_candidate_file_edits_on(
                         tx,
                         &content_hash,

@@ -6,7 +6,8 @@ pub(super) const SQL: &str = include_str!("album_pick_rows.sql");
 
 use super::*;
 
-/// What was picked for the album of the candidate `content_hash`.
+/// The album the person picked for the candidate `content_hash`: a library
+/// album, a new album, or, when they picked none, the album its records name.
 pub(crate) fn load_album_pick_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
@@ -32,7 +33,9 @@ pub(super) fn delete_album_pick(sql: &CovenWrite<'_>, content_hash: &str) -> Res
 }
 
 impl ImportTables {
-    /// What was picked for the album of the candidate `content_hash`.
+    /// The album the person picked for the candidate `content_hash`: a
+    /// library album, a new album, or, when they picked none, the album its
+    /// records name.
     pub(crate) async fn candidate_album_pick(
         &self,
         content_hash: &str,
@@ -41,8 +44,8 @@ impl ImportTables {
         self.store.read(move |sql| load_album_pick_on(&sql, &content_hash)).await
     }
 
-    /// Record `pick` for the candidate `content_hash`. An album no longer in
-    /// the library is refused by its foreign key.
+    /// Record `pick` for the candidate `content_hash`. The table's foreign key
+    /// refuses an album the library no longer holds.
     pub(crate) async fn set_candidate_album_pick(
         &self,
         content_hash: &str,

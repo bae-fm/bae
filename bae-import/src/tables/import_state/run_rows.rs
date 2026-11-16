@@ -209,7 +209,8 @@ fn store_run_on(
     // Each run is minted for one key.
     assert!(stored_key.as_ref() == Some(key), "run {run} of {key} is stored as another key's");
     let owner = Owner::Run(run);
-    // The signals first: the outcome's rows are judged against their text.
+    // Store the signals first, because the outcome write checks its rows
+    // against their text.
     if let Some(signals) = signals {
         store_signals(sql, owner, signals)?;
     }

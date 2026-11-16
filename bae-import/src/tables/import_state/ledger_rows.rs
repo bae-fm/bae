@@ -296,8 +296,9 @@ fn store_lookup(
     if releases.is_empty() {
         return Ok(());
     }
-    // The cell's list lays out as the rules lay out any list, over the
-    // releases in the order the cell lists them.
+    // `ListLayout` groups the cell's releases into rows and cards with the
+    // same rules as any list, over the releases in the order the cell lists
+    // them.
     let list: Vec<MetadataResult> = releases.iter().map(|release| (*release).clone()).collect();
     let layout = ListLayout::of(&list, &group_results(unranked(list.clone()), None), "answered");
     for ((ordinal, release), place) in releases.into_iter().enumerate().zip(&layout.places) {
@@ -399,13 +400,13 @@ fn ledger_rows_sql() -> String {
 }
 
 /// A verdict's ledger as columns of a read that joins its row as `verdict`:
-/// the step columns, and the ledger's lists riding on them as JSON arrays —
-/// the providers, the ISRCs and the offered catalog numbers in order, and
-/// the rows in order, each with its lookups in cell order and each lookup
+/// the step columns, and the ledger's lists as JSON array columns beside
+/// them — the providers, the ISRCs and the offered catalog numbers in order,
+/// and the rows in order, each with its lookups in cell order and each lookup
 /// with how many pressings the releases it found are and the cards they make
 /// (each card holding its releases), its answer 'no_match' where it answered
-/// with none. The position of an unlisted match no lookup found rides on them
-/// too.
+/// with none. The read also returns the position of an unlisted match that no
+/// lookup found, in a column of its own.
 pub(super) fn ledger_columns() -> Vec<(&'static str, String)> {
     let list = |value: &str, table: &str, order: &str| {
         format!(

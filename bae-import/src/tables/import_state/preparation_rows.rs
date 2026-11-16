@@ -271,7 +271,8 @@ pub(super) fn save_preparation_on(
         }
         None => return Err(PreparationRefusal::NoState(content_hash.to_string()).into()),
     };
-    // The signals before the verdict: its rows are judged against their text.
+    // Store the signals first, because the verdict write checks its rows
+    // against their text.
     if stored.signals != prep.signals {
         match &prep.signals {
             Some(signals) => {
@@ -284,7 +285,8 @@ pub(super) fn save_preparation_on(
     if stored.identification != prep.identification {
         match &prep.identification {
             Some(identification) => store_verdict(sql, content_hash, identification)?,
-            // The matches hang off the verdict row, so this clears them too.
+            // Deleting the verdict row also deletes the matches that
+            // reference it.
             None => delete_verdict(sql, content_hash)?,
         }
     }
@@ -334,7 +336,7 @@ pub(super) fn save_preparation_on(
                 prep.identification.is_some(),
                 "candidate {content_hash} opens on a result it stores none of"
             );
-            // The verdict's rows were written above, in this transaction.
+            // This save wrote the verdict's rows above, in this transaction.
             let check_failed: bool = sql.query_row(
                 "SELECT folder_check IS NOT NULL \
                  FROM import_candidate_verdict_decision WHERE content_hash = ?",

@@ -541,8 +541,9 @@ impl ImportTables {
         self.store.read(|sql| load_standings_on(&sql)).await
     }
 
-    /// Where every candidate with a standing stands, live: a test waits on
-    /// the write that moves one instead of reading again until it shows.
+    /// Follows every candidate's standing, so a test waits for the write that
+    /// changes a standing instead of reading the table again until the change
+    /// appears.
     pub(crate) fn subscribe_candidate_facts(
         &self,
     ) -> coven::LiveQuery<HashMap<CandidateKey, TriageRuntimeFacts>, bae_store::DbError> {

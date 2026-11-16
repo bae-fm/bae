@@ -39,14 +39,14 @@ enum CandidateBinds {
     None,
     One(String),
     /// One candidate's content hash and the key of the scanned release whose
-    /// file-edit revision the state must stand at.
+    /// file-edit revision the state's edit revision must equal.
     OneAtScan(String, crate::CandidateKey),
 }
 
 impl CandidateFilter {
-    /// The state row of the candidate `content_hash` where it stands at the
-    /// file-edit revision the scan holds for the release `key`: a state from
-    /// another revision is no row. For a statement reading
+    /// Matches the state row of the candidate `content_hash` only when its
+    /// edit revision equals the file-edit revision the scan holds for the
+    /// release `key`, and no row otherwise. For a statement reading
     /// `import_candidate_state AS state`.
     pub(crate) fn current_at_scan(content_hash: &str, key: &crate::CandidateKey) -> Self {
         Self {

@@ -1,5 +1,5 @@
-//! A verdict's rows as the write that stores them, or that changes what they
-//! are judged against, lays them out.
+//! These tests check the layout that each write storing a verdict, or
+//! changing its text, stores with the verdict's rows.
 
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
@@ -121,8 +121,8 @@ async fn a_stored_verdict_holds_its_layout() {
     );
 }
 
-/// Striking the number the text prints out of the candidate's choices judges
-/// its rows again: the row that agreed on it no longer does.
+/// Discounting the catalog number the text prints makes the write check the
+/// rows again, and the row that matched it no longer agrees.
 #[tokio::test]
 async fn striking_a_number_out_reorders_the_stored_rows() {
     let (db, hash) = stored_with_text(&two_rows(), printing_cat_a()).await;
@@ -142,8 +142,8 @@ async fn striking_a_number_out_reorders_the_stored_rows() {
     assert_eq!(catalog_agreements(&db, &hash).await, vec!["a 0", "b 0"]);
 }
 
-/// New signals for a candidate whose verdict stands judge its rows against
-/// the text they hold.
+/// Storing new signals for a candidate that has a verdict checks the
+/// verdict's rows again against the new text.
 #[tokio::test]
 async fn new_signals_judge_the_verdict_rows_again() {
     let (db, hash) = stored_with_text(&two_rows(), Vec::new()).await;
@@ -159,8 +159,8 @@ async fn new_signals_judge_the_verdict_rows_again() {
     assert_eq!(catalog_agreements(&db, &hash).await, vec!["a 0", "b 1"]);
 }
 
-/// Two records of one pressing store one row, the lead first, and the row's
-/// text.
+/// Storing a verdict puts two records of one pressing in one row, the lead
+/// first.
 #[tokio::test]
 async fn two_records_of_one_pressing_lay_out_as_one_row() {
     let mut discogs = release("d", "CAT-A");
@@ -181,7 +181,8 @@ async fn two_records_of_one_pressing_lay_out_as_one_row() {
     assert_eq!(places(&db, &hash).await, vec!["a 0 0", "d 0 1"]);
 }
 
-/// The cards the stored rows answer, as the pane reads them.
+/// Loads the verdict's cards from the stored rows, the way the pane reads
+/// them.
 async fn stored_cards(
     db: &Store,
     hash: &str,
@@ -190,8 +191,8 @@ async fn stored_cards(
     crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash, verdict).await.unwrap()
 }
 
-/// The statement answers the cards the rules fold, with each row's badges
-/// and counts.
+/// The statement returns the cards, badges and counts that the rules build
+/// from the verdict.
 #[tokio::test]
 async fn verdict_cards_statement_matches_the_rules() {
     let verdict = TerminalVerdict::Found {
@@ -296,8 +297,9 @@ async fn pressings_no_catalog_files_under_an_album_share_none() {
     assert_eq!(shared_album_of(verdict).await, None);
 }
 
-/// The cards as the statement reads them are the cards as the rules fold
-/// them, within one card the rows ordered by what the text agrees with.
+/// The cards the statement reads are the cards the rules build by grouping
+/// the rows, and within one card the rows are in order of what the text
+/// agrees with.
 #[tokio::test]
 async fn verdict_cards_order_the_rows_of_one_card_by_agreement() {
     let one_album = |release_id: &str, catalog: &str| {
@@ -340,7 +342,8 @@ fn two_rows_listing_the_unagreed_first() -> TerminalVerdict {
     }
 }
 
-/// The rows agreement set aside are counted across every card.
+/// The statement counts the rows that the agreement check set aside, across
+/// every card.
 #[tokio::test]
 async fn verdict_cards_statement_counts_rows_set_aside() {
     let verdict = TerminalVerdict::Found {
@@ -494,8 +497,8 @@ async fn verdict_cards_statement_states_the_folder_check_and_the_pick() {
     }
 }
 
-/// The two verdicts the rules pick and check from are not the same: the
-/// statement's values are not the reference's defaults.
+/// The statement names the release of a fitting pressing as the pick, and
+/// the failed check for the other two verdicts, not empty values.
 #[tokio::test]
 async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check() {
     use bae_catalogs::search::SourceTracks::{Listed, Nothing};

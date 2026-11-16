@@ -1,11 +1,13 @@
-//! The blank draft of a folder, read from what its scan stored of the files.
-//! Its views are `blank_draft_rows.sql`, which every device's library holds.
+//! The blank draft of a folder, which views build from what the folder's scan
+//! stored of its files. Its views are `blank_draft_rows.sql`, which every
+//! device's library holds.
 //!
-//! The scan seeds a new state with it, and deleting this device's release of
-//! a folder seeds it again (`local_release_origin_gone_seeds_blank_draft`, in
+//! The scan stores the blank draft for a new state when the folder's files
+//! hold no tags to draft from, and deleting this device's release of a folder
+//! stores it again (`local_release_origin_gone_seeds_blank_draft`, in
 //! `blank_draft_rows.sql`, which runs after `import_origin.sql` creates the
-//! table it fires on), so no state of a folder this device did not import
-//! lacks a draft row.
+//! table it fires on). So every state of a folder this device did not import
+//! has a draft row once the scan holds the folder's audio units.
 
 pub(super) const SQL: &str = include_str!("blank_draft_rows.sql");
 

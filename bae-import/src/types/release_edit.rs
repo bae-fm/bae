@@ -98,8 +98,8 @@ pub struct TrackUserEdit {
 /// a library release's edit session's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DraftAlbum {
-    /// A new album, because no album is picked and the draft's records name
-    /// none the library holds.
+    /// A new album, because the person picked no album and the draft's
+    /// records name none the library holds.
     New,
     /// A new album the person picked, over what the records name.
     PickedNew,

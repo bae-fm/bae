@@ -160,8 +160,8 @@ pub(super) fn replace_lookup_choices_on(
             params![content_hash, value],
         )?;
     }
-    // The rows the candidate's verdict lists are judged against the text with
-    // these numbers struck out.
+    // Check and group the verdict's rows again against the text, without the
+    // catalog numbers the person discounted.
     super::verdict_layout::lay_out_matches_on(
         sql,
         super::verdict_rows::Owner::Candidate(content_hash),

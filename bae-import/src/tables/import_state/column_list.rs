@@ -1,7 +1,8 @@
-//! A read's columns named once, selected as plain columns or as one JSON
-//! object, and read back from either. A statement that nests a run's verdict
-//! or signals in a JSON list selects the object; the reader that decodes it is
-//! the one that decodes the plain columns.
+//! `ColumnList` names a read's columns once. A statement selects them as
+//! plain columns or as one JSON object, and one reader reads them back from
+//! either. A statement that nests a run's verdict or signals in a JSON list
+//! selects the object; the reader that decodes it is the one that decodes the
+//! plain columns.
 
 use rusqlite::types::{FromSql, Value, ValueRef};
 use serde_json::Value as Json;
@@ -43,8 +44,8 @@ impl Columns for rusqlite::Row<'_> {
     }
 }
 
-/// The columns of one JSON object a [`ColumnList::object`] selected. A list
-/// inside it reads as its JSON text, as it does on a row.
+/// The columns of one JSON object a [`ColumnList::object`] selected. `get`
+/// returns a list inside the object as its JSON text, as a row's column does.
 #[derive(serde::Deserialize)]
 #[serde(transparent)]
 pub(super) struct JsonColumns(serde_json::Map<String, Json>);

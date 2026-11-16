@@ -26,9 +26,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- returned releases number theirs in list order. NULL for an unlisted
     -- release, which is in no row.
     pressing            INTEGER CHECK (pressing >= 0),
-    -- The card the release is on: the list place of the card's first release,
-    -- the place a card sits at among cards nothing ranks apart. NULL where
-    -- `pressing` is.
+    -- The card the release is on: the list place of the card's first release.
+    -- Cards that rank equal are ordered by it. NULL where `pressing` is.
     card                INTEGER CHECK (card >= 0),
     -- Where this release stands among the records of its row, 0 for the row's
     -- lead, which a pick reads the draft from. NULL where `card` is.
@@ -36,9 +35,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- Which of its fields the folder's text agrees with, 1 where it does: the
     -- disc ID (a lookup of the folder's disc IDs returned the release), the
     -- barcode, the catalog number, the label, the pressing year, the country,
-    -- and the album's title and artist. Written with the rows by the write
-    -- that changes the rows, the folder's text or the numbers struck out; 0
-    -- for every release nothing judges (a search's, an unlisted one).
+    -- and the album's title and artist. The write that changes the rows, the
+    -- folder's text or the discounted catalog numbers writes these flags. A
+    -- search's release and an unlisted release hold 0.
     agrees_disc_id      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_disc_id IN (0, 1)),
     agrees_barcode      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_barcode IN (0, 1)),
     agrees_catalog      INTEGER NOT NULL DEFAULT 0 CHECK (agrees_catalog IN (0, 1)),
@@ -82,9 +81,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     source_group_id     TEXT,
     -- What the record's catalog says its album is on the other catalog.
     -- 'not_asked': never read. 'read': the album link rows hold what it named.
-    -- 'unread': a needed document could not be fetched and nothing named an
-    -- album. A search's MusicBrainz release states what its group was read to
-    -- be from the picks (`import_candidate_search_pick`) and the list.
+    -- 'unread': bae could not fetch a needed document and nothing named an
+    -- album. A search's MusicBrainz release holds the album bae works out for
+    -- its group from the picks (`import_candidate_search_pick`) and the list.
     album_links         TEXT NOT NULL CHECK (album_links IN ('not_asked', 'read', 'unread')),
     -- NULL until the source is asked for its tracklist. 'unreadable': it
     -- lists tracks for the audio that cannot be read into values.
@@ -280,12 +279,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
 ) STRICT;
 
--- What each card of a list says, worked out when the list's releases are laid
--- out into rows and cards: the titles, the artists and the labels the card
--- names, each in `ordinal` order. A list is the owner's own (`step` empty,
--- `position` and `cell` 0) or one cell of its ledger (that cell's key).
--- `card` is the card's number in `import_candidate_match.card`. `text` is the
--- title or label as written, or an artist's credit line as JSON.
+-- What each card of a list says, which the layout write stores when it
+-- groups the list's releases into rows and cards: the titles, the artists
+-- and the labels the card names, each in `ordinal` order. A list is the
+-- owner's own (`step` empty, `position` and `cell` 0) or one cell of its
+-- ledger (that cell's key). `card` is the card's number in
+-- `import_candidate_match.card`. `text` is the title or label as written, or
+-- an artist's credit line as JSON.
 CREATE TABLE IF NOT EXISTS import_candidate_card_text (
     content_hash TEXT,
     identify_run INTEGER,

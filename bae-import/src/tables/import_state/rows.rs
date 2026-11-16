@@ -48,7 +48,8 @@ fn read_candidate(row: &Row<'_>) -> Result<StoredCandidate, DbError> {
 }
 
 /// Every stored candidate row, or the one `only` names, assembled with the
-/// verdict, signals, provenance, and file-decision rows that hang off it.
+/// verdict, signals, provenance, and file-decision rows that share its
+/// content hash.
 pub(crate) fn load_states_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
@@ -56,9 +57,9 @@ pub(crate) fn load_states_on(
     load_states_rows_on(sql, only)?()
 }
 
-/// The candidates `only` names in one read: each state row with the rows
-/// that hang off it one-to-one joined onto it, and its matches, in position
-/// order, nested in it as one JSON array.
+/// The candidates `only` names in one read: each state row with the
+/// one-to-one rows that share its content hash joined onto it, and its
+/// matches, in position order, nested in it as one JSON array.
 pub(crate) fn load_states_rows_on(
     sql: &impl coven::SqlRead,
     only: CandidateRows<'_>,
@@ -66,9 +67,9 @@ pub(crate) fn load_states_rows_on(
     states_rows_where(sql, only.filter("state.content_hash"))
 }
 
-/// The state of the candidate `content_hash` where it stands at the file-edit
-/// revision the scan holds for the release `key`, in the same read; `None`
-/// for a state another revision wrote.
+/// The state of the candidate `content_hash` when its edit revision equals
+/// the file-edit revision the scan holds for the release `key`, in the same
+/// read; `None` when another revision wrote it.
 pub(crate) fn load_current_state_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
@@ -78,7 +79,7 @@ pub(crate) fn load_current_state_on(
         .remove(content_hash))
 }
 
-/// The states `filter` keeps, each with the rows that hang off it.
+/// The states `filter` keeps, each with the rows that share its content hash.
 fn states_rows_where(
     sql: &impl coven::SqlRead,
     filter: CandidateFilter,

@@ -575,7 +575,8 @@ fn pressed(source: LookupCatalog, release_id: &str, group: &str, code: &str) -> 
 /// Each catalog's answer lays the whole list out again: the MusicBrainz and
 /// the Discogs release that print one barcode become one row under one card,
 /// the MusicBrainz record leading, and a row that nothing pairs stays alone.
-/// What the row lists where its records differ is stored with it.
+/// The layout write stores, with the row, the facts on which its records
+/// differ.
 #[tokio::test]
 async fn search_answer_pairs_rows_across_both_catalogs_answers() {
     let (tables, key, _tmp) = scanned().await;
@@ -644,9 +645,9 @@ async fn search_answer_pairs_rows_across_both_catalogs_answers() {
     );
 }
 
-/// A pick of a MusicBrainz release reads what its documents state its album
-/// is on Discogs, and the list is laid out again with that: the two
-/// albums' cards become one, though no row pairs their releases.
+/// Picking a MusicBrainz release reads its documents' Discogs album, and the
+/// pick's write groups the list again with it: the two albums' cards become
+/// one, though no row pairs their releases.
 #[tokio::test]
 async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
     let (tables, key, _tmp) = scanned().await;
@@ -706,7 +707,7 @@ async fn discogs_answer_after_a_pick_joins_the_cards_by_what_both_print() {
     assert_eq!(
         stored_links,
         ["dg-1 not_asked ", "mb-1 read discogs:master-7"],
-        "the MusicBrainz release states the album its group was read to be"
+        "the MusicBrainz release holds the Discogs album the pick found for its group"
     );
 }
 
@@ -746,7 +747,8 @@ async fn switching_a_catalog_off_lays_out_the_rest_again() {
 }
 
 /// The cards a search reads are the cards the rules make of the releases the
-/// search holds, as they were laid out when the last write changed them.
+/// search holds, as the last write that changed them grouped them with
+/// bae_identify's grouping rules.
 fn assert_cards_are_the_rules_cards(search: &CandidateSearch) {
     let landed: Vec<MetadataResult> = search
         .sources
@@ -770,9 +772,8 @@ fn pressed_in(id: &str, group: &str, code: &str, year: Option<i32>) -> MetadataR
     MetadataResult { year, ..pressed(LookupCatalog::MusicBrainz, id, group, code) }
 }
 
-/// The rows of a card read most-agreed-with first, which a search leaves at
-/// the pressing year: the earliest year first and the pressing nobody dates
-/// last, rows of one year in the order they were listed.
+/// A search orders a card's rows by pressing year, earliest first and undated
+/// last, and rows of one year in the order the catalogs returned them.
 #[tokio::test]
 async fn search_cards_statement_orders_rows_by_pressing_year() {
     let (tables, key, _tmp) = scanned().await;
@@ -860,9 +861,10 @@ async fn search_cards_statement_splits_a_card_holding_two_albums_of_one_catalog(
     assert_cards_are_the_rules_cards(&search);
 }
 
-/// Discogs landing merges into the card MusicBrainz already drew: same
-/// album's barcode, so one card with one row on both catalogs, the
-/// MusicBrainz record leading, and the card names both catalogs.
+/// When Discogs answers later with a release that prints the same barcode,
+/// bae adds it to the MusicBrainz release's row on the existing card: the
+/// card has one row on both catalogs, the MusicBrainz record leading, and
+/// the card names both catalogs.
 #[tokio::test]
 async fn a_later_catalog_merges_into_the_card_already_drawn() {
     let (tables, key, _tmp) = scanned().await;
@@ -904,10 +906,9 @@ async fn a_later_catalog_merges_into_the_card_already_drawn() {
     assert_cards_are_the_rules_cards(&merged);
 }
 
-/// A picked result whose documents link nothing is read against what the
-/// landed list prints: one catalog number under one label joins the albums,
-/// and that is what the group is kept as. Before it is picked the same
-/// numbers join nothing.
+/// When a picked result's documents link nothing, bae compares it with the
+/// catalog numbers the list prints, and stores the album they share under one
+/// label as the group's. Before the pick, the same numbers join nothing.
 #[tokio::test]
 async fn a_picked_result_no_document_links_is_joined_by_what_the_list_prints() {
     let (tables, key, _tmp) = scanned().await;

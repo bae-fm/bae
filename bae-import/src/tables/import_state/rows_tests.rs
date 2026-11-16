@@ -70,9 +70,9 @@ async fn a_run_starts_from_no_candidate_without_state() {
     assert!(tables.load_candidate_run_start("unscanned").await.unwrap().is_none());
 }
 
-/// Candidates read in one statement keep each their own matches, in position
-/// order: one with a candidate row and no verdict, one with a verdict of a
-/// single match, one with a verdict of three.
+/// When one statement loads several candidates, each candidate keeps its own
+/// matches in position order: one with a candidate row and no verdict, one
+/// with a verdict of a single match, one with a verdict of three.
 #[tokio::test]
 async fn candidates_read_together_each_hold_their_own_matches() {
     use bae_identify::{Findings, NarrowedOut, TerminalVerdict};

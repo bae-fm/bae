@@ -338,8 +338,8 @@ pub(crate) fn load_candidate_file_edits_on(
 
 #[cfg(test)]
 impl ImportTables {
-    /// Store `edits` as the decisions of the candidate `content_hash`, whose
-    /// state row is stored.
+    /// Store `edits` as the decisions of the candidate `content_hash`. The
+    /// caller must create the candidate's state row first.
     pub(crate) async fn store_file_edits_for_test(
         &self,
         content_hash: &str,

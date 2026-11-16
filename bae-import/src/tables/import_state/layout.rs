@@ -1,8 +1,7 @@
-//! How one list of releases lays out into pressing rows and album cards, as
-//! the tables keep it. A typed search's list and each ledger cell's list are
-//! laid out by the write that changes what they hold, so a read selects the
-//! rows, the cards and the text the cards name; nothing groups a list again
-//! as it is read.
+//! How bae places one list of releases into pressing rows and album cards, as
+//! the tables keep it. The write that changes a typed search's list or a
+//! ledger cell's list also groups it into rows and cards and stores the text
+//! the cards name, so a read only selects them and never groups a list again.
 //!
 //! The rules are the identify domain's (`bae_identify::release_group`); this
 //! module takes what they decided for a list, in list order, and writes each
@@ -19,8 +18,9 @@ use bae_identify::release_group::{group_results, unranked, ReleaseGroup, Stateme
 use std::collections::HashMap;
 
 /// Where one release of a list stands: its row, its card and its place among
-/// the records of its row. Rows and cards are numbered by where each first
-/// appears in the list.
+/// the records of its row. A card's number is the list place of its first
+/// record. `ListLayout::of` numbers rows in the order each first appears in
+/// the list, and `ListLayout::of_verdict` keeps the numbers the run gave them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Place {
     pub(super) pressing: u32,
@@ -58,9 +58,9 @@ pub(super) struct ListLayout {
 }
 
 impl ListLayout {
-    /// The layout of `list` that `groups`, the cards the rules made of it,
-    /// hold, its rows all `listing`. The rows are numbered by where each first
-    /// appears in the list.
+    /// Where each release of `list` sits in `groups`, the cards the grouping
+    /// rules made from it. Every row is listed as `listing`. The layout
+    /// numbers the rows in the order their first records appear in the list.
     pub(super) fn of(
         list: &[MetadataResult],
         groups: &[ReleaseGroup],
@@ -69,10 +69,11 @@ impl ListLayout {
         Self::laid_out(list, groups, |_first, rank| rank, |_| listing)
     }
 
-    /// The layout of a verdict's `list`, its `offered` releases first and the
-    /// ones agreement set aside after, that `groups` hold. The rows keep the
-    /// numbers the run gave them, `rows` aligned with the list: the offered
-    /// rows and the set-aside rows each number their own.
+    /// Where each release of a verdict's `list` sits in `groups`. The list
+    /// holds its `offered` releases first and the ones the agreement check
+    /// set aside after. The rows keep the numbers the run gave them: `rows`
+    /// holds each release's row number, in list order. The offered rows and
+    /// the set-aside rows each count from their own start.
     pub(super) fn of_verdict(
         list: &[MetadataResult],
         groups: &[ReleaseGroup],
@@ -320,9 +321,9 @@ pub(super) fn store_list_text(
 
 /// Lay out the typed search `run`'s whole list again, inside the write that
 /// changed it, and store what the rules decided: each release's row, card
-/// and place among its row's records, what each MusicBrainz group was read to
-/// be from the picks and the list, and the text of each card and row. Answers
-/// what each group was read to be.
+/// and place among its row's records, the album links that `read_groups`
+/// works out for each MusicBrainz group from the picks and the list, and the
+/// text of each card and row. Returns those links.
 pub(super) fn lay_out_search_on(
     sql: &CovenWrite<'_>,
     run: i64,
@@ -340,8 +341,8 @@ pub(super) fn lay_out_search_on(
     for result in &mut results {
         album_links::apply(result, &read);
     }
-    // Typed search: nothing was judged against the candidate's own text, so
-    // the rows keep the pressing-year order alone.
+    // A typed search does not compare its results with the candidate's own
+    // text, so the rows keep the pressing-year order alone.
     let groups = group_results(unranked(results.clone()), None);
     let layout = ListLayout::of(&results, &groups, "returned");
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {

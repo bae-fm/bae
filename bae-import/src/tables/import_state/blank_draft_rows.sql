@@ -1,19 +1,22 @@
--- The blank draft of every folder this device did not import, read from what
--- its scan stored: one empty track per audio unit (`scan_candidate_unit`),
--- each on the medium of its disc, files stating no disc first, every medium
--- of unstated carrier and one side, every track numbered as its file states.
--- A release a grouping builds is titled by the name it is listed as, and no
--- one folder's name speaks for any other release. The cover is the image of
--- its own the folder's rules pick (`scan_candidate.blank_cover_file`).
+-- These views build the blank draft of every folder this device did not
+-- import from what its scan stored: one empty track per audio unit
+-- (`scan_candidate_unit`), each on the medium of its disc, with the files that
+-- state no disc first. Every medium has no stated carrier and one side, and
+-- every track takes the number its file states. A grouping's release takes
+-- the grouping's name as its title, and any other release's title is empty.
+-- The cover is the image file that the folder's cover rules pick
+-- (`scan_candidate.blank_cover_file`).
 --
--- These views are the one definition of that draft. The scan seeds a state
--- from them, and so does the write that deletes this device's release of the
--- folder (`local_release_origin_gone_seeds_blank_draft`), which is why every
--- state of a folder this device did not import holds a draft row. A state the
--- scan holds no audio units of yet (a folder reported before its audio is
--- read) has no rows in them.
+-- These views are the one definition of that draft. The scan stores a new
+-- state's draft from them when the folder's files hold no tags to draft from,
+-- and so does the trigger that runs when bae deletes this device's release of
+-- the folder (`local_release_origin_gone_seeds_blank_draft`). A state the scan
+-- holds no audio units of yet (a folder that the scan found before it read
+-- the folder's audio) has no rows in them.
 
--- Each state, with the one scan copy of its files it names.
+-- This view joins each state to the first scan row of its candidate key and
+-- content hash. The view leaves out a state the scan holds no audio units of
+-- and a state whose release this device imported.
 CREATE VIEW IF NOT EXISTS blank_draft_candidate AS
 SELECT s.content_hash, scanned.watched_folder_path, scanned.path AS candidate_path,
        CASE WHEN scanned.grouping_key IS NULL THEN '' ELSE scanned.name END AS album_title,
@@ -69,13 +72,12 @@ SELECT content_hash, 'local' AS kind, blank_cover_file AS file_id
 FROM blank_draft_candidate
 WHERE blank_cover_file IS NOT NULL;
 
--- A folder whose release this device deleted (or another device deleted, and
--- coven applied here) is back in Found with the blank draft its files make:
--- the import deleted its draft, and no bae write runs when the release goes,
--- so the deletion seeds it. Every state of a folder this device did not
--- import then holds a draft row. A state the scan holds no audio units for
--- has no blank draft (the views above): the scan seeds it with its
--- files.
+-- Deleting a folder's `local_release_origin` row writes the folder's blank
+-- draft from its scanned files, so the folder is back in Found. The import
+-- deleted the folder's draft, and no other bae write runs when the release
+-- goes, so this trigger writes it. A state the scan holds no audio units for
+-- has no blank draft in the views above: the scan writes that state's draft
+-- when it reads the folder's files.
 CREATE TRIGGER IF NOT EXISTS local_release_origin_gone_seeds_blank_draft
 AFTER DELETE ON local_release_origin
 WHEN NOT EXISTS (SELECT 1 FROM import_candidate_edit WHERE content_hash = OLD.content_hash)

@@ -305,7 +305,7 @@ fn paired_cell_verdict() -> TerminalVerdict {
     }
 }
 
-/// A cell's list is laid out with the ledger's write: the MusicBrainz and the
+/// The ledger's write stores the cell's layout: the MusicBrainz and the
 /// Discogs release a lookup found that print one barcode are one row under
 /// one card, the MusicBrainz record leading, the card names its title and
 /// label once, and the row lists what its records state.
@@ -354,9 +354,9 @@ async fn ledger_cell_cards_are_stored_with_the_ledger() {
     );
 }
 
-/// A cell reads back the cards the rules made of what it found: one statement
-/// over the stored layout answers the cards, their rows and each row's
-/// records, and it is the cell the run recorded.
+/// A cell reads back the cards the rules made of what it found: one query
+/// over the stored layout returns the cards, their rows and each row's
+/// records, and the cell it reads is the one the run recorded.
 #[tokio::test]
 async fn ledger_cell_cards_read_back_as_the_rules_made_them() {
     let verdict = paired_cell_verdict();

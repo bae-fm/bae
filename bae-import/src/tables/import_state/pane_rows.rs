@@ -865,7 +865,8 @@ impl ImportTables {
     }
 
     /// Replace the stored draft of `content_hash` with `draft`, as a person's
-    /// save does, though `draft` need not be drawn over the folder's audio.
+    /// save does, though the tracks of `draft` may play files the folder does
+    /// not hold.
     pub(crate) async fn replace_draft_for_test(&self, content_hash: &str, draft: &CandidateDraft) {
         let (content_hash, draft) = (content_hash.to_string(), draft.clone());
         self.store
@@ -881,23 +882,26 @@ impl ImportTables {
                 )
             })
             .await
-            .expect("the draft is stored");
+            .expect("store_draft stores the draft");
     }
 
-    /// Plant damage for a test: every draft in the library under `directory`
-    /// is not its state's, though that state stays and its release was never
-    /// imported here. Every scan and the deletion of an imported release seed
-    /// the draft, so no write leaves a state without one.
+    /// Plant damage for a test: move every draft row in the library under
+    /// `directory` off its candidate's state, so the state stays with no
+    /// draft although this device never imported its release. Every scan and
+    /// the deletion of an imported release store the draft, so no write
+    /// leaves a state without one.
     pub(crate) async fn plant_missing_drafts_for_test(directory: &std::path::Path) {
         let directory = directory.to_path_buf();
         bae_util::test_blocking::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "import_candidate_edit",
-                // Each draft row is renamed away from its state, since a
-                // delete would reach the track indexes' collation, which
-                // this connection lacks; the list's trigger that follows
-                // the row would run the list's functions.
+                // The update changes each draft row's content hash instead
+                // of deleting the row, because a delete reaches the track
+                // indexes, whose collation this connection lacks. The
+                // statement drops the list's trigger on the draft because
+                // that trigger calls the list's functions, which this
+                // connection also lacks.
                 "PRAGMA foreign_keys = OFF; \
                  DROP TRIGGER IF EXISTS import_list_on_draft_changed; \
                  UPDATE import_candidate_edit SET content_hash = 'planted-' || content_hash;",

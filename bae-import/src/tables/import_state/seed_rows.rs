@@ -9,11 +9,11 @@ use super::*;
 
 /// Make sure `files` has a state row, and record `folder` as a folder on disk
 /// it was found at; the state lives while a watched folder covers one of
-/// those folders. A state that holds no draft row and whose files this device
-/// did not import is seeded with one: the folder read as its own files
-/// describe it when `file_metadata` holds that reading, and otherwise the
-/// blank draft its stored audio units make. A state that holds a draft keeps
-/// it.
+/// those folders. When a state holds no draft row and this device did not
+/// import its files, the function writes one: the draft that the files' own
+/// tags describe when `file_metadata` holds that reading, and otherwise the
+/// blank draft that the folder's stored audio units make. A state that holds
+/// a draft keeps it.
 pub(crate) fn ensure_candidate_state(
     sql: &CovenWrite<'_>,
     path: &CandidateKey,

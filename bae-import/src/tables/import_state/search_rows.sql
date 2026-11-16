@@ -52,12 +52,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_search_source (
     CHECK (failure_status IS NULL OR failure = 'provider')
 ) STRICT;
 
--- What a pick of a MusicBrainz release read its album to be on the other
--- catalog: the release's own documents' statements, before the list's
--- releases are compared. A search's rows state what each group was read to be
--- from all its picks together and the list (`import_candidate_match.album_links`),
--- and a pick is the input of that reading, so it is kept apart. A pick lasts
--- as long as the search holds the release.
+-- Each row holds what the documents of a picked MusicBrainz release say its
+-- album is on the other catalog, before bae compares the list's releases.
+-- bae decides each group's album from all picks and the list
+-- (`import_candidate_match.album_links`), so it stores each pick in its own
+-- row. A pick lasts as long as the search holds the release.
 CREATE TABLE IF NOT EXISTS import_candidate_search_pick (
     search_run  INTEGER NOT NULL
         REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,

@@ -1,6 +1,6 @@
-//! A stored match as one JSON object: the SQL that answers a match joined as
-//! `found` with what hangs off it, and the reader that turns it back into the
-//! match. A card carries its releases as these, and every read of a match
+//! A stored match as one JSON object: the SQL that returns a match joined as
+//! `found` with the rows that name it, and the reader that turns it back into
+//! the match. A card stores its releases as these, and every read of a match
 //! (a verdict's, a run's, a search's) selects one.
 
 use super::match_rows::{
@@ -18,9 +18,9 @@ use bae_catalogs::search::{MetadataResult, SourceTracks};
 use bae_types::pressing::{Medium, StatedMedia};
 
 /// A match joined as `found` as one JSON object: its own columns, its album's
-/// first year from the stored catalog release it names, and what hangs off it,
-/// each list in its stored order: its labels, barcodes, cover copies, media,
-/// links and album links. [`match_row_of`] reads it back.
+/// first year from the stored catalog release it names, and the rows that
+/// name it, each list in its stored order: its labels, barcodes, cover
+/// copies, media, links and album links. [`match_row_of`] reads it back.
 pub(super) fn match_record_sql(found: &str) -> String {
     let child = |table: &str, value: &str, order: &str| {
         format!(
@@ -263,8 +263,8 @@ impl StoredRecord {
                     document_failure,
                     document_failure_status,
                 )?,
-                // Read from the stored catalog release the match names, so a
-                // later fetch of it shows.
+                // The SQL reads the year from the stored catalog release, so
+                // a later fetch of that release changes it.
                 album_first_year,
                 // Only a run's ranking reads these, so a verdict keeps neither.
                 track_titles: Vec::new(),
@@ -323,7 +323,8 @@ pub(super) fn match_rows_of(content_hash: &str, json: &str) -> Result<StoredMatc
     })
 }
 
-/// The releases the verdict-shaped `owner` holds, in position order.
+/// The releases of the candidate's verdict or the run that `owner` names, in
+/// position order.
 pub(super) fn load_owner_matches_on(
     sql: &impl coven::SqlRead,
     owner: Owner<'_>,

@@ -1,13 +1,14 @@
 //! The album cards of a list of releases (a typed search's, a ledger cell's),
-//! read in one statement from what the write that stored the list laid out:
+//! which one statement reads from the layout that the list's write stored:
 //! each release's row, card and place among its row's records, the text of
 //! each card, and what each row lists.
 //!
-//! The statement orders and groups what is stored the way the cards are
-//! drawn: a card's catalog buckets, its sections when it holds two albums of
-//! one catalog, its rows by year, its cover and the catalogs it names. It
-//! answers the cards as nested JSON, each record the release itself as
-//! [`match_record_sql`] holds it, and [`groups_of`] reads that into the cards.
+//! The statement orders and groups the stored rows the way the pane draws the
+//! cards: a card's catalog buckets, its sections when it holds two albums of
+//! one catalog, its rows by year, its cover and the catalogs it names. The
+//! statement returns the cards as nested JSON, each record the release itself
+//! as [`match_record_sql`] holds it, and [`groups_of`] reads that JSON into
+//! the cards.
 
 use super::match_record::{match_record_sql, StoredRecord};
 use super::*;
@@ -279,10 +280,11 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
 /// The SQL of a scalar subquery reading the cards of the verdict-shaped row
 /// joined as `verdict` (a candidate's verdict, or a run's): the cards of its
 /// offered and set-aside releases with what the folder's text agrees with
-/// about each row, how many rows were set aside, whether the offered rows
-/// are several pressings of one album, and the check against the folder and
-/// the release the verdict decides on (`import_candidate_verdict_decision`).
-/// A JSON object read by [`verdict_cards_of`].
+/// about each row, how many rows the agreement check set aside, whether the
+/// offered rows are several pressings of one album, and the check against the
+/// folder and the release the verdict decides on
+/// (`import_candidate_verdict_decision`). [`verdict_cards_of`] reads the JSON
+/// object the subquery returns.
 pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     let owner = format!(
         "{{table}}.content_hash IS {verdict}.content_hash \
@@ -626,7 +628,8 @@ fn statements_of(stored: Vec<StoredStatement>) -> Result<Statements, DbError> {
                 &catalogs,
             )?),
             "label_name" | "catalog_number" => {
-                // A row's label lines are numbered from zero, in order.
+                // The layout write numbers a row's label lines from zero, in
+                // order.
                 while statements.labels.len() <= line {
                     statements
                         .labels

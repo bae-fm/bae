@@ -1,9 +1,10 @@
-//! How a verdict's or a run's releases lie out as rows and cards, judged
-//! against the folder's own text. The write that changes the releases, the
-//! text or the numbers struck out works the layout out and stores it with the
-//! rows: each release's card and place among its row's records, which of its
-//! fields the text agrees with, and the text of each card and row. A read
-//! selects what was stored and never judges or groups the rows again.
+//! How bae places a verdict's or a run's releases into rows and cards, and
+//! checks them against the folder's own text. The write that changes the
+//! releases, the text or the discounted catalog numbers works out the layout
+//! and stores it with the rows: each release's card and place among its row's
+//! records, which of its fields the text agrees with, and the text of each
+//! card and row. A read selects what that write stored and never checks or
+//! groups the rows again.
 
 use super::layout::{store_list_text, ListLayout, ListOwner, Place};
 use super::match_record::load_owner_matches_on;
@@ -46,7 +47,7 @@ impl VerdictLayout {
         let list: Vec<MetadataResult> = findings.releases().cloned().collect();
         let rows: Vec<u32> =
             findings.pressings.iter().chain(&findings.narrowed_out.pressings).copied().collect();
-        // The two lists number their rows apart, as the run numbered them.
+        // Each list numbers its rows on its own, as the run numbered them.
         let layout = ListLayout::of_verdict(&list, &judged.groups, &rows, findings.matches.len());
         Self { places: layout.places.clone(), agreements: judged.agreements, text: layout }
     }
@@ -68,10 +69,10 @@ impl VerdictLayout {
     }
 }
 
-/// The text `owner`'s rows are judged and ordered against: its stored
-/// signals' lines and barcodes, with the numbers struck out of them. A
-/// candidate's are its lookup choices'; a run's are the rows its `ledger`
-/// leaves out.
+/// The text the layout checks and orders `owner`'s rows against: its stored
+/// signals' lines and barcodes, without the discounted catalog numbers. A
+/// candidate's discounted numbers come from its lookup choices; a run's are
+/// the rows its `ledger` excludes.
 pub(super) fn verdict_text_on(
     sql: &CovenWrite<'_>,
     owner: Owner<'_>,
@@ -121,8 +122,8 @@ pub(super) fn verdict_text_on(
     Ok(CandidateText::of(&pool, &struck_out, &barcodes))
 }
 
-/// Lay out `owner`'s stored releases again, as the write that changed what
-/// they are judged against ends: its signals' text or the numbers struck out.
+/// Lay out `owner`'s stored releases again, at the end of a write that
+/// changes their signals' text or the discounted catalog numbers.
 /// An owner with no verdict, or one that found nothing, holds no layout.
 pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     let column = owner.column();

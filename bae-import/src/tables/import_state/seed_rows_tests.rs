@@ -93,8 +93,8 @@ async fn a_named_copy_read_as_other_files_names_the_copy_that_stays() {
     assert_eq!(state.expect("the state stays with a copy").candidate_key, second_candidate.key());
 }
 
-/// A loose bonus track, a disc of two tracks carved by its sheet and a disc
-/// of three.
+/// Writes a loose bonus track, a disc file that its cue sheet splits into two
+/// tracks, and a disc file split into three.
 fn bonus_and_two_discs(folder: &std::path::Path) {
     use crate::mapping::tests::{cue_sheet_text, write_flac};
     write_flac(&folder.join("a bonus.flac"));
@@ -104,10 +104,10 @@ fn bonus_and_two_discs(folder: &std::path::Path) {
     std::fs::write(folder.join("disc 2.cue"), cue_sheet_text("disc 2.flac", 3)).unwrap();
 }
 
-/// The scan seeds a folder's draft from its stored audio units: one medium
+/// The scan stores a folder's draft from its stored audio units: one medium
 /// per disc the files state, loose audio (no disc) first, each track on its
-/// disc's medium and numbered as its unit is. The draft is the one the files
-/// make read in memory.
+/// disc's medium and numbered as its unit is. The stored draft equals the
+/// draft that `blank_candidate_draft` builds in memory from the same files.
 #[tokio::test]
 async fn blank_draft_statement_puts_each_disc_on_its_own_medium_loose_audio_first() {
     use crate::tables::folder_scans::tests::stored_folder;

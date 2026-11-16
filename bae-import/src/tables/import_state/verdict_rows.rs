@@ -239,8 +239,9 @@ pub(super) fn store_outcome(
     // reads none of them.
     delete_ledger(sql, owner)?;
     super::match_rows::delete_verdict_match_entries(sql, owner)?;
-    // The rows are laid out against the text the owner's signals and choices
-    // hold now, in this write, so no row is ever stored unjudged.
+    // store_outcome lays out the rows against the text the owner's signals
+    // and choices hold now, in this write, so it never stores a row the text
+    // has not checked.
     let layout = match (outcome.findings(), outcome.track_count()) {
         (Some(findings), Some(track_count)) => {
             let text = verdict_text_on(sql, owner, outcome.ledger())?;
@@ -458,7 +459,8 @@ pub(super) fn outcome_of(
     if let Some(stray) = ledger.stray_unlisted {
         return Err(DbError::unreadable(
             format!(
-                "the lookups of {content_hash}'s ledger, which found no unlisted match {stray}"
+                "the position of an unlisted match of {content_hash} that no lookup in its \
+                 ledger found"
             ),
             stray,
         ));

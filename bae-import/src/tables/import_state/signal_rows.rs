@@ -224,7 +224,8 @@ pub(super) fn store_signals(
             ],
         )?;
     }
-    // The rows this owner's verdict lists are judged against this text.
+    // The text changed, so check and group the verdict's rows again against
+    // it.
     super::verdict_layout::lay_out_matches_on(sql, owner)
 }
 
