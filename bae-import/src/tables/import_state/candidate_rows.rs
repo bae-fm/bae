@@ -71,6 +71,19 @@ impl OneCandidate<'_> {
     }
 }
 
+/// Whether the `import_candidate_state` row joined as `state` is the current
+/// state of the release the scan stores at the key a statement binds as
+/// `:key`: the state of the content hash the scan holds, at the file-edit
+/// revision the scan holds. Every read of a scanned release's current state
+/// uses this condition.
+pub(crate) fn current_at_scan_sql(state: &str) -> String {
+    format!(
+        "({state}.content_hash, {state}.edit_revision) = \
+             (SELECT scan.content_hash, scan.file_edit_revision \
+              FROM scan_candidate AS scan WHERE scan.path = :key)"
+    )
+}
+
 /// The content hash of the release the scan stores at the key a statement
 /// binds as `:key`.
 pub(crate) const SCANNED_HASH: &str =
@@ -98,10 +111,7 @@ impl CandidateFilter {
     /// `import_candidate_state AS state`.
     pub(crate) fn current_at_scan(key: &crate::CandidateKey) -> Self {
         Self {
-            clause: "WHERE (state.content_hash, state.edit_revision) = \
-                         (SELECT scan.content_hash, scan.file_edit_revision \
-                          FROM scan_candidate AS scan WHERE scan.path = :key)"
-                .to_string(),
+            clause: format!("WHERE {}", current_at_scan_sql("state")),
             binds: CandidateBinds::AtScan(key.clone()),
         }
     }

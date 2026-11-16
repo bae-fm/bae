@@ -357,26 +357,26 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     )
 }
 
-/// The cards of the verdict stored under `content_hash`, which holds
-/// `verdict`: what its rows stored, selected in one statement.
+/// Returns the cards of the verdict stored under `content_hash`, which its
+/// rows stored, in one statement. Returns no cards unless the verdict holds
+/// findings.
 pub(crate) fn load_verdict_cards_on(
     sql: &impl coven::SqlRead,
     content_hash: &str,
-    verdict: &bae_identify::TerminalVerdict,
 ) -> Result<VerdictCards, DbError> {
-    if verdict.findings().is_none() {
-        return Ok(VerdictCards::default());
-    }
-    let json: String = sql.query_row(
-        &format!(
-            "SELECT {cards} FROM import_candidate_verdict AS verdict \
-             WHERE verdict.content_hash = ?",
-            cards = verdict_cards_sql("verdict")
-        ),
-        [content_hash],
-        |row| row.get(0),
-    )?;
-    verdict_cards_of(&json)
+    let json: Option<String> = sql
+        .query_row(
+            &format!(
+                "SELECT {cards} FROM import_candidate_verdict AS verdict \
+                 WHERE verdict.content_hash = ? AND {holds_findings}",
+                cards = verdict_cards_sql("verdict"),
+                holds_findings = super::verdict_rows::holds_findings_sql("verdict"),
+            ),
+            [content_hash],
+            |row| row.get(0),
+        )
+        .optional()?;
+    json.map_or_else(|| Ok(VerdictCards::default()), |json| verdict_cards_of(&json))
 }
 
 /// The cards of the verdict stored for the release the scan stores at
@@ -389,16 +389,15 @@ pub(crate) fn load_candidate_verdict_cards_on(
     let json: Option<String> = sql
         .query_row(
             &format!(
-                "SELECT {cards} FROM scan_candidate AS scan \
-                 JOIN import_candidate_state AS state \
-                     ON (state.content_hash, state.edit_revision) \
-                        = (scan.content_hash, scan.file_edit_revision) \
+                "SELECT {cards} FROM import_candidate_state AS state \
                  JOIN import_candidate_verdict AS verdict \
                      ON verdict.content_hash = state.content_hash \
-                 WHERE scan.path = ? AND verdict.kind IN ('found', 'failed')",
-                cards = verdict_cards_sql("verdict")
+                 WHERE {current} AND {holds_findings}",
+                cards = verdict_cards_sql("verdict"),
+                current = super::current_at_scan_sql("state"),
+                holds_findings = super::verdict_rows::holds_findings_sql("verdict"),
             ),
-            [key],
+            named_params! { ":key": key },
             |row| row.get(0),
         )
         .optional()?;

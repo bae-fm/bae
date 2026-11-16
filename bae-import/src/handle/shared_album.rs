@@ -40,15 +40,18 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::ImportError::Internal {
                 detail: format!("{candidate_key} has no state for its files as they stand"),
             })?;
-        let identify = state.identify.ok_or_else(|| crate::ImportError::Internal {
-            detail: format!("{candidate_key} has no lookup whose pressings to link the album of"),
-        })?;
+        if state.identify.is_none() {
+            return Err(crate::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} has no lookup whose pressings to link the album of"
+                ),
+            });
+        }
         // The rows as the pane lists them: ranked by the candidate's own text,
         // as it reads now.
         let text =
             bae_identify::CandidateText::of_stored(state.signals.as_ref(), &state.lookup_choices);
-        let cards =
-            self.services.tables.load_verdict_cards(&content_hash, &identify.verdict).await?;
+        let cards = self.services.tables.load_verdict_cards(&content_hash).await?;
         let shared = cards.shared_album.ok_or_else(|| crate::ImportError::Internal {
             detail: format!("{candidate_key}'s lookup did not find several pressings of one album"),
         })?;

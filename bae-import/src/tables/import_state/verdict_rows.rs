@@ -152,6 +152,14 @@ pub(super) fn store_verdict(
 }
 
 /// Write `outcome` as `owner`'s, over whatever it stored before, as
+/// Whether the verdict joined as `verdict` holds findings: the kinds that
+/// [`store_outcome`] writes for the verdicts whose
+/// [`TerminalVerdict::findings`] holds some, a found or a failed one. Every
+/// read of a verdict's cards uses this condition.
+pub(super) fn holds_findings_sql(verdict: &str) -> String {
+    format!("{verdict}.kind IN ('found', 'failed')")
+}
+
 /// [`store_verdict`] writes a verdict. Only a run in flight stores a ledger
 /// that has not settled.
 pub(super) fn store_outcome(
@@ -583,18 +591,14 @@ pub(super) fn medium_conflict_of(
 }
 
 impl ImportTables {
-    /// The cards of the verdict `verdict` stored under `content_hash`, as its
-    /// rows hold them.
+    /// The cards of the verdict stored under `content_hash`, as its rows hold
+    /// them.
     pub(crate) async fn load_verdict_cards(
         &self,
         content_hash: &str,
-        verdict: &TerminalVerdict,
     ) -> Result<bae_identify::VerdictCards, DbError> {
         let content_hash = content_hash.to_string();
-        let verdict = verdict.clone();
-        self.store
-            .read(move |sql| super::load_verdict_cards_on(&sql, &content_hash, &verdict))
-            .await
+        self.store.read(move |sql| super::load_verdict_cards_on(&sql, &content_hash)).await
     }
 
     /// Whether a verdict is stored for the files at `content_hash` as their

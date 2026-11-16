@@ -183,12 +183,8 @@ async fn two_records_of_one_pressing_lay_out_as_one_row() {
 
 /// Loads the verdict's cards from the stored rows, the way the pane reads
 /// them.
-async fn stored_cards(
-    db: &Store,
-    hash: &str,
-    verdict: &TerminalVerdict,
-) -> bae_identify::VerdictCards {
-    crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash, verdict).await.unwrap()
+async fn stored_cards(db: &Store, hash: &str) -> bae_identify::VerdictCards {
+    crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash).await.unwrap()
 }
 
 /// The statement returns the cards, badges and counts that the rules build
@@ -211,7 +207,7 @@ async fn verdict_cards_statement_matches_the_rules() {
     };
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
 
-    let read = stored_cards(&db, &hash, &verdict).await;
+    let read = stored_cards(&db, &hash).await;
 
     let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
     let expected =
@@ -242,7 +238,7 @@ fn of_album(
 /// What the statement answers as the album `verdict`'s offered rows share.
 async fn shared_album_of(verdict: TerminalVerdict) -> Option<bae_identify::SharedAlbum> {
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
-    stored_cards(&db, &hash, &verdict).await.shared_album
+    stored_cards(&db, &hash).await.shared_album
 }
 
 /// Two offered rows on one album are several pressings of it: the statement
@@ -308,7 +304,7 @@ async fn verdict_cards_order_the_rows_of_one_card_by_agreement() {
     let verdict = each_its_own_row(vec![one_album("b", "CAT-B"), one_album("a", "CAT-A")]);
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
 
-    let read = stored_cards(&db, &hash, &verdict).await;
+    let read = stored_cards(&db, &hash).await;
 
     let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
     let expected =
@@ -323,7 +319,7 @@ async fn verdict_cards_statement_ranks_cards_by_their_best_offered_row() {
     let verdict = two_rows_listing_the_unagreed_first();
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
 
-    let cards = stored_cards(&db, &hash, &verdict).await;
+    let cards = stored_cards(&db, &hash).await;
 
     let ids: Vec<&str> = cards.groups.iter().map(|group| group.id.as_str()).collect();
     assert_eq!(ids, vec!["group-a", "group-b"]);
@@ -362,7 +358,7 @@ async fn verdict_cards_statement_counts_rows_set_aside() {
     };
     let (db, hash) = stored_with_text(&verdict, printing_cat_a()).await;
 
-    let cards = stored_cards(&db, &hash, &verdict).await;
+    let cards = stored_cards(&db, &hash).await;
 
     assert_eq!(cards.narrowed_out_count, 2);
     assert!(cards.shared_album.is_none(), "one offered row is not several pressings");
@@ -484,7 +480,7 @@ async fn verdict_cards_statement_states_the_folder_check_and_the_pick() {
     ];
     for (name, verdict) in cases {
         let (db, hash) = stored_with_text(&verdict, Vec::new()).await;
-        let read = stored_cards(&db, &hash, &verdict).await;
+        let read = stored_cards(&db, &hash).await;
         let expected = bae_identify::view::reference_cards_of(
             &bae_identify::RunOutcome::Answered(verdict),
             &bae_identify::CandidateText::of(&[], &[], &[]),
@@ -500,12 +496,12 @@ async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check()
     use bae_catalogs::search::SourceTracks::{Listed, Nothing};
     let picked = found(vec![listing("fits", Some(Listed { count: 11 }))], vec![0], None, 11);
     let (db, hash) = stored_with_text(&picked, Vec::new()).await;
-    let cards = stored_cards(&db, &hash, &picked).await;
+    let cards = stored_cards(&db, &hash).await;
     assert_eq!(cards.decision, Some(bae_identify::FoundDecision::Picks("fits".to_string())));
 
     let unchecked = found(vec![listing("a", Some(Nothing))], vec![0], None, 11);
     let (db, hash) = stored_with_text(&unchecked, Vec::new()).await;
-    let cards = stored_cards(&db, &hash, &unchecked).await;
+    let cards = stored_cards(&db, &hash).await;
     assert_eq!(
         cards.decision,
         Some(bae_identify::FoundDecision::Declined(Some(
@@ -520,7 +516,7 @@ async fn verdict_cards_statement_names_the_picked_release_and_the_failed_check()
         11,
     );
     let (db, hash) = stored_with_text(&ruled_out, Vec::new()).await;
-    let cards = stored_cards(&db, &hash, &ruled_out).await;
+    let cards = stored_cards(&db, &hash).await;
     assert_eq!(
         cards.decision,
         Some(bae_identify::FoundDecision::Declined(Some(

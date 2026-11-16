@@ -11,8 +11,8 @@ use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
-    load_candidate_verdict_cards_on, load_current_state_on, load_pane_rows_on, load_standing_on,
-    OneCandidate, SCANNED_HASH,
+    current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on, load_pane_rows_on,
+    load_standing_on, OneCandidate, SCANNED_HASH,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{
@@ -150,11 +150,8 @@ fn draft_rows_on(
     // Every catalog record of what the candidate is linked to, merged in one
     // statement over the stored releases: the linked pressing's releases
     // describe it, an album names its own.
-    let records = claimed_records_of_json(&while_current_on(
-        sql,
-        key,
-        &claimed_records_sql(SCANNED_HASH),
-    )?)?;
+    let records =
+        claimed_records_of_json(&while_current_on(sql, key, &claimed_records_sql(SCANNED_HASH))?)?;
     let cover_options =
         offered_covers_of_json(&while_current_on(sql, key, &offered_covers_sql(SCANNED_HASH))?)?;
     let picked_library_status = picked_library_status_on(sql, key)?;
@@ -184,12 +181,9 @@ fn while_current_on(
     Ok(sql.query_row(
         &format!(
             "SELECT CASE WHEN EXISTS ( \
-                 SELECT 1 FROM import_candidate_state AS state \
-                 JOIN scan_candidate AS scan \
-                     ON (scan.content_hash, scan.file_edit_revision) \
-                      = (state.content_hash, state.edit_revision) \
-                 WHERE scan.path = :key) \
-             THEN ({array}) ELSE '[]' END"
+                 SELECT 1 FROM import_candidate_state AS state WHERE {current}) \
+             THEN ({array}) ELSE '[]' END",
+            current = current_at_scan_sql("state"),
         ),
         named_params! { ":key": key },
         |row| row.get(0),
