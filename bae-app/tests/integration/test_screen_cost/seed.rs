@@ -45,11 +45,6 @@ pub(super) const SEEDS: KeptSeeds = KeptSeeds {
     seed: |store, originals, start, end| Box::pin(seed(store, originals, start, end)),
 };
 
-/// The id of album `i`, as an SQL expression over `i`.
-fn album_id_sql() -> String {
-    "printf('%08x-0002-4000-8000-%012x', i, 0)".to_string()
-}
-
 /// Albums `start..end` of the shaped library and everything the other
 /// domains hold of them. The first call (`start` 0) also makes what has no
 /// album number: the playlists, Up Next and the playing track.
@@ -77,7 +72,13 @@ pub(super) async fn seed(db: &Store, originals: &Path, start: u64, end: u64) {
             bae_playback::tables::shaped_playback_on(&sql, UP_NEXT, &track)?;
             bae_playback::tables::shaped_now_playing_on(&sql, &first_track)?;
         }
-        bae_people::people::shaped_people::insert_on(&sql, start, end, &album_id_sql(), &track)?;
+        bae_people::people::shaped_people::insert_on(
+            &sql,
+            start,
+            end,
+            &shaped_library::album_id_sql(),
+            &track,
+        )?;
         Ok::<(), bae_store::DbError>(())
     })
     .await

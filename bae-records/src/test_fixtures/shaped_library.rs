@@ -136,6 +136,12 @@ pub fn track_id(i: u64, r: u64, k: u64) -> String {
     id(6, i, r * 1000 + k)
 }
 
+/// The id of album `i`, as an SQL expression over `i`, for the other
+/// domains' rows that name it.
+pub fn album_id_sql() -> String {
+    "printf('%08x-0002-4000-8000-%012x', i, 0)".to_string()
+}
+
 /// The id of album `i`'s first release, as an SQL expression over `i`, for
 /// the other domains' rows that name it.
 pub fn first_release_id_sql() -> String {
