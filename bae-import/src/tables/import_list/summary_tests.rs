@@ -548,11 +548,10 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     let list = lib.open(view(TriageTab::Pending)).await;
     let target = lib.key("Target/Release 1");
     let open = tables.import_candidate_position(list, &target).await.unwrap();
-    let earlier = crate::FolderReleaseDecisionKey {
-        watched_folder_path: lib.root.clone(),
-        relative_folder: crate::RelativeFolder::test("Earlier"),
-    };
-    tables.set_import_list_group_folded(list, earlier, true).await.unwrap();
+    tables
+        .set_import_list_group_folded(list, lib.group_key("Earlier"), true, Vec::new())
+        .await
+        .unwrap();
     let folded = tables.import_candidate_position(list, &target).await.unwrap();
     assert_eq!(
         (open, folded),
