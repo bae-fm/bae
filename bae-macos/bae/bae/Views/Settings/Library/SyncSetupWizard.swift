@@ -69,12 +69,6 @@ struct SyncSetupWizard: View {
     /// call ends.
     @State
     private var run: StorageSetupRun
-    #if DEBUG
-        /// The S3 form's fields, when a shot stages them.
-        private var stagedS3: S3SetupFields?
-        /// The failure the S3 form shows at its top, when a shot stages one.
-        private var stagedTopFailure: DisplayError?
-    #endif
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
@@ -83,46 +77,6 @@ struct SyncSetupWizard: View {
         }
         _run = State(initialValue: StorageSetupRun(onCancelled: {}))
     }
-
-    #if DEBUG
-        // periphery:ignore - called by baeShots
-        /// The wizard on `provider`'s screen with `run` as its setup.
-        init(
-            provider: BridgeCloudProvider,
-            run: StorageSetupRun,
-            onDone: @escaping () -> Void
-        ) {
-            self.onDone = onDone
-            _step = State(initialValue: .configure(provider))
-            _run = State(initialValue: run)
-        }
-
-        // periphery:ignore - called by baeShots
-        /// The wizard on setup's last screen, holding `restoreCode`.
-        init(
-            restoreCode: RestoreCodeReveal,
-            provider: BridgeCloudProvider,
-            onDone: @escaping () -> Void
-        ) {
-            self.onDone = onDone
-            _step = State(initialValue: .restoreCode(provider))
-            _run = State(initialValue: StorageSetupRun(onCancelled: {}))
-            _restoreCode = State(initialValue: restoreCode)
-        }
-
-        // periphery:ignore - called by baeShots
-        /// This wizard with its S3 form staged: typed `fields`, and the
-        /// failure shown at the form's top.
-        func staging(
-            s3 fields: S3SetupFields,
-            topFailure: DisplayError? = nil
-        ) -> Self {
-            var wizard = self
-            wizard.stagedS3 = fields
-            wizard.stagedTopFailure = topFailure
-            return wizard
-        }
-    #endif
 
     var body: some View {
         MacSheet(verbatim: headerTitle, message: headerMessage, width: 460) {
@@ -266,17 +220,7 @@ struct SyncSetupWizard: View {
     #endif
 
     private var s3Form: S3SetupForm {
-        #if DEBUG
-            if let stagedS3 {
-                return S3SetupForm(
-                    staged: stagedS3,
-                    failure: stagedTopFailure,
-                    leave: leave,
-                    onConnected: connected
-                )
-            }
-        #endif
-        return S3SetupForm(leave: leave, onConnected: connected)
+        S3SetupForm(leave: leave, onConnected: connected)
     }
 
     /// The storage is connected: record its location, and show the restore
@@ -429,24 +373,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
     private var run
     @State
     private var error: DisplayError?
-    #if DEBUG
-        /// A failure a shot shows at the top in place of a run's.
-        private var stagedError: DisplayError?
-
-        func staging(error: DisplayError?) -> Self {
-            var step = self
-            step.stagedError = error
-            return step
-        }
-    #endif
-
-    /// The failure the form shows at its top.
-    private var shownError: DisplayError? {
-        #if DEBUG
-            if let stagedError { return stagedError }
-        #endif
-        return error
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -457,8 +383,8 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 Spacer(minLength: 0)
             }
             else {
-                if let shownError {
-                    Notice(error: shownError)
+                if let error {
+                    Notice(error: error)
                         .padding(.horizontal, ThemeSpace.section)
                         .padding(.top, ThemeSpace.section)
                 }

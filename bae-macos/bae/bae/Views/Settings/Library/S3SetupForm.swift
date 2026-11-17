@@ -14,9 +14,6 @@ struct S3SetupForm: View {
 
     @State
     private var fields: S3SetupFields
-    #if DEBUG
-        private var stagedFailure: DisplayError?
-    #endif
 
     init(
         leave: @escaping () -> Void,
@@ -27,25 +24,10 @@ struct S3SetupForm: View {
         self.onConnected = onConnected
     }
 
-    #if DEBUG
-        /// A form whose fields are staged, for a shot.
-        init(
-            staged fields: S3SetupFields,
-            failure: DisplayError?,
-            leave: @escaping () -> Void,
-            onConnected: @escaping (BridgeStorageSetup) -> Void
-        ) {
-            _fields = State(initialValue: fields)
-            stagedFailure = failure
-            self.leave = leave
-            self.onConnected = onConnected
-        }
-    #endif
-
     var body: some View {
         @Bindable
         var fields = fields
-        let step = SetupStep(
+        SetupStep(
             ready: fields.ready,
             operation: { [sync, fields] setup in
                 fields.clearFailure()
@@ -73,11 +55,6 @@ struct S3SetupForm: View {
                 }
             }
         )
-        #if DEBUG
-            step.staging(error: stagedFailure)
-        #else
-            step
-        #endif
     }
 
     /// A text field whose row also holds the reason a failed setup gives for
