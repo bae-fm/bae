@@ -248,14 +248,20 @@ where Row.ID: Sendable {
         self.chain = chain
         chain.visible = visible
         chain.restart(at: key, position: position)
-        take(chain.placed)
     }
 
     /// The chain delivered or moved: draw what it holds.
     private func chainChanged() {
-        guard let chain else { return }
-        take(chain.placed)
+        drawChain()
         settled()
+    }
+
+    /// Draw the chain's rows once its first window has answered. Until then
+    /// the list keeps drawing the rows it had, so a jump or another order
+    /// never empties the screen while core reads the new window.
+    private func drawChain() {
+        guard let chain, chain.hasAnswered else { return }
+        take(chain.placed)
     }
 
     private func take(_ next: [Placed<Row>]) {
@@ -276,7 +282,7 @@ where Row.ID: Sendable {
         guard jump == nil, let chain else { return }
         chain.visible = visible
         chain.reconcile()
-        take(chain.placed)
+        drawChain()
         settled()
     }
 
@@ -300,7 +306,6 @@ where Row.ID: Sendable {
         let id = UUID()
         jumpId = id
         chain?.stop()
-        if let chain { take(chain.placed) }
         jump = Task { [weak self, queries] in
             let key: [BridgeSortValue]?
             do {
@@ -351,10 +356,12 @@ where Row.ID: Sendable {
 
     // MARK: - Waiting
 
-    /// Whether a window has delivered the row at `position`, or the count
-    /// shows the list ends before it.
+    /// Whether the current chain has delivered the row at `position`, or the
+    /// count shows the list ends before it. A row the list keeps drawing
+    /// while it waits for a jump or for a restarted chain's first window is
+    /// not the current chain's.
     private func isSatisfied(_ position: Int) -> Bool {
-        if row(at: position) != nil { return true }
+        if jump == nil, firstAnswered, row(at: position) != nil { return true }
         guard let count else { return false }
         return position >= Int(count.rows)
     }
@@ -395,8 +402,9 @@ extension PaginatedList {
     /// Read the rows again in another order. A window starts at a row's sort
     /// values in the order the list opened it in, so the list jumps to the
     /// row it now has at the first position on screen, and keeps its count:
-    /// another order moves the rows, not how many there are. Waits for the
-    /// first window.
+    /// another order moves the rows, not how many there are. The list keeps
+    /// drawing the rows in the old order until the first window in the new
+    /// order answers, and this call waits for that window.
     public func reorder() async {
         jump?.cancel()
         jumpTo(visible?.lowerBound ?? 0)

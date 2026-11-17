@@ -1236,8 +1236,8 @@ place: the write answers nothing, as it does when the view did not change, and
 no selected row leaves the selection. The screen reads its windows again from
 the row now at the first position on screen, since a window starts at a row's
 sort values in the order the screen read it in, and keeps its count, since another order moves the rows
-and not how many there are; the table keeps its own scroll while the rows
-redraw in the new order under it. Nothing keeps the place on the list: selecting rows
+and not how many there are; the table keeps its own scroll and draws the rows in the old
+order until the first window in the new order answers. Nothing keeps the place on the list: selecting rows
 since moves no place, and the list otherwise keeps the person's place as rows
 come and go: when the rows change, core says where the release on top sits now
 and the table puts it back on top, unless the person scrolls before core
@@ -5727,7 +5727,8 @@ Reads come two ways:
   album grid's albums, which grouped by artist are fewer than its rows, and the
   row count for every other list. A jump (a scrollbar drag, the end key, a reveal)
   reads the sort values of the row at a position once, by offset, and starts a
-  chain there. A row whose sort values move it from one window to its
+  chain there. The screen keeps drawing the rows it has until the new chain's
+  first window answers, so a jump or another order never empties it. A row whose sort values move it from one window to its
   neighbour can show in both or in neither until the second window's value
   arrives. The import list is read the same way: each of its windows, its count, the
   position of a key and the chrome around it is a live read of its own,

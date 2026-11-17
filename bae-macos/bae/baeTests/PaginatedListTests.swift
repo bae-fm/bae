@@ -44,6 +44,8 @@ private final class ProbeList: @unchecked Sendable {
     private let counts = Feed<BridgeListCount>()
     private var keyReads: [UInt64] = []
     private var countHeld = false
+    private var windowsHeld = false
+    private var heldWindows: [Window] = []
 
     init(_ ids: [String]) {
         albums = ids.map { makeBridgeAlbum(id: $0) }
@@ -60,6 +62,19 @@ private final class ProbeList: @unchecked Sendable {
     /// Answer no count until `releaseCount`: the windows answer while the
     /// list still waits for the count.
     func holdCount() { lock.withLock { countHeld = true } }
+
+    /// Answer no window the list opens until `releaseWindows`.
+    func holdWindows() { lock.withLock { windowsHeld = true } }
+
+    /// Answer each window a held read opened.
+    func releaseWindows() {
+        let held = lock.withLock {
+            windowsHeld = false
+            defer { heldWindows = [] }
+            return heldWindows
+        }
+        for window in held { deliver(to: window) }
+    }
 
     /// Fail the count read with `error`.
     func failCount(_ error: any Error) { counts.fail(error) }
@@ -149,8 +164,12 @@ private final class ProbeList: @unchecked Sendable {
         BridgeListQueries(
             window: { [self] first in
                 let window = Window(first)
-                lock.withLock { open.append(window) }
-                deliver(to: window)
+                let held = lock.withLock {
+                    open.append(window)
+                    if windowsHeld { heldWindows.append(window) }
+                    return windowsHeld
+                }
+                if !held { deliver(to: window) }
                 return ListWindowQuery(
                     setWindow: { [self] next in
                         window.request = next
@@ -524,6 +543,29 @@ extension PaginatedListTests {
         #expect(probe.keyAtReads.last == 400)
         #expect(list.idAt(400) == "a0400")
         #expect(list.count?.rows == 1000, "another order keeps the count")
+        for hold in holds { hold.cancel() }
+        list.cancel()
+    }
+
+    /// The list draws the rows it has until the first window in the new
+    /// order answers, so the screen never empties when the order changes.
+    @MainActor
+    @Test("another order keeps the rows on screen until its window answers")
+    func reorderKeepsTheRowsUntilItsWindowAnswers() async throws {
+        let probe = ProbeList(ids(0...999))
+        let list = try await open(probe)
+        let holds = held(list, 400...410)
+        try await Wait.until { list.idAt(400) != nil }
+        let opened = probe.windows.count
+
+        probe.holdWindows()
+        let reorder = Task { await list.reorder() }
+        try await Wait.until { probe.windows.count > opened }
+
+        #expect(idsAt(list, 400...410) == ids(400...410).map(Optional.init))
+        probe.releaseWindows()
+        await reorder.value
+        #expect(list.idAt(400) == "a0400")
         for hold in holds { hold.cancel() }
         list.cancel()
     }
