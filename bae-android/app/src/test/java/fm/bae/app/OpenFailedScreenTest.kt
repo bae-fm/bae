@@ -28,7 +28,7 @@ class OpenFailedScreenTest {
         )
     }
 
-    /** Core fails a damaged library that has no storage with nothing to offer: a reset has nothing to load. */
+    /** When a damaged library has no storage, its failed open offers nothing, because a reset has no copy to load. */
     @Test
     fun aDamagedLibraryWithNoStorageOffersNoReset() {
         assertEquals(

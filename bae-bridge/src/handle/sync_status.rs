@@ -52,10 +52,11 @@ forward! { sync this => {
 
 forward! { async this => {
     /// Returns once, when sync finds that another installation uses this
-    /// device's id and this copy is the one behind. Core resets this copy at
-    /// once, without asking: the app closes the library, runs the device
-    /// reset with no warning, and once the library opens again shows the
-    /// notice. Fails as cancelled when the library closes first.
+    /// device's id and this copy is the one behind. The app then resets this
+    /// copy at once, without asking: the app closes the library, runs the
+    /// device reset with no warning, and shows the notice once the library
+    /// opens again. The call fails as cancelled when the library closes
+    /// first.
     fn copy_reset() -> crate::types::BridgeCopyReset {
         Ok(crate::types::BridgeCopyReset::from_core(this.services.copy_behind().await?))
     }

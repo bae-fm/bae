@@ -169,9 +169,9 @@ sealed interface AppScreen {
      * bae can't open this device's copy as it is, because its data is
      * damaged and the library has storage, or because sync found another
      * installation in this device's place. Resetting loads the library from
-     * storage again under a new device id. [error] is why the
-     * open or the last reset failed; none after a reset was cancelled, or
-     * when the Sync page offered the reset.
+     * storage again under a new device id. [error] is why the open or the
+     * last reset failed; none after the person cancelled a reset, or when the
+     * Sync page offered the reset.
      */
     data class ResetOffered(
         override val libraryId: String,

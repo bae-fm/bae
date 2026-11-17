@@ -68,7 +68,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.cast.ended",
     // The recovery screens' reset warning (`bridge_recovery_lines`).
     "core.sync.reset_device.warning",
-    // The notice bae shows after core resets a copy that is behind (`BridgeCopyReset::from_core`).
+    // The notice the app shows after it resets this copy because core found another
+    // installation using this device's id (`BridgeCopyReset::from_core`).
     "core.sync.copy_reset.notice",
     "core.sync.copy_reset.edits",
     "core.sync.copy_reset.files",

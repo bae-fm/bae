@@ -37,7 +37,8 @@ enum AppScreen {
 
     /// The screen a failed open of `libraryId` lands on when its failure is
     /// one the person recovers from here: finishing the reset or restore
-    /// that stopped partway, as core names it. `nil` for any other failure.
+    /// that stopped partway, as core names it. The function returns `nil` for
+    /// any other failure.
     static func recovering(libraryId: String, from error: Error) -> Self? {
         guard case BridgeOpenError.ReplacementUnfinished(let by, _) = error
         else { return nil }
