@@ -6058,8 +6058,9 @@ release's or track's id as UTF-8, or a candidate's key.
   controller. A failed open throws `BridgeOpenError`, one case for each
   thing the app can do next: `ResetFromCloud`, `ReplacementUnfinished` (with
   the call that finishes it), `DeletionUnfinished`, `KeychainLocked` (the OS
-  keychain refused the library's key for now, and the app opens the library
-  again once the person unlocks it), or `Failed`. Each carries the
+  keychain refused the library's key for now: the Mac shows the keychain
+  screen and opens the library again once the person unlocks the keychain,
+  and Android shows the failed open with *Retry*), or `Failed`. Each carries the
   `BridgeError` it shows.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
   mid-call cancels the Rust work it started. A call that panics fails with an
