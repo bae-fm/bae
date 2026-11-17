@@ -72,8 +72,8 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]
 default = []
-# The artist search over every stored artist, and a work's page, which
-# tests read.
+# The artist search over every stored artist, a work's page, and an album
+# page request with no chosen release, which tests read.
 test-utils = []
 
 [lints]

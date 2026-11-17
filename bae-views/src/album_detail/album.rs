@@ -19,7 +19,9 @@ pub struct AlbumDetailRequest {
 }
 
 impl AlbumDetailRequest {
-    /// The album `album_id`, showing its primary release.
+    /// The album `album_id`, showing its primary release. Only tests build a
+    /// request this way: the apps send the release the person chose.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn album(album_id: String) -> Self {
         AlbumDetailRequest { album_id, chosen_release_id: None }
     }
