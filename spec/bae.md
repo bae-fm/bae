@@ -6727,8 +6727,8 @@ deletes its sessions:
 | `release_edit_track_role`, `release_edit_release_role`, `release_edit_work`, `release_edit_work_credit`, `release_edit_work_part`, `release_edit_track_work` | the roles and works the applied release credits |
 | `release_edit_record` | the records the apply read, the applied one first, which a save writes |
 
-Each change the editor sends is one write to its session's rows, and a
-change to a session whose rows are gone is refused. A save's one write
+Each change the editor sends is one write to its session's rows, and bae
+refuses a change to a session whose rows are gone. A save's one write
 writes the release and then the session again from the release as saved,
 under the same id; Cancel writes the session again from the release as it
 is now, in a write of its own. Closing the editor deletes its session's

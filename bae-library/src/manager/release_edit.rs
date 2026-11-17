@@ -3,21 +3,21 @@
 //! Each open editor owns a session of its own ([`ReleaseEdit`]), whose rows
 //! bae-import keeps (`bae_import::tables::ImportTables`): the release's
 //! values as the library held them when it opened, and what the person did
-//! in it: the form with each change written to it as it is made, a catalog
-//! applied, which replaces every value the release holds (titles, credits,
-//! mediums and places, roles and works, its records and the album they
-//! name), and the library album picked to file it under. Every change
-//! returns the session's draft, what its editor shows. Sessions on one
-//! release share nothing, so one editor's edit, apply or pick is never
+//! in it: the form with each change written to it as the person makes it, a
+//! catalog applied, which replaces every value the release holds (titles,
+//! credits, mediums and places, roles and works, its records and the album
+//! they name), and the library album picked to file it under. Every change
+//! is one write to the session's rows, and its editor reads the session's
+//! draft from one live query. Sessions on one release share nothing, so one editor's edit, apply or pick is never
 //! another's. Saving writes the session whole and opens it again on what it
 //! saved; dropping it deletes it. Nothing re-reads a catalog or the files'
 //! tags: the session holds what the apply read.
 //!
 //! A save checks, in its one write, the release against what its session
-//! opened on: one the library no longer holds as it did (another session
-//! saved it, MCP wrote its fields, or a synced edit arrived) is refused
-//! ([`LibraryError::ReleaseEditStale`]) and writes nothing, so no session
-//! overwrites values its editor never showed. Cancel opens the session again
+//! opened on: the save refuses a release the library no longer holds as it
+//! did (another session saved it, MCP wrote its fields, or a synced edit
+//! arrived) with [`LibraryError::ReleaseEditStale`] and writes nothing, so
+//! no session overwrites values its editor never showed. Cancel opens the session again
 //! on the release as it is now.
 
 use super::*;
@@ -151,7 +151,7 @@ impl LibraryManager {
     }
 
     /// Write one track row's title and artists as the person left them, by
-    /// the row's id. A row the form does not hold is refused.
+    /// the row's id. The method refuses a row the form does not hold.
     pub async fn set_release_edit_track(
         &self,
         session: &ReleaseEdit,
@@ -172,10 +172,10 @@ impl LibraryManager {
     /// the release's tracks' stored lengths and its files, as identification
     /// reads them, and write every value it gives and the records it names
     /// into the session until the save. The form becomes the reading's values
-    /// and the tracks are laid out at the places it gives them; the cover is
-    /// the release's own, which an apply never changes. A release whose
-    /// tracks the reading cannot lay out is refused with both counts. Each
-    /// fetch it waits on is told to `steps`.
+    /// and the draft lays the tracks out at the places it gives them; the
+    /// cover is the release's own, which an apply never changes. The method
+    /// refuses a release whose tracks the reading cannot lay out, naming both
+    /// counts, and tells `steps` about each fetch it waits on.
     pub async fn apply_release_edit_catalog(
         &self,
         session: &ReleaseEdit,

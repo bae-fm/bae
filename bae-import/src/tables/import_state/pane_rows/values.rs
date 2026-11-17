@@ -13,9 +13,8 @@ use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
 use bae_types::credit_role::CreditedAs;
 use rusqlite::ToSql;
 
-/// Write the values of a draft beside its rows besides its tracks': its
-/// works and the roles on its release, in `tables` under `key`. The owner's
-/// row is already written.
+/// Write a draft's works and the roles on its release, in `tables` under
+/// `key`. The caller has already written the owner's row.
 pub(crate) fn insert_draft_values(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,
@@ -106,9 +105,9 @@ pub(crate) fn insert_draft_values(
     Ok(())
 }
 
-/// Write the values hanging off the draft track `track_id`: the roles the
-/// source credits on it and the works it performs, in `tables` under `key`.
-/// The track row is already written, and the works are.
+/// Write the rows keyed by the draft track `track_id`: the roles the source
+/// credits on it and the works it performs, in `tables` under `key`. The
+/// caller has already written the track row and the works.
 pub(crate) fn insert_track_values(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,
@@ -158,8 +157,8 @@ pub(crate) fn insert_track_values(
 }
 
 /// The works of the owner `owner` (an SQL expression for its key), each with
-/// its credits, as a JSON array in the draft's order; decoded by
-/// [`works_of`].
+/// its credits, as a JSON array in the draft's order, which [`works_of`]
+/// decodes.
 pub(crate) fn works_json_sql(tables: &DraftTables, owner: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
@@ -205,7 +204,7 @@ const ROLE_JSON: &str = "json_object( \
      'qualifiers', role.qualifiers)";
 
 /// The roles the source credits on the owner `owner`'s release, as a JSON
-/// array in its order; decoded by [`roles_of`].
+/// array in its order, which [`roles_of`] decodes.
 pub(crate) fn release_roles_json_sql(tables: &DraftTables, owner: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
@@ -216,8 +215,8 @@ pub(crate) fn release_roles_json_sql(tables: &DraftTables, owner: &str) -> Strin
 }
 
 /// The roles the source credits on the owner `owner`'s track `track` (SQL
-/// expressions for their keys), as a JSON array in its order; decoded by
-/// [`roles_of`].
+/// expressions for their keys), as a JSON array in its order, which
+/// [`roles_of`] decodes.
 pub(crate) fn track_roles_json_sql(tables: &DraftTables, owner: &str, track: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \

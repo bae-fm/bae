@@ -1,9 +1,9 @@
 //! The library manager's parts, each built once from the library's opened
 //! store. The app's bootstrap and every test that opens a library call this,
 //! so tests open a library through the app's wiring. The caller opens the
-//! store and builds what the manager shares with the library's services —
-//! the import's release reads and tables and the closing token — and passes
-//! them by name.
+//! store and builds what the manager shares with the library's services:
+//! the import's release reads and tables and the closing token. The caller
+//! passes them by name.
 
 use crate::{CancellationToken, LibraryManager};
 use bae_diagnostics::Diagnostics;

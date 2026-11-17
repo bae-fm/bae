@@ -28,16 +28,17 @@ struct ReleaseEditSessionCommands: Sendable {
     /// release as the library holds it now.
     let cancel: @Sendable () async throws -> Void
     /// Save the session, which core opens again on what it saved; returns
-    /// the album the release is on after it. Refused, writing nothing, when
-    /// the release changed after the session opened on it.
+    /// the album the release is on after it. Core refuses the save, and
+    /// writes nothing, when the release changed after the session opened on
+    /// it.
     let save: @Sendable () async throws -> String
 }
 
-/// A session core just opened on a release: the subscription that answers
-/// its draft, and the commands the session takes.
+/// A session core just opened on a release: the subscription that sends the
+/// session's draft, and the commands the session takes.
 struct OpenedReleaseEdit: Sendable {
     /// The session's draft at once, then after each write that changes it;
-    /// `nil` once the session's release is gone.
+    /// `nil` once someone deletes the session's release.
     let drafts: PulledValues<BridgeReleaseEditDraft?>
     let session: ReleaseEditSessionCommands
 }
@@ -56,11 +57,12 @@ struct ReleaseEditCommands {
 
 /// One release editor's working state, behind the one release editor in the
 /// Library sheet and the import pane of an imported folder: the draft its
-/// session's subscription answered last, and the operations it sends that
+/// session's subscription sent last, and the operations it sends that
 /// session. Every change goes to core as the person makes it, one after
-/// another in the order made. The editor shows the draft the subscription
-/// answers, which follows the library too: an artist merged, the album
-/// renamed, a cover picked.
+/// another in the order the person made them. The subscription sends a new
+/// draft whenever a write changes the session or what the draft shows of the
+/// library, such as when someone merges an artist, renames the album or
+/// picks a cover.
 @MainActor
 @Observable
 final class ReleaseMetadataEditSession {
@@ -74,8 +76,8 @@ final class ReleaseMetadataEditSession {
     }
 
     let releaseId: String
-    /// The draft the subscription answered last; `nil` until it answers
-    /// its first, and the editor shows nothing until then.
+    /// The draft the subscription sent last; `nil` until it sends its first,
+    /// and the editor shows nothing until then.
     private(set) var draft: BridgeReleaseEditDraft?
     /// The session's release is gone from the library, so the editor has
     /// nothing to edit and closes.
@@ -159,9 +161,9 @@ final class ReleaseMetadataEditSession {
 
     /// Save the session; core opens it again on what the library now holds
     /// in the same write. `onSuccess` receives the album the release is on
-    /// after the save. A release another editor or device changed after this
-    /// session opened is refused, writing nothing; Cancel opens it as it is
-    /// now.
+    /// after the save. Core refuses the save, and writes nothing, when another
+    /// editor or device changed the release after this session opened;
+    /// Cancel opens it as it is now.
     func save(onSuccess: @escaping @MainActor @Sendable (String) -> Void) {
         let serial = begin(.saving)
         failure = nil

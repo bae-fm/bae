@@ -35,8 +35,8 @@ forward! {
 impl ReleaseEditSession {
     /// The session's draft as the editor shows it, now and after each write
     /// that changes it: each command's, an artist merged in the library, the
-    /// album renamed, a cover picked. `None` once the session's release is
-    /// gone.
+    /// album renamed, a cover picked. The subscription sends `None` once
+    /// someone deletes the session's release.
     pub fn draft_subscription(&self) -> std::sync::Arc<crate::ReleaseEditDraftSubscription> {
         crate::screens::release_edit_draft(
             self.services.subscribe_release_edit_draft(&self.inner),

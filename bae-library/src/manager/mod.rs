@@ -173,8 +173,8 @@ pub enum LibraryError {
     #[error("Release '{release_id}' changed since its edit session opened")]
     ReleaseEditStale { release_id: String },
     /// A command reached an edit session of `release_id` whose rows are
-    /// gone: its editor closed it, or the release was deleted. Nothing was
-    /// written.
+    /// gone: its editor closed it, or someone deleted the release. The
+    /// command wrote nothing.
     #[error("The edit session of release '{release_id}' is closed")]
     ReleaseEditClosed { release_id: String },
     #[error("Track mapping error: {0}")]

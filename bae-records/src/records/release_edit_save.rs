@@ -32,8 +32,8 @@ pub enum ReleaseEditRefusal {
     /// own write found it.
     #[error("the release changed after the session opened")]
     Stale,
-    /// The session's rows are gone: its editor closed it, or its release
-    /// was deleted.
+    /// The session's rows are gone: its editor closed it, or someone deleted
+    /// its release.
     #[error("the session is closed")]
     Closed,
     #[error(transparent)]
@@ -50,9 +50,9 @@ impl Records {
     /// check, as `still_as_opened` says, that the release is still as the
     /// session opened on it, then move the release and replace its records
     /// where `change` says (see `set_records_on`), then write `write`, then
-    /// write the session again on the release as saved with `reseed`. A
-    /// release that is not as the session opened on it is refused as
-    /// [`ReleaseEditRefusal::Stale`] before anything is written, and a closed
+    /// write the session again on the release as saved with `reseed`. Before
+    /// it writes anything, the save refuses a release that is not as the
+    /// session opened on it as [`ReleaseEditRefusal::Stale`], and a closed
     /// session as [`ReleaseEditRefusal::Closed`]; the check runs in the
     /// write, so no other write lands between it and the rows, and none
     /// lands between the rows and the session's new values.

@@ -608,7 +608,7 @@ async fn the_records_target_statement_files_a_release_as_records_change_does() {
     assert_eq!(
         filed(manager, &alone, vec![mb_identity("g5", "g5-rel")]).await,
         Filed::Held(held_group.id.clone()),
-        "and to the group's album the library holds"
+        "a release alone moves to its group's album the library holds"
     );
     assert_eq!(
         filed(
@@ -628,7 +628,7 @@ async fn the_records_target_statement_files_a_release_as_records_change_does() {
     assert_eq!(
         filed(manager, &shared[0], vec![discogs_identity("m-1", "d-1")]).await,
         Filed::Held(shared_album.id.clone()),
-        "as does one whose other releases name another catalog"
+        "an album whose other releases name another catalog keeps the release"
     );
     assert_eq!(
         filed(manager, &shared[0], vec![mb_identity("g8", "g8-rel")]).await,
@@ -638,6 +638,6 @@ async fn the_records_target_statement_files_a_release_as_records_change_does() {
     assert_eq!(
         filed(manager, &shared[0], vec![mb_identity("g5", "g5-other")]).await,
         Filed::Held(held_group.id.clone()),
-        "which the library may hold"
+        "an album whose other releases disagree sends it to its group's album the library holds"
     );
 }

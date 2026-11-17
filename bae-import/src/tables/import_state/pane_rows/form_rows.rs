@@ -295,8 +295,9 @@ pub(crate) fn assignments_json_sql(table: &str, belongs: &str) -> String {
 }
 
 impl StoredAssignment {
-    /// The draft's credit. A picked artist's credit name that was removed
-    /// since prints the artist's own name.
+    /// The draft's credit. When the library no longer holds the credit name
+    /// the person picked for an artist, the credit has no credit name and
+    /// shows the artist's own name.
     pub(super) fn credited(self) -> Result<Credited, DbError> {
         let artist = match self.kind.as_str() {
             "picked" => ArtistAssignment::Picked {
@@ -307,8 +308,8 @@ impl StoredAssignment {
                             None::<String>,
                         )
                     })?,
-                    // The assignment goes with its artist, so the artist
-                    // it names is in the library.
+                    // Deleting an artist deletes its assignments, so the
+                    // artist an assignment names is in the library.
                     name: self.name.ok_or_else(|| {
                         DbError::unreadable(
                             "the name of a picked assignment's artist",
@@ -362,8 +363,8 @@ pub(crate) fn insert_album_artist_assignments(
     Ok(())
 }
 
-/// Each album artist that differs from the one stored at its position, in
-/// place, and the stored ones past the last.
+/// Rewrite in place each album artist that differs from the one stored at
+/// its position, and delete the stored ones past the last.
 pub(crate) fn store_album_artist_assignments(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,

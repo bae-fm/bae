@@ -244,8 +244,9 @@ extension ReleaseEditorTests {
 }
 
 extension ReleaseEditorTests {
-    /// The titles core's session takes, in the order they reached it, each
-    /// written to the session the editor's subscription reads.
+    /// The titles core's session takes, in the order they reached it. This
+    /// actor writes each title to the session the editor's subscription
+    /// reads.
     private actor CoreSession {
         private(set) var titles: [String] = []
         let session: PreviewReleaseEditSession
@@ -281,7 +282,7 @@ extension ReleaseEditorTests {
 
     @MainActor
     @Test(
-        "each change reaches core in the order made, and the editor shows the draft core answers"
+        "each change reaches core in the order the person made it, and the editor shows the draft core sends"
     )
     func changesReachCoreInOrder() async throws {
         let draft = PreviewData.releaseEditDraft(trackCount: 1)

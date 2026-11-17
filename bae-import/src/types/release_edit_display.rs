@@ -151,8 +151,8 @@ pub enum ReleaseEditLoadError {
 
 #[cfg(desktop)]
 impl ReleaseEditDisplayContext {
-    /// The editor's display of a release with the files `files`, from its
-    /// tracks' audio as `tracks` reads it in release order.
+    /// The editor's display of a release with the files `files`, from the
+    /// audio each entry of `tracks` records, in release order.
     pub fn from_raw(
         files: &bae_records::DbReleaseFiles,
         tracks: Vec<bae_records::DbReleaseEditTrack>,

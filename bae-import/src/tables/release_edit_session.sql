@@ -144,8 +144,9 @@ CREATE TABLE IF NOT EXISTS release_edit_album_pick (
 
 CREATE INDEX IF NOT EXISTS release_edit_album_pick_by_album ON release_edit_album_pick (album_id);
 
--- One row once a catalog release is applied in the session. Every row below
--- holds a value the apply read, and goes with this row.
+-- The apply writes one row when the person applies a catalog release in the
+-- session. Every row below holds a value the apply read, and deleting this
+-- row deletes them.
 CREATE TABLE IF NOT EXISTS release_edit_applied (
     session INTEGER PRIMARY KEY,
     FOREIGN KEY (session) REFERENCES release_edit_session (session) ON DELETE CASCADE

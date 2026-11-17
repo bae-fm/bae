@@ -39,8 +39,8 @@ impl Records {
         self.store.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
     }
 
-    /// The album the release `release_id` lands in once its records are
-    /// `records`, beside the album it is in now, as
+    /// The album a save files the release `release_id` under once its
+    /// records are `records`, and the album it is in now, as
     /// [`records_target_album_sql`] names them; `None` when the library holds
     /// no such release.
     pub async fn records_target_album(
@@ -222,9 +222,10 @@ pub fn album_records_name_on(
         .optional()?)
 }
 
-/// The album the release `release_id` lands in once its records are
-/// `records`, as [`records_target_album_sql`] names it, beside the album it
-/// is in now. `None` when the library holds no such release.
+/// The album a save files the release `release_id` under once its records
+/// are `records`, and the album it is in now, as
+/// [`records_target_album_sql`] names them; `None` when the library holds no
+/// such release.
 pub fn records_target_album_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
@@ -249,8 +250,8 @@ pub fn records_target_album_on(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordsTargetAlbum {
     pub current_album_id: String,
-    /// The library album the release lands in; `None` for a new album, which
-    /// takes the id of the group the records name
+    /// The library album the save files the release under; `None` for a new
+    /// album, which takes the id of the group the records name
     /// ([`crate::identity::album_id_for_records`]), else a fresh id.
     pub target_album_id: Option<String>,
 }
@@ -284,12 +285,13 @@ fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String {
     .to_string()
 }
 
-/// The statement that finds the album a release lands in once its records
-/// are the ones `records` selects (as [`album_records_name_sql`] reads them),
-/// for the release whose id the SQL expression `release` gives. It returns
-/// one row, holding the album the release is in now (`current_album_id`)
-/// and the library album it lands in (`target_album_id`), NULL for a new
-/// album; no row when the library holds no such release. In order:
+/// The statement that finds the album a save files a release under once its
+/// records are the ones `records` selects (as [`album_records_name_sql`]
+/// reads them), for the release whose id the SQL expression `release` gives.
+/// The statement returns one row, holding the album the release is in now
+/// (`current_album_id`) and the library album the save files it under
+/// (`target_album_id`), NULL for a new album; no row when the library holds
+/// no such release. In order:
 ///
 /// 1. No records: a new album holding only the release.
 /// 2. The album the records name ([`album_records_name_sql`], leaving out the

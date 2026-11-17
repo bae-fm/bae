@@ -74,8 +74,9 @@ struct ImportedReleasePane: View {
         .padding(.top, ThemeSpace.section)
         .padding(.bottom, ThemeSpace.page)
         .task(id: releaseId) { await load() }
-        // A release deleted while its editor is open leaves the editor
-        // nothing to edit; the import list shows the folder as found.
+        // When someone deletes the release while its editor is open, the
+        // pane drops the edit session; the import list then shows the folder
+        // as found.
         .onChange(of: session?.releaseGone == true) { _, gone in
             if gone {
                 session?.cancelTasks()

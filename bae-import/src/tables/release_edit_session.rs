@@ -2,8 +2,8 @@
 //! tables: what the session opened on, the form with each change the person
 //! made in it, the catalog release applied in it and the album picked in it.
 //!
-//! Each command an editor sends is one write to its session's rows, and a
-//! command to a session whose row is gone is refused
+//! Each command an editor sends is one write to its session's rows, and the
+//! write refuses a command to a session whose row is gone
 //! ([`ReleaseEditSessionRefusal::Closed`]). The editor reads its draft from
 //! the rows ([`ImportTables::load_release_edit_draft`]). A save writes the
 //! release and then the session again from the release as saved, in one
@@ -53,12 +53,12 @@ pub(crate) const RELEASE_EDIT_SESSION_DRAFT: DraftTables = DraftTables {
     track_work: "release_edit_track_work",
 };
 
-/// Why a write to a release editor's session was refused. Nothing of it was
-/// written.
+/// Why bae refused a write to a release editor's session. bae wrote none of
+/// it.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseEditSessionRefusal {
-    /// The session's rows are gone: its editor closed it, or its release was
-    /// deleted.
+    /// The session's rows are gone: its editor closed it, or someone deleted
+    /// its release.
     #[error("release edit session {0} is closed")]
     Closed(i64),
     /// The library holds no release of this id.
@@ -289,7 +289,7 @@ fn insert_applied(
     let AppliedCatalog { draft, records } = applied;
     sql.execute("INSERT INTO release_edit_applied (session) VALUES (?)", [session])?;
     insert_medium_rows(sql, tables, key, &draft.mediums)?;
-    // The works first: a track names the works it performs.
+    // Insert the works first, because a track names the works it performs.
     insert_draft_values(sql, tables, key, &draft.works, &draft.release_roles)?;
     for track in &draft.tracks {
         let stated_length_ms = track
@@ -342,7 +342,7 @@ fn reseed_on(sql: &CovenWrite<'_>, session: i64, seed: &ReleaseEditSeed) -> Resu
         ),
         rusqlite::params_from_iter(values),
     )?;
-    // The tracks take their places, roles and works with them.
+    // Deleting a session's tracks also deletes their places, roles and works.
     for table in [
         "release_edit_applied",
         "release_edit_album_pick",
@@ -357,8 +357,8 @@ fn reseed_on(sql: &CovenWrite<'_>, session: i64, seed: &ReleaseEditSeed) -> Resu
 }
 
 /// Write the session `session` again from its release as `sql` holds it
-/// now, in place of everything it holds; refused when the session or its
-/// release is gone. A save's write calls it after it writes the release.
+/// now, in place of everything it holds. The write refuses the session when
+/// it or its release is gone. A save's write calls it after it writes the release.
 pub fn reseed_release_edit_session_on(
     sql: &CovenWrite<'_>,
     session: i64,
@@ -376,9 +376,9 @@ pub fn reseed_release_edit_session_on(
 
 /// The check a save of the session `session` makes in its own write: the
 /// session still holds `saved`, what the save was made from, and the library
-/// still holds its release as the session opened on it. Refused as closed
-/// once the session or its release is gone, and as stale once the release
-/// changed. Each editor sends its session's commands one after another, so
+/// still holds its release as the session opened on it. The check refuses
+/// the save as closed once the session or its release is gone, and as stale
+/// once the release changed. Each editor sends its session's commands one after another, so
 /// a session that changed while its save ran is a bug, which fails the save.
 pub fn release_edit_still_as_opened_on(
     sql: &CovenWrite<'_>,
@@ -524,7 +524,7 @@ struct SessionRow {
 }
 
 /// One form track as the session's read holds it, with its applied place
-/// and values where a catalog was applied.
+/// and values where the person applied a catalog.
 #[derive(serde::Deserialize)]
 struct StoredSessionTrack {
     track_id: String,
@@ -839,7 +839,7 @@ impl ImportTables {
     }
 
     /// Write `applied` into the session: its values become the form, in
-    /// place of what was applied before.
+    /// place of the catalog the person applied before.
     pub async fn apply_to_release_edit_session(
         &self,
         session: i64,
@@ -857,8 +857,8 @@ impl ImportTables {
             .await
     }
 
-    /// Write `pick` as the album the session files its release under. A
-    /// library album the library does not hold is refused.
+    /// Write `pick` as the album the session files its release under. The
+    /// write refuses an album the library does not hold.
     pub async fn pick_release_edit_album(
         &self,
         session: i64,

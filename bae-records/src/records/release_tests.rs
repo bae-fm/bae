@@ -334,9 +334,9 @@ async fn a_label_save_replaces_the_list() {
     }
 }
 
-/// The release editor reads the file a track's body plays from: a track
-/// whose pregap is stored at the tail of the file before reads its body's
-/// file, not its pregap's.
+/// The release editor reads the file a track's body plays from: for a track
+/// whose pregap sits at the end of the previous file, the editor reads its
+/// body's file, not its pregap's.
 #[cfg(desktop)]
 #[tokio::test]
 async fn the_editor_reads_which_file_holds_a_track_s_body() {
