@@ -268,7 +268,12 @@ async fn the_live_draft_names_the_renamed_album() {
     draft_until(&draft, "the album's new title", |draft| {
         matches!(
             draft.as_ref().map(|draft| &draft.album),
-            Some(bae_import::DraftAlbum::Named { title, .. }) if title == "Renamed Album"
+            Some(bae_import::DraftAlbum::Named {
+                line:
+                    bae_import::AlbumLine::TitleAlone { title }
+                    | bae_import::AlbumLine::TitleAndArtists { title, .. },
+                ..
+            }) if title == "Renamed Album"
         )
     })
     .await;

@@ -45,11 +45,15 @@ fn release_edit_album_on(sql: &impl coven::SqlRead, session: i64) -> Result<Draf
             named_params! { ":session": session },
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?;
-    let album = |kind: &str| -> Result<(String, String, bae_types::credits::CreditLine), DbError> {
+    let album = |kind: &str| -> Result<(String, crate::AlbumLine), DbError> {
         match (album_id.clone(), title.clone()) {
-            (Some(album_id), Some(title)) => {
-                Ok((album_id, title, bae_records::records::read::credit_line_of_json(&credits)?))
-            }
+            (Some(album_id), Some(title)) => Ok((
+                album_id,
+                crate::AlbumLine::of(
+                    title,
+                    bae_records::records::read::credit_line_of_json(&credits)?,
+                ),
+            )),
             _ => Err(DbError::unreadable(
                 format!("the {kind} album of release edit session {session}"),
                 None::<String>,
@@ -60,12 +64,12 @@ fn release_edit_album_on(sql: &impl coven::SqlRead, session: i64) -> Result<Draf
         "none" => DraftAlbum::New,
         "new" => DraftAlbum::PickedNew,
         "named" => {
-            let (album_id, title, artist_line) = album("named")?;
-            DraftAlbum::Named { album_id, title, artist_line }
+            let (album_id, line) = album("named")?;
+            DraftAlbum::Named { album_id, line }
         }
         "album" => {
-            let (album_id, title, artist_line) = album("picked")?;
-            DraftAlbum::Picked { album_id, title, artist_line }
+            let (album_id, line) = album("picked")?;
+            DraftAlbum::Picked { album_id, line }
         }
         other => return Err(DbError::unreadable("the kind of a session's album", other)),
     })

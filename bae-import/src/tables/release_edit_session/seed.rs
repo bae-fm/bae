@@ -107,7 +107,10 @@ pub(crate) fn release_edit_seed(
     Ok(ReleaseEditSeed {
         edit,
         display,
-        album: DraftAlbum::Named { album_id: release.album_id, title: album_title, artist_line },
+        album: DraftAlbum::Named {
+            album_id: release.album_id,
+            line: crate::AlbumLine::of(album_title, artist_line),
+        },
     })
 }
 

@@ -113,7 +113,7 @@ pub enum DraftAlbum {
 
 /// How the album pick names a library album: its title, then its credit
 /// line when the album credits anyone.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AlbumLine {
     /// The album credits no one, so its title names it alone.
     TitleAlone {
