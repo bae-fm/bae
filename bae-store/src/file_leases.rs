@@ -47,12 +47,6 @@ impl FileLeases {
         self.files.lease(1).await.expect("a budget holds at least one place")
     }
 
-    /// [`Self::lease_one`], blocking this thread: call it only off the async
-    /// workers.
-    pub fn lease_one_blocking(&self) -> FileLease {
-        self.files.lease_blocking(1).expect("a budget holds at least one place")
-    }
-
     /// The leases of `files`, a budget a test sizes and watches.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(files: FileBudget) -> Self {

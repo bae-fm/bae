@@ -21,20 +21,6 @@ pub struct DownloadEntry {
     pub step: DownloadStep,
 }
 
-impl DownloadEntry {
-    /// Whether the release's storage actions wait on this entry: it is
-    /// downloading, or it is a move-to-this-device waiting, which would be undone by
-    /// another action. A pin waiting, or an entry that failed, leaves the
-    /// release to its actions.
-    pub fn holds_the_release(&self) -> bool {
-        match (self.kind, &self.step) {
-            (_, DownloadStep::Running) => true,
-            (DownloadKind::MoveToThisDevice, DownloadStep::Queued) => true,
-            (_, DownloadStep::Queued | DownloadStep::Failed { .. }) => false,
-        }
-    }
-}
-
 /// Where a release's entry in the download queue stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DownloadStep {

@@ -94,45 +94,10 @@ pub struct TriageRuntimeFacts {
     pub import: Option<crate::ImportStep>,
 }
 
-/// Where an import that owns a candidate stands: what a row draws for it and
-/// what can be asked of it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportStanding {
-    /// Claimed and waiting for the worker to take it up. A cancel drops it.
-    Queued,
-    /// Taken up by the worker and not yet writing its release. A cancel
-    /// drops it.
-    Running,
-    /// Writing its release, which completes whatever is asked of it.
-    Writing,
-}
-
-impl ImportStanding {
-    /// Where an import at `step` stands.
-    pub(crate) fn of_step(step: crate::ImportStep) -> Self {
-        use crate::{ImportPhase, ImportStep, PrepareStep};
-        match step {
-            ImportStep::Preparing(PrepareStep::Queued) => Self::Queued,
-            ImportStep::Preparing(
-                PrepareStep::ValidatingSourceFiles | PrepareStep::FetchingArtistPictures,
-            )
-            | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
-                Self::Running
-            }
-            ImportStep::Running(ImportPhase::Finalizing) => Self::Writing,
-        }
-    }
-}
-
 impl TriageRuntimeFacts {
     /// An import owns the candidate, whatever it has reached.
     pub fn importing(&self) -> bool {
         self.import.is_some()
-    }
-
-    /// Where the import that owns the candidate stands, from its step.
-    pub fn import_standing(&self) -> Option<ImportStanding> {
-        self.import.map(ImportStanding::of_step)
     }
 
     /// A run for the candidate is queued, running, or having its answer

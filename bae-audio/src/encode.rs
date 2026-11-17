@@ -557,8 +557,6 @@ pub struct StreamingEncoder {
     cancel: Arc<std::sync::atomic::AtomicBool>,
     /// First failure recorded during the stream; later calls are absorbed.
     error: Option<String>,
-    /// Interleaved samples accepted through `on_samples` (pre-resample).
-    samples_accepted: u64,
 }
 
 impl StreamingEncoder {
@@ -589,25 +587,7 @@ impl StreamingEncoder {
         seekable_sink: bool,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> Self {
-        Self {
-            open: None,
-            format,
-            sink: Box::new(sink),
-            seekable_sink,
-            cancel,
-            error: None,
-            samples_accepted: 0,
-        }
-    }
-
-    /// Interleaved frames accepted through `on_samples` so far, at the input
-    /// rate. The CUE-image save reads per-track deltas off this for its INDEX
-    /// lines.
-    pub fn frames_accepted(&self) -> u64 {
-        match &self.open {
-            Some(open) => self.samples_accepted / u64::from(open.channels.max(1)),
-            None => 0,
-        }
+        Self { open: None, format, sink: Box::new(sink), seekable_sink, cancel, error: None }
     }
 
     /// The first failure recorded during the stream, if any. Lets a driver
@@ -869,7 +849,6 @@ impl DecodedSink for StreamingEncoder {
             self.record_error("samples arrived before a format was announced".to_string());
             return;
         }
-        self.samples_accepted += samples.len() as u64;
 
         // SAFETY: `open` holds valid FFmpeg state built by `open_encoder`.
         let result = unsafe {

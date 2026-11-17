@@ -268,12 +268,6 @@ impl MusicBrainz {
         Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO, clock))
     }
 
-    /// The requests waiting in `priority`'s queue for a slot, oldest first.
-    #[cfg(any(test, feature = "test-instrumentation"))]
-    pub fn queued_requests(&self, priority: crate::rate_limiter::CallPriority) -> Vec<u64> {
-        self.limiter.queued_tickets(priority)
-    }
-
     /// The requests waiting in `priority`'s queue once at least `count` are,
     /// oldest first.
     #[cfg(any(test, feature = "test-instrumentation"))]

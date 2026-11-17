@@ -41,10 +41,6 @@ impl<Value> NamePattern<Value> {
         &self.0
     }
 
-    pub fn into_pieces(self) -> Vec<NamePiece<Value>> {
-        self.0
-    }
-
     /// Whether the pattern can make a name, and if not, why.
     pub fn validate(&self) -> Result<(), NamePatternError> {
         if self.0.is_empty() {

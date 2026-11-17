@@ -37,23 +37,6 @@ impl TriagePlacement {
             Self::Skipped => TriageTab::Skipped,
         }
     }
-
-    /// The skip command the placement allows; none once an import finished or
-    /// failed.
-    pub fn skip_action(&self) -> Option<TriageSkipAction> {
-        match self {
-            Self::Pending => Some(TriageSkipAction::Skip),
-            Self::Skipped => Some(TriageSkipAction::Unskip),
-            Self::Failed | Self::Done => None,
-        }
-    }
-}
-
-/// The skip-state command a placement allows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TriageSkipAction {
-    Skip,
-    Unskip,
 }
 
 /// What identification is doing for a candidate right now, whatever its

@@ -142,16 +142,6 @@ impl BarcodeEvidence {
         SourcedValue::values(&self.codes)
     }
 
-    /// `code_values` less the ones the person left out.
-    pub fn asked_code_values(&self) -> Vec<String> {
-        self.code_values().into_iter().filter(|code| !self.excluded.contains(code)).collect()
-    }
-
-    /// Whether the candidate carries codes and the person left out every one.
-    pub fn every_code_excluded(&self) -> bool {
-        !self.codes.is_empty() && self.asked_code_values().is_empty()
-    }
-
     /// Every provider failure.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
         into.extend(self.failures.iter().cloned().map(IdentifyFailure::Barcode));
