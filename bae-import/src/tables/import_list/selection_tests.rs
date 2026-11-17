@@ -497,10 +497,10 @@ async fn the_keys_between_two_rows_are_the_run_between_them() {
 async fn combine_counts_the_selection_while_every_row_can_join() {
     let lib = five_rows().await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("B")] }).await;
+    let selected = [lib.key("A"), lib.key("B")];
     let combine =
         |count, enabled| Some(SelectionOffer { action: CandidateAction::Combine, count, enabled });
-    assert_eq!(offer(&lib, list, CandidateAction::Combine).await, combine(2, true));
+    assert_eq!(offer(&lib, list, &selected, CandidateAction::Combine).await, combine(2, true));
     lib.run(lib.identifying("A", "running")).await;
-    assert_eq!(offer(&lib, list, CandidateAction::Combine).await, combine(0, false));
+    assert_eq!(offer(&lib, list, &selected, CandidateAction::Combine).await, combine(0, false));
 }
