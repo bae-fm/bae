@@ -2752,8 +2752,8 @@ unpins at once. The MCP tool's unpin never asks.
 
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, or pinned, needs
-nothing, as the releases' storage rows say, and the write queues one whose pin
-failed again in its place, as retrying queues it. Core refuses a release that
+nothing, as the releases' storage rows say, and the write queues again, in its
+place, one whose pin failed, as retrying queues it. Core refuses a release that
 someone deleted meanwhile, or one whose files are not in the cloud, and queues
 the rest, and the person sees the refusal. If the write fails, it queues
 nothing; the person sees the error and bae reports the failure as a bug.
