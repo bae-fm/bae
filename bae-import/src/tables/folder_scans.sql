@@ -84,14 +84,14 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     -- members.
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
     -- The relative path of the image the folder's cover rules pick when no
-    -- tag is read (`cover_art::folder_cover`), NULL when it holds none;
-    -- written with the files, which it is a fact of. A release that failed
-    -- validation leads with it in the Skipped tab.
+    -- tag is read (`cover_art::folder_cover`), NULL when it holds none. The
+    -- scan writes it in the same write as the files. The Skipped tab shows
+    -- this image as the cover of a release that failed validation.
     blank_cover_file               TEXT,
     -- Why the scan read a release as one bae can't import, which the Skipped
     -- tab shows (`InvalidReason`): a name two of its files show, else audio
-    -- bae can't play, else no audio bae plays. Written with the release's
-    -- files, which it is a fact of; NULL for a release of any other kind.
+    -- bae can't play, else no audio bae plays. The scan writes it in the same
+    -- write as the release's files; NULL for a release of any other kind.
     invalid_reason                 TEXT CHECK (invalid_reason IN ('same_name', 'damaged_audio', 'no_valid_audio')),
     -- The name two of its files show, for 'same_name'.
     invalid_shared_name            TEXT,

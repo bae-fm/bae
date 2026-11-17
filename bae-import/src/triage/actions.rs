@@ -118,7 +118,8 @@ impl CandidateActionBasis {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CandidateLiveState {
     pub facts: TriageRuntimeFacts,
-    /// The commands the row offers alone, from [`CandidateAction::ROW`].
+    /// The commands the row offers by itself, apart from the ones a selection
+    /// of several rows offers, from [`CandidateAction::ROW`].
     pub actions: Vec<CandidateAction>,
     /// Where the row stands among Found's states; `None` off Found.
     pub standing: Option<PendingStanding>,

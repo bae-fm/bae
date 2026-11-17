@@ -408,10 +408,10 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
 }
 
 /// A failed verdict with no ledger has no cell that shows a failure, so the
-/// pane says each failure in a line of its own. Beneath offered releases it
-/// says the failed fetches of the picked release apart, and each other
-/// lookup once, as the list missing its results, in the order the run first
-/// met it.
+/// pane shows each failure in a line of its own. Below the offered releases,
+/// the pane lists the picked release's failed fetches separately, then names
+/// each other failed lookup once as a search with missing results, in the
+/// order the run first hit each one.
 #[tokio::test]
 async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
     use bae_catalogs::search::SourceFailure;

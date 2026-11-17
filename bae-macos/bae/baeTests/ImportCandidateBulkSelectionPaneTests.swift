@@ -74,9 +74,9 @@ struct ImportCandidateBulkSelectionPaneTests {
         #expect(card.rows(in: .folder).map(\.action) == [.revealFolder])
     }
 
-    /// Each row states the number core sends for its action: one of the two
-    /// folders can be imported, both can be reset or skipped, and Combine
-    /// counts none while a folder holds it back.
+    /// Each row states the number core sends for its action: bae can import
+    /// one of the two folders and reset or skip both, and Combine counts zero
+    /// while a selected folder disables it.
     @Test("a row shows the number core sends for its action")
     func aRowShowsTheNumberCoreSends() {
         let card = Self.card()

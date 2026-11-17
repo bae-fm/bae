@@ -320,8 +320,8 @@ pub(crate) fn automation_identify_state(
             offers_shared_album,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
-            // Automation lists every failure; how a page that offers releases
-            // splits them is the page's.
+            // Automation lists every failure. A page that offers releases
+            // decides how to split them.
             failure_lines: failure_lines
                 .all
                 .into_iter()

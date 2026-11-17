@@ -277,8 +277,9 @@ struct FindOnlineAutomaticSection: View {
     }
 
     /// The line closing the list for a failed lookup whose results the list
-    /// is missing. Named by step as well as source: the source's other steps
-    /// may have answered, and those results are on the list.
+    /// is missing. The line names the step as well as the source, because
+    /// the source's other steps may have answered, and those results are on
+    /// the list.
     static func missingText(_ search: BridgeMissingSearch) -> String {
         let source = bridgeCatalogName(catalog: search.source)
         let step = SignalBadgeStyle.sentenceLabel(for: search.step)

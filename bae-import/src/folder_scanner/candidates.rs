@@ -182,9 +182,9 @@ impl InvalidCandidate {
         InvalidReason::of(&self.files)
     }
 
-    /// The image it would lead with if it could be imported: the relative
-    /// path of the one the folder's cover rules pick among its images that
-    /// decode, which the scan stores with its files.
+    /// The relative path of the image the release would show as its cover if
+    /// bae could import it, which the folder's cover rules pick from its
+    /// images that decode. The scan stores this path with the files.
     pub(crate) fn cover_file(&self) -> Option<String> {
         let images: Vec<ScannedFile> = self
             .files

@@ -278,8 +278,9 @@ pub struct VerdictCards {
     pub failure_lines: FailureLines,
 }
 
-/// The failures of a failed verdict that no cell of its ledger shows, as a
-/// surface says them: every one, in the order the run met them, for a page
+/// The failures of a failed verdict that no cell of its ledger shows, in the
+/// blocks of lines a screen draws them in: every one, in the order the run
+/// met them, for a page
 /// that offers no releases; and for a page that offers releases, the
 /// fetches of the release the run picked, and each lookup whose results the
 /// list is missing.

@@ -259,8 +259,9 @@ pub(crate) fn load_invalid_detail(
     Ok(Some(InvalidCandidateDetail { candidate, images, files }))
 }
 
-/// What the pane lists a skipped file as. A sheet in a folder that is never
-/// imported is never bound: it is the text it is.
+/// What the pane lists a skipped file as. bae never imports a skipped folder,
+/// so it never binds a cue sheet in one to audio, and the pane lists the
+/// sheet as a document.
 fn mapping_role(role: ProposedRole) -> MappingRole {
     match role {
         ProposedRole::Audio => MappingRole::Audio,

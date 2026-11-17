@@ -157,8 +157,9 @@ pub enum PaneFileRole {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListedRelease {
     pub basis: crate::CandidateActionBasis,
-    /// The commands it offers alone, from its placement and what is running
-    /// for it.
+    /// The commands the release offers by itself, apart from the ones a
+    /// selection of several rows offers, from its placement and what is
+    /// running for it.
     pub actions: Vec<crate::CandidateAction>,
     /// Where it stands among Found's states, what is running for it
     /// included; `None` off Found.

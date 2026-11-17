@@ -5,9 +5,9 @@
 //!
 //! The statement orders and groups the stored rows the way the pane draws the
 //! cards: a card's catalog buckets, its sections when it holds two albums of
-//! one catalog, its rows by year, its cover and the catalogs it names. It
-//! also reads, for each row, whether the library holds the row's lead release
-//! as a pressing. The
+//! one catalog, its rows by year, its cover and the catalogs it names. The
+//! statement also reads, for each row, whether the library holds the row's
+//! lead release as a pressing. The
 //! statement returns the cards as nested JSON, each record the release itself
 //! as [`match_record_sql`] holds it, and [`groups_of`] reads that JSON into
 //! the cards.

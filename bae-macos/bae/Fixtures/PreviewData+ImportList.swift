@@ -133,9 +133,9 @@ extension PreviewData {
     /// statement answers it: each
     /// action offered once per selected candidate whose row offers it, in the
     /// order the surfaces list them. The fixture offers Combine when the
-    /// person selects two or more rows, counting them and enabled when
-    /// `combinable` says every row can join one release, and counting none
-    /// otherwise. This function repeats core's selection query for fixtures,
+    /// person selects two or more rows. When `combinable` is true, the
+    /// Combine offer counts every selected row and is enabled. Otherwise it
+    /// counts none and is disabled. This function repeats core's selection query for fixtures,
     /// because the apps have no copy of that query.
     @MainActor
     static func importSelection(

@@ -344,8 +344,9 @@ pub enum BridgeIdentifyState {
     },
 }
 
-/// The failures of a failed verdict that no cell of its ledger shows, as a
-/// surface says them. Mirrors `bae_identify::FailureLines`.
+/// The failures of a failed verdict that no cell of its ledger shows, in the
+/// blocks of lines a screen draws them in. Mirrors
+/// `bae_identify::FailureLines`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFailureLines {
     /// Every one, in the order the run met them: the lines of a page that

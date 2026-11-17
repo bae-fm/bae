@@ -60,8 +60,8 @@ pub struct Pressing {
     statements: Statements,
     choice: RowChoice,
     /// Whether the library holds the lead record's release as a pressing, as
-    /// the statement that read the row found. A row formed in memory has not
-    /// been read against the library, and says it does not.
+    /// the statement that read the row found. No statement reads a row that
+    /// bae forms in memory against the library, so such a row says false.
     in_library: bool,
 }
 

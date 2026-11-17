@@ -186,12 +186,12 @@ pub struct TriageRow {
 }
 
 /// A folder that failed validation, as its row under Skipped and the pane
-/// looking into it show it: what its scan row stores, read by the screen's
-/// statement.
+/// that shows its details show it: what its scan row stores, read by the
+/// screen's statement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InvalidRow {
-    /// The key it is stored and addressed under: its folder's path, or its
-    /// grouping's key.
+    /// The key the scan stores the row under and every import call takes: its
+    /// folder's path, or its grouping's key.
     pub candidate_key: crate::CandidateKey,
     /// Its folder; for a grouping, the folder the grouping reads as one
     /// release.
@@ -209,7 +209,7 @@ pub struct InvalidRow {
     pub reason: crate::InvalidReason,
     /// What its tags call the release, when they name an album.
     pub tags: Option<crate::folder_scanner::SkippedTags>,
-    /// The image it leads with: the one the folder's cover rules pick among
+    /// The cover the row draws: the image the folder's cover rules pick among
     /// its images that decode.
     pub cover: Option<crate::CoverImageSource>,
 }

@@ -992,9 +992,9 @@ different things about one file fails the scan.
   The scan reads every file before judging it, so it stores each file of the
   folder with what it made of it — each damaged track with why: it is empty,
   or holds no audio bae can read — and the album title and artist its
-  playable tracks' tags agree on, read as a draft's are. It stores with
-  them why the folder can't be imported and the image it leads with, which
-  its row and pane read back as stored.
+  playable tracks' tags agree on, read as a draft's are. The scan also
+  stores with them why bae can't import the folder and the folder's cover
+  image, which its row and pane read back as stored.
 - **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
   `Café.flac` from an old rip), is read and imported like any other. Its name
   in the release, which the library syncs and every surface shows, is its
@@ -1254,11 +1254,10 @@ Core sends each offer with the number shown beside it and whether it can run:
 a row's own offers, each for that one row and leaving out Combine, come with
 the row, and a selection's come from one statement, which counts the rows each
 command runs on and gives Combine every selected row while every one can join
-one release and none otherwise. The list's counts — each tab's,
-each filter entry's, how many items the list holds and how many releases its
-filters keep, and how many each group's header counts — come from COUNT queries
-over the placement's rows, which read the placement's indexes; no table stores
-the counts. The list's count, with the narrowed count it carries, is a live
+one release and none otherwise. The list's counts come from COUNT queries over
+the placement's rows, which read the placement's indexes: each tab's, each
+filter entry's, how many items the list holds and how many releases its filters
+keep, and how many each group's header counts. No table stores the counts. The list's count, with the narrowed count it carries, is a live
 query of its own, apart from the windows: a scan's commit changes it without
 resending every window. Each tab's count is a read of its own as well, sent on a
 stream keyed by tab, and the tab bar's labels read it each display frame. Coven
@@ -6192,10 +6191,10 @@ release's or track's id as UTF-8, or a candidate's key.
   release's upload share, an export's percent) rests once a second passes
   without one, and moves again with the next, so a stalled or paused transfer
   asks for no frames; nothing the UI framework observes holds a fast value.
-- **Pulled subscriptions** — the browse, download and queue lists, the searches,
-  the import list and its counts, the detail views, the Storage manager's
-  list, a release's files, and the read of which
-  selected albums are gone — are objects the app asks for each
+- **Pulled subscriptions** are the browse, download and queue lists, the
+  searches, the import list and its counts, the detail views, the Storage
+  manager's list, a release's files, and the read of which selected albums
+  are gone. They are objects the app asks for each
   next value and points at new windows or a new query in place, built in the
   bridge's `screens` module like every screen subscription. A screen's read
   is open while the screen shows and cancelled when it stops showing, in
@@ -6625,7 +6624,7 @@ reads it again once.
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
 | `folder_scan_held`, `folder_scan_alert_shown` | what the folder scan coordinator holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why it can't be imported (also written with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why bae can't import it (which the scan also writes with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |

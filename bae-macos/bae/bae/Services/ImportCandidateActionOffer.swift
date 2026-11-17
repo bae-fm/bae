@@ -2,8 +2,8 @@ import BaeKit
 import Foundation
 
 /// One action the selection or one row's menu offers, the number shown
-/// beside it, and whether it can run now — core's answer, for the pane a
-/// selection opens and the list's menu alike.
+/// beside it, and whether it can run now. Core sends these for the pane a
+/// selection opens and for the list's menu.
 struct ImportCandidateActionOffer: Identifiable {
     let action: BridgeCandidateAction
     /// The number shown beside the action: how many rows it runs on.
