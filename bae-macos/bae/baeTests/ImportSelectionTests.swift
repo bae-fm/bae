@@ -309,8 +309,16 @@ struct ImportSelectionKeysReadTests {
             )
         )
         let (from, to) = (Data("/music/A".utf8), Data("/music/C".utf8))
-        selection.select([from, to])
-        selection.extend(from: from, to: to, on: .pending, in: .pathAscending)
+        selection.edit(
+            .adjust(
+                add: [from, to],
+                remove: [],
+                range: .init(from: from, to: to)
+            ),
+            on: .pending,
+            in: .pathAscending
+        )
+        #expect(selection.keys == [from, to])
         var iterator = entered.stream.makeAsyncIterator()
         await iterator.next()
         selection.select([Self.clicked])
@@ -325,13 +333,40 @@ struct ImportSelectionKeysReadTests {
             operations: .stub(keysBetween: { _, _, _, _ in between })
         )
         selection.select([Self.clicked])
-        selection.extend(
-            from: between[0],
-            to: between[1],
+        selection.edit(
+            .adjust(
+                add: [between[0]],
+                remove: [],
+                range: .init(from: between[0], to: between[1])
+            ),
             on: .pending,
             in: .pathAscending
         )
         try await Wait.until { selection.keys.count == 3 }
         #expect(selection.keys == Set(between + [Self.clicked]))
+    }
+}
+
+/// ImportSelection makes each change a click or key asks for to the keys it
+/// holds when the change arrives.
+@MainActor
+@Suite("Edits to the kept keys")
+struct ImportSelectionEditTests {
+    @Test("a Command-click changes its own row and keeps a hidden one")
+    func adjustKeepsTheOtherKeys() {
+        let (hidden, shown, clicked) = (
+            Data("/music/Hidden".utf8), Data("/music/Shown".utf8),
+            Data("/music/Clicked".utf8)
+        )
+        let selection = ImportSelection()
+        selection.select([hidden, shown])
+        selection.edit(
+            .adjust(add: [clicked], remove: [shown], range: nil),
+            on: .pending,
+            in: .pathAscending
+        )
+        #expect(selection.keys == [hidden, clicked])
+        selection.edit(.only([shown]), on: .pending, in: .pathAscending)
+        #expect(selection.keys == [shown])
     }
 }

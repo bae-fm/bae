@@ -37,9 +37,6 @@ struct ImportListSelectionRequest {
     let proposed: IndexSet
     /// The rows the table highlights now.
     let current: IndexSet
-    /// The keys the screen keeps selected now, the rows the list hides
-    /// included.
-    let kept: Set<Data>
     let gesture: SelectionGesture
     /// The row the pointer pressed, for a click.
     let target: Int?
@@ -58,6 +55,16 @@ struct ImportListSelectionRequest {
         let to: Data
     }
 
+    /// A change to the kept keys. `ImportSelection.edit` makes it to the
+    /// keys the selection holds when the change arrives.
+    enum Edit: Equatable {
+        /// Select exactly these keys.
+        case only(Set<Data>)
+        /// Add `add` and take out `remove`, keeping every other key, then
+        /// add the rows of `range` once core reads them.
+        case adjust(add: Set<Data>, remove: Set<Data>, range: Run?)
+    }
+
     /// What the proposal asks of the kept keys.
     enum Answer: Equatable {
         /// It lands on nothing that can be selected: a header, a row still
@@ -65,9 +72,8 @@ struct ImportListSelectionRequest {
         case rejected
         /// It changes nothing.
         case unchanged
-        /// Keep `kept` selected, add the rows of `run` once core reads them,
-        /// and extend from `anchor` next.
-        case change(kept: Set<Data>, run: Run?, anchor: Data?)
+        /// Make `edit` to the kept keys, and extend from `anchor` next.
+        case change(Edit, anchor: Data?)
     }
 
     var answer: Answer {
@@ -79,8 +85,7 @@ struct ImportListSelectionRequest {
         switch gesture {
         case .replace:
             return .change(
-                kept: proposedKeys,
-                run: nil,
+                .only(proposedKeys),
                 anchor: target.flatMap(key)
                     ?? (proposedKeys.count == 1 ? proposedKeys.first : anchor)
             )
@@ -89,8 +94,7 @@ struct ImportListSelectionRequest {
             let remove = highlighted.subtracting(proposedKeys)
             guard !add.isEmpty || !remove.isEmpty else { return .unchanged }
             return .change(
-                kept: kept.union(add).subtracting(remove),
-                run: nil,
+                .adjust(add: add, remove: remove, range: nil),
                 anchor: target.flatMap(key) ?? anchor
             )
         case .extend:
@@ -110,8 +114,7 @@ struct ImportListSelectionRequest {
             let remove = highlighted.subtracting(proposedKeys)
             guard !remove.isEmpty else { return .unchanged }
             return .change(
-                kept: kept.subtracting(remove),
-                run: nil,
+                .adjust(add: [], remove: remove, range: nil),
                 anchor: anchor
             )
         }
@@ -126,8 +129,11 @@ struct ImportListSelectionRequest {
         guard let from = key(start) ?? anchor ?? firstKey(from: start, to: end)
         else { return .rejected }
         return .change(
-            kept: kept.union(proposedKeys),
-            run: Run(from: from, to: to),
+            .adjust(
+                add: proposedKeys,
+                remove: [],
+                range: Run(from: from, to: to)
+            ),
             anchor: anchor ?? from
         )
     }

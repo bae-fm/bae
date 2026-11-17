@@ -527,11 +527,11 @@ extension ImportListSlot {
         selection.select([candidateKey])
     }
 
-    /// Add to the selection every row the list shows from `from` to `to`,
-    /// loaded or not, once core reads them on the tab and in the order the
-    /// slot shows.
-    func extendSelection(from: Data, to: Data) {
-        selection.extend(from: from, to: to, on: view.tab, in: view.order)
+    /// Make `edit`, the change a click or key made, to the selection. Core
+    /// reads the rows a Shift-click adds on the tab and in the order the slot
+    /// shows.
+    func editSelection(_ edit: ImportListSelectionRequest.Edit) {
+        selection.edit(edit, on: view.tab, in: view.order)
     }
 }
 

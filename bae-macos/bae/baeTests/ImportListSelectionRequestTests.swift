@@ -4,9 +4,12 @@ import Testing
 
 @testable import bae
 
-/// What the table's proposed selection makes of the kept keys: the keys to
-/// keep, the run whose rows core reads for a Shift gesture, and where Shift
-/// extends from.
+/// How the table's proposed selection changes the kept keys: the keys it
+/// adds and takes out, the range whose rows core reads for a Shift-click, and
+/// where Shift extends from.
+///
+/// The answer names only the keys a gesture changes, so a kept key the list
+/// hides stays selected through every gesture but a plain click.
 @Suite("Import list selection request")
 struct ImportListSelectionRequestTests {
     /// Rows 0 to 9 select `row-0` to `row-9`; row 3 is a header, and rows
@@ -23,9 +26,6 @@ struct ImportListSelectionRequestTests {
         Data("row-\(index)".utf8)
     }
 
-    /// A key the list hides, which the screen keeps selected.
-    private static let hidden = Data("hidden".utf8)
-
     private static func answer(
         proposed: IndexSet,
         current: IndexSet,
@@ -36,7 +36,6 @@ struct ImportListSelectionRequestTests {
         ImportListSelectionRequest(
             proposed: proposed,
             current: current,
-            kept: Set(current.compactMap(key)).union([hidden]),
             gesture: gesture,
             target: target,
             anchor: anchor,
@@ -54,11 +53,7 @@ struct ImportListSelectionRequestTests {
                 gesture: .replace,
                 target: 2
             )
-                == .change(
-                    kept: [Self.row(2)],
-                    run: nil,
-                    anchor: Self.row(2)
-                )
+                == .change(.only([Self.row(2)]), anchor: Self.row(2))
         )
     }
 
@@ -66,11 +61,11 @@ struct ImportListSelectionRequestTests {
     func clickOnNothingClears() {
         #expect(
             Self.answer(proposed: [], current: [1], gesture: .replace)
-                == .change(kept: [], run: nil, anchor: nil)
+                == .change(.only([]), anchor: nil)
         )
     }
 
-    @Test("a Command-click adds or takes out its row, keeping hidden ones")
+    @Test("a Command-click adds or takes out its row alone")
     func commandClickToggles() {
         #expect(
             Self.answer(
@@ -80,8 +75,7 @@ struct ImportListSelectionRequestTests {
                 target: 4
             )
                 == .change(
-                    kept: [Self.row(0), Self.row(1), Self.row(4), Self.hidden],
-                    run: nil,
+                    .adjust(add: [Self.row(4)], remove: [], range: nil),
                     anchor: Self.row(4)
                 )
         )
@@ -93,8 +87,7 @@ struct ImportListSelectionRequestTests {
                 target: 1
             )
                 == .change(
-                    kept: [Self.row(0), Self.hidden],
-                    run: nil,
+                    .adjust(add: [], remove: [Self.row(1)], range: nil),
                     anchor: Self.row(1)
                 )
         )
@@ -125,11 +118,13 @@ struct ImportListSelectionRequestTests {
                 anchor: Self.row(2)
             )
                 == .change(
-                    kept: [
-                        Self.row(2), Self.row(4), Self.row(8), Self.row(9),
-                        Self.hidden,
-                    ],
-                    run: .init(from: Self.row(2), to: Self.row(9)),
+                    .adjust(
+                        add: [
+                            Self.row(2), Self.row(4), Self.row(8), Self.row(9),
+                        ],
+                        remove: [],
+                        range: .init(from: Self.row(2), to: Self.row(9))
+                    ),
                     anchor: Self.row(2)
                 )
         )
@@ -148,8 +143,11 @@ struct ImportListSelectionRequestTests {
                 anchor: Self.row(2)
             )
                 == .change(
-                    kept: [Self.row(8), Self.row(9), Self.hidden],
-                    run: .init(from: Self.row(2), to: Self.row(9)),
+                    .adjust(
+                        add: [Self.row(8), Self.row(9)],
+                        remove: [],
+                        range: .init(from: Self.row(2), to: Self.row(9))
+                    ),
                     anchor: Self.row(2)
                 )
         )
@@ -166,8 +164,11 @@ struct ImportListSelectionRequestTests {
                 gesture: .extend
             )
                 == .change(
-                    kept: [Self.row(1), Self.row(2), Self.hidden],
-                    run: .init(from: Self.row(1), to: Self.row(2)),
+                    .adjust(
+                        add: [Self.row(1), Self.row(2)],
+                        remove: [],
+                        range: .init(from: Self.row(1), to: Self.row(2))
+                    ),
                     anchor: Self.row(1)
                 )
         )
@@ -179,8 +180,7 @@ struct ImportListSelectionRequestTests {
                 anchor: Self.row(1)
             )
                 == .change(
-                    kept: [Self.row(1), Self.hidden],
-                    run: nil,
+                    .adjust(add: [], remove: [Self.row(2)], range: nil),
                     anchor: Self.row(1)
                 )
         )

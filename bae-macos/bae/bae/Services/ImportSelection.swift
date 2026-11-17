@@ -182,17 +182,23 @@ final class ImportSelection {
         replace(keys)
     }
 
-    /// Add to the selection every row the list shows from `from` to `to`
-    /// on `tab` in `order`, the tab and order the screen shows, once core
-    /// reads their keys.
-    func extend(
-        from: Data,
-        to: Data,
+    /// Make `edit`, the change a click or key made, to the keys the
+    /// selection holds now. Core reads the rows a Shift-click adds on `tab`
+    /// in `order`, the tab and order the screen shows.
+    func edit(
+        _ edit: ImportListSelectionRequest.Edit,
         on tab: BridgeTriageTab,
         in order: BridgeImportListOrder
     ) {
-        readKeys(adding: true) {
-            try await $0.keysBetween(tab, order, from, to)
+        switch edit {
+        case .only(let keys):
+            select(keys)
+        case .adjust(let add, let remove, let range):
+            select(keys.union(add).subtracting(remove))
+            guard let range else { return }
+            readKeys(adding: true) {
+                try await $0.keysBetween(tab, order, range.from, range.to)
+            }
         }
     }
 

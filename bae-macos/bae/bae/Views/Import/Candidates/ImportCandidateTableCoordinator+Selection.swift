@@ -20,7 +20,6 @@ extension ImportCandidateTableCoordinator {
         let request = ImportListSelectionRequest(
             proposed: proposed,
             current: tableView.selectedRowIndexes,
-            kept: listSlot.selection.keys,
             gesture: SelectionGesture(event?.modifierFlags ?? []),
             target: event.flatMap { table?.pressedRow($0) },
             anchor: anchorKey,
@@ -33,15 +32,12 @@ extension ImportCandidateTableCoordinator {
             return event?.type == .keyDown ? [] : tableView.selectedRowIndexes
         case .unchanged:
             return tableView.selectedRowIndexes
-        case .change(let kept, let run, let anchor):
+        case .change(let edit, let anchor):
             anchorKey = anchor
             endPendingPlace()
             onPersonSelected()
-            listSlot.selection.select(kept)
-            if let run {
-                listSlot.extendSelection(from: run.from, to: run.to)
-            }
-            return rows(selecting: kept)
+            listSlot.editSelection(edit)
+            return rows(selecting: listSlot.selection.keys)
         }
     }
 
