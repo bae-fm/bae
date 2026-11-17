@@ -11,20 +11,20 @@ struct ImportCandidateSelectionTests {
     @Test("folder scan activity renders an indeterminate progress control")
     func folderScanActivityRendersIndeterminateProgress() async throws {
         let size = NSSize(width: 180, height: 40)
-        try await SnapshotTestSupport.withHostedWindow(
-            FolderScanProgressIndicator(
-                folders: [
-                    BridgeScanningFolder(
-                        folder: BridgeWatchedFolder(
-                            path: Data("/imports/incoming".utf8),
-                            pathText: "/imports/incoming",
-                            name: "Incoming"
-                        ),
-                        found: 179
-                    )
-                ]
+        let importStore = ImportStore()
+        importStore.applyScanningFolders([
+            BridgeScanningFolder(
+                folder: BridgeWatchedFolder(
+                    path: Data("/imports/incoming".utf8),
+                    pathText: "/imports/incoming",
+                    name: "Incoming"
+                ),
+                found: 179
             )
-            .frame(width: size.width, height: size.height),
+        ])
+        try await SnapshotTestSupport.withHostedWindow(
+            FolderScanProgressIndicator(importStore: importStore)
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
 
