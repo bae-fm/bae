@@ -585,7 +585,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         cover: Some(crate::CoverImageSource::Local { file: version("front.jpg", 4) }),
     };
     assert_eq!(listed, std::slice::from_ref(&row));
-    assert_eq!(list.selection.count, 1, "the folder is selected like any row");
+    assert_eq!(list.selection.count, 1, "the list selects the folder like any row");
 
     let mut detail = tables.subscribe_invalid_candidate(Some(key.clone()));
     let read = detail

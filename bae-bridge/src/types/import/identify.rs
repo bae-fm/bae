@@ -351,7 +351,8 @@ pub enum BridgeIdentifyState {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFailureLines {
     /// Every one, in the order the run met them: the lines of a page that
-    /// offers no releases, which the page draws with one Retry. At least one.
+    /// offers no releases, which the page draws with one Retry. The list holds
+    /// at least one failure.
     pub all: Vec<BridgeIdentifyFailure>,
     /// The failed fetches of the release the run picked, which say why bae
     /// did not apply the pick and leave no results missing from the list. The

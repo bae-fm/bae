@@ -287,7 +287,8 @@ pub struct VerdictCards {
 /// list is missing.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FailureLines {
-    /// Every one, in the order the run met them: at least one.
+    /// Every one, in the order the run met them. The list holds at least one
+    /// failure.
     pub all: Vec<super::IdentifyFailure>,
     /// The failed fetches of the release the run picked: its cover. They
     /// leave no results missing from the list, and they are why the run did
