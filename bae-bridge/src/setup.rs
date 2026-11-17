@@ -19,7 +19,7 @@ pub fn available_cloud_providers() -> Vec<BridgeCloudProvider> {
 }
 
 impl crate::BridgeLibraryListing {
-    /// Converts core's listing, its libraries in core's order.
+    /// Converts core's listing and keeps its libraries in core's order.
     pub(crate) fn from_core(listing: bae_app_dir::LibraryListing) -> Result<Self, BridgeError> {
         let bae_app_dir::LibraryListing { libraries, shows_switcher, active_neighbors } = listing;
         Ok(Self {

@@ -3276,9 +3276,9 @@ history setting.
   the profile's name in the device's language. The people with no profile yet
   come after them, in the order bae made their member ids: bae's UUIDv7 id
   source makes a member's id when the founder creates the library or an
-  inviter creates the invite. The person using this device is read the same
-  way. A removed person's row stays, read-only, but they are no one in the
-  list.
+  inviter creates the invite. The query reads the person using this device
+  the same way. A removed person's row stays, read-only, and the list does
+  not show them.
 
 ### 5.5 "Ana rated this"
 

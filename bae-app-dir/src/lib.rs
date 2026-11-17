@@ -169,11 +169,12 @@ impl AppDir {
         }
     }
 
-    /// The libraries registered on this device, the active one first, then by
-    /// name (a library whose name can't be read last), each with whether it
-    /// opens: the stores `coven`, this directory's installation, lists. This
-    /// function reports to `bugs`, the crash reporter, any bug that coven
-    /// returns when it lists the stores or reads a library's settings.
+    /// The libraries registered on this device, the active one first and then
+    /// by name, with a library whose name coven can't read at the end, each
+    /// with whether it opens: the stores that `coven`, this directory's
+    /// installation, lists. `discover_libraries` reports to `bugs`, the crash
+    /// reporter, any bug that coven returns when it lists the stores or reads
+    /// a library's settings.
     pub async fn discover_libraries(
         &self,
         coven: &coven::Coven,
