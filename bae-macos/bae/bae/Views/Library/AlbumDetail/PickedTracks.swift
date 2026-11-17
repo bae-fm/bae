@@ -80,7 +80,7 @@ final class PickedTracks {
 }
 
 /// What a track list does with picked tracks: what a shift-click on a row
-/// picks, and what a menu on several picked tracks does, each action given
+/// picks, and what a menu on several picked tracks does, each action taking
 /// the picked ids in no order. The picks themselves are the page's, in
 /// `UiStore`.
 struct TrackPicking {

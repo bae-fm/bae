@@ -217,7 +217,7 @@ first in that order, ties broken by release id. So every album with a release
 has exactly one primary. A release joining an
 album goes after the album's others, so an album's first release stays its
 primary. "Set as primary release" moves a release before the album's others,
-and is refused for a release of another album. Moving or deleting a release
+and core refuses it for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
 A release with no stored name, year or media shows as "Release N", where N is
