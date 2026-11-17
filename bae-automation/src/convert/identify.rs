@@ -325,6 +325,7 @@ pub(crate) fn automation_identify_state(
             failure_lines: failure_lines
                 .all
                 .into_iter()
+                .flatten()
                 .map(AutomationIdentifyFailure::from_core)
                 .collect(),
             groups: groups.into_iter().map(AutomationReleaseGroup::from_core).collect(),

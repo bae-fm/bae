@@ -401,7 +401,10 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
     else {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines.all, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
+    assert_eq!(
+        failure_lines.all,
+        Some(vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover])
+    );
 }
 
 /// A failed verdict with no ledger has no cell that shows a failure, so the
@@ -447,8 +450,8 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
     else {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines.all, failures);
-    assert_eq!(failure_lines.pick_failures, vec![cover]);
+    assert_eq!(failure_lines.all, Some(failures));
+    assert_eq!(failure_lines.pick_failures, Some(vec![cover]));
     let missing = |step, catalog| MissingSearch { step, catalog };
     assert_eq!(
         failure_lines.missing_searches,
@@ -458,6 +461,41 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
             missing(LookupStep::Pressing, Catalog::MusicBrainz),
         ]
     );
+}
+
+/// A failed verdict with no failed fetch of the picked release has no block
+/// of pick failures, so the pane draws no such lines and no Retry for them.
+#[tokio::test]
+async fn a_verdict_with_no_failed_fetch_of_its_pick_has_no_pick_failures() {
+    use bae_catalogs::LookupFailure;
+    use bae_identify::IdentifyFailure;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let failures = vec![IdentifyFailure::DiscId(LookupFailure::Timeout)];
+    store_verdict(
+        &db,
+        &candidate,
+        TerminalVerdict::Failed {
+            failures: failures.clone(),
+            findings: bae_identify::Findings::default(),
+            track_count: 1,
+            ledger: None,
+        },
+    )
+    .await;
+
+    let detail = crate::tables::ImportTables::new(db.clone())
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane");
+
+    let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
+    else {
+        panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
+    };
+    assert_eq!(failure_lines.all, Some(failures));
+    assert_eq!(failure_lines.pick_failures, None);
 }
 
 /// The candidate's picker offers the covers the linked release states, each

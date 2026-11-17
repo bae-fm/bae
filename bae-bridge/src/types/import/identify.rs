@@ -349,11 +349,14 @@ pub enum BridgeIdentifyState {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFailureLines {
     /// Every one, in the order the run met them: the lines of a page that
-    /// offers no releases.
-    pub all: Vec<BridgeIdentifyFailure>,
-    /// The failed fetches of the release the run picked, which say why the
-    /// pick was not applied and leave no results missing from the list.
-    pub pick_failures: Vec<BridgeIdentifyFailure>,
+    /// offers no releases, which the page draws with one Retry. `None` when
+    /// the ledger's cells show every failure, so the page draws no lines.
+    pub all: Option<Vec<BridgeIdentifyFailure>>,
+    /// The failed fetches of the release the run picked, which say why bae
+    /// did not apply the pick and leave no results missing from the list. The
+    /// page draws them with one Retry. `None` when no fetch of the picked
+    /// release failed, so the page draws no lines.
+    pub pick_failures: Option<Vec<BridgeIdentifyFailure>>,
     /// Each lookup among the other failures, once, in the order the run first
     /// met it: the lines closing a list of offered releases.
     pub missing_searches: Vec<BridgeMissingSearch>,

@@ -659,8 +659,8 @@ extension PreviewData {
             run: identifyRunProviderFailed,
             // The band's cell shows the failure.
             failureLines: BridgeFailureLines(
-                all: [],
-                pickFailures: [],
+                all: nil,
+                pickFailures: nil,
                 missingSearches: []
             ),
             groups: [searchGroupExact],
@@ -700,8 +700,8 @@ extension PreviewData {
             ),
             // The band's cells show both failures.
             failureLines: BridgeFailureLines(
-                all: [],
-                pickFailures: [],
+                all: nil,
+                pickFailures: nil,
                 missingSearches: []
             ),
             groups: [],
@@ -720,7 +720,7 @@ extension PreviewData {
                     .discId(failure: .network),
                     .barcode(source: .discogs, failure: .provider(status: 503)),
                 ],
-                pickFailures: [],
+                pickFailures: nil,
                 missingSearches: [
                     BridgeMissingSearch(step: .discId, source: .musicBrainz),
                     BridgeMissingSearch(step: .barcode, source: .discogs),

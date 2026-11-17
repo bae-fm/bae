@@ -76,8 +76,8 @@ struct ImportSearchState {
             case .failed(_, let failureLines, _, _, _, _) = identifyState
         else {
             return BridgeFailureLines(
-                all: [],
-                pickFailures: [],
+                all: nil,
+                pickFailures: nil,
                 missingSearches: []
             )
         }

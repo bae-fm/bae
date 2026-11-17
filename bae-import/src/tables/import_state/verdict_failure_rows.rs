@@ -86,12 +86,14 @@ const NO_CELL_SHOWS: &str = "NOT EXISTS (SELECT 1 FROM import_candidate_lookup A
 /// cell of its ledger shows, as one JSON object that [`failure_lines_of`]
 /// reads: every one, in the order the run met them (`all`); the failed
 /// fetches of the release the run picked, its cover, which leave no results
-/// missing from the list (`pick_failures`); and each other failure's lookup,
+/// missing from the list (`pick_failures`), each of these two null when it
+/// holds no failure; and each other failure's lookup,
 /// once, in the order the run first met it (`missing_searches`). MusicBrainz
 /// is the only catalog asked by Disc ID and by ISRC, so those lookups name it.
 pub(super) fn failure_lines_sql(verdict: &str) -> String {
     format!(
-        "json_object('all', json({all}), 'pick_failures', json({pick}), \
+        "json_object('all', json(NULLIF({all}, '[]')), \
+                     'pick_failures', json(NULLIF({pick}, '[]')), \
                      'missing_searches', json((SELECT json_group_array(json_object( \
                          'lookup', missing.lookup, 'catalog', missing.catalog) \
                          ORDER BY missing.first) \
@@ -112,8 +114,8 @@ pub(super) fn failure_lines_sql(verdict: &str) -> String {
 /// What a [`failure_lines_sql`] column holds.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredFailureLines {
-    all: Vec<StoredFailure>,
-    pick_failures: Vec<StoredFailure>,
+    all: Option<Vec<StoredFailure>>,
+    pick_failures: Option<Vec<StoredFailure>>,
     missing_searches: Vec<StoredMissingSearch>,
 }
 
@@ -124,6 +126,13 @@ struct StoredMissingSearch {
     catalog: String,
 }
 
+/// The failures of one block of a [`failure_lines_sql`] column.
+fn failures_of_block(
+    block: Vec<StoredFailure>,
+) -> Result<Vec<bae_identify::IdentifyFailure>, DbError> {
+    block.into_iter().map(StoredFailure::failure).collect()
+}
+
 /// The failure lines a [`failure_lines_sql`] column holds.
 pub(super) fn failure_lines_of(
     stored: StoredFailureLines,
@@ -131,11 +140,8 @@ pub(super) fn failure_lines_of(
     use bae_identify::LookupStep;
     let StoredFailureLines { all, pick_failures, missing_searches } = stored;
     Ok(bae_identify::FailureLines {
-        all: all.into_iter().map(StoredFailure::failure).collect::<Result<_, _>>()?,
-        pick_failures: pick_failures
-            .into_iter()
-            .map(StoredFailure::failure)
-            .collect::<Result<_, _>>()?,
+        all: all.map(failures_of_block).transpose()?,
+        pick_failures: pick_failures.map(failures_of_block).transpose()?,
         missing_searches: missing_searches
             .into_iter()
             .map(|StoredMissingSearch { lookup, catalog }| {

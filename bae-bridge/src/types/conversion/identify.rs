@@ -515,8 +515,9 @@ impl BridgeIdentifyState {
 fn failure_lines_of(lines: bae_identify::FailureLines) -> crate::types::BridgeFailureLines {
     let bae_identify::FailureLines { all, pick_failures, missing_searches } = lines;
     crate::types::BridgeFailureLines {
-        all: all.into_iter().map(identify_failure).collect(),
-        pick_failures: pick_failures.into_iter().map(identify_failure).collect(),
+        all: all.map(|failures| failures.into_iter().map(identify_failure).collect()),
+        pick_failures: pick_failures
+            .map(|failures| failures.into_iter().map(identify_failure).collect()),
         missing_searches: missing_searches
             .into_iter()
             .map(|search| crate::types::BridgeMissingSearch {

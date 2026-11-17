@@ -285,11 +285,13 @@ pub struct VerdictCards {
 /// list is missing.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FailureLines {
-    pub all: Vec<super::IdentifyFailure>,
+    /// Every one, in the order the run met them; `None` when the ledger's
+    /// cells show every failure.
+    pub all: Option<Vec<super::IdentifyFailure>>,
     /// The failed fetches of the release the run picked: its cover. They
-    /// leave no results missing from the list, and they are why the pick was
-    /// not applied.
-    pub pick_failures: Vec<super::IdentifyFailure>,
+    /// leave no results missing from the list, and they are why the run did
+    /// not apply its pick. `None` when no fetch of the picked release failed.
+    pub pick_failures: Option<Vec<super::IdentifyFailure>>,
     /// Each lookup among the other failures, once, in the order the run first
     /// met it.
     pub missing_searches: Vec<MissingSearch>,
