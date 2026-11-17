@@ -1,16 +1,11 @@
 use super::*;
+use coven::{RecordedInviteStage as Stage, RecordedJoiner as Joiner};
 
-/// Open an in-memory library and create tables with the columns of the coven
-/// views `INVITE_ROWS` reads, beside the library's own `people`.
+/// Open an in-memory library, where coven makes the views `INVITE_ROWS`
+/// reads beside the library's own `people`.
 fn views() -> rusqlite::Connection {
     let conn = rusqlite::Connection::open_in_memory().unwrap();
     crate::TEST_SCHEMA.open_bare_library(&conn);
-    conn.execute_batch(
-        "CREATE TABLE coven_invites(invite, operation, stage, request_member, joiner_name, invite_id);
-         CREATE TABLE coven_pending(record, cause, operation, subject_kind, reason_kind);
-         CREATE TABLE coven_operations(operation, kind, outcome, outcome_kind, account);",
-    )
-    .unwrap();
     conn
 }
 
@@ -36,20 +31,75 @@ fn rows(conn: &rusqlite::Connection) -> Vec<Shown> {
         .unwrap()
 }
 
-fn invite(conn: &rusqlite::Connection, operation: i64, stage: &str) {
-    conn.execute(
-        "INSERT INTO coven_invites VALUES (x'00', ?1, ?2, NULL, NULL, 'invite-' || ?1)",
-        rusqlite::params![operation, stage],
-    )
-    .unwrap();
+/// The id of the invite a test builds from `n`.
+fn invite_id(n: u8) -> coven::InviteId {
+    coven::InviteId(uuid::Uuid::from_bytes([n; 16]))
 }
 
-fn record(conn: &rusqlite::Connection, operation: i64, reason: &str) {
-    conn.execute(
-        "INSERT INTO coven_pending VALUES (x'01', NULL, ?1, 'operation', ?2)",
-        rusqlite::params![operation, reason],
-    )
-    .unwrap();
+/// Journal the invite built from `n` at `stage`, as coven journals an invite
+/// and its later steps, and return its operation.
+fn invite(
+    conn: &rusqlite::Connection,
+    n: u8,
+    stage: coven::RecordedInviteStage,
+) -> coven::OperationId {
+    let invite = coven::RecordedInvite {
+        id: invite_id(n),
+        member: coven::MemberId(uuid::Uuid::from_bytes([n + 100; 16])),
+        stage,
+    };
+    coven::record_invite(conn, invite).unwrap()
+}
+
+/// Save the pending record coven saves when it holds the invite `operation`
+/// for `reason`.
+fn record(
+    conn: &rusqlite::Connection,
+    operation: coven::OperationId,
+    reason: coven::PendingReason,
+) {
+    let subject =
+        coven::PendingSubject::Operation { id: operation, kind: coven::OperationKind::Invite };
+    coven::record_pending(conn, &coven::PendingRecord::new(subject, reason)).unwrap();
+}
+
+/// The reason coven holds a waiting invite while the join request at its
+/// path hasn't arrived.
+fn request_missing(n: u8) -> coven::PendingReason {
+    coven::PendingReason::Missing {
+        path: coven::ObjectPath::join_request(
+            coven::StoreId(uuid::Uuid::from_bytes([200; 16])),
+            coven::DeviceId(1),
+            invite_id(n),
+        ),
+    }
+}
+
+/// The stage of an invite whose request from Dan, a new person, waits for
+/// Ana's decision.
+fn dan_waiting() -> Stage {
+    Stage::Waiting { joiner: Some(Joiner::NewPerson("Dan".into())) }
+}
+
+/// Journal a rename of the store, a change that is not an invite.
+fn rename(conn: &rusqlite::Connection) -> coven::OperationId {
+    coven::record_change(conn, coven::StoreChange::RenameStore { name: "Household".into() })
+        .unwrap()
+}
+
+/// The outcome of an operation the provider refused to share for.
+fn refused_outcome() -> coven::OperationOutcome {
+    coven::OperationOutcome::SharingRefused {
+        account: "dan@example.com".into(),
+        refusal: coven::SharingRefusal::TooManyMembers,
+    }
+}
+
+/// End the invite `operation` as the provider's refusal to share with Dan
+/// ends it.
+fn refuse(conn: &rusqlite::Connection, operation: coven::OperationId) {
+    coven::refuse_invite(conn, operation, "dan@example.com", coven::SharingRefusal::TooManyMembers)
+        .unwrap();
 }
 
 /// Coven holds Dan's invite while it can't grant his access: the invite
@@ -58,9 +108,9 @@ fn record(conn: &rusqlite::Connection, operation: i64, reason: &str) {
 #[test]
 fn an_invite_shows_the_record_its_operation_holds() {
     let conn = views();
-    invite(&conn, 6, "granting");
-    invite(&conn, 7, "granting");
-    record(&conn, 7, "no_storage");
+    invite(&conn, 6, Stage::Granting);
+    let held = invite(&conn, 7, Stage::Granting);
+    record(&conn, held, coven::PendingReason::NoStorage);
     let rows = rows(&conn);
     assert_eq!(rows[0].4, None);
     assert!(rows[1].4.is_some());
@@ -73,10 +123,10 @@ fn an_invite_shows_the_record_its_operation_holds() {
 #[test]
 fn a_waiting_invite_shows_no_record_for_the_request_it_waits_on() {
     let conn = views();
-    invite(&conn, 7, "waiting");
-    record(&conn, 7, "missing");
-    invite(&conn, 8, "waiting");
-    record(&conn, 8, "no_storage");
+    let waiting = invite(&conn, 7, Stage::Waiting { joiner: None });
+    record(&conn, waiting, request_missing(7));
+    let held = invite(&conn, 8, Stage::Waiting { joiner: None });
+    record(&conn, held, coven::PendingReason::NoStorage);
     let rows = rows(&conn);
     assert_eq!(rows[0].4, None);
     assert!(rows[1].4.is_some());
@@ -87,14 +137,10 @@ fn a_waiting_invite_shows_no_record_for_the_request_it_waits_on() {
 #[test]
 fn a_pause_before_the_code_shows_is_a_hold() {
     let conn = views();
-    conn.execute(
-        "INSERT INTO coven_invites VALUES (x'00', 8, 'waiting', x'0a', 'Dan', 'invite-8')",
-        [],
-    )
-    .unwrap();
-    record(&conn, 8, "paused");
-    invite(&conn, 9, "granting");
-    record(&conn, 9, "paused");
+    let deciding = invite(&conn, 8, dan_waiting());
+    record(&conn, deciding, coven::PendingReason::Paused);
+    let granting = invite(&conn, 9, Stage::Granting);
+    record(&conn, granting, coven::PendingReason::Paused);
     let rows = rows(&conn);
     assert_eq!(rows[0].4, None);
     assert!(rows[1].4.is_some());
@@ -107,17 +153,10 @@ fn a_pause_before_the_code_shows_is_a_hold() {
 #[test]
 fn a_request_shows_the_name_a_new_person_typed() {
     let conn = views();
-    invite(&conn, 1, "waiting");
-    conn.execute(
-        "INSERT INTO coven_invites VALUES (x'00', 2, 'waiting', x'0a', 'Dan', 'invite-2')",
-        [],
-    )
-    .unwrap();
-    conn.execute(
-        "INSERT INTO coven_invites VALUES (x'00', 3, 'approving', x'0c', NULL, 'invite-3')",
-        [],
-    )
-    .unwrap();
+    invite(&conn, 1, Stage::Waiting { joiner: None });
+    invite(&conn, 2, dan_waiting());
+    let binding = rename(&conn);
+    invite(&conn, 3, Stage::Approving { joiner: Joiner::Recovering, binding });
     let shown: Vec<(Option<bool>, Option<String>)> =
         rows(&conn).into_iter().map(|row| (row.2, row.3)).collect();
     assert_eq!(
@@ -128,43 +167,35 @@ fn a_request_shows_the_name_a_new_person_typed() {
 
 /// Open invites and the ones a sharing refusal ended are one list.
 /// `INVITE_ROWS` lists them in the order coven started their operations and
-/// leaves out operations with any other outcome.
+/// leaves out operations of any other kind or with any other outcome.
 #[test]
 fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
     let conn = views();
-    invite(&conn, 5, "granting");
-    for (operation, kind, outcome_kind) in [
-        (2, "Invite", "sharing_refused"),
-        (4, "Invite", "applied"),
-        (6, "Invite", "sharing_refused"),
-        (3, "Other", "sharing_refused"),
-    ] {
-        conn.execute(
-            "INSERT INTO coven_operations VALUES (?1, ?2, x'02', ?3, 'dan@example.com')",
-            rusqlite::params![operation, kind, outcome_kind],
-        )
-        .unwrap();
-    }
+    let first = invite(&conn, 2, Stage::Granting);
+    refuse(&conn, first);
+    let other_kind = rename(&conn);
+    coven::finish_operation(&conn, other_kind, &refused_outcome()).unwrap();
+    let other_outcome = rename(&conn);
+    coven::finish_operation(&conn, other_outcome, &coven::OperationOutcome::Satisfied).unwrap();
+    let open = invite(&conn, 5, Stage::Granting);
+    let last = invite(&conn, 6, Stage::Granting);
+    refuse(&conn, last);
     let listed: Vec<(i64, String)> = rows(&conn).into_iter().map(|row| (row.0, row.1)).collect();
     assert_eq!(
         listed,
-        [(2, "refused".to_string()), (5, "open".to_string()), (6, "refused".to_string())]
+        [
+            (first.0, "refused".to_string()),
+            (open.0, "open".to_string()),
+            (last.0, "refused".to_string())
+        ]
     );
 }
 
-/// An invite whose request has arrived: Dan's, at `stage`.
-fn requested(conn: &rusqlite::Connection, operation: i64, stage: &str) {
-    conn.execute(
-        "INSERT INTO coven_invites VALUES (x'00', ?1, ?2, x'0a', 'Dan', 'invite-' || ?1)",
-        rusqlite::params![operation, stage],
-    )
-    .unwrap();
-}
-
 /// The operation of the invite `WAITING_REQUEST` returns, leaving out the
-/// invites whose ids `closed` holds.
-fn waiting_request(conn: &rusqlite::Connection, closed: &[&str]) -> Option<i64> {
-    let closed = serde_json::Value::from(closed.to_vec()).to_string();
+/// invites built from the numbers in `closed`.
+fn waiting_request(conn: &rusqlite::Connection, closed: &[u8]) -> Option<i64> {
+    let closed: Vec<String> = closed.iter().map(|&n| invite_id(n).0.to_string()).collect();
+    let closed = serde_json::Value::from(closed).to_string();
     conn.prepare(WAITING_REQUEST)
         .unwrap()
         .query_map([closed], |row| row.get("operation"))
@@ -181,13 +212,14 @@ fn waiting_request(conn: &rusqlite::Connection, closed: &[&str]) -> Option<i64> 
 #[test]
 fn the_waiting_request_is_the_first_one_the_person_did_not_close() {
     let conn = views();
-    invite(&conn, 1, "waiting");
-    requested(&conn, 2, "approving");
-    requested(&conn, 3, "waiting");
-    requested(&conn, 4, "waiting");
-    assert_eq!(waiting_request(&conn, &[]), Some(3));
-    assert_eq!(waiting_request(&conn, &["invite-3"]), Some(4));
-    assert_eq!(waiting_request(&conn, &["invite-3", "invite-4"]), None);
+    invite(&conn, 1, Stage::Waiting { joiner: None });
+    let binding = rename(&conn);
+    invite(&conn, 2, Stage::Approving { joiner: Joiner::NewPerson("Dan".into()), binding });
+    let third = invite(&conn, 3, dan_waiting());
+    let fourth = invite(&conn, 4, dan_waiting());
+    assert_eq!(waiting_request(&conn, &[]), Some(third.0));
+    assert_eq!(waiting_request(&conn, &[3]), Some(fourth.0));
+    assert_eq!(waiting_request(&conn, &[3, 4]), None);
 }
 
 /// The invite sheet reads its invite by id, and reads none once the invite
@@ -195,18 +227,18 @@ fn the_waiting_request_is_the_first_one_the_person_did_not_close() {
 #[test]
 fn an_invite_is_read_by_its_id_while_it_is_open() {
     let conn = views();
-    invite(&conn, 1, "waiting");
-    requested(&conn, 2, "waiting");
-    let by_id = |id: &str| -> Option<i64> {
+    invite(&conn, 1, Stage::Waiting { joiner: None });
+    let dan = invite(&conn, 2, dan_waiting());
+    let by_id = |n: u8| -> Option<i64> {
         conn.prepare(INVITE_BY_ID)
             .unwrap()
-            .query_map([id], |row| row.get("operation"))
+            .query_map([invite_id(n).0.to_string()], |row| row.get("operation"))
             .unwrap()
             .collect::<Result<Vec<_>, _>>()
             .unwrap()
             .pop()
     };
-    assert_eq!(by_id("invite-2"), Some(2));
-    conn.execute("DELETE FROM coven_invites WHERE operation = 2", []).unwrap();
-    assert_eq!(by_id("invite-2"), None);
+    assert_eq!(by_id(2), Some(dan.0));
+    refuse(&conn, dan);
+    assert_eq!(by_id(2), None);
 }
