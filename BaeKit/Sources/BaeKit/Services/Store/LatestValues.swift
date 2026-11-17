@@ -305,11 +305,9 @@ extension LatestStream where Value == Double {
     }
 
     /// The share of each Activity line's batch bytes done, by the line's key
-    /// (`ActivityLine`); a shot's stream holds `values` and nothing feeds it.
-    public static func activityBars(holding values: [String: Value] = [:])
-        -> LatestStream
-    {
-        LatestStream(holding: keyed(values)) {
+    /// (`ActivityLine`).
+    public static func activityBars() -> LatestStream {
+        LatestStream(holding: [:]) {
             if case .batchShare(let fraction) = $0 {
                 fraction
             }
