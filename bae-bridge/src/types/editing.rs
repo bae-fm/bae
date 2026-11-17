@@ -611,21 +611,16 @@ mirror_enum! {
     },
 }
 
-#[cfg(desktop)]
-impl BridgeDraftAlbum {
-    pub(crate) fn from_core(album: bae_import::DraftAlbum) -> Self {
-        use bae_import::DraftAlbum;
-        match album {
-            DraftAlbum::New => Self::New,
-            DraftAlbum::PickedNew => Self::PickedNew,
-            DraftAlbum::Named { album_id, line } => {
-                Self::Named { album_id, line: BridgeAlbumLine::from_core(line) }
-            }
-            DraftAlbum::Picked { album_id, line } => {
-                Self::Picked { album_id, line: BridgeAlbumLine::from_core(line) }
-            }
-        }
-    }
+mirror_enum! {
+    #[cfg(desktop)]
+    BridgeDraftAlbum = bae_import::DraftAlbum,
+    from_core: pub(crate) fn,
+    variants: {
+        New,
+        PickedNew,
+        Named { album_id, line: (BridgeAlbumLine) },
+        Picked { album_id, line: (BridgeAlbumLine) },
+    },
 }
 
 /// What the person chose for the album a draft files under. Mirrors
