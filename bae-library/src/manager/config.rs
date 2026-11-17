@@ -256,8 +256,9 @@ impl LibraryManager {
         self.store.transfer_limits()
     }
 
-    /// The save preset `id`, followed for the format editor: none once no
-    /// preset has the id, until the library closes.
+    /// Returns the save preset with this id each time it changes, for the
+    /// format editor. The value is none once no preset has the id, and the
+    /// stream ends when the library closes.
     pub fn subscribe_save_preset(
         &self,
         id: String,

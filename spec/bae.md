@@ -4777,10 +4777,11 @@ one.
 
 On Android, the system's playlist (the notification, the lock screen and
 Android Auto) is the current track, then one live query's rows: Up Next, then
-the tracks after the current one in the order what's playing from reads in, at
-most 100 in all, each part read from its start through its order. When that
-read fails, the queue screen shows its error in place of the rows until the
-read answers again.
+the tracks after the current one in the order of what's playing from, at most
+100 in all. The query reads Up Next from its first track, and the tracks of
+what's playing from from the one after the current track, each in its own
+order. When that read fails, the queue screen shows its error in place of the
+rows until the read returns rows again.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
 one reorder, however many rows the held row passed. While it is held, the Mac
@@ -6066,11 +6067,11 @@ release's or track's id as UTF-8, or a candidate's key.
   macOS every pulled subscription below goes through it too, and nothing
   else in the app calls a subscription's `next()`. What
   playback is doing is one (§9.4); so are the settings, one save format by its id for its
-  edit sheet, which reads none once the format is deleted, the sync status and
+  edit sheet, which reads none once the person deletes the format, the sync status and
   activity, the queue, the download counts, whether uploads are paused, whether
   files move only on unmetered networks, the members, this device's open invites, one open
   invite by its id, which reads none once the invite ends, the first
-  invite whose join request waits for a decision other than those whose request the person
+  invite whose join request waits for a decision, skipping invites whose request the person
   closed, the device that joins from Add
   Device's code, the profiles, ratings, playlists and a playlist's entries,
   the library's name, the watched folders' scans, and an import pane's

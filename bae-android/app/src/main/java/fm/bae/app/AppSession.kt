@@ -239,7 +239,7 @@ class OpenLibrary internal constructor(
             onError = { error -> subscriptionFailed("queue", error)?.let(playback.readFailures::failQueue) },
         )
 
-    /** The tracks the system media session lists after the current one, in one read. */
+    /** The tracks the system media session lists after the current one, which one query returns. */
     private fun sessionUpNext(scope: CoroutineScope) =
         ScreenSubscription(
             appHandle.subscribeSessionUpNext(SESSION_UP_NEXT_LIMIT.toUInt()).let { pulled(it::next, it::cancel) },
