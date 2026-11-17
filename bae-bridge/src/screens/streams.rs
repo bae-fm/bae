@@ -220,15 +220,18 @@ pub(crate) fn activity_bars(runtime: OperationRuntime, run: impl RunFeed) -> Arc
 }
 
 /// Each transfer line's bar as the stream holds it: the share of its batch's
-/// bytes done, under the line's name.
+/// bytes done, under the line's key.
 fn activity_bars_held(bars: bae_library::ActivityBars) -> HashMap<Vec<u8>, BridgeFastValue> {
+    use crate::types::BridgeActivityLine;
     let bae_library::ActivityBars { uploads, pins, moving_to_this_device } = bars;
-    [("uploads", uploads), ("pins", pins), ("moving_to_this_device", moving_to_this_device)]
-        .into_iter()
-        .map(|(line, fraction)| {
-            (line.as_bytes().to_vec(), BridgeFastValue::BatchShare { fraction })
-        })
-        .collect()
+    [
+        (BridgeActivityLine::Uploads, uploads),
+        (BridgeActivityLine::Pins, pins),
+        (BridgeActivityLine::MovingToThisDevice, moving_to_this_device),
+    ]
+    .into_iter()
+    .map(|(line, fraction)| (line.stream_key(), BridgeFastValue::BatchShare { fraction }))
+    .collect()
 }
 
 /// A download as the pins' stream holds it: its progress if it is a pin,

@@ -27,19 +27,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ActivityLine
 import fm.bae.app.releasesDoneText
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.fastvalues.LatestSource
+import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeSyncActivity
 
 internal fun LazyListScope.transferRows(
     activity: BridgeSyncActivity,
     words: ActivityWords,
-    bar: (ActivityLine) -> LatestSource<Double>,
+    bar: (BridgeActivityLine) -> LatestSource<Double>,
     onOpenDownloads: () -> Unit,
     onSetDownloadsPaused: (Boolean) -> Unit,
 ) {
@@ -56,7 +56,7 @@ internal fun LazyListScope.transferRows(
             TransferLine(
                 title = context.coreString("core.activity.uploading"),
                 count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
-                share = bar(ActivityLine.UPLOADS),
+                share = bar(BridgeActivityLine.UPLOADS),
             )
         }
     }
@@ -67,7 +67,7 @@ internal fun LazyListScope.transferRows(
             TransferLine(
                 title = context.coreString("core.activity.pinning"),
                 count = words.pinsWait ?: context.releasesDoneText(pins.batch),
-                share = bar(ActivityLine.PINS),
+                share = bar(BridgeActivityLine.PINS),
                 modifier = Modifier.clickable(onClick = onOpenDownloads),
                 end = { PausePinning(paused = paused, onClick = { onSetDownloadsPaused(!paused) }) },
             )

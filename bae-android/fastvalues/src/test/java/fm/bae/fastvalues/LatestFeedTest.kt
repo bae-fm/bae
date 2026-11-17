@@ -17,6 +17,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFastValue
@@ -78,11 +79,11 @@ class LatestFeedTest {
             val stream = LatestStream.activityBars()
             val feed =
                 stream.fed(feedScope(), { error -> throw AssertionError("no read failed", error) }) {
-                    HeldShares(mapOf("uploads" to 0.43))
+                    HeldShares(mapOf(BridgeActivityLine.UPLOADS.streamKey to 0.43))
                 }
 
-            assertEquals(0.43, stream.latest("uploads")!!, 0.0)
-            assertNull("a key the stream does not hold has no bar", stream.latest("pins"))
+            assertEquals(0.43, stream.latest(BridgeActivityLine.UPLOADS.streamKey)!!, 0.0)
+            assertNull("a key the stream does not hold has no bar", stream.latest(BridgeActivityLine.PINS.streamKey))
             feed.cancel()
         }
 

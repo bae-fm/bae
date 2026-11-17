@@ -9,13 +9,19 @@ import fm.bae.app.ui.sync.AndroidActivity
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
 import org.junit.Test
+import uniffi.bae_bridge.BridgeActivityLine
 
 /** The component shot of the Activity sheet's list: syncing, uploading and pinning, each bar part full. */
 class ActivityComponentShots : BoardShot() {
     @Test
     fun androidComponentActivityDefault() =
         component("android.component.activity.default", wide = true) {
-            val store = remember { SyncActivityStore(LatestStream.activityBars(mapOf("uploads" to 0.43, "pins" to 0.3))) }
+            val store =
+                remember {
+                    SyncActivityStore(
+                        LatestStream.activityBars(mapOf(BridgeActivityLine.UPLOADS to 0.43, BridgeActivityLine.PINS to 0.3)),
+                    )
+                }
             val activity = PreviewData.syncActivity(needsAttention = false)
             AndroidActivity(
                 problems = activityProblems(emptyList(), activity, null, emptySet()),

@@ -31,7 +31,6 @@ import androidx.compose.ui.semantics.semantics
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.data.ActivityLine
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
@@ -53,6 +52,7 @@ import fm.bae.app.ui.components.NoticeTextInset
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.fastvalues.LatestSource
+import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncActivity
 
@@ -152,7 +152,7 @@ private fun ActivitySheet(
     activity: BridgeSyncActivity?,
     words: ActivityWords,
     error: DisplayError?,
-    bar: (ActivityLine) -> LatestSource<Double>,
+    bar: (BridgeActivityLine) -> LatestSource<Double>,
     onDismiss: () -> Unit,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
@@ -188,7 +188,7 @@ internal fun AndroidActivity(
     activity: BridgeSyncActivity?,
     words: ActivityWords,
     error: DisplayError?,
-    bar: (ActivityLine) -> LatestSource<Double>,
+    bar: (BridgeActivityLine) -> LatestSource<Double>,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
     onOpenSettings: () -> Unit,

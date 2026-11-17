@@ -1,13 +1,6 @@
 import Foundation
 import Observation
 
-/// A transfer line of the Activity panel, by the key its bar is under.
-public enum ActivityLine: String, Sendable {
-    case uploads
-    case pins
-    case movingToThisDevice = "moving_to_this_device"
-}
-
 /// Everything sync is doing on this device, as core reports it: the title
 /// bar's button and the panel it opens read it here.
 @MainActor
@@ -24,9 +17,12 @@ public final class SyncActivityStore {
     }
 
     /// The latest share of a transfer line's batch bytes done, for the native
-    /// bar that reads it each display frame.
-    public nonisolated func bar(_ line: ActivityLine) -> LatestSource<Double> {
-        bars.source(for: line.rawValue)
+    /// bar that reads it each display frame. Core keys each line's bar by the
+    /// line's number as decimal text.
+    public nonisolated func bar(_ line: BridgeActivityLine)
+        -> LatestSource<Double>
+    {
+        bars.source(for: String(line.rawValue))
     }
 
     public func apply(_ activity: BridgeSyncActivity) {

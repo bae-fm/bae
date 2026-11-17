@@ -177,7 +177,7 @@ extension BridgeSyncActivity {
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
     /// Each line's bar of its batch's bytes.
-    let bar: (ActivityLine) -> LatestSource<Double>
+    let bar: (BridgeActivityLine) -> LatestSource<Double>
 
     var body: some View {
         if activity.syncing {

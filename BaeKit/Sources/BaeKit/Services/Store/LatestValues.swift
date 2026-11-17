@@ -304,8 +304,8 @@ extension LatestStream where Value == Double {
         }
     }
 
-    /// The share of each Activity line's batch bytes done, by the line's key
-    /// (`ActivityLine`).
+    /// The share of each Activity line's batch bytes done, by the line's
+    /// number as decimal text (`BridgeActivityLine`).
     public static func activityBars() -> LatestStream {
         LatestStream(holding: [:]) {
             if case .batchShare(let fraction) = $0 {

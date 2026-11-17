@@ -139,9 +139,10 @@ fn each_outbox_delivery_writes_both_streams_whole() {
 }
 
 /// Each delivery of the Activity bars writes every line's bar under the
-/// line's name.
+/// line's number as decimal text, the key each app builds from
+/// `BridgeActivityLine`.
 #[test]
-fn the_activity_bars_hold_each_line_under_its_name() {
+fn the_activity_bars_hold_each_line_under_its_number() {
     let values = StreamValues::new();
     let writer = StreamWriter::new(values.clone());
     writer.reset(activity_bars_held(bae_library::ActivityBars {
@@ -149,12 +150,9 @@ fn the_activity_bars_hold_each_line_under_its_name() {
         pins: 0.625,
         moving_to_this_device: 0.0,
     }));
-    assert_eq!(values.latest(b"pins"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
-    assert_eq!(values.latest(b"uploads"), Some(BridgeFastValue::BatchShare { fraction: 0.25 }));
-    assert_eq!(
-        values.latest(b"moving_to_this_device"),
-        Some(BridgeFastValue::BatchShare { fraction: 0.0 })
-    );
+    assert_eq!(values.latest(b"0"), Some(BridgeFastValue::BatchShare { fraction: 0.25 }));
+    assert_eq!(values.latest(b"1"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
+    assert_eq!(values.latest(b"2"), Some(BridgeFastValue::BatchShare { fraction: 0.0 }));
 }
 
 /// A track is at rest in its stream once it is held in one stretch from its

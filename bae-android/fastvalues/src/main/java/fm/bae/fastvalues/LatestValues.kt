@@ -7,6 +7,7 @@ import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.AppHandleInterface
+import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
@@ -122,11 +123,11 @@ class LatestStream<V : Any> private constructor(
             LatestStream(values) { (it as? BridgeFastValue.TrackPosition)?.position }
 
         /**
-         * The share of each Activity transfer line's batch bytes done, from 0 to 1, by line
-         * (`uploads` or `pins`); a shot's stream holds [values] and nothing feeds it.
+         * The share of each Activity transfer line's batch bytes done, from 0 to 1, by the line's
+         * [streamKey]; a shot's stream holds [values] and nothing feeds it.
          */
-        fun activityBars(values: Map<String, Double>? = null): LatestStream<Double> =
-            LatestStream(values) { (it as? BridgeFastValue.BatchShare)?.fraction }
+        fun activityBars(values: Map<BridgeActivityLine, Double>? = null): LatestStream<Double> =
+            LatestStream(values?.mapKeys { it.key.streamKey }) { (it as? BridgeFastValue.BatchShare)?.fraction }
 
         /**
          * The parts of the playing track whose bytes this device holds, by track id; a shot's
@@ -172,6 +173,9 @@ class LatestStream<V : Any> private constructor(
 
 /** The key a stream that holds one value holds it under. */
 private const val ONLY_KEY = ""
+
+/** The key core's stream of the Activity bars holds this line's bar under: the line's number as decimal text. */
+val BridgeActivityLine.streamKey: String get() = value.toString()
 
 /** The value of a stream that holds one, for the View that draws it. */
 val <V : Any> LatestStream<V>.only: LatestSource<V> get() = source(ONLY_KEY)

@@ -4,9 +4,11 @@ import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.fastvalues.LatestSource
 import fm.bae.fastvalues.LatestStream
+import fm.bae.fastvalues.streamKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeSyncActivity
 
 /**
@@ -42,13 +44,5 @@ class SyncActivityStore(
     }
 
     /** The bar of [line], for the View that draws it. */
-    fun bar(line: ActivityLine): LatestSource<Double> = bars.source(line.key)
-}
-
-/** The transfer lines a phone's Activity sheet draws a bar for, named as core's stream keys them. */
-enum class ActivityLine(
-    val key: String,
-) {
-    UPLOADS("uploads"),
-    PINS("pins"),
+    fun bar(line: BridgeActivityLine): LatestSource<Double> = bars.source(line.streamKey)
 }

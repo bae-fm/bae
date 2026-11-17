@@ -58,6 +58,25 @@ impl BridgeSyncActivity {
     }
 }
 
+/// A transfer line of the Activity panel, as the stream of the Activity bars
+/// keys its bar: under the line's number as decimal text, `"0"` for
+/// Uploading. Each app builds a line's key from its number, so no app spells
+/// a key of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[repr(u8)]
+pub enum BridgeActivityLine {
+    Uploads = 0,
+    Pins = 1,
+    MovingToThisDevice = 2,
+}
+
+impl BridgeActivityLine {
+    /// The key the stream of the Activity bars holds this line's bar under.
+    pub(crate) fn stream_key(self) -> Vec<u8> {
+        (self as u8).to_string().into_bytes()
+    }
+}
+
 /// The releases a transfer line's batch holds, and how many of them are
 /// done: the line's count, "1 of 3 releases". Mirrors
 /// `bae_views::TransferBatch`.
