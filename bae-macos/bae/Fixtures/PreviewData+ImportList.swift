@@ -168,15 +168,18 @@ extension PreviewData {
         )
     }
 
-    /// A selection of `keys` holding `summary`.
+    /// The Import tab's identified folder and its folder whose signals
+    /// disagree, selected together, holding `importTabPairSelection` for
+    /// `combinable`.
     @MainActor
-    static func importSelection(
-        of keys: [Data],
-        _ summary: BridgeSelectionSummary
+    static func selectedImportTabPair(
+        combinable: Bool = false
     ) -> ImportSelection {
         let selection = ImportSelection()
-        selection.select(Set(keys))
-        selection.apply(summary)
+        selection.select([
+            importTabCandidate.key, importTabDisagreementCandidate.key,
+        ])
+        selection.apply(importTabPairSelection(combinable: combinable))
         return selection
     }
 

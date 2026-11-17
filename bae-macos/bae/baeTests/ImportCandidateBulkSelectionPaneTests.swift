@@ -93,10 +93,7 @@ struct ImportCandidateBulkSelectionPaneTests {
     func combineCountsTheSelectionWhenItCanRun() {
         let card = Self.card(
             offers: ImportCandidateActionOffer.selection(
-                PreviewData.importSelection(
-                    of: Self.selectedKeys,
-                    PreviewData.importTabPairSelection(combinable: true)
-                )
+                PreviewData.selectedImportTabPair(combinable: true)
                 .summary
             )
         )
@@ -180,10 +177,7 @@ struct ImportCandidateBulkSelectionPaneTests {
 
     /// What the two selected folders offer, as core would summarize it.
     private static func selection() -> ImportSelection {
-        PreviewData.importSelection(
-            of: selectedKeys,
-            PreviewData.importTabPairSelection()
-        )
+        PreviewData.selectedImportTabPair()
     }
 
     private static func card(

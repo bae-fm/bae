@@ -194,13 +194,7 @@ struct ImportSelectionTests {
     /// How the pane draws them is the `import-bulk-selection` shot's.
     @Test("The pane draws the selection's offers with their counts")
     func selectionPaneRenders() {
-        let selection = PreviewData.importSelection(
-            of: [
-                PreviewData.importTabCandidate.key,
-                PreviewData.importTabDisagreementCandidate.key,
-            ],
-            PreviewData.importTabPairSelection()
-        )
+        let selection = PreviewData.selectedImportTabPair()
         let counts = Dictionary(
             uniqueKeysWithValues:
                 ImportCandidateActionOffer.selection(
