@@ -1028,8 +1028,8 @@ different things about one file fails the scan.
   and the folder stays importable.
 - **A watched folder inside another.** Watching a folder that contains watched
   folders takes them over: one write stops watching them and watches the new
-  folder. What is known about a folder is keyed by its path on disk, so the
-  person's groupings survive. Unwatching the folder that covers a grouping
+  folder. bae keys what it knows about a folder by the folder's path on disk,
+  so the person's groupings stay. Unwatching the folder that covers a grouping
   deletes it. The write that watches a folder checks that no watched folder
   holds it or lies in it. That write refuses a folder inside a watched one and
   stores nothing, and the error names both folders. No two watched folders

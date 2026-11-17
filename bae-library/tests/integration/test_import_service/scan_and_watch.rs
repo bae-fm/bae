@@ -338,9 +338,9 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
-/// Adding a folder inside a watched one is refused before bae writes
-/// anything, and the error names both folders: the person sees which folder
-/// already watches it.
+/// bae refuses a folder inside a watched folder and stores nothing, and the
+/// error names both folders, so the person sees which watched folder holds
+/// it.
 #[tokio::test]
 async fn adding_a_folder_inside_a_watched_one_is_refused_naming_both() {
     bae_util::test_logs::install();
