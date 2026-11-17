@@ -512,6 +512,12 @@ impl BridgeIdentifyState {
     }
 }
 
+mirror_enum! {
+    crate::types::BridgeLookupStep = bae_identify::LookupStep,
+    from_core: fn,
+    variants: { DiscId, Barcode, Catalog, Isrc, TitleSearch, Pressing },
+}
+
 fn failure_lines_of(lines: bae_identify::FailureLines) -> crate::types::BridgeFailureLines {
     let bae_identify::FailureLines { all, pick_failures, missing_searches } = lines;
     crate::types::BridgeFailureLines {
@@ -521,16 +527,7 @@ fn failure_lines_of(lines: bae_identify::FailureLines) -> crate::types::BridgeFa
         missing_searches: missing_searches
             .into_iter()
             .map(|search| crate::types::BridgeMissingSearch {
-                step: match search.step {
-                    bae_identify::LookupStep::DiscId => crate::types::BridgeLookupStep::DiscId,
-                    bae_identify::LookupStep::Barcode => crate::types::BridgeLookupStep::Barcode,
-                    bae_identify::LookupStep::Catalog => crate::types::BridgeLookupStep::Catalog,
-                    bae_identify::LookupStep::Isrc => crate::types::BridgeLookupStep::Isrc,
-                    bae_identify::LookupStep::TitleSearch => {
-                        crate::types::BridgeLookupStep::TitleSearch
-                    }
-                    bae_identify::LookupStep::Pressing => crate::types::BridgeLookupStep::Pressing,
-                },
+                step: crate::types::BridgeLookupStep::from_core(search.step),
                 source: BridgeCatalog::from_core(search.catalog),
             })
             .collect(),
