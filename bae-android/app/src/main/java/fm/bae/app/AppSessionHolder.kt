@@ -954,10 +954,10 @@ object AppSessionHolder {
                 try {
                     handle.copyReset()
                 } catch (e: BridgeException.Cancelled) {
-                    logger.debug("the wait for a copy reset of $libraryId ended with its library", e)
+                    logger.debug("the wait for a copy reset of $libraryId ended because its library closed", e)
                     return@launch
                 } catch (e: BridgeException.ShuttingDown) {
-                    logger.debug("the wait for a copy reset of $libraryId ended with the process", e)
+                    logger.debug("the wait for a copy reset of $libraryId ended because bae is shutting down", e)
                     return@launch
                 }
             appScope.launch { resetCopyBehind(context, libraryId, reset, onScreen) }

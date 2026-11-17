@@ -584,11 +584,11 @@ extension AppDelegate {
                 switch error {
                 case BridgeError.Cancelled:
                     baeAppLogger.debug(
-                        "The wait for a copy reset of \(libraryId) ended with its library"
+                        "The wait for a copy reset of \(libraryId) ended because its library closed"
                     )
                 case BridgeError.ShuttingDown:
                     baeAppLogger.debug(
-                        "The wait for a copy reset of \(libraryId) ended with the process"
+                        "The wait for a copy reset of \(libraryId) ended because bae is shutting down"
                     )
                 default:
                     let detail = String(reflecting: error)

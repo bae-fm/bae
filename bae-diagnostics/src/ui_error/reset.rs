@@ -1,5 +1,6 @@
-//! Whether resetting a library from the cloud replaces what a failure met.
-//! bae-diagnostics decides this here, where it knows the failure's class. A
+//! This module decides whether resetting a library from the cloud replaces
+//! the data that caused a failure. bae-diagnostics decides this here, where
+//! it knows the failure's class. A
 //! failed open offers *Reset from cloud…* by this answer when the library
 //! also has storage (`bae_app::OpenFailure`).
 

@@ -131,9 +131,9 @@ impl BridgeHost {
         })
     }
 
-    /// The handle an open of a registered library built, or its failure
-    /// shipped as `app_start_failed` and returned as the `BridgeOpenError`
-    /// case that names what the app offers next.
+    /// The handle an open of a registered library built, or, after this host
+    /// ships `app_start_failed`, the `BridgeOpenError` case for its failure
+    /// that names what the app offers next.
     fn opened_registered(
         &self,
         bootstrapped: Result<AppHandle, OpenFailure>,

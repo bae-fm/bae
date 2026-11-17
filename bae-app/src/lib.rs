@@ -582,10 +582,11 @@ where
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first) and
     // forget_library's pointer check both refer to a library that opens. bae
-    // advances the pointer only over a fully-realized open, and writes it after
-    // the frontend owner has started, never for a locked library: cancelling the
-    // unlock screen must leave the previously-active library in charge. A successful unlock
-    // re-runs bootstrap unlocked and advances the pointer then.
+    // advances the pointer only after an open that finished, and writes it after
+    // the frontend owner has started, never for a locked library: when the person
+    // cancels the unlock screen, the previously active library must stay the
+    // active one. A successful unlock re-runs bootstrap unlocked and advances
+    // the pointer then.
     if advance_active_pointer {
         timing
             .stage(&library_id, "save active-library pointer", || {
