@@ -155,26 +155,25 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     )?;
     // The playing track is the one at the lane's cursor, in shuffled order
     // when shuffle is on and in list order otherwise; with no cursor, no
-    // track comes before or after it.
+    // track comes before or after it. `follows` says whether anything plays
+    // after the playing track: Up Next, or the context lane past its cursor.
+    // `has_next` is true when `follows` is true or repeat is on, and
+    // `is_empty` is true when `follows` is false.
+    let place = "CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END";
+    let cursor = "CASE q.shuffled WHEN 1 THEN q.shuffled_cursor ELSE q.ordered_cursor END";
     let (has_next, has_previous, up_next_count, is_empty): (bool, bool, u32, bool) = sql
         .query_row(
-            "SELECT q.repeat <> 'off' \
-                OR EXISTS (SELECT 1 FROM playback_manual) \
-                OR EXISTS (SELECT 1 FROM playback_context c \
-                           WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
-                               > CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
-                                                 ELSE q.ordered_cursor END), \
-                EXISTS (SELECT 1 FROM playback_context c \
-                        WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
-                            < CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
-                                              ELSE q.ordered_cursor END), \
-                (SELECT COUNT(*) FROM playback_manual), \
-                NOT EXISTS (SELECT 1 FROM playback_manual) \
-                AND NOT EXISTS (SELECT 1 FROM playback_context c \
-                                WHERE CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END \
-                                    > CASE q.shuffled WHEN 1 THEN q.shuffled_cursor \
-                                                      ELSE q.ordered_cursor END) \
-         FROM playback_queue q",
+            &format!(
+                "SELECT repeat <> 'off' OR follows, before, up_next_count, NOT follows \
+                 FROM (SELECT q.repeat, \
+                              EXISTS (SELECT 1 FROM playback_manual) \
+                              OR EXISTS (SELECT 1 FROM playback_context c \
+                                         WHERE {place} > {cursor}) AS follows, \
+                              EXISTS (SELECT 1 FROM playback_context c \
+                                      WHERE {place} < {cursor}) AS before, \
+                              (SELECT COUNT(*) FROM playback_manual) AS up_next_count \
+                       FROM playback_queue q)"
+            ),
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?;
