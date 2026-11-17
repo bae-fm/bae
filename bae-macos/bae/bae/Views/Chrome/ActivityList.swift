@@ -54,7 +54,7 @@ struct ActivityList: View {
             }
             if let activity, showsTransfers {
                 SettingsTitledBox(title: Text("Transfers")) {
-                    TransferRows(activity: activity)
+                    TransferRows(activity: activity, bar: store.bar)
                         .settingsRowInset(0)
                 }
                 .padding(.top, Self.sectionGap)
@@ -176,8 +176,8 @@ extension BridgeSyncActivity {
 /// bytes. Each queue's line ends in the button that pauses it.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
-    @Environment(SyncActivityStore.self)
-    private var store
+    /// Each line's bar of its batch's bytes.
+    let bar: (ActivityLine) -> LatestSource<Double>
 
     var body: some View {
         if activity.syncing {
@@ -193,7 +193,7 @@ private struct TransferRows: View {
                 title: localizedCoreString("core.activity.uploading"),
                 count: uploads.wait?.text ?? uploads.batch.text,
                 queue: .init(.uploads, paused: uploads.paused),
-                bar: store.bar(.uploads)
+                bar: bar(.uploads)
             )
         }
         if let pins = activity.pins {
@@ -201,7 +201,7 @@ private struct TransferRows: View {
                 title: localizedCoreString("core.activity.pinning"),
                 count: pins.wait?.text ?? pins.batch.text,
                 queue: .init(.downloads, paused: pins.paused),
-                bar: store.bar(.pins)
+                bar: bar(.pins)
             )
         }
         if let movingToThisDevice = activity.movingToThisDevice {
@@ -212,7 +212,7 @@ private struct TransferRows: View {
                 count: movingToThisDevice.wait?.text
                     ?? movingToThisDevice.batch.text,
                 queue: .init(.downloads, paused: movingToThisDevice.paused),
-                bar: store.bar(.movingToThisDevice)
+                bar: bar(.movingToThisDevice)
             )
         }
     }
