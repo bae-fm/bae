@@ -175,7 +175,7 @@ pub enum LibraryError {
     /// A command reached an edit session of `release_id` whose rows are
     /// gone: its editor closed it, or someone deleted the release. The
     /// command wrote nothing.
-    #[error("The edit session of release '{release_id}' is closed")]
+    #[error("The edit session of release '{release_id}' has ended")]
     ReleaseEditClosed { release_id: String },
     #[error("Track mapping error: {0}")]
     TrackMapping(String),

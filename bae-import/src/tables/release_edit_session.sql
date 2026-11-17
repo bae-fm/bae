@@ -1,6 +1,7 @@
 -- Each release editor's session on a library release: the release's values
 -- as the session opened on them, the form with each change the person made,
--- the catalog release applied in it and the album picked in it. An editor
+-- the catalog release the person applied in it and the album the person
+-- picked in it. An editor
 -- writes its session's rows as it changes them, and its one live query reads
 -- them. Closing the editor deletes its session, and no session outlives the
 -- process: bae-import deletes every row when the library opens.
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS release_edit_session (
 CREATE INDEX IF NOT EXISTS release_edit_session_by_release
     ON release_edit_session (release_id);
 
--- The form's label rows as typed, in order, as `import_candidate_edit_label`
+-- The form's label rows as the person typed them, in order, as `import_candidate_edit_label`
 -- holds a draft's.
 CREATE TABLE IF NOT EXISTS release_edit_label (
     session              INTEGER NOT NULL,
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS release_edit_label (
     FOREIGN KEY (session) REFERENCES release_edit_session (session) ON DELETE CASCADE
 ) STRICT;
 
--- The form's barcode rows as typed, in order.
+-- The form's barcode rows as the person typed them, in order.
 CREATE TABLE IF NOT EXISTS release_edit_barcode (
     session  INTEGER NOT NULL,
     position INTEGER NOT NULL CHECK (position >= 0),
@@ -132,9 +133,10 @@ CREATE INDEX IF NOT EXISTS release_edit_track_artist_by_artist
 
 -- What the person picked for the album the session files the release under,
 -- over the one its records name, as `import_candidate_album_pick` holds a
--- candidate's. No row: the album the records name, else the album the
--- release is in. A row with an album: that library album; a row with no
--- album: a new album. Deleting a picked album deletes its pick row.
+-- candidate's. With no row, a save files the release under the album the
+-- records name, or else under the album the release is in. A row with an
+-- album files it under that library album, and a row with no album under
+-- a new album. Deleting a picked album deletes its pick row.
 CREATE TABLE IF NOT EXISTS release_edit_album_pick (
     session  INTEGER PRIMARY KEY,
     album_id TEXT,

@@ -264,7 +264,8 @@ actor PreviewReleaseLibrary {
         )
     }
 
-    /// `session`, opened, with the subscription that sends its drafts.
+    /// Open `session`, and return it with the subscription that sends its
+    /// drafts.
     nonisolated func opened(_ session: PreviewReleaseEditSession)
         -> OpenedReleaseEdit
     {

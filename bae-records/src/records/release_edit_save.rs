@@ -34,7 +34,7 @@ pub enum ReleaseEditRefusal {
     Stale,
     /// The session's rows are gone: its editor closed it, or someone deleted
     /// its release.
-    #[error("the session is closed")]
+    #[error("the session has ended")]
     Closed,
     #[error(transparent)]
     Identity(#[from] IdentityRefusal),

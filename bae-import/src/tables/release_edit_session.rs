@@ -1,12 +1,14 @@
 //! Each release editor's session on a library release, in device-local
 //! tables: what the session opened on, the form with each change the person
-//! made in it, the catalog release applied in it and the album picked in it.
+//! made in it, the catalog release the person applied in it and the album
+//! they picked in it.
 //!
 //! Each command an editor sends is one write to its session's rows, and the
 //! write refuses a command to a session whose row is gone
 //! ([`ReleaseEditSessionRefusal::Closed`]). The editor reads its draft from
 //! the rows ([`ImportTables::subscribe_release_edit_draft`]). A save writes the
-//! release and then the session again from the release as saved, in one
+//! release and then the session again from the release as the save wrote
+//! it, in one
 //! write; closing the editor deletes its session; no session outlives the
 //! process, so bae empties the tables as the library opens. Deleting the
 //! release deletes its sessions. This module's tables are in
@@ -93,9 +95,9 @@ pub enum ReleaseEditSessionRefusal {
 /// Why a write to a release editor's session did not commit.
 pub type ReleaseEditSessionError = WriteError<ReleaseEditSessionRefusal>;
 
-/// What applying a catalog release in a session read: every value, laid
-/// onto the release's tracks in order, and the records the pick names, the
-/// applied one first.
+/// What applying a catalog release in a session read: every value, which
+/// the apply lays onto the release's tracks in order, and the records the
+/// pick names, the applied one first.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppliedCatalog {
     pub draft: LibraryDraft,
@@ -123,8 +125,8 @@ fn opened_json(opened: &ReleaseEditSeed) -> Result<String, DbError> {
         .map_err(|error| DbError::encode("what a release edit session opened on", error))
 }
 
-/// Insert a session on `seed`'s release, with the form `seed` holds and
-/// nothing applied or picked. Returns its id.
+/// Insert a session on `seed`'s release, with the form `seed` holds, no
+/// catalog the person applied and no album they picked. Returns its id.
 fn insert_session(
     sql: &CovenWrite<'_>,
     release_id: &str,
@@ -269,7 +271,8 @@ fn store_form(
     Ok(())
 }
 
-/// Write what a catalog applied in the session read, where the session holds
+/// Write what bae read from the catalog the person applied in the session,
+/// where the session holds
 /// no applied catalog: its mediums, works and roles, each track's place, and its
 /// records.
 fn insert_applied(
@@ -322,7 +325,7 @@ fn insert_applied(
 }
 
 /// Write the session again on `seed`: what it opened on, the form `seed`
-/// holds, and nothing applied or picked.
+/// holds, no catalog the person applied and no album they picked.
 fn reseed_on(sql: &CovenWrite<'_>, session: i64, seed: &ReleaseEditSeed) -> Result<(), DbError> {
     let mut values = vec![rusqlite::types::Value::Text(opened_json(seed)?)];
     values.extend(form_row_values(&seed.edit));
@@ -646,7 +649,7 @@ impl SessionRow {
 
 impl ImportTables {
     /// Open a session on the release `release_id` as the library holds it,
-    /// with nothing edited, applied or picked. Returns its id.
+    /// before the person edits, applies or picks anything. Returns its id.
     pub async fn open_release_edit_session(
         &self,
         release_id: &str,
@@ -789,7 +792,8 @@ impl ImportTables {
     }
 
     /// The session `session`'s draft, live: it reruns after each write that
-    /// changes what it read, and reads `None` once the session is closed.
+    /// changes what it read, and reads `None` once the editor closed the
+    /// session or someone deleted its release.
     pub fn subscribe_release_edit_draft(
         &self,
         session: i64,

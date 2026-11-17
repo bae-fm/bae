@@ -1,5 +1,6 @@
 //! What the release editor shows beside a library release's form: its
-//! tracks laid out by side and by the file each plays from, each beside the
+//! tracks on the table's sides and runs by the file each plays from, each
+//! beside the
 //! form row that edits it, the summary of its audio, and the files it
 //! carries that no track plays from.
 

@@ -63,10 +63,10 @@ impl ReleaseEditRows {
     }
 }
 
-/// The editor's seed for a release as `context` holds it, filed under the
-/// album it is in: the album title and artists, the release's pressing
-/// fields and each track's title and artists, rendered into the raw editor
-/// form. A track with no artist rows of its own seeds as taking the album's
+/// The editor's seed for a release as `context` holds it, under the album
+/// the release is in: the raw editor form that holds the album title and
+/// artists, the release's pressing fields and each track's title and
+/// artists. A track with no artist rows of its own seeds as taking the album's
 /// artists; the album artists seed the album artist field.
 pub(crate) fn release_edit_seed(
     context: ReleaseEditContext,

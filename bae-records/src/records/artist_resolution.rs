@@ -255,8 +255,8 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 }
 
 /// What the library holds for one credit as it stands now: the rule every
-/// write commits by, applied to the credit alone. The tests hold the import
-/// pane's resolution statement to it.
+/// write commits by, for the credit alone. The tests check that the import
+/// pane's resolution statement gives the same answer as this function.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn resolve_credit_on<Q: coven::SqlRead>(
     sql: &Q,

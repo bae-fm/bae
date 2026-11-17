@@ -3,10 +3,10 @@
 //! Each open editor owns a session of its own ([`ReleaseEdit`]), whose rows
 //! bae-import keeps (`bae_import::tables::ImportTables`): the release's
 //! values as the library held them when it opened, and what the person did
-//! in it: the form with each change written to it as the person makes it, a
-//! catalog applied, which replaces every value the release holds (titles,
+//! in it: the form, to which bae writes each change as the person makes it,
+//! a catalog the person applied, which replaces every value the release holds (titles,
 //! credits, mediums and places, roles and works, its records and the album
-//! they name), and the library album picked to file it under. Every change
+//! they name), and the library album the person picked to file it under. Every change
 //! is one write to the session's rows, and its editor reads the session's
 //! draft from one live query. Sessions on one release share nothing, so one editor's edit, apply or pick is never
 //! another's. Saving writes the session whole and opens it again on what it
@@ -231,12 +231,13 @@ impl LibraryManager {
     }
 
     /// Save `session`: in one write, the form as the person left it, every
-    /// value a catalog applied in the session (its mediums and places, roles
+    /// value the catalog the person applied in the session gives (its
+    /// mediums and places, roles
     /// and works), its records, and the album the release lands in: the one
     /// the person picked, else the one the applied records name. A session
-    /// with nothing applied writes the fields, and moves the release only to
-    /// a picked album. The same write opens the session again on the release
-    /// as saved.
+    /// where the person applied no catalog writes the fields, and moves the
+    /// release only to an album the person picked. The same write opens the
+    /// session again on the release as this save wrote it.
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
     /// the library no longer holds the release as the session opened on it.

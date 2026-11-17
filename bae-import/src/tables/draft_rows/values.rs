@@ -318,7 +318,7 @@ pub(crate) fn works_of(
 }
 
 /// One stored role as [`release_roles_json_sql`] and [`track_roles_json_sql`] hold
-/// it, its source not yet read.
+/// it, its source still the text [`roles_of`] reads.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredRole {
     name: String,

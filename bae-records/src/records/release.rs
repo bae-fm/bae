@@ -488,7 +488,7 @@ impl Records {
 }
 
 /// Each track of the release `release` (an SQL expression naming its id) in
-/// release order, placed on the mediums `source` names: its side's kind and
+/// release order, on the mediums `source` names for it: its side's kind and
 /// ordinal and its number there, how many audio formats it stores, how many
 /// main segments they hold, and the first main segment's file id, with the
 /// name and stored audio layout of the release file of that id when the
@@ -520,7 +520,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
 
 /// The tracks of the release `release` (an SQL expression over `params`
 /// naming its id) as the release editor reads their audio, in release order,
-/// each placed on the mediums `source` names.
+/// each on the mediums `source` names for it.
 #[cfg(desktop)]
 pub fn release_edit_tracks_on(
     sql: &impl coven::SqlRead,

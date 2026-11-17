@@ -1,8 +1,9 @@
 use super::*;
 
 /// One open release editor's session on a library release: the form with
-/// each change the person made in it, what a catalog applied in it read and
-/// the album picked in it, held in core's tables until its save. Every
+/// each change the person made in it, what bae read from the catalog the
+/// person applied in it and the album they picked in it, which core keeps
+/// in its tables until the session saves. Every
 /// editor opens its own, so two editors on one release never share an edit,
 /// an apply or a pick; releasing the session deletes it, writing nothing to
 /// the release. The editor reads the session's draft through
@@ -34,8 +35,9 @@ forward! {
 #[uniffi::export]
 impl ReleaseEditSession {
     /// The session's draft as the editor shows it, now and after each write
-    /// that changes it: each command's, an artist merged in the library, the
-    /// album renamed, a cover picked. The subscription sends `None` once
+    /// that changes it: each command's, and each write that merges an artist
+    /// in the library, renames the album or picks a cover. The subscription
+    /// sends `None` once
     /// someone deletes the session's release.
     pub fn draft_subscription(&self) -> std::sync::Arc<crate::ReleaseEditDraftSubscription> {
         crate::screens::release_edit_draft(

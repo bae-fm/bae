@@ -1,5 +1,6 @@
 //! What the library holds for each artist credit of a candidate's draft or
-//! of a release editor's session, read in one statement over its credits.
+//! of a release editor's session, which one statement over its credits
+//! reads.
 //!
 //! The statement states the rule an import commits by (`bae_records`'
 //! `artist_resolution` and `catalog_match`) as a read of the credits alone, in
@@ -226,7 +227,8 @@ impl CreditSource<'_> {
 
 /// The statement over `source`'s credits with the ids it names: the Various
 /// Artists entries of both catalogs, how a try's ids agree with the ids an
-/// artist holds, and each try's columns pivoted into the credit's row.
+/// artist holds, and a column of the credit's row for each column of each
+/// try.
 fn statement(source: CreditSource<'_>) -> String {
     // Whether no catalog id the try's credit carries differs from the one the
     // holder's columns (`dg`, `mb` prefixed by `side`) have, once filled.

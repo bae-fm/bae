@@ -1,13 +1,13 @@
-//! The draft a release editor shows, read from its session's rows and the
-//! library: the form, the album a save files the release under, the
+//! The draft a release editor shows, which bae reads from its session's
+//! rows and the library: the form, the album a save files the release under, the
 //! release's cover and files, and its tracks, each beside the form row that
 //! edits it.
 
 use super::*;
 
-/// The album a save of the session `session` files its release under, read
-/// in one statement: the one picked, else, with a catalog applied, the one
-/// its records name (a new one where they name none the library holds), else
+/// The album a save of the session `session` files its release under, which
+/// one statement reads: the one the person picked, else, once they applied
+/// a catalog, the one its records name (a new one where they name none the library holds), else
 /// the album the release is in.
 fn release_edit_album_on(sql: &impl coven::SqlRead, session: i64) -> Result<DraftAlbum, DbError> {
     let target = bae_records::records::release_records::records_target_album_sql(
@@ -83,11 +83,11 @@ fn cover_version_on(sql: &impl coven::SqlRead, session: i64) -> Result<Option<St
     )?)
 }
 
-/// What a session's draft is read from: its rows, what the library holds
-/// for each credit its form carries, the album a save files it under, its
-/// release's cover, its release's tracks with their audio, placed on the
-/// mediums a catalog applied in the session gives them or else on the
-/// release's own, each with its form row, whether the release has tracks,
+/// The rows bae reads a session's draft from: its rows, what the library
+/// holds for each credit its form carries, the album a save files it under,
+/// its release's cover, its release's tracks with their audio, on the
+/// mediums that the catalog the person applied in the session gives them or
+/// else on the release's own, each with its form row, whether the release has tracks,
 /// and the release's files.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseEditDraftRows {
@@ -115,7 +115,8 @@ const SESSION_RELEASE: &str =
     "(SELECT release_id FROM release_edit_session WHERE session = :session)";
 
 /// The rows of the session `session`'s draft, one statement per part, each
-/// binding only the session's id; `None` once it is closed.
+/// binding only the session's id; `None` once the editor closed the
+/// session or someone deleted its release.
 pub(crate) fn release_edit_draft_rows_on(
     sql: &impl coven::SqlRead,
     session: i64,
@@ -161,8 +162,8 @@ pub(crate) fn release_edit_draft_rows_on(
     }))
 }
 
-/// The tracks of the session `session`'s release in release order, placed
-/// on the mediums `source` names, each with the row of the session's form
+/// The tracks of the session `session`'s release in release order, on the
+/// mediums `source` names for them, each with the row of the session's form
 /// that edits it.
 fn draft_tracks_on(
     sql: &impl coven::SqlRead,
@@ -208,7 +209,8 @@ impl DraftTrackRow {
 }
 
 impl ReleaseEditDraftRows {
-    /// The draft the editor shows: the form, the tracks laid out, whether a
+    /// The draft the editor shows: the form, the tracks on the table's sides,
+    /// whether a
     /// save would write anything the session did not open on, and why the
     /// editor can't save the form, when it can't.
     pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {

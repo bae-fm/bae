@@ -132,8 +132,8 @@ pub fn album_of_release_sql() -> String {
     )
 }
 
-/// The album's title, year and credits that [`album_of_release_sql`]
-/// selects, read in a row closure.
+/// Read the album's title, year and credits that [`album_of_release_sql`]
+/// selects, in a row closure.
 pub fn album_of_release_columns(
     row: &Row<'_>,
 ) -> rusqlite::Result<(String, Option<i32>, Vec<LibraryCredit>)> {

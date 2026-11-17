@@ -155,7 +155,7 @@ pub(crate) fn mediums_json_sql(tables: &DraftTables, owner: &str) -> String {
     )
 }
 
-/// A stored JSON column of `what`, decoded.
+/// Decode `json`, a stored JSON column that holds `what`.
 pub(crate) fn decoded<T: serde::de::DeserializeOwned>(
     json: &str,
     what: &str,
@@ -241,8 +241,8 @@ fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
     }
 }
 
-/// One stored assignment row, the picked artist's fields read from the
-/// library and its credit name, if it names one still there, as
+/// One stored assignment row, with the picked artist's fields as the
+/// library holds them and its credit name, if it names one still there, as
 /// [`assignments_json_sql`] holds it.
 #[derive(serde::Deserialize)]
 pub(crate) struct StoredAssignment {

@@ -34,7 +34,7 @@ fn form_row(id: &str) -> crate::RawTrackEdit {
     }
 }
 
-/// `tracks` laid out, each beside a form row of its own.
+/// The sides of `tracks`, each beside a form row of its own.
 fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
     ReleaseEditTrackSide::lay_out(
         tracks

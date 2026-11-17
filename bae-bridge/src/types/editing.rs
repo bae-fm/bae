@@ -190,7 +190,7 @@ pub enum BridgeArtistsStanding {
     SomeToChoose { count: u32 },
 }
 
-/// How `assignment` stands to the library, read from `resolutions`: the
+/// How `assignment` stands to the library, as `resolutions` says: the
 /// answers the draft's read returned for its credits. `None` for a credit
 /// `resolutions` has no answer for yet.
 #[cfg(desktop)]
@@ -648,8 +648,9 @@ mirror_enum! {
 }
 
 /// A library release's edit session as its editor shows it now: the form
-/// with each change made in it, the release's cover as it is now, the
-/// summary of its audio, its tracks laid out beside their form rows, the
+/// with each change the person made in it, the release's cover as it is
+/// now, the summary of its audio, its tracks in the table's sides beside
+/// their form rows, the
 /// files no track plays from, the album a save files the release under,
 /// what the library holds for each artist credit the form carries, whether a
 /// save would write anything the session did not open on, and why the form
@@ -660,7 +661,7 @@ pub struct BridgeReleaseEditDraft {
     pub edit: BridgeRawReleaseEdit,
     pub cover: Option<BridgeImageRef>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
-    /// The release's tracks laid out as the table draws them, each beside
+    /// The release's tracks in the sides and runs the table draws, each beside
     /// the form row that edits it; `None` when the release has no tracks.
     pub sides: Option<Vec<BridgeReleaseEditTrackSide>>,
     /// The files the release carries that no track plays from, in the
