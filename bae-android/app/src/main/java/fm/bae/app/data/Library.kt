@@ -20,13 +20,10 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeList
-import uniffi.bae_bridge.BridgeListPosition
 import uniffi.bae_bridge.BridgeListRows
-import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeSortCriterion
-import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeWorkChild
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.LibrarySearchSubscription
@@ -71,7 +68,7 @@ private class BridgeDetailRead<Id, Value>(
 class Library(
     private val handle: AppHandleInterface,
 ) {
-    /** The album grid under one sort and grouping: its windows, count and positions, each a live read of its own. */
+    /** The album grid under one sort and grouping: its view and count, each a live read of its own. */
     internal fun albumList(
         sortCriteria: List<BridgeSortCriterion>,
         groupByArtist: Boolean = false,
@@ -97,27 +94,21 @@ class Library(
         rows: (BridgeListRows) -> List<Row>,
     ): ListReads<Row> =
         ListReads(
-            window = { window ->
-                handle.subscribeListWindow(list, window).let { subscription ->
+            view = { first, last ->
+                handle.subscribeListView(list, first.toULong(), last.toULong()).let { subscription ->
                     val pulls =
                         pulled(subscription::next, subscription::cancel).map {
-                            ListWindowDelivery(it.window, rows(it.rows), it.first, it.beyond)
+                            ListViewDelivery(it.start.toInt(), rows(it.rows))
                         }
-                    object : ListWindowRead<Row>, PulledSubscription<ListWindowDelivery<Row>> by pulls {
-                        override fun setWindow(window: BridgeListWindow) = subscription.setWindow(window)
+                    object : ListViewRead<Row>, PulledSubscription<ListViewDelivery<Row>> by pulls {
+                        override fun setVisible(
+                            first: Int,
+                            last: Int,
+                        ) = subscription.setVisible(first.toULong(), last.toULong())
                     }
                 }
             },
             count = { handle.subscribeListCount(list).let { pulled(it::next, it::cancel) } },
-            position = { key ->
-                handle.subscribeListPosition(list, key).let { subscription ->
-                    val pulls = pulled(subscription::next, subscription::cancel)
-                    object : ListPositionRead, PulledSubscription<BridgeListPosition> by pulls {
-                        override fun setKey(key: List<BridgeSortValue>) = subscription.setKey(key)
-                    }
-                }
-            },
-            keyAt = { position -> handle.listKeyAt(list, position) },
             sections = sections,
         )
 

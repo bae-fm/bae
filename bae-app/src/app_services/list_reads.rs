@@ -1,7 +1,221 @@
 //! The long lists' reads on [`AppServices`]: each list's window, count and
-//! position are live reads of their own, built the same way for every list.
+//! position are live reads of their own, built the same way for every list,
+//! and each list's view (`bae_views::list_view`) opens its window and
+//! position from the reads its builder here gives it.
 
 use super::*;
+use bae_store::list_windows::OrderKey;
+use bae_store::{DbError, ListWindow};
+use bae_views::list_view::ListReads;
+use std::future::Future;
+
+impl AppServices {
+    /// The album grid's reads under `sort`, flat or grouped by artist.
+    pub fn album_list(
+        &self,
+        sort: Vec<bae_views::AlbumSortCriterion>,
+        group_by_artist: bool,
+    ) -> ListReads {
+        let (window_sort, position_sort) = (sort.clone(), sort.clone());
+        list_reads(
+            self,
+            move |services, window| {
+                services.subscribe_album_window(&window_sort, group_by_artist, window)
+            },
+            move |services, key| {
+                services.subscribe_album_position(&position_sort, group_by_artist, key)
+            },
+            move |services, position| {
+                let sort = sort.clone();
+                async move { services.inner.views.album_key_at(&sort, group_by_artist, position).await }
+            },
+        )
+    }
+
+    /// The artist list's reads under `sort`.
+    pub fn artist_list(&self, sort: Vec<bae_views::ArtistSortCriterion>) -> ListReads {
+        let (window_sort, position_sort) = (sort.clone(), sort.clone());
+        list_reads(
+            self,
+            move |services, window| services.subscribe_artist_window(&window_sort, window),
+            move |services, key| services.subscribe_artist_position(&position_sort, key),
+            move |services, position| {
+                let sort = sort.clone();
+                async move { services.inner.views.artist_key_at(&sort, position).await }
+            },
+        )
+    }
+
+    /// The composer list's reads under `sort`.
+    pub fn composer_list(&self, sort: Vec<bae_views::ComposerSortCriterion>) -> ListReads {
+        let (window_sort, position_sort) = (sort.clone(), sort.clone());
+        list_reads(
+            self,
+            move |services, window| services.subscribe_composer_window(&window_sort, window),
+            move |services, key| services.subscribe_composer_position(&position_sort, key),
+            move |services, position| {
+                let sort = sort.clone();
+                async move { services.inner.views.composer_key_at(&sort, position).await }
+            },
+        )
+    }
+
+    /// The reads of `artist_id`'s composer page.
+    pub fn composer_page_list(&self, artist_id: String) -> ListReads {
+        let (window_id, position_id) = (artist_id.clone(), artist_id.clone());
+        list_reads(
+            self,
+            move |services, window| services.subscribe_composer_page_window(&window_id, window),
+            move |services, key| services.subscribe_composer_page_position(&position_id, key),
+            move |services, position| {
+                let artist_id = artist_id.clone();
+                async move { services.inner.views.composer_detail_key_at(&artist_id, position).await }
+            },
+        )
+    }
+
+    /// The reads of the artists the picker's `query` finds; a blank text
+    /// (`None`) finds none.
+    pub fn artist_search_list(&self, query: Option<bae_views::LibrarySearchQuery>) -> ListReads {
+        let (window_query, position_query) = (query.clone(), query.clone());
+        list_reads(
+            self,
+            move |services, window| {
+                services.subscribe_artist_search_window(window_query.clone(), window)
+            },
+            move |services, key| {
+                services.subscribe_artist_search_position(position_query.clone(), key)
+            },
+            move |services, position| {
+                let query = query.clone();
+                async move { services.inner.views.artist_search_key_at(query, position).await }
+            },
+        )
+    }
+
+    /// The reads of the albums library search's `query` lists; no query
+    /// (`None`) lists none.
+    pub fn search_album_list(&self, query: Option<bae_views::LibrarySearchQuery>) -> ListReads {
+        let (window_query, position_query) = (query.clone(), query.clone());
+        list_reads(
+            self,
+            move |services, window| {
+                services.subscribe_search_album_window(window_query.clone(), window)
+            },
+            move |services, key| {
+                services.subscribe_search_album_position(position_query.clone(), key)
+            },
+            move |services, position| {
+                let query = query.clone();
+                async move { services.inner.views.search_album_key_at(query, position).await }
+            },
+        )
+    }
+
+    /// The reads of the album `album_id`'s tracks.
+    pub fn album_track_list(&self, album_id: String) -> ListReads {
+        let (window_id, position_id) = (album_id.clone(), album_id.clone());
+        list_reads(
+            self,
+            move |services, window| services.subscribe_album_track_window(&window_id, window),
+            move |services, key| services.subscribe_album_track_position(&position_id, key),
+            move |services, position| {
+                let album_id = album_id.clone();
+                async move { services.inner.views.album_track_key_at(&album_id, position).await }
+            },
+        )
+    }
+
+    /// The reads of the work `work_id`'s children.
+    pub fn work_child_list(&self, work_id: String) -> ListReads {
+        let (window_id, position_id) = (work_id.clone(), work_id.clone());
+        list_reads(
+            self,
+            move |services, window| services.subscribe_work_child_window(&window_id, window),
+            move |services, key| services.subscribe_work_child_position(&position_id, key),
+            move |services, position| {
+                let work_id = work_id.clone();
+                async move { services.inner.views.work_child_key_at(&work_id, position).await }
+            },
+        )
+    }
+
+    /// The reads of the tracks after the playing one, in the context lane's
+    /// order, or in its shuffled order when `shuffled` is true.
+    pub fn upcoming_list(&self, shuffled: bool) -> ListReads {
+        list_reads(
+            self,
+            move |services, window| services.subscribe_upcoming_window(shuffled, window),
+            move |services, key| services.subscribe_upcoming_position(shuffled, key),
+            move |services, position| async move {
+                services.inner.manager.upcoming_key_at(shuffled, position).await
+            },
+        )
+    }
+
+    /// The reads of the download queue, in the order queued.
+    pub fn download_list(&self) -> ListReads {
+        list_reads(
+            self,
+            |services, window| services.subscribe_download_window(window),
+            |services, key| services.subscribe_download_position(key),
+            |services, position| async move { services.inner.manager.download_key_at(position).await },
+        )
+    }
+
+    /// The reads of the Storage Manager list under `sort`, `filter` and the
+    /// search text `search`.
+    pub fn storage_list(
+        &self,
+        sort: bae_views::StorageSortCriterion,
+        filter: bae_views::StorageFilter,
+        search: String,
+    ) -> ListReads {
+        let (window_sort, window_search) = (sort, search.clone());
+        let (position_sort, position_search) = (sort, search.clone());
+        list_reads(
+            self,
+            move |services, window| {
+                services.subscribe_storage_window(&window_sort, filter, &window_search, window)
+            },
+            move |services, key| {
+                services.subscribe_storage_position(&position_sort, filter, &position_search, key)
+            },
+            move |services, position| {
+                let search = search.clone();
+                async move {
+                    services.inner.views.storage_key_at(&sort, filter, &search, position).await
+                }
+            },
+        )
+    }
+}
+
+/// The reads one list's view opens: `window` opens its live window, from
+/// `services`; `position` opens the live position of a key; and `key_at`
+/// reads the key at a position once.
+fn list_reads<KeyAt>(
+    services: &AppServices,
+    window: impl Fn(&AppServices, ListWindow) -> bae_views::LiveListWindow + Send + Sync + 'static,
+    position: impl Fn(&AppServices, OrderKey) -> bae_views::LiveListPosition + Send + Sync + 'static,
+    key_at: impl Fn(AppServices, u64) -> KeyAt + Send + Sync + 'static,
+) -> ListReads
+where
+    KeyAt: Future<Output = Result<Option<OrderKey>, DbError>> + Send + 'static,
+{
+    let (for_window, for_position, for_key) =
+        (services.clone(), services.clone(), services.clone());
+    ListReads {
+        window: Box::new(move |request| window(&for_window, request)),
+        position: Box::new(move |key| position(&for_position, key)),
+        key_at: Box::new(move |at| {
+            let read = key_at(for_key.clone(), at);
+            Box::pin(
+                async move { read.await.map_err(bae_store::live_query::LiveQueryError::Query) },
+            )
+        }),
+    }
+}
 
 impl AppServices {
     /// One window of the album grid under `sort`, flat or grouped by artist.
@@ -284,8 +498,8 @@ impl AppServices {
 }
 
 /// One window of a list, as its first value at once, then one for each
-/// write inside its range and one each time the caller moves it to another
-/// window.
+/// write at or before its last row and one each time the list's view moves
+/// it.
 pub(super) fn list_window<Row: Clone + PartialEq + Send + 'static>(
     manager: &bae_library::LibraryManager,
     query: coven::ReconfigurableLiveQuery<

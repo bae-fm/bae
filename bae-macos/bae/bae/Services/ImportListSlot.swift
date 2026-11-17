@@ -7,12 +7,12 @@ import Observation
 /// view they show. The list stays loaded while the view changes.
 ///
 /// The view — which tab, which filter text, which order — and the groups
-/// folded shut decide which items sit in which windows, so they are core's
-/// list's rather than applied to a window after it arrives. A view change is
-/// a write. When the new view has another tab, filter or search, the write
-/// returns where the new view opens; the slot then drops the list's windows
-/// and count and reads them again from that place, so core reads every value
-/// they deliver after the write. Until the first window's rows arrive, the
+/// folded shut decide which items sit at which positions, so they are core's
+/// list's rather than applied to the rows after they arrive. A view change
+/// is a write. When the new view has another tab, filter or search, the
+/// write returns where the new view opens; the slot then drops the list's
+/// view and count and reads them again from that place, so core reads every
+/// value they deliver after the write. Until the new view's rows arrive, the
 /// rows the list holds are the previous view's, which the sidebar does not
 /// show as this one's. Which groups are folded is core's alone; each
 /// header says whether it is open.
@@ -25,8 +25,8 @@ import Observation
 final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
     /// Whether the rows the list holds answer the view it shows: false from
-    /// the moment another tab, filter or order is asked for until the windows
-    /// read under it have delivered their rows. Before then the list's rows
+    /// the moment another tab, filter or order is asked for until the list's
+    /// view read under it has delivered its rows. Before then the list's rows
     /// are the previous view's.
     private(set) var answersView = true
     private(set) var sortOrder: BridgeImportListOrder
@@ -139,7 +139,7 @@ final class ImportListSlot {
         )
     }
 
-    /// Build the list and read its first windows. Called once the app's
+    /// Build the list and read its first rows. Called once the app's
     /// subscriptions start, and again when a view change follows a failed
     /// read.
     func startLoad() {
@@ -248,7 +248,7 @@ extension ImportListSlot {
         selectOnly(candidateKey)
         guard let list else { return nil }
         let position = Int(location.visiblePosition)
-        await list.reopen(at: location.key, position: position)
+        await list.reopen(at: position)
         if view == next { answersView = true }
         let stableKey = location.stableKey
         let placed = await list.holds(stableKey, at: position)
@@ -273,7 +273,7 @@ extension ImportListSlot {
         show(next)
     }
 
-    /// Ask core's list for `next`, and open the windows again from where it
+    /// Ask core's list for `next`, and open the list's view again where it
     /// opens, unless another view was asked for since.
     private func show(_ next: BridgeImportListView) {
         answersView = false
@@ -302,10 +302,10 @@ extension ImportListSlot {
             guard view == next else { return }
             switch change?.opening {
             case .top:
-                await list.reopen(at: nil, position: 0)
+                await list.reopen(at: 0)
                 open(at: 0)
-            case .at(let key, let position):
-                await list.reopen(at: key, position: Int(position))
+            case .at(let position):
+                await list.reopen(at: Int(position))
                 open(at: Int(position))
             case nil:
                 // A change of order alone answers no opening: the table keeps
@@ -352,7 +352,7 @@ extension ImportListSlot {
         )
         openSurroundings(of: made)
         await newList.loadInitial()
-        // The first window's failure never reaches `onError`: `PaginatedList`
+        // The first read's failure never reaches `onError`: `PaginatedList`
         // keeps it as `initialLoadError` for a list view to render inline, the
         // way every other list surface reads it. The import tab is not a bare
         // list — it decides between three panes before one is drawn — so it has
@@ -540,8 +540,8 @@ extension ImportListSlot {
 }
 
 extension PaginatedList<BridgeImportListItem> {
-    /// Whether the list holds `stableKey` at `position`, once the window that
-    /// covers it has answered.
+    /// Whether the list holds `stableKey` at `position`, once the list's view
+    /// has answered with the row there.
     fileprivate func holds(_ stableKey: String, at position: Int) async -> Bool
     {
         await withPage(containing: position) {

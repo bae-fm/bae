@@ -156,7 +156,7 @@ impl DecisionFixture {
             })
             .await
             .unwrap();
-        let whole = bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+        let whole = bae_store::ListWindow::top(u64::MAX);
         let mut live = tables.subscribe_import_window(list, whole);
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {
@@ -167,7 +167,7 @@ impl DecisionFixture {
                     .read
                     .rows
                     .iter()
-                    .filter_map(|item| match item {
+                    .filter_map(|(item, _key)| match item {
                         crate::ImportListItem::Candidate { row, .. } => {
                             Some(row.folder_name.clone())
                         }

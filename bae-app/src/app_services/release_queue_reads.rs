@@ -1,4 +1,4 @@
-//! The transfer queues' reads on [`AppServices`]: the windows a pane draws of
+//! The transfer queues' reads on [`AppServices`]: the window a pane draws of
 //! a queue, each entry with its release read from the queue's table with
 //! it, so a title edited while the entry waits shows on its row; how many
 //! entries are in each phase; and how far the active entry has got, which
@@ -8,11 +8,11 @@ use super::*;
 use bae_library::LibraryError;
 
 impl AppServices {
-    /// One window of the download queue as the Downloads pane draws it: a
-    /// range of entries in the order the person queued them, each joined with
-    /// its release. Coven reruns the window's query when a write adds,
-    /// removes, starts or fails an entry in the range, or changes a release
-    /// it shows.
+    /// One window of the download queue as the Downloads pane draws it: the
+    /// entries from one on in the order the person queued them, each joined
+    /// with its release. Coven reruns the window's query when a write adds,
+    /// removes, starts or fails an entry at or before its last row, or
+    /// changes a release it shows.
     pub fn subscribe_download_window(
         &self,
         window: bae_store::ListWindow,
@@ -44,8 +44,6 @@ impl AppServices {
             self.inner.manager.subscribe_download_position(key),
         )
     }
-
-    delegate_async!(manager, download_key_at => download_key_at(position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError>);
 
     /// How many downloads are in each phase now, and whether the queue is
     /// paused.

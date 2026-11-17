@@ -392,7 +392,7 @@ pub struct BridgeDownloadProgress {
 
 /// How many downloads are in each phase, and what holds the queue back: what
 /// the Pinning pane's summary and controls show. Its rows are the
-/// pane's windows (`BridgeList::Downloads`).
+/// pane's list (`BridgeList::Downloads`).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeDownloadCounts {
     pub total: BridgeDownloadProgress,

@@ -40,7 +40,6 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeList
 import uniffi.bae_bridge.BridgeListRows
-import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeOutboxFeeds
@@ -63,7 +62,6 @@ import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSetupCancellation
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSortCriterion
-import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeStorageFilter
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -85,8 +83,7 @@ import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.ListCountSubscription
-import uniffi.bae_bridge.ListPositionSubscription
-import uniffi.bae_bridge.ListWindowSubscription
+import uniffi.bae_bridge.ListViewSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.OpenInviteSubscription
 import uniffi.bae_bridge.PeopleSubscription
@@ -211,22 +208,13 @@ internal open class FakeAppHandle(
     override fun subscribeAlbumSections(sortCriteria: List<BridgeSortCriterion>): AlbumSectionsSubscription =
         unfaked("subscribeAlbumSections")
 
-    override fun subscribeListWindow(
+    override fun subscribeListView(
         list: BridgeList,
-        window: BridgeListWindow,
-    ): ListWindowSubscription = fakeList(list).openWindow(window)
+        first: ULong,
+        last: ULong,
+    ): ListViewSubscription = fakeList(list).openView(first, last)
 
     override fun subscribeListCount(list: BridgeList): ListCountSubscription = fakeList(list).openCount()
-
-    override fun subscribeListPosition(
-        list: BridgeList,
-        key: List<BridgeSortValue>,
-    ): ListPositionSubscription = fakeList(list).openPosition(key)
-
-    override suspend fun listKeyAt(
-        list: BridgeList,
-        position: ULong,
-    ): List<BridgeSortValue>? = fakeList(list).keyAt(position)
 
     private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
     private val albumTrackLists = mutableMapOf<String, FakeList<BridgeBrowseTrack>>()
@@ -339,27 +327,6 @@ internal open class FakeAppHandle(
                 countFailure = initialSearchError(query),
             )
         }
-
-    /** Reads once, as the database would, the window of the album's tracks that holds the page at [offset]. */
-    override suspend fun readAlbumTrackPageWindow(
-        albumId: String,
-        offset: ULong,
-        limit: ULong,
-    ): BridgeListWindow? = fakeList(BridgeList.AlbumTracks(albumId)).pageWindow(offset, limit)
-
-    /** Reads once, as the database would, the window of the work's children that holds the page at [offset]. */
-    override suspend fun readWorkChildPageWindow(
-        workId: String,
-        offset: ULong,
-        limit: ULong,
-    ): BridgeListWindow? = fakeList(BridgeList.WorkChildren(workId)).pageWindow(offset, limit)
-
-    /** Reads once, as the database would, the window of the search's albums that holds the page at [offset]. */
-    override suspend fun readSearchAlbumPageWindow(
-        query: String,
-        offset: ULong,
-        limit: ULong,
-    ): BridgeListWindow? = fakeList(BridgeList.SearchAlbums(query)).pageWindow(offset, limit)
 
     /** Returns the release's track with that id as a BridgeBrowseTrack, as the database would. */
     override suspend fun readReleaseTrack(

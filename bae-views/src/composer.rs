@@ -20,7 +20,7 @@ impl LibraryViews {
         let order = composer_order(sort);
         self.store
             .read(move |sql| {
-                Ok(composer_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                Ok(composer_rows_on(&sql, &order, &order.at_offset(offset), limit)?
                     .into_iter()
                     .map(|(row, _)| row)
                     .collect())
@@ -38,8 +38,8 @@ impl LibraryViews {
     {
         let order = composer_order(sort);
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            composer_rows_on(sql, &read_order, seek, limit, offset)
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
+            composer_rows_on(sql, &read_order, seek, limit)
         })
     }
 
@@ -72,8 +72,8 @@ impl LibraryViews {
         let order = composer_order(sort);
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    composer_rows_on(&sql, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    composer_rows_on(&sql, &order, seek, limit)
                 })
             })
             .await
@@ -118,8 +118,8 @@ impl LibraryViews {
         let work_id = work_id.to_string();
         let order = work_child_order();
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            work_child_rows_on(sql, &work_id, &read_order, seek, limit, offset)
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
+            work_child_rows_on(sql, &work_id, &read_order, seek, limit)
         })
     }
 
@@ -172,29 +172,8 @@ impl LibraryViews {
         let order = work_child_order();
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    work_child_rows_on(&sql, &work_id, &order, seek, limit, offset)
-                })
-            })
-            .await
-    }
-
-    /// The window of the work `work_id`'s children that holds the `limit`
-    /// children from `position`, read once: a media browser names a page by
-    /// its offset and follows this window live. `None` when the work has
-    /// fewer children than `position`.
-    pub async fn work_child_page_window(
-        &self,
-        work_id: &str,
-        position: u64,
-        limit: u64,
-    ) -> Result<Option<ListWindow>, DbError> {
-        let work_id = work_id.to_string();
-        let order = work_child_order();
-        self.store
-            .read(move |sql| {
-                page_window(&order, position, limit, &mut |seek, limit, offset| {
-                    work_child_rows_on(&sql, &work_id, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    work_child_rows_on(&sql, &work_id, &order, seek, limit)
                 })
             })
             .await
@@ -340,17 +319,16 @@ fn composer_count_on(sql: &SqlReadContext<'_>) -> Result<u64, DbError> {
         .map_err(DbError::from)
 }
 
-/// The composer list's rows `seek` reads in `order`, at most `limit` from
-/// `offset`, each with its key.
+/// The composer list's rows `seek` reads in `order`, at most `limit`, each
+/// with its key.
 pub(crate) fn composer_rows_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbComposerSummary>>, DbError> {
     let statement = listing_window_query(composer_listing_query, order, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| Ok((row_to_composer_summary(row)?, order.key_of(row)?)))
     })?)
 }
@@ -649,15 +627,14 @@ fn work_child_order() -> ListOrder {
 }
 
 /// The work `work_id`'s children that `seek` reads in `order`, at most
-/// `limit` from `offset`, each with its key and what it shows: a part's
-/// summary or a release's.
+/// `limit`, each with its key and what it shows: a part's summary or a
+/// release's.
 fn work_child_rows_on(
     sql: &SqlReadContext<'_>,
     work_id: &str,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbWorkChild>>, DbError> {
     let statement = format!(
         "SELECT child.section, {work}, {release}, {keys}
@@ -667,15 +644,16 @@ fn work_child_rows_on(
          LEFT JOIN release_number_in_album number ON number.release_id = r.id
          LEFT JOIN albums a ON a.id = r.album_id
          WHERE {condition}
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+         ORDER BY {ordering} {limit}",
         work = work_summary_columns(),
         release = work_release_columns(),
         children = work_children_sql(),
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     );
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":work_id", &work_id as &dyn rusqlite::ToSql));
         sql.query(&statement, params.as_slice(), |row| {
@@ -703,3 +681,7 @@ pub struct WorkDetailProjection {
 #[cfg(test)]
 #[path = "composer_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "composer_work_children_tests.rs"]
+mod work_children_tests;

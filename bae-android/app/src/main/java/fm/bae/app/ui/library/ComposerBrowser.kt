@@ -25,7 +25,9 @@ internal fun rememberComposerPage(
     sortCriterion: BridgeComposerSortCriterion,
 ): ComposerPageStore {
     val page = session.browserPages.composers
+    val screenRows = rememberScreenRows()
     DisposableEffect(page, sortCriterion) {
+        page.screenRows = screenRows
         page.activate(sortCriterion)
         onDispose(page::deactivate)
     }

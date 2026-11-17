@@ -45,6 +45,12 @@ public class PlaybackStore {
     /// replaced does not open a list.
     @ObservationIgnored
     private var upcomingOpening = 0
+    /// How many upcoming rows the queue panel fits, which sizes the upcoming
+    /// list's window; nil until the panel measures its height.
+    @ObservationIgnored
+    public var upcomingScreenRows: Int? {
+        didSet { upcoming?.list.screenRows = upcomingScreenRows }
+    }
 
     /// Where the playing track is, under its track id, for the native views
     /// that read it each display frame.
@@ -198,6 +204,7 @@ extension PlaybackStore {
                 self?.upcoming?.readFailure = DisplayError(error)
             }
         )
+        list.screenRows = upcomingScreenRows
         await list.loadInitial()
         guard upcomingOpening == opening, queueContext != nil else {
             list.cancel()
@@ -224,7 +231,7 @@ extension PlaybackStore {
 }
 
 /// The upcoming list `showUpcoming` opened: the context's tracks after the
-/// playing one, read in windows with a count of their own.
+/// playing one, read through one view with a count of its own.
 private struct OpenUpcoming {
     let list: PaginatedList<BridgeQueueEntry>
     /// Whether `list` reads the tracks shuffled.

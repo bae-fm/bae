@@ -1,8 +1,7 @@
 //! The albums a library search lists: the first albums it finds, in title
 //! order, ties going by id. Library search reads its first albums here, and a
 //! media browser reads the first [`crate::SEARCH_RESULT_LIMIT`] of them as a
-//! list, a page at a time, each page a window bounded by the keys of its
-//! first row and of the row after its last.
+//! list, through one window around the page it shows.
 
 use super::*;
 
@@ -19,13 +18,9 @@ impl LibraryViews {
         let pattern = query.map(|query| search_pattern(query.as_str()));
         let order = search_album_order();
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            match &pattern {
-                Some(pattern) => {
-                    search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit, offset)
-                }
-                None => Ok(Vec::new()),
-            }
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| match &pattern {
+            Some(pattern) => search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit),
+            None => Ok(Vec::new()),
         })
     }
 
@@ -81,32 +76,8 @@ impl LibraryViews {
         let order = search_album_order();
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    search_album_rows_on(&sql, &pattern, LISTED, &order, seek, limit, offset)
-                })
-            })
-            .await
-    }
-
-    /// The window of the albums a search for `query` lists that holds the
-    /// `limit` albums from `position`, read once: a media browser names a
-    /// page by its offset and follows this window live. `None` when the
-    /// search lists fewer albums than `position`, and for no query.
-    pub async fn search_album_page_window(
-        &self,
-        query: Option<crate::LibrarySearchQuery>,
-        position: u64,
-        limit: u64,
-    ) -> Result<Option<ListWindow>, DbError> {
-        let Some(query) = query else {
-            return Ok(None);
-        };
-        let pattern = search_pattern(query.as_str());
-        let order = search_album_order();
-        self.store
-            .read(move |sql| {
-                page_window(&order, position, limit, &mut |seek, limit, offset| {
-                    search_album_rows_on(&sql, &pattern, LISTED, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    search_album_rows_on(&sql, &pattern, LISTED, &order, seek, limit)
                 })
             })
             .await
@@ -148,8 +119,8 @@ fn search_album_from() -> String {
 }
 
 /// The albums `seek` reads in `order`, each with its key: at most `limit` of
-/// them from `offset`. The seek reads among the first `cap` albums that hold
-/// the search `pattern`.
+/// them. The seek reads among the first `cap` albums that hold the search
+/// `pattern`.
 fn search_album_rows_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
@@ -157,10 +128,9 @@ fn search_album_rows_on(
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbAlbumSearchResult>>, DbError> {
     let statement = search_album_statement(order, seek);
-    with_search_album_params(pattern, cap, seek, limit, offset, |params| {
+    with_search_album_params(pattern, cap, seek, limit, |params| {
         Ok(sql.query(&statement, params, |row| Ok((album_hit_row(row)?, order.key_of(row)?)))?)
     })
 }
@@ -176,7 +146,7 @@ pub(super) fn first_search_albums_on(
     let order = search_album_order();
     let seek = order.everything();
     let statement = search_album_statement(&order, &seek);
-    with_search_album_params(pattern, limit, &seek, limit, 0, |params| {
+    with_search_album_params(pattern, limit, &seek, limit, |params| {
         counted_rows(sql, &statement, params, album_hit_row)
     })
 }
@@ -196,7 +166,7 @@ fn search_album_statement(order: &ListOrder, seek: &Seek) -> String {
         FROM (
             SELECT a.id, a.title, a.year {from}
             WHERE {condition}
-            ORDER BY {ordering} LIMIT :limit OFFSET :offset
+            ORDER BY {ordering} {limit}
         ) a
         ORDER BY {ordering}
         "#,
@@ -207,11 +177,12 @@ fn search_album_statement(order: &ListOrder, seek: &Seek) -> String {
         from = search_album_from(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     )
 }
 
 /// Runs `run` with the parameters a [`search_album_statement`] over `seek`
-/// reads: the seek's own, the window's `limit` and `offset`, the search
+/// reads: the seek's own, the window's `limit`, the search
 /// `pattern`, and the `cap` on how many of the albums that hold it the seek
 /// reads among.
 fn with_search_album_params<T>(
@@ -219,11 +190,10 @@ fn with_search_album_params<T>(
     cap: u64,
     seek: &Seek,
     limit: u64,
-    offset: u64,
     run: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> T,
 ) -> T {
     let cap = bae_store::list_windows::sql_bound(cap);
-    seek.bound(limit, offset, |params| {
+    seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":pattern", &pattern as &dyn rusqlite::ToSql));
         params.push((":cap", &cap as &dyn rusqlite::ToSql));

@@ -469,17 +469,6 @@ impl AppServices {
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
-    delegate_view!(artist_key_at => artist_key_at(sort: &[bae_views::ArtistSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(composer_key_at => composer_key_at(sort: &[bae_views::ComposerSortCriterion], position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(composer_detail_key_at => composer_detail_key_at(artist_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(album_track_key_at => album_track_key_at(album_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(album_track_page_window => album_track_page_window(album_id: &str, position: u64, limit: u64) -> Option<bae_store::ListWindow>);
-    delegate_view!(work_child_key_at => work_child_key_at(work_id: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(work_child_page_window => work_child_page_window(work_id: &str, position: u64, limit: u64) -> Option<bae_store::ListWindow>);
-    delegate_view!(search_album_key_at => search_album_key_at(query: Option<bae_views::LibrarySearchQuery>, position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(search_album_page_window => search_album_page_window(query: Option<bae_views::LibrarySearchQuery>, position: u64, limit: u64) -> Option<bae_store::ListWindow>);
-    delegate_view!(artist_search_key_at => artist_search_key_at(query: Option<bae_views::LibrarySearchQuery>, position: u64) -> Option<bae_store::list_windows::OrderKey>);
-    delegate_view!(album_key_at => album_key_at(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, position: u64) -> Option<bae_store::list_windows::OrderKey>);
     delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);

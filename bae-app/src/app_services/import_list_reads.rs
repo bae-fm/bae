@@ -1,15 +1,37 @@
 //! This file gives the open import list's live reads in the shapes every
-//! list uses: each window, the count and a key's position, then the summary,
-//! Found's filter entries and the selection. Each read ends when the list
-//! closes.
+//! list uses: the reads its view opens (its window and a key's position) and
+//! its count, then the summary, Found's filter entries and the selection.
+//! Each read ends when the list closes.
 
 use bae_import::LiveImportList;
 use bae_store::live_query::LiveValues;
 
-/// One window of `list`: the stream sends the window's rows at once, again
-/// after each write inside the window, and again each time the view moves
-/// the window.
-pub fn import_list_window(
+/// The reads `list`'s view opens: its window, which sends the window's rows
+/// at once, again after each write the window reads, and again each time the
+/// view moves the window; the position of a key; and the key at a position.
+pub fn import_list_reads(list: &LiveImportList) -> bae_views::list_view::ListReads {
+    let (for_window, for_position, for_key) = (list.clone(), list.clone(), list.clone());
+    bae_views::list_view::ListReads {
+        window: Box::new(move |window| import_list_window(&for_window, window)),
+        position: Box::new(move |key| import_list_position(&for_position, key)),
+        key_at: Box::new(move |position| {
+            let list = for_key.clone();
+            Box::pin(async move {
+                list.key_at(position).await.map_err(|failure| match failure {
+                    bae_import::ImportListFailure::Database(error) => {
+                        bae_store::live_query::LiveQueryError::Query(error)
+                    }
+                    bae_import::ImportListFailure::Closed => {
+                        bae_store::live_query::LiveQueryError::Cancelled
+                    }
+                })
+            })
+        }),
+    }
+}
+
+/// One window of `list`, each item with its key.
+fn import_list_window(
     list: &LiveImportList,
     window: bae_store::ListWindow,
 ) -> bae_views::LiveListWindow {
@@ -17,11 +39,11 @@ pub fn import_list_window(
         list.until_closed(list.subscribe_window(window)),
         |_read, window: bae_import::ImportWindow| {
             let bae_import::ImportWindow { read, leading_header } = window;
+            let (items, keys) = read.rows.into_iter().unzip();
             Some(bae_views::ListWindowValue {
                 window: read.window,
-                rows: bae_views::ListRows::Import { items: read.rows, leading_header },
-                first: read.first,
-                beyond: read.beyond,
+                rows: bae_views::ListRows::Import { items, leading_header },
+                keys,
             })
         },
     )
@@ -40,7 +62,7 @@ pub fn import_list_count(list: &LiveImportList) -> LiveValues<bae_views::ListCou
 }
 
 /// How many items of `list` come before the one at `key`.
-pub fn import_list_position(
+fn import_list_position(
     list: &LiveImportList,
     key: bae_store::list_windows::OrderKey,
 ) -> bae_views::LiveListPosition {

@@ -1,5 +1,5 @@
 //! An album's tracks as a media browser lists them: its main release's, in
-//! playing order, each page a window bounded by the keys of its tracks, over
+//! playing order, read as a window from a track's key on, over
 //! libraries written through the records domain's own writes.
 
 use super::*;
@@ -44,25 +44,22 @@ fn track(id: &str, title: &str) -> (String, String) {
     (id.to_string(), title.to_string())
 }
 
-/// A page at an offset is the window from its first track to the track past
-/// its last, and holds the main release's tracks in playing order, never
-/// another release's. A page past the album's last track has no window.
+/// A window holds its limit of the main release's tracks from a track's key
+/// on, in playing order, never another release's.
 #[tokio::test]
-async fn an_albums_tracks_are_its_main_releases_in_windows_named_by_offset() {
+async fn an_albums_tracks_are_its_main_releases_in_windows_from_a_key() {
     let (views, _db, _tmp) = paged_album().await;
 
-    let first_page = views.album_track_page_window(ALBUM, 0, 2).await.unwrap().expect("a page");
-    let mut live = views.subscribe_album_track_window(ALBUM, first_page);
+    let mut live = views.subscribe_album_track_window(ALBUM, ListWindow::top(2));
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(tracks_of(read), [track(FIRST, "First"), track(SECOND, "Second")]);
 
-    let last_page = views.album_track_page_window(ALBUM, 2, 2).await.unwrap().expect("a page");
-    assert!(matches!(&last_page, ListWindow::Forward { until: None, .. }));
-    let mut live = views.subscribe_album_track_window(ALBUM, last_page);
+    let third = views.album_track_key_at(ALBUM, 2).await.unwrap().expect("a third track");
+    let mut live =
+        views.subscribe_album_track_window(ALBUM, ListWindow { from: Some(third), limit: 2 });
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(tracks_of(read), [track(THIRD, "Third")]);
 
-    assert_eq!(views.album_track_page_window(ALBUM, 3, 2).await.unwrap(), None);
     let second = views.album_track_key_at(ALBUM, 1).await.unwrap().expect("a second track");
     let mut position = views.subscribe_album_track_position(ALBUM, second);
     assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 1);
@@ -74,8 +71,7 @@ async fn an_albums_tracks_are_its_main_releases_in_windows_named_by_offset() {
 #[tokio::test]
 async fn a_window_follows_a_renamed_track_and_the_count_follows_the_main_release() {
     let (views, db, _tmp) = paged_album().await;
-    let page = views.album_track_page_window(ALBUM, 0, 3).await.unwrap().expect("a page");
-    let mut live = views.subscribe_album_track_window(ALBUM, page);
+    let mut live = views.subscribe_album_track_window(ALBUM, ListWindow::top(3));
     live.next_inline().await.expect("the query stays open").result.unwrap();
 
     test_records(&db).rename_track_for_test(SECOND, "Second Renamed").await.unwrap();

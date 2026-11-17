@@ -9,112 +9,70 @@ import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListCountExtra
-import uniffi.bae_bridge.BridgeListPosition
 import uniffi.bae_bridge.BridgeListRows
-import uniffi.bae_bridge.BridgeListWindow
-import uniffi.bae_bridge.BridgeListWindowValue
-import uniffi.bae_bridge.BridgeSortValue
+import uniffi.bae_bridge.BridgeListView
 import uniffi.bae_bridge.ListCountSubscription
-import uniffi.bae_bridge.ListPositionSubscription
-import uniffi.bae_bridge.ListWindowSubscription
+import uniffi.bae_bridge.ListViewSubscription
 import uniffi.bae_bridge.NoHandle
 
 /**
- * A list as the bridge lists it, over [rows] in the order of their ids: a key is a row's id, a
- * window answers the range of ids it names, and the fake keeps every window and count the handle
- * opened so a test can change the list and deliver the change.
+ * A list as the bridge lists it, over [rows] in the order of their ids. Its view answers the way core's does: it
+ * keeps a window of three screens around the rows on screen, starting a screen above them, and holds the window at
+ * its first row's id, so rows inserted above it move the window's start and not its rows. The fake keeps every view
+ * and count the handle opened so a test can change the list and deliver the change.
  */
 internal open class FakeList<Row>(
     var rows: List<Row>,
     private val idOf: (Row) -> String,
     private val wrap: (List<Row>) -> BridgeListRows,
     private val extra: (Int) -> BridgeListCountExtra = { BridgeListCountExtra.None },
-    /** Whether a window or a count answers as soon as the handle opens it; otherwise a test delivers with [changed]. */
+    /** Whether a view or a count answers as soon as the handle opens it; otherwise a test delivers with [changed]. */
     var deliverImmediately: Boolean = true,
-    /** The failure each window answers with instead of its rows. */
+    /** The failure each view answers with instead of its rows. */
     var windowFailure: BridgeException? = null,
     /** The failure each count answers with instead of the number of rows. */
     var countFailure: BridgeException? = null,
 ) {
-    val windows = mutableListOf<FakeListWindowSubscription>()
+    val views = mutableListOf<FakeListViewSubscription>()
     val counts = mutableListOf<FakeListCountSubscription>()
-    val positions = mutableListOf<FakeListPositionSubscription>()
 
     /** The first count the handle opened, once it has. */
     val firstCount = CompletableDeferred<FakeListCountSubscription>()
 
-    /** The first window the handle opened, once it has. */
-    val firstWindow = CompletableDeferred<FakeListWindowSubscription>()
-
-    /** The key of the row at [position] of the list as it stands: its id, which the list is in the order of. */
-    fun key(position: Int): List<BridgeSortValue> = keyOf(idOf(rows[position]))
-
-    fun keyOf(id: String): List<BridgeSortValue> = listOf(BridgeSortValue.Text(id))
-
-    private fun id(key: List<BridgeSortValue>): String = (key.single() as BridgeSortValue.Text).value
-
-    /** The position of the first row whose id is not before [key]'s: where a row with that key is or would be. */
-    private fun seek(key: List<BridgeSortValue>): Int = rows.indexOfFirst { idOf(it) >= id(key) }.let { if (it < 0) rows.size else it }
-
-    fun keyAt(position: ULong): List<BridgeSortValue>? = if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1))
-
-    /** The window that holds the [limit] rows from [offset] as the list stands, or none past its end. */
-    fun pageWindow(
-        offset: ULong,
-        limit: ULong,
-    ): BridgeListWindow? {
-        val start = offset.toInt()
-        if (start >= rows.size) return null
-        val stop = start + limit.toInt()
-        return BridgeListWindow.Forward(key(start), if (stop < rows.size) key(stop) else null, limit)
-    }
+    /** The first view the handle opened, once it has. */
+    val firstView = CompletableDeferred<FakeListViewSubscription>()
 
     fun count() = BridgeListCount(rows.size.toULong(), rows.size.toULong(), extra(rows.size))
 
-    fun value(window: BridgeListWindow): BridgeListWindowValue {
-        val held: List<Row>
-        val first: Int?
-        val beyond: Int?
-        when (window) {
-            is BridgeListWindow.Forward -> {
-                val start = window.from?.let(::seek) ?: 0
-                val end = window.until?.let(::seek) ?: rows.size
-                val stop = minOf(start + window.limit.toInt(), end)
-                held = if (start < stop) rows.subList(start, stop) else emptyList()
-                first = start.takeIf { held.isNotEmpty() }
-                beyond = stop.takeIf { it < end }
-            }
+    /** The id of the row at [position], where a window placed there starts. */
+    fun idAt(position: Int): String? = rows.getOrNull(position)?.let(idOf)
 
-            is BridgeListWindow.Backward -> {
-                val end = seek(window.until)
-                val start = maxOf(0, end - window.limit.toInt())
-                held = if (start < end) rows.subList(start, end) else emptyList()
-                first = start.takeIf { held.isNotEmpty() }
-                beyond = (start - 1).takeIf { start > 0 }
-            }
-        }
-        return BridgeListWindowValue(
-            window,
-            wrap(held),
-            first?.let(::key),
-            beyond?.let(::key),
-        )
+    /** The window's rows as the list stands: [limit] of them from the first whose id is not before [from]. */
+    fun value(
+        from: String?,
+        limit: Int,
+    ): BridgeListView {
+        val start = from?.let { id -> rows.indexOfFirst { idOf(it) >= id }.let { if (it < 0) rows.size else it } } ?: 0
+        val stop = minOf(start + limit, rows.size)
+        return BridgeListView(start.toULong(), wrap(if (start < stop) rows.subList(start, stop) else emptyList()))
     }
 
-    /** Deliver the list as it stands to every count, window and position open, the count first. */
+    /** Deliver the list as it stands to every count and view open, the count first. */
     fun changed() {
         counts.toList().forEach { it.deliver() }
-        windows.toList().forEach { it.deliver() }
-        positions.toList().forEach { it.deliver() }
+        views.toList().forEach { it.deliver() }
     }
 
-    /** Deliver the count alone, as a write that adds or removes a row does beside the windows. */
+    /** Deliver the count alone, as a write that adds or removes a row does beside the view. */
     fun emitCount() = counts.toList().forEach { it.deliver() }
 
-    fun openWindow(window: BridgeListWindow): FakeListWindowSubscription =
-        FakeListWindowSubscription(this, window).also {
-            windows += it
-            firstWindow.complete(it)
+    fun openView(
+        first: ULong,
+        last: ULong,
+    ): FakeListViewSubscription =
+        FakeListViewSubscription(this, first.toInt()..last.toInt()).also {
+            views += it
+            firstView.complete(it)
             if (deliverImmediately) it.deliver()
         }
 
@@ -124,50 +82,61 @@ internal open class FakeList<Row>(
             firstCount.complete(it)
             if (deliverImmediately) it.deliver()
         }
-
-    fun openPosition(key: List<BridgeSortValue>): FakeListPositionSubscription =
-        FakeListPositionSubscription(this, key).also {
-            positions += it
-            if (deliverImmediately) it.deliver()
-        }
-
-    /** How many rows come before the row at [key]. */
-    fun rowsBefore(key: List<BridgeSortValue>): ULong = seek(key).toULong()
 }
 
-internal class FakeListWindowSubscription(
+internal class FakeListViewSubscription(
     private val list: FakeList<*>,
-    window: BridgeListWindow,
-) : ListWindowSubscription(NoHandle) {
-    private val events = Channel<Result<BridgeListWindowValue>>(Channel.UNLIMITED)
+    shown: IntRange,
+) : ListViewSubscription(NoHandle) {
+    private val events = Channel<Result<BridgeListView>>(Channel.UNLIMITED)
 
-    /** Each window the handle asked this subscription to read, starting with the one it opened with. */
-    val requested = mutableListOf(window)
-    val window: BridgeListWindow get() = requested.last()
+    /** Each range of rows on screen the handle reported, starting with the one it opened with. */
+    val reported = mutableListOf(shown)
+
+    /** The id of the window's first row; null at the list's top. */
+    private var from: String? = null
+    private var limit = 0
     var cancelled = false
         private set
 
     /** Completes when the handle cancels the subscription. */
     val cancelledSignal = CompletableDeferred<Unit>()
 
-    override fun setWindow(window: BridgeListWindow) {
-        requested += window
+    init {
+        place()
+    }
+
+    override fun setVisible(
+        first: ULong,
+        last: ULong,
+    ) {
+        reported += first.toInt()..last.toInt()
+        place()
         deliver()
     }
 
-    override suspend fun next(): BridgeListWindowValue = events.receive().getOrThrow()
+    override suspend fun next(): BridgeListView = events.receive().getOrThrow()
 
     override suspend fun cancel() {
         cancelled = true
         cancelledSignal.complete(Unit)
     }
 
+    /** Place the window around the rows on screen, as core does: three screens from a screen above them. */
+    private fun place() {
+        val shown = reported.last()
+        val screen = shown.last - shown.first + 1
+        val start = maxOf(0, shown.first - screen)
+        from = if (start == 0) null else list.idAt(start)
+        limit = 3 * screen
+    }
+
     fun deliver() {
-        events.trySend(list.windowFailure?.let { Result.failure(it) } ?: Result.success(list.value(window)))
+        events.trySend(list.windowFailure?.let { Result.failure(it) } ?: Result.success(list.value(from, limit)))
     }
 
     /** Deliver [value] as it is, whatever the list holds. */
-    fun deliver(value: BridgeListWindowValue) {
+    fun deliver(value: BridgeListView) {
         events.trySend(Result.success(value))
     }
 }
@@ -191,28 +160,6 @@ internal class FakeListCountSubscription(
 
     fun deliver() {
         events.trySend(list.countFailure?.let { Result.failure(it) } ?: Result.success(list.count()))
-    }
-}
-
-internal class FakeListPositionSubscription(
-    private val list: FakeList<*>,
-    key: List<BridgeSortValue>,
-) : ListPositionSubscription(NoHandle) {
-    private val events = Channel<Result<BridgeListPosition>>(Channel.UNLIMITED)
-    val keys = mutableListOf(key)
-
-    override fun setKey(key: List<BridgeSortValue>) {
-        keys += key
-        deliver()
-    }
-
-    override suspend fun next(): BridgeListPosition = events.receive().getOrThrow()
-
-    override suspend fun cancel() {}
-
-    fun deliver() {
-        val key = keys.last()
-        events.trySend(Result.success(BridgeListPosition(key, list.rowsBefore(key))))
     }
 }
 

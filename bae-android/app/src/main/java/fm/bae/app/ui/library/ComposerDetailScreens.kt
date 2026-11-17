@@ -53,8 +53,10 @@ internal fun ComposerDetailScreen(
         .collectAsState()
     val detail = query.value
     val rows = session.browserPages.composerRows
+    val screenRows = rememberScreenRows()
     DisposableEffect(artistId, session) {
         session.libraryQueries.composer.activate(artistId)
+        rows.screenRows = screenRows
         rows.activate(artistId)
         onDispose {
             session.libraryQueries.composer.deactivate(artistId)

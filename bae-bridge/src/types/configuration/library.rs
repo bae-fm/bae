@@ -139,7 +139,7 @@ pub struct BridgeWorkReleaseSummary {
 }
 
 /// A composer's page above its rows: the composer, and the work the page
-/// opens first. Its rows are read in windows
+/// opens first. Its rows are read through the list's view
 /// (`BridgeList::ComposerPage`).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeComposerDetail {

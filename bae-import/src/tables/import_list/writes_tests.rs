@@ -12,11 +12,10 @@ use crate::TriageTab;
 
 /// Where the view `view` opens in `list`, with the rows at `selected`
 /// selected, as the write that narrows the list to it anew returns it: the
-/// position, and the key a chain of windows starts at. The list first shows
-/// `view` narrowed to the releases not looked up, which every release these
-/// tests scan is, so the second write narrows the list anew without hiding a
-/// selected row. The helper checks that the key is the key of the row at the
-/// position, and that the window starting at the key begins with that row.
+/// position. The list first shows `view` narrowed to the releases not looked
+/// up, which every release these tests scan is, so the second write narrows
+/// the list anew without hiding a selected row. The helper checks that the
+/// window from the key of the row at the position begins with that row.
 async fn opened_at(
     lib: &Library,
     list: crate::ImportListId,
@@ -41,15 +40,11 @@ async fn opened_at(
         .expect("another filter entry narrows the list anew");
     match change.opening {
         ImportListOpening::Top => 0,
-        ImportListOpening::At { key, position } => {
-            assert_eq!(
-                tables.import_key_at(list, position).await.unwrap().as_ref(),
-                Some(&key),
-                "the key is the key of the row at the position"
-            );
-            let from = bae_store::ListWindow::Forward { from: Some(key), until: None, limit: 1 };
+        ImportListOpening::At { position } => {
+            let key = tables.import_key_at(list, position).await.unwrap().expect("a row there");
+            let from = bae_store::ListWindow { from: Some(key), limit: 1 };
             let first = tables.read_import_window(list, from).await.unwrap();
-            let shown = items_sequence(&first.read.rows);
+            let shown = items_sequence(&unkeyed(&first.read.rows));
             let selected = lib.read(list).await;
             let whole = sequence(&selected);
             assert_eq!(shown[0], whole[position as usize], "the window from the key starts there");
@@ -76,7 +71,7 @@ async fn every_group_folds_and_opens_at_once() {
 }
 
 /// A view opens at the first selected row it shows: the write that sets it
-/// says where that row sits in the list it shows, by key and position. A view
+/// says where that row sits in the list it shows, by its position. A view
 /// showing no selected row opens at its top, and setting the view the list
 /// already shows returns nothing.
 #[tokio::test]

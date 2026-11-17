@@ -26,7 +26,7 @@ fn combinable(read: &ImportListRead) -> Vec<(String, bool)> {
     read.windows[0]
         .rows
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(item, _key)| match item {
             ImportListItem::GroupHeader { group, .. } => {
                 Some((group.name.clone(), group.combinable))
             }
@@ -711,7 +711,7 @@ async fn a_skipped_folder_whose_files_show_one_name_is_listed_with_that_name() {
     let reasons: Vec<&InvalidReason> = list
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             ImportListItem::Invalid { row, .. } => Some(&row.reason),
             _ => None,
@@ -771,7 +771,7 @@ async fn a_done_row_reads_its_library_release() {
         .unwrap();
     let version = write_cover(&records, &release_id, "the library cover").await;
     let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
-    let whole = bae_store::ListWindow::Forward { from: None, until: None, limit: 50 };
+    let whole = bae_store::ListWindow::top(50);
     let mut live = tables.subscribe_import_window(list, whole);
     let first = live.next_inline().await.expect("the query stays open").result.unwrap();
     let done = window_rows(&first);
@@ -885,10 +885,7 @@ async fn a_done_row_reads_as_its_library_release_s_records_describe_it() {
 
     let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
     let read = crate::tables::ImportTables::new(lib.db.clone())
-        .read_import_window(
-            list,
-            bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
-        )
+        .read_import_window(list, bae_store::ListWindow::top(50))
         .await
         .unwrap();
     let readings: Vec<_> = window_rows(&read).into_iter().map(|row| row.reading).collect();
@@ -935,7 +932,7 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     let row = listed
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .find_map(|item| match item {
             crate::ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,

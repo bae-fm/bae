@@ -37,8 +37,10 @@ struct LiveList {
     state: tokio::sync::watch::Receiver<ListState>,
 }
 
-fn keys_of(items: &[crate::ImportListItem]) -> Vec<crate::CandidateKey> {
-    items.iter().filter_map(candidate_key).cloned().collect()
+fn keys_of(
+    rows: &[bae_store::list_windows::Keyed<crate::ImportListItem>],
+) -> Vec<crate::CandidateKey> {
+    rows.iter().filter_map(|(item, _key)| candidate_key(item)).cloned().collect()
 }
 
 impl LiveList {
@@ -49,8 +51,7 @@ impl LiveList {
             .expect("the list opens");
         let (state, receiver) = tokio::sync::watch::channel(ListState::default());
         let state = std::sync::Arc::new(state);
-        let mut window =
-            list.subscribe_window(ListWindow::Forward { from: None, until: None, limit: u64::MAX });
+        let mut window = list.subscribe_window(ListWindow::top(u64::MAX));
         let rows = state.clone();
         tokio::spawn(async move {
             while let Some(event) = window.next_inline().await {
@@ -213,8 +214,8 @@ async fn the_entry_counts_follow_what_is_running() {
 }
 
 /// A list over every item that holds one row on its page: the window of the
-/// first item, closed at the second, whose range the other row is outside
-/// of, and the filter's entries, each its own live query.
+/// first item alone, which the other row comes after, and the filter's
+/// entries, each its own live query.
 struct OnePage {
     _list: LiveImportList,
     window: coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError>,
@@ -251,18 +252,10 @@ async fn one_row_on_the_page(
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
     let list = handle.open_list(ImportListView::default()).await.expect("the list opens");
-    let mut window =
-        list.subscribe_window(ListWindow::Forward { from: None, until: None, limit: 1 });
+    let mut window = list.subscribe_window(ListWindow::top(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_page = keys_of(&initial.read.rows);
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
-    // The test closes the window at the row the first delivery reports beyond
-    // it.
-    let beyond = initial.read.beyond.clone().expect("the second row is beyond the page");
-    window
-        .requests()
-        .set(ListWindow::Forward { from: None, until: Some(beyond.clone()), limit: 1 })
-        .unwrap();
     let mut entries = list.subscribe_filter_entries();
     let entries_read = entries.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(counted(&entries_read, PendingFilter::All), Some(2));
@@ -320,10 +313,10 @@ async fn a_run_off_the_page_delivers_its_count() {
             .await;
 
     assert_eq!(counted(&moved, PendingFilter::All), Some(2));
-    // Coven does not narrow the import list's windows by their range (the
-    // placement reads headers through a correlated EXISTS, and Found members
-    // sort through a join on unit), so coven reruns every window after any
-    // write to a table the list reads.
+    // Coven does not narrow the import list's windows to the rows up to their
+    // last (the placement reads headers through a correlated EXISTS, and
+    // Found members sort through a join on unit), so coven reruns every
+    // window after any write to a table the list reads.
     assert!(page.window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
     shut_down(handle).await;
 }
@@ -836,11 +829,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .map(|dir| crate::CandidateKey::folder(&dir))
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
-    // The test closes the window at the row the first delivery reports beyond
-    // it.
-    let beyond = initial.read.beyond.clone().expect("the second row is beyond");
     let requests = window.requests();
-    requests.set(ListWindow::Forward { from: None, until: Some(beyond), limit: 1 }).unwrap();
     let mut entries = list.subscribe_filter_entries();
     entries.next_inline().await.expect("the query stays open").unwrap();
 
@@ -851,10 +840,10 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
             break entries;
         }
     };
-    // Coven does not narrow the import list's windows by their range (the
-    // placement reads headers through a correlated EXISTS, and Found members
-    // sort through a join on unit), so coven reruns every window after any
-    // write to a table the list reads.
+    // Coven does not narrow the import list's windows to the rows up to their
+    // last (the placement reads headers through a correlated EXISTS, and
+    // Found members sort through a join on unit), so coven reruns every
+    // window after any write to a table the list reads.
     assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
     assert_eq!(counted(&counted_off, crate::PendingFilter::All), Some(2));
 
@@ -870,7 +859,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
     );
 
-    requests.set(ListWindow::Forward { from: None, until: None, limit: 2 }).unwrap();
+    requests.set(ListWindow::top(2)).unwrap();
     let widened = loop {
         let value = window.next_inline().await.expect("the query stays open").result.unwrap();
         if value.read.rows.len() == 2 {
@@ -915,7 +904,7 @@ fn page_live_of(
         .read
         .rows
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(item, _key)| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), live.clone()))
             }
@@ -940,11 +929,6 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let mut window = list.subscribe_window(page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_key = page_live_of(&initial).into_keys().next().expect("the window holds one row");
-    let beyond = initial.read.beyond.clone().expect("the second row is beyond");
-    window
-        .requests()
-        .set(ListWindow::Forward { from: None, until: Some(beyond), limit: 1 })
-        .unwrap();
     let mut entries = list.subscribe_filter_entries();
     let before = entries.next_inline().await.expect("the query stays open").unwrap();
     let off_dir = [&first, &second]
@@ -959,10 +943,10 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let moved = entries.next_inline().await.expect("the query stays open").unwrap();
     assert_ne!(moved, before, "the verdict moved a count");
     assert_eq!(counted(&moved, crate::PendingFilter::All), Some(2));
-    // Coven does not narrow the import list's windows by their range (the
-    // placement reads headers through a correlated EXISTS, and Found members
-    // sort through a join on unit), so coven reruns every window after any
-    // write to a table the list reads.
+    // Coven does not narrow the import list's windows to the rows up to their
+    // last (the placement reads headers through a correlated EXISTS, and
+    // Found members sort through a join on unit), so coven reruns every
+    // window after any write to a table the list reads.
     assert!(window.is_marked_for_rerun(), "the window reruns for a write it cannot rule out");
 }
 

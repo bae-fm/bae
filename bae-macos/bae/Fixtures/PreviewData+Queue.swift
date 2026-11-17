@@ -28,23 +28,22 @@ final class PreviewQueueFeed<Value: Sendable>: @unchecked Sendable {
     }
 }
 
-/// This list serves a queue's context lane the way core serves it: windows
-/// bounded by keys, a count, the position of a key and the key at a
-/// position. A row's key is its place in the lane, which a change renumbers
-/// densely as core's lane does, and every change reaches every open window
-/// and the count, as core's live reads do.
+/// This list serves a queue's context lane the way core serves it: a view
+/// that answers the rows on screen with the rows around them, and a count.
+/// Every change reaches every open view and the count, as core's live reads
+/// do.
 final class PreviewQueueList: @unchecked Sendable {
-    private final class Window: @unchecked Sendable {
-        let feed = PreviewQueueFeed<ListWindowDelivery<BridgeQueueEntry>>()
-        var request: BridgeListWindow
+    private final class View: @unchecked Sendable {
+        let feed = PreviewQueueFeed<ListViewDelivery<BridgeQueueEntry>>()
+        var shown: ClosedRange<Int>
         var stopped = false
 
-        init(_ request: BridgeListWindow) { self.request = request }
+        init(_ shown: ClosedRange<Int>) { self.shown = shown }
     }
 
     private let lock = NSLock()
     private var rows: [BridgeQueueEntry] = []
-    private var open: [Window] = []
+    private var open: [View] = []
     private let counts = PreviewQueueFeed<BridgeListCount>()
     /// Why every read of the list fails, when it does.
     private let failure: (any Error)?
@@ -52,9 +51,9 @@ final class PreviewQueueList: @unchecked Sendable {
     init(failure: (any Error)? = nil) { self.failure = failure }
 
     /// Replace the lane's rows and deliver the change to the count and every
-    /// window.
+    /// view.
     func show(_ rows: [BridgeQueueEntry]) {
-        let windows = lock.withLock {
+        let views = lock.withLock {
             self.rows = rows
             return open.filter { !$0.stopped }
         }
@@ -65,76 +64,47 @@ final class PreviewQueueList: @unchecked Sendable {
                 extra: .none
             )
         )
-        for window in windows { deliver(to: window) }
+        for view in views { deliver(to: view) }
     }
 
-    /// Fail every open window's read with `error`, as a later read of a live
+    /// Fail every open view's read with `error`, as a later read of a live
     /// list fails.
     func failWindows(_ error: any Error) {
-        let windows = lock.withLock { open.filter { !$0.stopped } }
-        for window in windows { window.feed.fail(error) }
+        let views = lock.withLock { open.filter { !$0.stopped } }
+        for view in views { view.feed.fail(error) }
     }
 
-    private static func key(_ place: Int) -> [BridgeSortValue] {
-        [.integer(value: Int64(place))]
-    }
-
-    private static func place(_ key: [BridgeSortValue]) -> Int {
-        guard case .integer(let place)? = key.first else { return 0 }
-        return Int(place)
-    }
-
-    private func delivery(of window: BridgeListWindow) -> ListWindowDelivery<
-        BridgeQueueEntry
-    > {
-        lock.withLock {
-            let start: Int
-            let stop: Int
-            let beyond: Int?
-            switch window {
-            case .forward(let from, let until, let limit):
-                start = min(from.map(Self.place) ?? 0, rows.count)
-                let end = min(until.map(Self.place) ?? rows.count, rows.count)
-                stop = max(start, min(start + Int(limit), end))
-                beyond = stop < end ? stop : nil
-            case .backward(let until, let limit):
-                stop = min(Self.place(until), rows.count)
-                start = max(0, stop - Int(limit))
-                beyond = start > 0 ? start - 1 : nil
-            }
-            let held = Array(rows[start..<stop])
-            return ListWindowDelivery(
-                window: window,
-                rows: held,
-                first: held.isEmpty ? nil : Self.key(start),
-                beyond: beyond.map(Self.key)
-            )
+    private func deliver(to view: View) {
+        let delivery = lock.withLock {
+            BridgeListQueries<BridgeQueueEntry>
+                .fixedDelivery(
+                    first: view.shown.lowerBound,
+                    last: view.shown.upperBound,
+                    rows: rows
+                )
         }
-    }
-
-    private func deliver(to window: Window) {
-        window.feed.emit(delivery(of: window.request))
+        view.feed.emit(delivery)
     }
 
     var queries: BridgeListQueries<BridgeQueueEntry> {
         BridgeListQueries(
-            window: { [self] first in
-                let window = Window(first)
-                lock.withLock { open.append(window) }
+            view: { [self] first, last in
+                let view = View(Int(first)...Int(last))
+                lock.withLock { open.append(view) }
                 if let failure {
-                    window.feed.fail(failure)
+                    view.feed.fail(failure)
                 }
                 else {
-                    deliver(to: window)
+                    deliver(to: view)
                 }
-                return ListWindowQuery(
-                    setWindow: { [self] next in
-                        window.request = next
-                        deliver(to: window)
+                return ListViewQuery(
+                    setVisible: { [self] first, last in
+                        view.shown = Int(first)...Int(last)
+                        deliver(to: view)
                     },
                     values: PulledValues(
-                        read: { try await window.feed.next() },
-                        cancel: { window.stopped = true }
+                        read: { try await view.feed.next() },
+                        cancel: { view.stopped = true }
                     )
                 )
             },
@@ -149,29 +119,6 @@ final class PreviewQueueList: @unchecked Sendable {
                     )
                 }
                 return PulledValues(read: { try await self.counts.next() })
-            },
-            position: { [self] key in
-                let feed = PreviewQueueFeed<BridgeListPosition>()
-                let emit: @Sendable ([BridgeSortValue]) -> Void = { key in
-                    feed.emit(
-                        BridgeListPosition(
-                            key: key,
-                            rowsBefore: UInt64(Self.place(key))
-                        )
-                    )
-                }
-                emit(key)
-                return ListPositionQuery(
-                    setKey: emit,
-                    values: PulledValues(read: { try await feed.next() })
-                )
-            },
-            keyAt: { [self] position in
-                lock.withLock {
-                    rows.isEmpty
-                        ? nil
-                        : Self.key(min(Int(position), rows.count - 1))
-                }
             }
         )
     }

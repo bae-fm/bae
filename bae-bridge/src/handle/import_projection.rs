@@ -541,14 +541,12 @@ impl crate::types::BridgeImportCandidateListLocation {
             tab,
             group_key,
             visible_position,
-            key,
         } = location;
         Self {
             stable_key,
             tab: crate::types::BridgeTriageTab::from_core(tab),
             group_key: group_key.map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
             visible_position,
-            key: crate::types::BridgeSortValue::of_key(&key),
         }
     }
 }
@@ -557,9 +555,7 @@ impl crate::types::BridgeImportListOpening {
     pub(crate) fn from_core(opening: bae_import::ImportListOpening) -> Self {
         match opening {
             bae_import::ImportListOpening::Top => Self::Top,
-            bae_import::ImportListOpening::At { key, position } => {
-                Self::At { key: crate::types::BridgeSortValue::of_key(&key), position }
-            }
+            bae_import::ImportListOpening::At { position } => Self::At { position },
         }
     }
 }

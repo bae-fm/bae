@@ -8,37 +8,19 @@ import androidx.compose.runtime.setValue
 import fm.bae.app.BaeLogger
 import fm.bae.app.ErrorDisplays
 import fm.bae.app.R
-import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.ScreenSubscription
 import kotlinx.coroutines.CoroutineScope
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
-import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListCountExtra
-import uniffi.bae_bridge.BridgeSortValue
 
-private val logger = BaeLogger("bae.ChainBrowserPageStore")
-
-/**
- * The reads of one list, the same for every list: each window of it is a live read of its own, its
- * count and the position of a key in it are live reads too, and a jump to a position reads the key there
- * once with a plain read.
- */
-internal class ListReads<Row>(
-    val window: (uniffi.bae_bridge.BridgeListWindow) -> ListWindowRead<Row>,
-    val count: () -> PulledSubscription<BridgeListCount>,
-    val position: (List<BridgeSortValue>) -> ListPositionRead,
-    val keyAt: suspend (ULong) -> List<BridgeSortValue>?,
-    /** The album grid grouped by artist: each artist's heading with where its albums start. Other lists have none. */
-    val sections: (() -> PulledSubscription<List<BridgeLibraryBrowseSection>>)? = null,
-)
+private val logger = BaeLogger("bae.ListBrowserPageStore")
 
 /**
- * One library list read through a [ListChainReader]: a chain of window reads with its count, and its headings
- * as a read of their own. The visible range decides which windows the chain keeps; for a range far from the
- * chain's rows, the reader starts the chain over at the key the list has there.
+ * One library list read through an [OpenList]: its view and its count, and its headings as a read of their own.
+ * The screen reports the rows it shows, and core keeps the window it reads around them.
  */
-internal abstract class ChainBrowserPageStore<Parameter, Row>(
+internal abstract class ListBrowserPageStore<Parameter, Row>(
     private val appContext: Context,
     /** Core's answer to whether a failed read is worth reading again. */
     private val errors: ErrorDisplays,
@@ -49,7 +31,13 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     @StringRes private val loadFailed: Int = R.string.library_load_failed,
 ) : BrowserPageState {
     /** The open list's reads; null until [activate] and after [deactivate]. A failed read stops them and keeps them. */
-    private var reader by mutableStateOf<ListChainReader<Row>?>(null)
+    private var reader by mutableStateOf<OpenList<Row>?>(null)
+
+    /**
+     * How many rows the screen fits, from its height and its row height; the list opens its view with that many
+     * rows on screen, before any row arrives.
+     */
+    var screenRows = 1
     override val totalCount: Int
         get() =
             reader
@@ -74,16 +62,11 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
     private var generation = 0
     private var sectionDeliveries: ScreenSubscription<List<BridgeLibraryBrowseSection>>? = null
 
-    /** Whether the list's count and its first window have both returned since [activate]. */
+    /** Whether the list's count and its view have both returned since [activate]. */
     private var firstReadReturned by mutableStateOf(false)
 
-    /** The row at [index], or null when no window holds it. */
-    fun rowAt(index: Int): Row? {
-        for (run in reader?.chain?.placed.orEmpty()) {
-            if (index >= run.start && index < run.start + run.rows.size) return run.rows[index - run.start]
-        }
-        return null
-    }
+    /** The row at [index], or null when the view's window doesn't hold it. */
+    fun rowAt(index: Int): Row? = reader?.rowAt(index)
 
     fun activate(parameter: Parameter) {
         if (active && this.parameter == parameter) return
@@ -97,7 +80,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
         generation++
         val opened = open(parameter)
         val current = generation
-        val opening = ListChainReader(scope, opened, { changed(current) }, { failed(it, current) })
+        val opening = OpenList(scope, opened, { changed(current) }, { failed(it, current) })
         reader = opening
         sectionDeliveries =
             opened.sections?.let { open ->
@@ -108,7 +91,7 @@ internal abstract class ChainBrowserPageStore<Parameter, Row>(
                     onError = { failed(it, current) },
                 )
             }
-        opening.start()
+        opening.start(0, maxOf(screenRows, 1) - 1)
     }
 
     /** Stop reading [parameter]'s list, unless the caller has activated another list since. */

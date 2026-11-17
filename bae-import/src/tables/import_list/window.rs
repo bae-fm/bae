@@ -47,13 +47,11 @@ use rusqlite::ToSql;
 use std::path::PathBuf;
 
 /// Reads the window `window` of the list `list` in one statement: the items
-/// of its range, the header of the group they start inside of, and the keys
-/// of the first item and of the item beyond the window's far end.
+/// of its range, each with its key, and the header of the group they start
+/// inside of.
 ///
 /// The range is the statement's first table. The statement numbers the
-/// range's items in the order the parts of its UNION return them; the one
-/// past the limit is the item beyond, and a window read backward numbers
-/// from its far end, so its items come out in the window's order. A member
+/// range's items in the order the parts of its UNION return them. A member
 /// of a group at the window's start leads with a row for its header, which
 /// is not one of the window's items.
 pub(super) fn read_window(
@@ -64,67 +62,47 @@ pub(super) fn read_window(
     let items = list.items(Shown::View);
     let Some(range) = items.range_statement(window)? else {
         return Ok(ImportWindow {
-            read: bae_store::WindowRead {
-                window: window.clone(),
-                rows: Vec::new(),
-                first: None,
-                beyond: None,
-            },
+            read: bae_store::WindowRead { window: window.clone(), rows: Vec::new() },
             leading_header: None,
         });
     };
-    let position = match range.backward {
-        true => "min(w.total, :shown) - w.n",
-        false => "w.n - 1",
-    };
     let statement = format!(
         "WITH keyed AS ( \
-             SELECT row_number() OVER () AS n, count(*) OVER () AS total, k.* \
+             SELECT row_number() OVER () AS n, k.* \
              FROM ({range}) AS k) \
          {rows}",
         range = range.sql(),
-        rows = rows_statement(position, &range.columns),
+        rows = rows_statement(&range.columns),
     );
-    let shown = bae_store::list_windows::sql_bound(range.limit);
-    let wanted = bae_store::list_windows::sql_bound(range.limit.saturating_add(1));
+    let limit = bae_store::list_windows::sql_bound(range.limit);
     let range_params = range.params();
     let mut named: Vec<(&str, &dyn ToSql)> =
         range_params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
-    named.push((":limit", &wanted));
-    named.push((":shown", &shown));
+    named.push((":limit", &limit));
     let rows = items.query(sql, &statement, &named, |row| {
         let role: String = row.get("role")?;
         let item: String = row.get("item")?;
         let ordered = items.led_key(row)?;
-        let stored = match (role.as_str(), item.as_str()) {
-            ("beyond", _) => None,
-            (_, "group") => Some(StoredItem::Header(read_header(row)?)),
-            _ => Some(StoredItem::Release(Box::new(read_release(row)?))),
+        let stored = match item.as_str() {
+            "group" => StoredItem::Header(read_header(row)?),
+            _ => StoredItem::Release(Box::new(read_release(row)?)),
         };
         Ok((role, item, ordered, stored))
     })?;
     let mut read = Vec::new();
-    let (mut leading_header, mut first, mut beyond) = (None, None, None);
+    let mut leading_header = None;
     for (role, item, ordered, stored) in rows {
         let shown = match stored {
-            Some(StoredItem::Header(header)) => Some(header_item(header)?),
-            Some(StoredItem::Release(release)) => Some(release_item(*release, Item::of(&item)?)?),
-            None => None,
+            StoredItem::Header(header) => header_item(header)?,
+            StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
         };
-        match (role.as_str(), shown) {
-            ("leading", item) => leading_header = item,
-            ("beyond", _) => beyond = Some(ordered),
-            (_, Some(item)) => {
-                if read.is_empty() {
-                    first = Some(ordered);
-                }
-                read.push(item);
-            }
-            (_, None) => return Err(DbError::unreadable("a row of an import list's window", role)),
+        match role.as_str() {
+            "leading" => leading_header = Some(shown),
+            _ => read.push((shown, ordered)),
         }
     }
     Ok(ImportWindow {
-        read: bae_store::WindowRead { window: window.clone(), rows: read, first, beyond },
+        read: bae_store::WindowRead { window: window.clone(), rows: read },
         leading_header,
     })
 }
@@ -243,7 +221,7 @@ struct ReleaseRows {
 /// The statement's last part: each item of the range, a group's header or a
 /// release's rows, by its key, in the window's order. A group's header reads
 /// its placement; a release reads its placement and the keyed rows beside it.
-fn rows_statement(position: &str, columns: &str) -> String {
+fn rows_statement(columns: &str) -> String {
     use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
     let covers = cover_version_joins(
@@ -251,9 +229,9 @@ fn rows_statement(position: &str, columns: &str) -> String {
         "cover.file_id",
     );
     let link_records = claimed_records_sql("link.content_hash");
-    // The statement's rows are each of the range's items once as a `row`, the
-    // first of them again as the `leading` header of its group when it is a
-    // member of one, and the item beyond the window as the `beyond` row.
+    // The statement's rows are each of the range's items once as a `row`, and
+    // the first of them again as the `leading` header of its group when it is
+    // a member of one.
     let item = "CASE r.role WHEN 'leading' THEN 'group' ELSE w.item END";
     let key = "CASE r.role WHEN 'leading' THEN w.group_folder ELSE w.key END";
     let header_columns = header_columns(key);
@@ -268,8 +246,7 @@ fn rows_statement(position: &str, columns: &str) -> String {
                 p.group_folder AS group_folder, \
                 {library_cover} AS library_cover, \
                 {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
-                CASE r.role WHEN 'row' THEN {position} WHEN 'leading' THEN -1 \
-                     ELSE :shown END AS pos, \
+                CASE r.role WHEN 'row' THEN w.n - 1 ELSE -1 END AS pos, \
                 r.role AS role, {item} AS item, w.part AS part, \
                 w.watched_folder_path AS header_root, {key} AS header_folder, {header_columns}, \
                 {RELEASE_UPLOAD_COUNT_COLUMNS}, \
@@ -280,17 +257,15 @@ fn rows_statement(position: &str, columns: &str) -> String {
                      THEN ({link_records}) END AS link_records, \
                 {COVER_VERSION_COLUMNS}, {columns} \
          FROM keyed AS w \
-         JOIN (SELECT 'row' AS role UNION ALL SELECT 'leading' UNION ALL SELECT 'beyond') AS r \
-             ON CASE r.role WHEN 'row' THEN w.n <= :shown \
-                            WHEN 'beyond' THEN w.n > :shown \
-                            ELSE w.n <= :shown AND ({position}) = 0 AND w.item <> 'group' \
-                                 AND w.group_folder IS NOT NULL END \
+         JOIN (SELECT 'row' AS role UNION ALL SELECT 'leading') AS r \
+             ON r.role = 'row' \
+                OR (w.n = 1 AND w.item <> 'group' AND w.group_folder IS NOT NULL) \
          LEFT JOIN import_list_placement AS hp \
-             ON r.role <> 'beyond' AND {item} = 'group' \
+             ON {item} = 'group' \
             AND hp.watched_folder_path = w.watched_folder_path \
             AND hp.item = 'group' AND hp.key = {key} \
          LEFT JOIN import_list_placement AS p \
-             ON r.role <> 'beyond' AND {item} <> 'group' \
+             ON {item} <> 'group' \
             AND p.watched_folder_path = w.watched_folder_path \
             AND p.key = {key} AND p.item <> 'group' \
          LEFT JOIN scan_candidate AS c \

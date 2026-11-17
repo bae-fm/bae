@@ -574,48 +574,36 @@ async fn test_value_counts_up_next_and_says_whether_the_queue_is_empty() {
     assert_eq!((added.up_next_count, added.is_empty), (1, false));
 }
 
-/// The upcoming tracks are a list in the lane's order: windows are ranges of
-/// it bounded by the key of a row at each end, the count is its own read, and
-/// a jump reads the key at a position and counts the rows before it. The
-/// playing track and the ones before it are never in it.
+/// The upcoming tracks are a list in the lane's order: a window holds its
+/// limit of rows from a row's key on, each with its key, the count is its own
+/// read, and a jump reads the key at a position and counts the rows before
+/// it. The playing track and the ones before it are never in it.
 #[tokio::test]
-async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() {
-    use bae_store::list_windows::ListWindow::Forward;
+async fn test_a_window_reads_the_lane_after_the_playing_track_from_a_key() {
+    use bae_store::ListWindow;
     let tracks: Vec<String> = (0..130).map(|i| format!("t{i:03}")).collect();
     let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
     let mut f = release(&refs).await;
     f.play_from("t010").await;
     let upcoming = &tracks[11..];
 
-    let window = |from, until, limit| Forward { from, until, limit };
-    let mut top = crate::tables::subscribe_upcoming_window(&f.db, false, window(None, None, 3));
+    let mut top = crate::tables::subscribe_upcoming_window(&f.db, false, ListWindow::top(3));
     let first = top.next_inline().await.expect("the query stays open").result.unwrap();
     let names = |read: &bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
-        read.rows.iter().map(|item| f.name(&item.track_id)).collect()
+        read.rows.iter().map(|(item, _key)| f.name(&item.track_id)).collect()
     };
     assert_eq!(names(&first), upcoming[..3].to_vec());
-    let beyond = first.beyond.clone().expect("the limit cut the window short");
 
-    // The next window starts at the row the first one stopped before.
+    // A window from the key of the fourth row reads on from that row.
+    let fourth = crate::tables::upcoming_key_at(&f.db, false, 3).await.unwrap().expect("a key");
     let mut next = crate::tables::subscribe_upcoming_window(
         &f.db,
         false,
-        window(Some(beyond.clone()), None, 2),
+        ListWindow { from: Some(fourth.clone()), limit: 2 },
     );
     let second = next.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(names(&second), upcoming[3..5].to_vec());
-    assert_eq!(second.first, Some(beyond.clone()));
-
-    // A window bounded at both ends reads the rows between, and no more.
-    let until = second.beyond.clone().unwrap();
-    let mut bounded = crate::tables::subscribe_upcoming_window(
-        &f.db,
-        false,
-        window(Some(first.beyond.clone().unwrap()), Some(until), 100),
-    );
-    let between = bounded.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(names(&between), upcoming[3..5].to_vec());
-    assert_eq!(between.beyond, None, "the window reached its bound");
+    assert_eq!(second.rows[0].1, fourth);
 
     let mut count = crate::tables::subscribe_upcoming_count(&f.db, false);
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 119);
@@ -623,8 +611,11 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
     // A jump: the key at a position starts a window there, and the number of
     // rows before the key is the position.
     let at = crate::tables::upcoming_key_at(&f.db, false, 100).await.unwrap().expect("a key");
-    let mut jumped =
-        crate::tables::subscribe_upcoming_window(&f.db, false, window(Some(at.clone()), None, 20));
+    let mut jumped = crate::tables::subscribe_upcoming_window(
+        &f.db,
+        false,
+        ListWindow { from: Some(at.clone()), limit: 20 },
+    );
     let read = jumped.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         names(&read),
@@ -644,7 +635,6 @@ async fn test_upcoming_windows_are_ranges_of_the_lane_after_the_playing_track() 
 /// list follows; turning it off reads the lane's own order again.
 #[tokio::test]
 async fn test_upcoming_windows_follow_the_order_the_lane_reads_in() {
-    use bae_store::list_windows::ListWindow::Forward;
     let tracks: Vec<String> = (0..40).map(|i| format!("t{i:02}")).collect();
     let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
     let mut f = release(&refs).await;
@@ -657,12 +647,12 @@ async fn test_upcoming_windows_follow_the_order_the_lane_reads_in() {
         let mut window = crate::tables::subscribe_upcoming_window(
             &f.db,
             shuffled_order,
-            Forward { from: None, until: None, limit: 100 },
+            bae_store::ListWindow::top(100),
         );
         async move { window.next_inline().await.expect("the query stays open").result.unwrap() }
     };
     let names = |read: bae_store::WindowRead<crate::QueueItem>| -> Vec<String> {
-        read.rows.iter().map(|item| f.name(&item.track_id)).collect()
+        read.rows.iter().map(|(item, _key)| f.name(&item.track_id)).collect()
     };
     assert_eq!(names(read(true).await), shuffled);
     assert_eq!(names(read(false).await), tracks[1..].to_vec());
@@ -752,28 +742,23 @@ async fn each_reorder_answers_whether_it_moved() {
     );
 }
 
-/// When a write moves rows inside one window of the upcoming list, coven
-/// reruns only that window, and does not rerun the other window or the
-/// count: the other window holds rows the write did not touch, and the write
-/// leaves the count where it was.
+/// When a write moves rows after a window of the upcoming list that its
+/// limit cut short, coven does not rerun that window, and reruns a window
+/// whose rows the write moved.
 #[tokio::test]
 async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
-    use bae_store::list_windows::ListWindow::Forward;
+    use bae_store::ListWindow;
     let tracks: Vec<String> = (0..60).map(|i| format!("t{i:02}")).collect();
     let refs: Vec<&str> = tracks.iter().map(String::as_str).collect();
     let mut f = release(&refs).await;
     f.play_from("t00").await;
 
     let split = crate::tables::upcoming_key_at(&f.db, false, 30).await.unwrap().expect("a key");
-    let mut lower = crate::tables::subscribe_upcoming_window(
-        &f.db,
-        false,
-        Forward { from: None, until: Some(split.clone()), limit: 100 },
-    );
+    let mut lower = crate::tables::subscribe_upcoming_window(&f.db, false, ListWindow::top(30));
     let mut upper = crate::tables::subscribe_upcoming_window(
         &f.db,
         false,
-        Forward { from: Some(split), until: None, limit: 100 },
+        ListWindow { from: Some(split), limit: 100 },
     );
     for window in [&mut lower, &mut upper] {
         window.next_inline().await.expect("the query stays open").result.unwrap();
@@ -782,5 +767,5 @@ async fn test_a_reorder_reruns_only_the_window_that_holds_its_rows() {
     let t50 = f.entry("t50").await;
     f.queue.reorder(t50, QueueLane::Context, 44).await.unwrap();
     assert!(upper.is_marked_for_rerun(), "the rows moved inside the upper window");
-    assert!(!lower.is_marked_for_rerun(), "the reorder did not touch the lower window's rows");
+    assert!(!lower.is_marked_for_rerun(), "the rows moved after the lower window's last row");
 }

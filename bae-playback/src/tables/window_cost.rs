@@ -15,9 +15,8 @@ pub async fn measure_playback_queue(store: &Store, n: u64) {
             Ok(super::queue_upcoming::upcoming_rows_on(
                 sql,
                 false,
-                &order.everything(),
+                &order.at_offset(offset),
                 LIMIT,
-                offset,
             )?
             .len())
         })

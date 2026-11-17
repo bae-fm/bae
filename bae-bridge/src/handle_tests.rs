@@ -260,31 +260,18 @@ fn flat_albums() -> crate::types::BridgeList {
     crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false }
 }
 
-fn top_window(limit: u64) -> crate::types::BridgeListWindow {
-    crate::types::BridgeListWindow::Forward { from: None, until: None, limit }
-}
-
 #[test]
-fn an_album_window_answers_the_window_it_was_asked_for() {
+fn an_album_view_answers_with_the_rows_from_the_top() {
     let handle = fresh_bridge_handle("album-window-empty");
-    let subscription = handle.handle().subscribe_list_window(flat_albums(), top_window(50));
+    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
 
     let value =
-        handle.handle().runtime.block_on(subscription.clone().next()).expect("album window value");
+        handle.handle().runtime.block_on(subscription.clone().next()).expect("album view value");
 
-    assert_eq!(value.window, top_window(50));
+    assert_eq!(value.start, 0);
     assert!(
         matches!(value.rows, crate::types::BridgeListRows::Albums { ref rows } if rows.is_empty())
     );
-    assert!(value.first.is_none() && value.beyond.is_none());
-
-    subscription.set_window(top_window(10)).expect("move the window");
-    let moved = handle
-        .handle()
-        .runtime
-        .block_on(subscription.clone().next())
-        .expect("moved album window value");
-    assert_eq!(moved.window, top_window(10));
 }
 
 #[test]
@@ -301,29 +288,25 @@ fn an_album_count_pulls_before_any_window() {
 }
 
 #[test]
-fn cancelling_an_album_window_finishes_pending_next() {
+fn cancelling_an_album_view_finishes_pending_next() {
     let handle = fresh_bridge_handle("album-window-cancel");
-    let subscription = handle.handle().subscribe_list_window(flat_albums(), top_window(50));
+    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
     handle
         .handle()
         .runtime
         .block_on(subscription.clone().next())
-        .expect("initial album window value");
+        .expect("initial album view value");
 
     let result = handle.handle().runtime.block_on(async {
         let pending = tokio::spawn({
             let subscription = subscription.clone();
             async move { subscription.next().await }
         });
-        subscription.clone().cancel().await.expect("cancel album window subscription");
+        subscription.clone().cancel().await.expect("cancel album view subscription");
         pending.await.expect("next task joins")
     });
 
     assert!(matches!(result, Err(crate::types::BridgeError::Cancelled)));
-    assert!(matches!(
-        subscription.set_window(top_window(10)),
-        Err(crate::types::BridgeError::Cancelled)
-    ));
 }
 
 #[test]

@@ -4,7 +4,7 @@ import BaeKit
 /// The group header pinned over the top of the import list: the header of
 /// the group the row on top is listed under. Each member names its header by
 /// the header's key, so the header is known from the row on top alone,
-/// whichever windows are loaded; a window that starts inside a group delivers
+/// whichever rows are loaded; a window that starts inside a group delivers
 /// that group's header beside its rows.
 struct ImportListPinnedHeader: Equatable {
     /// The header's key.

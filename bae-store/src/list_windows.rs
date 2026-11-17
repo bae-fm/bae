@@ -1,22 +1,19 @@
-//! A paged list's windows. Each window a screen holds is a range of the
-//! list's order (`range`): the rows from one key up to another, which the
-//! read finds by seeking through the order's index rather than stepping over
-//! the rows before them.
+//! A paged list's window. A list's screen reads one window of it (`range`):
+//! the rows from one key on, at most a limit of them, which the read finds by
+//! seeking through the order's index rather than stepping over the rows
+//! before them.
 //!
 //! A jump to a position reads the key of the row at that position by offset
-//! once (`key_at`), and the screen starts a chain of windows at that key.
-//! `RowsBefore` counts the rows before a key over index ranges in one
-//! statement, without numbering the list. The module keeps nothing about
-//! where rows sit between reads.
+//! once (`key_at`), and the window starts at that key. `RowsBefore` counts
+//! the rows before a key over index ranges in one statement, without
+//! numbering the list. The module keeps nothing about where rows sit between
+//! reads.
 
 use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
-use std::cmp::Ordering;
 
 mod range;
-pub use range::{
-    key_at, page_window, read_range, rows_before_on, ListWindow, RowsBefore, WindowRead,
-};
+pub use range::{key_at, read_range, rows_before_on, ListWindow, RowsBefore, WindowRead};
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,15 +32,11 @@ pub struct SortTerm {
     expression: String,
     descending: bool,
     nullable: bool,
-    /// How the term's text compares, when its expression collates it: two
-    /// values this calls equal are one value to the order, whatever their
-    /// bytes.
-    collation: Option<fn(&str, &str) -> Ordering>,
 }
 
 impl SortTerm {
     pub fn ascending(expression: impl Into<String>) -> Self {
-        Self { expression: expression.into(), descending: false, nullable: false, collation: None }
+        Self { expression: expression.into(), descending: false, nullable: false }
     }
 
     pub fn descending(expression: impl Into<String>) -> Self {
@@ -60,11 +53,6 @@ impl SortTerm {
     /// The same term over an expression that can be NULL.
     pub fn nullable(self) -> Self {
         Self { nullable: true, ..self }
-    }
-
-    /// The same term, whose expression collates its text as `compare` does.
-    pub fn collated(self, compare: fn(&str, &str) -> Ordering) -> Self {
-        Self { collation: Some(compare), ..self }
     }
 
     /// The term as an ORDER BY term, run `descending` or the other way.
@@ -109,62 +97,13 @@ impl OrderKey {
     pub fn values(&self) -> &[SortValue] {
         &self.0
     }
-
-    /// How many terms the key holds values of.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
-/// A value's rank among SQLite's storage classes, which sort NULL, numbers,
-/// text, then blobs.
-fn rank(value: &Value) -> u8 {
-    match value {
-        Value::Null => 0,
-        Value::Integer(_) | Value::Real(_) => 1,
-        Value::Text(_) => 2,
-        Value::Blob(_) => 3,
-    }
-}
-
-fn compare_values(left: &Value, right: &Value) -> Ordering {
-    match (left, right) {
-        (Value::Integer(left), Value::Integer(right)) => left.cmp(right),
-        (Value::Integer(left), Value::Real(right)) => (*left as f64).total_cmp(right),
-        (Value::Real(left), Value::Integer(right)) => left.total_cmp(&(*right as f64)),
-        (Value::Real(left), Value::Real(right)) => left.total_cmp(right),
-        (Value::Text(left), Value::Text(right)) => left.cmp(right),
-        (Value::Blob(left), Value::Blob(right)) => left.cmp(right),
-        (left, right) => rank(left).cmp(&rank(right)),
-    }
-}
-
-/// Keys compare value by value, which only a request set needs, to hold two
-/// windows apart.
-impl Ord for OrderKey {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0
-            .iter()
-            .zip(&other.0)
-            .map(|(left, right)| compare_values(left, right))
-            .find(|ordering| ordering.is_ne())
-            .unwrap_or_else(|| self.0.len().cmp(&other.0.len()))
-    }
-}
-
-impl PartialOrd for OrderKey {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
+/// Two keys are equal when they hold the same values: a window's request
+/// and the request a read answers compare so.
 impl PartialEq for OrderKey {
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other).is_eq()
+        self.0 == other.0
     }
 }
 
@@ -181,11 +120,6 @@ fn key_column(at: usize) -> String {
 /// The parameter a seek binds term `at`'s value of its row to.
 fn key_parameter(at: usize) -> String {
     format!(":order_key_{at}")
-}
-
-/// The parameter a range seek binds term `at`'s value of its upper bound to.
-fn until_parameter(at: usize) -> String {
-    format!(":until_key_{at}")
 }
 
 /// Which way a read runs from its row.
@@ -210,23 +144,24 @@ pub struct Seek {
     /// Whether the read runs against the order, from the row back.
     reversed: bool,
     binds: Vec<(String, Value)>,
+    /// How many of the seek's rows the read skips, for a read by offset; a
+    /// window's read skips none and has no OFFSET.
+    offset: Option<u64>,
 }
 
 /// What a seek holds the term at its place to.
 #[derive(Debug, Clone)]
 enum Past {
-    /// Above the lower bound and below the upper one, whichever are set. NULL
-    /// is neither.
-    Between {
-        lower: Option<Bound>,
-        upper: Option<Bound>,
-    },
+    /// Above the bound's value. NULL is not.
+    Above(Bound),
+    /// Below the bound's value. NULL is not.
+    Below(Bound),
     NotNull,
     Null,
 }
 
-/// One end of a [`Past::Between`]: the parameter holding the value, and
-/// whether a term equal to it is within.
+/// The value a [`Past::Above`] or [`Past::Below`] compares its term with: the
+/// parameter holding the value, and whether a term equal to it passes.
 #[derive(Debug, Clone)]
 struct Bound {
     inclusive: bool,
@@ -239,30 +174,37 @@ impl Seek {
         self.binds.iter().map(|(name, value)| (name.as_str(), value as &dyn ToSql)).collect()
     }
 
-    /// Run `run` with the seek's parameters and a window's `:limit` and
-    /// `:offset`.
-    pub fn bound<T>(
-        &self,
-        limit: u64,
-        offset: u64,
-        run: impl FnOnce(&[(&str, &dyn ToSql)]) -> T,
-    ) -> T {
-        let (limit, offset) = (sql_bound(limit), sql_bound(offset));
+    /// The statement's LIMIT clause: `LIMIT :limit`, with `OFFSET :offset`
+    /// for a read by offset. A window's statement has no OFFSET, so coven
+    /// reruns it only for a write at or before its last row.
+    pub fn limit_clause(&self) -> &'static str {
+        match self.offset {
+            Some(_) => "LIMIT :limit OFFSET :offset",
+            None => "LIMIT :limit",
+        }
+    }
+
+    /// Run `run` with the seek's parameters, `limit` as `:limit`, and for a
+    /// read by offset, the offset as `:offset`.
+    pub fn bound<T>(&self, limit: u64, run: impl FnOnce(&[(&str, &dyn ToSql)]) -> T) -> T {
+        let limit = sql_bound(limit);
+        let offset = self.offset.map(sql_bound);
         let mut params = self.params();
         params.push((":limit", &limit));
-        params.push((":offset", &offset));
+        if let Some(offset) = &offset {
+            params.push((":offset", offset));
+        }
         run(&params)
+    }
+
+    /// Whether the read skips rows by offset.
+    pub fn by_offset(&self) -> bool {
+        self.offset.is_some()
     }
 
     /// How many of the order's leading terms the seek holds equal.
     pub fn held_equal(&self) -> usize {
         self.equal
-    }
-
-    /// Whether the seek compares its term with a bound at each end.
-    #[cfg(test)]
-    pub(super) fn bounds_both_ends(&self) -> bool {
-        matches!(&self.past, Some(Past::Between { lower: Some(_), upper: Some(_) }))
     }
 }
 
@@ -317,10 +259,16 @@ impl ListOrder {
             .map(OrderKey)
     }
 
-    /// Every row of the list, in its order: the seek a window read by its
-    /// offset runs.
+    /// Every row of the list, in its order: the seek a window from the
+    /// list's top runs.
     pub fn everything(&self) -> Seek {
-        Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new() }
+        Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new(), offset: None }
+    }
+
+    /// Every row of the list from `position` on, read by offset: the seek
+    /// that finds the key of the row at a position.
+    pub fn at_offset(&self, position: u64) -> Seek {
+        Seek { offset: Some(position), ..self.everything() }
     }
 
     /// Every row of the list, from its last to its first: the seek a read of
@@ -345,16 +293,13 @@ impl ListOrder {
         let past = seek.past.as_ref().map(|past| {
             let term = term(seek.equal);
             match past {
-                Past::Between { lower, upper } => {
-                    let lower = lower.iter().map(|bound| {
-                        let op = if bound.inclusive { ">=" } else { ">" };
-                        format!("({term}) {op} {}", bound.parameter)
-                    });
-                    let upper = upper.iter().map(|bound| {
-                        let op = if bound.inclusive { "<=" } else { "<" };
-                        format!("({term}) {op} {}", bound.parameter)
-                    });
-                    lower.chain(upper).collect::<Vec<_>>().join(" AND ")
+                Past::Above(bound) => {
+                    let op = if bound.inclusive { ">=" } else { ">" };
+                    format!("({term}) {op} {}", bound.parameter)
+                }
+                Past::Below(bound) => {
+                    let op = if bound.inclusive { "<=" } else { "<" };
+                    format!("({term}) {op} {}", bound.parameter)
                 }
                 Past::NotNull => format!("({term}) IS NOT NULL"),
                 Past::Null => format!("({term}) IS NULL"),
@@ -458,7 +403,7 @@ impl ListOrder {
             // when it compares with it.
             let seek = |past: Past, from: usize| {
                 let compared = match past {
-                    Past::Between { .. } => at + 1,
+                    Past::Above(_) | Past::Below(_) => at + 1,
                     Past::NotNull | Past::Null => at,
                 };
                 Seek {
@@ -469,6 +414,7 @@ impl ListOrder {
                     binds: (0..compared)
                         .map(|bound| (key_parameter(bound), key.0[bound].clone()))
                         .collect(),
+                    offset: None,
                 }
             };
             let bound =
@@ -479,11 +425,9 @@ impl ListOrder {
                 // going up, and nothing is going down.
                 (Value::Null, false) => seeks.push(seek(Past::NotNull, at)),
                 (Value::Null, true) => {}
-                (_, false) => {
-                    seeks.push(seek(Past::Between { lower: Some(bound()), upper: None }, at));
-                }
+                (_, false) => seeks.push(seek(Past::Above(bound()), at)),
                 (_, true) => {
-                    seeks.push(seek(Past::Between { lower: None, upper: Some(bound()) }, at));
+                    seeks.push(seek(Past::Below(bound()), at));
                     if term.nullable {
                         seeks.push(seek(Past::Null, at + 1));
                     }
@@ -498,7 +442,7 @@ impl ListOrder {
 fn from_seeks<R, E>(
     seeks: Vec<Seek>,
     limit: u64,
-    read: &mut impl FnMut(&Seek, u64, u64) -> Result<Vec<Keyed<R>>, E>,
+    read: &mut impl FnMut(&Seek, u64) -> Result<Vec<Keyed<R>>, E>,
 ) -> Result<Vec<Keyed<R>>, E> {
     let mut rows = Vec::new();
     for seek in seeks {
@@ -506,7 +450,7 @@ fn from_seeks<R, E>(
         if wanted == 0 {
             break;
         }
-        rows.extend(read(&seek, wanted, 0)?);
+        rows.extend(read(&seek, wanted)?);
     }
     Ok(rows)
 }

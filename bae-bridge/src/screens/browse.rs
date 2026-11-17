@@ -1,35 +1,6 @@
-//! This module reads the album grid's selection live, and converts window
-//! sort values between the bridge and the core.
+//! This module reads the album grid's selection live.
 
 use crate::types::BridgeError;
-
-impl crate::types::BridgeSortValue {
-    /// The values of `key`, which a screen sends back as a cursor.
-    pub(crate) fn of_key(key: &bae_store::list_windows::OrderKey) -> Vec<Self> {
-        use bae_store::list_windows::SortValue;
-        key.values()
-            .iter()
-            .map(|value| match value {
-                SortValue::Null => Self::Null,
-                SortValue::Integer(value) => Self::Integer { value: *value },
-                SortValue::Real(value) => Self::Real { value: *value },
-                SortValue::Text(value) => Self::Text { value: value.clone() },
-                SortValue::Blob(value) => Self::Blob { value: value.clone() },
-            })
-            .collect()
-    }
-
-    pub(crate) fn into_core(self) -> bae_store::list_windows::SortValue {
-        use bae_store::list_windows::SortValue;
-        match self {
-            Self::Null => SortValue::Null,
-            Self::Integer { value } => SortValue::Integer(value),
-            Self::Real { value } => SortValue::Real(value),
-            Self::Text { value } => SortValue::Text(value),
-            Self::Blob { value } => SortValue::Blob(value),
-        }
-    }
-}
 
 mirror_enum! {
     crate::types::BridgeLiveQueryCause = coven::LiveQueryCause,

@@ -33,11 +33,11 @@ fn query(text: &str) -> Option<LibrarySearchQuery> {
 
 /// A window of the first `limit` rows found.
 fn first(limit: u64) -> ListWindow {
-    ListWindow::Forward { from: None, until: None, limit }
+    ListWindow::top(limit)
 }
 
 fn ids(window: &WindowRead<DbArtistSearchRow>) -> Vec<&str> {
-    window.rows.iter().map(|row| row.artist.id.as_str()).collect()
+    window.rows.iter().map(|(row, _key)| row.artist.id.as_str()).collect()
 }
 
 /// The first window of what `text` finds, read once.
@@ -62,11 +62,11 @@ async fn artist_search_windows_hold_their_slices_and_the_count_its_own() {
     let mut top = views.subscribe_artist_search_window(query("artist name"), first(2));
     let top = top.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(ids(&top), vec![FIRST, SECOND]);
-    let beyond = top.beyond.clone().expect("the limit cut the window short");
+    let third = views.artist_search_key_at(query("artist name"), 2).await.unwrap().expect("a row");
     let below = views
         .subscribe_artist_search_window(
             query("artist name"),
-            ListWindow::Forward { from: Some(beyond), until: None, limit: 2 },
+            ListWindow { from: Some(third), limit: 2 },
         )
         .next_inline()
         .await
@@ -109,7 +109,7 @@ async fn artist_search_positions_and_jumps_by_key() {
     let from_there = views
         .subscribe_artist_search_window(
             query("artist name"),
-            ListWindow::Forward { from: Some(second), until: None, limit: 10 },
+            ListWindow { from: Some(second), limit: 10 },
         )
         .next_inline()
         .await
@@ -126,11 +126,11 @@ async fn artist_search_positions_and_jumps_by_key() {
     assert_eq!(views.artist_search_key_at(query("   "), 0).await.unwrap(), None);
 }
 
-/// A new artist appears only in the window whose range holds its sort
-/// values, and the count goes up by one. Coven reruns every window of the
-/// search for the write, because the search's order depends on the text and
-/// coven cannot limit the rerun to one range; each window delivers only what
-/// changed.
+/// A new artist appears in the window from the row before it, which holds
+/// its sort values, and the count goes up by one. Coven reruns every window
+/// of the search for the write, because the search's order depends on the
+/// text and coven cannot limit the rerun to the rows up to a window's last
+/// row; each window delivers only what changed.
 #[tokio::test]
 async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows() {
     let (db, _tmp) = seeded().await;
@@ -139,10 +139,11 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
         views.artist_search_key_at(query("artist name"), 1).await.unwrap().expect("a row there");
     let third =
         views.artist_search_key_at(query("artist name"), 2).await.unwrap().expect("a row there");
+    // A, then B and C, then C.
     let mut windows: Vec<_> = [
-        ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
-        ListWindow::Forward { from: Some(second), until: Some(third.clone()), limit: 50 },
-        ListWindow::Forward { from: Some(third), until: None, limit: 50 },
+        ListWindow::top(1),
+        ListWindow { from: Some(second), limit: 2 },
+        ListWindow { from: Some(third), limit: 50 },
     ]
     .into_iter()
     .map(|window| views.subscribe_artist_search_window(query("artist name"), window))
@@ -169,7 +170,7 @@ async fn a_new_artist_lands_in_the_window_its_range_holds_and_the_count_follows(
         .result
         .unwrap();
     assert_eq!(
-        middle.rows.iter().map(|row| row.artist.name.as_str()).collect::<Vec<_>>(),
+        middle.rows.iter().map(|(row, _key)| row.artist.name.as_str()).collect::<Vec<_>>(),
         ["Artist Name B", "Artist Name BB"]
     );
     let counted =
@@ -188,7 +189,7 @@ async fn artist_search_follows_writes_to_what_it_finds() {
     let mut count = views.subscribe_artist_search_count(query("artist name"));
     let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
-    assert!(initial.rows.iter().all(|row| row.credit_names.is_empty()));
+    assert!(initial.rows.iter().all(|(row, _key)| row.credit_names.is_empty()));
 
     records.find_or_create_artists(&[credit("Artist Name D")]).await.unwrap();
     let added = tokio::time::timeout(HANG_GUARD, live.next_inline())
@@ -213,8 +214,9 @@ async fn artist_search_follows_writes_to_what_it_finds() {
     let names = &named
         .rows
         .iter()
-        .find(|row| row.artist.id == FIRST)
+        .find(|(row, _key)| row.artist.id == FIRST)
         .expect("the artist is found")
+        .0
         .credit_names;
     assert_eq!(names.len(), 1);
     assert_eq!(names[0].credit.name, "Artist Alias");
@@ -237,8 +239,11 @@ async fn a_found_artist_reads_its_image_and_names_in_its_row() {
     let image = write_artist_image(&records, FIRST, "artist image bytes").await;
 
     let found = found(&db, "artist name").await;
-    let first =
-        found.rows.iter().find(|row| row.artist.id == FIRST).expect("the search finds the artist");
+    let (first, _key) = found
+        .rows
+        .iter()
+        .find(|(row, _key)| row.artist.id == FIRST)
+        .expect("the search finds the artist");
     assert_eq!(first.image_version.as_deref(), Some(image.as_str()));
     assert_eq!(
         first.credit_names.iter().map(|name| name.credit.name.as_str()).collect::<Vec<_>>(),

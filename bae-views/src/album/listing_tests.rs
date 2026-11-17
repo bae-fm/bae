@@ -57,12 +57,12 @@ async fn sections_under(
 
 /// The window of the grid's first `limit` rows.
 fn top(limit: u64) -> ListWindow {
-    ListWindow::Forward { from: None, until: None, limit }
+    ListWindow::top(limit)
 }
 
 /// The window of `limit` rows of the grid from the row at `key`.
 fn from_key(key: OrderKey, limit: u64) -> ListWindow {
-    ListWindow::Forward { from: Some(key), until: None, limit }
+    ListWindow { from: Some(key), limit }
 }
 
 /// What the grid's live query of `window` first delivers.
@@ -79,6 +79,11 @@ async fn window_under(
         .expect("the query stays open")
         .result
         .unwrap()
+}
+
+/// A window's rows without their keys.
+fn unkeyed(read: WindowRead<DbAlbumAppearance>) -> Vec<DbAlbumAppearance> {
+    read.rows.into_iter().map(|(row, _key)| row).collect()
 }
 
 /// What the grid's live count first delivers.
@@ -165,7 +170,7 @@ async fn grouped(db: &Store) -> (Vec<(String, u64, u64)>, Vec<String>) {
             .iter()
             .map(|section| (section.id.clone(), section.first_position, section.album_count))
             .collect(),
-        shown.rows.iter().map(|row| row.album.id.clone()).collect(),
+        shown.rows.iter().map(|(row, _key)| row.album.id.clone()).collect(),
     )
 }
 
@@ -327,7 +332,7 @@ async fn grouped_by_title(db: &Store) -> Vec<String> {
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
     let shown = window_under(db, &sort, true, top(20)).await;
-    shown.rows.iter().map(|row| row.album.title.clone()).collect()
+    shown.rows.iter().map(|(row, _key)| row.album.title.clone()).collect()
 }
 
 /// Renaming an album moves it among its artist's albums in the grid grouped
@@ -383,7 +388,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             offset += section.album_count;
         }
         assert_eq!(offset, 5);
-        assert_eq!(value.rows[0].album.id, page[2].id);
+        assert_eq!(value.rows[0].0.album.id, page[2].id);
     }
 }
 
@@ -478,7 +483,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let value = window_under(&db, &sort, true, top(20)).await;
     let counts = counts_of(&db, true).await;
     assert_eq!((counts.albums, counts.rows), (5, 6));
-    let rows = &value.rows;
+    let rows = &unkeyed(value);
     let mut appearances = Vec::new();
     let sections = sections_under(&db, &sort).await;
     for section in &sections {
@@ -498,7 +503,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let flat = window_under(&db, &sort, false, top(20)).await;
     let counts = counts_of(&db, false).await;
     assert_eq!((counts.albums, counts.rows), (5, 5));
-    assert_eq!(flat.rows.iter().filter(|row| row.album.id == album_id).count(), 1);
+    assert_eq!(flat.rows.iter().filter(|(row, _key)| row.album.id == album_id).count(), 1);
     records.credit_album_for_test(album_id, &[ARTIST_A]).await.unwrap();
     let counts = counts_of(&db, true).await;
     assert_eq!((counts.albums, counts.rows), (5, 5));
@@ -539,7 +544,7 @@ fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         let sections = sections_under(db, &[]).await;
         assert_eq!(sections.len(), 2);
         assert!(sections.iter().all(|section| section.id != ARTIST_A));
-        let rows = window_under(db, &[], true, top(20)).await.rows;
+        let rows = unkeyed(window_under(db, &[], true, top(20)).await);
         assert_eq!(rows.iter().filter(|row| row.album.id == album_id).count(), 1);
     });
 }
@@ -594,7 +599,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         .await
         .unwrap();
     let grouped = window_under(&db, &[], true, top(20)).await;
-    let rows = &grouped.rows;
+    let rows = &unkeyed(grouped);
     let mut credited_with = BTreeSet::new();
     let sections = sections_under(&db, &[]).await;
     for section in &sections {
@@ -621,7 +626,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         .into()
     );
     let flat = window_under(&db, &[], false, top(20)).await;
-    assert!(flat.rows.iter().all(|row| row.credited_with.is_none()));
+    assert!(flat.rows.iter().all(|(row, _key)| row.credited_with.is_none()));
 }
 
 /// An artist's group carries the artist's picture, and follows it as it
@@ -686,8 +691,8 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
             let key = key_at(
                 &db,
                 &order,
-                move |sql, order, seek, limit, offset| {
-                    crate::album::album_rows_on(sql, group_by_artist, order, seek, limit, offset)
+                move |sql, order, seek, limit| {
+                    crate::album::album_rows_on(sql, group_by_artist, order, seek, limit)
                 },
                 150,
             )
@@ -705,10 +710,26 @@ async fn every_album_sort_seeks_its_windows_through_an_index() {
     }
 }
 
-/// Windows of the grid sharing bounds, each its own live query, and the
-/// grid's count its own: a write that adds a row inside one window's range
-/// reruns that window and the count and no other window, flat and grouped by
-/// artist.
+/// Three windows of the grid, each its own live query: the first row, the
+/// second and third, and the fourth on. The first two hold as many rows as
+/// their limits, and the last reaches the grid's end.
+async fn three_windows(
+    db: &Store,
+    sort: &[AlbumSortCriterion],
+    group_by_artist: bool,
+) -> [ListWindow; 3] {
+    let second = key_of_row(db, sort, group_by_artist, 1).await;
+    let fourth = key_of_row(db, sort, group_by_artist, 3).await;
+    [top(1), from_key(second, 2), from_key(fourth, 50)]
+}
+
+/// Windows of the grid, each its own live query, and the grid's count its
+/// own. A write that adds a row at or before a full window's last row, and
+/// after its start, reruns that window and the count. In the flat grid it
+/// reruns no other window, and a row after a full window's last row reruns
+/// no window. The grid grouped by artist sorts by the artist's sort key and
+/// then the album's values, columns of two tables, so coven can't bound a
+/// full window's rerun at its last row there, and other windows rerun too.
 #[tokio::test]
 async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
     use bae_util::test_channels::HANG_GUARD;
@@ -719,86 +740,70 @@ async fn a_write_reruns_only_the_count_and_the_window_holding_its_row() {
             field: AlbumSortField::Title,
             direction: SortDirection::Ascending,
         }];
-        // Flat: A, B, C, D, E. Grouped: E, B, D, A, C. Either way a window
-        // from the second row to the fourth holds the album written below.
-        let (second, fourth) = (
-            key_of_row(&db, &sort, group_by_artist, 1).await,
-            key_of_row(&db, &sort, group_by_artist, 3).await,
-        );
-        let windows = [
-            ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
-            ListWindow::Forward { from: Some(second), until: Some(fourth.clone()), limit: 50 },
-            ListWindow::Forward { from: Some(fourth), until: None, limit: 50 },
+        // Flat: A, then B and C, then D and E. Grouped: E, then B and D,
+        // then A and C.
+        let windows = three_windows(&db, &sort, group_by_artist).await;
+        let (first_artist, gap) = if group_by_artist {
+            (ARTIST_C, ("Album F", ARTIST_C))
+        } else {
+            (ARTIST_A, ("Album AA", ARTIST_A))
+        };
+        // Each album, by title and artist, with the windows that hold it.
+        let writes = [
+            // B's, between Album B and Album D grouped or flat: in the
+            // second window.
+            ("Album BB", ARTIST_B, [false, true, false]),
+            // First in the grid: in the first window.
+            ("Album 0", first_artist, [true, false, false]),
+            // After the first window's last row, Album 0, and before the
+            // second window's first row, Album B: in no window.
+            (gap.0, gap.1, [false, false, false]),
+            // Last in the grid: in the last window, which reaches the end.
+            ("Album Z", ARTIST_A, [false, false, true]),
         ];
-        let mut live: Vec<_> = windows
-            .iter()
-            .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
-            .collect();
-        let mut count = views.subscribe_album_count(group_by_artist);
-        for query in &mut live {
-            tokio::time::timeout(HANG_GUARD, query.next_inline())
-                .await
-                .unwrap()
-                .unwrap()
-                .result
-                .unwrap();
+        for (at, (title, artist, holds)) in writes.into_iter().enumerate() {
+            // Each write meets windows that have read the grid as it is.
+            let mut live: Vec<_> = windows
+                .iter()
+                .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
+                .collect();
+            let mut count = views.subscribe_album_count(group_by_artist);
+            for query in &mut live {
+                tokio::time::timeout(HANG_GUARD, query.next_inline())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .result
+                    .unwrap();
+            }
+            count.next_inline().await.expect("the query stays open").unwrap();
+            let id = grouped_album(5 + at as u32);
+            RecordsFixture::new()
+                .album(&id, title, None, &[artist])
+                .release(&id, &grouped_release(5 + at as u32))
+                .write(&test_records(&db))
+                .await;
+            let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+            if group_by_artist {
+                assert!(
+                    marked.iter().zip(&holds).all(|(marked, holds)| *marked || !*holds),
+                    "{title}: reran {marked:?}, but the album is in {holds:?}"
+                );
+            } else {
+                assert_eq!(marked, holds, "{title}");
+            }
+            assert!(count.is_marked_for_rerun(), "{title}");
         }
-        count.next_inline().await.expect("the query stays open").unwrap();
-
-        // "Album BB" is B's, which sorts between Album B and Album D grouped
-        // or flat.
-        let id = grouped_album(5);
-        RecordsFixture::new()
-            .album(&id, "Album BB", None, &[ARTIST_B])
-            .release(&id, &grouped_release(5))
-            .write(&test_records(&db))
-            .await;
-        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-        assert_eq!(marked, [false, true, false], "grouped {group_by_artist}");
-        assert!(count.is_marked_for_rerun());
-        let rows = tokio::time::timeout(HANG_GUARD, live[1].next_inline())
-            .await
-            .unwrap()
-            .expect("the query stays open")
-            .result
-            .unwrap()
-            .rows;
-        assert!(rows.iter().any(|row| row.album.title == "Album BB"));
-        count.next_inline().await.expect("the query stays open").unwrap();
-
-        // A second album, in the first window's range this time: it reruns
-        // that window and the count, and not the one below it.
-        let (title, artist) =
-            if group_by_artist { ("Album EE", ARTIST_C) } else { ("Album AA", ARTIST_A) };
-        let id = grouped_album(6);
-        RecordsFixture::new()
-            .album(&id, title, None, &[artist])
-            .release(&id, &grouped_release(6))
-            .write(&test_records(&db))
-            .await;
-        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-        assert_eq!(marked, [true, false, false], "grouped {group_by_artist}");
-        assert!(count.is_marked_for_rerun());
-        live[0].next_inline().await.expect("the query stays open").result.unwrap();
-        count.next_inline().await.expect("the query stays open").unwrap();
-
-        // And one in the last window's range, which is open below.
-        let id = grouped_album(7);
-        RecordsFixture::new()
-            .album(&id, "Album Z", None, &[ARTIST_A])
-            .release(&id, &grouped_release(7))
-            .write(&test_records(&db))
-            .await;
-        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-        assert_eq!(marked, [false, false, true], "grouped {group_by_artist}");
-        assert!(count.is_marked_for_rerun());
+        let second = window_under(&db, &sort, group_by_artist, windows[1].clone()).await;
+        assert!(second.rows.iter().any(|(row, _key)| row.album.title == "Album BB"));
     }
 }
 
 /// Whatever the grid's order, flat or grouped by artist, a write adding an
-/// album reruns the one window whose range the album's sort values fall in,
-/// and not the windows beside it: coven narrows on every term of every order,
-/// a nullable year and the artist's sort key among them. A write that changes
+/// album reruns the window that then holds it. Where every term of the
+/// order is a column of the grid's listing table, the write reruns no other
+/// window: not a window that starts after it, and not a full window whose
+/// last row comes before it. A write that changes
 /// what a row shows, its cover, reruns only the windows showing that row.
 #[tokio::test]
 async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
@@ -819,19 +824,7 @@ async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
         for sort in &sorts {
             let (db, _dir) = grouped_library().await;
             let views = LibraryViews::new(db.clone());
-            let bounds = [
-                key_of_row(&db, sort, group_by_artist, 1).await,
-                key_of_row(&db, sort, group_by_artist, 3).await,
-            ];
-            let windows = [
-                ListWindow::Forward { from: None, until: Some(bounds[0].clone()), limit: 50 },
-                ListWindow::Forward {
-                    from: Some(bounds[0].clone()),
-                    until: Some(bounds[1].clone()),
-                    limit: 50,
-                },
-                ListWindow::Forward { from: Some(bounds[1].clone()), until: None, limit: 50 },
-            ];
+            let windows = three_windows(&db, sort, group_by_artist).await;
             let mut live: Vec<_> = windows
                 .iter()
                 .map(|window| views.subscribe_album_window(sort, group_by_artist, window.clone()))
@@ -853,11 +846,24 @@ async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
             let mut holds = Vec::new();
             for window in &windows {
                 let rows = window_under(&db, sort, group_by_artist, window.clone()).await.rows;
-                holds.push(rows.iter().any(|row| row.album.id == id));
+                holds.push(rows.iter().any(|(row, _key)| row.album.id == id));
             }
-            assert_eq!(holds.iter().filter(|holds| **holds).count(), 1, "{sort:?}: {holds:?}");
+            // The album lands in at most one window: between the first
+            // window's one row and the second's start it lands in none.
+            assert!(holds.iter().filter(|holds| **holds).count() <= 1, "{sort:?}: {holds:?}");
             let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-            if marked != holds {
+            // A year sorts by whether it is NULL first, an expression, and
+            // the grouped grid by columns of two tables: coven bounds no
+            // full window's rerun at its last row there, so each window from
+            // the album's row up reruns.
+            let year = sort.iter().any(|criterion| criterion.field == AlbumSortField::Year);
+            let bounded = !group_by_artist && !year;
+            let reran_right = if bounded {
+                marked == holds
+            } else {
+                marked.iter().zip(&holds).all(|(marked, holds)| *marked || !*holds)
+            };
+            if !reran_right {
                 wrong.push(format!(
                     "{sort:?} grouped {group_by_artist}: reran {marked:?}, but the album is in \
                      {holds:?}"
@@ -869,8 +875,8 @@ async fn every_album_sort_reruns_only_the_window_holding_the_written_row() {
 }
 
 /// A write that adds a cover to an album, through the records domain, reruns
-/// only the windows that show the album, flat and grouped by artist,
-/// for a sort whose windows split the grid in three.
+/// the window that shows the album, flat and grouped by artist, and in the
+/// flat grid no other window.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
     use bae_util::test_channels::HANG_GUARD;
@@ -879,19 +885,7 @@ async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
     for group_by_artist in [false, true] {
         let (db, _dir) = grouped_library().await;
         let views = LibraryViews::new(db.clone());
-        let bounds = [
-            key_of_row(&db, &sort, group_by_artist, 1).await,
-            key_of_row(&db, &sort, group_by_artist, 3).await,
-        ];
-        let windows = [
-            ListWindow::Forward { from: None, until: Some(bounds[0].clone()), limit: 50 },
-            ListWindow::Forward {
-                from: Some(bounds[0].clone()),
-                until: Some(bounds[1].clone()),
-                limit: 50,
-            },
-            ListWindow::Forward { from: Some(bounds[1].clone()), until: None, limit: 50 },
-        ];
+        let windows = three_windows(&db, &sort, group_by_artist).await;
         let mut live: Vec<_> = windows
             .iter()
             .map(|window| views.subscribe_album_window(&sort, group_by_artist, window.clone()))
@@ -908,7 +902,7 @@ async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
         let mut holds = Vec::new();
         for window in &windows {
             let rows = window_under(&db, &sort, group_by_artist, window.clone()).await.rows;
-            holds.push(rows.iter().any(|row| row.album.id == album));
+            holds.push(rows.iter().any(|(row, _key)| row.album.id == album));
         }
         assert_eq!(holds.iter().filter(|holds| **holds).count(), 1, "{holds:?}");
 
@@ -916,6 +910,12 @@ async fn a_cover_written_for_an_album_reruns_only_the_window_showing_it() {
             .await;
 
         let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
-        assert_eq!(marked, holds, "grouped {group_by_artist}");
+        if group_by_artist {
+            // The grouped grid's order spans two tables, so coven can't
+            // bound the first window's rerun at its last row.
+            assert!(marked.iter().zip(&holds).all(|(marked, holds)| *marked || !*holds));
+        } else {
+            assert_eq!(marked, holds);
+        }
     }
 }

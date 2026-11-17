@@ -64,6 +64,4 @@ impl AppServices {
             self.inner.manager.subscribe_upcoming_position(shuffled, key),
         )
     }
-
-    delegate_async!(manager, upcoming_key_at => upcoming_key_at(shuffled: bool, position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, bae_library::LibraryError>);
 }

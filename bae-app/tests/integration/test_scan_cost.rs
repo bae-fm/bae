@@ -120,11 +120,7 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
         false => None,
         true => {
             let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
-            let window = list.until_closed(list.subscribe_window(ListWindow::Forward {
-                from: None,
-                until: None,
-                limit: 50,
-            }));
+            let window = list.until_closed(list.subscribe_window(ListWindow::top(50)));
             let reader = tokio::spawn(async move {
                 let mut answers = 0_u64;
                 while window.next().await.is_ok() {

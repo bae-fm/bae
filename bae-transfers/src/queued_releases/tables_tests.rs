@@ -427,12 +427,12 @@ async fn the_queue_reads_are_planned_on_their_keys() {
     assert!(!pane.contains("TEMP B-TREE"), "{pane}");
 }
 
-/// A pane's window holds the entries of its range in the order the person
-/// queued them; a separate query counts the queue's entries, `key_at`
-/// returns the key of the entry at a position, and a key's position is the
-/// number of entries before it.
+/// A pane's window holds its limit of entries from its key on, in the order
+/// the person queued them, each with its key; a separate query counts the
+/// queue's entries, `key_at` returns the key of the entry at a position, and
+/// a key's position is the number of entries before it.
 #[tokio::test]
-async fn a_window_reads_its_range_and_the_queue_length_its_own() {
+async fn a_window_reads_its_entries_and_the_queue_length_its_own() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let releases: Vec<String> =
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
@@ -440,15 +440,14 @@ async fn a_window_reads_its_range_and_the_queue_length_its_own() {
     let downloads = crate::Downloads::new(db.clone());
     let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
     let fourth = downloads.key_at(3).await.unwrap().expect("a row at 3");
-    let mut live = downloads.subscribe_window(bae_store::ListWindow::Forward {
-        from: Some(second.clone()),
-        until: Some(fourth),
-        limit: 50,
-    });
+    let mut live =
+        downloads.subscribe_window(bae_store::ListWindow { from: Some(second.clone()), limit: 2 });
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    let shown: Vec<String> = read.rows.iter().map(|row| row.op.release_id.clone()).collect();
+    let shown: Vec<String> =
+        read.rows.iter().map(|(row, _key)| row.op.release_id.clone()).collect();
     assert_eq!(shown, releases[1..3].to_vec());
-    assert_eq!(read.beyond, None);
+    assert_eq!(read.rows[0].1, second);
+    assert_ne!(read.rows[1].1, fourth, "the window ends before the fourth entry");
     let count = downloads.subscribe_row_count().next_inline().await.expect("open").unwrap();
     assert_eq!(count, 5);
     let before =
@@ -458,21 +457,19 @@ async fn a_window_reads_its_range_and_the_queue_length_its_own() {
     assert_eq!(past_the_end, downloads.key_at(4).await.unwrap());
 }
 
-/// A write to an entry inside one window's range reruns that window and
-/// the length, and not a window beside it.
+/// An entry queued after a window's last row reruns the length and a window
+/// that reads to the queue's end, and not a window its limit cut short.
 #[tokio::test]
-async fn an_entry_reruns_the_window_it_lands_in_and_the_length_alone() {
+async fn an_entry_after_a_full_window_reruns_the_length_alone() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let releases: Vec<String> =
         (0..5).map(|i| bae_util::test_ids::test_uuid(&format!("window-release-{i}"))).collect();
     enqueue_releases(&db, releases[..4].iter().map(|id| download(id)).collect()).await.unwrap();
     let downloads = crate::Downloads::new(db.clone());
     let second = downloads.key_at(1).await.unwrap().expect("a row at 1");
-    let mut windows = [
-        bae_store::ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
-        bae_store::ListWindow::Forward { from: Some(second), until: None, limit: 50 },
-    ]
-    .map(|window| downloads.subscribe_window(window));
+    let mut windows =
+        [bae_store::ListWindow::top(2), bae_store::ListWindow { from: Some(second), limit: 50 }]
+            .map(|window| downloads.subscribe_window(window));
     let mut length = downloads.subscribe_row_count();
     for window in &mut windows {
         window.next_inline().await.expect("the query stays open").result.unwrap();

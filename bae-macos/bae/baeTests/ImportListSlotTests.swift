@@ -394,11 +394,7 @@ struct ImportListSlotViewChangeTests {
                     items: (0..<80).map(candidateItem),
                     setView: { _, _ in
                         BridgeImportListViewChange(
-                            opening: .at(
-                                key: BridgeListQueries<BridgeImportListItem>
-                                    .fixedKey(60),
-                                position: 60
-                            ),
+                            opening: .at(position: 60),
                             left: []
                         )
                     }
@@ -497,8 +493,7 @@ private func located(
         stableKey: candidateStableKey(key),
         tab: tab,
         groupKey: nil,
-        visiblePosition: UInt64(position),
-        key: BridgeListQueries<BridgeImportListItem>.fixedKey(position)
+        visiblePosition: UInt64(position)
     )
 }
 

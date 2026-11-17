@@ -352,8 +352,8 @@ async fn artist_window_reads_its_rows_and_their_images() {
 
     let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 1);
-    assert_eq!(initial.rows[0].artist.id, ARTIST_ID);
-    assert!(initial.rows[0].image.is_none());
+    assert_eq!(initial.rows[0].0.artist.id, ARTIST_ID);
+    assert!(initial.rows[0].0.image.is_none());
 
     let artist_image = write_artist_image(&records, ARTIST_ID, "artist image bytes").await;
     let imaged = tokio::time::timeout(HANG_GUARD, live.next_inline())
@@ -363,14 +363,16 @@ async fn artist_window_reads_its_rows_and_their_images() {
         .result
         .unwrap();
     assert_eq!(
-        imaged.rows[0].image.as_ref().map(|image| image.version.as_str()),
+        imaged.rows[0].0.image.as_ref().map(|image| image.version.as_str()),
         Some(artist_image.as_str())
     );
 }
 
-/// Each window of the artist list and the list's count run as separate live
-/// queries. A write that adds a row inside one window's range reruns that
-/// window and the count, and no other window.
+/// Windows of the artist list and the list's count run as separate live
+/// queries. A write that adds a row at or before a full window's last row
+/// reruns that window and the count; a row after a full window's last row
+/// reruns no window, and a row anywhere after the start of a window that
+/// reaches the list's end reruns that window.
 #[tokio::test]
 async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -386,10 +388,14 @@ async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
     let views = crate::LibraryViews::new(db.clone());
     let second = views.artist_key_at(&[], 1).await.unwrap().expect("a row there");
     let fourth = views.artist_key_at(&[], 3).await.unwrap().expect("a row there");
-    let mut live: Vec<_> = windows_split_at(second, fourth)
-        .into_iter()
-        .map(|window| views.subscribe_artist_window(&[], window))
-        .collect();
+    // A, then C and E, then G and I.
+    let windows = [
+        ListWindow::top(1),
+        ListWindow { from: Some(second), limit: 2 },
+        ListWindow { from: Some(fourth), limit: 50 },
+    ];
+    let mut live: Vec<_> =
+        windows.into_iter().map(|window| views.subscribe_artist_window(&[], window)).collect();
     let mut count = views.subscribe_artist_count();
     for query in &mut live {
         tokio::time::timeout(HANG_GUARD, query.next_inline())
@@ -412,6 +418,21 @@ async fn an_artist_write_reruns_the_window_it_lands_in_and_the_count_alone() {
     let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
     assert_eq!(marked, [false, true, false]);
     assert!(count.is_marked_for_rerun());
+    tokio::time::timeout(HANG_GUARD, live[1].next_inline()).await.unwrap().unwrap();
+
+    // "B" sorts after the first window's last row and before the second's
+    // start, "Z" after every row: only the window that reaches the end reruns.
+    for (at, name, expected) in [(6, "B", [false, false, false]), (7, "Z", [false, false, true])] {
+        let (artist, album) = (artist_id(at), album_id(at));
+        RecordsFixture::new()
+            .artist(&artist, &format!("Artist Name {name}"))
+            .album(&album, &format!("Album {name}"), None, &[&artist])
+            .release(&album, &release_id(at))
+            .write(&test_records(&db))
+            .await;
+        let marked: Vec<bool> = live.iter().map(|query| query.is_marked_for_rerun()).collect();
+        assert_eq!(marked, expected, "Artist Name {name}");
+    }
 }
 
 fn artist_id(at: usize) -> String {

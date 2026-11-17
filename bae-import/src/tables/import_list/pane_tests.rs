@@ -564,7 +564,7 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     let listed: Vec<_> = list
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             ImportListItem::Invalid { row } => Some(row.clone()),
             _ => None,

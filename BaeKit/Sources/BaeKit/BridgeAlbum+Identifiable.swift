@@ -5,5 +5,5 @@ import Foundation
 extension BridgeAlbum: Identifiable {}
 
 /// The library grid's list; each card draws the `BridgeAlbum` the grid's
-/// windows delivered at its position.
+/// view delivered at its position.
 public typealias AlbumList = PaginatedList<BridgeAlbum>

@@ -32,10 +32,10 @@ impl ImportServiceHandle {
         view: crate::ImportListView,
     ) -> Result<Vec<crate::ImportListItem>, crate::ImportError> {
         let list = self.services.tables.open_import_list(view).await?;
-        let window = bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+        let window = bae_store::ListWindow::top(u64::MAX);
         let read = self.services.tables.read_import_window(list, window).await;
         self.services.tables.close_import_list(list).await?;
-        Ok(read?.read.rows)
+        Ok(read?.read.rows.into_iter().map(|(item, _key)| item).collect())
     }
 
     /// Each watched folder's scan status: the first value at once, then a
@@ -201,11 +201,7 @@ impl ImportServiceHandle {
         &self,
         view: crate::ImportListView,
     ) -> crate::list::FollowedImportList {
-        self.follow_list(
-            view,
-            bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX },
-        )
-        .await
+        self.follow_list(view, bae_store::ListWindow::top(u64::MAX)).await
     }
 
     /// The list for `view` followed through `window`, for a test that

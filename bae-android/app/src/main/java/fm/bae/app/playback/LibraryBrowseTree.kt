@@ -399,7 +399,6 @@ internal class LibraryBrowseTree<Owner : Any>(
             ChildPages(
                 scope,
                 library.searchAlbumList(query),
-                { offset, limit -> handle.readSearchAlbumPageWindow(query, offset, limit) },
                 { nodes.album(it.id, it.title, it.cover) },
                 { count, _ -> if (synchronized(lock) { searchesByOwner[owner] === this }) onResultsChanged(count) },
                 onQueryError,
@@ -459,7 +458,6 @@ internal class LibraryBrowseTree<Owner : Any>(
                         ChildPages(
                             scope,
                             library.albumTrackList(id.albumId),
-                            { offset, limit -> handle.readAlbumTrackPageWindow(id.albumId, offset, limit) },
                             nodes::browseTrack,
                             onChanged,
                             onQueryError,
@@ -470,7 +468,6 @@ internal class LibraryBrowseTree<Owner : Any>(
                         ChildPages(
                             scope,
                             library.workChildList(id.workId),
-                            { offset, limit -> handle.readWorkChildPageWindow(id.workId, offset, limit) },
                             nodes::workChild,
                             onChanged,
                             onQueryError,
@@ -529,7 +526,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     }
 }
 
-internal fun windowEvicted(): BrowseUnavailable = BrowseUnavailable.Superseded("browse window replaced")
+internal fun pageReplaced(): BrowseUnavailable = BrowseUnavailable.Superseded("browse page replaced")
 
 internal fun treeClosedError(): BrowseUnavailable = BrowseUnavailable.LibraryClosed()
 

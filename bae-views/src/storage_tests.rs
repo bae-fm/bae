@@ -116,26 +116,27 @@ async fn the_storage_sort_reads_a_window_from_an_index() {
         for direction in [SortDirection::Ascending, SortDirection::Descending] {
             let sort = StorageSortCriterion { field: StorageSortField::Storage, direction };
             let order = crate::storage::storage_order(&sort);
-            let steps = plan(
+            let steps = crate::tests::plan(
                 &db,
                 crate::storage::storage_window_query(
                     &order,
                     filter,
                     crate::storage::StorageRows::Listed,
                     &order.everything(),
-                )
-                .replace("LIMIT :limit OFFSET :offset", "LIMIT 50 OFFSET 0"),
+                ),
+                order.everything(),
+                Vec::new(),
             )
             .await;
             assert!(
-                steps.iter().any(|step| step.contains("USING INDEX idx_release_listing_")
-                    && step.contains("storage")),
+                steps.iter().any(|step| step.detail.contains("USING INDEX idx_release_listing_")
+                    && step.detail.contains("storage")),
                 "{filter:?} {direction:?}: {steps:?}"
             );
             assert!(
-                !crate::tests::picked_window(&steps)
+                !steps
                     .iter()
-                    .any(|step| step.contains("TEMP B-TREE FOR ORDER BY")),
+                    .any(|step| step.own && step.detail.contains("TEMP B-TREE FOR ORDER BY")),
                 "{filter:?} {direction:?}: {steps:?}"
             );
         }
@@ -163,7 +164,7 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
                 let key = key_at(
                     &db,
                     &order,
-                    |sql, order, seek, limit, offset| {
+                    |sql, order, seek, limit| {
                         crate::storage::storage_rows_on(
                             sql,
                             order,
@@ -171,7 +172,6 @@ async fn every_storage_sort_and_filter_seeks_its_windows_through_an_index() {
                             None,
                             seek,
                             limit,
-                            offset,
                         )
                     },
                     150,
@@ -226,7 +226,7 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                 let key = key_at(
                     &db,
                     &order,
-                    |sql, order, seek, limit, offset| {
+                    |sql, order, seek, limit| {
                         crate::storage::storage_rows_on(
                             sql,
                             order,
@@ -234,7 +234,6 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                             None,
                             seek,
                             limit,
-                            offset,
                         )
                     },
                     150,
@@ -251,8 +250,8 @@ async fn every_storage_sort_and_filter_seeks_a_searched_window_through_an_index(
                         crate::tests::plan(&db, statement, seek.clone(), search.clone()).await;
                     assert!(
                         !steps.iter().any(|step| crate::tests::LIST_ALIASES.iter().any(|alias| {
-                            step.starts_with(&format!("SCAN {alias} "))
-                                || step == &format!("SCAN {alias}")
+                            step.detail.starts_with(&format!("SCAN {alias} "))
+                                || step.detail == format!("SCAN {alias}")
                         })),
                         "searched storage {filter:?} {field:?} {direction:?} {seek:?}: {steps:?}"
                     );
@@ -294,7 +293,7 @@ async fn a_searched_count_and_list_find_the_same_releases() {
                         crate::storage::StorageRows::Searched,
                         &order.everything(),
                     );
-                    let listed = order.everything().bound(u64::MAX, 0, |params| {
+                    let listed = order.everything().bound(u64::MAX, |params| {
                         let mut params = params.to_vec();
                         params.push((":search", &pattern));
                         sql.query(&statement, params.as_slice(), |row| {
@@ -324,13 +323,13 @@ async fn a_searched_count_and_list_find_the_same_releases() {
     }
 }
 
-/// A forward window of five rows that starts at `from`.
+/// A window of five rows that starts at `from`.
 fn window_of_five_from(from: bae_store::list_windows::OrderKey) -> ListWindow {
-    ListWindow::Forward { from: Some(from), until: None, limit: 5 }
+    ListWindow { from: Some(from), limit: 5 }
 }
 
 fn ids_of(read: &WindowRead<DbStorageRow>) -> Vec<String> {
-    read.rows.iter().map(|row| row.release.id.clone()).collect()
+    read.rows.iter().map(|(row, _key)| row.release.id.clone()).collect()
 }
 
 /// A live Storage Manager search window that starts at a key holds what a
@@ -877,4 +876,42 @@ async fn the_storage_list_answers_the_releases_between_two_and_all_of_them() {
     let mut shown = all.clone();
     shown.sort();
     assert_eq!(every, shown);
+}
+
+/// A Storage Manager window that holds as many rows as its limit reruns for
+/// a release that sorts at or before its last row, and not for one that
+/// sorts after it.
+#[tokio::test]
+async fn a_release_after_a_full_storage_window_reruns_nothing() {
+    let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let album = |at: u32| format!("7c4d2e6a-8b0f-4a2c-9d3e-5f7a9b1c3d{at:02}");
+    let release = |at: u32| format!("7c4d2e6a-8b0f-4a2c-9d3e-5f7a9b1c3e{at:02}");
+    let mut fixture = RecordsFixture::new();
+    for (at, title) in [(0, "Album B"), (1, "Album C"), (2, "Album D")] {
+        fixture = fixture.album(&album(at), title, None, &[]).release(&album(at), &release(at));
+    }
+    fixture.write(&test_records(&db)).await;
+    let sort = StorageSortCriterion {
+        field: StorageSortField::AlbumTitle,
+        direction: SortDirection::Ascending,
+    };
+    let views = crate::LibraryViews::new(db.clone());
+    // Album B and Album C.
+    let mut live =
+        views.subscribe_storage_window(&sort, StorageFilter::All, "", ListWindow::top(2));
+    live.next_inline().await.expect("the query stays open").result.unwrap();
+
+    RecordsFixture::new()
+        .album(&album(3), "Album E", None, &[])
+        .release(&album(3), &release(3))
+        .write(&test_records(&db))
+        .await;
+    assert!(!live.is_marked_for_rerun(), "Album E sorts after the window's last row");
+
+    RecordsFixture::new()
+        .album(&album(4), "Album A", None, &[])
+        .release(&album(4), &release(4))
+        .write(&test_records(&db))
+        .await;
+    assert!(live.is_marked_for_rerun(), "Album A sorts first");
 }

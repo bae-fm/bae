@@ -1,24 +1,23 @@
 package fm.bae.app.playback
 
 import fm.bae.app.creditLineNamed
-import fm.bae.app.data.ListPositionRead
 import fm.bae.app.data.ListReads
-import fm.bae.app.data.ListWindowDelivery
-import fm.bae.app.data.ListWindowRead
+import fm.bae.app.data.ListViewDelivery
+import fm.bae.app.data.ListViewRead
 import fm.bae.screensubscription.PulledSubscription
 import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListCountExtra
-import uniffi.bae_bridge.BridgeListPosition
-import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeQueueEntry
-import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeTrackDisplay
 
-/** The context's upcoming list as a test drives it: the rows it shows are the test's, every window read of them
- *  answers out of those rows, and the list records which order the code under test opened the list in each time. */
+/**
+ * The context's upcoming list as a test drives it: the rows it shows are the test's, every view of them answers out
+ * of those rows, with a window of three screens from a screen above the rows on screen, and the list records which
+ * order the code under test opened the list in each time.
+ */
 internal class UpcomingFeed {
     /** The order each open of the list asked for. */
     val opened = mutableListOf<Boolean>()
@@ -27,7 +26,7 @@ internal class UpcomingFeed {
     var holdNewReads = false
 
     private var rows = emptyList<BridgeQueueEntry>()
-    private val windows = mutableListOf<FeedWindow>()
+    private val views = mutableListOf<FeedView>()
     private val counts = mutableListOf<Channel<BridgeListCount>>()
     private val held = mutableListOf<() -> Unit>()
     private var failure: BridgeException? = null
@@ -40,11 +39,11 @@ internal class UpcomingFeed {
                 reads()
             }
 
-    /** Show [rows] as the list: the count and every open window read again. */
+    /** Show [rows] as the list: the count and every open view read again. */
     fun show(rows: List<BridgeQueueEntry>) {
         this.rows = rows
         sendCounts()
-        windows.toList().forEach(FeedWindow::deliver)
+        views.toList().forEach(FeedView::deliver)
     }
 
     /** Answer the reads opened while [holdNewReads] held them, and answer each read opened from now on at once. */
@@ -58,7 +57,7 @@ internal class UpcomingFeed {
     fun fail(error: BridgeException) {
         failure = error
         sendCounts()
-        windows.toList().forEach(FeedWindow::wake)
+        views.toList().forEach(FeedView::wake)
     }
 
     private fun sendCounts() = counts.forEach(::sendCount)
@@ -72,14 +71,10 @@ internal class UpcomingFeed {
         if (holdNewReads) held.add(answer) else answer()
     }
 
-    private fun key(place: Int) = listOf<BridgeSortValue>(BridgeSortValue.Integer(place.toLong()))
-
-    private fun place(key: List<BridgeSortValue>): Int = (key.firstOrNull() as? BridgeSortValue.Integer)?.value?.toInt() ?: 0
-
     private fun reads() =
         ListReads<BridgeQueueEntry>(
-            window = { first ->
-                FeedWindow(first).also { windows.add(it) }
+            view = { first, last ->
+                FeedView(first..last).also { views.add(it) }
             },
             count = {
                 val feed = Channel<BridgeListCount>(Channel.UNLIMITED)
@@ -95,55 +90,23 @@ internal class UpcomingFeed {
                     override suspend fun cancel() {}
                 }
             },
-            position = { key ->
-                val feed = Channel<BridgeListPosition>(Channel.UNLIMITED)
-                feed.trySend(BridgeListPosition(key, place(key).toULong()))
-                object : ListPositionRead {
-                    override fun setKey(key: List<BridgeSortValue>) {
-                        feed.trySend(BridgeListPosition(key, place(key).toULong()))
-                    }
-
-                    override suspend fun next(): BridgeListPosition = feed.receive()
-
-                    override suspend fun cancel() {}
-                }
-            },
-            keyAt = { position -> if (rows.isEmpty()) null else key(minOf(position.toInt(), rows.size - 1)) },
         )
 
-    /** One open window: it answers what its request names out of the rows, again at every change. */
-    private inner class FeedWindow(
-        var request: BridgeListWindow,
-    ) : ListWindowRead<BridgeQueueEntry> {
-        private val deliveries = Channel<ListWindowDelivery<BridgeQueueEntry>>(Channel.UNLIMITED)
+    /** One open view: it answers the window around the rows on screen out of the rows, again at every change. */
+    private inner class FeedView(
+        var shown: IntRange,
+    ) : ListViewRead<BridgeQueueEntry> {
+        private val deliveries = Channel<ListViewDelivery<BridgeQueueEntry>>(Channel.UNLIMITED)
 
         init {
             answerOrHold(::deliver)
         }
 
         fun deliver() {
-            val request = request
-            val start: Int
-            val stop: Int
-            val beyond: Int?
-            when (request) {
-                is BridgeListWindow.Forward -> {
-                    start = minOf(request.from?.let(::place) ?: 0, rows.size)
-                    val end = minOf(request.until?.let(::place) ?: rows.size, rows.size)
-                    stop = maxOf(start, minOf(start + request.limit.toInt(), end))
-                    beyond = if (stop < end) stop else null
-                }
-
-                is BridgeListWindow.Backward -> {
-                    stop = minOf(place(request.until), rows.size)
-                    start = maxOf(0, stop - request.limit.toInt())
-                    beyond = if (start > 0) start - 1 else null
-                }
-            }
-            val held = rows.subList(start, stop)
-            deliveries.trySend(
-                ListWindowDelivery(request, held, if (held.isEmpty()) null else key(start), beyond?.let(::key)),
-            )
+            val screen = shown.last - shown.first + 1
+            val start = minOf(maxOf(0, shown.first - screen), rows.size)
+            val stop = minOf(start + 3 * screen, rows.size)
+            deliveries.trySend(ListViewDelivery(start, rows.subList(start, stop)))
         }
 
         /** Wake a waiting read so it can fail. */
@@ -151,19 +114,22 @@ internal class UpcomingFeed {
             deliver()
         }
 
-        override fun setWindow(window: BridgeListWindow) {
-            request = window
+        override fun setVisible(
+            first: Int,
+            last: Int,
+        ) {
+            shown = first..last
             deliver()
         }
 
-        override suspend fun next(): ListWindowDelivery<BridgeQueueEntry> {
+        override suspend fun next(): ListViewDelivery<BridgeQueueEntry> {
             val value = deliveries.receive()
             failure?.let { throw it }
             return value
         }
 
         override suspend fun cancel() {
-            windows.remove(this)
+            views.remove(this)
         }
     }
 }

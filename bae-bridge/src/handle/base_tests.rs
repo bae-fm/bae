@@ -33,10 +33,9 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         },
     );
     let list = crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false };
-    let top = crate::types::BridgeListWindow::Forward { from: None, until: None, limit: 10 };
-    let subscription = handle.handle().subscribe_list_window(list.clone(), top);
+    let subscription = handle.handle().subscribe_list_view(list.clone(), 0, 9);
     let counts = handle.handle().subscribe_list_count(list);
-    let titles = |value: &crate::types::BridgeListWindowValue| -> Vec<String> {
+    let titles = |value: &crate::types::BridgeListView| -> Vec<String> {
         let crate::types::BridgeListRows::Albums { rows } = &value.rows else {
             panic!("the album grid's window holds albums");
         };
@@ -74,8 +73,8 @@ fn delete_album_takes_the_album_out_of_the_grid() {
 }
 
 /// The queue's upcoming tracks are a list of the bridge like any other: with
-/// nothing playing its window holds no rows, its count is zero and it has no
-/// key at any position, and the window's rows come as queue entries.
+/// nothing playing its view holds no rows and its count is zero, and the
+/// view's rows come as queue entries.
 #[test]
 fn the_upcoming_list_of_an_idle_queue_is_empty() {
     let handle = bridge_handle_holding(
@@ -87,21 +86,16 @@ fn the_upcoming_list_of_an_idle_queue_is_empty() {
         },
     );
     let list = crate::types::BridgeList::Upcoming { shuffled: false };
-    let top = crate::types::BridgeListWindow::Forward { from: None, until: None, limit: 10 };
-    let window = handle.handle().subscribe_list_window(list.clone(), top);
-    let counts = handle.handle().subscribe_list_count(list.clone());
+    let window = handle.handle().subscribe_list_view(list.clone(), 0, 9);
+    let counts = handle.handle().subscribe_list_count(list);
     let runtime = &handle.handle().runtime;
 
     let listed = runtime.block_on(window.clone().next()).expect("upcoming window value");
     let crate::types::BridgeListRows::Upcoming { rows } = &listed.rows else {
         panic!("the upcoming list's window holds queue entries");
     };
-    assert!(rows.is_empty() && listed.first.is_none() && listed.beyond.is_none());
+    assert!(rows.is_empty() && listed.start == 0);
     assert_eq!(runtime.block_on(counts.clone().next()).expect("upcoming count").rows, 0);
-    let key = runtime
-        .block_on(Arc::clone(handle.handle()).list_key_at(list, 0))
-        .expect("the key of an empty list");
-    assert_eq!(key, None);
 }
 
 /// Setting S3 up as the library's storage writes the steps coven reports into

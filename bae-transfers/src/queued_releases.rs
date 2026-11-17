@@ -344,9 +344,10 @@ where
         self.store.subscribe(|sql| tables::release_queue_on::<Extra>(&sql))
     }
 
-    /// Follow one window of the queue's entries, a range of entries in the
-    /// order the person queued them, each joined with its release. Coven reruns the
-    /// query only when a write changes a row inside the range.
+    /// Follow one window of the queue's entries, the entries from one on in
+    /// the order the person queued them, each joined with its release. Coven
+    /// reruns the query only when a write changes a row at or before the
+    /// window's last row.
     pub fn subscribe_window(
         &self,
         initial: bae_store::ListWindow,
@@ -355,19 +356,9 @@ where
         bae_store::WindowRead<crate::release_queue::ReleaseQueueRow<Extra, ()>>,
         bae_store::DbError,
     > {
-        self.store.subscribe_list_window(
-            initial,
-            tables::queue_order(),
-            move |sql, seek, limit, offset| {
-                tables::queue_window_rows_on::<Extra>(
-                    sql,
-                    &tables::queue_order(),
-                    seek,
-                    limit,
-                    offset,
-                )
-            },
-        )
+        self.store.subscribe_list_window(initial, tables::queue_order(), move |sql, seek, limit| {
+            tables::queue_window_rows_on::<Extra>(sql, &tables::queue_order(), seek, limit)
+        })
     }
 
     /// Follow how many entries the queue holds. The count runs as a separate
@@ -398,8 +389,8 @@ where
         self.store
             .read(move |sql| {
                 let order = tables::queue_order();
-                bae_store::list_windows::key_at(&order, position, &mut |seek, limit, offset| {
-                    tables::queue_window_rows_on::<Extra>(&sql, &order, seek, limit, offset)
+                bae_store::list_windows::key_at(&order, position, &mut |seek, limit| {
+                    tables::queue_window_rows_on::<Extra>(&sql, &order, seek, limit)
                 })
             })
             .await

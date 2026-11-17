@@ -22,7 +22,7 @@ fn opening(
 ) -> Result<ImportListOpening, DbError> {
     let row = list_row(sql, list)?.expect("the write found the list open");
     Ok(match row.items(Shown::View).position_of_first(sql, selected)? {
-        Some((position, key)) => ImportListOpening::At { key, position },
+        Some(position) => ImportListOpening::At { position },
         None => ImportListOpening::Top,
     })
 }

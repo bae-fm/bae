@@ -74,7 +74,7 @@ pub enum BridgeImportListItem {
         stable_key: String,
         row: BridgeTriageRow,
         /// The stable key of the header of the group it is listed under, for
-        /// a member of a group, whichever window holds the header.
+        /// a member of a group, whether or not the window holds the header.
         header_key: Option<String>,
     },
     /// A folder that failed validation, presented as what the scan read of
@@ -90,9 +90,6 @@ pub struct BridgeImportCandidateListLocation {
     pub tab: BridgeTriageTab,
     pub group_key: Option<BridgeFolderReleaseDecisionKey>,
     pub visible_position: u64,
-    /// Where the candidate sits in that view, as a window's bound. A chain of
-    /// windows that starts at this key shows the candidate.
-    pub key: Vec<BridgeSortValue>,
 }
 
 /// Where a list's view opens after the app sets the view.
@@ -101,9 +98,9 @@ pub enum BridgeImportListOpening {
     /// The list's top: the view shows none of the selected rows.
     Top,
     /// The first selected row the new view shows, as the write that set the
-    /// view found it: the key a chain of windows starts at, and the position
-    /// the row sits at.
-    At { key: Vec<BridgeSortValue>, position: u64 },
+    /// view found it: the position the row sits at, where the list's view
+    /// opens.
+    At { position: u64 },
 }
 
 /// What setting a list's view came to. Mirrors

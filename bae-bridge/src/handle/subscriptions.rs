@@ -8,51 +8,46 @@ use super::*;
 
 #[uniffi::export]
 impl AppHandle {
-    /// Read the rows of `list` in `window`, in the list's order, and keep
-    /// reading them live.
-    pub fn subscribe_list_window(
+    /// Read `list` through its view, which keeps one live window of the list
+    /// around the rows from position `first` to position `last` on screen,
+    /// and moves it as the screen reports other rows.
+    pub fn subscribe_list_view(
         &self,
         list: BridgeList,
-        window: BridgeListWindow,
-    ) -> Arc<crate::ListWindowSubscription> {
-        let window = window.into_core();
-        let live = match list {
-            BridgeList::AlbumGrid { sort, group_by_artist } => self
-                .services
-                .subscribe_album_window(&BridgeList::album_sort(sort), group_by_artist, window),
-            BridgeList::Artists { sort } => {
-                self.services.subscribe_artist_window(&BridgeList::artist_sort(sort), window)
+        first: u64,
+        last: u64,
+    ) -> Arc<crate::ListViewSubscription> {
+        let services = &self.services;
+        let reads = match list {
+            BridgeList::AlbumGrid { sort, group_by_artist } => {
+                services.album_list(BridgeList::album_sort(sort), group_by_artist)
             }
+            BridgeList::Artists { sort } => services.artist_list(BridgeList::artist_sort(sort)),
             BridgeList::Composers { sort } => {
-                self.services.subscribe_composer_window(&BridgeList::composer_sort(sort), window)
+                services.composer_list(BridgeList::composer_sort(sort))
             }
-            BridgeList::ComposerPage { artist_id } => {
-                self.services.subscribe_composer_page_window(&artist_id, window)
+            BridgeList::ComposerPage { artist_id } => services.composer_page_list(artist_id),
+            BridgeList::AlbumTracks { album_id } => services.album_track_list(album_id),
+            BridgeList::WorkChildren { work_id } => services.work_child_list(work_id),
+            BridgeList::Downloads => services.download_list(),
+            BridgeList::Upcoming { shuffled } => services.upcoming_list(shuffled),
+            BridgeList::Storage { sort, filter, search } => {
+                services.storage_list(sort.into_core(), filter.into_core(), search)
             }
-            BridgeList::AlbumTracks { album_id } => {
-                self.services.subscribe_album_track_window(&album_id, window)
+            BridgeList::ArtistSearch { text } => {
+                services.artist_search_list(BridgeList::search_query(&text))
             }
-            BridgeList::WorkChildren { work_id } => {
-                self.services.subscribe_work_child_window(&work_id, window)
+            BridgeList::SearchAlbums { query } => {
+                services.search_album_list(BridgeList::search_query(&query))
             }
-            BridgeList::Downloads => self.services.subscribe_download_window(window),
-            BridgeList::Upcoming { shuffled } => {
-                self.services.subscribe_upcoming_window(shuffled, window)
-            }
-            BridgeList::Storage { sort, filter, search } => self.services.subscribe_storage_window(
-                &sort.into_core(),
-                filter.into_core(),
-                &search,
-                window,
-            ),
-            BridgeList::ArtistSearch { text } => self
-                .services
-                .subscribe_artist_search_window(BridgeList::search_query(&text), window),
-            BridgeList::SearchAlbums { query } => self
-                .services
-                .subscribe_search_album_window(BridgeList::search_query(&query), window),
         };
-        crate::screens::list_window(live, self.runtime.clone())
+        crate::screens::list_view(
+            bae_views::list_view::ListView::new(
+                reads,
+                bae_views::list_view::Visible::new(first, last),
+            ),
+            self.runtime.clone(),
+        )
     }
 
     /// Read live how many rows `list` has, with the values its count carries
@@ -86,49 +81,6 @@ impl AppHandle {
             }
         };
         crate::screens::list_count(live, self.runtime.clone())
-    }
-
-    /// How many rows of `list` come before the row at `key`, read live.
-    pub fn subscribe_list_position(
-        &self,
-        list: BridgeList,
-        key: Vec<BridgeSortValue>,
-    ) -> Arc<crate::ListPositionSubscription> {
-        let key = crate::screens::order_key(key);
-        let live = match list {
-            BridgeList::AlbumGrid { sort, group_by_artist } => self
-                .services
-                .subscribe_album_position(&BridgeList::album_sort(sort), group_by_artist, key),
-            BridgeList::Artists { sort } => {
-                self.services.subscribe_artist_position(&BridgeList::artist_sort(sort), key)
-            }
-            BridgeList::Composers { sort } => {
-                self.services.subscribe_composer_position(&BridgeList::composer_sort(sort), key)
-            }
-            BridgeList::ComposerPage { artist_id } => {
-                self.services.subscribe_composer_page_position(&artist_id, key)
-            }
-            BridgeList::AlbumTracks { album_id } => {
-                self.services.subscribe_album_track_position(&album_id, key)
-            }
-            BridgeList::WorkChildren { work_id } => {
-                self.services.subscribe_work_child_position(&work_id, key)
-            }
-            BridgeList::Downloads => self.services.subscribe_download_position(key),
-            BridgeList::Upcoming { shuffled } => {
-                self.services.subscribe_upcoming_position(shuffled, key)
-            }
-            BridgeList::Storage { sort, filter, search } => self
-                .services
-                .subscribe_storage_position(&sort.into_core(), filter.into_core(), &search, key),
-            BridgeList::ArtistSearch { text } => {
-                self.services.subscribe_artist_search_position(BridgeList::search_query(&text), key)
-            }
-            BridgeList::SearchAlbums { query } => {
-                self.services.subscribe_search_album_position(BridgeList::search_query(&query), key)
-            }
-        };
-        crate::screens::list_position(live, self.runtime.clone())
     }
 
     /// The artist sections of the album grid grouped by artist under

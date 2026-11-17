@@ -271,7 +271,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         },
         bae_views::StorageFilter::All,
         "",
-        bae_store::ListWindow::Forward { from: None, until: None, limit: 50 },
+        bae_store::ListWindow::top(50),
     );
     let (started, created) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
@@ -289,7 +289,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         loop {
             let event = browse.next_inline().await.expect("the browse query answers");
             let projection = event.result.unwrap();
-            let sending = projection.rows.iter().any(|row| {
+            let sending = projection.rows.iter().any(|(row, _key)| {
                 row.release.id == release.id
                     && row.release.upload.as_ref().is_some_and(|upload| upload.sending == 1)
             });

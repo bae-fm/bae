@@ -140,6 +140,14 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     revealArrived(seq: seq)
                 }
             }
+            // The list sizes its window from the slots the grid fits before
+            // any card arrives.
+            .onChange(
+                of: metrics.slotsFitting(height: geometry.size.height),
+                initial: true
+            ) { _, slots in
+                list.screenRows = slots
+            }
             // A new column count re-lays every row before the scroll view
             // knows which slot was on top, so the grid names it.
             .onChange(of: metrics.columnCount) { old, new in
@@ -233,6 +241,14 @@ private struct AlbumGridMetrics {
             (rowWidth - CGFloat(columnCount - 1) * gridSpacing)
                 / CGFloat(columnCount)
         )
+    }
+
+    /// How many slots the grid shows at `height`: every column of each row
+    /// that fits, counting a row as tall as a card's cover, which is shorter
+    /// than the card, and one more row for the rows the edges cut.
+    func slotsFitting(height: CGFloat) -> Int {
+        let rowHeight = max(1, cardWidth + gridSpacing)
+        return (Int(ceil(max(0, height) / rowHeight)) + 1) * columnCount
     }
 
     var columns: [GridItem] {

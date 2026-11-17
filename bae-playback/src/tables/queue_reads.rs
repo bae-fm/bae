@@ -46,9 +46,10 @@ pub(super) fn session_up_next_rows() -> String {
     let lane = |shuffled: bool| {
         format!(
             "SELECT * FROM ( \
-                 SELECT 'c' || c.entry, c.track_id, 1, c.{place} FROM playback_context c \
+                 SELECT 'c' || lane.entry, lane.track_id, 1, lane.{place} \
+                 FROM playback_context lane \
                  WHERE {after} \
-                 ORDER BY c.{place} LIMIT ?1)",
+                 ORDER BY lane.{place} LIMIT ?1)",
             place = context_order_column(shuffled),
             after = after_the_playing_track_in_order(shuffled),
         )
@@ -89,6 +90,23 @@ pub(super) fn queue_items_sql(rows: &str) -> String {
          JOIN tracks t ON t.id = e.lane_track \
          {joins} \
          ORDER BY e.position",
+        columns = track_display_columns(""),
+        joins = TRACK_DISPLAY_JOINS,
+    )
+}
+
+/// The context lane's rows as one statement: `lane`'s columns over
+/// `playback_context lane` and each row's track as [`queue_items_sql`] reads
+/// it, for the rows `condition` keeps, in `tail`'s order and limit. The
+/// statement sorts by the lane's own columns, so a window's LIMIT bounds the
+/// rows its reruns depend on.
+pub(super) fn queue_items_window_sql(lane: &str, condition: &str, tail: &str) -> String {
+    format!(
+        "SELECT {lane}, t.id AS track_id, t.duration_ms, {columns} \
+         FROM playback_context lane \
+         JOIN tracks t ON t.id = lane.track_id \
+         {joins} \
+         WHERE {condition} {tail}",
         columns = track_display_columns(""),
         joins = TRACK_DISPLAY_JOINS,
     )

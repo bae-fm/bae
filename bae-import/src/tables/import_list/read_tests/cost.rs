@@ -6,10 +6,10 @@
 use super::*;
 
 /// The reads of the import list's Found tab at each measured offset, in each
-/// order: a window scrolled to, a closed range read from the key at the
-/// offset (`scroll`); a jump to the offset, `key_at` and then the range read
-/// from the key it gives (`jump`); and the rows before the key at the offset
-/// (`position`), the count the screen follows to place a window.
+/// order: a window scrolled to, read from the key at the offset (`scroll`);
+/// a jump to the offset, `key_at` and then the window read from the key it
+/// gives (`jump`); and the rows before the key at the offset (`position`),
+/// the count the screen follows to place a window.
 async fn measure_import_list(db: &Store, n: u64) {
     measure_view(db, n, "import_list", "", String::new(), crate::PendingFilter::All).await;
 }
@@ -39,11 +39,7 @@ async fn measure_view(
         let order_name = format!("{order:?}{variant}");
         for (at, offset) in offsets(n) {
             let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has rows");
-            let end = match offset + LIMIT < n {
-                true => tables.import_key_at(list, offset + LIMIT).await.unwrap(),
-                false => None,
-            };
-            let range = ListWindow::Forward { from: Some(key.clone()), until: end, limit: LIMIT };
+            let range = ListWindow { from: Some(key.clone()), limit: LIMIT };
             let mut scroll = Vec::with_capacity(RUNS);
             let mut jump = Vec::with_capacity(RUNS);
             let mut position = Vec::with_capacity(RUNS);
@@ -56,7 +52,7 @@ async fn measure_view(
 
                 let started = Instant::now();
                 let reached = tables.import_key_at(list, offset).await.unwrap().unwrap();
-                let jumped = ListWindow::Forward { from: Some(reached), until: None, limit: LIMIT };
+                let jumped = ListWindow { from: Some(reached), limit: LIMIT };
                 tables.read_import_window(list, jumped).await.unwrap();
                 jump.push(started.elapsed());
 
@@ -273,7 +269,7 @@ async fn measure_import_list_first_selected(db: &Store) {
             .read
             .rows
             .iter()
-            .filter_map(|item| match item {
+            .filter_map(|(item, _key)| match item {
                 crate::ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
                 _ => None,
             })

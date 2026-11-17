@@ -23,7 +23,7 @@ fn rows(snapshot: &ImportListRead) -> Vec<(TriageRow, bool)> {
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.clone(), live.facts.identifying()))

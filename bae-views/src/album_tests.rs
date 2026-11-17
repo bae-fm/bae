@@ -44,7 +44,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
 
 /// The window of the albums' first `limit` rows.
 fn top(limit: u64) -> ListWindow {
-    ListWindow::Forward { from: None, until: None, limit }
+    ListWindow::top(limit)
 }
 
 #[tokio::test]
@@ -57,8 +57,8 @@ async fn album_window_delivers_rows_count_and_cover_versions() {
     assert_eq!((counts.albums, counts.rows), (1, 1));
 
     let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(initial.rows[0].album.title, "Album Title");
-    assert_eq!(initial.rows[0].album.cover_version, None);
+    assert_eq!(initial.rows[0].0.album.title, "Album Title");
+    assert_eq!(initial.rows[0].0.album.cover_version, None);
 
     let cover = bae_records::test_fixtures::write_cover(&records, RELEASE_ID, "cover bytes").await;
 
@@ -68,7 +68,7 @@ async fn album_window_delivers_rows_count_and_cover_versions() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.rows[0].album.cover_version.as_deref(), Some(cover.as_str()));
+    assert_eq!(updated.rows[0].0.album.cover_version.as_deref(), Some(cover.as_str()));
 }
 
 /// A grid card shows its album's primary release's cover, so that is the one
@@ -100,7 +100,7 @@ async fn album_window_reads_only_the_primary_releases_cover() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(updated.rows[0].album.cover_version.as_deref(), Some(primary.as_str()));
+    assert_eq!(updated.rows[0].0.album.cover_version.as_deref(), Some(primary.as_str()));
 }
 
 /// A window's request changes on the same live query, each value naming the
@@ -125,21 +125,20 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     let initial = initial_event.result.unwrap();
     assert_eq!(initial.window, top(50));
     assert_eq!(
-        initial.rows.iter().map(|row| row.album.id.as_str()).collect::<Vec<_>>(),
+        initial.rows.iter().map(|(row, _key)| row.album.id.as_str()).collect::<Vec<_>>(),
         [ALBUM_ID, OTHER_ALBUM_ID]
     );
-    assert_eq!(initial.beyond, None);
 
     // The window from the second album on.
     let second = views.album_key_at(&sort, false, 1).await.unwrap().unwrap();
-    let from_second = ListWindow::Forward { from: Some(second), until: None, limit: 50 };
+    let from_second = ListWindow { from: Some(second), limit: 50 };
     let revision = requests.set(from_second.clone()).unwrap();
     let event = live.next_inline().await.expect("the query stays open");
     assert_eq!((&event.request, event.revision), (&from_second, revision));
     let moved = event.result.unwrap();
     assert_eq!(moved.window, from_second);
     assert_eq!(moved.rows.len(), 1);
-    assert_eq!(moved.rows[0].album.id, OTHER_ALBUM_ID);
+    assert_eq!(moved.rows[0].0.album.id, OTHER_ALBUM_ID);
 
     // An edit that keeps the album in the range wakes it.
     records.rename_album_for_test(OTHER_ALBUM_ID, "Album Title Second Renamed").await.unwrap();
@@ -149,7 +148,7 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(renamed.rows[0].album.title, "Album Title Second Renamed");
+    assert_eq!(renamed.rows[0].0.album.title, "Album Title Second Renamed");
 
     // A cover on an album in the range wakes it.
     let cover_in_range =
@@ -160,7 +159,7 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
         .expect("the query stays open")
         .result
         .unwrap();
-    assert_eq!(covered.rows[0].album.cover_version.as_deref(), Some(cover_in_range.as_str()));
+    assert_eq!(covered.rows[0].0.album.cover_version.as_deref(), Some(cover_in_range.as_str()));
 
     // A title that sorts the album above the window's start takes it out of
     // the range: the window delivers none, and the album's edits after that
@@ -182,7 +181,7 @@ async fn album_window_subscription_moves_in_place_and_follows_its_range() {
     // The top of the list holds it again, first.
     requests.set(top(50)).unwrap();
     let top_again = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(top_again.rows[0].album.id, OTHER_ALBUM_ID);
+    assert_eq!(top_again.rows[0].0.album.id, OTHER_ALBUM_ID);
 
     delete_release(&records, OTHER_RELEASE_ID).await;
     let deleted = live.next_inline().await.expect("the query stays open").result.unwrap();
@@ -248,7 +247,7 @@ fn album_page_subscription_delivers_a_write_materialized_by_sync() {
             .expect("the query stays open")
             .result
             .unwrap();
-        assert_eq!(updated.rows[0].album.title, "Synced Album");
+        assert_eq!(updated.rows[0].0.album.title, "Synced Album");
     });
 }
 

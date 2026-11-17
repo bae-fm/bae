@@ -38,11 +38,11 @@ import Foundation
         }
     }
 
-    /// The open import list: its windows, count and position as the generic
-    /// list reads them, the reads of what surrounds the list, and the writes
+    /// The open import list: its view and count as the generic list reads
+    /// them, the reads of what surrounds the list, and the writes
     /// that change what it shows. Every read it makes ends with the list.
     public struct ImportListHandle: Sendable {
-        /// The windows, count and position of the list's rows.
+        /// The view and count of the list's rows.
         public let queries: BridgeListQueries<BridgeImportListItem>
         /// The watched folders, whether Found has groups, and the narrowing.
         public let summary:
@@ -149,7 +149,7 @@ import Foundation
         /// it shows or the list's top, and which of them leave the
         /// selection: on another tab, filter or search, the ones the new view
         /// doesn't show. `nil` when it is the view the list already shows.
-        /// The caller drops the windows it holds and opens new ones from that
+        /// The caller drops the list's view and opens a new one at that
         /// place.
         public func setView(
             _ view: BridgeImportListView,
@@ -178,9 +178,9 @@ import Foundation
         }
 
         /// Where the list shows the candidate after it clears the filters and
-        /// opens the candidate's group: its tab, and the key a chain of
-        /// windows starts at to show it. `nil` when the list
-        /// lists no such candidate.
+        /// opens the candidate's group: its tab, and the position the list's
+        /// view opens at to show it. `nil` when the list lists no such
+        /// candidate.
         public func locateCandidate(_ candidateKey: Data) async throws
             -> BridgeImportCandidateListLocation?
         {

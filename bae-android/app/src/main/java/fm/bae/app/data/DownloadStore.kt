@@ -14,7 +14,7 @@ import uniffi.bae_bridge.BridgeDownloadTransferProgress
  * failure of the last read in their place; and the stream of each downloading
  * release's latest bytes, which the bridge holds and the View drawing that
  * release reads once per display frame. The entries themselves are the
- * Downloads screen's windows ([DownloadPageStore]). Also whether the person
+ * Downloads screen's list ([DownloadPageStore]). Also whether the person
  * has files move only on unmetered networks, as core's live read says each
  * time it changes, or the failure of the last read in its place.
  */

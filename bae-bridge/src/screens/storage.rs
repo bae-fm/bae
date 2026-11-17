@@ -1,5 +1,4 @@
-//! What the Storage Manager pulls beside its list's windows, count and
-//! positions: the rows of its selection, and the transfer queues holding work.
+//! What the Storage Manager pulls beside its list's view and count: the rows of its selection, and the transfer queues holding work.
 
 use crate::types::{BridgeError, BridgeStorageRow};
 

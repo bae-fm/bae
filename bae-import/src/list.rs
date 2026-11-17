@@ -19,7 +19,6 @@
 
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::triage::{CandidateLiveState, InvalidRow, TriageGroup, TriageRow};
-use bae_store::list_windows::OrderKey;
 use bae_store::WindowRead;
 
 mod path_order;
@@ -144,9 +143,6 @@ pub struct ImportCandidateListLocation {
     /// The Pending group that has to be open for this candidate to be visible.
     pub group_key: Option<FolderReleaseDecisionKey>,
     pub visible_position: u64,
-    /// Where the candidate sits in that view, as a window's bound: a chain of
-    /// windows that starts at it shows it.
-    pub key: OrderKey,
 }
 
 /// Whether bae watches any folder, whether Found has groups, and the
@@ -187,9 +183,9 @@ pub enum ImportListOpening {
     /// The list's top: the view shows none of the selected rows.
     Top,
     /// The first selected row the new view shows, as the write that set the
-    /// view found it: the key a chain of windows starts at, and the position
-    /// the row sits at.
-    At { key: OrderKey, position: u64 },
+    /// view found it: the position the row sits at, where the list's view
+    /// opens.
+    At { position: u64 },
 }
 
 /// What setting a list's view came to: where the new view opens, and the

@@ -13,7 +13,7 @@ async fn retitle(db: &Store, titles: [&str; 3]) {
 }
 
 fn first_window() -> ListWindow {
-    ListWindow::Forward { from: None, until: None, limit: 50 }
+    ListWindow::top(50)
 }
 
 async fn album_titles_next(
@@ -24,7 +24,7 @@ async fn album_titles_next(
     >,
 ) -> Vec<String> {
     let shown = live.next_inline().await.expect("the query stays open").result.unwrap();
-    shown.rows.iter().map(|row| row.album.title.clone()).collect()
+    shown.rows.iter().map(|(row, _key)| row.album.title.clone()).collect()
 }
 
 #[tokio::test]

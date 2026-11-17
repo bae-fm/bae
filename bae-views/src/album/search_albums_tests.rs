@@ -1,8 +1,7 @@
 //! These tests check the albums a search lists as a media browser pages
-//! through them. The browser reads once the window that holds each page,
-//! bounded by the keys of the page's first album and of the album after its
-//! last, and then reads that window live. A live query counts the albums.
-//! Each test writes its library through the records domain's own writes.
+//! through them. The browser reads a window of them from an album's key on,
+//! live. A live query counts the albums. Each test writes its library
+//! through the records domain's own writes.
 
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
@@ -49,49 +48,38 @@ async fn key_of(views: &LibraryViews, position: u64) -> OrderKey {
     views.search_album_key_at(window_query(), position).await.unwrap().expect("an album there")
 }
 
-/// A page at an offset is the window from its first album to the album
-/// after its last, and holds the search's albums in title order. The last
-/// page's window has no upper bound, and the page past the last album has no
-/// window. With no query, the search lists no page.
+/// A window holds its limit of the search's albums from an album's key on,
+/// in title order, and a key past the last album is the last album's. With
+/// no query, the search lists no album.
 #[tokio::test]
-async fn a_search_page_is_the_window_bounded_by_its_albums_keys() {
+async fn a_search_window_holds_its_albums_from_a_key() {
     let (views, _db, _tmp) = searched_library().await;
 
-    let first_page =
-        views.search_album_page_window(window_query(), 0, 2).await.unwrap().expect("a page");
-    assert_eq!(
-        first_page,
-        ListWindow::Forward {
-            from: Some(key_of(&views, 0).await),
-            until: Some(key_of(&views, 2).await),
-            limit: 2,
-        }
-    );
-    let mut live = views.subscribe_search_album_window(window_query(), first_page);
+    let mut live = views.subscribe_search_album_window(window_query(), ListWindow::top(2));
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(titles_of(read), ["Window A", "Window B"]);
 
-    let last_page =
-        views.search_album_page_window(window_query(), 2, 2).await.unwrap().expect("a page");
-    assert!(matches!(&last_page, ListWindow::Forward { until: None, .. }));
-    let mut live = views.subscribe_search_album_window(window_query(), last_page);
+    let third = ListWindow { from: Some(key_of(&views, 2).await), limit: 2 };
+    let mut live = views.subscribe_search_album_window(window_query(), third);
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(titles_of(read), ["Window C"]);
 
-    assert_eq!(views.search_album_page_window(window_query(), 3, 2).await.unwrap(), None);
-    assert_eq!(views.search_album_page_window(None, 0, 2).await.unwrap(), None);
+    assert_eq!(key_of(&views, 3).await, key_of(&views, 2).await);
+    assert_eq!(views.search_album_key_at(None, 0).await.unwrap(), None);
+    let mut none = views.subscribe_search_album_window(None, ListWindow::top(2));
+    let read = none.next_inline().await.expect("the query stays open").result.unwrap();
+    assert!(read.rows.is_empty());
     let mut position =
         views.subscribe_search_album_position(window_query(), key_of(&views, 1).await);
     assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 1);
 }
 
-/// A page's window follows a rename of an album on it, so the next read of
-/// that page shows the album's new name.
+/// A window follows a rename of an album it holds, so its next read shows
+/// the album's new name.
 #[tokio::test]
-async fn a_renamed_album_on_a_page_shows_its_new_name_on_the_pages_next_read() {
+async fn a_renamed_album_in_a_window_shows_its_new_name_on_the_windows_next_read() {
     let (views, db, _tmp) = searched_library().await;
-    let page = views.search_album_page_window(window_query(), 0, 2).await.unwrap().expect("a page");
-    let mut live = views.subscribe_search_album_window(window_query(), page);
+    let mut live = views.subscribe_search_album_window(window_query(), ListWindow::top(2));
     live.next_inline().await.expect("the query stays open").result.unwrap();
 
     test_records(&db).rename_album_for_test(WINDOW_B, "Window B Renamed").await.unwrap();
@@ -99,11 +87,10 @@ async fn a_renamed_album_on_a_page_shows_its_new_name_on_the_pages_next_read() {
     assert_eq!(titles_of(read.unwrap()), ["Window A", "Window B Renamed"]);
 }
 
-/// A search lists at most [`crate::SEARCH_RESULT_LIMIT`] albums: the page
-/// that starts there has no window, and the page before it ends at the
-/// limit.
+/// A search lists at most [`crate::SEARCH_RESULT_LIMIT`] albums: a window
+/// near the limit ends at it.
 #[tokio::test]
-async fn a_search_lists_no_page_past_its_limit() {
+async fn a_search_lists_no_album_past_its_limit() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let mut fixture = RecordsFixture::new().artist(SEARCHED_ARTIST, "Paged Artist");
     let listed = crate::SEARCH_RESULT_LIMIT as u64;
@@ -117,13 +104,13 @@ async fn a_search_lists_no_page_past_its_limit() {
     fixture.write(&test_records(&db)).await;
     let views = LibraryViews::new(db.clone());
 
-    assert_eq!(views.search_album_page_window(window_query(), listed, 10).await.unwrap(), None);
-    let last = views
-        .search_album_page_window(window_query(), listed - 2, 10)
+    let from = views
+        .search_album_key_at(window_query(), listed - 2)
         .await
         .unwrap()
-        .expect("a page");
-    let mut live = views.subscribe_search_album_window(window_query(), last);
+        .expect("an album there");
+    let mut live = views
+        .subscribe_search_album_window(window_query(), ListWindow { from: Some(from), limit: 10 });
     let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         titles_of(read),

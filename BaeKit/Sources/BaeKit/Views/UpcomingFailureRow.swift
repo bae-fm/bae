@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The queue's upcoming read stopped: a centred notice that says so, with
 /// Details and Retry, which opens the read again. Shown under the context
-/// lane, whose rows past the first window stay placeholders until it does.
+/// lane, whose rows the list has not read stay placeholders until it does.
 public struct UpcomingFailureRow: View {
     private let failure: DisplayError
     private let onRetry: () -> Void

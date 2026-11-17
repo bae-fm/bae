@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 /// How an artist picker opens the list of the artists that match a text: the
-/// picker opens a separate list for each text, whose windows, count and
-/// positions are live reads like any other list's.
+/// picker opens a separate list for each text, whose view and count are live
+/// reads like any other list's.
 public typealias ArtistSearchOpener =
     @Sendable (_ text: String) -> BridgeListQueries<BridgeArtistSearchResult>
 

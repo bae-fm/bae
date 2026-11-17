@@ -54,27 +54,27 @@ pub enum ListRows {
     },
 }
 
-/// One delivery of a list's window: the request it answers, its rows, the
-/// key of its first row and the key of the row beyond its far end.
+/// One delivery of a list's window: the request it answers, its rows, and
+/// each row's key, in the same order.
 #[derive(Debug, Clone)]
 pub struct ListWindowValue {
     pub window: ListWindow,
     pub rows: ListRows,
-    pub first: Option<OrderKey>,
-    pub beyond: Option<OrderKey>,
+    pub keys: Vec<OrderKey>,
 }
 
 impl ListWindowValue {
     /// Build the value from `read`, with its rows in the [`ListRows`] variant
     /// that `rows` returns.
     pub fn of<R>(read: WindowRead<R>, rows: impl FnOnce(Vec<R>) -> ListRows) -> Self {
-        let WindowRead { window, rows: read_rows, first, beyond } = read;
-        Self { window, rows: rows(read_rows), first, beyond }
+        let WindowRead { window, rows: keyed } = read;
+        let (read_rows, keys) = keyed.into_iter().unzip();
+        Self { window, rows: rows(read_rows), keys }
     }
 }
 
-/// A window of a list read live: the caller changes the window on the same
-/// live query, and each read answers the window last set.
+/// A window of a list read live: the list's view moves the window on the
+/// same live query, and each read answers the window last set.
 pub type LiveListWindow = LiveRead<ListWindow, ListWindowValue>;
 
 /// One delivery of a list's count: how many rows it has, which sizes its

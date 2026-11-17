@@ -269,10 +269,8 @@ async fn the_page_rows_follow_writes_in_their_windows() {
     write_page(&db).await;
     let views = LibraryViews::new(db.clone());
     let from = views.composer_detail_key_at(COMPOSER, 8).await.unwrap().expect("a row at 8");
-    let mut live = views.subscribe_composer_detail_window(
-        COMPOSER,
-        ListWindow::Forward { from: Some(from), until: None, limit: 50 },
-    );
+    let mut live = views
+        .subscribe_composer_detail_window(COMPOSER, ListWindow { from: Some(from), limit: 50 });
     let mut count = views.subscribe_composer_detail_count(COMPOSER);
     let first = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 12);
@@ -291,7 +289,7 @@ async fn the_page_rows_follow_writes_in_their_windows() {
         .unwrap();
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 11);
     assert_eq!(after.rows.len(), 3);
-    assert!(after.rows[0].opens_heading);
+    assert!(after.rows[0].0.opens_heading);
 
     let other = views
         .subscribe_composer_detail_count(OTHER_COMPOSER)

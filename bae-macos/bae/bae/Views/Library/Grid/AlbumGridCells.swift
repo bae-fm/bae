@@ -161,10 +161,9 @@ struct AlbumGridCells: RandomAccessCollection {
     private let albumIds: [Int: String]
     private let expansion: Expansion?
 
-    /// `loaded` is every loaded position with its album, in position order.
-    /// An album loaded at two positions — a page delivered before the page it
-    /// left — shows at the first; the other position waits as a placeholder,
-    /// since one album is one slot within a section.
+    /// `loaded` is every loaded position with its album, in position order:
+    /// the rows of the list's one window, which holds each album once within
+    /// a section.
     init(
         totalCount: Int,
         columnCount: Int,
@@ -191,10 +190,8 @@ struct AlbumGridCells: RandomAccessCollection {
         self.startPosition = positions.lowerBound
         self.sectionId = sectionId
         var albumIds: [Int: String] = [:]
-        var shown: Set<String> = []
         var openPosition: Int?
-        for (position, albumId) in loaded
-        where positions.contains(position) && shown.insert(albumId).inserted {
+        for (position, albumId) in loaded where positions.contains(position) {
             albumIds[position] = albumId
             if albumId == openAlbumId {
                 openPosition = position - positions.lowerBound

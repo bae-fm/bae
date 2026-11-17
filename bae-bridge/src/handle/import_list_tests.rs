@@ -2,18 +2,12 @@
 
 use crate::types::{
     BridgeImportListItem, BridgeImportListOrder, BridgeImportListView, BridgeListRows,
-    BridgeListWindow, BridgeListWindowValue, BridgePendingFilter, BridgeSelectionSummary,
-    BridgeTriageTab,
+    BridgeListView, BridgePendingFilter, BridgeSelectionSummary, BridgeTriageTab,
 };
 use std::sync::Arc;
 
-/// The first fifty items of the list, a window of its own.
-fn page() -> BridgeListWindow {
-    BridgeListWindow::Forward { from: None, until: None, limit: 50 }
-}
-
-/// The candidate keys the window shows, top to bottom.
-fn rows(value: &BridgeListWindowValue) -> Vec<Vec<u8>> {
+/// The candidate keys the view shows, top to bottom.
+fn rows(value: &BridgeListView) -> Vec<Vec<u8>> {
     let BridgeListRows::Import { items, .. } = &value.rows else {
         panic!("the import list's window holds the import list's rows");
     };
@@ -26,23 +20,23 @@ fn rows(value: &BridgeListWindowValue) -> Vec<Vec<u8>> {
         .collect()
 }
 
-/// The window's values until one `accept` admits.
+/// The view's values until one `accept` admits.
 fn until(
     handle: &crate::handle::AppHandle,
-    window: &Arc<crate::ListWindowSubscription>,
-    accept: impl Fn(&BridgeListWindowValue) -> bool,
-) -> BridgeListWindowValue {
+    window: &Arc<crate::ListViewSubscription>,
+    accept: impl Fn(&BridgeListView) -> bool,
+) -> BridgeListView {
     handle.runtime.block_on(async {
         tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
             loop {
-                let value = window.clone().next().await.expect("the window answers");
+                let value = window.clone().next().await.expect("the view answers");
                 if accept(&value) {
                     return value;
                 }
             }
         })
         .await
-        .expect("a window value meets the test's condition")
+        .expect("a view value meets the test's condition")
     })
 }
 
@@ -100,7 +94,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    let window = list.subscribe_list_window(page());
+    let window = list.subscribe_list_view(0, 9);
     let selection = list.subscribe_selection();
     until(handle.handle(), &window, |value| rows(value) == parts);
 
@@ -152,7 +146,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             order: BridgeImportListOrder::PathAscending,
         }))
         .expect("the list opens");
-    let window = list.subscribe_list_window(page());
+    let window = list.subscribe_list_view(0, 9);
     let selection = list.subscribe_selection();
     until(handle.handle(), &window, |value| rows(value) == [key.clone()]);
     selection.set_selected(vec![key.clone()]).unwrap();

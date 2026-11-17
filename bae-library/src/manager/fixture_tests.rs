@@ -84,11 +84,8 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
         .collect();
     assert_eq!(credited, ["Artist A", "Artist B"]);
 
-    let mut browse = views(manager).subscribe_album_window(
-        &[],
-        true,
-        bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
-    );
+    let mut browse =
+        views(manager).subscribe_album_window(&[], true, bae_store::ListWindow::top(10));
     let grouped = browse.next_inline().await.expect("the query stays open").result.unwrap();
     let rows = &grouped.rows;
     let found = views(manager)
@@ -104,7 +101,7 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
             let end = start + section.album_count as usize;
             (
                 section.title.clone(),
-                rows[start..end].iter().map(|row| row.album.title.clone()).collect(),
+                rows[start..end].iter().map(|(row, _key)| row.album.title.clone()).collect(),
             )
         })
         .collect();
@@ -218,7 +215,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
     let standings: std::collections::BTreeMap<String, Option<PendingStanding>> = projection
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.folder_name.clone(), live.standing.clone()))
@@ -289,7 +286,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
         .await
         .windows
         .into_iter()
-        .flat_map(|window| window.rows)
+        .flat_map(|window| window.rows.into_iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row),
             _ => None,

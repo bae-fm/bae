@@ -21,7 +21,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeTopPlayable
 import java.util.concurrent.TimeUnit
 
@@ -29,7 +28,7 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class BaeLibrarySessionCallbackTest {
     @Test
-    fun legacyGetChildrenEstablishesInterestBeforeRequestingAWindow() {
+    fun legacyGetChildrenEstablishesInterestBeforeOpeningAView() {
         val handle = FakeAppHandle(albumList = FakeAlbumList(albums(25), deliverImmediately = false))
         val tree = tree(handle)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -41,18 +40,18 @@ class BaeLibrarySessionCallbackTest {
             ) { "not found: $it" }.getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
 
         assertFalse(request.isDone)
-        assertTrue(handle.albumList.windows.isEmpty())
+        assertTrue(handle.albumList.views.isEmpty())
         handle.albumList.emitCount()
-        handle.albumList.windows
+        handle.albumList.views
             .single()
             .deliver()
 
         assertEquals(SessionResult.RESULT_SUCCESS, request.get(1, TimeUnit.SECONDS).resultCode)
         assertEquals(
-            listOf(BridgeListWindow.Forward(handle.albumList.key(0), null, 20uL)),
-            handle.albumList.windows
+            listOf(0..19),
+            handle.albumList.views
                 .single()
-                .requested,
+                .reported,
         )
         tree.close()
         scope.cancel()
@@ -77,7 +76,7 @@ class BaeLibrarySessionCallbackTest {
         }
 
         assertEquals(1, handle.albumList.counts.size)
-        assertEquals(1, handle.albumList.windows.size)
+        assertEquals(1, handle.albumList.views.size)
         tree.close()
         scope.cancel()
     }

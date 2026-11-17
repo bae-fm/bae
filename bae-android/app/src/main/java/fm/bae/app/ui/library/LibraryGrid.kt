@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.creditLineNamed
@@ -86,7 +85,7 @@ internal fun AndroidAlbumGrid(
     onSelectArtist: (String) -> Unit,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 150.dp),
+        columns = GridCells.Adaptive(minSize = ALBUM_CARD_MIN_WIDTH),
         state = gridState,
         contentPadding = PaddingValues(ThemeSpace.group),
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),

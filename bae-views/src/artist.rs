@@ -22,7 +22,7 @@ impl LibraryViews {
         let order = artist_order(sort);
         self.store
             .read(move |sql| {
-                Ok(artist_rows_on(&sql, &order, &order.everything(), limit, offset)?
+                Ok(artist_rows_on(&sql, &order, &order.at_offset(offset), limit)?
                     .into_iter()
                     .map(|(row, _)| row)
                     .collect())
@@ -40,8 +40,8 @@ impl LibraryViews {
     {
         let order = artist_order(sort);
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            artist_rows_on(sql, &read_order, seek, limit, offset)
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
+            artist_rows_on(sql, &read_order, seek, limit)
         })
     }
 
@@ -75,8 +75,8 @@ impl LibraryViews {
         let order = artist_order(sort);
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    artist_rows_on(&sql, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    artist_rows_on(&sql, &order, seek, limit)
                 })
             })
             .await
@@ -226,17 +226,16 @@ impl ArtistDetailRows {
     }
 }
 
-/// The artist list's rows `seek` reads in `order`, at most `limit` from
-/// `offset`, each with its key.
+/// The artist list's rows `seek` reads in `order`, at most `limit`, each
+/// with its key.
 pub(crate) fn artist_rows_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbArtistSummary>>, DbError> {
     let statement = listing_window_query(artist_listing_query, order, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| Ok((row_to_artist_summary(row)?, order.key_of(row)?)))
     })?)
 }

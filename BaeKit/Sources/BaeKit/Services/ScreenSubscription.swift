@@ -157,9 +157,8 @@ extension LibraryNameSubscription: PulledSubscription {}
 extension DeviceStorageSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}
 extension StorageSetupFinishingSubscription: PulledSubscription {}
-extension ListWindowSubscription: PulledSubscription {}
+extension ListViewSubscription: PulledSubscription {}
 extension ListCountSubscription: PulledSubscription {}
-extension ListPositionSubscription: PulledSubscription {}
 extension AlbumSectionsSubscription: PulledSubscription {}
 extension AlbumSelectionSubscription: PulledSubscription {}
 extension LibrarySearchSubscription: PulledSubscription {}

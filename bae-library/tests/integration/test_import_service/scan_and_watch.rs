@@ -145,7 +145,7 @@ fn candidate_rows(projection: &bae_import::ImportListRead) -> Vec<&bae_import::T
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row),
             _ => None,

@@ -25,7 +25,9 @@ internal fun rememberArtistPage(
     sortCriterion: BridgeArtistSortCriterion,
 ): ArtistPageStore {
     val page = session.browserPages.artists
+    val screenRows = rememberScreenRows()
     DisposableEffect(page, sortCriterion) {
+        page.screenRows = screenRows
         page.activate(sortCriterion)
         onDispose(page::deactivate)
     }

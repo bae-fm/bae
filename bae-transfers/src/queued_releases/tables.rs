@@ -263,24 +263,24 @@ pub fn queue_order() -> ListOrder {
     ListOrder::new(vec![SortTerm::ascending("q.position")])
 }
 
-/// The queue's entries `seek` reads in `order`, at most `limit` from
-/// `offset`, each with its key.
+/// The queue's entries `seek` reads in `order`, at most `limit`, each with
+/// its key.
 pub fn queue_window_rows_on<P: QueuedPayload>(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<ReleaseQueueRow<P, ()>>>, DbError> {
     let statement = queue_rows_sql::<P>(
         Some(order),
         &format!(
-            "WHERE {} ORDER BY {} LIMIT :limit OFFSET :offset",
+            "WHERE {} ORDER BY {} {}",
             order.condition(seek),
-            order.ordering(seek)
+            order.ordering(seek),
+            seek.limit_clause(),
         ),
     );
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| Ok((queue_row::<P>(row)?, order.key_of(row)?)))
     })?)
 }

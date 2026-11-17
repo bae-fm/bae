@@ -73,20 +73,44 @@ fn album_order_tables(group_by_artist: bool) -> &'static str {
 }
 
 /// The statement reading the album list's rows `seek` reads (grouped by
-/// artist or not) in `order`, at most `:limit` from `:offset`, each with the
-/// artist whose group lists it and its key.
+/// artist or not) in `order`, at most `:limit`, each with the artist whose
+/// group lists it and its key.
 ///
-/// The window is picked by an inner statement that reads only the ids of its
-/// rows from the tables holding the order's terms, so a row `:offset` skips
-/// costs its place in the order's indexes and nothing else: every link has
-/// its listing row and every listing row its album, as their foreign keys
-/// hold. The outer statement reads the columns of just the picked rows, in
-/// the same order.
+/// A window's statement is one SELECT over the tables holding the order's
+/// terms, joined to each row's album, returning the order's terms as its key
+/// columns, so coven reruns it for a write at or before its last row alone.
+/// A read by offset picks its rows in an inner statement that reads only the
+/// ids of its rows from the tables holding the order's terms, so a row
+/// `:offset` skips costs its place in the order's indexes and nothing else:
+/// every link has its listing row and every listing row its album, as their
+/// foreign keys hold. Its outer statement reads the columns of just the
+/// picked rows, in the same order.
 pub(crate) fn album_window_statement(
     group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
+    if !seek.by_offset() {
+        let listing = if group_by_artist {
+            "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
+        } else {
+            ""
+        };
+        return format!(
+            "{select}, {beside} AS credited_with, {keys} \
+             {tables} {listing} \
+             JOIN albums a ON a.id = listing.album_id \
+             WHERE {condition} \
+             ORDER BY {ordering} {limit}",
+            select = album_summary_select(),
+            beside = album_credits_beside_sql(group_by_artist),
+            keys = order.key_columns(),
+            tables = album_order_tables(group_by_artist),
+            condition = order.condition(seek),
+            ordering = order.ordering(seek),
+            limit = seek.limit_clause(),
+        );
+    }
     let (picked, picked_ids) = if group_by_artist {
         (
             "artist.artist_id AS picked_artist_id, link.album_id AS picked_album_id",
@@ -104,7 +128,7 @@ pub(crate) fn album_window_statement(
     format!(
         "{select}, {beside} AS credited_with, {keys} \
          FROM (SELECT {picked} {tables} WHERE {condition} \
-               ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
+               ORDER BY {ordering} {limit}) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
          ORDER BY {ordering}",
@@ -114,21 +138,21 @@ pub(crate) fn album_window_statement(
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     )
 }
 
 /// The album list's rows `seek` reads (grouped by artist or not) in `order`,
-/// at most `limit` from `offset`, each with its key.
+/// at most `limit`, each with its key.
 pub(crate) fn album_rows_on(
     sql: &SqlReadContext<'_>,
     group_by_artist: bool,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<AlbumAppearanceRow>>, DbError> {
     let statement = album_window_statement(group_by_artist, order, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| {
             Ok((
                 AlbumAppearanceRow {

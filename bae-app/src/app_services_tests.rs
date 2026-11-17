@@ -95,15 +95,15 @@ async fn queue_value_with_context(services: &AppServices) -> bae_playback::Resol
 }
 
 /// The upcoming tracks are a list the queue screens read like any other: a
-/// window of a range of the lane's order whose bounds the screen changes on the
-/// same live query, its own count, and the key at a position. Skipping ahead
+/// window of the lane's order from a key, which the screen moves on the same
+/// live query, its own count, and the key at a position. Skipping ahead
 /// moves the playing track, which moves the list's top, its count and the
 /// window over it.
 #[tokio::test]
 async fn the_upcoming_list_follows_the_playing_track_through_its_window_and_count() {
     let (services, track_ids, _temp_dir) = playing_app_services(12).await;
     queue_value_with_context(&services).await;
-    let top = |limit| bae_store::ListWindow::Forward { from: None, until: None, limit };
+    let top = |limit| bae_store::ListWindow::top(limit);
     let window = services.subscribe_upcoming_window(false, top(3));
     let ids = |value: &bae_views::ListWindowValue| match &value.rows {
         bae_views::ListRows::Upcoming(rows) => {
@@ -114,17 +114,17 @@ async fn the_upcoming_list_follows_the_playing_track_through_its_window_and_coun
     let first = tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap();
     assert_eq!(ids(&first), track_ids[1..4].to_vec());
 
-    // The same window object moves to a later range, from a key the list
+    // The same window object moves to later rows, from a key the list
     // gave.
-    let key = services.upcoming_key_at(false, 6).await.unwrap().expect("a key at position 6");
-    window.set(bae_store::ListWindow::Forward { from: Some(key), until: None, limit: 2 }).unwrap();
+    let key = services.inner.manager.upcoming_key_at(false, 6).await.unwrap().expect("a key at 6");
+    window.set(bae_store::ListWindow { from: Some(key), limit: 2 }).unwrap();
     let moved = loop {
         let value = tokio::time::timeout(HANG_GUARD, window.next()).await.unwrap().unwrap();
         if ids(&value) == track_ids[7..9].to_vec() {
             break value;
         }
     };
-    assert!(moved.first.is_some());
+    assert_eq!(moved.keys.len(), 2, "each row carries its key");
 
     // Skipping to the next track moves the list's top, and its count.
     window.set(top(3)).unwrap();

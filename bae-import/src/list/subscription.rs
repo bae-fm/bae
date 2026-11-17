@@ -50,7 +50,9 @@ impl From<ImportListError> for ImportListFailure {
 
 /// One open list. Every live query opened from it ends when it closes, and
 /// when the library does. Dropped without [`Self::cancel`], its row stays
-/// until the library next opens, when every list closes.
+/// until the library next opens, when every list closes. A clone names the
+/// same list, so the list's view opens its window and position from one.
+#[derive(Clone)]
 pub struct LiveImportList {
     list: ImportListId,
     tables: ImportTables,

@@ -679,8 +679,8 @@ without case, as the album grid's do. A work shows the cover of its first
 album by title, compared the same way, then by id, among the albums with a
 release that performs it: that album's primary release's cover when the release performs
 the work, otherwise that of the album's first release, in its order, that
-does. The page is read a window at a time, as
-the lists are (§9.2), and opens the first work it lists.
+does. bae reads the page through one window, as
+it reads the lists (§9.2), and opens the first work it lists.
 
 **A work's page** lists its parts, in the work's order, then the releases
 that perform it, then their tracks that do. Releases go in the order the
@@ -1244,24 +1244,24 @@ A list narrowed anew — another tab, filter or search — shows on top the row
 its view opened at: its first selected row as it sat when the view was set,
 or its top while no selected row is shown. The screen passes the keys it
 keeps selected to the write that sets the view, which works that place out and
-answers with it, as the row's key and its position, or its top, with the
-selected rows that leave the selection; the screen drops the windows and
-counts it holds, opens new ones from that place, and scrolls the table there,
+answers with it, as the row's position, or its top, with the selected rows
+that leave the selection; the screen drops the view and count it holds, opens
+new ones at that place, and scrolls the table there,
 so a read opened after the write sees the new view from its first value and no
 read carries a revision. Changing the order does not move the list to a new
 place: the write answers nothing, as it does when the view did not change, and
-no selected row leaves the selection. The screen reads its windows again from
-the row now at the first position on screen, since a window starts at a row's
-sort values in the order the screen read it in, and keeps its count, since another order moves the rows
-and not how many there are; the table keeps its own scroll and draws the rows in the old
-order until the first window in the new order answers. Nothing keeps the place on the list: selecting rows
+no selected row leaves the selection. The screen opens a new view at the rows
+on screen, since a window starts at a row's sort values in the order the screen
+read it in, and keeps its count, since another order moves the rows and not how
+many there are; the table keeps its own scroll and draws the rows in the old
+order until the new view answers. Nothing keeps the place on the list: selecting rows
 since moves no place, and the list otherwise keeps the person's place as rows
 come and go: when the rows change, core says where the release on top sits now
 in the view as it stands, its filters and folds included, and the table puts it
 back on top, unless the person scrolls before core
 answers. A header or a broken folder on top keeps its position. The write looks
-for the first selected row only among the keys the screen passes, and counts the rows before it by the same index seeks bae uses to read a
-window that starts at a row, as a count over index ranges and not a numbering of
+for the first selected row only among the keys the screen passes, and counts the rows before it by the same index seeks bae uses to read
+the window from a row, as a count over index ranges and not a numbering of
 each row, and a view with nothing selected opens at its top without reading its
 rows.
 
@@ -1270,27 +1270,27 @@ person asks for — shows it on the tab its placement puts it on, with the
 filters cleared and its group opened, the list's other folds kept.
 
 bae reads everything the list shows from tables, each piece its own live query:
-each window of its rows (a range of its order, bounded by the sort values of a
-row at each end), how many items it holds and how many its filters keep, where
+the window of its rows (the rows of its order from the sort values of one row
+on), how many items it holds and how many its filters keep, where
 a key sits in it, whether bae watches any folder, whether Found has groups,
 and what the view narrows by, Found's filter entries, and what the selected
 rows hold and offer. A row carries nothing of the selection: the screen draws each row's
 highlight from the keys it keeps, so selecting rows writes nothing and reruns
-no window, and the selection's own read reruns when the screen gives it other
-keys or a write changes their rows. Folding a group reruns the windows holding
-it, and the fold answers with the selected rows it hid. Each release's tab, state, group, dates, shown
+no read of the rows, and the selection's own read reruns when the screen gives it other
+keys or a write changes their rows. Folding a group reruns the window when it
+holds the group, and the fold answers with the selected rows it hid. Each release's tab, state, group, dates, shown
 text and what its commands are decided from are kept beside it as it changes
 (Appendix A.7), so the list reads the rows it shows and not the whole queue. A
 row reads none of its folder's files, so a folder on a slow or unreachable
 volume does not hold up the list, and a linked row reads only the records its
-stored releases name, not the releases whole. The list reads each window in one
+stored releases name, not the releases whole. The list reads its window in one
 statement, which takes the window's range of the order as its first table. The
 statement joins these rows to the range by each item's key: each group's header,
 each release's placement, scan, link and draft, the records and the upload
 standing of an imported release, the records stored for what a linked row's
 link claims (each release's album, its own records and the albums kept for
-those), the file versions its folder-image and embedded covers name, and the header of
-the group a window starts inside of, with the key of the item beyond the window.
+those), the file versions its folder-image and embedded covers name, and the
+header of the group the window starts inside of.
 Core sends each offer with the number shown beside it and whether it can run:
 a row's own offers, each for that one row and leaving out Combine, come with
 the row, and a selection's come from one statement, which counts the rows each
@@ -1299,35 +1299,35 @@ one release and none otherwise. bae counts each tab's rows, each filter entry's
 rows, how many items the list holds, how many releases its filters keep and how
 many rows each group's header counts with COUNT queries over the placement's
 rows, which read the placement's indexes. No table stores the counts. The list's count, with the narrowed count it carries, is a live
-query of its own, apart from the windows: a scan's commit changes it without
-resending every window. The list's count also carries every tab's count,
+query of its own, apart from the window: a scan's commit changes it without
+resending the window. The list's count also carries every tab's count,
 whatever the person narrows the list by, and the tab bar shows them from it. Coven
-bounds a window's read by its range only where the statement compares a column
-with the window's keys; the list's items read a group's header through a
-correlated subquery of the placement, so a scan item or a fold reruns every
-window of the list, and a rerun that finds the rows the window already held
-sends nothing to the screen. A search counts the rows its index finds in every read of the list:
+narrows a rerun of the window only for a statement that orders by stored
+columns it returns; the list reads its window as one compound statement whose
+items read a group's header through a correlated subquery of the placement, so
+a scan item or a fold reruns the list's window, and a rerun that finds the rows
+the window already held sends nothing to the screen. A search counts the rows its index finds in every read of the list:
 each release's shown text is kept, case folded, in a trigram index beside its
 placement (Appendix A.7), so a search of three characters or more reads the rows
-holding it, and a shorter one reads every release's text from the index. A
-window is a range of the order: from the sort values of one row to those of
-another, each bound optional, read through the order's index and running on into
-the next part of the tab, or back into the one before it, when its part holds
-too few rows. A key leads with the number of its part (Imported's queued uploads
-are the first part, its other rows the second, every other tab one), so a range
-may start in one part and end in another. A jump to a position reads the key of
-the item there by offset from the top of the tab, once, and starts a chain of
-windows from it. A search reads each row the list's order passes and tests it,
+holding it, and a shorter one reads every release's text from the index. The
+window is the rows from the sort values of one row on (from the tab's top when
+it has none), at most as many as core sized it for, read through the order's
+index and running on into the next part of the tab when its part holds too few
+rows. A row's sort values lead with the number of its part (Imported's queued
+uploads are the first part, its other rows the second, every other tab one), so
+the window may start in one part and end in another. A jump to a position reads
+the sort values of the item there by offset from the top of the tab, once, and
+starts the window from them. A search reads each row the list's order passes and tests it,
 at every size: a jump reads its key by offset from the top, as it does without a
 search, however few rows the search finds, and its count is a live query of its
-own, so the screen draws a search's rows as its first window arrives and its "N
+own, so the screen draws a search's rows as its window arrives and its "N
 of M" and length when the count arrives, showing the placeholder in their place
 meanwhile. A member of a group names its header by the header's stable key, and
 a window that starts inside a group delivers that header beside its rows (the
-leading header), so the screen can pin the header whichever windows it has
-loaded and no read counts the rows above a window. Found reads its windows past
-the members of the groups it folds shut, so with every group folded a window
-costs about the headers it shows; and whether a header offers to read its folder
+leading header), so the screen can pin the header whatever rows it has loaded,
+and no read counts the rows above the window to find it. Found reads its window
+past the members of the groups it folds shut, so with every group folded the
+window costs about the headers it shows; and whether a header offers to read its folder
 as one release is kept on the header as the rows below it and the readings
 stored for it change. The pane reads its one candidate's rows by the candidate's
 key, and so does every read of one candidate's state, draft or preparation, so
@@ -4933,11 +4933,12 @@ changed: that is rare, and the screen already shows the queue as it now is,
 so the gesture just ends.
 
 The queue screens read What's playing from's tracks as any other list. They read
-the tracks after the current one in windows, each a range of the order the part
-reads in (its own, or the shuffled one while shuffle is on). They read the
-list's count in a query of its own, and a jump to a row reads the key at that
-row's position. coven reruns only the window whose rows a write moves; moving on
-to the next track moves the list's top.
+the tracks after the current one through one window, a range of the order the
+part reads in (its own, or the shuffled one while shuffle is on), which core
+keeps around the rows on screen. They read the list's count in a query of its
+own, and a jump to a row reads the sort values at that row's position. coven
+reruns the window only for a write at or before its last row; moving on to the
+next track moves the list's top.
 When shuffle turns on or off, the queue keeps showing the rows of the old order
 until the new order's count and first rows arrive, so the list never empties
 between the two.
@@ -5770,64 +5771,62 @@ Reads come two ways:
   live. A read that fails is delivered as a value and the
   subscription goes on, but one that fails because the store closed, or
   because the library can no longer read or write it, is delivered once and
-  ends the subscription. The album grid, the artist and composer lists, a composer's page, the
-  download queue, the Storage manager and an artist picker's search are shown
-  as windows, each its
-  own live query, with its count and the position of a key in it live queries
-  of their own, the same objects for every list (a list is a value naming it,
-  and one handle call each opens a window, a count or a position). A window is
-  a range of the list's order: the rows at or after the sort values of one row
-  (the top of the grid when it has none) and before those of another (no end
-  when it has none), at most a page of them, read as a run of index seeks, each
-  an index range with both ends set, so coven reruns a window for a write that
-  changes a row inside its range and no other, for every order, a nullable
-  term's NULLs included. A write to what a row shows, such as an album's
-  cover, reruns only the windows showing that row. The screen holds a chain of
-  windows that share bounds, so every row is in exactly one: each delivery
-  names the window it answers, the sort values of its first row, and those of
-  the row past its far end, read as one row more than the page, which the
-  screen sends back as the bound of the window beside it. A window that
-  reaches its bound is closed on it; a closed window that gains rows past its
-  page is split at the row beyond it; one left with no rows is dropped into
-  its neighbour. The chain grows downward from its last window's beyond row and
-  upward by a window that ends at its first window's start, and drops windows
-  more than two pages off the visible rows. Rows are drawn at the chain's start
-  position plus the rows of the windows above them; a chain that starts at the
-  top starts at row 0, and otherwise at a live count of the rows before its
-  first key: one statement that adds the COUNT of each index range before the
-  key, so SQL sums the counts. A list's count is its own live query delivering its row count,
+  ends the subscription. The apps show the album grid, the artist and composer
+  lists, a composer's page, the download queue, the Storage manager, an artist
+  picker's search, the queue's upcoming tracks and the import list through one
+  live window each. Every list uses the same bridge objects: a value names the
+  list, one handle call opens its view, and another opens its count. Each list
+  sorts by terms that end with a unique one, so every row has one place, and an
+  index serves each of its sorts. The app reports the first and last row on
+  screen: when it opens the list, from its own height and its row height before
+  any row arrives (rows 0 to as many as fit, or the place a jump or a reveal
+  asks for), and again each time the person scrolls, resizes or jumps. Core
+  keeps the list's one window around those rows: the rows on screen and about
+  one screen of rows above and one below them, with no fixed number of rows.
+  The window holds the rows at or after the sort values of one row (from the
+  list's top when it has none), at most as many as core sized it for, read as a
+  run of index seeks. Each seek is one statement with an ORDER BY and a LIMIT
+  and no OFFSET, and where each term it orders by is a stored column of one
+  table that the statement returns, coven reruns it, once it has returned as
+  many rows as its LIMIT, only for a write at or before its last row: a write
+  after the window reruns nothing. The album grid sorted by year (whose first
+  term is whether the year is missing) or grouped by artist (whose terms span
+  two tables), a composer's page, the artist picker's search and the import
+  list break those conditions, so coven reruns their window for every write to
+  what it reads. When the rows on screen come within half a
+  screen of an edge of the window past which the list goes on, core moves the
+  window so that they sit in its middle. The new window starts at the sort
+  values of a row the window holds; when it holds no such row (a scrollbar
+  drag, the end key, a reveal), core reads the sort values of the row at that
+  position once, by offset. The window's position is a live count of the rows
+  before its first row: one statement that adds the COUNT of each index range
+  before that row, so SQL sums the counts; a window at the list's top is at
+  row 0. Core holds the latest answer of the window's query and of its
+  position's query, and nothing else. The app draws each row at the window's
+  position plus the row's place in the window, and a placeholder at every
+  place outside the window. When rows come or go above the rows on screen, the
+  window's position moves with them, and the app keeps the top row on screen
+  where it was. A list's count is its own live query delivering its row count,
   which sizes the scroll view, and how many distinct items the rows show: the
   album grid's albums, which grouped by artist are fewer than its rows, and the
-  row count for every other list. A jump (a scrollbar drag, the end key, a reveal)
-  reads the sort values of the row at a position once, by offset, and starts a
-  chain there. The screen keeps drawing the rows it has until the new chain's
-  first window answers, so a jump or another order never empties it. A row whose sort values move it from one window to its
-  neighbour can show in both or in neither until the second window's value
-  arrives. The import list is read the same way: each of its windows, its count, the
-  position of a key and the chrome around it is a live read of its own,
-  opened from the open list, whose keys lead with the number of the part of
-  the tab a row is in. Nothing about where rows sit is kept between reads. The playback queue's upcoming tracks are one more list: its windows are
-  ranges of the context lane's places, which are dense whole numbers, and a
-  jump passes over those places by offset before any track is read, so a deep
-  window costs little. The Storage manager's search counts what it
-  finds first: from library search's indexes when its text is in fewer
-  album titles than about a fifth of the listed releases, else by taking the
-  releases it doesn't find off the counts kept beside the listing, found in
-  one pass over every title as the album search table keeps it, less the
-  albums a credit's name finds. It reads a window from the releases it
-  finds, sorted, when that costs less than passing the releases it doesn't
-  find on the way through the sort's index, and otherwise tests each release
-  the index reaches by its album's own text in the search tables; so a
-  search finding a handful of releases never walks the whole index, and a
-  window of one finding most of them costs about what the unsearched list's
-  does. The artist picker's
-  search is a list of its own for each text typed (a new text is new queries):
+  row count for every other list. When another order, a reopen or a jump opens
+  a new view, the app keeps drawing the rows it has until the new view
+  answers, so the screen never empties. bae keeps nothing about where rows sit
+  between reads. bae reads the import list the same way: its view, its count
+  and its summary are each a live read of its own, opened from the open list,
+  whose sort values lead with the number of the part of the tab a row is in.
+  The queue's upcoming tracks are one more list: its window is a range of the
+  context lane's places, which are whole numbers with no gaps, and a jump skips
+  those places by offset before the query reads any track, so a deep window
+  costs little. The Storage manager's count and its window read one statement
+  each, whether the search finds few releases or many. The artist picker's
+  search opens a new list, with new queries, for each text the person types:
   its order puts the artists whose id or name the text matches exactly first,
-  then those whose name starts with it, then the rest, by name and id, and a
-  window of it is a range of that order read as the others are, from every
-  artist its text finds. Until the query for the new text returns its first
-  rows, the picker shows the rows the previous text found; when the new text's
-  first read fails, the picker shows that failure instead of a list.
+  then those whose name starts with it, then the rest, by name and id, and bae
+  reads its window the way it reads the other lists, from every artist its text
+  finds. Until the query for the new text returns its first rows, the picker
+  shows the rows the previous text found; when the new text's first read fails,
+  the picker shows that failure instead of a list.
   The Storage manager's count delivers its row count and its files' total
   size, and whether a search narrows it; a new sort, filter or search opens new
   queries. The app keeps the selected release ids in the view, and each row in
@@ -6239,12 +6238,13 @@ release's or track's id as UTF-8, or a candidate's key.
   filters, sorts, joins, groups, counts and windows. Nothing is kept in memory between reads, no pass walks rows beside a
   live query, no value is written only to make a query read again, and no size
   cutoff sends a read down one of two paths. A long list's window, its count
-  and its section headers are separate live queries: a window is a range of the
-  order bounded by the sort values of a row at each end, sought through the
-  order's index, so only a write inside it reruns it, and the windows the
-  screen holds share bounds; a jump to a position reads the key at that
-  position by offset, indexed only when it measures slow enough to warrant one,
-  and starts the windows there.
+  and its section headers are separate live queries: the list has one window,
+  the rows from the sort values of one row on, at most as many as core sizes it
+  for around the rows on screen, sought through the order's index, so a write
+  after it reruns nothing; core moves the window as the rows on screen move,
+  and a jump to a position reads the sort values at that position by offset,
+  indexed only when it measures slow enough to warrant one, and starts the
+  window there.
 - **Screen subscriptions** are objects the app pulls from, built only in the
   bridge's `screens` module (`screens.rs` and its submodules) from a live
   query: `next()` answers the first value at

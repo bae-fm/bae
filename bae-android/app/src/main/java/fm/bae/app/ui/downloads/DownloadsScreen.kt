@@ -39,6 +39,7 @@ import fm.bae.app.ui.components.AndroidTopBar
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
+import fm.bae.app.ui.library.rememberScreenRows
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -58,7 +59,9 @@ internal fun DownloadsScreen(
     val context = LocalContext.current
     val paused = counts?.wait == BridgeQueueWait.PAUSED
     val page = session.browserPages.downloads
+    val screenRows = rememberScreenRows()
     DisposableEffect(page) {
+        page.screenRows = screenRows
         page.activate(Unit)
         onDispose(page::deactivate)
     }
@@ -122,7 +125,7 @@ internal fun AndroidStoragePinning(
 
 /**
  * The queue's rows, or why there are none: the counts failing, the first
- * window failing, an empty queue; nothing while the first window loads.
+ * read of the rows failing, an empty queue; nothing while the first rows load.
  */
 @Composable
 private fun BoxScope.DownloadsBody(
@@ -188,7 +191,7 @@ internal fun DownloadsEmpty(modifier: Modifier = Modifier) {
     )
 }
 
-/** Tells [page] which rows show, so it reads the windows around them. The summary line is row 0. */
+/** Tells [page] which rows show, so core reads the window around them. The summary line is row 0. */
 @Composable
 private fun ReportVisibleDownloads(
     page: DownloadPageStore,

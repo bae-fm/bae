@@ -146,7 +146,7 @@ impl ImportTables {
     ) -> Result<crate::list::ImportListRead, DbError> {
         self.store
             .read(move |sql| {
-                let window = ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+                let window = ListWindow::top(u64::MAX);
                 let rows = window_on(&sql, list, &window)?;
                 Ok((
                     rows,

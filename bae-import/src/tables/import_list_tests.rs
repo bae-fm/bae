@@ -315,9 +315,9 @@ impl Library {
         read
     }
 
-    /// The window of `limit` items from the item at `offset`, read as a chain
-    /// of windows reads it after a jump: the key at the offset, then the range
-    /// from it.
+    /// The window of `limit` items from the item at `offset`, read as a view
+    /// reads it after a jump: the key at the offset, then the window from
+    /// it.
     pub(crate) async fn window_at(
         &self,
         list: ImportListId,
@@ -327,10 +327,7 @@ impl Library {
         let tables = self.tables();
         let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
         tables
-            .read_import_window(
-                list,
-                bae_store::ListWindow::Forward { from: Some(key), until: None, limit },
-            )
+            .read_import_window(list, bae_store::ListWindow { from: Some(key), limit })
             .await
             .unwrap()
     }
@@ -364,7 +361,14 @@ pub(crate) fn view(tab: TriageTab) -> ImportListView {
 /// group's name, a release or a folder that failed validation by its folder
 /// below its watched folder.
 pub(crate) fn sequence(projection: &ImportListRead) -> Vec<String> {
-    projection.windows.iter().flat_map(|window| items_sequence(&window.rows)).collect()
+    projection.windows.iter().flat_map(|window| items_sequence(&unkeyed(&window.rows))).collect()
+}
+
+/// A window's items without their keys.
+pub(crate) fn unkeyed(
+    rows: &[bae_store::list_windows::Keyed<ImportListItem>],
+) -> Vec<ImportListItem> {
+    rows.iter().map(|(item, _key)| item.clone()).collect()
 }
 
 /// `items`, one readable line each, as [`sequence`] gives them.
@@ -409,7 +413,7 @@ pub(crate) fn row_at<'a>(
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .find_map(|item| match item {
             ImportListItem::Candidate { row, live, .. }
                 if self::display_path(row) == display_path =>
@@ -567,7 +571,7 @@ pub(crate) fn rows(projection: &ImportListRead) -> Vec<crate::TriageRow> {
     projection
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,
@@ -581,7 +585,7 @@ pub(crate) fn window_rows(window: &crate::ImportWindow) -> Vec<crate::TriageRow>
         .read
         .rows
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(item, _key)| match item {
             ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,
         })
@@ -623,8 +627,7 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
-                let everything =
-                    bae_store::ListWindow::Forward { from: None, until: None, limit: u64::MAX };
+                let everything = bae_store::ListWindow::top(u64::MAX);
                 let keys = |shown| -> Result<Vec<String>, DbError> {
                     Ok(row
                         .items(shown)

@@ -1,28 +1,29 @@
-//! This module gives screens a live read of each list window, of each list's
-//! row count and of each key's position, with the same objects for every
-//! list.
+//! This module gives screens a live read of each list's view, the window
+//! core keeps around the rows on screen, and of each list's row count, with
+//! the same objects for every list.
 
+use super::PulledRead;
 use crate::types::{
-    BridgeError, BridgeList, BridgeListCount, BridgeListCountExtra, BridgeListPosition,
-    BridgeListRows, BridgeListWindow, BridgeListWindowValue, BridgeSortValue,
+    BridgeError, BridgeList, BridgeListCount, BridgeListCountExtra, BridgeListRows, BridgeListView,
 };
-use bae_store::list_windows::OrderKey;
-use bae_store::ListWindow;
+use bae_views::list_view::{ListView, ListViewValue, Visible};
+
+live_query_read!(ListView => ListViewValue);
 
 pulled_read! {
-    /// One window of a list, a range of its order, read live. `set_window`
-    /// changes the range this subscription reads, and the list's other
-    /// windows are other subscriptions.
-    ListWindowSubscription: bae_views::LiveListWindow => BridgeListWindowValue,
-    converted by BridgeListWindowValue::from_core,
-    built by list_window
+    /// One list's view, read live: the window core keeps around the rows on
+    /// screen, with the position of its first row. `set_visible` tells core
+    /// which rows the screen shows, and core moves and sizes the window.
+    ListViewSubscription: ListView => BridgeListView,
+    converted by BridgeListView::from_core,
+    built by list_view
 }
 
 #[uniffi::export]
-impl ListWindowSubscription {
-    /// Read `window` of the list from now on.
-    pub fn set_window(&self, window: BridgeListWindow) -> Result<(), BridgeError> {
-        self.inner.set(window.into_core()).map(|_revision| ()).map_err(BridgeError::from)
+impl ListViewSubscription {
+    /// The screen shows the rows from position `first` to position `last`.
+    pub fn set_visible(&self, first: u64, last: u64) {
+        self.inner.set_visible(Visible::new(first, last));
     }
 }
 
@@ -33,27 +34,6 @@ pulled_read! {
         bae_store::live_query::LiveValues<bae_views::ListCount> => BridgeListCount,
     converted by BridgeListCount::from_core,
     built by list_count
-}
-
-pulled_read! {
-    /// How many rows of a list come before the row at a key, read live.
-    /// `set_key` changes the key this subscription reads.
-    ListPositionSubscription: bae_views::LiveListPosition => BridgeListPosition,
-    converted by BridgeListPosition::from_core,
-    built by list_position
-}
-
-#[uniffi::export]
-impl ListPositionSubscription {
-    /// Read the position of the row at `key` from now on.
-    pub fn set_key(&self, key: Vec<BridgeSortValue>) -> Result<(), BridgeError> {
-        self.inner.set(order_key(key)).map(|_revision| ()).map_err(BridgeError::from)
-    }
-}
-
-/// Turn the sort values a screen sent back into an order key.
-pub(crate) fn order_key(values: Vec<BridgeSortValue>) -> OrderKey {
-    OrderKey::new(values.into_iter().map(BridgeSortValue::into_core).collect())
 }
 
 impl BridgeList {
@@ -87,104 +67,67 @@ impl BridgeList {
     }
 }
 
-impl BridgeListWindow {
-    pub(crate) fn into_core(self) -> ListWindow {
-        let key = |key: Vec<BridgeSortValue>| order_key(key);
-        match self {
-            Self::Forward { from, until, limit } => {
-                ListWindow::Forward { from: from.map(key), until: until.map(key), limit }
-            }
-            Self::Backward { until, limit } => ListWindow::Backward { until: key(until), limit },
-        }
-    }
-
-    pub(crate) fn from_core(window: ListWindow) -> Self {
-        let values = |key: &OrderKey| BridgeSortValue::of_key(key);
-        match window {
-            ListWindow::Forward { from, until, limit } => Self::Forward {
-                from: from.as_ref().map(values),
-                until: until.as_ref().map(values),
-                limit,
+impl BridgeListView {
+    pub(crate) fn from_core(value: ListViewValue) -> Self {
+        let rows = match value.rows {
+            bae_views::ListRows::Albums(rows) => BridgeListRows::Albums {
+                rows: rows
+                    .into_iter()
+                    .map(crate::types::BridgeAlbumAppearance::from_core)
+                    .collect(),
             },
-            ListWindow::Backward { until, limit } => {
-                Self::Backward { until: values(&until), limit }
-            }
-        }
-    }
-}
-
-impl BridgeListWindowValue {
-    pub(crate) fn from_core(value: bae_views::ListWindowValue) -> Self {
-        Self {
-            window: BridgeListWindow::from_core(value.window),
-            rows: match value.rows {
-                bae_views::ListRows::Albums(rows) => BridgeListRows::Albums {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeAlbumAppearance::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::Artists(rows) => BridgeListRows::Artists {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeArtistSummary::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::Composers(rows) => BridgeListRows::Composers {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeComposerSummary::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::ComposerPage(rows) => BridgeListRows::ComposerPage {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeComposerDetailRow::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::Downloads(rows) => BridgeListRows::Downloads {
-                    rows: rows.into_iter().map(crate::types::BridgeDownloadOp::from_core).collect(),
-                },
-                bae_views::ListRows::Upcoming(rows) => BridgeListRows::Upcoming {
-                    rows: rows.into_iter().map(crate::types::BridgeQueueEntry::from_core).collect(),
-                },
-                bae_views::ListRows::ArtistSearch(rows) => BridgeListRows::ArtistSearch {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeArtistSearchResult::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::Storage(rows) => BridgeListRows::Storage {
-                    rows: rows.into_iter().map(crate::types::BridgeStorageRow::from_core).collect(),
-                },
-                bae_views::ListRows::AlbumTracks(rows) => BridgeListRows::AlbumTracks {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeBrowseTrack::from_core)
-                        .collect(),
-                },
-                bae_views::ListRows::WorkChildren(rows) => BridgeListRows::WorkChildren {
-                    rows: rows.into_iter().map(crate::types::BridgeWorkChild::from_core).collect(),
-                },
-                bae_views::ListRows::SearchAlbums(rows) => BridgeListRows::SearchAlbums {
-                    rows: rows
-                        .into_iter()
-                        .map(crate::types::BridgeAlbumSearchResult::from_core)
-                        .collect(),
-                },
-                #[cfg(desktop)]
-                bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {
-                    items: items
-                        .into_iter()
-                        .map(crate::types::BridgeImportListItem::from_core)
-                        .collect(),
-                    leading_header: leading_header
-                        .map(crate::types::BridgeImportListItem::from_core),
-                },
+            bae_views::ListRows::Artists(rows) => BridgeListRows::Artists {
+                rows: rows.into_iter().map(crate::types::BridgeArtistSummary::from_core).collect(),
             },
-            first: value.first.as_ref().map(BridgeSortValue::of_key),
-            beyond: value.beyond.as_ref().map(BridgeSortValue::of_key),
-        }
+            bae_views::ListRows::Composers(rows) => BridgeListRows::Composers {
+                rows: rows
+                    .into_iter()
+                    .map(crate::types::BridgeComposerSummary::from_core)
+                    .collect(),
+            },
+            bae_views::ListRows::ComposerPage(rows) => BridgeListRows::ComposerPage {
+                rows: rows
+                    .into_iter()
+                    .map(crate::types::BridgeComposerDetailRow::from_core)
+                    .collect(),
+            },
+            bae_views::ListRows::Downloads(rows) => BridgeListRows::Downloads {
+                rows: rows.into_iter().map(crate::types::BridgeDownloadOp::from_core).collect(),
+            },
+            bae_views::ListRows::Upcoming(rows) => BridgeListRows::Upcoming {
+                rows: rows.into_iter().map(crate::types::BridgeQueueEntry::from_core).collect(),
+            },
+            bae_views::ListRows::ArtistSearch(rows) => BridgeListRows::ArtistSearch {
+                rows: rows
+                    .into_iter()
+                    .map(crate::types::BridgeArtistSearchResult::from_core)
+                    .collect(),
+            },
+            bae_views::ListRows::Storage(rows) => BridgeListRows::Storage {
+                rows: rows.into_iter().map(crate::types::BridgeStorageRow::from_core).collect(),
+            },
+            bae_views::ListRows::AlbumTracks(rows) => BridgeListRows::AlbumTracks {
+                rows: rows.into_iter().map(crate::types::BridgeBrowseTrack::from_core).collect(),
+            },
+            bae_views::ListRows::WorkChildren(rows) => BridgeListRows::WorkChildren {
+                rows: rows.into_iter().map(crate::types::BridgeWorkChild::from_core).collect(),
+            },
+            bae_views::ListRows::SearchAlbums(rows) => BridgeListRows::SearchAlbums {
+                rows: rows
+                    .into_iter()
+                    .map(crate::types::BridgeAlbumSearchResult::from_core)
+                    .collect(),
+            },
+            #[cfg(desktop)]
+            bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {
+                items: items
+                    .into_iter()
+                    .map(crate::types::BridgeImportListItem::from_core)
+                    .collect(),
+                leading_header: leading_header.map(crate::types::BridgeImportListItem::from_core),
+            },
+        };
+        Self { start: value.start, rows }
     }
 }
 
@@ -211,11 +154,5 @@ impl BridgeListCount {
                 }
             },
         }
-    }
-}
-
-impl BridgeListPosition {
-    pub(crate) fn from_core(position: bae_views::ListPosition) -> Self {
-        Self { key: BridgeSortValue::of_key(&position.key), rows_before: position.rows_before }
     }
 }

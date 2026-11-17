@@ -808,7 +808,7 @@ pub(crate) async fn list_subscription(
 
 /// The window of the first `limit` items.
 pub(crate) fn page_window(limit: u64) -> bae_store::ListWindow {
-    bae_store::ListWindow::Forward { from: None, until: None, limit }
+    bae_store::ListWindow::top(limit)
 }
 
 /// The list's next value, with everything else the list shows read beside
@@ -836,7 +836,7 @@ pub(crate) fn page_live(
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), live.clone()))
@@ -866,7 +866,7 @@ pub(crate) fn page_rows(
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             crate::ImportListItem::Candidate { row, live, .. } => {
                 Some((row.candidate_key.clone(), (row.clone(), live.clone())))
@@ -934,8 +934,11 @@ pub(crate) async fn queue_item(
     for tab in [crate::TriageTab::Pending, crate::TriageTab::Skipped] {
         let view = crate::ImportListView { tab, ..crate::ImportListView::default() };
         let projection = fixture.import.wait_for_list(view, |_| true).await;
-        let row =
-            projection.windows.iter().flat_map(|window| &window.rows).find_map(|item| match item {
+        let row = projection
+            .windows
+            .iter()
+            .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
+            .find_map(|item| match item {
                 crate::ImportListItem::Candidate { row, live, .. }
                     if row.candidate_key == key.clone() =>
                 {

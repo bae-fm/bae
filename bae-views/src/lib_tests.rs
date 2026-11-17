@@ -125,20 +125,29 @@ async fn sorting_by_artist_compares_every_credit_in_order() {
     assert_eq!(grid.iter().map(|album| album.id.as_str()).collect::<Vec<_>>(), expected);
 }
 
-/// The plan of `statement` under `seek`'s parameters and `extra`, one line
-/// per step.
+/// One step of a statement's plan: what SQLite does, and whether the
+/// statement's own SELECT does it, rather than a subquery or a table it
+/// builds first.
+#[derive(Debug)]
+pub(super) struct PlanStep {
+    pub detail: String,
+    pub own: bool,
+}
+
+/// The plan of `statement` under `seek`'s parameters and `extra`, one step
+/// per line.
 pub(super) async fn plan(
     db: &Store,
     statement: String,
     seek: Seek,
     extra: Vec<(&'static str, rusqlite::types::Value)>,
-) -> Vec<String> {
+) -> Vec<PlanStep> {
     db.read(move |sql| {
-        seek.bound(50, 0, |params| {
+        seek.bound(50, |params| {
             let mut params = params.to_vec();
             params.extend(extra.iter().map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)));
             Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params.as_slice(), |row| {
-                row.get::<_, String>(3)
+                Ok(PlanStep { detail: row.get(3)?, own: row.get::<_, i64>(1)? == 0 })
             })?)
         })
     })
@@ -149,6 +158,20 @@ pub(super) async fn plan(
 /// The aliases the lists' statements read their rows as, which a seek reads
 /// by an index search, never a scan.
 pub(super) const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r", "q"];
+
+/// Whether `steps` scan a list's table, or sort in the statement's own
+/// SELECT, which sorts the list's rows. A column subquery's sorts order its
+/// own rows.
+pub(super) fn scans_or_sorts(steps: &[PlanStep]) -> bool {
+    steps.iter().any(|step| {
+        LIST_ALIASES.iter().any(|alias| {
+            step.detail.starts_with(&format!("SCAN {alias} "))
+                || step.detail == format!("SCAN {alias}")
+        }) || (step.own
+            && step.detail.starts_with("USE TEMP B-TREE FOR")
+            && step.detail.ends_with("ORDER BY"))
+    })
+}
 
 /// Hold every seek beside the row at `key` of `order`'s rows to an index:
 /// `statement` builds the seek's statement. No seek scans a list's table or
@@ -163,34 +186,8 @@ pub(super) async fn assert_seeks_search(
 ) {
     for seek in order.seeks_beside(&key) {
         let steps = plan(db, statement(&seek), seek.clone(), extra.clone()).await;
-        assert!(
-            !steps.iter().any(|step| {
-                LIST_ALIASES.iter().any(|alias| {
-                    step.starts_with(&format!("SCAN {alias} ")) || step == &format!("SCAN {alias}")
-                })
-            }) && !picked_window(&steps)
-                .iter()
-                .any(|step| step.starts_with("USE TEMP B-TREE FOR") && step.ends_with("ORDER BY")),
-            "{what} {seek:?}: {steps:?}"
-        );
+        assert!(!scans_or_sorts(&steps), "{what} {seek:?}: {steps:?}");
     }
-}
-
-/// The steps of a plan that read the list's order, where the statement picks
-/// its window in an inner statement and reads the picked rows' columns
-/// outside it: those before the outer statement starts (`SCAN picked`, or the
-/// subquery it materializes first). The outer statement orders the picked
-/// rows alone, so its sorts, and those of the column subqueries, are not the
-/// list's. Every step of a statement that picks nothing.
-pub(super) fn picked_window(steps: &[String]) -> &[String] {
-    if !steps.iter().any(|step| step == "SCAN picked") {
-        return steps;
-    }
-    let outer = steps
-        .iter()
-        .position(|step| step == "SCAN picked" || step == "MATERIALIZE sending")
-        .expect("a plan scanning the picked rows has an outer statement");
-    &steps[..outer]
 }
 
 /// A library of 300 albums, each with an artist, a release, files and a
@@ -209,13 +206,13 @@ pub(super) fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
 pub(super) async fn key_at<R: Send + 'static>(
     db: &Store,
     order: &ListOrder,
-    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>
+    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>
         + Send
         + 'static,
     at: u64,
 ) -> OrderKey {
     let order = order.clone();
-    db.read(move |sql| Ok(rows(&sql, &order, &order.everything(), 1, at)?.pop().unwrap().1))
+    db.read(move |sql| Ok(rows(&sql, &order, &order.at_offset(at), 1)?.pop().unwrap().1))
         .await
         .unwrap()
 }
@@ -269,16 +266,15 @@ async fn an_artist_window_from_a_key_holds_the_rows_from_it_through_the_index() 
     let order = crate::artist::artist_order(&sort);
     let views = LibraryViews::new(db.clone());
     let from = views.artist_key_at(&sort, 150).await.unwrap().expect("a row at 150");
-    let mut live = views.subscribe_artist_window(
-        &sort,
-        ListWindow::Forward { from: Some(from.clone()), until: None, limit: 50 },
-    );
+    let mut live =
+        views.subscribe_artist_window(&sort, ListWindow { from: Some(from.clone()), limit: 50 });
     let held = live.next_inline().await.expect("the query stays open").result.unwrap();
     let by_offset = views.get_artist_page(&sort, 150, 50).await.unwrap();
     let ids =
         |rows: &[DbArtistSummary]| rows.iter().map(|row| row.artist.id.clone()).collect::<Vec<_>>();
-    assert_eq!(held.rows.len(), 50);
-    assert_eq!(ids(&held.rows), ids(&by_offset));
+    let held: Vec<DbArtistSummary> = held.rows.into_iter().map(|(row, _key)| row).collect();
+    assert_eq!(held.len(), 50);
+    assert_eq!(ids(&held), ids(&by_offset));
     assert_seeks_search(
         &db,
         "artists from a key",
@@ -398,16 +394,16 @@ mod window_cost {
             let (list, rows, count): (&str, Rows<_>, Count) = if group_by_artist {
                 (
                     "albums_by_artist",
-                    |sql, order, seek, limit, offset| {
-                        crate::album::album_rows_on(sql, true, order, seek, limit, offset)
+                    |sql, order, seek, limit| {
+                        crate::album::album_rows_on(sql, true, order, seek, limit)
                     },
                     |sql, order, key| crate::album::album_rows_before_on(sql, true, order, key),
                 )
             } else {
                 (
                     "albums",
-                    |sql, order, seek, limit, offset| {
-                        crate::album::album_rows_on(sql, false, order, seek, limit, offset)
+                    |sql, order, seek, limit| {
+                        crate::album::album_rows_on(sql, false, order, seek, limit)
                     },
                     |sql, order, key| crate::album::album_rows_before_on(sql, false, order, key),
                 )
@@ -475,7 +471,7 @@ mod window_cost {
         for (filter, rows) in [
             (
                 StorageFilter::All,
-                (|sql, order, seek, limit, offset| {
+                (|sql, order, seek, limit| {
                     crate::storage::storage_rows_on(
                         sql,
                         order,
@@ -483,20 +479,11 @@ mod window_cost {
                         None,
                         seek,
                         limit,
-                        offset,
                     )
                 }) as Rows<_>,
             ),
-            (StorageFilter::Local, |sql, order, seek, limit, offset| {
-                crate::storage::storage_rows_on(
-                    sql,
-                    order,
-                    StorageFilter::Local,
-                    None,
-                    seek,
-                    limit,
-                    offset,
-                )
+            (StorageFilter::Local, |sql, order, seek, limit| {
+                crate::storage::storage_rows_on(sql, order, StorageFilter::Local, None, seek, limit)
             }),
         ] {
             for field in [
@@ -559,7 +546,7 @@ mod window_cost {
                     &format!("{name}_{field:?}_{direction:?}"),
                     found,
                     order,
-                    move |sql, order, seek, limit, offset| {
+                    move |sql, order, seek, limit| {
                         crate::storage::storage_rows_on(
                             sql,
                             order,
@@ -567,7 +554,6 @@ mod window_cost {
                             Some(window_pattern.as_str()),
                             seek,
                             limit,
-                            offset,
                         )
                     },
                     {

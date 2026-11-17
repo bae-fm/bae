@@ -62,9 +62,8 @@ impl LibraryViews {
                     &sql,
                     &artist_id,
                     &order,
-                    &order.everything(),
+                    &order.at_offset(offset),
                     limit,
-                    offset,
                 )?
                 .into_iter()
                 .map(|(row, _)| row)
@@ -87,8 +86,8 @@ impl LibraryViews {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit, offset)
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
+            composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit)
         })
     }
 
@@ -128,8 +127,8 @@ impl LibraryViews {
         let order = composer_detail_order("listing");
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    composer_detail_rows_on(&sql, &artist_id, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    composer_detail_rows_on(&sql, &artist_id, &order, seek, limit)
                 })
             })
             .await
@@ -270,7 +269,7 @@ fn composer_detail_row_count_on(sql: &SqlReadContext<'_>, artist_id: &str) -> Re
 }
 
 /// The statement reading the rows of one page `seek` reads in `order`, at most
-/// `:limit` from `:offset`, each with what it shows and its key: a work with
+/// `:limit`, each with what it shows and its key: a work with
 /// its summary, a credit with its role, album, and for a track credit its
 /// track and the composer.
 pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> String {
@@ -322,7 +321,7 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
          LEFT JOIN albums album ON album.id = r.album_id
          LEFT JOIN artists composer ON listing.section = 2 AND composer.id = listing.artist_id
          WHERE listing.artist_id = :artist_id AND {condition}
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+         ORDER BY {ordering} {limit}",
         release_credit = credit_name_join("rar", "release_credit"),
         track_credit = credit_name_join("tar", "track_credit"),
         opens = opens_heading_sql(),
@@ -330,21 +329,21 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     )
 }
 
-/// The rows of `artist_id`'s page `seek` reads in `order`, at most `limit`
-/// from `offset`, each with its key.
+/// The rows of `artist_id`'s page `seek` reads in `order`, at most `limit`,
+/// each with its key.
 pub(crate) fn composer_detail_rows_on(
     sql: &SqlReadContext<'_>,
     artist_id: &str,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbComposerDetailRow>>, DbError> {
     let statement = composer_detail_rows_query(order, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":artist_id", &artist_id as &dyn rusqlite::ToSql));
         sql.query(&statement, params.as_slice(), |row| {

@@ -66,8 +66,8 @@ impl LibraryViews {
         let album_id = album_id.to_string();
         let order = album_track_order();
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            album_track_rows_on(sql, &album_id, &read_order, seek, limit, offset)
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
+            album_track_rows_on(sql, &album_id, &read_order, seek, limit)
         })
     }
 
@@ -122,29 +122,8 @@ impl LibraryViews {
         let order = album_track_order();
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    album_track_rows_on(&sql, &album_id, &order, seek, limit, offset)
-                })
-            })
-            .await
-    }
-
-    /// The window of the album `album_id`'s tracks that holds the `limit`
-    /// tracks from `position`, read once: a media browser names a page by
-    /// its offset and follows this window live. `None` when the album lists
-    /// fewer tracks than `position`.
-    pub async fn album_track_page_window(
-        &self,
-        album_id: &str,
-        position: u64,
-        limit: u64,
-    ) -> Result<Option<ListWindow>, DbError> {
-        let album_id = album_id.to_string();
-        let order = album_track_order();
-        self.store
-            .read(move |sql| {
-                page_window(&order, position, limit, &mut |seek, limit, offset| {
-                    album_track_rows_on(&sql, &album_id, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    album_track_rows_on(&sql, &album_id, &order, seek, limit)
                 })
             })
             .await
@@ -232,7 +211,7 @@ impl LibraryViews {
         let rows: Vec<DbAlbumSummary> = self
             .store
             .read(move |sql| {
-                Ok(album_rows_on(&sql, false, &order, &order.everything(), limit, offset)?
+                Ok(album_rows_on(&sql, false, &order, &order.at_offset(offset), limit)?
                     .into_iter()
                     .map(|(appearance, _)| appearance.row)
                     .collect::<Vec<_>>())
@@ -255,8 +234,8 @@ impl LibraryViews {
         let (_, order) = album_browse_order(sort, group_by_artist);
         let read_order = order.clone();
         self.store
-            .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-                album_rows_on(sql, group_by_artist, &read_order, seek, limit, offset)
+            .subscribe_list_window(initial, order, move |sql, seek, limit| {
+                album_rows_on(sql, group_by_artist, &read_order, seek, limit)
             })
             .process(|window| window.try_map_rows(AlbumAppearanceRow::process))
     }
@@ -304,8 +283,8 @@ impl LibraryViews {
         let (_, order) = album_browse_order(sort, group_by_artist);
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    album_rows_on(&sql, group_by_artist, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    album_rows_on(&sql, group_by_artist, &order, seek, limit)
                 })
             })
             .await
@@ -845,26 +824,26 @@ fn album_track_filter() -> String {
 }
 
 /// The album `album_id`'s tracks that `seek` reads in `order`, at most
-/// `limit` from `offset`, each with its key.
+/// `limit`, each with its key.
 fn album_track_rows_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbTrackSearchResult>>, DbError> {
     let statement = format!(
         "SELECT {columns}, {keys} {TRACK_HIT_FROM}
          WHERE {filter} AND {condition}
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
+         ORDER BY {ordering} {limit}",
         columns = TRACK_HIT_COLUMNS.as_str(),
         keys = order.key_columns(),
         filter = album_track_filter(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     );
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":album_id", &album_id as &dyn rusqlite::ToSql));
         sql.query(&statement, params.as_slice(), |row| {

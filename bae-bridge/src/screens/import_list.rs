@@ -1,15 +1,14 @@
 //! The import tab's list as the app holds it open: its view and folds, the
 //! bulk actions over the rows the app keeps selected, and the live reads of
-//! its windows, count, position, its summary and what the selected rows hold.
+//! its view, count, its summary and what the selected rows hold.
 
-use crate::types::{BridgeError, BridgeSortValue};
+use crate::types::BridgeError;
 
-/// The import tab's open list. Its windows, count and position are the same
-/// live reads every list has (`subscribe_list_window`, `subscribe_list_count`,
-/// `subscribe_list_position` and `list_key_at`), opened from the list because
-/// they read the list's own view and folds; the list opens a separate live
-/// read for its summary, Found's filter entries and what the selected rows
-/// hold. When the app cancels the list, every read opened from the list ends.
+/// The import tab's open list. Its view and count are the same live reads
+/// every list has (`subscribe_list_view` and `subscribe_list_count`), opened
+/// from the list because they read the list's own view and folds; the list
+/// opens a separate live read for its summary, Found's filter entries and
+/// what the selected rows hold. When the app cancels the list, every read opened from the list ends.
 /// The app keeps the keys of the rows the person selected, and passes them to
 /// each call that reads or acts on them; each action acts on the ones the
 /// list shows.
@@ -49,14 +48,19 @@ impl ImportList {
         self.selection_progress.feed()
     }
 
-    /// Read the rows of the list in `window`, in the list's order, and keep
-    /// reading them live.
-    pub fn subscribe_list_window(
+    /// Read the list through its view, which keeps one live window of the
+    /// list around the rows from position `first` to position `last` on
+    /// screen, and moves it as the screen reports other rows.
+    pub fn subscribe_list_view(
         &self,
-        window: crate::types::BridgeListWindow,
-    ) -> std::sync::Arc<crate::ListWindowSubscription> {
-        crate::screens::list_window(
-            bae_app::import_list_window(&self.inner, window.into_core()),
+        first: u64,
+        last: u64,
+    ) -> std::sync::Arc<crate::ListViewSubscription> {
+        crate::screens::list_view(
+            bae_views::list_view::ListView::new(
+                bae_app::import_list_reads(&self.inner),
+                bae_views::list_view::Visible::new(first, last),
+            ),
             self.runtime.clone(),
         )
     }
@@ -65,17 +69,6 @@ impl ImportList {
     /// live.
     pub fn subscribe_list_count(&self) -> std::sync::Arc<crate::ListCountSubscription> {
         crate::screens::list_count(bae_app::import_list_count(&self.inner), self.runtime.clone())
-    }
-
-    /// How many items come before the one at `key`, read live.
-    pub fn subscribe_list_position(
-        &self,
-        key: Vec<BridgeSortValue>,
-    ) -> std::sync::Arc<crate::ListPositionSubscription> {
-        crate::screens::list_position(
-            bae_app::import_list_position(&self.inner, crate::screens::order_key(key)),
-            self.runtime.clone(),
-        )
     }
 
     /// The watched folders, whether Found has groups and what the view
@@ -147,11 +140,11 @@ impl ImportSelectionSubscription {
 impl ImportList {
     /// Show `view`. `selected` holds the keys the app keeps selected. When
     /// the new view has another tab, filter or search, `set_view` returns
-    /// where it opens, at the first selected row the view shows, by key and
-    /// position, or at its top, and the selected keys the new view doesn't
+    /// where it opens, at the position of the first selected row the view
+    /// shows, or at its top, and the selected keys the new view doesn't
     /// show, which leave the selection. For another sort order, or for the
     /// view the list already shows, `set_view` returns nothing. The app drops
-    /// the windows it holds, opens new ones from the returned place, and
+    /// the list's view it holds, opens a new one at the returned place, and
     /// scrolls the table there.
     pub async fn set_view(
         self: std::sync::Arc<Self>,
@@ -167,27 +160,6 @@ impl ImportList {
                     .await
                     .map_err(list_error)?
                     .map(crate::types::BridgeImportListViewChange::from_core))
-            })
-            .await
-    }
-
-    /// The key of the item at `position`, or of the last item when the list
-    /// ends before it; none for a list with no items. A jump reads it once
-    /// and starts its windows there.
-    pub async fn list_key_at(
-        self: std::sync::Arc<Self>,
-        position: u64,
-    ) -> Result<Option<Vec<BridgeSortValue>>, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportList.list_key_at", move || async move {
-                Ok(self
-                    .inner
-                    .key_at(position)
-                    .await
-                    .map_err(list_error)?
-                    .as_ref()
-                    .map(BridgeSortValue::of_key))
             })
             .await
     }

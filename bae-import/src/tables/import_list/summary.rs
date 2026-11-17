@@ -279,12 +279,11 @@ pub(super) fn locate(
         Placing::AsShown => (row.view.tab, Shown::View),
     };
     let position = Items::new(list, tab, row.view.order, shown).position_of(sql, key)?;
-    Ok(Some(position.map(|(position, order_key)| ImportCandidateListLocation {
+    Ok(Some(position.map(|position| ImportCandidateListLocation {
         stable_key: crate::list::candidate_stable_key(key),
         tab,
         group_key: group,
         visible_position: position,
-        key: order_key,
     })))
 }
 

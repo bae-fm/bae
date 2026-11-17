@@ -25,15 +25,14 @@ import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeListRows
-import uniffi.bae_bridge.BridgeListWindow
-import uniffi.bae_bridge.BridgeListWindowValue
+import uniffi.bae_bridge.BridgeListView
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortDirection
 import uniffi.bae_bridge.BridgeSortField
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
-class ChainBrowserPageStoreTest {
+class ListBrowserPageStoreTest {
     private val sort = BridgeSortCriterion(BridgeSortField.TITLE, BridgeSortDirection.ASCENDING)
 
     private fun albums(ids: List<String>) = ids.map { BridgeFixtures.album(id = it) }
@@ -63,94 +62,64 @@ class ChainBrowserPageStoreTest {
                 errors,
                 CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
             )
+        store.screenRows = 30
         store.activate(sort)
         return Fixture(list, store).also { it.idle() }
     }
 
     private val readFailed = BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed")
 
+    /** The store opens the list's view with as many rows on screen as the screen fits, before any row arrives. */
     @Test
-    fun aSplitOnTheKeyBeyondAWindowKeepsEveryRowOnce() {
+    fun theViewOpensWithTheRowsTheScreenFits() {
         val fixture = open(albums(ids(0..199)))
-        fixture.store.reportVisibleRange(0, 10)
-        fixture.idle()
-        assertEquals(ids(0..59), fixture.ids(0..59))
-
-        // The test adds rows inside the first window's range, so that window holds more rows than its limit.
-        val added = listOf("a0010x1", "a0010x2", "a0010x3", "a0010x4", "a0010x5")
-        fixture.list.albums = albums((ids(0..199) + added).sorted())
-        fixture.list.changed()
-        fixture.idle()
-        fixture.store.reportVisibleRange(0, 10)
-        fixture.idle()
 
         assertEquals(
-            fixture.list.albums
-                .take(125)
-                .map { it.id },
-            fixture.ids(0..124),
+            listOf(0..29),
+            fixture.list.views
+                .single()
+                .reported,
         )
+        assertEquals(ids(0..89), fixture.ids(0..89))
+        assertNull(fixture.store.rowAt(90))
     }
 
+    /** The store tells core the rows on screen once for each change, and draws each row at the window's start plus its place. */
     @Test
-    fun aWindowThatGoesEmptyIsDroppedIntoItsNeighbour() {
-        val fixture = open(albums(ids(0..129)))
-        fixture.store.reportVisibleRange(0, 119)
-        fixture.idle()
-        fixture.store.reportVisibleRange(0, 119)
-        fixture.idle()
-        assertEquals(ids(0..129), fixture.ids(0..129))
-
-        // The test removes every row of the middle window.
-        fixture.list.albums = albums(ids(0..59) + ids(120..129))
-        fixture.list.changed()
-        fixture.idle()
-
-        assertEquals(fixture.list.albums.map { it.id }, fixture.ids(0..69))
-        assertNull(fixture.store.rowAt(70))
-    }
-
-    @Test
-    fun aJumpStartsTheChainAtTheKeyAtThatPosition() {
+    fun theStoreReportsEachChangeOfTheRowsOnScreenOnce() {
         val fixture = open(albums(ids(0..999)))
 
-        fixture.store.reportVisibleRange(900, 910)
+        fixture.store.reportVisibleRange(900, 909)
+        fixture.store.reportVisibleRange(900, 909)
         fixture.idle()
 
-        assertEquals(ids(900..960), fixture.ids(900..960))
-        assertNull(fixture.store.rowAt(0))
         assertEquals(
-            BridgeListWindow.Forward(fixture.list.keyOf("a0900"), null, BROWSER_PAGE_SIZE.toULong()),
-            fixture.list.windows
-                .filter { !it.cancelled }
-                .map { it.requested.first() }
-                .first { it is BridgeListWindow.Forward },
+            listOf(0..29, 900..909),
+            fixture.list.views
+                .single()
+                .reported,
         )
+        assertEquals(ids(890..919), fixture.ids(890..919))
+        assertNull(fixture.store.rowAt(0))
     }
 
+    /** Rows inserted above the rows on screen move the window's start: each row the screen shows sits one place lower. */
     @Test
-    fun aValueForAReplacedWindowDrawsNothing() {
+    fun anInsertAboveTheRowsOnScreenKeepsTheirRowsOnePlaceLower() {
         val fixture = open(albums(ids(0..199)))
-        val window = fixture.list.windows.first()
-        // The store opened the window with one request and changed the request after the first delivery.
-        val replaced = window.requested.first()
-        assertEquals(2, window.requested.size)
+        fixture.store.reportVisibleRange(100, 109)
+        fixture.idle()
+        assertEquals(ids(100..109), fixture.ids(100..109))
 
-        window.deliver(
-            BridgeListWindowValue(
-                replaced,
-                BridgeListRows.Albums(listOf(BridgeAlbumAppearance(BridgeFixtures.album(id = "stale"), null))),
-                fixture.list.keyOf("stale"),
-                null,
-            ),
-        )
+        fixture.list.albums = albums((ids(0..199) + "a0000a").sorted())
+        fixture.list.changed()
         fixture.idle()
 
-        assertEquals(ids(0..59), fixture.ids(0..59))
+        assertEquals(ids(100..109), fixture.ids(101..110))
     }
 
     @Test
-    fun theRowsOfAWindowAreItsLastValueOnly() {
+    fun theRowsOfTheViewAreItsLastValueOnly() {
         val fixture = open(albums(ids(0..29)))
         assertEquals(ids(0..29), fixture.ids(0..29))
 
@@ -166,48 +135,20 @@ class ChainBrowserPageStoreTest {
     @Test
     fun aReplacedListsReadsCannotWriteIntoItsReplacement() {
         val fixture = open(albums(ids(0..29)))
-        val old = fixture.list.windows.first()
+        val old = fixture.list.views.first()
 
         fixture.store.activate(BridgeSortCriterion(BridgeSortField.TITLE, BridgeSortDirection.DESCENDING))
         fixture.idle()
         old.deliver(
-            BridgeListWindowValue(
-                old.requested.last(),
+            BridgeListView(
+                0uL,
                 BridgeListRows.Albums(listOf(BridgeAlbumAppearance(BridgeFixtures.album(id = "stale"), null))),
-                fixture.list.keyOf("stale"),
-                null,
             ),
         )
         fixture.idle()
 
         assertTrue(old.cancelled)
         assertEquals(ids(0..29), fixture.ids(0..29))
-    }
-
-    /**
-     * A jump replaces the chain's windows, so no window holds a row until the new one returns. The list still has
-     * rows by its count query, so a failure then names a later read and the screen keeps the list.
-     */
-    @Test
-    fun aReadThatFailsDuringAJumpNamesALaterRead() {
-        val fixture = open(albums(ids(0..999)))
-
-        fixture.list.deliverImmediately = false
-        fixture.store.reportVisibleRange(900, 910)
-        fixture.idle()
-        assertNull("no window holds a row during the jump", fixture.store.rowAt(900))
-        assertTrue("the count query says the list has rows", fixture.store.hasRows)
-
-        fixture.list.windowFailure = readFailed
-        fixture.list.changed()
-        fixture.idle()
-
-        assertEquals(
-            "Could not load more albums.",
-            fixture.store.error
-                ?.error
-                ?.line,
-        )
     }
 
     @Test

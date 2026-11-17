@@ -268,7 +268,9 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
     let projection = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
     let mut headers = Vec::new();
     let mut rows = Vec::new();
-    for item in projection.windows.iter().flat_map(|window| &window.rows) {
+    for item in
+        projection.windows.iter().flat_map(|window| window.rows.iter().map(|(item, _key)| item))
+    {
         match item {
             crate::ImportListItem::GroupHeader { group, .. } => {
                 headers.push((group.name.clone(), group.combinable));

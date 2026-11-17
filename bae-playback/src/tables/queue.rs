@@ -642,8 +642,8 @@ fn entry_after_place_on(
         }
     };
     let statement = format!(
-        "SELECT c.entry FROM {table} c WHERE c.entry <> ?1{after} \
-         ORDER BY c.{column} LIMIT 1 OFFSET ?2",
+        "SELECT lane.entry FROM {table} lane WHERE lane.entry <> ?1{after} \
+         ORDER BY lane.{column} LIMIT 1 OFFSET ?2",
         table = lane.table(),
         column = lane.order_column(shuffled),
     );

@@ -73,10 +73,10 @@ pub fn report_cost(metric: &str, value: f64, unit: &str) {
     eprintln!("COST metric={metric} value={value:.4} unit={unit}");
 }
 
-/// Reads a list's rows under a seek, at most a limit from an offset, each
-/// with its key: what a list's live query reads its windows with.
+/// Reads a list's rows under a seek, at most a limit, each with its key:
+/// what a list's live query reads its window with.
 pub type Rows<R> =
-    fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>;
+    fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>;
 
 /// Counts the rows before a key: what a list's live position reads.
 pub type Count = fn(&SqlReadContext<'_>, &ListOrder, &OrderKey) -> Result<u64, DbError>;
@@ -90,7 +90,7 @@ pub async fn measure<R: Send + 'static>(
     name: &str,
     n: u64,
     order: ListOrder,
-    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64, u64) -> Result<Vec<Keyed<R>>, DbError>
+    rows: impl Fn(&SqlReadContext<'_>, &ListOrder, &Seek, u64) -> Result<Vec<Keyed<R>>, DbError>
         + Clone
         + Send
         + Sync
@@ -106,21 +106,18 @@ pub async fn measure<R: Send + 'static>(
         let key = {
             let (order, rows) = (order.clone(), rows.clone());
             db.read(move |sql| {
-                Ok(key_at(&order, position, &mut |seek, limit, offset| {
-                    rows(&sql, &order, seek, limit, offset)
-                })?
-                .expect("the list has a row at the position"))
+                Ok(key_at(&order, position, &mut |seek, limit| rows(&sql, &order, seek, limit))?
+                    .expect("the list has a row at the position"))
             })
             .await
             .unwrap()
         };
-        let window = ListWindow::Forward { from: Some(key.clone()), until: None, limit: LIMIT };
+        let window = ListWindow { from: Some(key.clone()), limit: LIMIT };
         let scroll = {
             let (order, rows, window) = (order.clone(), rows.clone(), window.clone());
             median(db, move |sql| {
-                let read = read_range(&order, &window, &mut |seek, limit, offset| {
-                    rows(sql, &order, seek, limit, offset)
-                })?;
+                let read =
+                    read_range(&order, &window, &mut |seek, limit| rows(sql, &order, seek, limit))?;
                 Ok(read.rows.len())
             })
             .await
@@ -129,9 +126,9 @@ pub async fn measure<R: Send + 'static>(
         let jump = {
             let (order, rows) = (order.clone(), rows.clone());
             median(db, move |sql| {
-                let mut read = |seek: &Seek, limit, offset| rows(sql, &order, seek, limit, offset);
+                let mut read = |seek: &Seek, limit| rows(sql, &order, seek, limit);
                 let key = key_at(&order, position, &mut read)?.expect("a row at the position");
-                let window = ListWindow::Forward { from: Some(key), until: None, limit: LIMIT };
+                let window = ListWindow { from: Some(key), limit: LIMIT };
                 Ok(read_range(&order, &window, &mut read)?.rows.len())
             })
             .await

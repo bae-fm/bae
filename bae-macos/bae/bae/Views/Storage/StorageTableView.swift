@@ -316,6 +316,10 @@ extension StorageTableView {
         /// Each row in view holds its page; a row leaving the view lets its
         /// hold go.
         func holdRowsInView() {
+            // The list sizes its window from the rows the table fits, and
+            // one more for the rows its edges cut.
+            list.screenRows =
+                Int(ceil(table.visibleRect.height / table.rowHeight)) + 1
             let range = table.rows(in: table.visibleRect)
             let inView = Set(range.location..<(range.location + range.length))
             for (row, hold) in rowHolds where !inView.contains(row) {
@@ -334,13 +338,12 @@ extension StorageTableView {
             let list = list
             let landed = list.idAt(row) != nil
             return Task { @MainActor [weak self] in
-                await list.withPage(containing: row) {
+                await list.holdPage(containing: row) {
                     // Only the still-mounted list's selection applies; a tab
                     // switch swaps the list before this resolves.
                     if !landed, let self, list === self.list {
                         self.applySelection(self.selection.wrappedValue)
                     }
-                    await Task.untilCancelled()
                 }
             }
         }

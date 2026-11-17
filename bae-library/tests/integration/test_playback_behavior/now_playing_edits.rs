@@ -76,7 +76,9 @@ async fn first_upcoming_until(
                 .expect("the queue's upcoming read stays open")
                 .result
                 .expect("the queue's upcoming read resolves");
-            if let Some(item) = value.rows.into_iter().next().filter(|item| accept(item)) {
+            if let Some((item, _key)) =
+                value.rows.into_iter().next().filter(|(item, _key)| accept(item))
+            {
                 return item;
             }
         }
@@ -94,10 +96,7 @@ type FirstUpcoming = coven::ReconfigurableLiveQuery<
 
 /// The queue's upcoming read over its first track.
 fn first_upcoming(library: &TestLibrary) -> FirstUpcoming {
-    library.manager().subscribe_upcoming_window(
-        false,
-        bae_store::ListWindow::Forward { from: None, until: None, limit: 1 },
-    )
+    library.manager().subscribe_upcoming_window(false, bae_store::ListWindow::top(1))
 }
 
 /// Changing the cover of the release the paused track is on shows the new

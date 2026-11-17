@@ -206,7 +206,7 @@ async fn linked_release(
 async fn read_window(lib: &Library, kind: Kind, rows: u64) -> (crate::ImportWindow, usize) {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let list = open_in_path_order(&lib.db, kind.tab()).await;
-    let window = bae_store::ListWindow::Forward { from: None, until: None, limit: rows };
+    let window = bae_store::ListWindow::top(rows);
     let counter = lib.db.track_work_for_test().await.unwrap();
     let read = tables.read_import_window(list, window).await.unwrap();
     (read, counter.take().app_read_statements)

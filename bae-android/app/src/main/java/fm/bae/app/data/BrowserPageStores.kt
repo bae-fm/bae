@@ -16,8 +16,6 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSortCriterion
 
-internal const val BROWSER_PAGE_SIZE = 60
-
 internal class PageError(
     val error: DisplayError,
     val onRetry: () -> Unit,
@@ -65,7 +63,7 @@ internal class AlbumPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : ChainBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance>(
+) : ListBrowserPageStore<AlbumBrowseParameters, BridgeAlbumAppearance>(
         appContext,
         errors,
         scope,
@@ -87,7 +85,7 @@ internal class ArtistPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : ChainBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary>(
+) : ListBrowserPageStore<BridgeArtistSortCriterion, BridgeArtistSummary>(
         appContext,
         errors,
         scope,
@@ -101,7 +99,7 @@ internal class ComposerPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : ChainBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary>(
+) : ListBrowserPageStore<BridgeComposerSortCriterion, BridgeComposerSummary>(
         appContext,
         errors,
         scope,
@@ -116,7 +114,7 @@ internal class ComposerDetailRowsPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : ChainBrowserPageStore<String, BridgeComposerDetailRow>(
+) : ListBrowserPageStore<String, BridgeComposerDetailRow>(
         appContext,
         errors,
         scope,
@@ -132,7 +130,7 @@ internal class DownloadPageStore(
     appContext: Context,
     errors: ErrorDisplays,
     scope: CoroutineScope,
-) : ChainBrowserPageStore<Unit, BridgeDownloadOp>(
+) : ListBrowserPageStore<Unit, BridgeDownloadOp>(
         appContext,
         errors,
         scope,

@@ -110,7 +110,7 @@ fn done_names(window: &bae_import::ImportWindow) -> Vec<String> {
         .read
         .rows
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(item, _key)| match item {
             bae_import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
         })
@@ -127,7 +127,7 @@ async fn open_list(
 }
 
 /// `limit` items of `list` from the item at `offset`: the key a jump to the
-/// offset reads, and the range from it.
+/// offset reads, and the window from it.
 async fn read_list(
     db: &bae_store::Store,
     list: bae_import::ImportListId,
@@ -136,7 +136,7 @@ async fn read_list(
 ) -> bae_import::ImportWindow {
     let tables = bae_import::tables::ImportTables::new(db.clone());
     let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
-    let window = bae_store::ListWindow::Forward { from: Some(key), until: None, limit };
+    let window = bae_store::ListWindow { from: Some(key), limit };
     tables.read_import_window(list, window).await.unwrap()
 }
 
@@ -173,18 +173,11 @@ async fn done_runs_the_releases_still_uploading_first() {
     let across = read_list(&manager.store, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
     assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows, 4);
-    assert!(across.read.beyond.is_some(), "A lies past the window");
     // A key leads with the number of the part its row is in: C and B are
     // still uploading, A and D are not.
-    let part = |key: &bae_store::list_windows::OrderKey| key.values()[0].clone();
-    let first = across.read.first.as_ref().expect("a window holding rows has a first key");
-    assert_eq!(
-        part(first),
-        bae_store::list_windows::SortValue::Integer(0),
-        "B is in the first part"
-    );
-    let beyond = across.read.beyond.as_ref().unwrap();
-    assert_eq!(part(beyond), bae_store::list_windows::SortValue::Integer(1), "A is in the second");
+    let part = |at: usize| across.read.rows[at].1.values()[0].clone();
+    assert_eq!(part(0), bae_store::list_windows::SortValue::Integer(0), "B is in the first part");
+    assert_eq!(part(1), bae_store::list_windows::SortValue::Integer(1), "D is in the second");
     assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let location =
@@ -239,7 +232,7 @@ fn done_uploads(
         .read
         .rows
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(item, _key)| match item {
             bae_import::ImportListItem::Candidate { row, .. } => {
                 Some((row.folder_name.clone(), row.upload.clone()))
             }
@@ -266,11 +259,7 @@ async fn a_done_row_carries_its_release_upload() {
     )
     .await
     .unwrap();
-    let subscription = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
-        from: None,
-        until: None,
-        limit: 50,
-    }));
+    let subscription = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50)));
     let waiting = Some(bae_records::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
         done_uploads(&subscription.next().await.unwrap().result.unwrap()),
@@ -361,18 +350,12 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
 async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let (test, _temp_dir) = setup_test_manager().await;
     let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
-    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
-        from: None,
-        until: None,
-        limit: 0,
-    }));
+    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(0)));
     let initial = window.next().await.expect("the initial value");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert!(initial.result.unwrap().read.rows.is_empty());
 
-    window
-        .set(bae_store::ListWindow::Forward { from: None, until: None, limit: 50 })
-        .expect("the window is requested");
+    window.set(bae_store::ListWindow::top(50)).expect("the window is requested");
     let requested = window.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
 
@@ -401,11 +384,7 @@ async fn cancelling_closes_the_list() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
-    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
-        from: None,
-        until: None,
-        limit: 50,
-    }));
+    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50)));
     window.next().await.expect("the initial value");
 
     list.cancel().await.unwrap();
@@ -431,11 +410,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let (test, _temp_dir) = setup_test_manager().await;
     let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
     let subscription =
-        Arc::new(list.until_closed(list.subscribe_window(bae_store::ListWindow::Forward {
-            from: None,
-            until: None,
-            limit: 50,
-        })));
+        Arc::new(list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50))));
     subscription.next().await.expect("the initial value");
     let waiting = tokio::spawn({
         let subscription = subscription.clone();
@@ -460,10 +435,8 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let read = Arc::new(bae_store::live_query::LiveRead::new(
-        manager.until_closed(manager.subscribe_upcoming_window(
-            false,
-            bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
-        )),
+        manager
+            .until_closed(manager.subscribe_upcoming_window(false, bae_store::ListWindow::top(10))),
         |_, window| Some(window),
     ));
     read.next().await.expect("the initial value");
@@ -479,10 +452,7 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         .expect("the waiting read ends")
         .unwrap();
     assert!(matches!(ended, Err(LiveQueryError::Cancelled)), "{ended:?}");
-    assert!(matches!(
-        read.set(bae_store::ListWindow::Forward { from: None, until: None, limit: 5 }),
-        Err(LiveQueryError::Cancelled)
-    ));
+    assert!(matches!(read.set(bae_store::ListWindow::top(5)), Err(LiveQueryError::Cancelled)));
 }
 
 /// A file operation that panics fails as something that went wrong, is not

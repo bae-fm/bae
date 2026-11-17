@@ -223,28 +223,6 @@ extension AlbumGridCellsTests {
         #expect(three.firstIndex(of: .detail(albumId: "a5")) == 6)
     }
 
-    @Test("an album loaded at two positions shows once, at the first")
-    func duplicateAlbumShowsOnce() {
-        let cells = AlbumGridCells(
-            totalCount: 4,
-            columnCount: 2,
-            loaded: [
-                (position: 0, id: "x"), (position: 1, id: "y"),
-                (position: 2, id: "x"), (position: 3, id: "z"),
-            ],
-            openAlbumId: nil
-        )
-        #expect(
-            Array(cells) == [
-                .album(position: 0, albumId: "x"),
-                .album(position: 1, albumId: "y"),
-                .placeholder(position: 2),
-                .album(position: 3, albumId: "z"),
-            ]
-        )
-        #expect(Set(ids(cells)).count == cells.count)
-    }
-
     @Test("an open album that is not loaded opens no detail")
     func unloadedOpenAlbumHasNoDetail() {
         let cells = AlbumGridCells(

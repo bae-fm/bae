@@ -27,13 +27,7 @@ pub(crate) fn storage_top(
     filter: StorageFilter,
     limit: u64,
 ) -> LiveListWindow {
-    storage_window(
-        manager,
-        views,
-        sort,
-        filter,
-        ListWindow::Forward { from: None, until: None, limit },
-    )
+    storage_window(manager, views, sort, filter, ListWindow::top(limit))
 }
 
 /// `window` of the list under `sort` and `filter`, nothing searched.

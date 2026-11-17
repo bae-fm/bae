@@ -472,10 +472,12 @@ async fn composer_page_sorts_names_descending_with_ids_ascending() {
 /// The MusicBrainz artist the browse test's second composer is.
 const SECOND_COMPOSER_MUSICBRAINZ: &str = "mb-composer-second";
 
-/// The composer list's windows each follow their own range: another device
-/// naming a composer moves it in the window holding it, and a write to a
-/// composer in one window reruns that window and no other. Descending by
-/// name, the second composer ("Second", then renamed) is above the first.
+/// The composer list's windows each follow their own rows: another device
+/// naming a composer moves it in the window holding it, a write to a
+/// composer in one window reruns that window and no other, and a composer
+/// sorting after the upper window's one row and before the lower window's
+/// first reruns the count alone. Descending by name, the second composer
+/// ("Second", then renamed) is above the first.
 #[test]
 fn composer_windows_follow_the_composers_in_their_ranges() {
     bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
@@ -504,13 +506,12 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
             .await
             .unwrap()
             .expect("the second row is the first composer");
-        let above =
-            ListWindow::Forward { from: None, until: Some(first_composer.clone()), limit: 50 };
-        let below = ListWindow::Forward { from: Some(first_composer), until: None, limit: 50 };
+        let above = ListWindow::top(1);
+        let below = ListWindow { from: Some(first_composer), limit: 50 };
         let mut above = views.subscribe_composer_window(&sort, above);
         let mut below = views.subscribe_composer_window(&sort, below);
         let mut count = views.subscribe_composer_count();
-        let id_of = |window: &WindowRead<DbComposerSummary>| window.rows[0].artist.id.clone();
+        let id_of = |window: &WindowRead<DbComposerSummary>| window.rows[0].0.artist.id.clone();
         let initial_above =
             above.next_inline().await.expect("the query stays open").result.unwrap();
         let initial_below =
@@ -533,7 +534,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
             loop {
                 let event = above.next_inline().await.expect("the query stays open");
                 let shown = event.result.unwrap();
-                if shown.rows[0].artist.name == "Composer Name Renamed" {
+                if shown.rows[0].0.artist.name == "Composer Name Renamed" {
                     return shown;
                 }
             }
@@ -566,7 +567,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         assert!(below.is_marked_for_rerun());
         assert!(!above.is_marked_for_rerun());
         let counted = below.next_inline().await.expect("the query stays open").result.unwrap();
-        assert_eq!(counted.rows[0].work_count, 2);
+        assert_eq!(counted.rows[0].0.work_count, 2);
 
         // An image on the composer in the upper window reruns that window
         // with the image's version, and not the one below.
@@ -575,7 +576,7 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         assert!(!below.is_marked_for_rerun());
         let imaged = above.next_inline().await.expect("the query stays open").result.unwrap();
         assert_eq!(
-            imaged.rows[0].image.as_ref().map(|image| image.version.as_str()),
+            imaged.rows[0].0.image.as_ref().map(|image| image.version.as_str()),
             Some(composer_image.as_str())
         );
 
@@ -591,8 +592,23 @@ fn composer_windows_follow_the_composers_in_their_ranges() {
         assert!(!below.is_marked_for_rerun());
         assert!(count.is_marked_for_rerun());
         let inserted = above.next_inline().await.expect("the query stays open").result.unwrap();
-        assert_eq!(inserted.rows.len(), 2);
+        assert_eq!(inserted.rows.len(), 1);
+        assert_eq!(inserted.rows[0].0.artist.id, INSERTED_COMPOSER_ID);
         assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
+
+        // "Middle" sorts after the upper window's one row and before the
+        // lower window's first row, "First".
+        let (middle, middle_work) =
+            ("5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b02", "5f0b8a7e-2d5c-4e0b-9a51-7d1f0c3e2b03");
+        RecordsFixture::new()
+            .artist(middle, "Composer Name Middle")
+            .work(middle_work, "Work Title Middle")
+            .composer(middle_work, middle)
+            .write(&records)
+            .await;
+        assert!(!above.is_marked_for_rerun(), "the composer sorts after the full window's row");
+        assert!(!below.is_marked_for_rerun(), "the composer sorts before the window's start");
+        assert!(count.is_marked_for_rerun());
     });
 }
 
@@ -655,7 +671,7 @@ fn composer_browse_subscription_delivers_listings_kept_by_applied_writes() {
                     let rows = shown
                         .rows
                         .iter()
-                        .map(|row| (row.artist.id.clone(), row.work_count))
+                        .map(|(row, _key)| (row.artist.id.clone(), row.work_count))
                         .collect::<Vec<_>>();
                     if rows
                         == expected
@@ -916,84 +932,4 @@ async fn deleting_the_release_performing_a_composers_work_removes_the_composer()
     let views = crate::LibraryViews::new(db.clone());
     assert!(views.find_composer_detail(LISTED_SURVIVOR).await.unwrap().is_none());
     assert!(views.get_work_detail(LISTED_WORK_ONE).await.unwrap().is_none());
-}
-
-const PAGED_WORK: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c11";
-const FIRST_PART: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c12";
-const SECOND_PART: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c13";
-const ALPHA_ALBUM: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c21";
-const ALPHA_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c22";
-const BETA_ALBUM: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c31";
-const BETA_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c32";
-
-/// Each child's id in one delivery of a window of a work's children: a
-/// part's work id, or a release's id.
-fn children_of(read: WindowRead<DbWorkChild>) -> Vec<String> {
-    let crate::ListRows::WorkChildren(rows) = crate::composer::resolve_work_child_window(read).rows
-    else {
-        panic!("a window of a work's children holds children");
-    };
-    rows.into_iter()
-        .map(|child| match child {
-            crate::album_detail::WorkChild::Part(work) => work.work.id,
-            crate::album_detail::WorkChild::Release(release) => release.release_id,
-        })
-        .collect()
-}
-
-/// A work's children are its parts in their place among its parts whatever
-/// their titles, then each release that performs it, once however many of
-/// its tracks do, in the order its page lists them: bae sorts the releases
-/// by their album's title. A page at an offset is the window from its first
-/// child to the child past its last, and the window follows a renamed album
-/// that moves its release into the page. The count is a live query of its
-/// own.
-#[tokio::test]
-async fn a_works_children_are_its_parts_then_its_releases_in_windows_named_by_offset() {
-    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
-    RecordsFixture::new()
-        .artist(COMPOSER_A, "Composer Name")
-        .work(PAGED_WORK, "Whole Work")
-        .composer(PAGED_WORK, COMPOSER_A)
-        .work(FIRST_PART, "Zeta Part")
-        .part(PAGED_WORK, FIRST_PART)
-        .work(SECOND_PART, "Alpha Part")
-        .part(PAGED_WORK, SECOND_PART)
-        .album(BETA_ALBUM, "Beta Album", Some(2026), &[COMPOSER_A])
-        .release(BETA_ALBUM, BETA_RELEASE)
-        .tracks(BETA_RELEASE, &[("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c33", "Beta Track")])
-        .performs("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c33", PAGED_WORK)
-        .album(ALPHA_ALBUM, "Alpha Album", Some(2026), &[COMPOSER_A])
-        .release(ALPHA_ALBUM, ALPHA_RELEASE)
-        .tracks(
-            ALPHA_RELEASE,
-            &[
-                ("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c23", "Alpha Track One"),
-                ("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c24", "Alpha Track Two"),
-            ],
-        )
-        .performs("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c23", PAGED_WORK)
-        .performs("6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c24", PAGED_WORK)
-        .write(&test_records(&db))
-        .await;
-    let views = LibraryViews::new(db.clone());
-
-    let page = views.work_child_page_window(PAGED_WORK, 0, 3).await.unwrap().expect("a page");
-    let mut live = views.subscribe_work_child_window(PAGED_WORK, page);
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(children_of(read), [FIRST_PART, SECOND_PART, ALPHA_RELEASE]);
-    let last = views.work_child_page_window(PAGED_WORK, 3, 3).await.unwrap().expect("a page");
-    let mut last_live = views.subscribe_work_child_window(PAGED_WORK, last);
-    let read = last_live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(children_of(read), [BETA_RELEASE]);
-    assert_eq!(views.work_child_page_window(PAGED_WORK, 4, 3).await.unwrap(), None);
-    let mut count = views.subscribe_work_child_count(PAGED_WORK);
-    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 4);
-    let third = views.work_child_key_at(PAGED_WORK, 2).await.unwrap().expect("a third child");
-    let mut position = views.subscribe_work_child_position(PAGED_WORK, third);
-    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 2);
-
-    test_records(&db).rename_album_for_test(BETA_ALBUM, "Aardvark Album").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
-    assert_eq!(children_of(read.unwrap()), [FIRST_PART, SECOND_PART, BETA_RELEASE]);
 }

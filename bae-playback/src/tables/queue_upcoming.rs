@@ -1,10 +1,10 @@
 //! The context lane's upcoming tracks as a list: the tracks after the playing
-//! one, in the order the lane reads in, read as windows that are ranges of
-//! that order, each with the lane's own count and the position of a key in it.
-//! The lane's places are dense integers, so a place is the key.
+//! one, in the order the lane reads in, read as one window from a place on,
+//! with the lane's own count and the position of a key in it. The lane's
+//! places are dense integers, so a place is the key.
 
 use super::queue::context_order_column;
-use super::queue_reads::{queue_item_from_row, queue_items_sql};
+use super::queue_reads::{queue_item_from_row, queue_items_sql, queue_items_window_sql};
 use super::*;
 use crate::QueueItem;
 use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
@@ -12,12 +12,13 @@ use bae_store::{ListWindow, WindowRead};
 
 /// The upcoming tracks' order: the lane's place in the order it reads in,
 /// which is its own while shuffle is off and the shuffled one while it is on.
+/// Its term is over `playback_context lane`.
 pub(super) fn upcoming_order(shuffled: bool) -> ListOrder {
-    ListOrder::new(vec![SortTerm::ascending(format!("c.{}", context_order_column(shuffled)))])
+    ListOrder::new(vec![SortTerm::ascending(format!("lane.{}", context_order_column(shuffled)))])
 }
 
 /// The rows of the context lane after its playing one, as a condition over
-/// `playback_context c`: those placed past the cursor of the order the lane
+/// `playback_context lane`: those placed past the cursor of the order the lane
 /// reads in. When no track is playing, the cursor is NULL and the condition
 /// matches no rows.
 pub(super) fn after_the_playing_track(shuffled: bool) -> String {
@@ -35,36 +36,43 @@ pub(super) fn after_the_playing_track_in_order(shuffled: bool) -> String {
 /// statement reads from the single row that `queue` selects.
 fn after_the_cursor(shuffled: bool, queue: &str) -> String {
     format!(
-        "c.{place} > (SELECT {cursor} FROM {queue})",
+        "lane.{place} > (SELECT {cursor} FROM {queue})",
         place = context_order_column(shuffled),
         cursor = if shuffled { "shuffled_cursor" } else { "ordered_cursor" },
     )
 }
 
-/// The upcoming tracks `seek` reads in the lane's order, at most `limit` from
-/// `offset`, each with its key. The inner query applies LIMIT and OFFSET
-/// before the join, so SQLite never joins the skipped rows to their tracks.
+/// The upcoming tracks `seek` reads in the lane's order, at most `limit`,
+/// each with its key. A window's statement is one SELECT over the lane joined
+/// to each track, returning the lane's place as its key column, so coven
+/// reruns it for a write at or before its last row alone. A read by offset
+/// applies LIMIT and OFFSET in an inner query before the join, so SQLite
+/// never joins the skipped rows to their tracks.
 pub(super) fn upcoming_rows_on(
     sql: &SqlReadContext<'_>,
     shuffled: bool,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<QueueItem>>, DbError> {
     let order = upcoming_order(shuffled);
-    let statement = queue_items_sql(&format!(
-        "SELECT 'c' || c.entry AS entry, c.track_id AS lane_track, {place} AS position, \
-                {keys} \
-         FROM playback_context c \
-         WHERE {after} AND {seek} \
-         ORDER BY {ordering} LIMIT :limit OFFSET :offset",
-        place = format_args!("c.{}", context_order_column(shuffled)),
+    let lane = format!(
+        "'c' || lane.entry AS entry, lane.track_id AS lane_track, {place} AS position, {keys}",
+        place = format_args!("lane.{}", context_order_column(shuffled)),
         keys = order.key_columns(),
+    );
+    let condition = format!(
+        "{after} AND {seek}",
         after = after_the_playing_track(shuffled),
         seek = order.condition(seek),
-        ordering = order.ordering(seek),
-    ));
-    Ok(seek.bound(limit, offset, |params| {
+    );
+    let tail = format!("ORDER BY {} {}", order.ordering(seek), seek.limit_clause());
+    let statement = match seek.by_offset() {
+        true => queue_items_sql(&format!(
+            "SELECT {lane} FROM playback_context lane WHERE {condition} {tail}"
+        )),
+        false => queue_items_window_sql(&lane, &condition, &tail),
+    };
+    Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| Ok((queue_item_from_row(row)?, order.key_of(row)?)))
     })?)
 }
@@ -78,7 +86,7 @@ pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
             let shuffled: bool =
                 sql.query_row("SELECT shuffled FROM playback_queue", [], |row| row.get(0))?;
             let order = upcoming_order(shuffled);
-            Ok(upcoming_rows_on(&sql, shuffled, &order.everything(), u64::MAX, 0)?
+            Ok(upcoming_rows_on(&sql, shuffled, &order.everything(), u64::MAX)?
                 .into_iter()
                 .map(|(item, _key)| item)
                 .collect())
@@ -86,19 +94,17 @@ pub async fn queue_upcoming(store: &Store) -> Result<Vec<QueueItem>, DbError> {
         .await
 }
 
-/// Follow one window of the upcoming tracks, a range of the lane's order,
+/// Follow one window of the upcoming tracks, the tracks from a place on,
 /// each with its track as the queue rows show it. Coven reruns it for a write
-/// inside the range, and when the playing track moves.
+/// at or before its last row, and when the playing track moves.
 pub fn subscribe_upcoming_window(
     store: &Store,
     shuffled: bool,
     initial: ListWindow,
 ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<QueueItem>, bae_store::DbError> {
-    store.subscribe_list_window(
-        initial,
-        upcoming_order(shuffled),
-        move |sql, seek, limit, offset| upcoming_rows_on(sql, shuffled, seek, limit, offset),
-    )
+    store.subscribe_list_window(initial, upcoming_order(shuffled), move |sql, seek, limit| {
+        upcoming_rows_on(sql, shuffled, seek, limit)
+    })
 }
 
 /// Follow how many tracks come after the playing one. The count runs as its
@@ -110,7 +116,7 @@ pub fn subscribe_upcoming_count(
     store.subscribe(move |sql| {
         Ok(sql.query_row(
             &format!(
-                "SELECT COUNT(*) FROM playback_context c WHERE {}",
+                "SELECT COUNT(*) FROM playback_context lane WHERE {}",
                 after_the_playing_track(shuffled)
             ),
             [],
@@ -131,7 +137,7 @@ pub fn subscribe_upcoming_position(
     store.subscribe_reconfigurable(initial, move |key, sql| {
         bae_store::list_windows::rows_before_on(
             &sql,
-            "FROM playback_context c",
+            "FROM playback_context lane",
             Some(&after_the_playing_track(shuffled)),
             &[],
             &order,
@@ -149,8 +155,8 @@ pub async fn upcoming_key_at(
 ) -> Result<Option<OrderKey>, DbError> {
     store
         .read(move |sql| {
-            key_at(&upcoming_order(shuffled), position, &mut |seek, limit, offset| {
-                upcoming_rows_on(&sql, shuffled, seek, limit, offset)
+            key_at(&upcoming_order(shuffled), position, &mut |seek, limit| {
+                upcoming_rows_on(&sql, shuffled, seek, limit)
             })
         })
         .await

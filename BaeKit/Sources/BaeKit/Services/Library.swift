@@ -6,8 +6,8 @@ import Foundation
 /// catalog, narrow to what view layers ask for — plus the library page's
 /// own display-preference write (`setLibraryFullWidth`).
 public final class Library: Sendable, Observable {
-    /// The album list under one sort and grouping: its windows, count and
-    /// positions, each a live read of its own.
+    /// The album list under one sort and grouping: its view and count, each
+    /// a live read of its own.
     public let albumList:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool)
             -> BridgeListQueries<BridgeAlbum>
@@ -508,7 +508,7 @@ extension Library {
             return list
         }
 
-        /// The albums of a delivery of the album grid's window.
+        /// The albums of a delivery of the album grid's view.
         private static func albumRows(_ rows: BridgeListRows) -> [BridgeAlbum] {
             guard case .albums(let appearances) = rows else {
                 preconditionFailure(

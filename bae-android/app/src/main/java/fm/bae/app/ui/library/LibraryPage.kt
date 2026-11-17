@@ -34,7 +34,9 @@ internal fun rememberLibraryPage(
     gridState: LazyGridState,
 ): AlbumPageStore {
     val page = session.browserPages.albums
+    val screenSlots = rememberScreenSlots()
     DisposableEffect(page, sortCriterion, groupByArtist) {
+        page.screenRows = screenSlots
         page.activate(sortCriterion, groupByArtist)
         onDispose(page::deactivate)
     }

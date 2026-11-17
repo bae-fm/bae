@@ -12,6 +12,9 @@ struct QueueUpcoming {
     /// open.
     let epoch: LoadEpoch?
     let holdRow: @MainActor (_ index: Int) async -> Void
+    /// Tell the list how many rows the panel fits, which sizes the window it
+    /// reads.
+    var fitRows: @MainActor (_ rows: Int) -> Void = { _ in }
     /// Why the read failed, when it did.
     let failure: DisplayError?
     let onRetry: () -> Void
@@ -26,6 +29,7 @@ extension QueueUpcoming {
             itemAt: { store.upcomingItem(at: $0) },
             epoch: store.upcomingEpoch,
             holdRow: { await store.holdUpcoming(at: $0) },
+            fitRows: { store.upcomingScreenRows = $0 },
             failure: store.upcomingFailure,
             onRetry: {
                 Task { await store.retryUpcoming(queue: queue) }
@@ -184,6 +188,13 @@ struct MacQueuePanel: View {
                 }
                 .coordinateSpace(name: "queuePane")
                 .scrollIndicators(.never)
+                // The upcoming list sizes its window from the rows the panel
+                // fits, and one more for the rows its edges cut.
+                .onGeometryChange(for: Int.self) { geometry in
+                    Int(ceil(geometry.size.height / QueueSection.rowHeight)) + 1
+                } action: { rows in
+                    upcoming.fitRows(rows)
+                }
                 .onChange(of: manual.count, initial: true) {
                     // The context section's cross-lane math needs this count.
                     dragCoordinator.manualGapCount = manual.count

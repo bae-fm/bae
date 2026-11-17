@@ -176,12 +176,8 @@ impl Term {
             true => SortTerm::descending(self.over(t)),
             false => SortTerm::ascending(self.over(t)),
         };
-        let term = match self.nullable {
+        match self.nullable {
             true => term.nullable(),
-            false => term,
-        };
-        match self.natural {
-            true => term.collated(bae_util::natural_order::compare),
             false => term,
         }
     }
@@ -326,9 +322,6 @@ pub(super) struct RangeStatement {
     pub(super) columns: String,
     /// How many items the window holds at most.
     pub(super) limit: u64,
-    /// Whether the arms read the window from its far end back, so its items
-    /// come out in the reverse of the window's order.
-    pub(super) backward: bool,
 }
 
 impl RangeStatement {
@@ -340,8 +333,8 @@ impl RangeStatement {
 
     /// The arms joined into one compound statement of the items
     /// `watched_folder_path, item, key, group_folder, part` and the key
-    /// columns; it ends at `:limit`, which a statement binds to one more
-    /// than the window's limit.
+    /// columns; it ends at `:limit`, which a statement binds to the window's
+    /// limit.
     pub(super) fn sql(&self) -> String {
         format!("{} LIMIT :limit", self.arms.join(" UNION ALL "))
     }
@@ -575,10 +568,10 @@ impl<'a> Items<'a> {
 
     /// The statement reading the rows of `part` that `seek` reads, each
     /// item's key and group then its key in the part's order, at most
-    /// `:limit` from `:offset`.
+    /// `:limit`, from `:offset` for a read by offset.
     #[cfg(test)]
     fn window_statement(&self, part: Part, seek: &Seek) -> String {
-        self.window_statement_with(part, seek, "LIMIT :limit OFFSET :offset")
+        self.window_statement_with(part, seek, seek.limit_clause())
     }
 
     /// [`Self::window_statement`] with `tail` after its ORDER BY.
@@ -612,16 +605,15 @@ impl<'a> Items<'a> {
         order: &ListOrder,
         seek: &Seek,
         limit: u64,
-        offset: u64,
     ) -> Result<Vec<Keyed<ItemKeyColumns>>, DbError> {
         let statement = self.window_statement(part, seek);
-        seek.bound(limit, offset, |window| {
+        seek.bound(limit, |window| {
             self.query(sql, &statement, window, |row| Ok((ItemKey::read(row)?, order.key_of(row)?)))
         })
     }
 
-    /// The plans SQLite reads each part's windows by, one line per step: by
-    /// its offset, then by each seek from the part's first item. What a test
+    /// The plans SQLite reads each part's windows by, one line per step: from
+    /// the part's top, then by each seek from the part's first item. What a test
     /// holds each order to its index with.
     #[cfg(test)]
     pub(super) fn window_plans(
@@ -632,7 +624,7 @@ impl<'a> Items<'a> {
         for &part in self.parts() {
             let order = self.part_order(part);
             let mut seeks = vec![order.everything()];
-            let first = self.window_of(sql, part, &order, &order.everything(), 1, 0)?;
+            let first = self.window_of(sql, part, &order, &order.everything(), 1)?;
             if let Some((_, key)) = first.first() {
                 seeks.extend(order.seeks_beside(key));
             }
@@ -640,7 +632,7 @@ impl<'a> Items<'a> {
             for seek in seeks {
                 let statement =
                     format!("EXPLAIN QUERY PLAN {}", self.window_statement(part, &seek));
-                plans.push(seek.bound(50, 0, |window| {
+                plans.push(seek.bound(50, |window| {
                     self.query(sql, &statement, window, |row| row.get::<_, String>(3))
                 })?);
             }
@@ -675,60 +667,34 @@ impl<'a> Items<'a> {
     }
 
     /// The seeks that read `window`, in the order they run, each with the
-    /// part it reads: a run of index seeks per part from the part the range
-    /// starts in to the part it ends in.
+    /// part it reads: a run of index seeks in the part the window starts in,
+    /// then every row of each part after it.
     fn range_plan(&self, window: &ListWindow) -> Result<Vec<(usize, Seek)>, DbError> {
-        let parts = self.parts();
+        let from = window.from.as_ref().map(|key| self.unled(key)).transpose()?;
+        let first = from.as_ref().map_or(0, |(at, _)| *at);
         let mut plan = Vec::new();
-        match window {
-            ListWindow::Forward { from, until, .. } => {
-                let from = from.as_ref().map(|key| self.unled(key)).transpose()?;
-                let until = until.as_ref().map(|key| self.unled(key)).transpose()?;
-                let first = from.as_ref().map_or(0, |(at, _)| *at);
-                let last = until.as_ref().map_or(parts.len() - 1, |(at, _)| *at);
-                for (at, &part) in parts.iter().enumerate().take(last + 1).skip(first) {
-                    let order = self.part_order(part);
-                    let start = from.as_ref().filter(|(from_at, _)| *from_at == at);
-                    let end = until.as_ref().filter(|(until_at, _)| *until_at == at);
-                    plan.extend(
-                        order
-                            .range_seeks(start.map(|(_, key)| key), end.map(|(_, key)| key))
-                            .into_iter()
-                            .map(|seek| (at, seek)),
-                    );
-                }
-            }
-            ListWindow::Backward { until, .. } => {
-                let (at, key) = self.unled(until)?;
-                plan.extend(
-                    self.part_order(parts[at])
-                        .seeks_before(&key)
-                        .into_iter()
-                        .map(|seek| (at, seek)),
-                );
-                for before in (0..at).rev() {
-                    plan.push((before, self.part_order(parts[before]).everything_reversed()));
-                }
-            }
+        for (at, &part) in self.parts().iter().enumerate().skip(first) {
+            let start = from.as_ref().filter(|(from_at, _)| *from_at == at);
+            plan.extend(
+                self.part_order(part)
+                    .window_seeks(start.map(|(_, key)| key))
+                    .into_iter()
+                    .map(|seek| (at, seek)),
+            );
         }
         Ok(plan)
     }
 
-    /// The statement of `window`'s range: the items of the window and the
-    /// item beyond its far end, in the list's order. The list's windows are
-    /// ranges of its order, each read from the index of the part it is in and
-    /// running on into the next part, or back into the one before, when its
-    /// part ends. `range_statement` joins one SELECT per seek into one
-    /// statement, and the statement stops at the limit. `None` for a window
-    /// no part of the list has a range for.
+    /// The statement of `window`'s range: the items of the window, in the
+    /// list's order. The list's window is read from the index of the part it
+    /// starts in, running on into the next part when its part ends.
+    /// `range_statement` joins one SELECT per seek into one statement, and
+    /// the statement stops at the limit. `None` for a window no part of the
+    /// list has rows for.
     pub(super) fn range_statement(
         &self,
         window: &ListWindow,
     ) -> Result<Option<RangeStatement>, DbError> {
-        let (limit, backward) = match window {
-            ListWindow::Forward { limit, .. } => (*limit, false),
-            ListWindow::Backward { limit, .. } => (*limit, true),
-        };
         let plan = self.range_plan(window)?;
         if plan.is_empty() {
             return Ok(None);
@@ -749,7 +715,7 @@ impl<'a> Items<'a> {
             ));
         }
         let columns = (0..width).map(|at| format!("order_key_{at}")).collect::<Vec<_>>().join(", ");
-        Ok(Some(RangeStatement { plan, arms, columns, limit, backward }))
+        Ok(Some(RangeStatement { plan, arms, columns, limit: window.limit }))
     }
 
     /// The items of `window`, in the list's order.
@@ -763,16 +729,12 @@ impl<'a> Items<'a> {
             return Ok(Vec::new());
         };
         let statement = range.sql();
-        let wanted = bae_store::list_windows::sql_bound(range.limit.saturating_add(1));
+        let limit = bae_store::list_windows::sql_bound(range.limit);
         let params = range.params();
         let mut named: Vec<(&str, &dyn ToSql)> =
             params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
-        named.push((":limit", &wanted));
-        let mut rows: Vec<ItemKeyColumns> = self.query(sql, &statement, &named, ItemKey::read)?;
-        rows.truncate(usize::try_from(range.limit).unwrap_or(usize::MAX));
-        if range.backward {
-            rows.reverse();
-        }
+        named.push((":limit", &limit));
+        let rows: Vec<ItemKeyColumns> = self.query(sql, &statement, &named, ItemKey::read)?;
         rows.into_iter().map(ItemKey::of).collect()
     }
 
@@ -874,7 +836,7 @@ impl<'a> Items<'a> {
 
     /// Where the first item meeting `condition` (over the stream's columns
     /// `watched_folder_path`, `item` and `key`, and the alias `s` for the
-    /// row) sits in the list and its key; `None` when no item does. One
+    /// row) sits in the list; `None` when no item does. One
     /// statement takes each part's first matching item, numbered in the whole
     /// list, and `position_where` takes the first row.
     fn position_where(
@@ -882,7 +844,7 @@ impl<'a> Items<'a> {
         sql: &impl coven::SqlRead,
         condition: &str,
         extra: &[(&'static str, &dyn ToSql)],
-    ) -> Result<Option<(u64, OrderKey)>, DbError> {
+    ) -> Result<Option<u64>, DbError> {
         let arms: Vec<String> = self
             .parts()
             .iter()
@@ -896,13 +858,11 @@ impl<'a> Items<'a> {
             })
             .collect();
         let statement = format!("{} LIMIT 1", arms.join(" UNION ALL "));
-        self.query(sql, &statement, extra, |row| {
-            Ok((row.get::<_, i64>("position")?, self.led_key(row)?))
-        })?
-        .into_iter()
-        .next()
-        .map(|(position, key)| Ok((to_u64(position, "an import list position")?, key)))
-        .transpose()
+        self.query(sql, &statement, extra, |row| row.get::<_, i64>("position"))?
+            .into_iter()
+            .next()
+            .map(|position| to_u64(position, "an import list position"))
+            .transpose()
     }
 
     /// The releases the list shows from the release `from` to the release
@@ -946,7 +906,7 @@ impl<'a> Items<'a> {
         &self,
         sql: &impl coven::SqlRead,
         keys: &[crate::CandidateKey],
-    ) -> Result<Option<(u64, OrderKey)>, DbError> {
+    ) -> Result<Option<u64>, DbError> {
         let keys = crate::tables::key_hex_list(keys.iter());
         self.position_where(
             sql,
@@ -961,7 +921,7 @@ impl<'a> Items<'a> {
         &self,
         sql: &impl coven::SqlRead,
         key: &crate::CandidateKey,
-    ) -> Result<Option<(u64, OrderKey)>, DbError> {
+    ) -> Result<Option<u64>, DbError> {
         self.position_where(sql, "s.item <> 'group' AND s.key = :key", &[(":key", key)])
     }
 }

@@ -73,61 +73,6 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// The window of the albums library search lists for `query`
-    /// (`BridgeList::SearchAlbums`) that holds the `limit` albums from
-    /// `offset`, read once: from the first of them to the album past the
-    /// last. A media browser names a page by its offset and reads the window
-    /// live. None when the search lists fewer albums than `offset`, and for a
-    /// blank query.
-    fn read_search_album_page_window(
-        query: String,
-        offset: u64,
-        limit: u64,
-    ) -> Option<BridgeListWindow> {
-        Ok(this
-            .services
-            .search_album_page_window(BridgeList::search_query(&query), offset, limit)
-            .await
-            .map_err(BridgeError::from)?
-            .map(BridgeListWindow::from_core))
-    }
-
-    /// The window of the album `album_id`'s tracks (`BridgeList::AlbumTracks`)
-    /// that holds the `limit` tracks from `offset`, read once: from the first
-    /// of them to the track past the last. A media browser names a page by
-    /// its offset and reads the window live. None when the album lists fewer
-    /// tracks than `offset`.
-    fn read_album_track_page_window(
-        album_id: String,
-        offset: u64,
-        limit: u64,
-    ) -> Option<BridgeListWindow> {
-        Ok(this
-            .services
-            .album_track_page_window(&album_id, offset, limit)
-            .await
-            .map_err(BridgeError::from)?
-            .map(BridgeListWindow::from_core))
-    }
-
-    /// The window of the work `work_id`'s children (`BridgeList::WorkChildren`)
-    /// that holds the `limit` children from `offset`, read once: from the
-    /// first of them to the child past the last. A media browser names a page
-    /// by its offset and reads the window live. None when the work has fewer
-    /// children than `offset`.
-    fn read_work_child_page_window(
-        work_id: String,
-        offset: u64,
-        limit: u64,
-    ) -> Option<BridgeListWindow> {
-        Ok(this
-            .services
-            .work_child_page_window(&work_id, offset, limit)
-            .await
-            .map_err(BridgeError::from)?
-            .map(BridgeListWindow::from_core))
-    }
-
     /// One track of a release as a browse item shows it, read once; `None`
     /// when the release has no such track.
     fn read_release_track(
@@ -185,70 +130,6 @@ forward! { async this => {
             .await
             .map_err(BridgeError::from)?
             .map(crate::types::BridgeWorkDetail::from_core))
-    }
-
-    /// The sort values of the row at `position` of `list`, read by offset, or
-    /// of its last row when the list ends before it; none for an empty list.
-    /// A screen reads this key to start its windows at a position.
-    fn list_key_at(list: BridgeList, position: u64) -> Option<Vec<BridgeSortValue>> {
-        let key = match list {
-            BridgeList::AlbumGrid { sort, group_by_artist } => this
-                .services
-                .album_key_at(&BridgeList::album_sort(sort), group_by_artist, position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::Artists { sort } => this
-                .services
-                .artist_key_at(&BridgeList::artist_sort(sort), position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::Composers { sort } => this
-                .services
-                .composer_key_at(&BridgeList::composer_sort(sort), position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::ComposerPage { artist_id } => this
-                .services
-                .composer_detail_key_at(&artist_id, position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::AlbumTracks { album_id } => this
-                .services
-                .album_track_key_at(&album_id, position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::WorkChildren { work_id } => this
-                .services
-                .work_child_key_at(&work_id, position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::Downloads => this
-                .services
-                .download_key_at(position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::Upcoming { shuffled } => this
-                .services
-                .upcoming_key_at(shuffled, position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::ArtistSearch { text } => this
-                .services
-                .artist_search_key_at(BridgeList::search_query(&text), position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::SearchAlbums { query } => this
-                .services
-                .search_album_key_at(BridgeList::search_query(&query), position)
-                .await
-                .map_err(BridgeError::from)?,
-            BridgeList::Storage { sort, filter, search } => this
-                .services
-                .storage_key_at(&sort.into_core(), filter.into_core(), &search, position)
-                .await
-                .map_err(BridgeError::from)?,
-        };
-        Ok(key.as_ref().map(BridgeSortValue::of_key))
     }
 
     /// 0-based position of `album_id` under the given sort, or `None` if the

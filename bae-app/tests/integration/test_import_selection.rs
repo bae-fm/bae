@@ -89,10 +89,7 @@ async fn list_showing(
     count: u64,
 ) -> (FollowedImportList, ImportListRead) {
     let list = services.subscribe_import_list(view).await.unwrap();
-    let list = FollowedImportList::follow(
-        list,
-        ListWindow::Forward { from: None, until: None, limit: 50 },
-    );
+    let list = FollowedImportList::follow(list, ListWindow::top(50));
     let snapshot = until(&list, &[], |snapshot| {
         snapshot.count.rows == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
@@ -117,7 +114,7 @@ fn on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
             _ => None,

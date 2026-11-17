@@ -29,7 +29,7 @@ impl LibraryViews {
         let order = artist_search_order();
         self.store
             .read(move |sql| {
-                Ok(artist_search_rows_on(&sql, &query, &order, &order.everything(), limit, 0)?
+                Ok(artist_search_rows_on(&sql, &query, &order, &order.everything(), limit)?
                     .into_iter()
                     .map(|(row, _)| row.artist)
                     .collect())
@@ -49,11 +49,9 @@ impl LibraryViews {
     {
         let order = artist_search_order();
         let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-            match &query {
-                Some(query) => artist_search_rows_on(sql, query, &read_order, seek, limit, offset),
-                None => Ok(Vec::new()),
-            }
+        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| match &query {
+            Some(query) => artist_search_rows_on(sql, query, &read_order, seek, limit),
+            None => Ok(Vec::new()),
         })
     }
 
@@ -97,8 +95,8 @@ impl LibraryViews {
         let order = artist_search_order();
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    artist_search_rows_on(&sql, &query, &order, seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    artist_search_rows_on(&sql, &query, &order, seek, limit)
                 })
             })
             .await
@@ -196,27 +194,27 @@ fn artist_search_rows_before_on(
     )
 }
 
-/// The artists `query` finds that `seek` reads in `order`, at most `limit`
-/// from `offset`, each with its key.
+/// The artists `query` finds that `seek` reads in `order`, at most `limit`,
+/// each with its key. The key columns come before the artist's columns, so
+/// coven finds the last row's sort values among the result columns.
 fn artist_search_rows_on(
     sql: &SqlReadContext<'_>,
     query: &crate::LibrarySearchQuery,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<DbArtistSearchRow>>, DbError> {
     let pattern = search_pattern(query.as_str());
     let statement = format!(
         r#"
-        SELECT *,
+        SELECT {keys},
                {image} AS image_version,
                {credit_names} AS credit_names_json,
-               {keys}
+               *
         FROM artists
         WHERE {filter} AND {condition}
         ORDER BY {ordering}
-        LIMIT :limit OFFSET :offset
+        {limit}
         "#,
         filter = artist_search_filter(),
         image = artist_image_version_sql("artists.id"),
@@ -224,9 +222,10 @@ fn artist_search_rows_on(
         keys = order.key_columns(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     );
     let text = query.as_str();
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":text", &text as &dyn rusqlite::ToSql));
         params.push((":pattern", &pattern as &dyn rusqlite::ToSql));

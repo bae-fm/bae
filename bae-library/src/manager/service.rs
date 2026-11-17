@@ -510,7 +510,7 @@ impl LibraryManager {
     }
 
     /// Follow one window of the download queue's entries as the Downloads
-    /// pane draws them: a range of the order queued.
+    /// pane draws them: the entries from one on, in the order queued.
     pub fn subscribe_download_window(
         &self,
         initial: bae_store::ListWindow,
@@ -541,8 +541,8 @@ impl LibraryManager {
     pub async fn download_key_at(
         &self,
         position: u64,
-    ) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError> {
-        Ok(self.downloads.key_at(position).await?)
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError> {
+        self.downloads.key_at(position).await
     }
 
     /// How many downloads are in each phase now, and whether the queue is

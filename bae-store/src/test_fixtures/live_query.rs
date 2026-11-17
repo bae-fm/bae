@@ -1,6 +1,5 @@
 //! How a test checks what moved a live query.
 
-use crate::list_windows::OrderKey;
 use crate::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -31,18 +30,7 @@ where
     event
 }
 
-/// The window of a list from its top to its end, as one window of up to 50
-/// rows.
+/// The window of a list from its top, up to 50 rows.
 pub fn top_window() -> ListWindow {
-    ListWindow::Forward { from: None, until: None, limit: 50 }
-}
-
-/// Three windows sharing bounds at `second` and `fourth`: the rows above
-/// `second`, those from `second` up to `fourth`, and those from `fourth` on.
-pub fn windows_split_at(second: OrderKey, fourth: OrderKey) -> [ListWindow; 3] {
-    [
-        ListWindow::Forward { from: None, until: Some(second.clone()), limit: 50 },
-        ListWindow::Forward { from: Some(second), until: Some(fourth.clone()), limit: 50 },
-        ListWindow::Forward { from: Some(fourth), until: None, limit: 50 },
-    ]
+    ListWindow::top(50)
 }

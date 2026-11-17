@@ -2,8 +2,8 @@ package fm.bae.app.playback
 
 import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
-import fm.bae.app.data.ListChainReader
 import fm.bae.app.data.ListReads
+import fm.bae.app.data.OpenList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,9 +31,9 @@ private fun Library.upcomingList(shuffled: Boolean): ListReads<BridgeQueueEntry>
     }
 
 /**
- * The context's tracks after the playing one, read as a list: a chain of windows over the order the lane reads in,
- * with its count a read of its own. The rows on screen are the places held with [hold], and the chain follows them;
- * for a place far from the chain's rows, the chain starts over at the key the list has there. The tail calls
+ * The context's tracks after the playing one, read as an [OpenList] in the order the lane reads in: one view whose
+ * window core keeps around the rows on screen, and a count. The rows on screen are the places held with [hold], and
+ * the tail reports them to the view. The tail calls
  * [onChange] after each delivery. When the order changes, the list keeps showing the rows of the old order until
  * the new order's count and first rows arrive. A failed read ends the list, and the tail keeps its error in [failure]
  * until [retry] opens the list again.
@@ -61,7 +61,7 @@ internal class UpcomingTail(
     val total: Int
         get() =
             shown
-                ?.reader
+                ?.list
                 ?.count
                 ?.rows
                 ?.toInt() ?: 0
@@ -69,14 +69,13 @@ internal class UpcomingTail(
     /** How many holds each place has: the rows on screen. */
     private val holds = mutableMapOf<Int, Int>()
 
-    /** The rows the shown chain holds, by index in the tail. */
+    /** The rows the shown view's window holds, by index in the tail. */
     fun entries(): Map<Int, BridgeQueueEntry> =
         shown
-            ?.reader
-            ?.chain
-            ?.placed
+            ?.list
+            ?.delivered
+            ?.let { window -> window.rows.mapIndexed { i, entry -> window.start + i to entry } }
             .orEmpty()
-            .flatMap { run -> run.rows.mapIndexed { i, entry -> run.start + i to entry } }
             .toMap()
 
     /**
@@ -131,8 +130,8 @@ internal class UpcomingTail(
         mutableFailure.value = null
         val reads = OrderReads(shuffled)
         if (shown == null) shown = reads else opening = reads
-        reads.start()
-        follow()
+        val first = holds.keys.minOrNull() ?: 0
+        reads.list.start(first, holds.keys.maxOrNull() ?: first)
     }
 
     private fun dropOpening() {
@@ -144,11 +143,11 @@ internal class UpcomingTail(
     /** The reads that follow the rows on screen: those the list changes to, else the shown ones. */
     private fun following(): OrderReads? = opening ?: shown
 
-    /** The rows on screen changed: the chain grows towards them, or starts over from them when they are far off. */
+    /** The rows on screen changed: tell the view, which core keeps its window around. */
     private fun follow() {
         val reads = following() ?: return
         val first = holds.keys.minOrNull() ?: return
-        reads.reader.show(first, holds.keys.max())
+        reads.list.show(first, holds.keys.max())
     }
 
     private fun changed(reads: OrderReads) {
@@ -158,11 +157,11 @@ internal class UpcomingTail(
 
     /**
      * [reads] delivered: the shown ones redraw, and the ones the list changes to replace them once their count
-     * and their chain have both answered.
+     * and their view have both answered.
      */
     private fun answered(reads: OrderReads) {
         if (reads === opening) {
-            if (!reads.reader.answered) return
+            if (!reads.list.answered) return
             shown?.stop()
             shown = reads
             opening = null
@@ -187,15 +186,12 @@ internal class UpcomingTail(
     private inner class OrderReads(
         val shuffled: Boolean,
     ) {
-        val reader = ListChainReader(scope, source.reads(shuffled), { changed(this) }, { failed(it, this) })
+        val list = OpenList(scope, source.reads(shuffled), { changed(this) }, { failed(it, this) })
 
         /** Whether the tail still uses these reads: they are the shown ones or the ones the list changes to. */
         val current: Boolean get() = this === shown || this === opening
 
-        /** Start the count and the chain at the list's top, once the tail holds these reads. */
-        fun start() = reader.start()
-
-        /** End every read; the rows the chain last held stay. */
-        fun stop() = reader.stop()
+        /** End every read; the rows the view last delivered stay. */
+        fun stop() = list.stop()
     }
 }

@@ -206,7 +206,7 @@ impl AppServices {
     }
 
     /// Open an import list showing `view`, with nothing folded and nothing
-    /// selected. The caller opens its windows, count, summary, filter entries
+    /// selected. The caller opens its view, count, summary, filter entries
     /// and selection as live reads of the list, and closing the list ends
     /// them.
     pub async fn subscribe_import_list(

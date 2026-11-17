@@ -53,7 +53,7 @@ impl LibraryViews {
         let order = storage_order(sort);
         self.store
             .read(move |sql| {
-                Ok(storage_rows_on(&sql, &order, filter, None, &order.everything(), limit, offset)?
+                Ok(storage_rows_on(&sql, &order, filter, None, &order.at_offset(offset), limit)?
                     .into_iter()
                     .map(|(row, _)| row)
                     .collect::<Vec<_>>())
@@ -79,8 +79,8 @@ impl LibraryViews {
         let pattern =
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
-            .subscribe_list_window(initial, order, move |sql, seek, limit, offset| {
-                storage_rows_on(sql, &read_order, filter, pattern.as_deref(), seek, limit, offset)
+            .subscribe_list_window(initial, order, move |sql, seek, limit| {
+                storage_rows_on(sql, &read_order, filter, pattern.as_deref(), seek, limit)
             })
             .process(|window| window.try_map_rows(process_storage_row))
     }
@@ -170,8 +170,8 @@ impl LibraryViews {
             crate::LibrarySearchQuery::parse(search).map(|query| search_pattern(query.as_str()));
         self.store
             .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit, offset| {
-                    storage_rows_on(&sql, &order, filter, pattern.as_deref(), seek, limit, offset)
+                key_at(&order, position, &mut |seek, limit| {
+                    storage_rows_on(&sql, &order, filter, pattern.as_deref(), seek, limit)
                 })
             })
             .await
@@ -467,24 +467,39 @@ fn storage_row_select(
 }
 
 /// The rows of the Storage Manager list under `filter` that `rows` reads and
-/// `seek` passes, in its order, each with its key in `order`, from `:offset`
-/// for at most `:limit` rows.
+/// `seek` passes, in its order, each with its key in `order`, at most
+/// `:limit` of them.
 ///
-/// An inner statement picks the window's releases by id alone, so a release
-/// `:offset` skips costs its place in the order and nothing else; the outer
-/// statement reads the columns of just the picked releases, in the same
-/// order.
+/// A window's statement is one SELECT over the listing, returning the
+/// order's terms as its key columns, so coven reruns it for a write at or
+/// before its last row alone. For a read by offset, an inner statement picks
+/// the releases by id alone, so a release `:offset` skips costs its place in
+/// the order and nothing else; the outer statement reads the columns of just
+/// the picked releases, in the same order.
 pub(crate) fn storage_window_query(
     order: &ListOrder,
     filter: StorageFilter,
     rows: StorageRows,
     seek: &Seek,
 ) -> String {
+    if !seek.by_offset() {
+        return format!(
+            "{select} ORDER BY {ordering} {limit}",
+            select = storage_row_select(
+                filter,
+                rows,
+                &format!(", {}", order.key_columns()),
+                &order.condition(seek),
+            ),
+            ordering = order.ordering(seek),
+            limit = seek.limit_clause(),
+        );
+    }
     format!(
         "SELECT {columns} \
          FROM (SELECT listing.release_id AS picked_release_id FROM release_listing listing \
                WHERE {filter} AND {searched} AND ({condition}) \
-               ORDER BY {ordering} LIMIT :limit OFFSET :offset) picked \
+               ORDER BY {ordering} {limit}) picked \
          CROSS JOIN release_listing listing ON listing.release_id = picked.picked_release_id \
          {joins} \
          ORDER BY {ordering}",
@@ -494,6 +509,7 @@ pub(crate) fn storage_window_query(
         searched = storage_search_condition(rows, "listing.album_id"),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
     )
 }
 
@@ -539,7 +555,7 @@ pub(crate) fn storage_counts_on(
 }
 
 /// The Storage Manager list's rows under `filter` and the search `pattern`
-/// that `seek` reads in `order`, at most `limit` from `offset`, each with its key.
+/// that `seek` reads in `order`, at most `limit`, each with its key.
 pub(crate) fn storage_rows_on(
     sql: &SqlReadContext<'_>,
     order: &ListOrder,
@@ -547,11 +563,10 @@ pub(crate) fn storage_rows_on(
     pattern: Option<&str>,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> Result<Vec<Keyed<StorageRowParts>>, DbError> {
     let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
     let statement = storage_window_query(order, filter, rows, seek);
-    Ok(seek.bound(limit, offset, |params| {
+    Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         if let Some(pattern) = &pattern {
             params.push((":search", pattern));

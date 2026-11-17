@@ -39,8 +39,8 @@ impl LibraryManager {
         bae_playback::tables::subscribe_session_up_next(&self.store, limit)
     }
 
-    /// Follow one window of the upcoming tracks, a range of the order the
-    /// context lane reads in (`shuffled` picks which).
+    /// Follow one window of the upcoming tracks, the tracks from one on in
+    /// the order the context lane reads in (`shuffled` picks which).
     pub fn subscribe_upcoming_window(
         &self,
         shuffled: bool,
@@ -77,8 +77,8 @@ impl LibraryManager {
         &self,
         shuffled: bool,
         position: u64,
-    ) -> Result<Option<bae_store::list_windows::OrderKey>, LibraryError> {
-        Ok(bae_playback::tables::upcoming_key_at(&self.store, shuffled, position).await?)
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError> {
+        bae_playback::tables::upcoming_key_at(&self.store, shuffled, position).await
     }
 
     /// Test-only. Production reads audio format as part of the resolved track-audio

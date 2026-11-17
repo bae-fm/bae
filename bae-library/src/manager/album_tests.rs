@@ -114,13 +114,10 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     let kept_files =
         manager.store.query_texts_for_test(&coven_files_of(&[&other.id])).await.unwrap();
 
-    let mut browse = views(manager).subscribe_album_window(
-        &[],
-        false,
-        bae_store::ListWindow::Forward { from: None, until: None, limit: 10 },
-    );
+    let mut browse =
+        views(manager).subscribe_album_window(&[], false, bae_store::ListWindow::top(10));
     let listed = |browse: &bae_store::WindowRead<bae_views::DbAlbumAppearance>| -> Vec<String> {
-        browse.rows.iter().map(|row| row.album.id.clone()).collect()
+        browse.rows.iter().map(|(row, _key)| row.album.id.clone()).collect()
     };
     let before = browse.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(listed(&before).len(), 2);

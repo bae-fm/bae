@@ -71,9 +71,9 @@ struct ImportListPinnedHeaderTests {
         #expect(inside?.ends(below: 60) { landed[$0] } == false)
     }
 
-    /// The third window starts inside the group. The pinned header is the
-    /// header that this window returns with its rows, though no window holds
-    /// the header's own row.
+    /// The list's view opens inside the group. The pinned header is the
+    /// header that its window returns with its rows, though the window
+    /// doesn't hold the header's own row.
     @MainActor
     @Test("a window that starts inside a group pins the header it delivers")
     func windowStartingInsideTheGroupPinsItsLeadingHeader() async throws {
@@ -92,10 +92,7 @@ struct ImportListPinnedHeaderTests {
             ),
             onError: { _ in }
         )
-        await list.reopen(
-            at: BridgeListQueries<BridgeImportListItem>.fixedKey(60),
-            position: 60
-        )
+        await list.reopen(at: 60)
 
         #expect(list.row(of: header.id) == nil)
         let pinned = ImportListPinnedHeader.over(

@@ -24,6 +24,7 @@ mod browse;
 pub mod composer;
 pub mod composer_detail;
 mod invites;
+pub mod list_view;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
 mod models;
 mod name_keys;
@@ -82,7 +83,7 @@ use bae_records::records::query::*;
 use bae_records::records::read::*;
 use bae_records::records::{release_detail_rows_on, DbReleaseDetailRows};
 use bae_records::*;
-use bae_store::list_windows::{key_at, page_window, Keyed, ListOrder, OrderKey, Seek, SortTerm};
+use bae_store::list_windows::{key_at, Keyed, ListOrder, OrderKey, Seek, SortTerm};
 use bae_store::read::*;
 use bae_store::*;
 use bae_transfers::download_entry_sql;
@@ -144,7 +145,7 @@ fn key_columns(keyed: Option<&ListOrder>) -> String {
 }
 
 /// The statement reading the rows `seek` reads of a listing query built by
-/// `listing` in `order`, at most `:limit` from `:offset`, each with its key.
+/// `listing` in `order`, at most `:limit`, each with its key.
 pub(crate) fn listing_window_query(
     listing: fn(Option<&ListOrder>, Option<&str>, Option<&str>) -> String,
     order: &ListOrder,
@@ -153,7 +154,7 @@ pub(crate) fn listing_window_query(
     listing(
         Some(order),
         Some(&format!("WHERE {}", order.condition(seek))),
-        Some(&format!("ORDER BY {} LIMIT :limit OFFSET :offset", order.ordering(seek))),
+        Some(&format!("ORDER BY {} {}", order.ordering(seek), seek.limit_clause())),
     )
 }
 

@@ -3,30 +3,22 @@ import Foundation
 
 @testable import bae
 
-/// An import list whose items a test replaces. The list answers each window
-/// with the items between its keys, where a key is the item's stable key.
-/// When a test replaces the items, the list sends the new rows to every open
-/// window, count and position.
+/// An import list whose items a test replaces. The list's view answers the
+/// rows on screen with the items around them, as core sizes a window. When
+/// a test replaces the items, the list sends the new rows to every open view
+/// and count.
 final class MutableImportList: @unchecked Sendable {
-    private final class Window: @unchecked Sendable {
-        let feed = ImportFeed<ListWindowDelivery<BridgeImportListItem>>()
-        var request: BridgeListWindow
+    private final class View: @unchecked Sendable {
+        let feed = ImportFeed<ListViewDelivery<BridgeImportListItem>>()
+        var shown: ClosedRange<Int>
         var stopped = false
 
-        init(_ request: BridgeListWindow) { self.request = request }
-    }
-
-    private final class Position: @unchecked Sendable {
-        let feed = ImportFeed<BridgeListPosition>()
-        var key: [BridgeSortValue]
-
-        init(_ key: [BridgeSortValue]) { self.key = key }
+        init(_ shown: ClosedRange<Int>) { self.shown = shown }
     }
 
     private let lock = NSLock()
     private var items: [BridgeImportListItem]
-    private var windows: [Window] = []
-    private var positions: [Position] = []
+    private var views: [View] = []
     private var counts: [ImportFeed<BridgeListCount>] = []
     private var deliveredIds: Set<String> = []
 
@@ -34,76 +26,40 @@ final class MutableImportList: @unchecked Sendable {
         self.items = items
     }
 
-    private func key(_ item: BridgeImportListItem) -> [BridgeSortValue] {
-        [.text(value: item.id)]
-    }
-
-    /// Where the item `key` names stands, or the end when no item has it.
-    private func seek(_ key: [BridgeSortValue]) -> Int {
-        guard case .text(let id)? = key.first else { return 0 }
-        return items.firstIndex { $0.id == id } ?? items.count
-    }
-
-    /// Whether the list has sent the item `id` to any window; the answer
-    /// stays true after the list closes that window.
+    /// Whether the list has sent the item `id` to any view; the answer stays
+    /// true after the list closes that view.
     func hasDelivered(_ id: String) -> Bool {
         lock.withLock { deliveredIds.contains(id) }
     }
 
-    private func delivery(of window: BridgeListWindow)
-        -> ListWindowDelivery<BridgeImportListItem>
+    private func delivery(of shown: ClosedRange<Int>)
+        -> ListViewDelivery<BridgeImportListItem>
     {
-        let answer = answer(window)
+        let answer = lock.withLock {
+            let delivery = BridgeListQueries<BridgeImportListItem>
+                .fixedDelivery(
+                    first: shown.lowerBound,
+                    last: shown.upperBound,
+                    rows: items
+                )
+            deliveredIds.formUnion(delivery.rows.map(\.id))
+            return delivery
+        }
         Wait.happened()
         return answer
     }
 
-    private func answer(_ window: BridgeListWindow)
-        -> ListWindowDelivery<BridgeImportListItem>
-    {
-        lock.withLock {
-            let start: Int
-            let stop: Int
-            let beyond: Int?
-            switch window {
-            case .forward(let from, let until, let limit):
-                start = from.map(seek) ?? 0
-                let end = until.map(seek) ?? items.count
-                stop = min(start + Int(limit), end)
-                beyond = stop < end ? stop : nil
-            case .backward(let until, let limit):
-                stop = seek(until)
-                start = max(0, stop - Int(limit))
-                beyond = start > 0 ? start - 1 : nil
-            }
-            let rows = start < stop ? Array(items[start..<stop]) : []
-            deliveredIds.formUnion(rows.map(\.id))
-            return ListWindowDelivery(
-                window: window,
-                rows: rows,
-                first: rows.first.map(key),
-                beyond: beyond.map { key(items[$0]) }
-            )
-        }
-    }
-
     /// Replace the list's items and deliver the change to everything open.
     func replaceItems(_ next: [BridgeImportListItem]) async {
-        let (windows, positions) = lock.withLock {
+        let views = lock.withLock {
             items = next
-            return (
-                self.windows.filter { !$0.stopped },
-                self.positions
-            )
+            return self.views.filter { !$0.stopped }
         }
         for feed in lock.withLock({ counts }) {
             feed.emit(count)
         }
-        for window in windows {
-            window.feed.emit(delivery(of: window.request))
-        }
-        for position in positions {
-            position.feed.emit(placed(position.key))
+        for view in views {
+            view.feed.emit(delivery(of: view.shown))
         }
     }
 
@@ -116,13 +72,6 @@ final class MutableImportList: @unchecked Sendable {
                 narrowed: nil,
                 tabs: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0)
             )
-        )
-    }
-
-    private func placed(_ key: [BridgeSortValue]) -> BridgeListPosition {
-        BridgeListPosition(
-            key: key,
-            rowsBefore: UInt64(lock.withLock { seek(key) })
         )
     }
 
@@ -155,8 +104,7 @@ final class MutableImportList: @unchecked Sendable {
                     stableKey: items[position].id,
                     tab: .pending,
                     groupKey: nil,
-                    visiblePosition: UInt64(position),
-                    key: self.key(items[position])
+                    visiblePosition: UInt64(position)
                 )
             }
         }
@@ -164,18 +112,18 @@ final class MutableImportList: @unchecked Sendable {
 
     private var queries: BridgeListQueries<BridgeImportListItem> {
         BridgeListQueries(
-            window: { [self] first in
-                let window = Window(first)
-                lock.withLock { windows.append(window) }
-                window.feed.emit(delivery(of: first))
-                return ListWindowQuery(
-                    setWindow: { [self] next in
-                        window.request = next
-                        window.feed.emit(delivery(of: next))
+            view: { [self] first, last in
+                let view = View(Int(first)...Int(last))
+                lock.withLock { views.append(view) }
+                view.feed.emit(delivery(of: view.shown))
+                return ListViewQuery(
+                    setVisible: { [self] first, last in
+                        view.shown = Int(first)...Int(last)
+                        view.feed.emit(delivery(of: view.shown))
                     },
                     values: PulledValues(
-                        read: { try await window.feed.next() },
-                        cancel: { window.stopped = true }
+                        read: { try await view.feed.next() },
+                        cancel: { view.stopped = true }
                     )
                 )
             },
@@ -184,26 +132,6 @@ final class MutableImportList: @unchecked Sendable {
                 lock.withLock { counts.append(feed) }
                 feed.emit(count)
                 return PulledValues(read: { try await feed.next() })
-            },
-            position: { [self] key in
-                let position = Position(key)
-                lock.withLock { positions.append(position) }
-                position.feed.emit(placed(key))
-                return ListPositionQuery(
-                    setKey: { [self] next in
-                        position.key = next
-                        position.feed.emit(placed(next))
-                    },
-                    values: PulledValues(read: {
-                        try await position.feed.next()
-                    })
-                )
-            },
-            keyAt: { [self] position in
-                lock.withLock {
-                    guard !items.isEmpty else { return nil }
-                    return key(items[min(Int(position), items.count - 1)])
-                }
             }
         )
     }

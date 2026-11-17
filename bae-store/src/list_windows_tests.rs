@@ -19,12 +19,6 @@ fn rows() -> Connection {
     conn
 }
 
-/// SQLite's NOCASE, which two of the rows' `b` values ('x' and 'X') are
-/// equal under.
-fn nocase(left: &str, right: &str) -> Ordering {
-    left.to_ascii_lowercase().cmp(&right.to_ascii_lowercase())
-}
-
 fn orders() -> Vec<ListOrder> {
     vec![
         ListOrder::new(vec![SortTerm::ascending("t.id")]),
@@ -32,48 +26,42 @@ fn orders() -> Vec<ListOrder> {
         ListOrder::new(vec![SortTerm::ascending("t.a").nullable(), SortTerm::ascending("t.id")]),
         ListOrder::new(vec![
             SortTerm::descending("t.a").nullable(),
-            SortTerm::ascending("t.b COLLATE NOCASE").collated(nocase),
+            SortTerm::ascending("t.b COLLATE NOCASE"),
             SortTerm::ascending("t.id"),
         ]),
         ListOrder::new(vec![
             SortTerm::ascending("t.a IS NULL"),
             SortTerm::descending("t.a").nullable(),
-            SortTerm::descending("t.b COLLATE NOCASE").collated(nocase),
+            SortTerm::descending("t.b COLLATE NOCASE"),
             SortTerm::ascending("t.c"),
             SortTerm::descending("t.id"),
         ]),
     ]
 }
 
-/// `seek`'s rows of `t`, at most `limit` from `offset`, each with its key.
+/// `seek`'s rows of `t`, at most `limit`, each with its key.
 fn read(
     conn: &Connection,
     order: &ListOrder,
     seek: &Seek,
     limit: u64,
-    offset: u64,
 ) -> rusqlite::Result<Vec<Keyed<String>>> {
     let statement = format!(
-        "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {order} \
-         LIMIT :limit OFFSET :offset",
+        "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {order} {limit}",
         keys = order.key_columns(),
         condition = order.condition(seek),
         order = order.ordering(seek),
+        limit = seek.limit_clause(),
     );
-    let (limit, offset) = (limit as i64, offset as i64);
-    let mut params = seek.params();
-    params.push((":limit", &limit));
-    params.push((":offset", &offset));
     let mut statement = conn.prepare(&statement)?;
-    let rows = statement
-        .query_map(params.as_slice(), |row| Ok((row.get(0)?, order.key_of(row)?)))?
-        .collect();
-    rows
+    seek.bound(limit, |params| {
+        statement.query_map(params, |row| Ok((row.get(0)?, order.key_of(row)?)))?.collect()
+    })
 }
 
 /// Every row of `t` in `order`, with its key.
 fn listed(conn: &Connection, order: &ListOrder) -> Vec<Keyed<String>> {
-    read(conn, order, &order.everything(), 1_000, 0).unwrap()
+    read(conn, order, &order.everything(), 1_000).unwrap()
 }
 
 /// A key that no row has and that the order places right after `row`'s key
@@ -87,91 +75,35 @@ fn phantom_beside(order: &ListOrder, row: &OrderKey) -> OrderKey {
     OrderKey::new(values)
 }
 
-fn ids(rows: &[Keyed<String>]) -> Vec<String> {
-    rows.iter().map(|(id, _)| id.clone()).collect()
-}
-
-/// A forward window reads exactly the rows of `[from, until)`: every bound
-/// absent, a row's key, or a key no row has, in every order, with its ties,
-/// its NULLs and its terms of a collation.
+/// A window reads exactly the `limit` rows at or after its key, or from the
+/// list's top: a row's key, or a key no row has, in every order, with its
+/// ties, its NULLs and its terms of a collation, and each row comes with its
+/// key.
 #[test]
-fn a_range_holds_exactly_the_rows_between_its_bounds() {
+fn a_window_holds_the_rows_from_its_key() {
     let conn = rows();
     for order in orders() {
         let everything = listed(&conn, &order);
         let last_runs_down = order.terms.last().unwrap().descending;
-        // A bound with the position it falls on: the boundary before that row.
-        let mut bounds: Vec<(Option<OrderKey>, usize)> = vec![(None, usize::MAX)];
+        // A key with the position of the first row at or after it.
+        let mut froms: Vec<(Option<OrderKey>, usize)> = vec![(None, 0)];
         for at in [0, 1, 2, 3, 49, 50, 51, 99, 100, 150, 198, 199] {
-            bounds.push((Some(everything[at].1.clone()), at));
+            froms.push((Some(everything[at].1.clone()), at));
             let phantom = phantom_beside(&order, &everything[at].1);
-            bounds.push((Some(phantom), if last_runs_down { at } else { at + 1 }));
+            froms.push((Some(phantom), if last_runs_down { at } else { at + 1 }));
         }
-        for (from, from_at) in &bounds {
-            for (until, until_at) in &bounds {
-                let start = if from.is_some() { *from_at } else { 0 };
-                let end = if until.is_some() { *until_at } else { everything.len() };
-                let expected = if start < end { ids(&everything[start..end]) } else { Vec::new() };
-                let window =
-                    ListWindow::Forward { from: from.clone(), until: until.clone(), limit: 1_000 };
-                let read = read_range(&order, &window, &mut |seek, limit, offset| {
-                    read(&conn, &order, seek, limit, offset)
+        for (from, start) in &froms {
+            for limit in [1, 10, 1_000] {
+                let end = (start + limit as usize).min(everything.len());
+                let window = ListWindow { from: from.clone(), limit };
+                let read = read_range(&order, &window, &mut |seek, limit| {
+                    read(&conn, &order, seek, limit)
                 })
                 .unwrap();
-                assert_eq!(read.rows, expected, "{order:?} from {from_at} until {until_at}");
-                assert_eq!(read.beyond, None);
-                let first = everything.get(start).filter(|_| start < end).map(|row| &row.1);
-                assert_eq!(read.first.as_ref(), first);
+                assert_eq!(read.window, window);
+                assert_eq!(read.rows, everything[*start..end], "{order:?} from {start}");
             }
         }
-    }
-}
-
-/// A window the limit cuts short names the key of the row after its last
-/// one; one that reaches its end bound, the list's end or the list's top
-/// names none. A backward window reads the rows nearest before its bound and
-/// delivers them in the list's order.
-#[test]
-fn a_window_cut_by_its_limit_names_the_next_row() {
-    let conn = rows();
-    for order in orders() {
-        let everything = listed(&conn, &order);
-        let read = |window: &ListWindow| {
-            read_range(&order, window, &mut |seek, limit, offset| {
-                read(&conn, &order, seek, limit, offset)
-            })
-            .unwrap()
-        };
-        let key = |at: usize| Some(everything[at].1.clone());
-
-        let cut = read(&ListWindow::Forward { from: key(20), until: key(60), limit: 10 });
-        assert_eq!(cut.rows, ids(&everything[20..30]));
-        assert_eq!(cut.beyond, key(30));
-
-        let exact = read(&ListWindow::Forward { from: key(20), until: key(30), limit: 10 });
-        assert_eq!(exact.rows, ids(&everything[20..30]));
-        assert_eq!(exact.beyond, None, "the window reached its end bound with its limit");
-
-        let to_the_end = read(&ListWindow::Forward { from: key(195), until: None, limit: 10 });
-        assert_eq!(to_the_end.rows, ids(&everything[195..]));
-        assert_eq!(to_the_end.beyond, None);
-
-        let top = read(&ListWindow::Forward { from: None, until: None, limit: 7 });
-        assert_eq!(top.rows, ids(&everything[..7]));
-        assert_eq!(top.first, key(0));
-        assert_eq!(top.beyond, key(7));
-
-        let back = read(&ListWindow::Backward { until: everything[40].1.clone(), limit: 10 });
-        assert_eq!(back.rows, ids(&everything[30..40]));
-        assert_eq!(back.first, key(30));
-        assert_eq!(back.beyond, key(29));
-
-        let to_the_top = read(&ListWindow::Backward { until: everything[3].1.clone(), limit: 10 });
-        assert_eq!(to_the_top.rows, ids(&everything[..3]));
-        assert_eq!(to_the_top.beyond, None);
-
-        let empty = read(&ListWindow::Forward { from: key(50), until: key(50), limit: 10 });
-        assert!(empty.rows.is_empty() && empty.first.is_none() && empty.beyond.is_none());
     }
 }
 
@@ -205,10 +137,7 @@ fn a_position_is_counted_before_a_key_and_read_as_a_key() {
             assert_eq!(count(before, &[(":c", &1)]), odd as i64, "{order:?}");
         }
         let key_at = |position| {
-            key_at(&order, position, &mut |seek, limit, offset| {
-                read(&conn, &order, seek, limit, offset)
-            })
-            .unwrap()
+            key_at(&order, position, &mut |seek, limit| read(&conn, &order, seek, limit)).unwrap()
         };
         assert_eq!(key_at(0).as_ref(), Some(&everything[0].1));
         assert_eq!(key_at(120).as_ref(), Some(&everything[120].1));
@@ -216,49 +145,11 @@ fn a_position_is_counted_before_a_key_and_read_as_a_key() {
     }
 }
 
-/// A page named by its offset is the window from the row at that offset up
-/// to the row past its last, which holds exactly the page's rows; a page
-/// that reaches the list's end has no upper bound, and a page past the end
-/// has no window.
+/// Every seek of a window from a key is one search of the order's index,
+/// with the terms it holds equal and the one it compares in the search, and
+/// no temp b-tree.
 #[test]
-fn a_page_at_an_offset_is_the_window_bounded_by_its_rows_keys() {
-    let conn = rows();
-    for order in orders() {
-        let everything = listed(&conn, &order);
-        let mut read_rows = |seek: &Seek, limit, offset| read(&conn, &order, seek, limit, offset);
-        let page = |position, limit, read_rows: &mut _| {
-            page_window(&order, position, limit, read_rows).unwrap()
-        };
-        let window = page(40, 20, &mut read_rows).expect("the list holds the page");
-        assert_eq!(
-            window,
-            ListWindow::Forward {
-                from: Some(everything[40].1.clone()),
-                until: Some(everything[60].1.clone()),
-                limit: 20,
-            },
-            "{order:?}"
-        );
-        let held = read_range(&order, &window, &mut read_rows).unwrap();
-        assert_eq!(held.rows, ids(&everything[40..60]), "{order:?}");
-        assert_eq!(
-            page(190, 20, &mut read_rows),
-            Some(ListWindow::Forward {
-                from: Some(everything[190].1.clone()),
-                until: None,
-                limit: 20
-            }),
-            "{order:?}"
-        );
-        assert_eq!(page(200, 20, &mut read_rows), None, "{order:?}");
-    }
-}
-
-/// Every seek of a range bounded at both ends is one search of the order's
-/// index, with the terms it holds equal and the bounds it compares in the
-/// search, and no temp b-tree.
-#[test]
-fn every_seek_of_a_two_bound_range_searches_an_index() {
+fn every_seek_of_a_window_searches_an_index() {
     let conn = Connection::open_in_memory().unwrap();
     conn.execute_batch(
         "CREATE TABLE t (id TEXT PRIMARY KEY, a INTEGER, b TEXT NOT NULL, c INTEGER NOT NULL);
@@ -268,54 +159,66 @@ fn every_seek_of_a_two_bound_range_searches_an_index() {
     .unwrap();
     let order = ListOrder::new(vec![
         SortTerm::ascending("t.a"),
-        SortTerm::ascending("t.b COLLATE NOCASE").collated(nocase),
+        SortTerm::ascending("t.b COLLATE NOCASE"),
         SortTerm::ascending("t.c"),
         SortTerm::ascending("t.id"),
     ]);
-    let key = |a: i64, b: &str, c: i64, id: &str| {
-        OrderKey::new(vec![
-            SortValue::Integer(a),
-            SortValue::Text(b.into()),
-            SortValue::Integer(c),
-            SortValue::Text(id.into()),
-        ])
-    };
-    // Bounds that differ at each term in turn.
-    for (from, until) in [
-        (key(1, "x", 1, "id1"), key(2, "x", 1, "id1")),
-        (key(1, "x", 1, "id1"), key(1, "y", 1, "id1")),
-        (key(1, "x", 1, "id1"), key(1, "x", 2, "id1")),
-        (key(1, "x", 1, "id1"), key(1, "x", 1, "id2")),
-    ] {
-        let seeks = order.range_seeks(Some(&from), Some(&until));
-        assert!(!seeks.is_empty());
-        for seek in seeks {
-            let statement = format!(
-                "EXPLAIN QUERY PLAN SELECT t.id FROM t WHERE {} ORDER BY {} LIMIT 10",
-                order.condition(&seek),
-                order.ordering(&seek),
-            );
-            let mut prepared = conn.prepare(&statement).unwrap();
-            let steps: Vec<String> = prepared
-                .query_map(seek.params().as_slice(), |row| row.get::<_, String>(3))
-                .unwrap()
-                .collect::<Result<_, _>>()
-                .unwrap();
-            assert_eq!(steps.len(), 1, "{statement}: {steps:?}");
-            assert!(steps[0].starts_with("SEARCH t USING"), "{steps:?}");
-            let searched = steps[0].split_once('(').expect("the search names its terms").1;
-            assert_eq!(searched.matches("=?").count(), seek.held_equal(), "{steps:?}");
-            let compared = searched.matches(">?").count() + searched.matches("<?").count();
-            assert_eq!(compared, if seek.bounds_both_ends() { 2 } else { 1 }, "{steps:?}");
-        }
+    let from = OrderKey::new(vec![
+        SortValue::Integer(1),
+        SortValue::Text("x".into()),
+        SortValue::Integer(1),
+        SortValue::Text("id1".into()),
+    ]);
+    let seeks = order.window_seeks(Some(&from));
+    assert_eq!(seeks.len(), 4, "one seek past each term");
+    for seek in seeks {
+        let statement = format!(
+            "EXPLAIN QUERY PLAN SELECT t.id FROM t WHERE {} ORDER BY {} {}",
+            order.condition(&seek),
+            order.ordering(&seek),
+            seek.limit_clause(),
+        );
+        let mut prepared = conn.prepare(&statement).unwrap();
+        let steps: Vec<String> = seek
+            .bound(10, |params| {
+                prepared.query_map(params, |row| row.get::<_, String>(3))?.collect::<Result<_, _>>()
+            })
+            .unwrap();
+        assert_eq!(steps.len(), 1, "{statement}: {steps:?}");
+        assert!(steps[0].starts_with("SEARCH t USING"), "{steps:?}");
+        let searched = steps[0].split_once('(').expect("the search names its terms").1;
+        assert_eq!(searched.matches("=?").count(), seek.held_equal(), "{steps:?}");
+        let compared = searched.matches(">?").count() + searched.matches("<?").count();
+        assert_eq!(compared, 1, "{steps:?}");
     }
 }
 
-/// Two live queries over neighbouring ranges of one list: a write inside a
-/// range reruns that window alone, and a write above, below or past both
-/// reruns neither, not even the window whose bound is the row's neighbour.
+/// A window's statements' reads, each with its key: what a list's live
+/// query runs for each seek.
+fn read_live(
+    sql: &coven::SqlReadContext<'_>,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+) -> Result<Vec<Keyed<String>>, crate::DbError> {
+    let statement = format!(
+        "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {ordering} {limit}",
+        keys = order.key_columns(),
+        condition = order.condition(seek),
+        ordering = order.ordering(seek),
+        limit = seek.limit_clause(),
+    );
+    seek.bound(limit, |params| {
+        sql.query(&statement, params, |row| Ok((row.get::<_, String>(0)?, order.key_of(row)?)))
+    })
+    .map_err(crate::DbError::from)
+}
+
+/// A window from a key, cut by its limit: a write at or before its last
+/// row reruns it, and a write before its key or after its last row reruns
+/// nothing.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_write_reruns_only_the_window_whose_range_holds_it() {
+async fn a_write_reruns_the_window_only_up_to_its_last_row() {
     use bae_util::test_channels::HANG_GUARD;
     let (store, _tmp) = crate::test_fixtures::temp_db(
         crate::Schema::new(&[]).followed_by(
@@ -334,34 +237,15 @@ async fn a_write_reruns_only_the_window_whose_range_holds_it() {
     let order = ListOrder::new(vec![SortTerm::ascending("t.n"), SortTerm::ascending("t.id")]);
     let key =
         |n: i64| OrderKey::new(vec![SortValue::Integer(n), SortValue::Text(format!("id{n:03}"))]);
-    let window = |from: i64, until: i64| ListWindow::Forward {
-        from: Some(key(from)),
-        until: Some(key(until)),
-        limit: 100,
-    };
-    let subscribe = |window: ListWindow| {
-        let rows_order = order.clone();
-        store.subscribe_list_window(window, order.clone(), move |sql, seek, limit, offset| {
-            let statement = format!(
-                "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {ordering} \
-                 LIMIT :limit OFFSET :offset",
-                keys = rows_order.key_columns(),
-                condition = rows_order.condition(seek),
-                ordering = rows_order.ordering(seek),
-            );
-            seek.bound(limit, offset, |params| {
-                sql.query(&statement, params, |row| {
-                    Ok((row.get::<_, String>(0)?, rows_order.key_of(row)?))
-                })
-            })
-            .map_err(crate::DbError::from)
-        })
-    };
-    let mut lower = subscribe(window(100, 300));
-    let mut upper = subscribe(window(300, 600));
-    for query in [&mut lower, &mut upper] {
-        tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
-    }
+    // The rows from 100 to 300.
+    let rows_order = order.clone();
+    let mut window = store.subscribe_list_window(
+        ListWindow { from: Some(key(100)), limit: 21 },
+        order,
+        move |sql, seek, limit| read_live(sql, &rows_order, seek, limit),
+    );
+    let first = tokio::time::timeout(HANG_GUARD, window.next_inline()).await.unwrap().unwrap();
+    assert_eq!(first.result.unwrap().rows.last().unwrap().0, "id300");
     let insert = |n: i64, id: &'static str| {
         let store = &store;
         async move {
@@ -374,37 +258,31 @@ async fn a_write_reruns_only_the_window_whose_range_holds_it() {
         }
     };
 
-    // Inside the upper range, and at its bound: the row after the lower
-    // range's last, which the upper range holds.
-    for (n, id) in [(455, "x455"), (300, "id300a")] {
+    // Inside the window: its last row is then x285.
+    for (n, id) in [(205, "x205"), (285, "x285")] {
         insert(n, id).await;
-        assert!(upper.is_marked_for_rerun(), "{id} is inside the upper range");
-        assert!(!lower.is_marked_for_rerun(), "{id} is past the lower range's end");
-        let event = tokio::time::timeout(HANG_GUARD, upper.next_inline()).await.unwrap().unwrap();
-        assert!(event.result.unwrap().rows.contains(&id.to_string()));
+        assert!(window.is_marked_for_rerun(), "{id} is inside the window");
+        let event = tokio::time::timeout(HANG_GUARD, window.next_inline()).await.unwrap().unwrap();
+        assert!(event.result.unwrap().rows.iter().any(|(row, _)| row == id));
     }
-    // Inside the lower range.
-    insert(205, "x205").await;
-    assert!(lower.is_marked_for_rerun() && !upper.is_marked_for_rerun());
-    tokio::time::timeout(HANG_GUARD, lower.next_inline()).await.unwrap().unwrap();
-    // Above both, past both, and between the two windows' bounds' neighbours.
-    for (n, id) in [(5, "x005"), (950, "x950"), (99, "x099")] {
+    // Before its key, and after its last row, one of them tying its value.
+    for (n, id) in [(5, "x005"), (99, "x099"), (285, "x285a"), (455, "x455"), (950, "x950")] {
         insert(n, id).await;
-        assert!(!lower.is_marked_for_rerun() && !upper.is_marked_for_rerun(), "{id}");
+        assert!(!window.is_marked_for_rerun(), "{id} is outside the window");
     }
 }
 
-/// Windows over a list ordered by a nullable value: the NULLs sort first, so
-/// one window holds NULLs only, one crosses from the NULLs into the values,
-/// and one holds values only. A write reruns exactly the window whose range
-/// holds its row, whether the row's value is NULL or not.
+/// Windows over a list ordered by a nullable value, whose NULLs sort first:
+/// one holds NULLs only, and one crosses from the NULLs into the values. A
+/// write reruns the window whose rows run up to its row, whether the row's
+/// value is NULL or not, and no window that ends before it.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_it() {
+async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_reach_it() {
     use bae_util::test_channels::HANG_GUARD;
     let (store, _tmp) = crate::test_fixtures::temp_db(
         crate::Schema::new(&[]).followed_by(
             "CREATE TABLE t (id TEXT PRIMARY KEY NOT NULL, n INTEGER); \
-         CREATE INDEX t_by ON t (n IS NULL, n, id);"
+         CREATE INDEX t_by ON t (n, id);"
                 .to_string(),
         ),
     )
@@ -418,41 +296,16 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_
     let order =
         ListOrder::new(vec![SortTerm::ascending("t.n").nullable(), SortTerm::ascending("t.id")]);
     let null_key = |id: &str| OrderKey::new(vec![SortValue::Null, SortValue::Text(id.to_string())]);
-    let value_key = |n: i64, id: &str| {
-        OrderKey::new(vec![SortValue::Integer(n), SortValue::Text(id.to_string())])
-    };
     let subscribe = |window: ListWindow| {
         let rows_order = order.clone();
-        store.subscribe_list_window(window, order.clone(), move |sql, seek, limit, offset| {
-            let statement = format!(
-                "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {ordering} \
-                 LIMIT :limit OFFSET :offset",
-                keys = rows_order.key_columns(),
-                condition = rows_order.condition(seek),
-                ordering = rows_order.ordering(seek),
-            );
-            seek.bound(limit, offset, |params| {
-                sql.query(&statement, params, |row| {
-                    Ok((row.get::<_, String>(0)?, rows_order.key_of(row)?))
-                })
-            })
-            .map_err(crate::DbError::from)
+        store.subscribe_list_window(window, order.clone(), move |sql, seek, limit| {
+            read_live(sql, &rows_order, seek, limit)
         })
     };
-    // The first window holds NULLs only, the second the NULLs after n030 and
-    // the values below 200, the third the values from 200 on.
+    // The first window holds n010 to n030, the second n030 to v200.
     let mut windows = [
-        subscribe(ListWindow::Forward { from: None, until: Some(null_key("n030")), limit: 100 }),
-        subscribe(ListWindow::Forward {
-            from: Some(null_key("n030")),
-            until: Some(value_key(200, "v200")),
-            limit: 100,
-        }),
-        subscribe(ListWindow::Forward {
-            from: Some(value_key(200, "v200")),
-            until: None,
-            limit: 100,
-        }),
+        subscribe(ListWindow { from: None, limit: 3 }),
+        subscribe(ListWindow { from: Some(null_key("n030")), limit: 4 }),
     ];
     for query in &mut windows {
         tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
@@ -462,17 +315,15 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_holds_
         async move { crate::test_fixtures::exec_batch(store, sql).await }
     };
 
-    // Each write reruns only the windows whose ranges hold the row before or
-    // after the write.
-    let writes: [(&'static str, [bool; 3]); 6] = [
-        ("INSERT INTO t (id, n) VALUES ('n015', NULL)", [true, false, false]),
-        ("INSERT INTO t (id, n) VALUES ('n035', NULL)", [false, true, false]),
-        ("INSERT INTO t (id, n) VALUES ('v150', 150)", [false, true, false]),
-        ("INSERT INTO t (id, n) VALUES ('v250', 250)", [false, false, true]),
-        // A row moving from the NULLs into the values leaves one window and
-        // enters another.
-        ("UPDATE t SET n = 500 WHERE id = 'n020'", [true, false, true]),
-        ("UPDATE t SET n = NULL WHERE id = 'v300'", [false, true, true]),
+    // Each write reruns only the windows whose rows run up to the row before
+    // or after the write.
+    let writes: [(&'static str, [bool; 2]); 5] = [
+        ("INSERT INTO t (id, n) VALUES ('n015', NULL)", [true, false]),
+        ("INSERT INTO t (id, n) VALUES ('n035', NULL)", [false, true]),
+        ("INSERT INTO t (id, n) VALUES ('v050', 50)", [false, true]),
+        ("INSERT INTO t (id, n) VALUES ('v150', 150)", [false, false]),
+        // A row moving from the NULLs into the values past both windows.
+        ("UPDATE t SET n = 500 WHERE id = 'n020'", [true, false]),
     ];
     for (sql, expected) in writes {
         write(sql).await;

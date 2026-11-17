@@ -4,33 +4,45 @@ import Testing
 
 @testable import bae
 
-/// A list of albums in the order of their ids, which answers each window with
-/// the range of ids it names: a key is a row's id, so a key is as stable as the
-/// row, and a test changes the list and delivers the change to every window
-/// the list opened.
+/// A list of albums in the order of their ids whose view answers the way
+/// core's does: it keeps a window of three screens around the rows on screen,
+/// starting a screen above them, and holds the window at its first row's id,
+/// so rows inserted above it move the window's start and not its rows. A test
+/// changes the list and delivers the change to every view the list opened.
 private final class ProbeList: @unchecked Sendable {
-    final class Window: @unchecked Sendable {
-        private let feed = Feed<ListWindowDelivery<BridgeAlbum>>()
-        fileprivate(set) var request: BridgeListWindow
+    final class View: @unchecked Sendable {
+        private let feed = Feed<ListViewDelivery<BridgeAlbum>>()
         fileprivate(set) var stopped = false
         private let lock = NSLock()
-        private var emits = 0
-        private var pulls = 0
+        private var shownRows: ClosedRange<Int>
+        private var reports: [ClosedRange<Int>] = []
+        /// The id of the window's first row; nil at the list's top.
+        fileprivate var from: String?
+        fileprivate var limit = 0
 
-        init(_ request: BridgeListWindow) { self.request = request }
+        init(_ shown: ClosedRange<Int>) {
+            shownRows = shown
+            reports = [shown]
+        }
 
-        /// Whether the list has taken every value this window answered: it
-        /// asks for one more than the window gave.
-        var drained: Bool { lock.withLock { pulls > emits } }
+        /// Every range of rows on screen the list reported, the one it
+        /// opened the view with first.
+        var reported: [ClosedRange<Int>] { lock.withLock { reports } }
 
-        fileprivate func emit(_ value: ListWindowDelivery<BridgeAlbum>) {
-            lock.withLock { emits += 1 }
+        var shown: ClosedRange<Int> { lock.withLock { shownRows } }
+
+        fileprivate func show(_ rows: ClosedRange<Int>) {
+            lock.withLock {
+                shownRows = rows
+                reports.append(rows)
+            }
+        }
+
+        fileprivate func emit(_ value: ListViewDelivery<BridgeAlbum>) {
             feed.emit(value)
         }
 
-        fileprivate func pull() async throws -> ListWindowDelivery<BridgeAlbum>
-        {
-            lock.withLock { pulls += 1 }
+        fileprivate func pull() async throws -> ListViewDelivery<BridgeAlbum> {
             Wait.happened()
             return try await feed.next()
         }
@@ -40,49 +52,42 @@ private final class ProbeList: @unchecked Sendable {
 
     private let lock = NSLock()
     private var albums: [BridgeAlbum]
-    private var open: [Window] = []
+    private var open: [View] = []
     private let counts = Feed<BridgeListCount>()
-    private var keyReads: [UInt64] = []
     private var countHeld = false
-    private var windowsHeld = false
-    private var heldWindows: [Window] = []
+    private var viewsHeld = false
+    private var heldViews: [View] = []
 
     init(_ ids: [String]) {
         albums = ids.map { makeBridgeAlbum(id: $0) }
     }
 
-    func key(_ id: String) -> [BridgeSortValue] { [.text(value: id)] }
+    var views: [View] { lock.withLock { open } }
 
-    var windows: [Window] { lock.withLock { open } }
-
-    var requests: [BridgeListWindow] { windows.map(\.request) }
-
-    var keyAtReads: [UInt64] { lock.withLock { keyReads } }
-
-    /// Answer no count until `releaseCount`: the windows answer while the
-    /// list still waits for the count.
+    /// Answer no count until `releaseCount`: the view answers while the list
+    /// still waits for the count.
     func holdCount() { lock.withLock { countHeld = true } }
 
-    /// Answer no window the list opens until `releaseWindows`.
-    func holdWindows() { lock.withLock { windowsHeld = true } }
+    /// Answer no view the list opens until `releaseViews`.
+    func holdViews() { lock.withLock { viewsHeld = true } }
 
-    /// Answer each window a held read opened.
-    func releaseWindows() {
+    /// Answer each view a held read opened.
+    func releaseViews() {
         let held = lock.withLock {
-            windowsHeld = false
-            defer { heldWindows = [] }
-            return heldWindows
+            viewsHeld = false
+            defer { heldViews = [] }
+            return heldViews
         }
-        for window in held { deliver(to: window) }
+        for view in held { place(view) }
     }
 
     /// Fail the count read with `error`.
     func failCount(_ error: any Error) { counts.fail(error) }
 
-    /// Fail every open window's read with `error`.
-    func failWindows(_ error: any Error) {
-        for window in windows where !window.stopped {
-            window.fail(error)
+    /// Fail every open view's read with `error`.
+    func failViews(_ error: any Error) {
+        for view in views where !view.stopped {
+            view.fail(error)
         }
     }
 
@@ -92,6 +97,10 @@ private final class ProbeList: @unchecked Sendable {
             countHeld = false
             return albums.count
         }
+        emitCount(count)
+    }
+
+    private func emitCount(_ count: Int) {
         counts.emit(
             BridgeListCount(
                 rows: UInt64(count),
@@ -101,123 +110,76 @@ private final class ProbeList: @unchecked Sendable {
         )
     }
 
-    /// Replace the list's rows and deliver the change to every window and the
-    /// count.
+    /// Replace the list's rows and deliver the change to every view, each
+    /// window held at its first row, and to the count.
     func set(_ ids: [String]) {
-        let (windows, count) = lock.withLock {
+        let (views, count) = lock.withLock {
             albums = ids.sorted().map { makeBridgeAlbum(id: $0) }
             return (open.filter { !$0.stopped }, albums.count)
         }
-        counts.emit(
-            BridgeListCount(
-                rows: UInt64(count),
-                items: UInt64(count),
-                extra: .none
-            )
-        )
-        for window in windows { deliver(to: window) }
+        emitCount(count)
+        for view in views { deliver(to: view) }
     }
 
-    private func seek(_ key: [BridgeSortValue]) -> Int {
-        guard case .text(let id)? = key.first else { return 0 }
-        return albums.firstIndex { $0.id >= id } ?? albums.count
-    }
-
-    private func delivery(of window: BridgeListWindow) -> ListWindowDelivery<
-        BridgeAlbum
-    > {
+    /// Place `view`'s window around the rows on screen, as core does: three
+    /// screens from a screen above them.
+    private func place(_ view: View) {
         lock.withLock {
-            let start: Int
-            let stop: Int
-            let beyond: Int?
-            switch window {
-            case .forward(let from, let until, let limit):
-                start = from.map(seek) ?? 0
-                let end = until.map(seek) ?? albums.count
-                stop = min(start + Int(limit), end)
-                beyond = stop < end ? stop : nil
-            case .backward(let until, let limit):
-                stop = seek(until)
-                start = max(0, stop - Int(limit))
-                beyond = start > 0 ? start - 1 : nil
-            }
-            let rows = start < stop ? Array(albums[start..<stop]) : []
-            return ListWindowDelivery(
-                window: window,
-                rows: rows,
-                first: rows.first.map { key($0.id) },
-                beyond: beyond.map { key(albums[$0].id) }
+            let shown = view.shown
+            let screen = shown.count
+            let start = min(max(0, shown.lowerBound - screen), albums.count)
+            view.from = start == 0 ? nil : albums[start].id
+            view.limit = 3 * screen
+        }
+        deliver(to: view)
+    }
+
+    /// The window's rows as they stand: from the row at its first row's id.
+    private func deliver(to view: View) {
+        let delivery = lock.withLock {
+            let start =
+                view.from.map { from in
+                    albums.firstIndex { $0.id >= from } ?? albums.count
+                } ?? 0
+            let end = min(start + view.limit, albums.count)
+            return ListViewDelivery(
+                start: start,
+                rows: start < end ? Array(albums[start..<end]) : []
             )
         }
+        view.emit(delivery)
     }
 
-    func deliver(to window: Window) {
-        window.emit(delivery(of: window.request))
-    }
-
-    /// Deliver `value` to `window` unchanged, whatever rows the list holds.
-    func deliver(_ value: ListWindowDelivery<BridgeAlbum>, to window: Window) {
-        window.emit(value)
+    /// Deliver `value` to `view` unchanged, whatever rows the list holds.
+    func deliver(_ value: ListViewDelivery<BridgeAlbum>, to view: View) {
+        view.emit(value)
     }
 
     var queries: BridgeListQueries<BridgeAlbum> {
         BridgeListQueries(
-            window: { [self] first in
-                let window = Window(first)
+            view: { [self] first, last in
+                let view = View(Int(first)...Int(last))
                 let held = lock.withLock {
-                    open.append(window)
-                    if windowsHeld { heldWindows.append(window) }
-                    return windowsHeld
+                    open.append(view)
+                    if viewsHeld { heldViews.append(view) }
+                    return viewsHeld
                 }
-                if !held { deliver(to: window) }
-                return ListWindowQuery(
-                    setWindow: { [self] next in
-                        window.request = next
-                        deliver(to: window)
+                if !held { place(view) }
+                return ListViewQuery(
+                    setVisible: { [self] first, last in
+                        view.show(Int(first)...Int(last))
+                        place(view)
                     },
                     values: PulledValues(
-                        read: { try await window.pull() },
-                        cancel: { window.stopped = true }
+                        read: { try await view.pull() },
+                        cancel: { view.stopped = true }
                     )
                 )
             },
             count: { [self] in
                 let (held, rows) = lock.withLock { (countHeld, albums.count) }
-                if !held {
-                    counts.emit(
-                        BridgeListCount(
-                            rows: UInt64(rows),
-                            items: UInt64(rows),
-                            extra: .none
-                        )
-                    )
-                }
+                if !held { emitCount(rows) }
                 return PulledValues(read: { try await self.counts.next() })
-            },
-            position: { [self] key in
-                let feed = Feed<BridgeListPosition>()
-                let emit: @Sendable ([BridgeSortValue]) -> Void = { key in
-                    feed.emit(
-                        BridgeListPosition(
-                            key: key,
-                            rowsBefore: UInt64(
-                                self.lock.withLock { self.seek(key) }
-                            )
-                        )
-                    )
-                }
-                emit(key)
-                return ListPositionQuery(
-                    setKey: emit,
-                    values: PulledValues(read: { try await feed.next() })
-                )
-            },
-            keyAt: { [self] position in
-                lock.withLock {
-                    keyReads.append(position)
-                    guard !albums.isEmpty else { return nil }
-                    return key(albums[min(Int(position), albums.count - 1)].id)
-                }
             }
         )
     }
@@ -274,22 +236,23 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("loadInitial reads the top window and the count")
+    @Test("loadInitial reads the list's view from its top and the count")
     func loadInitialReadsTopAndCount() async throws {
         let probe = ProbeList(ids(0...29))
         let list = try await open(probe)
 
         #expect(list.count?.rows == 30)
-        #expect(idsAt(list, 0...29) == ids(0...29).map(Optional.init))
-        #expect(idsAt(list, 30...30) == [nil])
+        #expect(probe.views.first?.reported.first == 0...0)
+        #expect(list.idAt(0) == "a0000")
+        list.cancel()
     }
 
     @MainActor
     @Test(
-        "a list shows its first window before its count arrives",
+        "a list shows its first rows before its count arrives",
         .timeLimit(.minutes(1))
     )
-    func windowBeforeCount() async throws {
+    func rowsBeforeCount() async throws {
         let probe = ProbeList(ids(0...199))
         probe.holdCount()
         let list = PaginatedList(
@@ -298,10 +261,10 @@ struct PaginatedListTests {
         )
         await list.loadInitial()
 
-        #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
+        #expect(list.idAt(0) == "a0000")
         #expect(
             list.count == nil,
-            "the list never uses the rows its windows hold as the count"
+            "the list never uses the rows its view holds as the count"
         )
 
         probe.releaseCount()
@@ -312,7 +275,7 @@ struct PaginatedListTests {
 
     @MainActor
     @Test(
-        "a count that fails before it delivers fails the first read, though a window delivered rows"
+        "a count that fails before it delivers fails the first read, though the view delivered rows"
     )
     func countFailingFirstFailsTheFirstRead() async throws {
         let probe = ProbeList(ids(0...9))
@@ -333,7 +296,7 @@ struct PaginatedListTests {
 
     @MainActor
     @Test(
-        "a reopened list whose window read fails before its count delivers keeps its rows and reports the failure"
+        "a reopened list whose view read fails before its count delivers keeps its rows and reports the failure"
     )
     func reopenedReadFailureKeepsRows() async throws {
         let probe = ProbeList(ids(0...9))
@@ -346,8 +309,8 @@ struct PaginatedListTests {
         try await Wait.until { list.count != nil }
 
         probe.holdCount()
-        await list.reopen(at: nil, position: 0)
-        probe.failWindows(
+        await list.reopen(at: 0)
+        probe.failViews(
             BridgeError.Diagnostic(category: .database, detail: "locked")
         )
         try await Wait.until { failures.count > 0 }
@@ -364,7 +327,7 @@ struct PaginatedListTests {
         #expect(list.count?.rows == 200)
 
         probe.holdCount()
-        await list.reopen(at: nil, position: 0)
+        await list.reopen(at: 0)
         #expect(list.count == nil)
         list.cancel()
     }
@@ -380,7 +343,7 @@ struct PaginatedListTests {
             )
         let list = PaginatedList<BridgeAlbum>(
             queries: BridgeListQueries(
-                window: rows.window,
+                view: rows.view,
                 count: {
                     .fixed(
                         BridgeListCount(
@@ -389,9 +352,7 @@ struct PaginatedListTests {
                             extra: .albumGrid(canShuffle: false, grouped: false)
                         )
                     )
-                },
-                position: rows.position,
-                keyAt: rows.keyAt
+                }
             ),
             onError: { Issue.record("List failed: \($0)") }
         )
@@ -405,133 +366,90 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("a window cut by its limit closes at the key beyond it")
-    func closesAtBeyond() async throws {
+    @Test("the list tells core the rows on screen each time they change")
+    func reportsTheRowsOnScreen() async throws {
         let probe = ProbeList(ids(0...199))
         let list = try await open(probe)
-        let tasks = held(list, 0...10)
-        defer {
-            for task in tasks { task.cancel() }
-        }
+        let view = try #require(probe.views.first)
 
-        try await Wait.until {
-            probe.requests.first
-                == .forward(
-                    from: nil,
-                    until: probe.key("a0050"),
-                    limit: 50
-                )
-        }
+        let tasks = held(list, 0...10)
+        try await Wait.until { view.shown == 0...10 }
+        #expect(idsAt(list, 0...10) == ids(0...10).map(Optional.init))
+
+        for task in tasks { task.cancel() }
+        let further = held(list, 100...110)
+        try await Wait.until { view.shown == 100...110 }
+        try await Wait.until { list.idAt(100) != nil }
+        #expect(idsAt(list, 100...110) == ids(100...110).map(Optional.init))
+        for task in further { task.cancel() }
+        list.cancel()
     }
 
+    /// Rows inserted above the rows on screen move the window's start, and
+    /// each row sits one place lower: the list holds the same rows and tells
+    /// the grid to scroll back to the row it showed on top.
     @MainActor
-    @Test("a split on beyond keeps every row once")
-    func splitKeepsEveryRowOnce() async throws {
+    @Test(
+        "an insert above the rows on screen keeps their rows, one place lower"
+    )
+    func insertAboveKeepsTheRows() async throws {
         let probe = ProbeList(ids(0...199))
         let list = try await open(probe)
-        let tasks = held(list, 0...10)
-        defer {
-            for task in tasks { task.cancel() }
-        }
-        try await Wait.until { list.idAt(49) == "a0049" }
+        let tasks = held(list, 100...110)
+        try await Wait.until { list.idAt(100) == "a0100" }
+        let revision = list.contentRevision
 
-        // The test adds rows inside the first window's range, so it holds
-        // more than its limit.
-        let added = (1...5).map { "a0010x\($0)" }
-        let all = (ids(0...199) + added).sorted()
-        probe.set(all)
+        probe.set(["a0000a"] + ids(0...199))
 
-        try await Wait.until {
-            idsAt(list, 0...(all.count - 1 > 100 ? 100 : all.count - 1))
-                == all.prefix(101).map(Optional.init)
-        }
-        try await Wait.until { list.count?.rows == UInt64(all.count) }
+        try await Wait.until { list.position(of: "a0100") == 101 }
+        #expect(list.idAt(101) == "a0100")
+        #expect(list.contentRevision > revision)
+        for task in tasks { task.cancel() }
+        list.cancel()
     }
 
     @MainActor
-    @Test("the list merges a window that goes empty into its neighbour")
-    func emptyWindowIsDropped() async throws {
-        let probe = ProbeList(ids(0...129))
-        let list = try await open(probe)
-        let tasks = held(list, 0...110)
-        defer {
-            for task in tasks { task.cancel() }
-        }
-        try await Wait.until { list.idAt(129) == "a0129" }
-
-        // Every row of the middle window goes.
-        let rest = ids(0...49) + ids(100...129)
-        probe.set(rest)
-
-        try await Wait.until { idsAt(list, 0...79) == rest.map(Optional.init) }
-        #expect(list.idAt(80) == nil)
-    }
-
-    @MainActor
-    @Test("a jump starts a chain at the key the list has there")
-    func jumpStartsAtKey() async throws {
-        let probe = ProbeList(ids(0...999))
-        let list = try await open(probe)
-
-        await list.withPage(containing: 900) {
-            #expect(list.idAt(900) == "a0900")
-        }
-
-        #expect(probe.keyAtReads == [900])
-        #expect(list.idAt(0) == nil)
-    }
-
-    @MainActor
-    @Test("a value for a replaced window draws nothing")
-    func replacedWindowDrawsNothing() async throws {
+    @Test("a value from a replaced view draws nothing")
+    func replacedViewDrawsNothing() async throws {
         let probe = ProbeList(ids(0...199))
         let list = try await open(probe)
-        let tasks = held(list, 0...10)
-        defer {
-            for task in tasks { task.cancel() }
-        }
-        try await Wait.until {
-            probe.requests.first
-                == .forward(from: nil, until: probe.key("a0050"), limit: 50)
-        }
-        let first = try #require(probe.windows.first)
+        let first = try #require(probe.views.first)
 
-        // This value answers the request the list opened the window with,
-        // which the list has since replaced.
+        await list.reopen(at: 0)
         probe.deliver(
-            ListWindowDelivery(
-                window: .forward(from: nil, until: nil, limit: 50),
-                rows: [makeBridgeAlbum(id: "stale")],
-                first: probe.key("stale"),
-                beyond: nil
-            ),
+            ListViewDelivery(start: 0, rows: [makeBridgeAlbum(id: "stale")]),
             to: first
         )
-        try await Wait.until { first.drained }
 
-        #expect(idsAt(list, 0...49) == ids(0...49).map(Optional.init))
+        #expect(first.stopped)
+        #expect(list.idAt(0) == "a0000")
+        list.cancel()
     }
 
     @MainActor
-    @Test("the rows of a window are its last value only")
+    @Test("the rows of the view are its last value only")
     func rowsAreTheLastValueOnly() async throws {
         let probe = ProbeList(ids(0...29))
         let list = try await open(probe)
+        let tasks = held(list, 0...9)
+        try await Wait.until { list.idAt(9) != nil }
 
-        probe.set(ids(0...9))
+        probe.set(ids(0...4))
 
-        try await Wait.until { list.count?.rows == 10 }
-        try await Wait.until { list.idAt(10) == nil }
-        #expect(idsAt(list, 0...9) == ids(0...9).map(Optional.init))
+        try await Wait.until { list.count?.rows == 5 }
+        try await Wait.until { list.idAt(5) == nil }
+        #expect(idsAt(list, 0...4) == ids(0...4).map(Optional.init))
+        for task in tasks { task.cancel() }
+        list.cancel()
     }
 }
 
 extension PaginatedListTests {
-    /// Another order starts the windows over at the key the list now has at
-    /// the first position on screen, and the total count stays the same.
+    /// Another order opens a new view at the rows on screen, and the total
+    /// count stays the same.
     @MainActor
-    @Test("another order rereads the windows from the first row on screen")
-    func reorderStartsAtTheFirstRowOnScreen() async throws {
+    @Test("another order reads a new view at the rows on screen")
+    func reorderOpensAtTheRowsOnScreen() async throws {
         let probe = ProbeList(ids(0...999))
         let list = try await open(probe)
         let holds = held(list, 400...410)
@@ -540,30 +458,30 @@ extension PaginatedListTests {
         probe.holdCount()
         await list.reorder()
 
-        #expect(probe.keyAtReads.last == 400)
+        #expect(probe.views.last?.reported.first == 400...410)
         #expect(list.idAt(400) == "a0400")
         #expect(list.count?.rows == 1000, "another order keeps the count")
         for hold in holds { hold.cancel() }
         list.cancel()
     }
 
-    /// The list draws the rows it has until the first window in the new
-    /// order answers, so the screen never empties when the order changes.
+    /// The list draws the rows it has until the new view in the new order
+    /// answers, so the screen never empties when the order changes.
     @MainActor
-    @Test("another order keeps the rows on screen until its window answers")
-    func reorderKeepsTheRowsUntilItsWindowAnswers() async throws {
+    @Test("another order keeps the rows on screen until its view answers")
+    func reorderKeepsTheRowsUntilItsViewAnswers() async throws {
         let probe = ProbeList(ids(0...999))
         let list = try await open(probe)
         let holds = held(list, 400...410)
         try await Wait.until { list.idAt(400) != nil }
-        let opened = probe.windows.count
+        let opened = probe.views.count
 
-        probe.holdWindows()
+        probe.holdViews()
         let reorder = Task { await list.reorder() }
-        try await Wait.until { probe.windows.count > opened }
+        try await Wait.until { probe.views.count > opened }
 
         #expect(idsAt(list, 400...410) == ids(400...410).map(Optional.init))
-        probe.releaseWindows()
+        probe.releaseViews()
         await reorder.value
         #expect(list.idAt(400) == "a0400")
         for hold in holds { hold.cancel() }

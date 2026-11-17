@@ -314,8 +314,8 @@ async fn next_storage_value(values: &bae_views::LiveListWindow) -> bae_views::Li
 }
 
 /// The Storage Manager reads each window of its list as a live read of its
-/// own: moving a window's bounds delivers the new range on the same
-/// subscription, a new sort or filter is another list, and the filtered
+/// own: moving a window to a row it holds delivers the rows from there on the
+/// same subscription, a new sort or filter is another list, and the filtered
 /// set's count and total size are a read of their own.
 #[tokio::test]
 async fn a_storage_window_moves_in_place_and_the_count_is_its_own() {
@@ -336,13 +336,11 @@ async fn a_storage_window_moves_in_place_and_the_count_is_its_own() {
     let first = next_storage_value(&values).await;
     assert_eq!(titles(&first), vec!["Album 0", "Album 1"]);
     assert_eq!(counts.next().await.unwrap().rows, 3, "one count answers every window");
-    let beyond = first.beyond.clone().expect("the limit cut the window short");
+    let last = first.keys.last().cloned().expect("the window holds rows");
 
-    values
-        .set(bae_store::ListWindow::Forward { from: Some(beyond), until: None, limit: 2 })
-        .unwrap();
+    values.set(bae_store::ListWindow { from: Some(last), limit: 2 }).unwrap();
     let scrolled = next_storage_value(&values).await;
-    assert_eq!(titles(&scrolled), vec!["Album 2"]);
+    assert_eq!(titles(&scrolled), vec!["Album 1", "Album 2"]);
 
     let descending = bae_views::StorageSortCriterion {
         direction: bae_store::SortDirection::Descending,

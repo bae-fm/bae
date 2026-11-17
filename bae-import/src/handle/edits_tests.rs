@@ -171,7 +171,7 @@ fn candidate_rows(snapshot: &ImportListRead) -> Vec<(String, &crate::TriageRow)>
     snapshot
         .windows
         .iter()
-        .flat_map(|window| &window.rows)
+        .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
         .filter_map(|item| match item {
             ImportListItem::Candidate { row, .. } => Some((item.stable_key(), row)),
             ImportListItem::GroupHeader { .. } | ImportListItem::Invalid { .. } => None,

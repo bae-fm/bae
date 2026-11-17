@@ -152,90 +152,59 @@
     }
 
     extension BridgeListQueries {
-        /// The key a fixed list gives its row at `position`: the position
-        /// itself, since the rows arrive already in order.
-        public static func fixedKey(_ position: Int) -> [BridgeSortValue] {
-            [.integer(value: Int64(position))]
-        }
-
-        /// The position a key of a fixed list names, which `fixedKey` gave
-        /// out.
-        private static func fixedPosition(_ key: [BridgeSortValue]) -> Int {
-            guard key.count == 1, case .integer(let value)? = key.first else {
-                preconditionFailure(
-                    "a fixed list never gave out the key \(key)"
-                )
-            }
-            return Int(value)
-        }
-
-        /// The delivery a fixed list answers `window` with: the rows of its
-        /// range, where the keys are positions.
-        static func fixedDelivery(
-            of window: BridgeListWindow,
+        /// The delivery a fixed list's view answers the rows from `first` to
+        /// `last` on screen with: those rows and a screen of rows on each
+        /// side, as core sizes a window, where the rows arrive in order.
+        public static func fixedDelivery(
+            first: Int,
+            last: Int,
             rows: [Row],
             leadingHeader: @Sendable (_ position: Int) -> Row? = { _ in nil }
-        ) -> ListWindowDelivery<Row> {
-            switch window {
-            case .forward(let from, let until, let limit):
-                let start = min(from.map(fixedPosition) ?? 0, rows.count)
-                let end = min(
-                    until.map(fixedPosition) ?? rows.count,
-                    rows.count
-                )
-                let stop = min(start + Int(limit), end)
-                return ListWindowDelivery(
-                    window: window,
-                    rows: start < stop ? Array(rows[start..<stop]) : [],
-                    first: start < stop ? fixedKey(start) : nil,
-                    beyond: stop < end ? fixedKey(stop) : nil,
-                    leadingHeader: start < stop ? leadingHeader(start) : nil
-                )
-            case .backward(let until, let limit):
-                let end = min(fixedPosition(until), rows.count)
-                let start = max(0, end - Int(limit))
-                return ListWindowDelivery(
-                    window: window,
-                    rows: start < end ? Array(rows[start..<end]) : [],
-                    first: start < end ? fixedKey(start) : nil,
-                    beyond: start > 0 ? fixedKey(start - 1) : nil,
-                    leadingHeader: start < end ? leadingHeader(start) : nil
-                )
-            }
+        ) -> ListViewDelivery<Row> {
+            let screen = last - first + 1
+            let start = min(max(0, first - screen), rows.count)
+            let end = min(start + 3 * screen, rows.count)
+            return ListViewDelivery(
+                start: start,
+                rows: start < end ? Array(rows[start..<end]) : [],
+                leadingHeader: start < end ? leadingHeader(start) : nil
+            )
         }
 
-        /// The window read of a fixed list: each request counts in `answers`
-        /// until the fixed list answers it with its range of `rows`.
-        private static func fixedWindow(
+        /// The view read of a fixed list: each report of the rows on screen
+        /// counts in `answers` until the fixed list answers it with its rows
+        /// around them.
+        private static func fixedView(
             of rows: [Row],
             answers: UnansweredCount,
             leadingHeader: @escaping @Sendable (_ position: Int) -> Row?
-        ) -> @Sendable (BridgeListWindow) -> ListWindowQuery<Row> {
-            { first in
-                let requests = FixedRequests<BridgeListWindow>(answers: answers)
-                requests.request(first)
-                let values = PulledValues<ListWindowDelivery<Row>>(
+        ) -> @Sendable (UInt64, UInt64) -> ListViewQuery<Row> {
+            { first, last in
+                let requests = FixedRequests<ClosedRange<Int>>(answers: answers)
+                requests.request(Int(first)...Int(last))
+                let values = PulledValues<ListViewDelivery<Row>>(
                     read: {
-                        let asked = try await requests.take()
+                        let shown = try await requests.take()
                         return Self.fixedDelivery(
-                            of: asked,
+                            first: shown.lowerBound,
+                            last: shown.upperBound,
                             rows: rows,
                             leadingHeader: leadingHeader
                         )
                     },
                     cancel: { requests.close() }
                 )
-                return ListWindowQuery(
-                    setWindow: { requests.request($0) },
+                return ListViewQuery(
+                    setVisible: { requests.request(Int($0)...Int($1)) },
                     values: values
                 )
             }
         }
 
-        /// A list over fixed, already-sorted rows, for shots and tests: the list
-        /// answers every window with its range of `rows`, and a key is the
-        /// position of its row. Each window request counts in `answers` until
-        /// the list answers it.
+        /// A list over fixed, already-sorted rows, for shots and tests: the
+        /// list's view answers the rows on screen with its rows around them.
+        /// Each report of the rows on screen counts in `answers` until the
+        /// list answers it.
         public static func fixed(
             _ rows: [Row],
             answers: UnansweredCount,
@@ -245,7 +214,7 @@
                 _ in nil
             }
         ) -> BridgeListQueries<Row> {
-            let window = Self.fixedWindow(
+            let view = Self.fixedView(
                 of: rows,
                 answers: answers,
                 leadingHeader: leadingHeader
@@ -258,22 +227,6 @@
                 )
                 return PulledValues<BridgeListCount>.fixed(value)
             }
-            let position: @Sendable ([BridgeSortValue]) -> ListPositionQuery = {
-                key in
-                let value = BridgeListPosition(
-                    key: key,
-                    rowsBefore: UInt64(Self.fixedPosition(key))
-                )
-                return ListPositionQuery(
-                    setKey: { _ in },
-                    values: PulledValues<BridgeListPosition>.fixed(value)
-                )
-            }
-            let keyAt: @Sendable (UInt64) async throws -> [BridgeSortValue]? = {
-                position in
-                if rows.isEmpty { return nil }
-                return Self.fixedKey(min(Int(position), rows.count - 1))
-            }
             var headings:
                 (@Sendable () -> PulledValues<[BridgeLibraryBrowseSection]>)?
             if !sections.isEmpty {
@@ -282,15 +235,13 @@
                 }
             }
             return BridgeListQueries<Row>(
-                window: window,
+                view: view,
                 count: count,
-                position: position,
-                keyAt: keyAt,
                 sections: headings
             )
         }
 
-        /// A list whose every window read fails with `error`, for shots and
+        /// A list whose every view read fails with `error`, for shots and
         /// tests of the screen that shows a list bae failed to read.
         public static func failing(
             _ error: any Error & Sendable,
@@ -298,14 +249,14 @@
         ) -> BridgeListQueries<Row> {
             let empty = BridgeListQueries<Row>.fixed([], answers: answers)
             return BridgeListQueries<Row>(
-                window: { first -> ListWindowQuery<Row> in
-                    let requests = FixedRequests<BridgeListWindow>(
+                view: { first, last -> ListViewQuery<Row> in
+                    let requests = FixedRequests<ClosedRange<Int>>(
                         answers: answers
                     )
-                    requests.request(first)
-                    return ListWindowQuery(
-                        setWindow: { requests.request($0) },
-                        values: PulledValues<ListWindowDelivery<Row>>(
+                    requests.request(Int(first)...Int(last))
+                    return ListViewQuery(
+                        setVisible: { requests.request(Int($0)...Int($1)) },
+                        values: PulledValues<ListViewDelivery<Row>>(
                             read: {
                                 _ = try await requests.take()
                                 throw error
@@ -314,9 +265,7 @@
                         )
                     )
                 },
-                count: empty.count,
-                position: empty.position,
-                keyAt: empty.keyAt
+                count: empty.count
             )
         }
     }
@@ -324,8 +273,8 @@
     #if os(macOS)
         extension ImportListHandle {
             /// An import list over fixed, already-ordered `items`, for shots and
-            /// tests, on `tab`: the list answers every window with its range of
-            /// the items, a view or fold changes nothing, and the list finds a
+            /// tests, on `tab`: the list's view answers the rows on screen with
+            /// the items around them, a view or fold changes nothing, and the list finds a
             /// candidate at its place in `items`.
             public static func fixed(
                 items: [BridgeImportListItem],
@@ -401,9 +350,7 @@
                         stableKey: items[$0].id,
                         tab: tab,
                         groupKey: nil,
-                        visiblePosition: UInt64($0),
-                        key: BridgeListQueries<BridgeImportListItem>
-                            .fixedKey($0)
+                        visiblePosition: UInt64($0)
                     )
                 }
             }

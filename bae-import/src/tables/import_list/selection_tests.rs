@@ -221,7 +221,7 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
         Some(SingleSelection::InvalidCandidate { key: lib.key("Broken") })
     );
     assert!(read.selection.offers.is_empty());
-    assert!(matches!(&read.windows[0].rows[0], ImportListItem::Invalid { .. }));
+    assert!(matches!(&read.windows[0].rows[0].0, ImportListItem::Invalid { .. }));
     assert_eq!(
         tables.load_import_list_selected(list, selected, None).await.unwrap().invalid,
         [lib.key("Broken")]

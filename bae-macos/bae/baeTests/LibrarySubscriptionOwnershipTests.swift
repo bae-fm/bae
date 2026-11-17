@@ -4,62 +4,44 @@ import Testing
 
 @testable import bae
 
-/// Stands in for the album list: records the window its list asks for, and
-/// answers it and the count with whatever rows a test emits.
+/// Stands in for the album list: records the rows on screen its list
+/// reports, and answers its view and the count with whatever rows a test
+/// emits.
 private final class AlbumListProbe: @unchecked Sendable {
     private let lock = NSLock()
-    private var requested: BridgeListWindow?
-    private let windows = Feed<ListWindowDelivery<BridgeAlbum>>()
+    private var shown: ClosedRange<Int>?
+    private let views = Feed<ListViewDelivery<BridgeAlbum>>()
     private let counts = Feed<BridgeListCount>()
 
     var queries: BridgeListQueries<BridgeAlbum> {
         BridgeListQueries(
-            window: { [self] first in
-                lock.recording { requested = first }
-                return ListWindowQuery(
-                    setWindow: { [self] window in
-                        lock.recording { requested = window }
+            view: { [self] first, last in
+                lock.recording { shown = Int(first)...Int(last) }
+                return ListViewQuery(
+                    setVisible: { [self] first, last in
+                        lock.recording { shown = Int(first)...Int(last) }
                     },
                     values: PulledValues(read: { [self] in
-                        try await windows.next()
+                        try await views.next()
                     })
                 )
             },
             count: { [self] in
                 PulledValues(read: { try await self.counts.next() })
-            },
-            position: { _ in
-                ListPositionQuery(
-                    setKey: { _ in },
-                    values: PulledValues(read: {
-                        try await Task.sleep(for: .seconds(3600))
-                        throw CancellationError()
-                    })
-                )
-            },
-            keyAt: { _ in nil }
+            }
         )
     }
 
-    /// Answer the window with `rows` from the top of the list, and the count
+    /// Answer the view with `rows` from the top of the list, and the count
     /// with `total`.
     func emit(rows: [BridgeAlbum], total: UInt64) {
-        guard let window = lock.withLock({ requested }),
-            case .forward(_, _, let limit) = window
-        else { return }
-        windows.emit(
-            ListWindowDelivery(
-                window: window,
-                rows: Array(rows.prefix(Int(limit))),
-                first: rows.isEmpty ? nil : [.integer(value: 0)],
-                beyond: nil
-            )
-        )
+        guard lock.withLock({ shown }) != nil else { return }
+        views.emit(ListViewDelivery(start: 0, rows: rows))
         counts.emit(BridgeListCount(rows: total, items: total, extra: .none))
     }
 
     var isSubscribed: Bool {
-        lock.withLock { requested != nil }
+        lock.withLock { shown != nil }
     }
 }
 

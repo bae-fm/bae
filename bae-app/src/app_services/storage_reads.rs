@@ -1,6 +1,6 @@
-//! The Storage Manager's live reads on [`AppServices`]: each window of its
-//! list, its count, the position of a key in it, its selection and the
-//! transfer queues are reads of their own.
+//! The Storage Manager's live reads on [`AppServices`]: its list's window,
+//! its count, the position of a key in it, its selection and the transfer
+//! queues are reads of their own.
 
 use super::*;
 
@@ -80,5 +80,4 @@ impl AppServices {
 
     delegate_view!(storage_ids_between => storage_ids_between(sort: &bae_views::StorageSortCriterion, filter: bae_views::StorageFilter, search: &str, from: &str, to: &str) -> Vec<String>);
     delegate_view!(storage_ids => storage_ids(filter: bae_views::StorageFilter, search: &str) -> Vec<String>);
-    delegate_view!(storage_key_at => storage_key_at(sort: &bae_views::StorageSortCriterion, filter: bae_views::StorageFilter, search: &str, position: u64) -> Option<bae_store::list_windows::OrderKey>);
 }
