@@ -1254,10 +1254,10 @@ Core sends each offer with the number shown beside it and whether it can run:
 a row's own offers, each for that one row and leaving out Combine, come with
 the row, and a selection's come from one statement, which counts the rows each
 command runs on and gives Combine every selected row while every one can join
-one release and none otherwise. The list's counts come from COUNT queries over
-the placement's rows, which read the placement's indexes: each tab's, each
-filter entry's, how many items the list holds and how many releases its filters
-keep, and how many each group's header counts. No table stores the counts. The list's count, with the narrowed count it carries, is a live
+one release and none otherwise. bae counts each tab's rows, each filter entry's
+rows, how many items the list holds, how many releases its filters keep and how
+many rows each group's header counts with COUNT queries over the placement's
+rows, which read the placement's indexes. No table stores the counts. The list's count, with the narrowed count it carries, is a live
 query of its own, apart from the windows: a scan's commit changes it without
 resending every window. Each tab's count is a read of its own as well, sent on a
 stream keyed by tab, and the tab bar's labels read it each display frame. Coven
@@ -6194,7 +6194,7 @@ release's or track's id as UTF-8, or a candidate's key.
 - **Pulled subscriptions** are the browse, download and queue lists, the
   searches, the import list and its counts, the detail views, the Storage
   manager's list, a release's files, and the read of which selected albums
-  are gone. They are objects the app asks for each
+  are gone. Each pulled subscription is an object the app asks for each
   next value and points at new windows or a new query in place, built in the
   bridge's `screens` module like every screen subscription. A screen's read
   is open while the screen shows and cancelled when it stops showing, in

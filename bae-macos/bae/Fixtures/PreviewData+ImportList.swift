@@ -130,13 +130,13 @@ extension PreviewData {
     }
 
     /// A selection of `keys`, with what it offers as core's selection
-    /// statement answers it: each
-    /// action offered once per selected candidate whose row offers it, in the
-    /// order the surfaces list them. The fixture offers Combine when the
-    /// person selects two or more rows. When `combinable` is true, the
-    /// Combine offer counts every selected row and is enabled. Otherwise it
-    /// counts none and is disabled. This function repeats core's selection query for fixtures,
-    /// because the apps have no copy of that query.
+    /// statement answers it: each action offered once per selected candidate
+    /// whose row offers it, in the order the surfaces list them. The fixture
+    /// offers Combine when the person selects two or more rows. When
+    /// `combinable` is true, the Combine offer counts every selected row and
+    /// is enabled. Otherwise the Combine offer counts none and is disabled.
+    /// This function repeats core's selection query for fixtures, because the
+    /// apps have no copy of that query.
     @MainActor
     static func importSelection(
         of keys: [Data],

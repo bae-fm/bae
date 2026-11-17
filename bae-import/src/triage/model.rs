@@ -186,8 +186,8 @@ pub struct TriageRow {
 }
 
 /// A folder that failed validation, as its row under Skipped and the pane
-/// that shows its details show it: what its scan row stores, read by the
-/// screen's statement.
+/// that shows its details show it: what its scan row stores, which the
+/// screen's statement reads.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InvalidRow {
     /// The key the scan stores the row under and every import call takes: its

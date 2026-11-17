@@ -83,8 +83,9 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     -- 'grouping' for a release a grouping with no anchor builds from its
     -- members.
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),
-    -- The relative path of the image the folder's cover rules pick when no
-    -- tag is read (`cover_art::folder_cover`), NULL when it holds none. The
+    -- The relative path of the image the folder's cover rules pick when the
+    -- scan reads no cover from the files' tags (`cover_art::folder_cover`),
+    -- NULL when the folder holds none. The
     -- scan writes it in the same write as the files. The Skipped tab shows
     -- this image as the cover of a release that failed validation.
     blank_cover_file               TEXT,
