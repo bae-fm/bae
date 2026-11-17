@@ -47,7 +47,10 @@ impl AppHandle {
             ),
             BridgeList::ArtistSearch { text } => self
                 .services
-                .subscribe_artist_search_window(BridgeList::artist_search_query(&text), window),
+                .subscribe_artist_search_window(BridgeList::search_query(&text), window),
+            BridgeList::SearchAlbums { query } => self
+                .services
+                .subscribe_search_album_window(BridgeList::search_query(&query), window),
         };
         crate::screens::list_window(live, self.runtime.clone())
     }
@@ -76,7 +79,10 @@ impl AppHandle {
                 self.services.subscribe_storage_count(filter.into_core(), &search)
             }
             BridgeList::ArtistSearch { text } => {
-                self.services.subscribe_artist_search_count(BridgeList::artist_search_query(&text))
+                self.services.subscribe_artist_search_count(BridgeList::search_query(&text))
+            }
+            BridgeList::SearchAlbums { query } => {
+                self.services.subscribe_search_album_count(BridgeList::search_query(&query))
             }
         };
         crate::screens::list_count(live, self.runtime.clone())
@@ -120,9 +126,12 @@ impl AppHandle {
                     key,
                 )
             }
-            BridgeList::ArtistSearch { text } => self
-                .services
-                .subscribe_artist_search_position(BridgeList::artist_search_query(&text), key),
+            BridgeList::ArtistSearch { text } => {
+                self.services.subscribe_artist_search_position(BridgeList::search_query(&text), key)
+            }
+            BridgeList::SearchAlbums { query } => {
+                self.services.subscribe_search_album_position(BridgeList::search_query(&query), key)
+            }
         };
         crate::screens::list_position(live, self.runtime.clone())
     }
@@ -153,16 +162,6 @@ impl AppHandle {
     pub fn subscribe_library_search(&self) -> Arc<crate::LibrarySearchSubscription> {
         crate::screens::library_search(
             self.services.subscribe_library_search(),
-            self.runtime.clone(),
-        )
-    }
-
-    /// Read live how many albums a search for `query` lists: the albums
-    /// `read_search_album_page` pages through. A blank query lists none.
-    pub fn subscribe_search_album_count(&self, query: String) -> Arc<crate::ListCountSubscription> {
-        crate::screens::list_count(
-            self.services
-                .subscribe_search_album_count(bae_views::LibrarySearchQuery::parse(&query)),
             self.runtime.clone(),
         )
     }

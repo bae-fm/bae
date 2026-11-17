@@ -43,6 +43,8 @@ pub enum ListRows {
     /// A work's children as a media browser lists them: its parts, then the
     /// releases that perform it.
     WorkChildren(Vec<crate::album_detail::WorkChild>),
+    /// The albums a library search lists, in title order.
+    SearchAlbums(Vec<crate::album_detail::AlbumSearchResult>),
     /// The import list's items, and the header of the group the first of
     /// them is a member of when the window starts inside the group.
     #[cfg(desktop)]

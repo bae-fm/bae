@@ -265,7 +265,7 @@ class LibraryBrowseTreeTest {
 
             assertNull(tree.children(BrowseId.Albums.mediaId, -1, 20))
             assertNull(tree.children(BrowseId.Albums.mediaId, 0, 0))
-            assertNull(tree.search("query", 0, 0))
+            assertNull(tree.search(Any(), "query", 0, 0))
             assertTrue(handle.albumList.windows.isEmpty())
             tree.close()
         }
@@ -434,9 +434,9 @@ class LibraryBrowseTreeTest {
             assertEquals(1, notifications)
         }
 
-    /** A search page is the window the database read returns for its offset, not a slice of a longer list. */
+    /** A search page is the window of the controller's search that holds the page asked for, and none past the end. */
     @Test
-    fun aSearchPageIsTheWindowTheReadReturns() =
+    fun aSearchPageIsTheWindowOfThePageAsked() =
         runBlocking {
             val handle =
                 FakeAppHandle(
@@ -447,13 +447,77 @@ class LibraryBrowseTreeTest {
                     },
                 )
             val tree = tree(handle)
+            val owner = Any()
+            tree.subscribeSearch(owner, "query") {}
 
             assertEquals(
                 listOf(BrowseId.Album("album-2").mediaId, BrowseId.Album("album-3").mediaId),
-                tree.search("query", 1, 2)!!.map { it.mediaId },
+                tree.search(owner, "query", 1, 2)!!.map { it.mediaId },
             )
-            assertTrue(tree.search("query", 3, 2)!!.isEmpty())
+            assertTrue(tree.search(owner, "query", 3, 2)!!.isEmpty())
+            assertEquals(
+                listOf(BridgeListWindow.Forward(textKey("album-2"), textKey("album-4"), 2u)),
+                handle.searchAlbumList("query").windows.map { it.window },
+            )
             tree.close()
+        }
+
+    /** A request for the results of a phrase the controller is not searching for is refused, not read. */
+    @Test
+    fun aSearchPageOfAnotherPhraseIsRefused() =
+        runBlocking {
+            val handle = FakeAppHandle()
+            val tree = tree(handle)
+            val owner = Any()
+
+            assertNull(tree.search(owner, "query", 0, 10))
+            tree.subscribeSearch(owner, "query") {}
+            assertNull(tree.search(owner, "other", 0, 10))
+            assertNull(tree.search(Any(), "query", 0, 10))
+            assertTrue(handle.searchAlbumList("query").windows.isEmpty())
+            tree.close()
+        }
+
+    /**
+     * A change inside a search page the controller asked for tells the controller its search's results changed,
+     * with their number unknown, and the controller's next request for the page reads the renamed album.
+     */
+    @Test
+    fun aChangeInsideASearchPageTellsTheControllerAndTheNextRequestReadsIt() =
+        runBlocking {
+            val handle =
+                FakeAppHandle(
+                    searchResults = {
+                        BridgeFixtures.searchResults(albums = listOf(BridgeFixtures.albumSearchResult(id = "album-0", title = "Old")))
+                    },
+                )
+            val tree = tree(handle)
+            val owner = Any()
+            val notifications = mutableListOf<Int>()
+            tree.subscribeSearch(owner, "query", notifications::add)
+            assertEquals(
+                "Old",
+                tree
+                    .search(owner, "query", 0, 10)!!
+                    .single()
+                    .mediaMetadata.title,
+            )
+
+            val list = handle.searchAlbumList("query")
+            list.rows = listOf(BridgeFixtures.albumSearchResult(id = "album-0", title = "New"))
+            list.windows.single().deliver()
+
+            assertEquals(listOf(1, UNKNOWN_CHILD_COUNT), notifications)
+            assertEquals(
+                "New",
+                tree
+                    .search(owner, "query", 0, 10)!!
+                    .single()
+                    .mediaMetadata.title,
+            )
+            assertTrue(list.windows.first().cancelled)
+            tree.close()
+            assertTrue(list.windows.last().cancelled)
         }
 
     /** A track item is the one track the database read returns, found by its release and track ids. */
@@ -490,33 +554,46 @@ class LibraryBrowseTreeTest {
             val notifications = mutableListOf<Int>()
 
             tree.subscribeSearch(Any(), "query", notifications::add)
-            val count = handle.searchAlbumCounts.single()
-            assertEquals("query", count.counted)
             assertEquals(listOf(2), notifications)
 
-            count.emit(5)
+            val list = handle.searchAlbumList("query")
+            list.rows = List(5) { BridgeFixtures.albumSearchResult(id = "album-$it") }
+            list.emitCount()
             assertEquals(listOf(2, 5), notifications)
             tree.close()
-            assertTrue(count.cancelled)
+            assertTrue(list.counts.single().cancelled)
         }
 
-    /** A controller's next phrase replaces its count read, and a failed first count fails that search. */
+    /** A controller's next phrase replaces its search's reads, and a failed first count fails that search. */
     @Test
-    fun aControllersNextSearchReplacesItsCountRead() =
+    fun aControllersNextSearchReplacesItsReads() =
         runBlocking {
-            val handle = FakeAppHandle(initialSearchError = { query -> if (query == "second") queryFailure() else null })
+            val handle =
+                FakeAppHandle(
+                    searchResults = { query ->
+                        BridgeFixtures.searchResults(
+                            albums = if (query == "first") listOf(BridgeFixtures.albumSearchResult(id = "album-0")) else emptyList(),
+                        )
+                    },
+                    initialSearchError = { query -> if (query == "second") queryFailure() else null },
+                )
             val tree = tree(handle)
             val owner = Any()
             val notifications = mutableListOf<Int>()
             tree.subscribeSearch(owner, "first", notifications::add)
+            tree.search(owner, "first", 0, 10)
 
             assertTrue(runCatching { tree.subscribeSearch(owner, "second", notifications::add) }.exceptionOrNull() is BridgeException)
-            val (first, second) = handle.searchAlbumCounts
-            assertTrue("the next phrase ends the last one's read", first.cancelled)
-            second.emit(1)
-            assertEquals(listOf(0, 1), notifications)
+            val first = handle.searchAlbumList("first")
+            assertTrue("the next phrase ends the last one's count", first.counts.single().cancelled)
+            assertTrue("the next phrase ends the last one's pages", first.windows.single().cancelled)
+            val second = handle.searchAlbumList("second")
+            second.countFailure = null
+            second.rows = List(2) { BridgeFixtures.albumSearchResult(id = "album-$it") }
+            second.emitCount()
+            assertEquals(listOf(1, 2), notifications)
             tree.close()
-            assertTrue(second.cancelled)
+            assertTrue(second.counts.single().cancelled)
         }
 
     @Test

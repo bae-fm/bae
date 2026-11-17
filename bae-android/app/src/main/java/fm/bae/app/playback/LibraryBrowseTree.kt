@@ -103,8 +103,8 @@ internal class LibraryBrowseTree<Owner : Any>(
     /** The live pages of each retained album's tracks and each retained work's children, by its media id. */
     private val childPages = mutableMapOf<String, ChildPages<*>>()
 
-    /** Each controller's search: a live count of the albums its phrase lists. */
-    private val searchesByOwner = mutableMapOf<Owner, LiveCount>()
+    /** Each controller's search: its phrase, with the live count and pages of the albums the phrase lists. */
+    private val searchesByOwner = mutableMapOf<Owner, Search>()
     private var albums: ListProjection<BridgeAlbumAppearance, BridgeAlbum>? = null
     private var composers: ListProjection<BridgeComposerSummary, BridgeComposerSummary>? = null
 
@@ -213,20 +213,32 @@ internal class LibraryBrowseTree<Owner : Any>(
         }
     }
 
-    /** The albums matching [query] on the page asked for, or null for a page that names nothing. */
+    /**
+     * The albums [owner]'s search for [query] lists on the page asked for, read live from now on, or null for a page
+     * that names nothing or a phrase [owner] is not searching for.
+     */
     suspend fun search(
+        owner: Owner,
         query: String,
         page: Int,
         pageSize: Int,
     ): List<MediaItem>? {
         checkOpen()
-        if (!BrowsePaging.isPage(page, pageSize)) {
-            logger.warning("a controller asked for search page $page of size $pageSize, which names no page")
-            return null
-        }
-        return pageAt(page, pageSize) { offset ->
-            reportingFailure(onQueryError) { handle.readSearchAlbumPage(query, offset.toULong(), pageSize.toULong()) }
-                .map { nodes.album(it.id, it.title, it.cover) }
+        val search = synchronized(lock) { searchesByOwner[owner] }?.takeIf { it.query == query }
+        return when {
+            !BrowsePaging.isPage(page, pageSize) -> {
+                logger.warning("a controller asked for search page $page of size $pageSize, which names no page")
+                null
+            }
+
+            search == null -> {
+                logger.warning("a controller asked for the results of a phrase it is not searching for")
+                null
+            }
+
+            else -> {
+                pageAt(page, pageSize) { offset -> search.pages.rows(offset, pageSize) }
+            }
         }
     }
 
@@ -303,7 +315,8 @@ internal class LibraryBrowseTree<Owner : Any>(
 
     /**
      * Search [query] for [owner], replacing its last search, and wait for the first count of the
-     * albums it lists. That count and each later one reach [onResultsChanged].
+     * albums it lists. That count and each later one reach [onResultsChanged], and so does each
+     * change to a page of the albums that [search] read, with the number of albums unknown.
      */
     suspend fun subscribeSearch(
         owner: Owner,
@@ -311,26 +324,18 @@ internal class LibraryBrowseTree<Owner : Any>(
         onResultsChanged: (Int) -> Unit,
     ) {
         checkOpen()
-        val search =
-            LiveCount(
-                scope,
-                library.searchAlbumCount(query),
-                tellsFirst = true,
-                isCurrent = { read -> synchronized(lock) { searchesByOwner[owner] === read } },
-                onCount = onResultsChanged,
-                onError = onQueryError,
-            )
+        val search = Search(owner, query, onResultsChanged)
         val (opened, replaced) =
             synchronized(lock) {
                 if (closed) false to null else true to searchesByOwner.put(owner, search)
             }
         if (!opened) {
-            search.close(searchInterestEnded())
+            search.pages.close(searchInterestEnded())
             throw treeClosedError()
         }
-        replaced?.close(searchInterestEnded())
-        search.start()
-        search.awaitFirst()
+        replaced?.pages?.close(searchInterestEnded())
+        search.pages.start()
+        search.pages.awaitReady()
         if (!synchronized(lock) { searchesByOwner[owner] === search }) throw searchInterestEnded()
     }
 
@@ -344,7 +349,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                         .orEmpty()
                         .map { it.first } to searchesByOwner.remove(owner)
                 }
-            search?.close(searchInterestEnded())
+            search?.pages?.close(searchInterestEnded())
             parents.forEach { closeParentIfUnused(it) }
         }
 
@@ -378,7 +383,27 @@ internal class LibraryBrowseTree<Owner : Any>(
         state.first.second?.close()
         pages.forEach { it.close() }
         children.forEach { it.close() }
-        state.second.forEach { it.close(searchInterestEnded()) }
+        state.second.forEach { it.pages.close(searchInterestEnded()) }
+    }
+
+    /**
+     * [owner]'s search for [query]: the live count and pages of the albums the phrase lists. Each count, the first
+     * too, and each change to a page reach [onResultsChanged] only while the tree holds this search as [owner]'s.
+     */
+    private inner class Search(
+        owner: Owner,
+        val query: String,
+        onResultsChanged: (Int) -> Unit,
+    ) {
+        val pages =
+            ChildPages(
+                scope,
+                library.searchAlbumList(query),
+                { offset, limit -> handle.readSearchAlbumPageWindow(query, offset, limit) },
+                { nodes.album(it.id, it.title, it.cover) },
+                { count, _ -> if (synchronized(lock) { searchesByOwner[owner] === this }) onResultsChanged(count) },
+                onQueryError,
+            )
     }
 
     private fun albumProjection(): ListProjection<BridgeAlbumAppearance, BridgeAlbum> =
@@ -426,7 +451,9 @@ internal class LibraryBrowseTree<Owner : Any>(
         synchronized(lock) {
             check(!closed)
             childPages.getOrPut(parentId) {
-                val onChanged = { count: Int -> notifyParent(parentId, count) }
+                // The tree tells the controller each change to a parent's count, and not the first count, which the
+                // controller's subscription waits for.
+                val onChanged = { count: Int, isFirst: Boolean -> if (!isFirst) notifyParent(parentId, count) }
                 when (val id = BrowseId.parse(parentId)) {
                     is BrowseId.Album -> {
                         ChildPages(
@@ -453,7 +480,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                     else -> {
                         error("$parentId lists no children a page at a time")
                     }
-                }
+                }.also { it.start() }
             }
         }
 

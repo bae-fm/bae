@@ -55,21 +55,22 @@ internal object BrowsePaging {
     }
 }
 
-/** What Media3 takes as a parent's number of children when a change leaves it unknown. */
+/**
+ * What the tree tells Media3 as a parent's number of children, or as a search's number of results, when a change
+ * leaves it unknown.
+ */
 internal const val UNKNOWN_CHILD_COUNT = Int.MAX_VALUE
 
 /**
  * A live count that a controller's interest holds open: the albums a search lists, or a browse parent's
- * children. The tree waits for the read's first count ([awaitFirst]). Each later count reaches [onCount], and
- * so does the first when [tellsFirst]. A count reaches [onCount] only while [isCurrent] says the tree still
- * holds this read.
+ * children. The tree waits for the read's first count ([awaitFirst]). Each count reaches [onCount], which says
+ * whether it is the first, only while [isCurrent] says the tree still holds this read.
  */
 internal class LiveCount(
     private val scope: CoroutineScope,
     private val count: PulledSubscription<BridgeListCount>,
-    private val tellsFirst: Boolean,
     private val isCurrent: (LiveCount) -> Boolean,
-    private val onCount: (Int) -> Unit,
+    private val onCount: (rows: Int, isFirst: Boolean) -> Unit,
     private val onError: (BridgeException) -> Unit,
 ) {
     /** Completes at the read's first count, or fails with its first error or when the tree closes it first. */
@@ -95,7 +96,7 @@ internal class LiveCount(
         count.pullEach(
             onValue = { value ->
                 val isFirst = !first.isCompleted
-                if ((tellsFirst || !isFirst) && isCurrent(this@LiveCount)) onCount(value.rows.toInt())
+                if (isCurrent(this@LiveCount)) onCount(value.rows.toInt(), isFirst)
                 first.complete(Unit)
             },
             onError = { error ->
@@ -107,22 +108,25 @@ internal class LiveCount(
 }
 
 /**
- * A browse parent whose children are a database list, such as an album's tracks or a work's children, which a
- * controller asks for a page at a time by offset. For each page asked for, the tree reads once the window that
- * holds the page ([pageWindow]) and then reads that window live. The window's first rows answer the request, and
- * each later delivery tells the tree, through [onChanged], that the parent's children changed. A new request for
- * the same page replaces its read. The list's live count tells the tree each time the number of children changes.
+ * A database list a controller asks for a page at a time by offset: a browse parent's children, such as an
+ * album's tracks or a work's children, or the albums a search lists. For each page asked for, the tree reads once
+ * the window that holds the page ([pageWindow]) and then reads that window live. The window's first rows answer
+ * the request, and each later delivery tells the tree, through [onChanged], that the list changed, with the number
+ * of rows unknown. A new request for the same page replaces its read. The list's live count tells the tree its
+ * first number of rows and each change to it, and says which is the first.
  */
 internal class ChildPages<Row>(
     private val scope: CoroutineScope,
     private val reads: ListReads<Row>,
     private val pageWindow: suspend (offset: ULong, limit: ULong) -> BridgeListWindow?,
     private val item: (Row) -> MediaItem,
-    private val onChanged: (itemCount: Int) -> Unit,
+    private val onChanged: (itemCount: Int, isFirstCount: Boolean) -> Unit,
     private val onError: (BridgeException) -> Unit,
 ) {
     private val lock = Any()
-    private var closed = false
+
+    /** Why the pages closed, which a request that arrives after they closed fails with; null while they are open. */
+    private var closedBy: BrowseUnavailable? = null
 
     /** The live read of each page a controller asked for, by the page's offset and size. */
     private val pages = mutableMapOf<Pair<Int, Int>, LivePage>()
@@ -130,11 +134,13 @@ internal class ChildPages<Row>(
         LiveCount(
             scope,
             reads.count(),
-            tellsFirst = false,
-            isCurrent = { synchronized(lock) { !closed } },
+            isCurrent = { synchronized(lock) { closedBy == null } },
             onCount = onChanged,
             onError = onError,
-        ).also { it.start() }
+        )
+
+    /** Start reading the list's count, once the tree holds the pages, so that its callbacks find them. */
+    fun start() = count.start()
 
     /** Wait for the list's first count, throwing its error. */
     suspend fun awaitReady() = count.awaitFirst()
@@ -146,25 +152,26 @@ internal class ChildPages<Row>(
     ): List<MediaItem> {
         val window = reportingFailure(onError) { pageWindow(offset.toULong(), limit.toULong()) } ?: return emptyList()
         val page = LivePage(window)
-        val (opened, replaced) =
+        val (refusal, replaced) =
             synchronized(lock) {
-                if (closed) false to null else true to pages.put(offset to limit, page)
+                closedBy?.let { it to null } ?: (null to pages.put(offset to limit, page))
             }
         replaced?.close(windowEvicted())
-        if (!opened) throw treeClosedError()
+        if (refusal != null) throw refusal
         page.start()
         return page.awaitFirst()
     }
 
-    suspend fun close() {
+    /** Stop every read; a request waiting on one, and every later request, fails with [reason]. */
+    suspend fun close(reason: BrowseUnavailable = treeClosedError()) {
         val open =
             synchronized(lock) {
-                if (closed) return
-                closed = true
+                if (closedBy != null) return
+                closedBy = reason
                 pages.values.toList().also { pages.clear() }
             }
-        count.close(treeClosedError())
-        open.forEach { it.close(treeClosedError()) }
+        count.close(reason)
+        open.forEach { it.close(reason) }
     }
 
     /** One page's live window: its first rows answer the request, and each later delivery is a change. */
@@ -184,7 +191,7 @@ internal class ChildPages<Row>(
                             if (!first.isCompleted) {
                                 first.complete(delivery.rows.map(item))
                             } else if (isCurrent()) {
-                                onChanged(UNKNOWN_CHILD_COUNT)
+                                onChanged(UNKNOWN_CHILD_COUNT, false)
                             }
                         },
                         onError = { error ->
@@ -203,6 +210,6 @@ internal class ChildPages<Row>(
             reader?.cancelAndJoin()
         }
 
-        private fun isCurrent(): Boolean = synchronized(lock) { !closed && pages.values.any { it === this } }
+        private fun isCurrent(): Boolean = synchronized(lock) { closedBy == null && pages.values.any { it === this } }
     }
 }

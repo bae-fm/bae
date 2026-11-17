@@ -201,7 +201,7 @@ impl BridgeRelease {
 
 mirror_struct! {
     BridgeAlbumSearchResult = bae_views::album_detail::AlbumSearchResult,
-    from_core: pub(super) fn,
+    from_core: pub(crate) fn,
     fields: {
         id,
         title,

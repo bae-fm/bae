@@ -73,24 +73,23 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// One window of the albums a search finds, read once: at most `limit`
-    /// albums starting `offset` albums in. A blank query finds nothing.
-    fn read_search_album_page(
+    /// The window of the albums library search lists for `query`
+    /// (`BridgeList::SearchAlbums`) that holds the `limit` albums from
+    /// `offset`, read once: from the first of them to the album past the
+    /// last. A media browser names a page by its offset and reads the window
+    /// live. None when the search lists fewer albums than `offset`, and for a
+    /// blank query.
+    fn read_search_album_page_window(
         query: String,
         offset: u64,
         limit: u64,
-    ) -> Vec<crate::types::BridgeAlbumSearchResult> {
-        let Some(query) = bae_views::LibrarySearchQuery::parse(&query) else {
-            return Ok(Vec::new());
-        };
+    ) -> Option<BridgeListWindow> {
         Ok(this
             .services
-            .search_album_page(&query, offset, limit)
+            .search_album_page_window(BridgeList::search_query(&query), offset, limit)
             .await
             .map_err(BridgeError::from)?
-            .into_iter()
-            .map(crate::types::BridgeAlbumSearchResult::from_core)
-            .collect())
+            .map(BridgeListWindow::from_core))
     }
 
     /// The window of the album `album_id`'s tracks (`BridgeList::AlbumTracks`)
@@ -236,7 +235,12 @@ forward! { async this => {
                 .map_err(BridgeError::from)?,
             BridgeList::ArtistSearch { text } => this
                 .services
-                .artist_search_key_at(BridgeList::artist_search_query(&text), position)
+                .artist_search_key_at(BridgeList::search_query(&text), position)
+                .await
+                .map_err(BridgeError::from)?,
+            BridgeList::SearchAlbums { query } => this
+                .services
+                .search_album_key_at(BridgeList::search_query(&query), position)
                 .await
                 .map_err(BridgeError::from)?,
             BridgeList::Storage { sort, filter, search } => this

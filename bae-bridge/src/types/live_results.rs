@@ -67,6 +67,10 @@ pub enum BridgeList {
     Upcoming { shuffled: bool },
     /// The artists an artist picker's `text` finds; blank text finds none.
     ArtistSearch { text: String },
+    /// The albums library search lists for `query` as a media browser lists
+    /// them: the first it finds, up to library search's result limit
+    /// (`SEARCH_RESULT_LIMIT`), in title order. A blank query lists none.
+    SearchAlbums { query: String },
     /// The Storage Manager's releases under `sort` and `filter`, narrowed by
     /// the library search `search` finds when it is not blank.
     Storage {
@@ -120,6 +124,9 @@ pub enum BridgeListRows {
     },
     WorkChildren {
         rows: Vec<crate::types::BridgeWorkChild>,
+    },
+    SearchAlbums {
+        rows: Vec<crate::types::BridgeAlbumSearchResult>,
     },
     /// The import list's items, and the header of the group the first of
     /// them is a member of when the window starts inside the group, which

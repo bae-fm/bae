@@ -33,6 +33,8 @@ internal open class FakeList<Row>(
     var deliverImmediately: Boolean = true,
     /** The failure each window answers with instead of its rows. */
     var windowFailure: BridgeException? = null,
+    /** The failure each count answers with instead of the number of rows. */
+    var countFailure: BridgeException? = null,
 ) {
     val windows = mutableListOf<FakeListWindowSubscription>()
     val counts = mutableListOf<FakeListCountSubscription>()
@@ -188,7 +190,7 @@ internal class FakeListCountSubscription(
     }
 
     fun deliver() {
-        events.trySend(Result.success(list.count()))
+        events.trySend(list.countFailure?.let { Result.failure(it) } ?: Result.success(list.count()))
     }
 }
 
@@ -250,27 +252,3 @@ internal class FakeComposerList :
         idOf = { it.artistId },
         wrap = { BridgeListRows.Composers(it) },
     )
-
-/** A count read that counts [counted], answered by hand: a test [emit]s each count or [fail]s it. */
-internal class FakeCountSubscription(
-    val counted: String,
-) : ListCountSubscription(NoHandle) {
-    private val events = Channel<Result<BridgeListCount>>(Channel.UNLIMITED)
-    var cancelled = false
-        private set
-
-    override suspend fun next(): BridgeListCount = events.receive().getOrThrow()
-
-    override suspend fun cancel() {
-        cancelled = true
-        events.close(BridgeException.Cancelled())
-    }
-
-    fun emit(count: Int) {
-        events.trySend(Result.success(BridgeListCount(count.toULong(), count.toULong(), BridgeListCountExtra.None)))
-    }
-
-    fun fail(error: BridgeException) {
-        events.trySend(Result.failure(error))
-    }
-}

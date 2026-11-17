@@ -246,6 +246,7 @@ internal open class FakeAppHandle(
     private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
     private val albumTrackLists = mutableMapOf<String, FakeList<BridgeBrowseTrack>>()
     private val workChildLists = mutableMapOf<String, FakeList<BridgeWorkChild>>()
+    private val searchAlbumLists = mutableMapOf<String, FakeList<BridgeAlbumSearchResult>>()
 
     /** The list [list] names, which a test changes and delivers. */
     fun fakeList(list: BridgeList): FakeList<*> =
@@ -272,6 +273,10 @@ internal open class FakeAppHandle(
                 workChildLists.getOrPut(list.workId) {
                     FakeList(workChildren[list.workId].orEmpty(), ::workChildId, { BridgeListRows.WorkChildren(it) })
                 }
+            }
+
+            is BridgeList.SearchAlbums -> {
+                searchAlbumList(list.query)
             }
 
             is BridgeList.Artists,
@@ -342,15 +347,19 @@ internal open class FakeAppHandle(
             is BridgeWorkChild.Release -> child.release.releaseId
         }
 
-    /** The search album counts the handle opened, oldest first, each answering its phrase's first count when it opens. */
-    val searchAlbumCounts = mutableListOf<FakeCountSubscription>()
-
-    override fun subscribeSearchAlbumCount(query: String): ListCountSubscription =
-        FakeCountSubscription(query).also { count ->
-            searchAlbumCounts += count
-            if (deliverSearchResultsImmediately) {
-                initialSearchError(query)?.let(count::fail) ?: count.emit(searchResults(query).albums.size)
-            }
+    /**
+     * The albums a search for [query] lists as the bridge lists them, which a test changes and delivers: the
+     * search's albums, whose count fails with the phrase's search error.
+     */
+    fun searchAlbumList(query: String): FakeList<BridgeAlbumSearchResult> =
+        searchAlbumLists.getOrPut(query) {
+            FakeList(
+                searchResults(query).albums,
+                { it.id },
+                { BridgeListRows.SearchAlbums(it) },
+                deliverImmediately = deliverSearchResultsImmediately,
+                countFailure = initialSearchError(query),
+            )
         }
 
     /** Reads once, as the database would, the window of the album's tracks that holds the page at [offset]. */
@@ -367,15 +376,12 @@ internal open class FakeAppHandle(
         limit: ULong,
     ): BridgeListWindow? = fakeList(BridgeList.WorkChildren(workId)).pageWindow(offset, limit)
 
-    /** Returns the window of the search's albums from [offset], at most [limit], as the database would. */
-    override suspend fun readSearchAlbumPage(
+    /** Reads once, as the database would, the window of the search's albums that holds the page at [offset]. */
+    override suspend fun readSearchAlbumPageWindow(
         query: String,
         offset: ULong,
         limit: ULong,
-    ): List<BridgeAlbumSearchResult> {
-        initialSearchError(query)?.let { throw it }
-        return searchResults(query).albums.drop(offset.toInt()).take(limit.toInt())
-    }
+    ): BridgeListWindow? = fakeList(BridgeList.SearchAlbums(query)).pageWindow(offset, limit)
 
     /** Returns the release's track with that id as a BridgeBrowseTrack, as the database would. */
     override suspend fun readReleaseTrack(

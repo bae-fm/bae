@@ -6,6 +6,7 @@ import fm.bae.screensubscription.pulled
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
@@ -18,7 +19,6 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeList
-import uniffi.bae_bridge.BridgeListCount
 import uniffi.bae_bridge.BridgeListPosition
 import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeListWindow
@@ -209,12 +209,11 @@ class Library(
     /** One live library search, whose text changes on the same live query as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
 
-    /**
-     * How many albums a search for [query] lists, read live: the albums
-     * [AppHandleInterface.readSearchAlbumPage] pages through.
-     */
-    internal fun searchAlbumCount(query: String): PulledSubscription<BridgeListCount> =
-        handle.subscribeSearchAlbumCount(query).let { pulled(it::next, it::cancel) }
+    /** The albums library search lists for [query] as a media browser lists them, in title order. */
+    internal fun searchAlbumList(query: String): ListReads<BridgeAlbumSearchResult> =
+        listReads(BridgeList.SearchAlbums(query)) { rows ->
+            (rows as? BridgeListRows.SearchAlbums)?.rows ?: error("a search's albums delivered rows of another list")
+        }
 
     /** The album [albumId]'s tracks as a media browser lists them: its main release's, in playing order. */
     internal fun albumTrackList(albumId: String): ListReads<BridgeBrowseTrack> =

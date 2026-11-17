@@ -88,9 +88,9 @@ impl BridgeList {
         sort.into_core()
     }
 
-    /// Parses an artist picker's text into a search query, or returns None
-    /// when the text is blank.
-    pub(crate) fn artist_search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {
+    /// Parses a search's text, an artist picker's or library search's, into
+    /// a search query, or returns None when the text is blank.
+    pub(crate) fn search_query(text: &str) -> Option<bae_views::LibrarySearchQuery> {
         bae_views::LibrarySearchQuery::parse(text)
     }
 }
@@ -173,6 +173,12 @@ impl BridgeListWindowValue {
                 },
                 bae_views::ListRows::WorkChildren(rows) => BridgeListRows::WorkChildren {
                     rows: rows.into_iter().map(crate::types::BridgeWorkChild::from_core).collect(),
+                },
+                bae_views::ListRows::SearchAlbums(rows) => BridgeListRows::SearchAlbums {
+                    rows: rows
+                        .into_iter()
+                        .map(crate::types::BridgeAlbumSearchResult::from_core)
+                        .collect(),
                 },
                 #[cfg(desktop)]
                 bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {

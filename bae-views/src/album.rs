@@ -1,6 +1,6 @@
 //! The album views: the album grid, flat or grouped by artist, its
-//! selection, an album's detail, an album's tracks as a list, and library
-//! search.
+//! selection, an album's detail, an album's tracks as a list, library
+//! search, and the albums a search lists as a list (`search_albums`).
 
 use super::*;
 use listing::{
@@ -12,6 +12,9 @@ pub(crate) use listing::{
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
+mod search_albums;
+pub use search_albums::resolve_search_album_window;
+use search_albums::{search_album_order, search_album_rows_on};
 
 impl LibraryViews {
     /// Search the library for a parsed, non-blank query. The result count is
@@ -35,47 +38,6 @@ impl LibraryViews {
         let pattern = search_pattern(query);
         let limit_i64 = limit as i64;
         self.store.read(move |sql| search_library_on(&sql, &pattern, limit_i64)).await
-    }
-
-    /// One window of the albums a search finds, in title order: at most `limit`
-    /// albums starting `offset` albums in, and none past the search's
-    /// [`crate::SEARCH_RESULT_LIMIT`]. The function reads once instead of
-    /// following the rows, so it pages by offset.
-    pub async fn search_album_page(
-        &self,
-        query: &crate::LibrarySearchQuery,
-        offset: u64,
-        limit: u64,
-    ) -> Result<Vec<crate::album_detail::AlbumSearchResult>, DbError> {
-        let pattern = search_pattern(query.as_str());
-        let offset = i64::try_from(offset).unwrap_or(i64::MAX);
-        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
-        let cap = crate::SEARCH_RESULT_LIMIT as i64;
-        self.store
-            .read(move |sql| search_albums_on(&sql, &pattern, limit, offset, cap))
-            .process(|rows| {
-                Ok(rows
-                    .into_iter()
-                    .map(crate::album_detail::AlbumSearchResult::from_raw)
-                    .collect::<Vec<_>>())
-            })
-            .await
-    }
-
-    /// Follow how many albums a search for `query` lists: the albums it
-    /// finds, up to the [`crate::SEARCH_RESULT_LIMIT`] that
-    /// [`Self::search_album_page`] pages through. No query (`None`) lists
-    /// none.
-    pub fn subscribe_search_album_count(
-        &self,
-        query: Option<crate::LibrarySearchQuery>,
-    ) -> coven::LiveQuery<u64, bae_store::DbError> {
-        let pattern = query.map(|query| search_pattern(query.as_str()));
-        let cap = crate::SEARCH_RESULT_LIMIT as i64;
-        self.store.subscribe(move |sql| match &pattern {
-            Some(pattern) => search_album_count_on(&sql, pattern, cap),
-            None => Ok(0),
-        })
     }
 
     /// Follow one window of the album `album_id`'s tracks: a range of
@@ -556,65 +518,6 @@ fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResul
     })
 }
 
-/// The albums holding the search `pattern`, in title order, ties going by id:
-/// the window of at most `limit` starting `offset` albums in, and ending at
-/// most `cap` albums in.
-fn search_albums_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    limit: i64,
-    offset: i64,
-    cap: i64,
-) -> Result<Vec<DbAlbumSearchResult>, DbError> {
-    let album_query = format!(
-        r#"
-            SELECT a.id, a.title, a.year,
-                   {primary_release} AS primary_release_id,
-                   {primary_cover} AS cover_version,
-                   {artist_names} AS artist_name
-            FROM (
-                SELECT a.id, a.title, a.year FROM albums a
-                WHERE {album_matches}
-                ORDER BY {title_key}, a.id
-                LIMIT MAX(MIN(?2, ?4 - ?3), 0) OFFSET ?3
-            ) a
-            ORDER BY {title_key}, a.id
-            "#,
-        primary_release = album_primary_release_sql(),
-        primary_cover = bae_records::records::files::cover_version_sql(album_primary_release_sql()),
-        artist_names = album_credits_json_sql(),
-        album_matches = album_matches_sql("a.id", "?1"),
-        title_key = crate::sort_key_sql("a.title"),
-    );
-    Ok(sql.query(&album_query, params![pattern, limit, offset, cap], |row| {
-        Ok(DbAlbumSearchResult {
-            id: row.get("id")?,
-            title: row.get("title")?,
-            year: row.get("year")?,
-            primary_release_id: row.get("primary_release_id")?,
-            cover_version: row.get("cover_version")?,
-            artist_line: credit_line_column(row, "artist_name")?,
-        })
-    })?)
-}
-
-/// How many albums hold the search `pattern`, counting at most `cap`: the
-/// albums [`search_albums_on`] reads with that cap.
-fn search_album_count_on(
-    sql: &SqlReadContext<'_>,
-    pattern: &str,
-    cap: i64,
-) -> Result<u64, DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT COUNT(*) AS count FROM (SELECT 1 FROM albums a WHERE {} LIMIT ?2)",
-            album_matches_sql("a.id", "?1"),
-        ),
-        params![pattern, cap],
-        |row| count_column::<u64>(row, "count"),
-    )?)
-}
-
 /// The library rows holding the search `pattern` (see [`search_pattern`]),
 /// each kind's first `limit` in its order, ties going by id. Each kind finds
 /// its rows through its search table, then reads what it shows for those
@@ -624,7 +527,19 @@ fn search_library_on(
     pattern: &str,
     limit: i64,
 ) -> Result<DbLibrarySearchResults, DbError> {
-    let albums = search_albums_on(sql, pattern, limit, 0, limit)?;
+    let order = search_album_order();
+    let albums = search_album_rows_on(
+        sql,
+        pattern,
+        limit as u64,
+        &order,
+        &order.everything(),
+        limit as u64,
+        0,
+    )?
+    .into_iter()
+    .map(|(album, _)| album)
+    .collect();
     let tracks = sql.query(
         &format!(
             r#"
@@ -882,10 +797,6 @@ fn album_track_rows_on(
 #[cfg(test)]
 #[path = "album/tracks_tests.rs"]
 mod track_list_tests;
-
-#[cfg(test)]
-#[path = "album/search_page_tests.rs"]
-mod search_page_tests;
 
 #[cfg(test)]
 #[path = "album_tests.rs"]

@@ -4725,13 +4725,13 @@ plays the first track the library search finds, else the first track of the
 first album it finds that has a track on its main release. The search says
 which, and nothing plays when it finds neither. Android Auto reads that answer,
 and each item it opens, once from the database, not through a live query. The
-database picks the one track an item names and returns only the albums of the
-page a search shows, so Android Auto never filters or pages through rows it
-already holds. Each page of an album's tracks or a work's children that
-Android Auto shows is its own read, bounded by the keys of the page's first row
-and of the row after its last. The number of rows in each such list, and the
-number of albums a search lists, come from a count the database takes, never
-from rows Android Auto holds.
+database picks the one track an item names, so Android Auto never filters rows
+it already holds. Each page of an album's tracks, a work's children or the
+albums a search lists that Android Auto shows is its own live read, bounded by
+the keys of the page's first row and of the row after its last, so Android
+Auto never pages through rows it already holds. The number of rows in each
+such list comes from a count the database takes, never from rows Android Auto
+holds.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
@@ -5336,8 +5336,11 @@ row up to the row after its last. bae tells the controller each time a row on
 the page changes and each time the list's count changes, and reads the page
 again when the controller asks for it again. A search there lists the first 50
 albums library search finds, in title order. When the controller asks for a
-page of them, bae reads that page from the database, and bae tells the
-controller each time the number of those albums changes.
+page of them, bae reads the page's rows live in the same way. bae tells the
+controller each time a row on the page changes and each time the number of
+those albums changes, and reads the page again when the controller asks for it
+again. bae answers a request for a page only for the phrase that controller
+searched for last, and refuses one for any other phrase.
 A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks
 (§7.8).

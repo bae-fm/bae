@@ -160,7 +160,7 @@ internal class BaeLibrarySessionCallback(
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> =
         scope.future {
             queryResult {
-                val results = tree.search(query, page, pageSize)
+                val results = tree.search(browser, query, page, pageSize)
                 if (results == null) {
                     LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
                 } else {

@@ -175,13 +175,40 @@ impl AppServices {
         )
     }
 
-    /// How many albums library search's `query` lists, which a media
-    /// browser pages through by offset; no query (`None`) lists none.
+    /// One window of the albums library search's `query` lists; no query
+    /// (`None`) lists none.
+    pub fn subscribe_search_album_window(
+        &self,
+        query: Option<bae_views::LibrarySearchQuery>,
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
+        list_window(
+            &self.inner.manager,
+            self.inner.views.subscribe_search_album_window(query, window),
+            bae_views::album::resolve_search_album_window,
+        )
+    }
+
+    /// How many albums library search's `query` lists; no query (`None`)
+    /// lists none.
     pub fn subscribe_search_album_count(
         &self,
         query: Option<bae_views::LibrarySearchQuery>,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
+    }
+
+    /// How many of the albums library search's `query` lists come before the
+    /// row at `key`.
+    pub fn subscribe_search_album_position(
+        &self,
+        query: Option<bae_views::LibrarySearchQuery>,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        list_position(
+            &self.inner.manager,
+            self.inner.views.subscribe_search_album_position(query, key),
+        )
     }
 
     /// One window of the album `album_id`'s tracks.
