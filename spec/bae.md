@@ -3273,10 +3273,12 @@ history setting.
   shown.
 - **The people list joins coven's members with `people`** in one query:
   everyone in the library, each with their profile once they made one, by
-  the profile's name in the device's language, and the people with no
-  profile yet after them in member-id order. The person using this device is
-  read the same way. A
-  removed person's row stays, read-only, but they are no one in the list.
+  the profile's name in the device's language. The people with no profile yet
+  come after them, in the order bae made their member ids: bae's UUIDv7 id
+  source makes a member's id when the founder creates the library or an
+  inviter creates the invite. The person using this device is read the same
+  way. A removed person's row stays, read-only, but they are no one in the
+  list.
 
 ### 5.5 "Ana rated this"
 
@@ -6221,8 +6223,9 @@ release's or track's id as UTF-8, or a candidate's key.
   never pointed at nothing. The library's name, its people, this device's
   open invites, the requested profile and the admin changes are read while
   the settings screen showing them does. One read returns this device's person,
-  the other people by name in the device's language, and the counts of people
-  and of active devices that the Library row shows ("2 people · 3 devices"),
+  the other people by name in the device's language (the people with no profile
+  yet after them, in the order bae made their member ids), and the counts of
+  people and of active devices that the Library row shows ("2 people · 3 devices"),
   all from the same database state; a person's page is its own read keyed by
   that person's member id, which answers none once they have left the library,
   and the app then closes the person's page and shows the people page, on both
