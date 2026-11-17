@@ -265,7 +265,7 @@ actor PreviewReleaseLibrary {
         )
     }
 
-    /// `session`, opened, with the subscription that answers its draft.
+    /// `session`, opened, with the subscription that sends its drafts.
     nonisolated func opened(_ session: PreviewReleaseEditSession)
         -> OpenedReleaseEdit
     {
@@ -342,28 +342,28 @@ actor PreviewReleaseLibrary {
 }
 
 /// One session's draft in a shot library, which each change edits, and the
-/// drafts its subscription answers: the draft at once, then each draft a
-/// change leaves.
+/// drafts its subscription sends: the draft at once, then the draft after
+/// each change.
 actor PreviewReleaseEditSession {
     private(set) var draft: BridgeReleaseEditDraft
-    /// The draft the subscription has not answered yet, if any.
-    private var unanswered: BridgeReleaseEditDraft?
+    /// The draft the subscription has not sent yet, if any.
+    private var unsent: BridgeReleaseEditDraft?
     private var waiting: CheckedContinuation<BridgeReleaseEditDraft?, Never>?
 
     init(draft: BridgeReleaseEditDraft) {
         self.draft = draft
-        unanswered = draft
+        unsent = draft
     }
 
     func change(_ edit: @Sendable (inout BridgeReleaseEditDraft) -> Void) {
         edit(&draft)
         draft.changed = true
-        answer(draft)
+        send(draft)
     }
 
     func replace(with draft: BridgeReleaseEditDraft) {
         self.draft = draft
-        answer(draft)
+        send(draft)
     }
 
     /// The subscription's values.
@@ -371,23 +371,23 @@ actor PreviewReleaseEditSession {
         PulledValues(read: { await self.next() })
     }
 
-    private func answer(_ draft: BridgeReleaseEditDraft) {
+    private func send(_ draft: BridgeReleaseEditDraft) {
         if let waiting {
             self.waiting = nil
             waiting.resume(returning: draft)
         }
         else {
-            unanswered = draft
+            unsent = draft
         }
     }
 
-    /// The draft the subscription has not answered yet, if there is one;
+    /// The draft the subscription has not sent yet, if there is one;
     /// otherwise wait for the next change and return the draft it makes.
     /// When a task cancels a pull while it waits, `next()` returns `nil`.
     private func next() async -> BridgeReleaseEditDraft? {
-        if let unanswered {
-            self.unanswered = nil
-            return unanswered
+        if let unsent {
+            self.unsent = nil
+            return unsent
         }
         return await withTaskCancellationHandler {
             await withCheckedContinuation { waiting = $0 }
