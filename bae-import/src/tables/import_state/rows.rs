@@ -190,6 +190,21 @@ impl StoredCandidate {
     }
 }
 
+/// The identify state that bae builds from the verdict that `state`, a
+/// candidate's current state, holds, with `cards`, the cards the verdict's
+/// rows hold; `None` when the state holds no verdict. The pane's read and
+/// the candidate's runtime read both show a stored verdict through this.
+pub(crate) fn stored_verdict_view(
+    state: Option<&DbImportCandidateState>,
+    cards: bae_identify::VerdictCards,
+) -> Option<bae_identify::IdentifyStateView> {
+    let identify = state?.identify.as_ref()?;
+    Some(bae_identify::IdentifyStateView::of(
+        bae_identify::RunOutcome::Answered(identify.verdict.clone()),
+        cards,
+    ))
+}
+
 /// One loaded candidate, as a read of import's candidate state returns it:
 /// the `import_candidate_state` row with the verdict, signals, provenance, and
 /// file decisions that hang off it.

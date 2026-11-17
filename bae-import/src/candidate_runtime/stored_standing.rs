@@ -34,8 +34,7 @@ impl StoredStanding {
 }
 
 /// One key's standing, what the run its runtime shows last published
-/// (`import_identify_run`), its stored verdict, and its typed search
-/// (`import_candidate_search`).
+/// (`import_identify_run`), and its typed search (`import_candidate_search`).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct StoredRuntime {
     pub(crate) standing: StoredStanding,
@@ -43,8 +42,6 @@ pub(crate) struct StoredRuntime {
     /// no identification standing (a library release's re-identify session),
     /// its latest run in flight, else its latest answer.
     pub(crate) run: Option<(IdentifyRunId, bae_identify::PublishedRun)>,
-    /// The verdict of the key's current state, when it has one.
-    pub(crate) stored_verdict: Option<StoredVerdict>,
     pub(crate) search: Option<crate::candidate_search::CandidateSearch>,
 }
 

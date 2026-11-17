@@ -117,7 +117,7 @@ pub(crate) use preparation_rows::{
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 pub use rows::DbImportCandidateState;
-pub(super) use rows::{load_current_state_on, load_states_on};
+pub(super) use rows::{load_current_state_on, load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};

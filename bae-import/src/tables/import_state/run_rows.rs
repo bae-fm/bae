@@ -59,27 +59,21 @@ impl StoredRun {
     }
 }
 
-/// A key's stored verdict as [`load_runtimes_on`] nests it: the verdict of
-/// its current state, with its matches and cards, and the sample rate its
-/// stored signals say rules out a CD.
-#[derive(serde::Deserialize)]
-struct StoredVerdictColumns {
-    verdict: JsonColumns,
-    cards: serde_json::Value,
-    not_cd_rate: Option<u32>,
-    matches: Vec<StoredRecord>,
-}
-
-impl StoredVerdictColumns {
-    /// The identify state the verdict stands back up as.
-    fn verdict(self, key: &CandidateKey) -> Result<StoredVerdict, DbError> {
-        let Self { verdict, cards, not_cd_rate, matches } = self;
-        let verdict = read_verdict_row(&verdict)?.ok_or_else(|| {
-            DbError::unreadable(format!("the stored verdict row of {key}"), None::<String>)
-        })?;
-        let (outcome, cards) = outcome_and_cards(verdict, matches, &cards, "the stored verdict")?;
-        Ok(StoredVerdict { view: bae_identify::IdentifyStateView::of(outcome, cards), not_cd_rate })
-    }
+/// `key`'s stored verdict as its pane shows it, read and converted as the
+/// pane's read does: the verdict of its current state with the cards its rows
+/// hold, and the sample rate its stored signals say rules out a CD.
+fn load_stored_verdict_on(
+    sql: &impl coven::SqlRead,
+    key: &CandidateKey,
+) -> Result<Option<StoredVerdict>, DbError> {
+    let current = super::load_current_state_on(sql, key)?;
+    let cards = super::load_candidate_verdict_cards_on(sql, key)?;
+    let not_cd_rate = current
+        .as_ref()
+        .and_then(|state| state.signals.as_ref())
+        .and_then(|signals| signals.origin.not_cd_rate);
+    Ok(super::stored_verdict_view(current.as_ref(), cards)
+        .map(|view| StoredVerdict { view, not_cd_rate }))
 }
 
 /// How a verdict row stands, with its matches, and the cards it shows: a run
@@ -137,35 +131,10 @@ fn run_column(key: &str) -> String {
     )
 }
 
-/// The verdict of the current state of the release the scan stores at `key`,
-/// as one JSON object column; NULL when it has none.
-fn stored_verdict_column(key: &str) -> String {
-    format!(
-        "(SELECT json_object( \
-                  'verdict', {verdict}, \
-                  'cards', json({cards}), \
-                  'not_cd_rate', stored_signals.not_cd_rate, \
-                  'matches', json((SELECT json_group_array(json({record}) ORDER BY found.position) \
-                                   FROM import_candidate_match AS found \
-                                   WHERE found.content_hash = state.content_hash))) \
-          FROM scan_candidate AS scan \
-          JOIN import_candidate_state AS state \
-              ON state.content_hash = scan.content_hash \
-             AND state.edit_revision = scan.file_edit_revision \
-          JOIN import_candidate_verdict AS verdict ON verdict.content_hash = state.content_hash \
-          LEFT JOIN import_candidate_signals AS stored_signals \
-              ON stored_signals.content_hash = state.content_hash \
-          WHERE scan.path = {key})",
-        record = match_record_sql("found"),
-        verdict = verdict_columns().object(),
-        cards = super::cards_read::verdict_cards_sql("verdict"),
-    )
-}
-
 /// Every key something is running for, or `key` alone whatever runs for it,
 /// as one statement reads it: its standing, the run its runtime shows with
-/// the verdict, signals, cards and releases nested in it, its stored verdict,
-/// and its typed search nested as one object.
+/// the verdict, signals, cards and releases nested in it, and its typed
+/// search nested as one object.
 fn load_runtimes_on(
     sql: &impl coven::SqlRead,
     key: Option<&CandidateKey>,
@@ -185,7 +154,6 @@ fn load_runtimes_on(
             "SELECT keys.candidate_key AS runtime_key, \
                     {STANDING_COLUMNS}, \
                     {run} AS runtime_run, \
-                    {stored_verdict} AS runtime_stored_verdict, \
                     (SELECT {search} FROM import_candidate_search AS typed \
                      WHERE typed.candidate_key = keys.candidate_key) AS runtime_search \
              FROM ({keys}) AS keys \
@@ -195,7 +163,6 @@ fn load_runtimes_on(
             STANDING_COLUMNS = STANDING_COLUMNS,
             search = search_object_sql(),
             run = run_column("keys.candidate_key"),
-            stored_verdict = stored_verdict_column("keys.candidate_key"),
         ),
         rusqlite::params_from_iter(key),
         |row| {
@@ -203,28 +170,18 @@ fn load_runtimes_on(
                 row.get::<_, CandidateKey>("runtime_key")?,
                 StandingColumns::read(row, 1)?,
                 row.get::<_, Option<String>>("runtime_run")?,
-                row.get::<_, Option<String>>("runtime_stored_verdict")?,
                 row.get::<_, Option<String>>("runtime_search")?,
             ))
         },
     )?;
     rows.into_iter()
-        .map(|(key, standing, run, stored_verdict, search)| {
+        .map(|(key, standing, run, search)| {
             let run = run
                 .map(|json| {
                     let stored: StoredRun = serde_json::from_str(&json).map_err(|error| {
                         DbError::unreadable_json("a key's stored run", &json, error)
                     })?;
                     stored.published(&key)
-                })
-                .transpose()?;
-            let stored_verdict = stored_verdict
-                .map(|json| {
-                    let stored: StoredVerdictColumns =
-                        serde_json::from_str(&json).map_err(|error| {
-                            DbError::unreadable_json("a key's stored verdict", &json, error)
-                        })?;
-                    stored.verdict(&key)
                 })
                 .transpose()?;
             let search = search
@@ -235,15 +192,14 @@ fn load_runtimes_on(
                     search_in(&columns)
                 })
                 .transpose()?;
-            let runtime =
-                StoredRuntime { standing: standing.standing(&key)?, run, stored_verdict, search };
+            let runtime = StoredRuntime { standing: standing.standing(&key)?, run, search };
             Ok((key, runtime))
         })
         .collect()
 }
 
-/// Where `key` stands, what the run its runtime shows last published, its
-/// stored verdict, and its typed search.
+/// Where `key` stands, what the run its runtime shows last published, and
+/// its typed search.
 pub(crate) fn load_stored_runtime_on(
     sql: &impl coven::SqlRead,
     key: &CandidateKey,
@@ -264,7 +220,7 @@ pub(super) fn delete_every_run_on(sql: &CovenWrite<'_>) -> Result<(), DbError> {
 }
 
 /// Every key something is running for: where it stands, what the run its
-/// runtime shows last published, its stored verdict, and its typed search.
+/// runtime shows last published, and its typed search.
 fn load_stored_runtimes_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<(CandidateKey, StoredRuntime)>, DbError> {
@@ -409,8 +365,9 @@ impl ImportTables {
     ) -> coven::LiveQuery<crate::CandidateRuntimeView, bae_store::DbError> {
         let key = key.clone();
         self.store.subscribe(move |sql| {
-            load_stored_runtime_on(&sql, &key)
-                .map(|stored| crate::candidate_runtime::compose_view(&key, &stored))
+            let stored = load_stored_runtime_on(&sql, &key)?;
+            let stored_verdict = load_stored_verdict_on(&sql, &key)?;
+            Ok(crate::candidate_runtime::compose_view(&key, &stored, stored_verdict))
         })
     }
 

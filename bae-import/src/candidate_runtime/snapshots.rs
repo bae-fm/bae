@@ -33,13 +33,17 @@ pub(crate) fn compose(
 /// `key`'s view from its stored runtime: the identify state its pane shows,
 /// which is what identification is doing for it while it does something,
 /// else its stored verdict's, with what is in flight for it.
-pub(crate) fn compose_view(key: &CandidateKey, stored: &StoredRuntime) -> CandidateRuntimeView {
+pub(crate) fn compose_view(
+    key: &CandidateKey,
+    stored: &StoredRuntime,
+    stored_verdict: Option<StoredVerdict>,
+) -> CandidateRuntimeView {
     let in_flight = compose(key, stored);
     let identify_state =
         match in_flight.as_ref().and_then(CandidateRuntimeSnapshot::identification_in_flight) {
             Some(IdentificationInFlight::Queued) => ShownIdentifyState::Queued,
             Some(IdentificationInFlight::Run(state)) => ShownIdentifyState::Run(state),
-            None => match stored.stored_verdict.clone() {
+            None => match stored_verdict {
                 Some(verdict) => ShownIdentifyState::Stored(verdict),
                 None => ShownIdentifyState::Idle,
             },

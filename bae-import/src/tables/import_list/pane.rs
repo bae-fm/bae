@@ -12,7 +12,7 @@ use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
     album_pick_sql, current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on,
-    load_pane_rows_on, load_standing_on, OneCandidate, SCANNED_HASH,
+    load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate, SCANNED_HASH,
 };
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
 use crate::tables::source_releases::{
@@ -286,13 +286,7 @@ impl CandidateDetailRows {
         // The verdict write stores each row's judgement against the
         // candidate's own text, so the rows are already in their new order
         // after the person discounts a catalog number.
-        let stored_verdict =
-            current.as_ref().and_then(|state| state.identify.as_ref()).map(|identify| {
-                bae_identify::IdentifyStateView::of(
-                    bae_identify::RunOutcome::Answered(identify.verdict.clone()),
-                    cards,
-                )
-            });
+        let stored_verdict = stored_verdict_view(current.as_ref(), cards);
         let stage = match stage {
             StageRows::Imported(release) => ProjectedStage::Imported { release },
             StageRows::Drafting(draft) => {
