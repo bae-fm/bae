@@ -221,8 +221,7 @@ async fn the_progress_lists_a_problem_s_alert_until_the_app_marks_it_shown() {
     assert_eq!(
         progress.alerts,
         [crate::FolderScanAlert {
-            watched_folder_path: root.clone(),
-            watched_folder_name: "music".to_string(),
+            folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
             kind: Failed,
             detail: "offline".to_string(),
         }]

@@ -43,11 +43,6 @@ const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder
              AND shown.kind = folder.status AND shown.detail = folder.detail) \
      ORDER BY folder.position";
 
-/// The name a watched folder is shown by.
-fn folder_name(watched_folder_path: &std::path::Path) -> String {
-    crate::WatchedFolder::from_path(watched_folder_path.to_path_buf()).name
-}
-
 /// A folder's status from the view's `status` and `detail`.
 fn folder_scan_status(
     watched_folder_path: &std::path::Path,
@@ -119,8 +114,7 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
         Ok((path_column::get(row, 0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
     })? {
         alerts.push(FolderScanAlert {
-            watched_folder_name: folder_name(&watched_folder_path),
-            watched_folder_path,
+            folder: crate::WatchedFolder::from_path(watched_folder_path),
             kind: alert_kind(&kind)?,
             detail,
         });

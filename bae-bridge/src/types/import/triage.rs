@@ -233,7 +233,7 @@ pub enum BridgeTriageImportStatus {
 
 /// A folder the person watches for imports. Mirrors
 /// `bae_import::WatchedFolder`.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeWatchedFolder {
     /// The watched folder's absolute path, as coven's bytes for it: what
     /// every call naming the folder takes back.

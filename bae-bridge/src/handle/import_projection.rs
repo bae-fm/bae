@@ -516,11 +516,9 @@ mirror_enum! {
 
 impl crate::types::BridgeFolderScanAlert {
     fn from_core(alert: bae_import::FolderScanAlert) -> Self {
-        let bae_import::FolderScanAlert { watched_folder_path, watched_folder_name, kind, detail } =
-            alert;
+        let bae_import::FolderScanAlert { folder, kind, detail } = alert;
         Self {
-            watched_folder_path: coven::path_bytes(&watched_folder_path),
-            watched_folder_name,
+            folder: crate::types::BridgeWatchedFolder::from_core(folder),
             kind: crate::types::BridgeFolderScanAlertKind::from_core(kind),
             detail,
         }

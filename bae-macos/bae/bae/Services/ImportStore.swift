@@ -425,7 +425,7 @@ extension ImportStore {
             }
             catch {
                 importStoreLogger.error(
-                    "core did not mark the scan alert for \(alert.watchedFolderName) shown: \(String(describing: error))"
+                    "core did not mark the scan alert for \(alert.folder.name) shown: \(String(describing: error))"
                 )
                 self?.reportFailure(error)
             }

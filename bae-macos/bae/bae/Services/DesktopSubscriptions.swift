@@ -269,7 +269,7 @@ final class DesktopSubscriptions {
                 }
             uiStore.showError(
                 DisplayError(
-                    line: localizedCoreString(key, alert.watchedFolderName),
+                    line: localizedCoreString(key, alert.folder.name),
                     detail: alert.detail
                 )
             )

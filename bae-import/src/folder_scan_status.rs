@@ -76,8 +76,7 @@ pub struct FolderScanProgress {
 /// app raises an alert again for the folder's next problem.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderScanAlert {
-    pub watched_folder_path: PathBuf,
-    pub watched_folder_name: String,
+    pub folder: crate::WatchedFolder,
     pub kind: FolderScanAlertKind,
     /// The failure, or why the folder is not watched, untranslated.
     pub detail: String,

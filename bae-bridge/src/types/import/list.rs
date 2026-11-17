@@ -183,8 +183,7 @@ pub struct BridgeFolderScans {
 /// `bae_import::FolderScanAlert`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeFolderScanAlert {
-    pub watched_folder_path: Vec<u8>,
-    pub watched_folder_name: String,
+    pub folder: BridgeWatchedFolder,
     pub kind: BridgeFolderScanAlertKind,
     /// The failure, or why the folder is not watched, untranslated.
     pub detail: String,

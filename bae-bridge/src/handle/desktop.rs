@@ -370,11 +370,10 @@ forward! {
         /// Record that the app raised `alert`, so the folder scans list no
         /// alert for its folder's problem until that problem ends.
         fn mark_folder_scan_alert_shown(alert: crate::types::BridgeFolderScanAlert) -> () {
-            let crate::types::BridgeFolderScanAlert { watched_folder_path, kind, detail, .. } =
-                alert;
+            let crate::types::BridgeFolderScanAlert { folder, kind, detail } = alert;
             this.services
                 .import_mark_folder_scan_alert_shown(
-                    &crate::from_app::path(watched_folder_path)?,
+                    &crate::from_app::path(folder.path)?,
                     kind.into_core(),
                     detail,
                 )

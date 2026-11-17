@@ -25,8 +25,11 @@ struct ImportStoreScanFailureTests {
         _ kind: BridgeFolderScanAlertKind = .failed
     ) -> BridgeFolderScanAlert {
         BridgeFolderScanAlert(
-            watchedFolderPath: Data(path.utf8),
-            watchedFolderName: URL(fileURLWithPath: path).lastPathComponent,
+            folder: BridgeWatchedFolder(
+                path: Data(path.utf8),
+                pathText: path,
+                name: URL(fileURLWithPath: path).lastPathComponent
+            ),
             kind: kind,
             detail: detail
         )
