@@ -2619,8 +2619,8 @@ also names the one release the list holds among them when it holds exactly one,
 with its album's title, which the inspector shows and the Unpin alert names;
 the app does not search its own rows for either one. An action on the selection
 passes core the ids the person picked, and core acts on each, refusing one it
-can't act on (a release deleted meanwhile, or one in the wrong state for the
-action), which the person sees. A release in a download is the download queue's
+can't act on (a release that someone deleted meanwhile, or one in the wrong
+state for the action), and the person sees each refusal. A release in a download is the download queue's
 entry for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write
 that changes its files, so the entry and coven's change commit together and the
 release never shows a download its files have finished. The storage rows and the

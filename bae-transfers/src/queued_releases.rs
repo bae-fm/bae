@@ -660,7 +660,7 @@ where
     /// Queue to pin, in the order given, each of `release_ids` that is
     /// uploaded and not wholly pinned on this device, in one write that
     /// decides which: the write skips one waiting, downloading or pinned,
-    /// queues one whose download failed again in its place, and refuses one
+    /// queues again, in its place, one whose download failed, and refuses one
     /// the library no longer holds or whose files are not in the cloud and
     /// returns the reason.
     pub async fn enqueue_pinnable(
