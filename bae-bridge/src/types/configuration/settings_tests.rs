@@ -186,9 +186,11 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
         stream.write_all(response.as_bytes()).await.unwrap();
         stream.shutdown().await.unwrap();
     });
+    let (store, _store_dir) = bae_store::test_fixtures::temp_db(bae_library::SCHEMA).await;
     let error = ImportError::from(
         bae_catalogs::remote_image::RemoteImageCache::for_test(
             bae_util::http::Http::for_test().serve("images.example", &origin),
+            store,
             bae_diagnostics::Diagnostics::noop(),
         )
         .fetch("https://images.example/cover")

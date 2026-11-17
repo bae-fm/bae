@@ -1,36 +1,38 @@
-//! What the device keeps for the library: how the measurements become the
+//! What the device keeps for the library: how the query's sums become the
 //! page's parts, and the reads and commands over the open library.
 
 use super::*;
 use crate::manager::tests::*;
 use bae_records::synced::RELEASE_FILES_NAMESPACE;
-use bae_store::live_query::LiveSource;
 
-/// What coven's tables say with nothing pinned, cached or kept from a
-/// reset: the audio budget at its default and the library's 700 bytes.
-fn measured() -> DeviceBytes {
-    DeviceBytes {
+/// The sums with nothing pinned, cached or kept from a reset: the audio
+/// budget at its default and the library's 700 bytes.
+fn summed() -> StorageSums {
+    StorageSums {
         audio_budget: Some(CacheLimit::Gb20.bytes()),
         pinned: 0,
-        cached: 0,
+        cache: 0,
         library: 700,
         before_reset: None,
+        total: 700,
     }
 }
 
 /// Pinned and Cache show while they hold bytes, Library always, in that
-/// order; the catalog images count as Cache.
+/// order.
 #[test]
 fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
-    let nothing = DeviceStorage::from_measurements(&measured(), 0).unwrap();
+    let nothing = DeviceStorage::from_sums(&summed()).unwrap();
     assert_eq!(nothing.parts, [StoragePart { kind: StorageKind::Library, bytes: 700 }]);
     assert_eq!((nothing.total, nothing.cache, nothing.can_clear_cache), (700, 0, false));
     assert_eq!(nothing.before_reset, None);
 
-    let full = DeviceStorage::from_measurements(
-        &DeviceBytes { pinned: 4060, cached: 35, ..measured() },
-        200,
-    )
+    let full = DeviceStorage::from_sums(&StorageSums {
+        pinned: 4060,
+        cache: 235,
+        total: 4995,
+        ..summed()
+    })
     .unwrap();
     assert_eq!(
         full.parts,
@@ -47,8 +49,8 @@ fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
 /// From before the reset shows while an archive is here, last.
 #[test]
 fn the_archives_a_reset_kept_show_last() {
-    let bytes = DeviceBytes { before_reset: Some(5000), ..measured() };
-    let storage = DeviceStorage::from_measurements(&bytes, 0).unwrap();
+    let sums = StorageSums { before_reset: Some(5000), total: 5700, ..summed() };
+    let storage = DeviceStorage::from_sums(&sums).unwrap();
     assert_eq!(
         storage.parts,
         [
@@ -63,23 +65,29 @@ fn the_archives_a_reset_kept_show_last() {
 /// so is an audio cache coven has no budget for.
 #[test]
 fn a_budget_no_choice_names_fails_the_read() {
-    let odd = DeviceBytes { audio_budget: Some(12_345), ..measured() };
-    assert!(DeviceStorage::from_measurements(&odd, 0).is_err());
-    let none = DeviceBytes { audio_budget: None, ..measured() };
-    assert!(DeviceStorage::from_measurements(&none, 0).is_err());
+    let odd = StorageSums { audio_budget: Some(12_345), ..summed() };
+    assert!(DeviceStorage::from_sums(&odd).is_err());
+    let none = StorageSums { audio_budget: None, ..summed() };
+    assert!(DeviceStorage::from_sums(&none).is_err());
+}
+
+/// The next value of `live`.
+async fn next(live: &mut coven::LiveQuery<DeviceStorage, DbError>) -> DeviceStorage {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
+        .await
+        .expect("the storage delivers a value")
+        .expect("the library stays open")
+        .expect("the storage reads")
 }
 
 /// The next value of `live` that `done` accepts.
 async fn next_until(
-    live: &mut LiveDeviceStorage,
+    live: &mut coven::LiveQuery<DeviceStorage, DbError>,
     done: impl Fn(&DeviceStorage) -> bool,
 ) -> DeviceStorage {
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
-            let storage = LiveSource::next(live)
-                .await
-                .expect("the library stays open")
-                .expect("the measurement reads");
+            let storage = next(live).await;
             if done(&storage) {
                 return storage;
             }
@@ -87,6 +95,20 @@ async fn next_until(
     })
     .await
     .expect("the storage reaches the state waited for")
+}
+
+/// The bytes of the catalog image cache's rows.
+#[cfg(desktop)]
+async fn image_bytes(manager: &LibraryManager) -> u64 {
+    manager
+        .store
+        .read(|sql| {
+            Ok(sql.query_row("SELECT COALESCE(SUM(bytes), 0) FROM cached_image", [], |row| {
+                row.get(0)
+            })?)
+        })
+        .await
+        .unwrap()
 }
 
 /// A release pinned beside a track played from the cloud and a catalog
@@ -125,7 +147,7 @@ async fn the_parts_hold_what_coven_and_the_image_cache_measure() {
     let mut live = manager.subscribe_device_storage();
     let storage = next_until(&mut live, |_| true).await;
     #[cfg(desktop)]
-    let images = test.library.remote_images().bytes().await.unwrap();
+    let images = image_bytes(manager).await;
     #[cfg(not(desktop))]
     let images = 0;
     #[cfg(desktop)]
@@ -216,7 +238,10 @@ async fn a_budget_no_choice_names_fails_the_subscription() {
         .await
         .unwrap();
     let mut live = manager.subscribe_device_storage();
-    let first = LiveSource::next(&mut live).await.expect("the library stays open");
+    let first = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
+        .await
+        .expect("the storage delivers a value")
+        .expect("the library stays open");
     assert!(first.is_err(), "{first:?}");
 }
 
@@ -286,4 +311,47 @@ async fn data_from_before_a_reset_shows_until_it_is_deleted() {
 
     let deleted = next_until(&mut live, |storage| storage.before_reset.is_none()).await;
     assert!(deleted.parts.iter().all(|part| part.kind != StorageKind::BeforeReset));
+}
+
+/// Caching a catalog image changes the page's Cache figure once, by the
+/// image's row, with no value in between.
+#[cfg(desktop)]
+#[tokio::test]
+async fn caching_an_image_changes_the_cache_figure_once() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let mut live = manager.subscribe_device_storage();
+    let before = next(&mut live).await;
+
+    test.library.remote_images().put_for_test("https://example.test/cover.jpg", b"image").await;
+
+    let after = next_until(&mut live, |storage| storage.cache != before.cache).await;
+    let images = image_bytes(manager).await;
+    assert!(images > 0, "the image cache keeps a row for the image");
+    assert_eq!(after.cache, before.cache + images);
+}
+
+/// A write that grows the library's database changes the Library figure
+/// once a checkpoint moves the write into the database file.
+#[cfg(desktop)]
+#[tokio::test]
+async fn a_write_that_grows_the_library_changes_the_library_figure_after_a_checkpoint() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    manager.store.checkpoint_for_test().await;
+    let mut live = manager.subscribe_device_storage();
+    let library = |storage: &DeviceStorage| {
+        storage.parts.iter().find(|part| part.kind == StorageKind::Library).unwrap().bytes
+    };
+    let before = library(&next(&mut live).await);
+
+    for image in 0..200 {
+        test.library
+            .remote_images()
+            .put_for_test(&format!("https://example.test/{image}.jpg"), b"image")
+            .await;
+    }
+    manager.store.checkpoint_for_test().await;
+
+    next_until(&mut live, |storage| library(storage) > before).await;
 }

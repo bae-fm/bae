@@ -81,7 +81,7 @@ pub fn provider_failure(error: &CatalogError) -> Option<LookupFailure> {
 /// The failure an artwork host answered with, or `None` for an answer that
 /// is no failure of the host (no image where the caller needed one) or for
 /// one bae met on its own side: a request it could not build, bytes that are
-/// not an image, a cache task that did not finish.
+/// not an image, a cache task that did not finish, the cache's table failing.
 pub fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFailure> {
     match error {
         RemoteImageError::Transport { error, .. } => transport_failure(error),
@@ -90,7 +90,8 @@ pub fn remote_image_failure(error: &RemoteImageError) -> Option<LookupFailure> {
         }
         RemoteImageError::Unusable { .. }
         | RemoteImageError::NoImage { .. }
-        | RemoteImageError::CacheTask(_) => None,
+        | RemoteImageError::CacheTask(_)
+        | RemoteImageError::CacheStore(_) => None,
     }
 }
 

@@ -1,11 +1,34 @@
 use super::*;
 use crate::remote_image::tests::*;
 
+/// A test store of the catalogs' part, which the returned folder holds.
+async fn test_store() -> (Store, tempfile::TempDir) {
+    bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await
+}
+
+/// How many rows `cached_image` holds, and the sum of their bytes.
+async fn held(store: &Store) -> (u64, u64) {
+    store
+        .read(|sql| {
+            Ok(sql.query_row(
+                "SELECT COUNT(*), COALESCE(SUM(bytes), 0) FROM cached_image",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
+fn image(byte: u8) -> DiskImageEntry {
+    DiskImageEntry::Image(RemoteImage { bytes: vec![byte; 400], content_type: ContentType::Jpeg })
+}
+
 #[tokio::test]
 async fn a_second_read_uses_the_stored_image() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
 
     let first = cache.fetch_required(&url).await.unwrap();
     let second = cache.fetch_required(&url).await.unwrap();
@@ -20,99 +43,69 @@ async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
+    let (store, _store_dir) = test_store().await;
+    let open = || {
+        RemoteImageCache::in_dir(
+            direct_http(),
+            store.clone(),
+            directory.path().to_path_buf(),
+            REMOTE_IMAGE_DISK_BUDGET,
+            bae_diagnostics::Diagnostics::noop(),
+        )
+    };
 
-    let first_cache = RemoteImageCache::in_dir(
-        direct_http(),
-        directory.path().to_path_buf(),
-        u64::MAX,
-        bae_diagnostics::Diagnostics::noop(),
-    );
+    let first_cache = open();
     assert_eq!(first_cache.fetch_required(&url).await.unwrap().bytes, body);
     drop(first_cache);
 
-    let second_cache = RemoteImageCache::in_dir(
-        direct_http(),
-        directory.path().to_path_buf(),
-        u64::MAX,
-        bae_diagnostics::Diagnostics::noop(),
-    );
+    let second_cache = open();
     assert_eq!(second_cache.fetch_required(&url).await.unwrap().bytes, body);
     assert_eq!(host.hits(), 1, "the second cache reads the stored image");
 }
 
-#[test]
-fn disk_cache_evicts_the_oldest_entry_when_over_budget() {
+/// A write over the budget deletes the least recently used rows, a read
+/// counting as a use, and removes their files.
+#[tokio::test]
+async fn a_write_over_the_budget_evicts_the_least_recently_used_entry() {
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
-    let unlimited = DiskImageCache::new(directory.path().to_path_buf(), u64::MAX);
-    unlimited.put(
-        "https://host/a",
-        &DiskImageEntry::Image(RemoteImage {
-            bytes: vec![0x11; 400],
-            content_type: ContentType::Jpeg,
-        }),
+    let (store, _store_dir) = test_store().await;
+    let diagnostics = bae_diagnostics::Diagnostics::noop();
+    let unlimited = DiskImageCache::new(
+        directory.path().to_path_buf(),
+        REMOTE_IMAGE_DISK_BUDGET,
+        store.clone(),
+        diagnostics.clone(),
     );
-    let entry_size = std::fs::read_dir(directory.path())
-        .expect("cache directory should read")
-        .next()
-        .expect("cache entry should exist")
-        .expect("cache entry should read")
-        .metadata()
-        .expect("cache entry metadata should read")
-        .len();
-
-    let bounded = DiskImageCache::new(directory.path().to_path_buf(), entry_size * 2);
-    bounded.put(
-        "https://host/b",
-        &DiskImageEntry::Image(RemoteImage {
-            bytes: vec![0x22; 400],
-            content_type: ContentType::Jpeg,
-        }),
-    );
-    bounded.get("https://host/a");
-    bounded.put(
-        "https://host/c",
-        &DiskImageEntry::Image(RemoteImage {
-            bytes: vec![0x33; 400],
-            content_type: ContentType::Jpeg,
-        }),
+    unlimited.put("https://host/a", image(0x11)).await.unwrap();
+    let (_, entry_size) = held(&store).await;
+    assert_eq!(
+        entry_size,
+        std::fs::metadata(directory.path().join(file_for("https://host/a"))).unwrap().len(),
+        "the row holds the file's size"
     );
 
-    assert!(bounded.get("https://host/a").is_some());
-    assert!(bounded.get("https://host/b").is_none());
-    assert!(bounded.get("https://host/c").is_some());
-}
+    let bounded = DiskImageCache::new(
+        directory.path().to_path_buf(),
+        entry_size * 2,
+        store.clone(),
+        diagnostics,
+    );
+    bounded.put("https://host/b", image(0x22)).await.unwrap();
+    assert!(bounded.get("https://host/a").await.unwrap().is_some());
+    bounded.put("https://host/c", image(0x33)).await.unwrap();
 
-/// A panic that poisoned the access order leaves the cache reading, writing
-/// and evicting: the order starts over instead of failing every later call.
-#[test]
-fn a_poisoned_access_order_starts_over_and_the_cache_keeps_working() {
-    let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
-    let cache = DiskImageCache::new(directory.path().to_path_buf(), u64::MAX);
-    let image = |byte| {
-        DiskImageEntry::Image(RemoteImage {
-            bytes: vec![byte; 400],
-            content_type: ContentType::Jpeg,
-        })
-    };
-    cache.put("https://host/a", &image(0x11));
-
-    let poisoned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        cache.with_access(|_| panic!("a change to the access order broke"))
-    }));
-    assert!(poisoned.is_err());
-    assert!(cache.access.is_poisoned());
-
-    assert!(cache.get("https://host/a").is_some());
-    cache.put("https://host/b", &image(0x22));
-    assert!(cache.get("https://host/b").is_some());
-    assert!(!cache.access.is_poisoned(), "the order started over");
+    assert!(bounded.get("https://host/a").await.unwrap().is_some());
+    assert!(bounded.get("https://host/b").await.unwrap().is_none());
+    assert!(bounded.get("https://host/c").await.unwrap().is_some());
+    assert!(!directory.path().join(file_for("https://host/b")).exists(), "b's file is removed");
+    assert_eq!(held(&store).await, (2, entry_size * 2));
 }
 
 #[tokio::test]
 async fn concurrent_reads_of_one_url_share_the_download() {
     let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
 
     let (first, second) = tokio::join!(cache.fetch_required(&url), cache.fetch_required(&url));
 
@@ -124,7 +117,7 @@ async fn concurrent_reads_of_one_url_share_the_download() {
 #[tokio::test]
 async fn no_image_answer_is_stored() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
 
     assert!(cache.fetch(&url).await.unwrap().is_none());
     assert!(cache.fetch(&url).await.unwrap().is_none());
@@ -137,7 +130,7 @@ async fn no_image_answer_is_stored() {
 #[tokio::test]
 async fn required_missing_artwork_is_no_image() {
     let (host, url) = start_counting_host(404, Vec::new()).await;
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
     assert!(cache.fetch(&url).await.unwrap().is_none());
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
@@ -147,34 +140,86 @@ async fn required_missing_artwork_is_no_image() {
     );
 }
 
+/// Each write keeps a row with its file's size, and a clear deletes the rows
+/// and the files.
 #[tokio::test]
-async fn the_cache_measures_its_files_clears_them_and_signals_each_change() {
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
-    let mut changes = cache.watch();
-    assert_eq!(cache.bytes().await.unwrap(), 0);
+async fn the_cache_keeps_a_row_for_each_file_and_a_clear_deletes_both() {
+    let (store, _store_dir) = test_store().await;
+    let cache = RemoteImageCache::for_test(
+        direct_http(),
+        store.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    assert_eq!(held(&store).await, (0, 0));
 
     cache.put_for_test("https://host/a", &[0x11; 400]).await;
-    assert!(changes.changed().await, "a write is a change");
-    let held = cache.bytes().await.unwrap();
-    assert!(held > 400, "the file and its header: {held}");
+    let (rows, bytes) = held(&store).await;
+    assert_eq!(rows, 1);
+    assert!(bytes > 400, "the file and its header: {bytes}");
 
     cache.clear().await.unwrap();
-    assert!(changes.changed().await, "a clear is a change");
-    assert_eq!(cache.bytes().await.unwrap(), 0);
+    assert_eq!(held(&store).await, (0, 0));
+    assert!(!cache.disk.dir.exists(), "the clear removes the folder");
 
     cache.put_for_test("https://host/b", &[0x22; 100]).await;
-    assert!(cache.bytes().await.unwrap() > 100, "the cache takes writes after a clear");
+    assert_eq!(held(&store).await.0, 1, "the cache takes writes after a clear");
 }
 
 #[tokio::test]
 async fn clearing_a_cache_that_was_never_written_is_fine() {
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
+    let (store, _store_dir) = test_store().await;
     let cache = RemoteImageCache::in_dir(
         direct_http(),
+        store.clone(),
         directory.path().join("not-made-yet"),
-        u64::MAX,
+        REMOTE_IMAGE_DISK_BUDGET,
         bae_diagnostics::Diagnostics::noop(),
     );
-    assert_eq!(cache.bytes().await.unwrap(), 0);
     cache.clear().await.unwrap();
+    assert_eq!(held(&store).await, (0, 0));
+}
+
+/// A file no row names, as a crash between writing a file and its row
+/// leaves, is not an answer: the next fetch downloads the image again and
+/// records the file.
+#[tokio::test]
+async fn a_file_no_row_names_is_fetched_again_and_recorded() {
+    let body = test_png();
+    let (host, url) = start_counting_host(200, body.clone()).await;
+    let (store, _store_dir) = test_store().await;
+    let cache = RemoteImageCache::for_test(
+        direct_http(),
+        store.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    let path = cache.disk.dir.join(file_for(&url));
+    std::fs::create_dir_all(&cache.disk.dir).unwrap();
+    std::fs::write(&path, b"none\n").unwrap();
+
+    assert_eq!(cache.fetch_required(&url).await.unwrap().bytes, body);
+
+    assert_eq!(host.hits(), 1);
+    assert_eq!(held(&store).await, (1, std::fs::metadata(&path).unwrap().len()));
+}
+
+/// A row whose file something other than bae removed is deleted when a read
+/// finds the file gone, and the next fetch downloads the image again.
+#[tokio::test]
+async fn a_row_whose_file_is_gone_is_deleted_and_the_image_fetched_again() {
+    let body = test_png();
+    let (host, url) = start_counting_host(200, body.clone()).await;
+    let (store, _store_dir) = test_store().await;
+    let cache = RemoteImageCache::for_test(
+        direct_http(),
+        store.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    cache.fetch_required(&url).await.unwrap();
+    std::fs::remove_file(cache.disk.dir.join(file_for(&url))).unwrap();
+
+    assert!(cache.disk.get(&url).await.unwrap().is_none());
+    assert_eq!(held(&store).await, (0, 0));
+    assert_eq!(cache.fetch_required(&url).await.unwrap().bytes, body);
+    assert_eq!(host.hits(), 2);
 }

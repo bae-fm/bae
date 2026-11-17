@@ -12,7 +12,8 @@ mod fetch;
 
 #[cfg(desktop)]
 pub use archive::{musicbrainz_gallery, musicbrainz_group_gallery};
-pub use cache::{RemoteImage, RemoteImageCache, RemoteImageWatch};
+pub(crate) use cache::SCHEMA;
+pub use cache::{RemoteImage, RemoteImageCache};
 #[cfg(desktop)]
 pub use covers::{musicbrainz_album_cover, musicbrainz_release_cover, push_unique_cover};
 pub use covers::{
@@ -56,6 +57,11 @@ pub enum RemoteImageError {
     /// runtime is shutting down under it.
     #[error("{0}")]
     CacheTask(TaskFailed),
+
+    /// The library's database failed to read or write the cache's row for
+    /// an address.
+    #[error("the image cache's table failed: {0}")]
+    CacheStore(bae_store::DbError),
 }
 
 #[cfg(test)]

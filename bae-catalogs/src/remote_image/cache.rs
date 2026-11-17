@@ -1,15 +1,25 @@
 //! The bounded cache every surface reads catalog images through: one answer
-//! per address on disk, and one download shared by every caller asking for an
-//! address at once.
+//! per address in a file on disk, one row per file in `cached_image`, and one
+//! download shared by every caller asking for an address at once.
+//!
+//! Its table is `cache.sql`.
 
 use super::fetch::{send_image_request, ImageResponse};
 use super::RemoteImageError;
 use bae_diagnostics::Diagnostics;
+use bae_store::query::to_i64;
+use bae_store::{DbError, Store};
 use bae_util::content_type::ContentType;
 use bae_util::http::Http;
+use coven::CovenWrite;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing::{debug, warn};
+
+/// The image cache's part of the library's schema.
+pub(crate) const SCHEMA: bae_store::SchemaPart =
+    bae_store::SchemaPart::new(&[include_str!("cache.sql")]);
 
 /// Encoded provider images retained across launches.
 const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
@@ -28,264 +38,245 @@ enum DiskImageEntry {
     Nothing,
 }
 
-/// A bounded disk cache for provider images.
+/// A bounded disk cache for provider images, with a row in `cached_image`
+/// for each file.
 ///
 /// The SHA-256 filename turns an arbitrary URL into one safe path. The file's
 /// first line records either an image's content type or that the URL serves no
-/// image. Reads update the modified time, and writes evict the least recently
-/// read files until the directory is within its byte budget.
+/// image. A read finds an answer only through its row, and marks the row as
+/// the most recently used. A write evicts the least recently used rows until
+/// the rows' bytes are within the budget.
+///
+/// The cache writes a file before its row, and deletes a row before its file.
+/// A failure or a crash between the two steps leaves a file that no row
+/// names: it takes space, no read finds it, and a later write of its address
+/// or Clear Cache replaces or removes it. No row names a file the cache
+/// hasn't written or has removed.
 struct DiskImageCache {
-    dir: std::path::PathBuf,
+    dir: PathBuf,
     budget: u64,
-    access: Mutex<DiskImageAccess>,
-    /// Counts each change to the folder's files: a write, an eviction, a
-    /// clear.
-    changes: tokio::sync::watch::Sender<u64>,
-}
-
-/// The order this session read and wrote cache files in, which eviction
-/// prefers over the files' modified times. It only orders eviction, so it can
-/// always start over empty.
-#[derive(Default)]
-struct DiskImageAccess {
-    next: u64,
-    current_session: HashMap<std::path::PathBuf, u64>,
+    store: Store,
+    /// Where a panic in the cache's file work is reported.
+    diagnostics: Diagnostics,
+    /// Held by each change to the files and their rows (a write, a discard, a
+    /// clear) from its first step to its last, so no change runs between
+    /// another's file step and its row step.
+    changing: tokio::sync::Mutex<()>,
 }
 
 impl DiskImageCache {
-    fn new(dir: std::path::PathBuf, budget: u64) -> Self {
-        Self {
-            dir,
-            budget,
-            access: Mutex::new(DiskImageAccess::default()),
-            changes: tokio::sync::watch::channel(0).0,
-        }
+    fn new(dir: PathBuf, budget: u64, store: Store, diagnostics: Diagnostics) -> Self {
+        Self { dir, budget, store, diagnostics, changing: tokio::sync::Mutex::new(()) }
     }
 
-    fn changed(&self) {
-        self.changes.send_modify(|count| *count += 1);
-    }
-
-    /// The bytes of the files in the folder; none when it isn't there.
-    fn bytes(&self) -> std::io::Result<u64> {
-        match self.measure() {
-            Ok(entries) => Ok(entries.iter().map(|(_, _, size)| size).sum()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(0),
-            Err(error) => Err(error),
-        }
-    }
-
-    /// Remove every file in the folder and start the access order over.
-    fn clear(&self) -> std::io::Result<()> {
-        let entries = match self.measure() {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-            Err(error) => return Err(error),
+    /// The answer the cache keeps for `url`, marked as the most recently
+    /// used; none when it keeps none.
+    async fn get(&self, url: &str) -> Result<Option<DiskImageEntry>, RemoteImageError> {
+        let file = file_for(url);
+        let kept = {
+            let file = file.clone();
+            self.store
+                .call(move |sql| mark_used(sql, &file))
+                .await
+                .map_err(RemoteImageError::CacheStore)?
         };
-        let mut failure = None;
-        for (path, _, _) in entries {
-            if let Err(error) = std::fs::remove_file(&path) {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    failure.get_or_insert(error);
-                }
-            }
+        if !kept {
+            return Ok(None);
         }
-        self.with_access(|access| *access = DiskImageAccess::default());
-        self.changed();
-        failure.map_or(Ok(()), Err)
-    }
-
-    fn path_for(&self, url: &str) -> std::path::PathBuf {
-        self.dir.join(bae_util::fs::hash_bytes(url.as_bytes()))
-    }
-
-    fn get(&self, url: &str) -> Option<DiskImageEntry> {
-        let path = self.path_for(url);
-        let mut raw = match std::fs::read(&path) {
+        let path = self.dir.join(&file);
+        let read = self
+            .diagnostics
+            .blocking("read the remote image cache", move || std::fs::read(&path))
+            .await
+            .map_err(RemoteImageError::CacheTask)?;
+        let raw = match read {
             Ok(raw) => raw,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
+            // A removal that deleted the row after this read found it removed
+            // the file too, or something other than bae removed the file.
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                self.discard(&file, "its file is gone").await?;
+                return Ok(None);
+            }
             Err(error) => {
-                warn!("Could not read the cached image at {}: {error}", path.display());
-                return None;
+                warn!("Could not read the cached image {file}: {error}");
+                return Ok(None);
             }
         };
-        let Some(header_end) = raw.iter().position(|byte| *byte == b'\n') else {
-            return self.discard(&path, "it has no header");
-        };
-        let header = match std::str::from_utf8(&raw[..header_end]) {
-            Ok(header) => header,
-            Err(error) => return self.discard(&path, &format!("its header is invalid: {error}")),
-        };
-        let entry = if header == "none" {
-            DiskImageEntry::Nothing
-        } else if let Some(content_type) = header.strip_prefix("image ") {
-            let content_type = ContentType::from_mime(content_type);
-            raw.drain(..=header_end);
-            DiskImageEntry::Image(RemoteImage { bytes: raw, content_type })
-        } else {
-            return self.discard(&path, "its entry kind is invalid");
-        };
-
-        if let Err(error) = std::fs::File::open(&path).and_then(|file| {
-            file.set_times(std::fs::FileTimes::new().set_modified(std::time::SystemTime::now()))
-        }) {
-            warn!(
-                "Could not mark the cached image at {} as recently used: {error}",
-                path.display()
-            );
-        }
-        self.record_access(path);
-        Some(entry)
-    }
-
-    fn put(&self, url: &str, entry: &DiskImageEntry) {
-        if let Err(error) = self.write(url, entry) {
-            warn!("Could not cache the image answer from {url}: {error}");
-            return;
-        }
-        self.evict_to_budget();
-        self.changed();
-    }
-
-    fn write(&self, url: &str, entry: &DiskImageEntry) -> std::io::Result<()> {
-        use std::io::Write;
-
-        std::fs::create_dir_all(&self.dir)?;
-        let path = self.path_for(url);
-        let spool = tempfile::NamedTempFile::new_in(&self.dir)?;
-        {
-            let mut file = spool.as_file();
-            match entry {
-                DiskImageEntry::Image(image) => {
-                    file.write_all(b"image ")?;
-                    file.write_all(image.content_type.as_str().as_bytes())?;
-                    file.write_all(b"\n")?;
-                    file.write_all(&image.bytes)?;
-                }
-                DiskImageEntry::Nothing => file.write_all(b"none\n")?,
+        match DiskImageEntry::parse(raw) {
+            Ok(entry) => Ok(Some(entry)),
+            Err(reason) => {
+                self.discard(&file, &reason).await?;
+                Ok(None)
             }
-            file.flush()?;
         }
-        spool.persist(&path).map_err(|error| error.error)?;
-        self.record_access(path);
-        Ok(())
     }
 
-    fn evict_to_budget(&self) {
-        let mut entries = match self.measure() {
-            Ok(entries) => entries,
+    /// Keep `entry` as the answer for `url`, then evict the least recently
+    /// used answers until the rows' bytes fit the budget. A file or row the
+    /// cache can't write only means it doesn't keep the answer, so the
+    /// failure is logged; a panic in the file work fails the caller.
+    async fn put(&self, url: &str, entry: DiskImageEntry) -> Result<(), RemoteImageError> {
+        let _changing = self.changing.lock().await;
+        let file = file_for(url);
+        let written = {
+            let dir = self.dir.clone();
+            let path = self.dir.join(&file);
+            self.diagnostics
+                .blocking("write the remote image cache", move || write_file(&dir, &path, &entry))
+                .await
+                .map_err(RemoteImageError::CacheTask)?
+        };
+        let bytes = match written {
+            Ok(bytes) => bytes,
             Err(error) => {
-                warn!("Could not measure the image cache at {}: {error}", self.dir.display());
-                return;
+                warn!("Could not cache the image answer from {url}: {error}");
+                return Ok(());
             }
         };
-        let mut held: u64 = entries.iter().map(|(_, _, size)| size).sum();
-        if held <= self.budget {
-            return;
-        }
-
-        self.with_access(|access| {
-            entries.sort_by_key(|(path, modified, _)| match access.current_session.get(path) {
-                Some(sequence) => CacheAccess::Current(*sequence),
-                None => CacheAccess::Prior(*modified),
-            });
-        });
-
-        let mut removed = Vec::new();
-        for (path, _, size) in entries {
-            if held <= self.budget {
-                break;
+        let budget = self.budget;
+        let kept = {
+            let file = file.clone();
+            self.store.call(move |sql| keep(sql, &file, bytes, budget)).await
+        };
+        let evicted = match kept {
+            Ok(evicted) => evicted,
+            Err(error) => {
+                warn!("Could not record the cached image answer from {url}: {error}");
+                return self.remove_files(vec![file]).await;
             }
-            if self.remove(&path) {
-                held = held.saturating_sub(size);
-                removed.push(path);
-            }
-        }
-
-        if !removed.is_empty() {
+        };
+        if !evicted.is_empty() {
             debug!(
                 directory = %self.dir.display(),
-                removed = removed.len(),
-                held,
+                removed = evicted.len(),
                 budget = self.budget,
                 "Evicted remote image cache entries"
             );
-            self.with_access(|access| {
-                for path in removed {
-                    access.current_session.remove(&path);
+            self.remove_files(evicted).await?;
+        }
+        Ok(())
+    }
+
+    /// Delete every row, then the folder with every file in it, those no row
+    /// names among them.
+    async fn clear(&self) -> Result<(), DbError> {
+        let _changing = self.changing.lock().await;
+        self.store.call(forget_all).await?;
+        let dir = self.dir.clone();
+        self.diagnostics
+            .blocking("clear the remote image cache", move || match std::fs::remove_dir_all(&dir) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                removed => removed,
+            })
+            .await
+            .map_err(std::io::Error::other)??;
+        Ok(())
+    }
+
+    /// Delete the row of a cache file that cannot be read back as an entry,
+    /// then the file; the caller then has nothing cached and fetches the
+    /// image again.
+    async fn discard(&self, file: &str, reason: &str) -> Result<(), RemoteImageError> {
+        warn!("Discarding the cached image {file}: {reason}");
+        let _changing = self.changing.lock().await;
+        {
+            let file = file.to_string();
+            self.store
+                .call(move |sql| forget(sql, &file))
+                .await
+                .map_err(RemoteImageError::CacheStore)?;
+        }
+        self.remove_files(vec![file.to_string()]).await
+    }
+
+    /// Remove `files`, whose rows are gone. A file that stays only takes
+    /// space, so the failure is logged.
+    async fn remove_files(&self, files: Vec<String>) -> Result<(), RemoteImageError> {
+        let dir = self.dir.clone();
+        self.diagnostics
+            .blocking("remove remote image cache files", move || {
+                for file in files {
+                    match std::fs::remove_file(dir.join(&file)) {
+                        Ok(()) => {}
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                        Err(error) => warn!("Could not remove the cached image {file}: {error}"),
+                    }
                 }
-            });
-        }
-    }
-
-    fn measure(&self) -> std::io::Result<Vec<(std::path::PathBuf, std::time::SystemTime, u64)>> {
-        let mut entries = Vec::new();
-        for entry in std::fs::read_dir(&self.dir)? {
-            let entry = entry?;
-            let metadata = entry.metadata()?;
-            if metadata.is_file() {
-                entries.push((
-                    entry.path(),
-                    metadata.modified().unwrap_or(std::time::UNIX_EPOCH),
-                    metadata.len(),
-                ));
-            }
-        }
-        Ok(entries)
-    }
-
-    /// A cache file that cannot be read back as an entry is deleted; the caller
-    /// then has nothing cached and fetches the image again.
-    fn discard(&self, path: &std::path::Path, reason: &str) -> Option<DiskImageEntry> {
-        warn!("Discarding the cached image at {}: {reason}", path.display());
-        self.remove(path);
-        self.changed();
-        None
-    }
-
-    fn remove(&self, path: &std::path::Path) -> bool {
-        match std::fs::remove_file(path) {
-            Ok(()) => true,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
-            Err(error) => {
-                warn!("Could not remove the cached image at {}: {error}", path.display());
-                false
-            }
-        }
-    }
-
-    fn record_access(&self, path: std::path::PathBuf) {
-        self.with_access(|access| {
-            access.next =
-                access.next.checked_add(1).expect("disk image cache access counter overflow");
-            let sequence = access.next;
-            access.current_session.insert(path, sequence);
-        });
-    }
-
-    /// Run `change` on the access order. A panic that poisoned the lock left
-    /// the order partway through a change; the order is only eviction's
-    /// preference, so it starts over empty rather than failing every later
-    /// read and write of the cache.
-    fn with_access<T>(&self, change: impl FnOnce(&mut DiskImageAccess) -> T) -> T {
-        let mut access = match self.access.lock() {
-            Ok(access) => access,
-            Err(poisoned) => {
-                warn!("the image cache's access order was left partway through a change by a panic; starting it over");
-                let mut access = poisoned.into_inner();
-                *access = DiskImageAccess::default();
-                self.access.clear_poison();
-                access
-            }
-        };
-        change(&mut access)
+            })
+            .await
+            .map_err(RemoteImageError::CacheTask)
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-enum CacheAccess {
-    Prior(std::time::SystemTime),
-    Current(u64),
+/// The name of the file that holds the answer for `url`.
+fn file_for(url: &str) -> String {
+    bae_util::fs::hash_bytes(url.as_bytes())
+}
+
+/// Write `entry` to `path` in `dir` through a spool file that replaces it
+/// whole, and return the file's size.
+fn write_file(dir: &Path, path: &Path, entry: &DiskImageEntry) -> std::io::Result<u64> {
+    use std::io::Write;
+
+    std::fs::create_dir_all(dir)?;
+    let spool = tempfile::NamedTempFile::new_in(dir)?;
+    {
+        let mut file = spool.as_file();
+        match entry {
+            DiskImageEntry::Image(image) => {
+                file.write_all(b"image ")?;
+                file.write_all(image.content_type.as_str().as_bytes())?;
+                file.write_all(b"\n")?;
+                file.write_all(&image.bytes)?;
+            }
+            DiskImageEntry::Nothing => file.write_all(b"none\n")?,
+        }
+        file.flush()?;
+    }
+    let bytes = spool.as_file().metadata()?.len();
+    spool.persist(path).map_err(|error| error.error)?;
+    Ok(bytes)
+}
+
+/// Mark `file`'s row as the most recently used; whether there is one.
+fn mark_used(sql: &CovenWrite<'_>, file: &str) -> Result<bool, DbError> {
+    Ok(sql.execute(
+        "UPDATE cached_image SET used = (SELECT MAX(used) + 1 FROM cached_image) WHERE file = ?1",
+        [file],
+    )? > 0)
+}
+
+/// Record `file`, of `bytes`, as the most recently used, then delete the
+/// least recently used rows until the rest fit `budget`, and return the
+/// files whose rows it deleted.
+fn keep(sql: &CovenWrite<'_>, file: &str, bytes: u64, budget: u64) -> Result<Vec<String>, DbError> {
+    sql.execute(
+        "INSERT INTO cached_image (file, bytes, used) \
+         VALUES (?1, ?2, (SELECT COALESCE(MAX(used), 0) + 1 FROM cached_image)) \
+         ON CONFLICT (file) DO UPDATE SET bytes = excluded.bytes, used = excluded.used",
+        (file, to_i64(bytes, "a cached image's size")?),
+    )?;
+    Ok(sql.query(
+        "DELETE FROM cached_image WHERE file IN ( \
+             SELECT file FROM ( \
+                 SELECT file, SUM(bytes) OVER (ORDER BY used DESC) AS held FROM cached_image \
+             ) WHERE held > ?1 \
+         ) RETURNING file",
+        [to_i64(budget, "the image cache's budget")?],
+        |row| row.get(0),
+    )?)
+}
+
+/// Delete `file`'s row.
+fn forget(sql: &CovenWrite<'_>, file: &str) -> Result<(), DbError> {
+    sql.execute("DELETE FROM cached_image WHERE file = ?1", [file])?;
+    Ok(())
+}
+
+/// Delete every row.
+fn forget_all(sql: &CovenWrite<'_>) -> Result<(), DbError> {
+    sql.execute("DELETE FROM cached_image", [])?;
+    Ok(())
 }
 
 type InFlightImages = HashMap<String, Arc<tokio::sync::OnceCell<Option<RemoteImage>>>>;
@@ -294,35 +285,42 @@ type InFlightImages = HashMap<String, Arc<tokio::sync::OnceCell<Option<RemoteIma
 ///
 /// Provider URLs identify static content for bae's use. Completed answers live
 /// only on disk; the in-memory map exists to make concurrent callers share the
-/// same request and is cleared when that request completes. Disk work runs on
+/// same request and is cleared when that request completes. File work runs on
 /// Tokio's blocking pool rather than its async workers.
 #[derive(Clone)]
 pub struct RemoteImageCache {
     http: Http,
     in_flight: Arc<Mutex<InFlightImages>>,
     disk: Arc<DiskImageCache>,
-    /// Where a panic in the cache's disk work is reported.
-    diagnostics: Diagnostics,
     #[cfg(any(test, feature = "test-utils"))]
     _owned_dir: Option<Arc<tempfile::TempDir>>,
 }
 
 impl RemoteImageCache {
-    pub fn new(library_path: &std::path::Path, http: Http, diagnostics: Diagnostics) -> Self {
+    /// The cache of the library at `library_path`, whose rows `store` holds.
+    pub fn new(
+        library_path: &std::path::Path,
+        http: Http,
+        store: Store,
+        diagnostics: Diagnostics,
+    ) -> Self {
         Self::in_dir(
             http,
+            store,
             library_path.join("cache").join("remote-images-v2"),
             REMOTE_IMAGE_DISK_BUDGET,
             diagnostics,
         )
     }
 
+    /// A cache over a temporary folder, whose rows `store` holds.
     #[cfg(any(test, feature = "test-utils"))]
-    pub fn for_test(http: Http, diagnostics: Diagnostics) -> Self {
+    pub fn for_test(http: Http, store: Store, diagnostics: Diagnostics) -> Self {
         let directory =
             tempfile::TempDir::new().expect("a temp directory for the remote image cache");
         let mut cache = Self::in_dir(
             http,
+            store,
             directory.path().to_path_buf(),
             REMOTE_IMAGE_DISK_BUDGET,
             diagnostics,
@@ -331,12 +329,17 @@ impl RemoteImageCache {
         cache
     }
 
-    fn in_dir(http: Http, dir: std::path::PathBuf, budget: u64, diagnostics: Diagnostics) -> Self {
+    fn in_dir(
+        http: Http,
+        store: Store,
+        dir: PathBuf,
+        budget: u64,
+        diagnostics: Diagnostics,
+    ) -> Self {
         Self {
             http,
             in_flight: Arc::new(Mutex::new(HashMap::new())),
-            disk: Arc::new(DiskImageCache::new(dir, budget)),
-            diagnostics,
+            disk: Arc::new(DiskImageCache::new(dir, budget, store, diagnostics)),
             #[cfg(any(test, feature = "test-utils"))]
             _owned_dir: None,
         }
@@ -344,7 +347,7 @@ impl RemoteImageCache {
 
     /// Fetch a provider URL from the bounded disk cache or its host.
     pub async fn fetch(&self, url: &str) -> Result<Option<RemoteImage>, RemoteImageError> {
-        if let Some(entry) = self.read_disk(url).await? {
+        if let Some(entry) = self.disk.get(url).await? {
             return Ok(entry.into_image());
         }
 
@@ -358,14 +361,11 @@ impl RemoteImageCache {
         };
         let http = self.http.clone();
         let disk = Arc::clone(&self.disk);
-        let diagnostics = self.diagnostics.clone();
         let owned_url = url.to_string();
 
         let result = active
             .get_or_try_init(|| async {
-                if let Some(entry) =
-                    read_disk(&diagnostics, Arc::clone(&disk), owned_url.clone()).await?
-                {
+                if let Some(entry) = disk.get(&owned_url).await? {
                     return Ok::<Option<RemoteImage>, RemoteImageError>(entry.into_image());
                 }
 
@@ -381,7 +381,7 @@ impl RemoteImageCache {
                         }
                     };
                 let image = entry.clone().into_image();
-                write_disk(&diagnostics, Arc::clone(&disk), owned_url.clone(), entry).await?;
+                disk.put(&owned_url, entry).await?;
                 Ok(image)
             })
             .await
@@ -394,33 +394,10 @@ impl RemoteImageCache {
         result
     }
 
-    async fn read_disk(&self, url: &str) -> Result<Option<DiskImageEntry>, RemoteImageError> {
-        read_disk(&self.diagnostics, Arc::clone(&self.disk), url.to_string()).await
-    }
-
-    /// The bytes the cache's files take on disk now.
-    pub async fn bytes(&self) -> std::io::Result<u64> {
-        measured_bytes(&self.diagnostics, Arc::clone(&self.disk)).await
-    }
-
-    /// Remove every file the cache holds. A file another write puts meanwhile
-    /// is a new entry.
-    pub async fn clear(&self) -> std::io::Result<()> {
-        let disk = Arc::clone(&self.disk);
-        self.diagnostics
-            .blocking("clear the remote image cache", move || disk.clear())
-            .await
-            .map_err(std::io::Error::other)?
-    }
-
-    /// A watch on the cache's files, for a reader that measures them after
-    /// each change.
-    pub fn watch(&self) -> RemoteImageWatch {
-        RemoteImageWatch {
-            disk: Arc::clone(&self.disk),
-            diagnostics: self.diagnostics.clone(),
-            changes: self.disk.changes.subscribe(),
-        }
+    /// Remove every file the cache holds and every row. A write that waits
+    /// meanwhile keeps its answer after the clear.
+    pub async fn clear(&self) -> Result<(), DbError> {
+        self.disk.clear().await
     }
 
     /// Cache `bytes` as the image at `url`, for a test that needs the cache
@@ -428,14 +405,7 @@ impl RemoteImageCache {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn put_for_test(&self, url: &str, bytes: &[u8]) {
         let image = RemoteImage { bytes: bytes.to_vec(), content_type: ContentType::Jpeg };
-        write_disk(
-            &self.diagnostics,
-            Arc::clone(&self.disk),
-            url.to_string(),
-            DiskImageEntry::Image(image),
-        )
-        .await
-        .expect("the cache writes the image");
+        self.disk.put(url, DiskImageEntry::Image(image)).await.expect("the cache writes the image");
     }
 
     /// The image at `url`, which the caller needs: [`RemoteImageError::NoImage`]
@@ -445,67 +415,32 @@ impl RemoteImageCache {
     }
 }
 
-async fn measured_bytes(
-    diagnostics: &Diagnostics,
-    disk: Arc<DiskImageCache>,
-) -> std::io::Result<u64> {
-    diagnostics
-        .blocking("measure the remote image cache", move || disk.bytes())
-        .await
-        .map_err(std::io::Error::other)?
-}
-
-/// One subscriber's watch on the cache's files: it hears each write,
-/// eviction and clear, and measures the bytes the files take.
-pub struct RemoteImageWatch {
-    disk: Arc<DiskImageCache>,
-    diagnostics: Diagnostics,
-    changes: tokio::sync::watch::Receiver<u64>,
-}
-
-impl RemoteImageWatch {
-    /// Wait for the next change to the cache's files; `false` once the cache
-    /// is gone.
-    pub async fn changed(&mut self) -> bool {
-        self.changes.changed().await.is_ok()
-    }
-
-    /// The bytes the cache's files take on disk now.
-    pub async fn bytes(&self) -> std::io::Result<u64> {
-        measured_bytes(&self.diagnostics, Arc::clone(&self.disk)).await
-    }
-}
-
 impl DiskImageEntry {
+    /// The entry a cache file holds, or why it holds none.
+    fn parse(mut raw: Vec<u8>) -> Result<Self, String> {
+        let header_end = raw
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .ok_or_else(|| "it has no header".to_string())?;
+        let header = std::str::from_utf8(&raw[..header_end])
+            .map_err(|error| format!("its header is invalid: {error}"))?;
+        if header == "none" {
+            return Ok(Self::Nothing);
+        }
+        let Some(content_type) = header.strip_prefix("image ") else {
+            return Err("its entry kind is invalid".to_string());
+        };
+        let content_type = ContentType::from_mime(content_type);
+        raw.drain(..=header_end);
+        Ok(Self::Image(RemoteImage { bytes: raw, content_type }))
+    }
+
     fn into_image(self) -> Option<RemoteImage> {
         match self {
             Self::Image(image) => Some(image),
             Self::Nothing => None,
         }
     }
-}
-
-async fn read_disk(
-    diagnostics: &Diagnostics,
-    disk: Arc<DiskImageCache>,
-    url: String,
-) -> Result<Option<DiskImageEntry>, RemoteImageError> {
-    diagnostics
-        .blocking("read the remote image cache", move || disk.get(&url))
-        .await
-        .map_err(RemoteImageError::CacheTask)
-}
-
-async fn write_disk(
-    diagnostics: &Diagnostics,
-    disk: Arc<DiskImageCache>,
-    url: String,
-    entry: DiskImageEntry,
-) -> Result<(), RemoteImageError> {
-    diagnostics
-        .blocking("write the remote image cache", move || disk.put(&url, &entry))
-        .await
-        .map_err(RemoteImageError::CacheTask)
 }
 
 #[cfg(test)]

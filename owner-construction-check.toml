@@ -29,9 +29,9 @@ crate_order = [
     "bae-util",
     "bae-audio",
     "bae-diagnostics",
-    "bae-catalogs",
     "bae-app-dir",
     "bae-store",
+    "bae-catalogs",
     "bae-records",
     "bae-people",
     "bae-sync-status",
@@ -300,8 +300,6 @@ task_types = [
     "LiveDetail",
     "LiveImportCandidate",
     "LiveValues",
-    "LiveDeviceStorage",
-    "CatalogImages",
     "WithSyncState",
     "CancellableLiveQuery",
     # One live query's results for an async reader, for as long as it reads.
@@ -368,8 +366,6 @@ task_types = [
     # One subscriber's watch on the Subsonic server, and on a server's status.
     "SubsonicWatch",
     "ServerWatch",
-    # One subscriber's watch on the catalog image cache's files.
-    "RemoteImageWatch",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
     # One subscriber's watch on the Activity transfer lines' bars.
@@ -1302,6 +1298,12 @@ capability = "SQLite"
 test_support_features = ["test-utils"]
 
 [[database.domains]]
+name = "catalog image cache"
+owner = "DiskImageCache"
+homes = ["bae-catalogs/src/remote_image/cache.rs", "bae-catalogs/src/remote_image/cache.sql"]
+tables = ["cached_image"]
+
+[[database.domains]]
 name = "records"
 owner = "Records"
 homes = [
@@ -1800,9 +1802,6 @@ frozen = [
     { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "pick", count = 1, finding = "`load_works` picks with `position` (found by the check)" },
     { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "sort", count = 1, finding = "reverses the performed works it collected on its way up the tree (`reverse`)" },
     { path = "bae-import/src/tables/watched_folders/watched_path.rs", item = "canonical_absolute_root", shape = "pick", count = 1, finding = "`canonical_absolute_root` picks with `any` (found by the check)" },
-    { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::changed", shape = "kept-state", count = 3, finding = "keeps the latest byte measurement (`latest`) and advances the image watch (`images`) between deliveries" },
-    { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::next", shape = "kept-state", count = 1, finding = "keeps the last storage it delivered (`last`) to skip an equal one" },
-    { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage", shape = "kept-state", count = 1, finding = "keeps the catalog image cache's watch, which holds a `Mutex`, beside coven's byte watch" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "group", count = 1, finding = "groups the files coven is uploading by release in a `BTreeMap`" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "join", count = 2, finding = "joins each file coven is uploading to its rate and progress by file id (`get`)" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "length-branch", count = 1, finding = "shows no upload bar when coven uploads no file (`is_empty`)" },
@@ -1854,14 +1853,6 @@ frozen = [
     { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
 ]
 allowed = [
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image files in the cache's folder, which the cache's own lock guards; file sizes on disk, which no table holds, not rows" },
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::bytes", shape = "aggregate", count = 1, reason = "adds the sizes of the catalog image files in the cache's folder; file sizes on disk, which no table holds, not rows" },
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::measure", shape = "kept-state", count = 1, reason = "lists the catalog image files in the cache's folder, which the cache's own lock guards; files on disk, not rows" },
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::measure", shape = "aggregate", count = 1, reason = "sizes the list of the catalog image files it reads from the cache's folder; files on disk, not rows" },
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "RemoteImageWatch::changed", shape = "kept-state", count = 1, reason = "waits for the image cache's next write, eviction or clear; a change to files on disk, not rows" },
-    { path = "bae-catalogs/src/remote_image/cache.rs", item = "RemoteImageWatch::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image files in the cache's folder; file sizes on disk, which no table holds, not rows" },
-    { path = "bae-library/src/manager/device_storage.rs", item = "CatalogImages::changed", shape = "kept-state", count = 1, reason = "waits for the catalog image cache's next change on a desktop; a change to files on disk, not rows" },
-    { path = "bae-library/src/manager/device_storage.rs", item = "CatalogImages::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image cache's files on a desktop; file sizes on disk, which no table holds, not rows" },
     { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
     { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },

@@ -82,7 +82,7 @@ impl TestLibrary {
     ) -> Self {
         let clock = store.test_sources().clock().clone();
         let ids = store.test_sources().ids().clone();
-        let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
+        let remote_images = RemoteImageCache::for_test(http, store.clone(), diagnostics.clone());
         let preferences = bae_preferences::PreferencesRow::new(store.clone());
         let records = bae_records::Records::new(store.clone(), ids.clone());
         let people = bae_people::People::new(store.clone());

@@ -74,7 +74,7 @@ mod release;
 mod release_edit;
 #[cfg(desktop)]
 mod release_metadata;
-pub use device_storage::{DeviceStorage, LiveDeviceStorage, StorageKind, StoragePart};
+pub use device_storage::{DeviceStorage, StorageKind, StoragePart};
 pub use people::{DeviceCutOff, DeviceRemoval};
 #[cfg(desktop)]
 pub use release_edit::ReleaseEdit;

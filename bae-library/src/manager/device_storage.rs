@@ -1,13 +1,11 @@
 //! What this device keeps for the open library, in bytes on disk: its pinned
 //! releases, its cache, the library itself and what a reset left behind. The
-//! reads are one live query of coven's byte tables beside the catalog image
-//! cache's measurement; the commands clear the cache, set how much audio it keeps, and delete what a
-//! reset kept.
+//! read is one live query that sums coven's byte tables and the catalog image
+//! cache's table; the commands clear the cache, set how much audio it keeps,
+//! and delete what a reset kept.
 
 use super::*;
 use bae_records::CacheLimit;
-use bae_store::live_query::{LiveSource, NextValue};
-use bae_store::live_results::LiveResults;
 use bae_store::DbError;
 
 /// What a device keeps for a library, as Settings → Storage shows it.
@@ -50,188 +48,89 @@ pub enum StorageKind {
     BeforeReset,
 }
 
-/// What coven's tables say this device keeps for the library, in bytes,
-/// summed over every namespace: the parts of the page that coven measures.
+/// The sums Settings → Storage shows, as its query computes them, in bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DeviceBytes {
+pub(crate) struct StorageSums {
     /// The audio cache's budget; `None` when coven has no row for it.
     pub(crate) audio_budget: Option<u64>,
     /// Pinned whole copies, and the partial downloads that stopped pins
     /// left.
     pub(crate) pinned: u64,
-    /// Cached chunks and headers.
-    pub(crate) cached: u64,
+    /// Cached chunks and headers, and the catalog image cache's files.
+    pub(crate) cache: u64,
     /// The library's own files.
     pub(crate) library: u64,
     /// The archives that resets kept, while there is one.
     pub(crate) before_reset: Option<u64>,
+    /// Every part's bytes together.
+    pub(crate) total: u64,
 }
 
-/// One row of [`DeviceBytes`], from coven's byte tables; `?1` is the audio
-/// namespace.
-const DEVICE_BYTES: &str = "SELECT \
-     (SELECT budget FROM coven_cache_bytes WHERE namespace = ?1), \
-     (SELECT COALESCE(SUM(pinned + pinning), 0) FROM coven_cache_bytes), \
-     (SELECT COALESCE(SUM(cached), 0) FROM coven_cache_bytes), \
-     (SELECT COALESCE(SUM(bytes), 0) FROM coven_library_bytes), \
-     (SELECT SUM(bytes) FROM coven_archive_bytes)";
+/// One row of [`StorageSums`], from coven's byte tables and the catalog image
+/// cache's `cached_image`; `?1` is the audio namespace.
+const STORAGE_SUMS: &str = "\
+    WITH sums AS (SELECT \
+        (SELECT budget FROM coven_cache_bytes WHERE namespace = ?1) AS audio_budget, \
+        (SELECT COALESCE(SUM(pinned + pinning), 0) FROM coven_cache_bytes) AS pinned, \
+        (SELECT COALESCE(SUM(cached), 0) FROM coven_cache_bytes) \
+            + (SELECT COALESCE(SUM(bytes), 0) FROM cached_image) AS cache, \
+        (SELECT COALESCE(SUM(bytes), 0) FROM coven_library_bytes) AS library, \
+        (SELECT SUM(bytes) FROM coven_archive_bytes) AS before_reset) \
+    SELECT audio_budget, pinned, cache, library, before_reset, \
+        pinned + cache + library + COALESCE(before_reset, 0) \
+    FROM sums";
 
-/// What coven's tables say this device keeps for the library.
-fn device_bytes_on(sql: coven::SqlReadContext<'_>) -> Result<DeviceBytes, DbError> {
-    Ok(sql.query_row(DEVICE_BYTES, [bae_records::synced::RELEASE_FILES_NAMESPACE], |row| {
-        Ok(DeviceBytes {
-            audio_budget: row.get(0)?,
-            pinned: row.get(1)?,
-            cached: row.get(2)?,
-            library: row.get(3)?,
-            before_reset: row.get(4)?,
-        })
-    })?)
+/// What this device keeps for the library, as the page shows it.
+fn device_storage_on(sql: coven::SqlReadContext<'_>) -> Result<DeviceStorage, DbError> {
+    let sums =
+        sql.query_row(STORAGE_SUMS, [bae_records::synced::RELEASE_FILES_NAMESPACE], |row| {
+            Ok(StorageSums {
+                audio_budget: row.get(0)?,
+                pinned: row.get(1)?,
+                cache: row.get(2)?,
+                library: row.get(3)?,
+                before_reset: row.get(4)?,
+                total: row.get(5)?,
+            })
+        })?;
+    DeviceStorage::from_sums(&sums)
 }
 
 impl DeviceStorage {
-    /// What coven's tables say and the catalog image cache holds, as the
-    /// page shows it. Fails when the audio budget is one no choice names:
-    /// no writer here sets another.
-    pub(crate) fn from_measurements(
-        bytes: &DeviceBytes,
-        catalog_images: u64,
-    ) -> Result<Self, DbError> {
-        let cache_limit = bytes
+    /// The page's parts from its query's sums. Fails when the audio budget
+    /// is one no choice names: no writer here sets another.
+    pub(crate) fn from_sums(sums: &StorageSums) -> Result<Self, DbError> {
+        let cache_limit = sums
             .audio_budget
             .and_then(CacheLimit::from_bytes)
-            .ok_or_else(|| DbError::unreadable("the audio cache budget", bytes.audio_budget))?;
-        let cache = bytes.cached + catalog_images;
+            .ok_or_else(|| DbError::unreadable("the audio cache budget", sums.audio_budget))?;
         let mut parts = Vec::new();
-        if bytes.pinned > 0 {
-            parts.push(StoragePart { kind: StorageKind::Pinned, bytes: bytes.pinned });
+        if sums.pinned > 0 {
+            parts.push(StoragePart { kind: StorageKind::Pinned, bytes: sums.pinned });
         }
-        if cache > 0 {
-            parts.push(StoragePart { kind: StorageKind::Cache, bytes: cache });
+        if sums.cache > 0 {
+            parts.push(StoragePart { kind: StorageKind::Cache, bytes: sums.cache });
         }
-        parts.push(StoragePart { kind: StorageKind::Library, bytes: bytes.library });
-        if let Some(kept) = bytes.before_reset {
+        parts.push(StoragePart { kind: StorageKind::Library, bytes: sums.library });
+        if let Some(kept) = sums.before_reset {
             parts.push(StoragePart { kind: StorageKind::BeforeReset, bytes: kept });
         }
         Ok(Self {
-            total: bytes.pinned + cache + bytes.library + bytes.before_reset.unwrap_or(0),
+            total: sums.total,
             parts,
-            cache,
-            can_clear_cache: cache > 0,
+            cache: sums.cache,
+            can_clear_cache: sums.cache > 0,
             cache_limit,
-            before_reset: bytes.before_reset,
+            before_reset: sums.before_reset,
         })
-    }
-}
-
-/// The catalog image cache a desktop follows; a phone has none.
-struct CatalogImages {
-    #[cfg(desktop)]
-    watch: Option<bae_catalogs::remote_image::RemoteImageWatch>,
-}
-
-impl CatalogImages {
-    /// Resolves when the cache changes; never where there is none to follow.
-    async fn changed(&mut self) {
-        #[cfg(desktop)]
-        if let Some(watch) = &mut self.watch {
-            if watch.changed().await {
-                return;
-            }
-            self.watch = None;
-        }
-        std::future::pending::<()>().await;
-    }
-
-    /// The bytes the images take: none where there is no cache.
-    async fn bytes(&self) -> std::io::Result<u64> {
-        #[cfg(desktop)]
-        if let Some(watch) = &self.watch {
-            return watch.bytes().await;
-        }
-        Ok(0)
-    }
-}
-
-/// The device's storage as it changes: the first value at once, then one
-/// after each change to coven's byte tables or to the catalog image cache.
-pub struct LiveDeviceStorage {
-    bytes: LiveResults<coven::LiveQuery<DeviceBytes, DbError>>,
-    latest: Option<DeviceBytes>,
-    images: CatalogImages,
-    last: Option<DeviceStorage>,
-}
-
-impl LiveDeviceStorage {
-    /// Wait for the next change to what either measures; `None` once the
-    /// store has closed.
-    async fn changed(&mut self) -> Option<Result<(), DbError>> {
-        if self.latest.is_none() {
-            self.latest = Some(match self.bytes.next().await? {
-                Ok(bytes) => bytes,
-                Err(error) => return Some(Err(error)),
-            });
-            return Some(Ok(()));
-        }
-        tokio::select! {
-            next = self.bytes.next() => match next? {
-                Ok(bytes) => self.latest = Some(bytes),
-                Err(error) => return Some(Err(error)),
-            },
-            () = self.images.changed() => {}
-        }
-        Some(Ok(()))
-    }
-}
-
-impl LiveSource<DeviceStorage> for LiveDeviceStorage {
-    fn next(&mut self) -> NextValue<'_, DeviceStorage> {
-        Box::pin(async move {
-            loop {
-                if let Err(error) = self.changed().await? {
-                    return Some(Err(error));
-                }
-                let images = match self.images.bytes().await {
-                    Ok(images) => images,
-                    Err(error) => return Some(Err(error.into())),
-                };
-                let bytes = self.latest.as_ref().expect("the query read once");
-                let storage = match DeviceStorage::from_measurements(bytes, images) {
-                    Ok(storage) => storage,
-                    Err(error) => return Some(Err(error)),
-                };
-                if self.last.as_ref() != Some(&storage) {
-                    self.last = Some(storage.clone());
-                    return Some(Ok(storage));
-                }
-            }
-        })
-    }
-}
-
-impl bae_store::live_query::IntoLiveSource<DeviceStorage> for LiveDeviceStorage {
-    fn into_live_source(
-        self,
-        _bugs: coven::task::BugSinkRef,
-    ) -> Box<dyn bae_store::live_query::LiveSource<DeviceStorage>> {
-        Box::new(self)
     }
 }
 
 impl LibraryManager {
     /// The open library's storage on this device: the first value at once,
     /// then one after each change.
-    pub fn subscribe_device_storage(&self) -> LiveDeviceStorage {
-        let images = CatalogImages {
-            #[cfg(desktop)]
-            watch: Some(self.remote_images.watch()),
-        };
-        LiveDeviceStorage {
-            bytes: self.store.results(self.store.subscribe(device_bytes_on)),
-            latest: None,
-            images,
-            last: None,
-        }
+    pub fn subscribe_device_storage(&self) -> coven::LiveQuery<DeviceStorage, DbError> {
+        self.store.subscribe(device_storage_on)
     }
 
     /// Remove everything this device caches for the library: every

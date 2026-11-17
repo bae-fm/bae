@@ -2975,8 +2975,23 @@ always:
 
 Releases imported as local stay in their folders, and bae does not count them.
 
+On a desktop, bae keeps each catalog image it downloads, or the answer that
+an address serves no image, as a file in the library's cache folder, with a
+row in the device-local table `cached_image` that holds the file's size and
+when bae last read or wrote it (Appendix A.12). bae writes a file before its
+row and deletes a row before its file, so every row names a file that is
+there; a crash between the two steps leaves a file that no row names, which
+bae neither reads nor counts, and which Clear cache removes. When the rows'
+sizes add up to more than 128 MiB, bae deletes the rows of the files it read
+or wrote longest ago, and those files, until the rest fit.
+
+The page reads one live query: SQL sums coven's tables of what the device
+keeps and `cached_image` into the parts, the total and the audio budget, and
+the page shows its rows as they change.
+
 **Clear cache** removes every unpinned file and chunk in every kind of file the
-library keeps, and the catalog images on a desktop. Pinned releases and pins on
+library keeps, and on a desktop deletes every `cached_image` row and then the
+catalog images' folder. Pinned releases and pins on
 the way stay. It asks nothing, and is off while the cache is empty. The two
 stores are cleared one after the other; a failure of either is reported, what
 was cleared stays cleared since it was all cache, and clearing again finishes.
@@ -6512,7 +6527,8 @@ checkers it touched, as `.checks` lists them.
 
 The schema is one migration, which coven applies as migration 1: each
 crate's parts of it, in crate order, each part a domain's SQL files beside its
-code. bae-library assembles it from bae-records' parts, under
+code. bae-library assembles it from bae-catalogs' part, the catalog image cache's
+(`bae-catalogs/src/remote_image/cache.sql`), bae-records' parts, under
 `bae-records/src/`: the records' (`records.sql`), the device's sort
 language's (`records/name_sort.sql`) and release storage's (`release_storage.sql`),
 bae-people's, under `bae-people/src/`: the people's
@@ -6538,7 +6554,9 @@ after the parts creating the tables its triggers fire on. Every table is
 `STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
 stays on the device.
 A phone's library holds no import tables: they never sync (§6.1), and a phone
-imports nothing (§1.1).
+imports nothing (§1.1). A phone's library holds the catalog image cache's
+table, which stays empty there, because the Storage page's query sums it
+(§4.7).
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when
@@ -6848,6 +6866,14 @@ Never synced (§6.4).
 | Table | Holds |
 |---|---|
 | `sync_start_failure` | why this device's last attempt to start sync failed, while it stands, at most one row: the failure's class and, for a storage failure, coven's reason with what it names; emptied as the library opens, and cleared by the trigger that fires as any start gets under way (§6.4) |
+
+### A.12 Catalog image cache (bae-catalogs)
+
+Never synced (§4.7).
+
+| Table | One row per |
+|---|---|
+| `cached_image` | file in the catalog image cache's folder, keyed by its name (the SHA-256 of the image's address): its size in bytes, and its place in the order of the cache's reads and writes, one past the highest each time bae writes or reads the file, which eviction removes the lowest of first |
 
 ---
 

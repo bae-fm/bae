@@ -1,15 +1,11 @@
 use super::*;
 use crate::remote_image::tests::*;
-use crate::remote_image::RemoteImageCache;
 use bae_util::test_channels::HANG_GUARD;
 
 #[tokio::test]
 async fn download_rejects_short_non_image_response() {
     let url = start_mock(vec![(200, vec![0u8; 50])]).await;
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch(&url)
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -19,10 +15,7 @@ async fn download_rejects_short_non_image_response() {
 #[tokio::test]
 async fn download_rejects_bytes_that_are_not_an_image() {
     let url = start_mock(vec![(200, vec![b'x'; 256])]).await;
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch(&url)
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("valid image")),
         "got: {error}"
@@ -32,7 +25,7 @@ async fn download_rejects_bytes_that_are_not_an_image() {
 #[tokio::test]
 async fn download_rejects_declared_over_cap_response() {
     let url = start_declared_length_response(bae_util::http::MAX_IMAGE_BYTES + 1).await;
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
     let result = tokio::time::timeout(HANG_GUARD, cache.fetch_required(&url))
         .await
         .expect("oversized response should fail before reading the body");
@@ -47,10 +40,7 @@ async fn download_rejects_declared_over_cap_response() {
 async fn download_retries_transient_then_succeeds() {
     let body = test_png();
     let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
-    let image = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required(&url)
-        .await
-        .unwrap();
+    let image = test_cache().await.0.fetch_required(&url).await.unwrap();
     assert_eq!(image.bytes, body);
 }
 
@@ -58,10 +48,7 @@ async fn download_retries_transient_then_succeeds() {
 async fn artwork_http_failures_keep_their_status_after_retries() {
     for (status, attempts) in [(400, 1), (401, 1), (429, 4), (500, 4)] {
         let (host, url) = start_counting_host(status, Vec::new()).await;
-        let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-            .fetch_required(&url)
-            .await
-            .unwrap_err();
+        let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
         assert_eq!(host.hits(), attempts, "status {status}");
         assert!(
             matches!(error, RemoteImageError::Status { status: answered, .. } if answered == status),
@@ -73,10 +60,7 @@ async fn artwork_http_failures_keep_their_status_after_retries() {
 #[tokio::test]
 async fn artwork_interrupted_body_is_a_transport_failure() {
     let url = truncated_body_url().await;
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_decode()),
         "{error}"
@@ -105,10 +89,7 @@ async fn artwork_stalled_body_is_a_timeout() {
 
 #[tokio::test]
 async fn artwork_invalid_request_is_a_request_bae_could_not_build() {
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required("not a URL")
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch_required("not a URL").await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Transport { error, .. } if error.is_builder()),
         "{error}"
@@ -120,7 +101,7 @@ async fn artwork_invalid_request_is_a_request_bae_could_not_build() {
 /// text, where reqwest's own text says only that sending failed.
 #[tokio::test]
 async fn artwork_unresolvable_host_names_its_dns_failure() {
-    let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+    let (cache, _store) = test_cache().await;
     let error =
         tokio::time::timeout(HANG_GUARD, cache.fetch_required("http://bae-test.invalid/cover.jpg"))
             .await
@@ -144,7 +125,7 @@ async fn supported_cover_formats_keep_original_remote_bytes_and_type() {
         (bae_util::test_cover_art::ANIMATED_WEBP, ContentType::Webp),
     ] {
         let (host, url) = start_counting_host(200, bytes.to_vec()).await;
-        let cache = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop());
+        let (cache, _store) = test_cache().await;
         for _ in 0..2 {
             let image = cache.fetch_required(&url).await.unwrap();
             assert_eq!(image.bytes, bytes);
@@ -159,10 +140,7 @@ async fn remote_cover_dimensions_are_bounded() {
     let mut bytes = std::io::Cursor::new(Vec::new());
     image::DynamicImage::new_rgb8(8193, 1).write_to(&mut bytes, image::ImageFormat::Png).unwrap();
     let url = start_mock(vec![(200, bytes.into_inner())]).await;
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("limit")),
         "{error}"
@@ -178,10 +156,7 @@ async fn remote_cover_decode_allocation_is_bounded() {
     bytes[6..8].copy_from_slice(&8192u16.to_le_bytes());
     bytes[8..10].copy_from_slice(&8192u16.to_le_bytes());
     let url = start_mock(vec![(200, bytes)]).await;
-    let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-        .fetch_required(&url)
-        .await
-        .unwrap_err();
+    let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
     assert!(
         matches!(&error, RemoteImageError::Unusable { detail } if detail.contains("Memory limit")),
         "{error}"
@@ -194,10 +169,7 @@ async fn truncated_gif_and_webp_fail_remote_validation_and_normalization() {
         let truncated = &bytes[..20];
         assert!(bae_util::stored_image::stored_jpeg(truncated).is_err());
         let url = start_mock(vec![(200, truncated.to_vec())]).await;
-        let error = RemoteImageCache::for_test(direct_http(), bae_diagnostics::Diagnostics::noop())
-            .fetch_required(&url)
-            .await
-            .unwrap_err();
+        let error = test_cache().await.0.fetch_required(&url).await.unwrap_err();
         assert!(matches!(error, RemoteImageError::Unusable { .. }));
     }
 }

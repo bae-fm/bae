@@ -17,6 +17,19 @@ pub(super) fn test_png() -> Vec<u8> {
     bytes.into_inner()
 }
 
+/// An image cache over a temporary folder that asks hosts through
+/// [`direct_http`], with its rows in a test store of the catalogs' part, which
+/// the returned folder holds and must outlive the cache.
+pub(super) async fn test_cache() -> (crate::remote_image::RemoteImageCache, tempfile::TempDir) {
+    let (store, directory) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
+    let cache = crate::remote_image::RemoteImageCache::for_test(
+        direct_http(),
+        store,
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    (cache, directory)
+}
+
 /// A test transport that sends each request where its URL says: these tests
 /// serve images from their own local servers and ask for them by those
 /// addresses. Its waits before a repeat pass as they are armed.

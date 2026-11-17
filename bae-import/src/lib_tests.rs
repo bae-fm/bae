@@ -139,7 +139,7 @@ pub(crate) mod import {
             ids: IdSourceRef,
             diagnostics: Diagnostics,
         ) -> Self {
-            let remote_images = RemoteImageCache::for_test(http, diagnostics.clone());
+            let remote_images = RemoteImageCache::for_test(http, db.clone(), diagnostics.clone());
             let catalogs = CatalogSessions::new(
                 providers,
                 db.clone(),

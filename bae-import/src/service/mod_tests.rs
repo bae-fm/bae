@@ -135,6 +135,7 @@ pub(crate) async fn setup_import_service() -> TestService {
             catalogs,
             remote_images: bae_catalogs::remote_image::RemoteImageCache::for_test(
                 bae_util::http::Http::for_test(),
+                db.clone(),
                 bae_diagnostics::Diagnostics::noop(),
             ),
             clock: Arc::new(coven::SystemClock),

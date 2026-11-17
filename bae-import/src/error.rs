@@ -822,7 +822,7 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
             RemoteImageError::Transport { .. }
             | RemoteImageError::Status { .. }
             | RemoteImageError::NoImage { .. } => C::Import,
-            RemoteImageError::CacheTask(_) => C::Internal,
+            RemoteImageError::CacheTask(_) | RemoteImageError::CacheStore(_) => C::Internal,
         },
     }
 }

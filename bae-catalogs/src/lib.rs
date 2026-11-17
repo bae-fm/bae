@@ -21,6 +21,13 @@ pub mod records;
 pub mod remote_image;
 pub mod works;
 
+/// The catalogs' part of the library's schema: the image cache's table.
+pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[remote_image::SCHEMA];
+
+/// The schema this crate's tests open their stores on: the catalogs' part.
+#[cfg(test)]
+const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[SCHEMA_PARTS]);
+
 #[cfg(desktop)]
 pub mod album_links;
 #[cfg(desktop)]

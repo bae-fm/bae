@@ -145,6 +145,17 @@ impl Store {
         self.inner.reads.load(std::sync::atomic::Ordering::Relaxed)
     }
 
+    /// Checkpoint the store's WAL into its database file now, for a test of
+    /// what follows a checkpoint, such as coven's record of the file's size.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn checkpoint_for_test(&self) {
+        self.inner
+            .handle
+            .checkpoint(coven::CheckpointMode::Truncate)
+            .await
+            .expect("the store checkpoints its WAL");
+    }
+
     /// Run a write with a borrowed transaction context.
     pub async fn call<R>(
         &self,

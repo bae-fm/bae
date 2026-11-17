@@ -305,10 +305,11 @@ pub use tables::{
     GalleryLabel, Neighbors,
 };
 
-/// The schema this crate's tests open their stores on: records' and release
-/// storage's parts, preferences' and import's.
+/// The schema this crate's tests open their stores on: the catalogs' part,
+/// records' and release storage's parts, preferences' and import's.
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
+    bae_catalogs::SCHEMA_PARTS,
     bae_records::SCHEMA_PARTS,
     bae_preferences::SCHEMA_PARTS,
     SCHEMA_PARTS,
