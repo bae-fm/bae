@@ -252,3 +252,86 @@ struct ImportSelectionReplacementTests {
         #expect(selection.keys == Set(Self.parts))
     }
 }
+
+/// A click while core reads the keys of a Shift-click range or of Select
+/// All cancels that read, so its answer never replaces the click.
+@MainActor
+@Suite("Key reads a later click cancels", .timeLimit(.minutes(1)))
+struct ImportSelectionKeysReadTests {
+    nonisolated private static let clicked = Data("/music/Clicked".utf8)
+
+    /// Operations whose key reads wait until cancelled, recording each read
+    /// that starts in `entered` and each one cancelled in `cancelled`.
+    private static func waiting(
+        entered: AsyncStream<Void>.Continuation,
+        cancelled: CallLog<Void>
+    ) -> ImportSelectionOperations {
+        let read: @Sendable () async throws -> [Data] = {
+            entered.yield(())
+            do { try await Task.neverAnswers() }
+            catch {
+                cancelled.record(())
+                throw error
+            }
+        }
+        return .stub(
+            keysBetween: { _, _, _, _ in try await read() },
+            allKeys: { try await read() }
+        )
+    }
+
+    @Test("a click while core reads Select All's keys cancels the read")
+    func clickCancelsSelectAll() async throws {
+        let entered = AsyncStream<Void>.makeStream()
+        let cancelled = CallLog<Void>()
+        let selection = ImportSelection(
+            operations: Self.waiting(
+                entered: entered.continuation,
+                cancelled: cancelled
+            )
+        )
+        selection.selectAll()
+        var iterator = entered.stream.makeAsyncIterator()
+        await iterator.next()
+        selection.select([Self.clicked])
+        try await Wait.until { cancelled.all.count == 1 }
+        #expect(selection.keys == [Self.clicked])
+    }
+
+    @Test("a click while core reads a Shift-click's range cancels the read")
+    func clickCancelsRange() async throws {
+        let entered = AsyncStream<Void>.makeStream()
+        let cancelled = CallLog<Void>()
+        let selection = ImportSelection(
+            operations: Self.waiting(
+                entered: entered.continuation,
+                cancelled: cancelled
+            )
+        )
+        let (from, to) = (Data("/music/A".utf8), Data("/music/C".utf8))
+        selection.select([from, to])
+        selection.extend(from: from, to: to, on: .pending, in: .pathAscending)
+        var iterator = entered.stream.makeAsyncIterator()
+        await iterator.next()
+        selection.select([Self.clicked])
+        try await Wait.until { cancelled.all.count == 1 }
+        #expect(selection.keys == [Self.clicked])
+    }
+
+    @Test("the range core reads joins the kept keys")
+    func rangeJoinsTheKeptKeys() async throws {
+        let between = [Data("/music/A".utf8), Data("/music/B".utf8)]
+        let selection = ImportSelection(
+            operations: .stub(keysBetween: { _, _, _, _ in between })
+        )
+        selection.select([Self.clicked])
+        selection.extend(
+            from: between[0],
+            to: between[1],
+            on: .pending,
+            in: .pathAscending
+        )
+        try await Wait.until { selection.keys.count == 3 }
+        #expect(selection.keys == Set(between + [Self.clicked]))
+    }
+}

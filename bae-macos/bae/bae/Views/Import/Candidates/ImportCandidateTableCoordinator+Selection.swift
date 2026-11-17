@@ -49,7 +49,7 @@ extension ImportCandidateTableCoordinator {
     /// table's Select All, which knows only the rows it has loaded.
     func selectAllShown() {
         onPersonSelected()
-        listSlot.selectAllShown()
+        listSlot.selection.selectAll()
     }
 
     /// Highlight the loaded rows `keys` names, and no other.

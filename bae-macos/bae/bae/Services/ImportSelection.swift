@@ -141,6 +141,10 @@ final class ImportSelection {
     /// The read of what the selected rows hold, which takes the keys.
     @ObservationIgnored
     private var query: ImportSelectionQuery?
+    /// The read of the keys a Shift-click or Select All adds, while core
+    /// reads them. The person's next change to the selection cancels it.
+    @ObservationIgnored
+    private let keysRead = CancellableTaskSlot()
     /// Counts the lists the selection has been on, so an answer read for an
     /// earlier list changes nothing.
     @ObservationIgnored
@@ -158,6 +162,7 @@ final class ImportSelection {
     /// Read what the selected rows hold through `query`, on a list the
     /// selection starts empty on.
     func attach(_ query: ImportSelectionQuery?) {
+        keysRead.cancel()
         generation += 1
         self.query = query
         keys = []
@@ -169,8 +174,56 @@ final class ImportSelection {
         self.summary = summary
     }
 
-    /// Make `keys` the selection.
+    /// Make `keys` the selection. A read for a Shift-click or Select All
+    /// that core has not answered yet stops, because the newer choice
+    /// replaces it.
     func select(_ keys: Set<Data>) {
+        keysRead.cancel()
+        replace(keys)
+    }
+
+    /// Add to the selection every row the list shows from `from` to `to`
+    /// on `tab` in `order`, the tab and order the screen shows, once core
+    /// reads their keys.
+    func extend(
+        from: Data,
+        to: Data,
+        on tab: BridgeTriageTab,
+        in order: BridgeImportListOrder
+    ) {
+        readKeys(adding: true) {
+            try await $0.keysBetween(tab, order, from, to)
+        }
+    }
+
+    /// Select every row the list shows, whether or not its page has loaded,
+    /// once core reads their keys.
+    func selectAll() {
+        readKeys(adding: false) { try await $0.allKeys() }
+    }
+
+    /// Read keys from core with `read`, and add them to the selection or
+    /// make them the selection. A change to the selection before core
+    /// answers cancels the read, and the answer then changes nothing.
+    private func readKeys(
+        adding: Bool,
+        _ read:
+            @escaping @Sendable (ImportSelectionOperations) async throws ->
+            [Data]
+    ) {
+        let operations = operations
+        keysRead.replace(
+            "Selection keys read",
+            work: { try await read(operations) },
+            onSuccess: { [weak self] found in
+                guard let self else { return }
+                replace(adding ? keys.union(found) : Set(found))
+            },
+            onError: { [weak self] in self?.onError($0) }
+        )
+    }
+
+    private func replace(_ keys: Set<Data>) {
         guard keys != self.keys else { return }
         self.keys = keys
         do {
@@ -185,23 +238,6 @@ final class ImportSelection {
     func remove(_ left: [Data]) {
         guard !left.isEmpty else { return }
         select(keys.subtracting(left))
-    }
-
-    /// The keys of the rows the list shows on `tab` in `order` from `from`
-    /// to `to`.
-    func keysBetween(
-        on tab: BridgeTriageTab,
-        in order: BridgeImportListOrder,
-        from: Data,
-        to: Data
-    ) async throws -> [Data] {
-        try await operations.keysBetween(tab, order, from, to)
-    }
-
-    /// The keys of every row the list shows, whether or not its page has
-    /// loaded.
-    func allKeys() async throws -> [Data] {
-        try await operations.allKeys()
     }
 
     func sourceFolders() async throws -> [Data] {

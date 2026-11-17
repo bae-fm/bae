@@ -528,42 +528,10 @@ extension ImportListSlot {
     }
 
     /// Add to the selection every row the list shows from `from` to `to`,
-    /// loaded or not, as core reads them on the tab and in the order the
-    /// slot shows. A list rebuilt since is a new list, which the run's keys
-    /// mean nothing on.
+    /// loaded or not, once core reads them on the tab and in the order the
+    /// slot shows.
     func extendSelection(from: Data, to: Data) {
-        let generation = selection.generation
-        let (tab, order) = (view.tab, view.order)
-        Task { [selection, uiStore] in
-            do {
-                let run = try await selection.keysBetween(
-                    on: tab,
-                    in: order,
-                    from: from,
-                    to: to
-                )
-                guard selection.generation == generation else { return }
-                selection.select(selection.keys.union(run))
-            }
-            catch {
-                uiStore.showError(error)
-            }
-        }
-    }
-
-    /// Select every row the list shows under its view, loaded or not.
-    func selectAllShown() {
-        let generation = selection.generation
-        Task { [selection, uiStore] in
-            do {
-                let all = try await selection.allKeys()
-                guard selection.generation == generation else { return }
-                selection.select(Set(all))
-            }
-            catch {
-                uiStore.showError(error)
-            }
-        }
+        selection.extend(from: from, to: to, on: view.tab, in: view.order)
     }
 }
 
