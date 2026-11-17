@@ -239,28 +239,39 @@ sealed interface AppScreen {
          */
         fun openFailed(
             libraryId: String,
-            error: BridgeOpenException,
+            offer: OpenFailureOffer,
             shown: DisplayError,
             open: OpenLibrary?,
         ): AppScreen =
-            when (error) {
-                is BridgeOpenException.ResetFromCloud -> {
+            when (offer) {
+                OpenFailureOffer.RESET_FROM_CLOUD -> {
                     ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
                 }
 
-                is BridgeOpenException.DeletionUnfinished -> {
+                OpenFailureOffer.FINISH_REMOVAL -> {
                     DeletionUnfinished(libraryId, error = null)
                 }
 
-                is BridgeOpenException.Failed -> {
+                OpenFailureOffer.NOTHING -> {
                     open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
-                }
-
-                is BridgeOpenException.ReplacementUnfinished -> {
-                    error("a replacement that stopped partway is finished at once, never shown as a failed open")
                 }
             }
     }
+}
+
+/**
+ * What the app offers after a failed open that it shows, as the case of [BridgeOpenException] says. A reset or
+ * restore that stopped partway has no offer: the app finishes it at once and never shows it as a failed open.
+ */
+enum class OpenFailureOffer {
+    /** Reset from cloud loads the library again, so the app offers it in place of Retry. */
+    RESET_FROM_CLOUD,
+
+    /** A removal stopped partway, so the app offers finishing it. */
+    FINISH_REMOVAL,
+
+    /** Core names nothing that recovers the library. */
+    NOTHING,
 }
 
 /** A device reset ready to confirm, and the `Core` table key of the warning the person accepts first. */
@@ -435,16 +446,29 @@ object AppSessionHolder {
             // propagate so cooperative cancellation works and we don't report a
             // spurious Failed over the open that superseded us.
             throw e
-        } catch (e: BridgeOpenException.ReplacementUnfinished) {
-            logger.error("opening library $libraryId found its replacement unfinished", e)
-            finish(context, libraryId, e.by, onScreen)
         } catch (e: BridgeOpenException) {
             logger.error("opening library $libraryId failed", e)
-            showFailedOpen(context, libraryId, e, onScreen)
+            when (e) {
+                is BridgeOpenException.ReplacementUnfinished -> {
+                    finish(context, libraryId, e.by, onScreen)
+                }
+
+                is BridgeOpenException.ResetFromCloud -> {
+                    showFailedOpen(context, libraryId, e.error, OpenFailureOffer.RESET_FROM_CLOUD, onScreen)
+                }
+
+                is BridgeOpenException.DeletionUnfinished -> {
+                    showFailedOpen(context, libraryId, e.error, OpenFailureOffer.FINISH_REMOVAL, onScreen)
+                }
+
+                is BridgeOpenException.Failed -> {
+                    showFailedOpen(context, libraryId, e.error, OpenFailureOffer.NOTHING, onScreen)
+                }
+            }
         } catch (e: BridgeException) {
             // The library opened, and reading its first values failed: the open failed with nothing to recover.
             logger.error("opening library $libraryId failed", e)
-            showFailedOpen(context, libraryId, BridgeOpenException.Failed(e), onScreen)
+            showFailedOpen(context, libraryId, e, OpenFailureOffer.NOTHING, onScreen)
         }
     }
 
@@ -455,7 +479,8 @@ object AppSessionHolder {
     private fun showFailedOpen(
         context: Context,
         libraryId: String,
-        failure: BridgeOpenException,
+        failure: BridgeException,
+        offer: OpenFailureOffer,
         onScreen: (AppScreen) -> Unit,
     ) {
         val shown = context.displayError(failure)
@@ -463,7 +488,7 @@ object AppSessionHolder {
             if (shown == null) {
                 openOrOnboarding()
             } else {
-                AppScreen.openFailed(libraryId, failure, shown, current).also { screen ->
+                AppScreen.openFailed(libraryId, offer, shown, current).also { screen ->
                     if (screen is AppScreen.LibraryOpen) screen.session.messages.show(shown)
                 }
             },

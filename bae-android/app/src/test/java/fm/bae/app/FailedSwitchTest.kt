@@ -6,10 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeErrorCategory
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibraryClosing
-import uniffi.bae_bridge.BridgeOpenException
 
 /** A switch to a library that fails to open lands back on the library still open. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -24,11 +21,9 @@ class FailedSwitchTest {
                 override fun close() = Unit
             }
         val open = openTestLibrary(handle)
-        val failure = BridgeOpenException.Failed(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline"))
-
         assertEquals(
             AppScreen.LibraryOpen(open),
-            AppScreen.openFailed("other-library", failure, DisplayError("Offline.", "offline"), open),
+            AppScreen.openFailed("other-library", OpenFailureOffer.NOTHING, DisplayError("Offline.", "offline"), open),
         )
         runBlocking { open.dispose(null) }
     }

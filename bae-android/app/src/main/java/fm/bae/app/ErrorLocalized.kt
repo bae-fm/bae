@@ -166,9 +166,6 @@ val BridgeOpenException.failure: BridgeException
             is BridgeOpenException.Failed -> error
         }
 
-/** A failed open ready to show: the failure it carries, or null when core says it has nothing to show. */
-fun Context.displayError(error: BridgeOpenException): DisplayError? = displayError(error.failure)
-
 /** A [BridgePlaybackErrorReason] ready to show, or null when core says it has nothing to show. */
 fun Context.displayError(reason: BridgePlaybackErrorReason): DisplayError? =
     localizedLine(reason)?.let { line ->
