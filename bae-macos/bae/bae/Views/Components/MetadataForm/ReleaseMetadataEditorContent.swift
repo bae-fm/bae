@@ -17,7 +17,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     /// The images of the folder the release was imported from, drawn under
     /// the album row.
     var images: [BridgeMappingImage] = []
-    var onOpenImages: (([BridgeMappingImage], String) -> Void)?
+    var onOpenImages: ((String) -> Void)?
     /// Open one of the release's documents in the viewer: the file's name,
     /// then its file id.
     let onOpenDocument: (String, String) -> Void

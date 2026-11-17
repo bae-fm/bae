@@ -183,6 +183,7 @@ extension StorageQueuesSubscription: PulledSubscription {}
     extension InvalidCandidateSubscription: PulledSubscription {}
     extension ReleaseFilesSubscription: PulledSubscription {}
     extension CoverGallerySubscription: PulledSubscription {}
+    extension FolderImagesSubscription: PulledSubscription {}
 
     extension ImportSummarySubscription: PulledSubscription {}
     extension ImportFilterEntriesSubscription: PulledSubscription {}

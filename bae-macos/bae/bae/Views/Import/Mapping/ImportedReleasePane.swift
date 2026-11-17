@@ -10,7 +10,7 @@ struct ImportedReleasePane: View {
     let albumId: String
     let editCommands: ReleaseEditCommands
     let onViewInLibrary: (String) -> Void
-    let onOpenImages: ([BridgeMappingImage], String) -> Void
+    let onOpenImages: (String) -> Void
     let onPlayTrack: (String) -> Void
 
     /// The height the loading and failed states hold.

@@ -137,6 +137,8 @@ mod detail;
 #[cfg(desktop)]
 mod files;
 #[cfg(desktop)]
+mod folder_images;
+#[cfg(desktop)]
 mod import_list;
 mod lists;
 mod search;
@@ -153,6 +155,8 @@ pub use cover_gallery::*;
 pub use detail::*;
 #[cfg(desktop)]
 pub use files::*;
+#[cfg(desktop)]
+pub use folder_images::*;
 #[cfg(desktop)]
 pub use import_list::*;
 pub use lists::*;

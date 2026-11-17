@@ -49,7 +49,10 @@ pub(crate) use folder_scans::{
     FolderEntryToWrite, FolderReadingCommit, FolderReadingWrite, ScanItemReadings, ScanItemSeed,
     ScanItemToWrite, ScanWriteError,
 };
-pub use import_list::{ImportListError, SelectionWrite};
+pub use import_list::{
+    FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot, ImportListError,
+    SelectionWrite,
+};
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
     CandidateSaved, CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows,

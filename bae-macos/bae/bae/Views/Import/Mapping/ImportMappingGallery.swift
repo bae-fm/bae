@@ -5,7 +5,7 @@ import SwiftUI
 /// itself.
 struct ImportMappingGallery: View {
     let images: [BridgeMappingImage]
-    let onOpen: ([BridgeMappingImage], String) -> Void
+    let onOpen: (String) -> Void
 
     static let tileSize: CGFloat = 128
 
@@ -39,7 +39,7 @@ struct ImportMappingGallery: View {
 /// The folder's images under their own ruled heading.
 struct MacImportImages: View {
     let images: [BridgeMappingImage]
-    let onOpen: ([BridgeMappingImage], String) -> Void
+    let onOpen: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -55,7 +55,7 @@ struct ImportMappingGalleryTile: View {
     let image: BridgeMappingImage
     /// Every gallery image, for the lightbox to page through.
     let images: [BridgeMappingImage]
-    let onOpen: ([BridgeMappingImage], String) -> Void
+    let onOpen: (String) -> Void
 
     @State
     private var hovering = false
@@ -64,7 +64,7 @@ struct ImportMappingGalleryTile: View {
 
     var body: some View {
         Button {
-            onOpen(images, image.fileId)
+            onOpen(image.fileId)
         } label: {
             ImageView(
                 content: .localFile(image.file),

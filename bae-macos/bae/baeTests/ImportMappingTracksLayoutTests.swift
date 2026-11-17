@@ -521,7 +521,7 @@ extension ImportMappingTracksLayoutTests {
             bindSheet: { _, _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
-            openImages: { _, _ in },
+            openImages: { _ in },
             preview: { target in
                 MainActor.assumeIsolated {
                     recorder.previewed.append(target)

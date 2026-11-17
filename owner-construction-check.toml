@@ -322,6 +322,7 @@ task_types = [
     "CoverGallerySubscription",
     "DeviceStorageSubscription",
     "DownloadCountsSubscription",
+    "FolderImagesSubscription",
     "FolderScansSubscription",
     "ImportCandidateSubscription",
     "ImportCountsSubscription",

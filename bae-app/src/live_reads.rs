@@ -53,6 +53,13 @@ pub type LiveStorageSelection =
 pub type LiveCoverGallery =
     LiveRead<Option<bae_import::CoverGalleryRequest>, bae_import::CoverGallerySnapshot>;
 
+/// A live read of the images the lightbox of a candidate's folder shows.
+/// The candidate and the image shown change in place through
+/// [`LiveRead::set`]; `None` reads nothing.
+#[cfg(desktop)]
+pub type LiveFolderImages =
+    LiveRead<Option<bae_import::FolderImagesRequest>, bae_import::FolderImagesSnapshot>;
+
 /// A live read of one release's files in one order. The release and order
 /// change in place through
 /// [`LiveRead::set`]; `None` reads

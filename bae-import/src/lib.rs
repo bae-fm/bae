@@ -301,7 +301,8 @@ pub use tables::SCHEMA_PARTS;
 #[cfg(desktop)]
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
-    CoverGallerySnapshot, CoverKey, CoverSection, CoverSectionSource, GalleryCover, GalleryFocus,
+    CoverGallerySnapshot, CoverKey, CoverSection, CoverSectionSource, FolderImageFocus,
+    FolderImages, FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus,
     GalleryLabel, Neighbors,
 };
 

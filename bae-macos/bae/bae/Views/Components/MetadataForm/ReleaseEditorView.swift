@@ -16,7 +16,7 @@ struct ReleaseEditorView: View {
     /// read them, drawn between the album row and the tracks; empty where
     /// the release has no folder to show.
     var images: [BridgeMappingImage] = []
-    var onOpenImages: (([BridgeMappingImage], String) -> Void)?
+    var onOpenImages: ((String) -> Void)?
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
 

@@ -282,6 +282,12 @@ impl AppHandle {
         crate::screens::cover_gallery(self.services.subscribe_cover_gallery(), self.runtime.clone())
     }
 
+    /// The images the lightbox of a candidate's folder shows, showing
+    /// nothing until `set_request` names a candidate.
+    pub fn subscribe_folder_images(&self) -> Arc<crate::FolderImagesSubscription> {
+        crate::screens::folder_images(self.services.subscribe_folder_images(), self.runtime.clone())
+    }
+
     /// A release's files in the Storage sheet's order, showing nothing until
     /// `set_request` names a release.
     pub fn subscribe_release_files(&self) -> Arc<crate::ReleaseFilesSubscription> {

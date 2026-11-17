@@ -160,6 +160,20 @@ impl ImportServiceHandle {
         self.services.tables.subscribe_invalid_candidate(initial)
     }
 
+    /// The live read of the images the lightbox of a candidate's folder
+    /// shows; see `ImportTables::subscribe_folder_images`.
+    #[cfg(desktop)]
+    pub fn subscribe_folder_images(
+        &self,
+        initial: Option<crate::FolderImagesRequest>,
+    ) -> coven::ReconfigurableLiveQuery<
+        Option<crate::FolderImagesRequest>,
+        Option<crate::FolderImages>,
+        bae_store::DbError,
+    > {
+        self.services.tables.subscribe_folder_images(initial)
+    }
+
     /// The first tab counts `accept` admits, waiting through the query's
     /// values until one does. The counts land after the commit they reflect,
     /// so a test that just observed a scan event waits here for the read.

@@ -1897,7 +1897,12 @@ viewer when clicked, over whatever else is open. A library release's editor
 (§3.8), on an imported folder's pane and in the album's *Edit release* sheet,
 lists the release's files, images included, the same way, under its tracks, and
 an imported folder's pane puts the folder's images above its tracks; one view draws
-the files in all three, so a release's files never show two ways.
+the files in all three, so a release's files never show two ways. On the Mac, a
+click on one of the folder's images opens the lightbox over the folder's images
+at that image. One read of the folder's images says which image the lightbox
+shows, the one the person last moved to while the folder holds it and otherwise
+the folder's first image, and which images come before and after it, wrapping
+around the ends; a lone image has none.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.

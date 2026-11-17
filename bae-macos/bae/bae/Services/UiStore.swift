@@ -146,7 +146,8 @@ class UiStore: @unchecked Sendable {
 
     // ── Overlays ────────────────────────────────────────────────────────
 
-    var lightbox: Cursor<LightboxItem>?
+    /// The lightbox over a candidate's folder images, while it is open.
+    private(set) var lightbox: FolderImagesLightbox?
     /// The open modals, the first presented at the bottom. The window draws
     /// each modal over the one before it, which stays open beneath: the
     /// release editor's Change cover opens over the editor.
@@ -403,8 +404,16 @@ class UiStore: @unchecked Sendable {
         document = nil
     }
 
-    func presentLightbox(items: [LightboxItem], preferring id: String? = nil) {
-        lightbox = Cursor(items: items, preferring: id)
+    @MainActor
+    func presentLightbox(_ lightbox: FolderImagesLightbox) {
+        self.lightbox?.close()
+        self.lightbox = lightbox
+    }
+
+    @MainActor
+    func closeLightbox() {
+        lightbox?.close()
+        lightbox = nil
     }
 
     /// Close the modal on top; the ones beneath stay open.

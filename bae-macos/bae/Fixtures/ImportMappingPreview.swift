@@ -108,7 +108,7 @@ func inertMappingActions() -> ImportMappingActions {
         bindSheet: { _, _, _ in },
         setSheetDisc: { _, _ in },
         openDocument: { _, _ in },
-        openImages: { _, _ in },
+        openImages: { _ in },
         preview: { _ in },
         stopPreview: {},
         editTrack: { _ in },

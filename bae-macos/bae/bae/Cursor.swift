@@ -2,8 +2,7 @@ import Foundation
 
 /// A validated cursor over a non-empty list of identifiable items. The cursor
 /// always points to a real item; mutations preserve that invariant. Views read
-/// `current`, `items`, `canCycle` and a lightbox's `place`, and call
-/// `select(id:)`.
+/// `current`, `items` and `canCycle`, and call `select(id:)`.
 struct Cursor<Item: Identifiable & Equatable>: Equatable {
     let items: [Item]
     private(set) var index: Int
@@ -37,24 +36,5 @@ struct Cursor<Item: Identifiable & Equatable>: Equatable {
         if let i = items.firstIndex(where: { $0.id == id }) {
             index = i
         }
-    }
-
-}
-
-extension Cursor where Item: LightboxImage {
-    /// The lightbox's place at the cursor: the items before and after the
-    /// current one, wrapping around the ends, and none for a lone item.
-    var place: LightboxPlace<Item> {
-        guard canCycle else {
-            return LightboxPlace(items: items, current: current, neighbors: nil)
-        }
-        return LightboxPlace(
-            items: items,
-            current: current,
-            neighbors: LightboxNeighbors(
-                previous: items[(index - 1 + items.count) % items.count].id,
-                next: items[(index + 1) % items.count].id
-            )
-        )
     }
 }

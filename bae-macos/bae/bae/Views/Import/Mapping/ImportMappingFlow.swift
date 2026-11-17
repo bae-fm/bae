@@ -14,9 +14,9 @@ struct ImportMappingServices {
     /// Show a candidate's document (a log, a text file, a track sheet) in the
     /// viewer: the candidate's key, the file's name, then its file id.
     let openDocument: (Data, String, String) -> Void
-    /// Show the folder's images in the lightbox: the gallery's images, then
-    /// the file id of the one that was clicked.
-    let openImages: ([BridgeMappingImage], String) -> Void
+    /// Show the folder's images in the lightbox: the candidate's key, then
+    /// the file id of the image the person clicked.
+    let openImages: (Data, String) -> Void
     /// Surface a failed call to the user: a line the caller worded around
     /// core's, with core's diagnostic behind it.
     let onError: (DisplayError) -> Void
@@ -129,7 +129,7 @@ extension ImportMappingFlow {
             openDocument: { name, fileId in
                 services.openDocument(key, name, fileId)
             },
-            openImages: services.openImages,
+            openImages: { fileId in services.openImages(key, fileId) },
             preview: { target in
                 do {
                     try services.previewAudio.previewPlay(target)

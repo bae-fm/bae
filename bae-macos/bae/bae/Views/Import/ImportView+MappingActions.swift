@@ -15,8 +15,8 @@ extension ImportView {
             openDocument: { key, name, fileId in
                 openDocument(name: name, fileId: fileId, of: key)
             },
-            openImages: { images, path in
-                openGallery(images: images, at: path)
+            openImages: { key, fileId in
+                openGallery(of: key, at: fileId)
             },
             onError: { uiStore.showError($0) },
         )
@@ -55,17 +55,18 @@ extension ImportView {
         }
     }
 
-    /// Open the folder's images in the lightbox, starting at the image whose
-    /// file id is `fileId`.
-    private func openGallery(images: [BridgeMappingImage], at fileId: String) {
-        let items = images.map { image in
-            LightboxItem(
-                id: image.fileId,
-                label: image.name,
-                image: .localFile(image.file)
+    /// Open the folder images of the candidate at `key` in the lightbox,
+    /// starting at the image whose file id is `fileId`.
+    private func openGallery(of key: Data, at fileId: String) {
+        guard let query = importer.folderImages() else { return }
+        let uiStore = uiStore
+        uiStore.presentLightbox(
+            FolderImagesLightbox(
+                candidateKey: key,
+                focusedImage: fileId,
+                query: query,
+                onError: { uiStore.showError($0) }
             )
-        }
-        guard !items.isEmpty else { return }
-        uiStore.presentLightbox(items: items, preferring: fileId)
+        )
     }
 }

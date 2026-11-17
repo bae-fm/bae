@@ -39,6 +39,8 @@ private struct ImportOperations: Sendable {
     /// `nil` where no bridge is behind the importer: a shot or a test
     /// that reads no library membership.
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusSubscription?
+    /// `nil` where no bridge is behind the importer: a shot or a test.
+    let folderImages: @Sendable () -> FolderImagesQuery?
     let editCandidateLookupChoices:
         @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome
@@ -167,6 +169,9 @@ extension ImportOperations {
                 handle.subscribeCandidateRuntime(candidateKey: $0)
             },
             subscribeLibraryStatuses: { handle.subscribeLibraryStatuses() },
+            folderImages: {
+                FolderImagesQuery(handle.subscribeFolderImages())
+            },
             editCandidateLookupChoices: {
                 try await handle.editCandidateLookupChoices(
                     candidateKey: $0,
@@ -354,6 +359,7 @@ final class Importer: Sendable, Observable {
             },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusSubscription? = { nil },
+        folderImages: @escaping @Sendable () -> FolderImagesQuery? = { nil },
         editCandidateLookupChoices:
             @escaping @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome = { _, _ in .done },
@@ -451,6 +457,7 @@ final class Importer: Sendable, Observable {
             retryCandidateSearch: retryCandidateSearch,
             subscribeCandidateRuntime: subscribeCandidateRuntime,
             subscribeLibraryStatuses: subscribeLibraryStatuses,
+            folderImages: folderImages,
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             cancelAllIdentification: cancelAllIdentification,
@@ -632,6 +639,12 @@ extension Importer {
     /// offers; `nil` where no bridge is behind the importer.
     func subscribeLibraryStatuses() -> LibraryStatusSubscription? {
         operations.subscribeLibraryStatuses()
+    }
+
+    /// Open one live read of the images a candidate folder's lightbox shows;
+    /// `nil` where no bridge is behind the importer.
+    func folderImages() -> FolderImagesQuery? {
+        operations.folderImages()
     }
 
     /// Make one change to what a candidate's identification asks about; core

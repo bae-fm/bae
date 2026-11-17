@@ -290,4 +290,15 @@ impl AppServices {
             },
         )
     }
+
+    /// Return a live read of the images the lightbox of the candidate's
+    /// folder this subscription names shows, updated as they change. To show
+    /// another image, set a new request on the same read.
+    pub fn subscribe_folder_images(&self) -> crate::live_reads::LiveFolderImages {
+        crate::live_reads::follow_request(
+            &self.inner.manager,
+            self.inner.import.subscribe_folder_images(None),
+            |request, images| bae_import::FolderImagesSnapshot { request: request.clone(), images },
+        )
+    }
 }

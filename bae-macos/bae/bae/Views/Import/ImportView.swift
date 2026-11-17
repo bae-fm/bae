@@ -96,7 +96,7 @@ struct ImportView: View {
                 }
             }
             .onChange(of: importSelection.summary.single) { _, _ in
-                uiStore.lightbox = nil
+                uiStore.closeLightbox()
             }
             .onDisappear {
                 for task in candidateMutationTasks.values {

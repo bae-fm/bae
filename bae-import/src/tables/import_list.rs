@@ -24,6 +24,7 @@
 
 mod actions;
 mod credit_resolutions;
+mod folder_images;
 mod follows_candidates;
 mod follows_groupings;
 mod follows_library;
@@ -48,6 +49,9 @@ use crate::list::{ImportListId, ImportListView};
 use crate::PendingFilter;
 use order::{Items, Shown};
 
+pub use folder_images::{
+    FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
+};
 pub use selection::SelectionWrite;
 
 /// Why a read or a write of one open list failed.

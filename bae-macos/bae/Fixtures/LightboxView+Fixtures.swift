@@ -20,15 +20,12 @@ extension LightboxView where Item == LightboxItem {
         let images = ImageStore(fetchRemoteImage: { _, _ in
             try await Task.neverAnswers()
         })
-        return Cursor(items: [item], preferring: "front")
-            .map { cursor in
-                LightboxView(
-                    place: cursor.place,
-                    load: LightboxImageLoad(),
-                    onSelect: { _ in },
-                    onDismiss: {}
-                )
-                .environment(images)
-            }
+        return LightboxView(
+            place: LightboxPlace(items: [item], current: item, neighbors: nil),
+            load: LightboxImageLoad(),
+            onSelect: { _ in },
+            onDismiss: {}
+        )
+        .environment(images)
     }
 }
