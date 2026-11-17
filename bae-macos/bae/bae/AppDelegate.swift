@@ -581,13 +581,23 @@ extension AppDelegate {
             },
             onError: { error in
                 switch error {
-                case BridgeError.Cancelled, BridgeError.ShuttingDown:
-                    return
+                case BridgeError.Cancelled:
+                    baeAppLogger.debug(
+                        "The wait for a copy reset of \(libraryId) ended with its library"
+                    )
+                case BridgeError.ShuttingDown:
+                    baeAppLogger.debug(
+                        "The wait for a copy reset of \(libraryId) ended with the process"
+                    )
                 default:
+                    let detail = String(reflecting: error)
+                    baeAppLogger.error(
+                        "The wait for a copy reset of \(libraryId) failed: \(detail)"
+                    )
                     CoreBugReporter()
                         .report(
                             operation: "AppHandle.copyReset",
-                            detail: String(reflecting: error)
+                            detail: detail
                         )
                 }
             }
