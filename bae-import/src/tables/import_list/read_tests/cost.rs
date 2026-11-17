@@ -254,9 +254,10 @@ async fn measure_import_list_typed(db: &Store) {
 /// [`RUNS`] writes to each of two orders, reported under
 /// `import_list_first_selected`. The middle row is the first selected in
 /// ascending order and the end row in descending order, so `at` names that
-/// row and `offset` the place the write opened the view at. Another order
-/// alone opens nowhere, so before each timed write an untimed one searches
-/// for a text no row holds, and the timed write clears that search.
+/// row and `offset` the place the write opened the view at. A write that
+/// changes only the order returns no opening, so before each timed write an
+/// untimed one searches for a text no row holds, and the timed write clears
+/// that search.
 async fn measure_import_list_first_selected(db: &Store) {
     use crate::{ImportListOrder::PathAscending, ImportListOrder::PathDescending, PendingFilter};
     let tables = crate::tables::ImportTables::new(db.clone());

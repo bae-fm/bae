@@ -133,8 +133,9 @@ mod tests;
 #[path = "downloads_batch_tests.rs"]
 mod batch_tests;
 
-/// The error a download's refused releases return: the first refusal, with
-/// every refusal logged. `None` when the queue took every release.
+/// The error for a download's refused releases. The function logs every
+/// refusal and returns the first one, or `None` when the queue took every
+/// release.
 pub(super) fn download_refusals_error(
     download: &str,
     refused: Vec<(String, bae_transfers::tables::DownloadRefusal)>,

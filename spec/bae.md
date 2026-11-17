@@ -2752,11 +2752,11 @@ unpins at once. The MCP tool's unpin never asks.
 
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, or pinned, needs
-nothing, as the releases' storage rows say, and one whose pin failed is queued
-again in its place, as retrying queues it. Core refuses a release deleted
-meanwhile, or one whose files are not in the cloud, and queues the rest, and the
-person sees the refusal. If the write fails, nothing is queued; the person sees the
-error and the failure is reported as a bug.
+nothing, as the releases' storage rows say, and the write queues one whose pin
+failed again in its place, as retrying queues it. Core refuses a release that
+someone deleted meanwhile, or one whose files are not in the cloud, and queues
+the rest, and the person sees the refusal. If the write fails, it queues
+nothing; the person sees the error and bae reports the failure as a bug.
 
 ### 4.4 Making a release local again
 

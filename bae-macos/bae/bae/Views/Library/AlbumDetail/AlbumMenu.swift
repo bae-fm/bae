@@ -1,8 +1,8 @@
 import BaeKit
 
-/// The album page's menu: play and queue the album, edit, store, export and
-/// save the release shown, make that release the album's primary one, and
-/// delete the release or the album.
+/// The album page's menu: play and queue the album; edit the release shown,
+/// open its storage, export it and save it; make that release the album's
+/// primary one; and delete the release or the album.
 struct AlbumMenu: MacMenuPart {
     /// Whether the menu offers Set as primary release: the album holds
     /// another release, and the one shown is not its primary one.

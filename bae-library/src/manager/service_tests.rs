@@ -191,7 +191,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
     let selected = vec![key("A"), key("B")];
-    // A change of order alone answers no opening, so the test first sets a
+    // Changing only the order returns no opening, so the test first sets a
     // search that matches no release, then clears it to open the view.
     tables
         .set_import_list_view(
