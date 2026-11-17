@@ -93,6 +93,9 @@ struct ReleaseEditorWaitTests {
             .mainWindowPreviewEnvironment(),
             size: size
         ) { _, host in
+            // The editor draws nothing until the subscription sends the
+            // session's first draft.
+            try await Wait.until { session.draft != nil }
             try await SnapshotTestSupport.settle(host)
             try await body(host)
         }
