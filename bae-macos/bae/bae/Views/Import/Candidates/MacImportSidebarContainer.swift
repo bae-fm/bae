@@ -103,8 +103,6 @@ struct MacImportSidebarContainer: View {
 
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(ImportSelection.self)
-    private var importSelection
     @State
     private var revealOperation: ImportCandidateRevealOperation?
     /// The positions reveals land on, which the table scrolls to.
@@ -256,12 +254,13 @@ extension MacImportSidebarContainer {
     /// What a row's menu offers: the selection's actions when the row is
     /// one of several selected, and the row's own otherwise.
     private func menuOffers(for row: BridgeTriageRow) -> CandidateActionMenu {
-        if importSelection.keys.contains(row.candidateKey),
-            importSelection.summary.count > 1
+        let selection = listSlot.selection
+        if selection.keys.contains(row.candidateKey),
+            selection.summary.count > 1
         {
             return CandidateActionMenu(
                 offers: ImportCandidateActionOffer.selection(
-                    importSelection.summary
+                    selection.summary
                 ),
                 isSelection: true
             )

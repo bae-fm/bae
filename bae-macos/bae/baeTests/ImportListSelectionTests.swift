@@ -288,7 +288,6 @@ enum ImportListHosting {
         )
         .environment(OutboxStore(uploadsPaused: false))
         .environment(uiStore)
-        .environment(slot.selection)
         .environment(imageStore)
     }
 
