@@ -88135,7 +88135,7 @@
       }
     },
     "Reading…" : {
-      "comment" : "Find online ledger: in the Disc ID or ISRC chip while bae reads the folder's rip logs, CUE sheets or tags for it.",
+      "comment" : "Find online ledger: in the Disc ID or ISRC chip while bae reads the folder's rip logs, CUE sheets or tags for it. Also the import list menu's Folders section, before core has sent the watched folders.",
       "localizations" : {
         "en" : {
           "stringUnit" : {

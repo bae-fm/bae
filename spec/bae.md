@@ -940,7 +940,8 @@ A folder that no scan has opened a generation for shows Not scanned. The folder
 scans list every watched folder with its status and whether it is on a network
 volume, say whether any folder's last scan failed or left it not watched, and
 list the folders being scanned, so the list's menu draws them without joining
-anything; one live query reads them all. How many folders the scan
+anything; one live query reads them all. Until that query sends its first value,
+the menu's Folders section says *Reading…* and lists no folder. How many folders the scan
 has stored moves with every folder it walks, so it is not part of that status:
 it has a stream of its own, keyed by the folder's path, which the scan
 indicator's list of folders reads each display frame. A pass whose failure the

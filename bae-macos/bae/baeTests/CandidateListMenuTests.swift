@@ -79,6 +79,37 @@ struct CandidateListMenuTests {
         return nil
     }
 
+    /// Before core sends the first folder scans, the Folders section says it
+    /// is reading them, under Add a folder, and lists no folder.
+    @Test("the folders read as being read until core sends them")
+    func foldersReadAsBeingReadUntilCoreSendsThem() throws {
+        let loaded = state(entries: [])
+        let controller = CandidateListMenuController(
+            state: CandidateListMenuState(
+                folders: nil,
+                hasScanProblem: false,
+                refreshingFolders: [],
+                hasGroups: loaded.hasGroups,
+                sortOrder: loaded.sortOrder,
+                pendingFilter: loaded.pendingFilter,
+                pendingFilterEntries: [],
+                pendingFilterApplies: true
+            ),
+            actions: actions
+        )
+        let titles = controller.entries.compactMap { entry -> String? in
+            if case .header(let title) = entry { return title }
+            return entry.title
+        }
+        let header = try #require(titles.firstIndex(of: "Folders"))
+        #expect(titles[header + 2] == "Reading…")
+        #expect(!titles.contains("Imports"))
+        for case .item(let item) in controller.entries
+        where item.title == "Reading…" {
+            #expect(item.isDisabled)
+        }
+    }
+
     /// A count moving retitles and re-enables the filter's lines.
     @Test("the filter's counts move in the menu's lines")
     func theCountsMoveInTheMenu() throws {

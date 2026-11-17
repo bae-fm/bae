@@ -7,8 +7,9 @@ struct CandidateListMenuState {
     /// Every watched root with where its scan stands and whether it is on a
     /// network volume, from core's folder scans. Core checks network volumes
     /// on a schedule, so the menu shows a change at the next check, not the
-    /// moment it happens.
-    let folders: [BridgeWatchedFolderScanStatus]
+    /// moment it happens. The folders are `nil` until core sends the first
+    /// folder scans, and until then the menu says it is reading them.
+    let folders: [BridgeWatchedFolderScanStatus]?
     /// Whether any root's last scan failed or left it not watched, which
     /// also marks the trigger.
     let hasScanProblem: Bool
@@ -125,7 +126,19 @@ final class CandidateListMenuController {
                 }
             )
         )
-        lines.append(contentsOf: state.folders.map(folderLine))
+        if let folders = state.folders {
+            lines.append(contentsOf: folders.map(folderLine))
+        }
+        else {
+            lines.append(
+                .item(
+                    MacMenuItem(
+                        verbatim: String(localized: "Reading…"),
+                        disabled: true
+                    ) {}
+                )
+            )
+        }
         lines.append(.divider)
         lines.append(.header(String(localized: "Groups")))
         for (title, expanded) in [
