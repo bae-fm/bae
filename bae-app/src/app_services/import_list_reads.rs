@@ -70,7 +70,7 @@ pub fn import_list_filter_entries(
 /// empty, and the caller changes it on this same read.
 pub fn import_list_selection(list: &LiveImportList) -> crate::live_reads::LiveImportSelection {
     crate::live_reads::LiveImportSelection::new(
-        list.until_closed(list.subscribe_selection(Default::default())),
+        list.until_closed(list.subscribe_selection()),
         |_read, summary| Some(summary),
     )
 }

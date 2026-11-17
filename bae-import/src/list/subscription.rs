@@ -215,9 +215,8 @@ impl LiveImportList {
     /// keys the caller changes on the same query.
     pub fn subscribe_selection(
         &self,
-        initial: BTreeSet<CandidateKey>,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<CandidateKey>, SelectionSummary, DbError> {
-        self.tables.subscribe_import_selection(initial)
+        self.tables.subscribe_import_selection()
     }
 
     /// `query` as a subscription a surface pulls the values of, which this

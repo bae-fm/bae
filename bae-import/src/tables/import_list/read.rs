@@ -88,13 +88,12 @@ impl ImportTables {
     /// keys the caller changes on the same query.
     pub(crate) fn subscribe_import_selection(
         &self,
-        initial: std::collections::BTreeSet<crate::CandidateKey>,
     ) -> coven::ReconfigurableLiveQuery<
         std::collections::BTreeSet<crate::CandidateKey>,
         crate::selection::SelectionSummary,
         DbError,
     > {
-        self.store.subscribe_reconfigurable(initial, move |keys, sql| {
+        self.store.subscribe_reconfigurable(Default::default(), move |keys, sql| {
             selection::selection(&sql, &keys.iter().cloned().collect::<Vec<_>>())
         })
     }

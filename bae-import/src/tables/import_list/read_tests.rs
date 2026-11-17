@@ -563,7 +563,7 @@ async fn a_fold_reruns_the_windows_holding_the_group() {
 async fn the_selection_summary_follows_its_keys_and_their_rows() {
     let (lib, _list) = scanned_list(&["A", "B", "C"]).await;
     let tables = lib.tables();
-    let mut selection = tables.subscribe_import_selection(Default::default());
+    let mut selection = tables.subscribe_import_selection();
     let requests = selection.requests();
     let first = selection.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.count, 0, "no key reads no row");
