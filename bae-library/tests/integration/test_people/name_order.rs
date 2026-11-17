@@ -1,7 +1,7 @@
 use super::*;
 
-/// A guest who joined `household` from a device of their own under `name`,
-/// with the profile the join wrote, syncing.
+/// Join `household` as a guest named `name` from a new device, and return
+/// the guest's library, which syncs, with the profile the join wrote.
 async fn guest_named(
     household: &Household,
     key: &str,

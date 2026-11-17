@@ -127,8 +127,8 @@ impl FileReads {
         Ok(self.lease_one()?.place_blocking())
     }
 
-    /// One place of the budget, taken in one wait on this thread: the same
-    /// rules as [`Self::place`].
+    /// Take one place of the budget on this thread, which waits for it, and
+    /// follow the same rules as [`Self::place`].
     fn lease_one(&self) -> Result<FileLease, FolderScanError> {
         self.files.lease_blocking(1).map_err(|error| FolderScanError::Other(error.to_string()))
     }
