@@ -4492,11 +4492,11 @@ its control says so in core's words for that transfer.
   file's upload does. bae never removes the image to let sync go on: a failure
   coven retries by itself waits and retries, and one only the person can fix,
   such as a full account or refused credentials, waits for them, its pending
-  record showing it. Meanwhile the write naming the image, and every later
-  write of this device, waits to be sent. That image's pending record names
-  the image as the file holding sync. coven sends a release file's row without
-  waiting for its upload, so the upload holds no write and its record names no
-  holding file.
+  record showing it. Meanwhile coven holds the write naming the image, and
+  every later write of this device, and sends them once it has stored the
+  image. That image's pending record names the image as the file holding sync.
+  coven sends a release file's row without waiting for its upload, so the
+  upload holds no write and its record names no holding file.
 
 **Resetting a device.** Opening can fail because bae can't use this device's
 copy of the library's data, such as a damaged database file or tables that
