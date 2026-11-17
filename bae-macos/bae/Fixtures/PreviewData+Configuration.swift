@@ -381,9 +381,9 @@ actor PreviewReleaseEditSession {
         }
     }
 
-    /// The next draft: one not answered yet at once, else the next a change
-    /// leaves. When a task cancels a pull while it waits, `next()` returns
-    /// `nil`.
+    /// The draft the subscription has not answered yet, if there is one;
+    /// otherwise wait for the next change and return the draft it makes.
+    /// When a task cancels a pull while it waits, `next()` returns `nil`.
     private func next() async -> BridgeReleaseEditDraft? {
         if let unanswered {
             self.unanswered = nil

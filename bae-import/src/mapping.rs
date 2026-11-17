@@ -163,8 +163,8 @@ pub struct MappingFile {
 }
 
 /// A file's audition target as JSON: the file's path and the samples the
-/// target spans. A target records no byte landings, so these columns hold
-/// all of it.
+/// target spans. A target records no byte landings, so these three fields
+/// hold all of it.
 mod stored_preview_target {
     use bae_track_audio::PreviewTarget;
     use serde::{Deserialize, Serialize};

@@ -156,7 +156,8 @@ fn insert_session(
     Ok(session)
 }
 
-/// The form's rows below the session row, where none are stored.
+/// Insert the form's rows below the session row, where the session holds
+/// none.
 fn insert_form_rows(
     sql: &CovenWrite<'_>,
     session: i64,
@@ -277,8 +278,8 @@ fn store_form(
     Ok(())
 }
 
-/// Write what a catalog applied in the session read, where nothing applied
-/// is stored: its mediums, works and roles, each track's place, and its
+/// Write what a catalog applied in the session read, where the session holds
+/// no applied catalog: its mediums, works and roles, each track's place, and its
 /// records.
 fn insert_applied(
     sql: &CovenWrite<'_>,
@@ -376,7 +377,7 @@ pub fn reseed_release_edit_session_on(
 }
 
 /// The check a save of the session `session` makes in its own write: the
-/// session still holds `saved`, what the save was made from, and the library
+/// session still holds `saved`, what the save read, and the library
 /// still holds its release as the session opened on it. The check refuses
 /// the save as closed once the session or its release is gone, and as stale
 /// once the release changed. Each editor sends its session's commands one after another, so
@@ -779,7 +780,7 @@ pub(crate) fn release_edit_draft_rows_on(
 impl ReleaseEditDraftRows {
     /// The draft the editor shows: the form, the tracks laid out, whether a
     /// save would write anything the session did not open on, and why the
-    /// form can't be saved, when it can't.
+    /// editor can't save the form, when it can't.
     pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {
         let Self { session, artist_resolutions, album, cover_version, tracks, files } = self;
         let StoredReleaseEdit { release_id, opened, form, applied, album_pick } = session;

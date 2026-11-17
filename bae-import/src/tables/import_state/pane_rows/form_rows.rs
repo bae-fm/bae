@@ -45,7 +45,8 @@ pub(crate) const CANDIDATE_DRAFT: DraftTables = DraftTables {
     track_work: "import_candidate_track_work",
 };
 
-/// The draft's label rows, as the form holds them, where none are stored.
+/// Insert the draft's label rows, as the form holds them, where the draft
+/// holds none.
 pub(crate) fn insert_label_rows(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,
@@ -74,7 +75,8 @@ pub(crate) fn insert_label_rows(
     Ok(())
 }
 
-/// The draft's barcode rows, as the form holds them, where none are stored.
+/// Insert the draft's barcode rows, as the form holds them, where the draft
+/// holds none.
 pub(crate) fn insert_barcode_rows(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,
@@ -94,7 +96,7 @@ pub(crate) fn insert_barcode_rows(
     Ok(())
 }
 
-/// The draft's mediums, in order, where none are stored.
+/// Insert the draft's mediums, in order, where the draft holds none.
 pub(crate) fn insert_medium_rows(
     sql: &CovenWrite<'_>,
     tables: &DraftTables,
@@ -266,9 +268,9 @@ pub(super) struct StoredAssignment {
     join_phrase: Option<String>,
 }
 
-/// The assignments `table`, aliased `assignment`, holds where `belongs`
-/// holds, as a JSON array in their order: each joined to its picked artist
-/// and that artist's credit name.
+/// The rows of `table`, aliased `assignment`, that match the SQL condition
+/// `belongs`, as a JSON array in their order: each joined to its picked
+/// artist and that artist's credit name.
 pub(crate) fn assignments_json_sql(table: &str, belongs: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
