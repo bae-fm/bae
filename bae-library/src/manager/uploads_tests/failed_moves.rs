@@ -160,7 +160,7 @@ async fn a_release_in_a_failed_move_is_named_and_the_rest_of_the_selection_moves
         .expect("the selection returns each release's outcome");
 
     let UploadReleasesOutcome::Partial { receipt: Some(receipt), failure } = outcome else {
-        panic!("two releases move around the one in a failed move");
+        panic!("the other two releases move and the one in a failed move does not");
     };
     assert_eq!(receipt.release_ids, vec![first.id.clone(), last.id.clone()]);
     assert_eq!(failure.release_ids, vec![failed.id.clone()]);

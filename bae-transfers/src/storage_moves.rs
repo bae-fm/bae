@@ -7,8 +7,8 @@ use bae_store::Store;
 use bae_store::WriteError;
 use coven::CovenWrite;
 
-/// Why the write moving a release's files to the cloud was refused. Nothing
-/// of it landed.
+/// Why [`move_release_to_cloud`] or coven refused the write that moves a
+/// release's files to the cloud. The refused write changes nothing.
 #[derive(Debug, thiserror::Error)]
 pub enum StorageMoveRefusal {
     /// A move to the cloud needs storage set up on this device, and none is.
@@ -36,8 +36,8 @@ pub type StorageMoveError = WriteError<StorageMoveRefusal>;
 /// each upload checks the bytes it sends against the hashes the import's read
 /// recorded, and switches the release's files to the cloud together once all
 /// are stored, changing no row. coven refuses the move when any file can't
-/// move, and the write then changes nothing. Without storage set up the write
-/// is refused too.
+/// move, and the write then changes nothing. Without storage set up, the
+/// function refuses the write.
 pub async fn move_release_to_cloud(
     store: &Store,
     release_id: String,

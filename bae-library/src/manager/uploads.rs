@@ -9,9 +9,10 @@ impl LibraryManager {
     /// Move Local releases to Cloud, each release of the selection in a write
     /// of its own, as one move of its own: no release shows a transition on
     /// the way. Empty and duplicate selections are invalid commands. A
-    /// release that cannot move changes nothing and is returned, with why,
-    /// beside the durable receipt for the releases that did; when coven
-    /// refused it, why is coven's reason. Once a move finishes, coven no
+    /// release that cannot move changes nothing, and the method returns it
+    /// with the reason beside the durable receipt for the releases that
+    /// moved. When coven refused the move, the reason is coven's. Once a move
+    /// finishes, coven no
     /// longer reads the user's original; the source file itself remains
     /// untouched.
     pub async fn upload_releases(

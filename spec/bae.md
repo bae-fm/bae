@@ -2456,8 +2456,8 @@ are moving.
 one move of all the files of each release, each release in its own write,
 reading none of the files
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-A release that can't move is named and the rest move; when coven refuses
-the release's move, the app shows coven's reason. No row of bae's changes, so
+The app names each release that can't move, and the rest move; when coven
+refuses a release's move, the app shows coven's reason. No row of bae's changes, so
 no release shows a transition on the way. coven uploads each file, checking every chunk it
 sends against the hashes the import's read recorded, and once the last is
 stored one write of coven's switches them all to storage. So other devices
@@ -2468,8 +2468,9 @@ uploading. An original that changed since the import fails the move, even
 one that kept its size and modification time: the rows describe the file as
 imported, and a changed file would give every device audio that doesn't
 match them. coven refuses to move a release when one of its files is on
-another device only, is in storage already, or is in a move already, one
-still moving or a failed one until the person cancels it; a release moved to this device again
+another device only, is in storage already, or is in another move. A move
+holds its files until it finishes, and a failed move holds them until the
+person cancels it. A release moved to this device again
 (§4.4) moves like one imported here. A move never keeps a copy on this
 device: once it finishes the files are in storage and unpinned, and the
 release is pinned afterwards like any other (§4.3).
