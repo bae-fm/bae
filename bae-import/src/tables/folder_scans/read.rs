@@ -354,7 +354,7 @@ fn files_json_sql() -> String {
              'audio_bits_per_sample', file.audio_bits_per_sample, \
              'audio_bitrate_kbps', file.audio_bitrate_kbps, \
              'audio_channels', file.audio_channels, 'file_name', file.file_name, \
-             'dir_prefix', file.dir_prefix, 'role', file.role, \
+             'role', file.role, \
              'document_kind', file.document_kind, \
              'sheet_binding', file.sheet_binding, \
              'sheet_binding_codec', file.sheet_binding_codec, \
@@ -537,7 +537,6 @@ struct FileRow {
     audio_bitrate_kbps: Option<i64>,
     audio_channels: Option<i64>,
     file_name: String,
-    dir_prefix: Option<String>,
     role: String,
     document_kind: Option<String>,
     sheet_binding: Option<String>,
@@ -603,7 +602,6 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                         modified_at_ns: row.modified_at_ns,
                     },
                     relative_path: row.relative_path,
-                    dir_prefix: row.dir_prefix,
                     file_name: row.file_name,
                     source_audio,
                 },

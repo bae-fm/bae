@@ -67,7 +67,7 @@ entries AS (
     SELECT f.position, f.role,
            f.role = 'artwork' AND bae_supported_cover(f.relative_path) AS cover,
            json_object(
-               'name', f.relative_path, 'size', f.size, 'dir_prefix', f.dir_prefix,
+               'name', f.relative_path, 'size', f.size,
                'file_name', f.file_name, 'path', hex(f.absolute_path),
                'modified_at_ns', f.modified_at_ns, 'role', f.role,
                'content_type', f.audio_content_type, 'sample_rate_hz', f.audio_sample_rate_hz,
@@ -116,7 +116,6 @@ struct Document {
 struct FileJson {
     name: String,
     size: u64,
-    dir_prefix: Option<String>,
     file_name: String,
     #[serde(deserialize_with = "path_column::from_hex")]
     path: std::path::PathBuf,
@@ -176,7 +175,6 @@ impl FileJson {
         Ok(PaneFile {
             name: self.name,
             size: self.size,
-            dir_prefix: self.dir_prefix,
             file_name: self.file_name,
             audio_format,
             role,

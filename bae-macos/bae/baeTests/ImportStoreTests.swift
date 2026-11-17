@@ -25,7 +25,6 @@ private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
                 file: BridgeFileInfo(
                     name: "01.flac",
                     size: 100,
-                    dirPrefix: nil,
                     fileName: "01.flac",
                     audioFormat: nil
                 ),
@@ -52,7 +51,6 @@ private func bridgeFolder(
         files: emptyBridgeFiles(),
         trackCount: 10,
         skipped: skipped,
-        isAdded: false
     )
 }
 
@@ -70,7 +68,6 @@ func identifiedRow(
         candidateKey: Data(path.utf8),
         folderName: title,
         watchedFolderPath: Data("/w".utf8),
-        displayPath: title,
         actionable: true,
         placement: .pending,
         live: BridgeCandidateLiveState(
@@ -137,7 +134,6 @@ private func detail(
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,
                 releaseLink: MappingFixtures.releaseLink,
-                metadataAuthor: .person,
                 mapping: BridgeMappingTable(
                     images: [],
                     trackSides: [],

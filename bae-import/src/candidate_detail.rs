@@ -126,9 +126,6 @@ pub struct PaneFile {
     /// The file's path in the release.
     pub name: String,
     pub size: u64,
-    /// The folder below the release root the file is in, `/`-terminated;
-    /// `None` at the root.
-    pub dir_prefix: Option<String>,
     pub file_name: String,
     /// The format of an audio file.
     pub audio_format: Option<bae_types::audio_format::AudioFormat>,

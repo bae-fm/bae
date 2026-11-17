@@ -153,7 +153,6 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     audio_bitrate_kbps    INTEGER CHECK (audio_bitrate_kbps IS NULL OR audio_bitrate_kbps > 0),
     audio_channels        INTEGER CHECK (audio_channels IS NULL OR audio_channels > 0),
     file_name             TEXT NOT NULL,
-    dir_prefix            TEXT,
     role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'damaged_image', 'document', 'other')),
     -- Which document the file is, as its name reads; set for a document, and
     -- only a document.

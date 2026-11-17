@@ -101,7 +101,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             candidateKey: key,
             folderName: "Release \(index)",
             watchedFolderPath: Data("/library".utf8),
-            displayPath: "Release \(index)",
             actionable: true,
             placement: .skipped,
             live: BridgeCandidateLiveState(

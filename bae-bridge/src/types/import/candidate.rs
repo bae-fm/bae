@@ -13,9 +13,6 @@ pub fn bridge_candidate_key_text(candidate_key: Vec<u8>) -> String {
 pub struct BridgeFileInfo {
     pub name: String,
     pub size: u64,
-    /// Directory prefix for display, e.g. "Artwork/". `None` when the file
-    /// sits at the candidate-folder root.
-    pub dir_prefix: Option<String>,
     /// Filename without directory, e.g. "front.jpg".
     pub file_name: String,
     /// Probe-verified source audio facts. `None` for non-audio files.

@@ -599,7 +599,6 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             number: row.number.ok_or_else(|| internal("a slice has no number".to_owned()))?,
             title: row.title,
             container_id: audio.file_id.clone(),
-            container_name: audio.name.clone(),
             preview_target: bae_track_audio::PreviewTarget::sample_range(
                 audio.path.clone(),
                 row.start.ok_or_else(|| internal("a slice has no start".to_owned()))?,

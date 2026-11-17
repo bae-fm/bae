@@ -92,7 +92,6 @@ enum ScrollCostFixture {
                 var member = found[row % found.count]
                 member.candidateKey = key("found", row)
                 member.folderName = "Release \(row)"
-                member.displayPath = "Collection \(group)/Release \(row)"
                 member.cover = cover(row)
                 items.append(
                     PreviewData.candidateItem(
@@ -114,7 +113,6 @@ enum ScrollCostFixture {
         invalid.candidateKey = key("invalid", index)
         invalid.folderPath = invalid.candidateKey
         invalid.sourceFolderName = "Broken \(index)"
-        invalid.displayPath = "Broken \(index)"
         if invalid.cover != nil {
             invalid.cover = cover(index)
         }
@@ -125,7 +123,6 @@ enum ScrollCostFixture {
         var done = PreviewData.triageRowDoneImported
         done.candidateKey = key("done", index)
         done.folderName = "Imported \(index)"
-        done.displayPath = "Imported \(index)"
         done.cover = cover(index)
         return PreviewData.candidateItem(done)
     }

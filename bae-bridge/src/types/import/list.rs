@@ -269,10 +269,6 @@ pub struct BridgeCandidateDraftPane {
     /// What the candidate is linked to in the catalogs — a pressing, or an
     /// album whose pressing is unknown — which Unlink clears.
     pub release_link: Option<crate::types::BridgeReleaseLink>,
-    /// Who wrote it. Find online returns to the draft when this becomes
-    /// `Identification`: the run wrote the pick a click there would have
-    /// written, so the pane is done.
-    pub metadata_author: BridgeMetadataAuthor,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,

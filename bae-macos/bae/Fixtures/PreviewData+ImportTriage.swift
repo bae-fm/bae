@@ -24,7 +24,6 @@ extension PreviewData {
             candidateKey: candidate.key,
             folderName: candidate.displayName,
             watchedFolderPath: importWatchedFolderPath,
-            displayPath: candidate.displayName,
             actionable: true,
             placement: placement,
             live: live,
@@ -53,7 +52,6 @@ extension PreviewData {
                 files: bridgeCandidateFiles,
                 trackCount: trackCount,
                 skipped: false,
-                isAdded: false
             ),
             folders: .one(folderPath: Data("\(importRootPath)/\(path)".utf8))
         )
@@ -108,7 +106,6 @@ extension PreviewData {
             files: bridgeCandidateFiles,
             trackCount: 9,
             skipped: false,
-            isAdded: false
         ),
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(

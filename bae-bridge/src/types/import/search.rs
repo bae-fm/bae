@@ -100,10 +100,6 @@ pub struct BridgeReleaseGroup {
     /// Every source carrying this group, in the one order surfaces name
     /// sources in.
     pub sources: Vec<BridgeReleaseGroupSource>,
-    /// Earliest and latest pressing year for the UI's "1992 – 2012" span; both
-    /// `None` when no pressing carries a year.
-    pub year_min: Option<i32>,
-    pub year_max: Option<i32>,
     /// The card's pressing rows, album by album: one section with no heading,
     /// or — where the card holds two albums of one catalog — one section per
     /// album, headed by it.

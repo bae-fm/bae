@@ -5,7 +5,6 @@ impl BridgeFileInfo {
         BridgeFileInfo {
             name: file.name.clone(),
             size: file.size,
-            dir_prefix: file.dir_prefix.clone(),
             file_name: file.file_name.clone(),
             audio_format: file.audio_format.clone().map(BridgeAudioFormat::from_core),
         }
@@ -130,7 +129,6 @@ impl BridgeMappingEntry {
             number,
             title,
             container_id,
-            container_name,
             preview_target,
             audio_format,
         } = entry;
@@ -140,7 +138,6 @@ impl BridgeMappingEntry {
             number,
             title,
             container_id,
-            container_name,
             preview_target: BridgePreviewTarget::from_core(preview_target),
             audio_format: BridgeAudioFormat::from_core(audio_format),
         }

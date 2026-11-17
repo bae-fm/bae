@@ -426,7 +426,6 @@ extension ImportMappingTracksLayoutTests {
             number: number,
             title: title,
             containerId: longAudioName,
-            containerName: longAudioName,
             previewTarget: BridgePreviewTarget(
                 path: audioPath,
                 name: "track.flac",

@@ -47,7 +47,6 @@ impl crate::types::BridgeFolderCandidate {
         files: crate::types::BridgeCandidateFiles,
         track_count: u32,
         skipped: bool,
-        is_added: bool,
     ) -> Self {
         crate::types::BridgeFolderCandidate {
             parts: candidate
@@ -63,7 +62,6 @@ impl crate::types::BridgeFolderCandidate {
             files,
             track_count,
             skipped,
-            is_added,
         }
     }
 }
@@ -75,7 +73,9 @@ impl crate::types::BridgeInvalidCandidate {
             folder,
             folder_name,
             watched_folder_path,
-            display_path,
+            // The screens show the folder's name, not its path below the
+            // watched folder.
+            display_path: _,
             separable,
             reason,
             tags,
@@ -86,7 +86,6 @@ impl crate::types::BridgeInvalidCandidate {
             folder_path: coven::path_bytes(&folder),
             source_folder_name: folder_name,
             watched_folder_path: coven::path_bytes(&watched_folder_path),
-            display_path,
             separable,
             reason: crate::types::BridgeInvalidReason::from_core(reason),
             tags: tags.map(crate::types::BridgeSkippedTags::from_core),
@@ -209,7 +208,9 @@ impl crate::types::BridgeTriageRow {
             candidate_key,
             folder_name,
             watched_folder_path,
-            display_path,
+            // The screens show the folder's name, not its path below the
+            // watched folder.
+            display_path: _,
             actionable,
             placement,
             // What the row's commands are decided from, which `live` already
@@ -228,7 +229,6 @@ impl crate::types::BridgeTriageRow {
             candidate_key: candidate_key.into(),
             folder_name,
             watched_folder_path: coven::path_bytes(&watched_folder_path),
-            display_path,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             live: crate::types::BridgeCandidateLiveState::from_core(live),
@@ -611,7 +611,6 @@ impl crate::types::BridgeCandidatePanePlacement {
 
 impl crate::types::BridgeImportCandidateDetail {
     pub(crate) fn from_core(detail: bae_import::ImportCandidateDetail) -> Self {
-        let is_added = detail.is_added();
         let bae_import::ImportCandidateDetail {
             candidate,
             files,
@@ -643,7 +642,6 @@ impl crate::types::BridgeImportCandidateDetail {
                 files,
                 track_count,
                 skipped,
-                is_added,
             ),
             part_count,
             actionable,
@@ -685,7 +683,8 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_draft_is_blank,
             metadata_provenance,
             release_link,
-            metadata_author,
+            // No screen shows who wrote the draft.
+            metadata_author: _,
             mapping,
             cover,
             // Changed through `edit_candidate_lookup_choices`; nothing on the
@@ -707,7 +706,6 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             release_link: release_link.map(crate::types::BridgeReleaseLink::from_core),
-            metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             failure: failure

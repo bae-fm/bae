@@ -17,8 +17,6 @@ pub struct BridgeFolderCandidate {
     pub track_count: u32,
     /// Whether the person skipped this candidate.
     pub skipped: bool,
-    /// Whether this device imported these files, matched by content hash.
-    pub is_added: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -133,8 +131,6 @@ pub struct BridgeInvalidCandidate {
     /// The watched folder where bae's scan found this folder, as coven's
     /// bytes for its path.
     pub watched_folder_path: Vec<u8>,
-    /// Its folder below the watched folder, shown as text.
-    pub display_path: String,
     /// Whether this row is folders a grouping reads as one, which it offers
     /// to separate.
     pub separable: bool,
@@ -615,22 +611,6 @@ impl BridgePressingLink {
     }
 }
 
-/// Who wrote the candidate's draft.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeMetadataAuthor {
-    Nobody,
-    Prefill,
-    Identification,
-    Person,
-}
-
-mirror_enum! {
-    #[cfg(desktop)]
-    BridgeMetadataAuthor = bae_import::MetadataAuthor,
-    from_core: pub(crate) fn,
-    variants: { Nobody, Prefill, Identification, Person },
-}
-
 mirror_enum! {
     #[cfg(desktop)]
     BridgeMetadataProvenance = bae_import::MetadataProvenance,
@@ -680,8 +660,6 @@ pub struct BridgeTriageRow {
     /// The watched folder where bae's scan found this folder, as coven's
     /// bytes for its path.
     pub watched_folder_path: Vec<u8>,
-    /// Its folder below the watched folder, shown as text.
-    pub display_path: String,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
     /// What is running for the candidate right now, and the commands the row

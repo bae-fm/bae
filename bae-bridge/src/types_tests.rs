@@ -62,30 +62,6 @@ mod conversion_roundtrip {
 
     /// The UI tells a person's answer from a proposed one by this value, so
     /// each variant must cross as itself.
-    #[cfg(desktop)]
-    #[test]
-    fn the_draft_s_author_crosses_the_bridge_as_itself() {
-        use bae_import::MetadataAuthor;
-        let crossed: Vec<_> = [
-            MetadataAuthor::Nobody,
-            MetadataAuthor::Prefill,
-            MetadataAuthor::Identification,
-            MetadataAuthor::Person,
-        ]
-        .into_iter()
-        .map(BridgeMetadataAuthor::from_core)
-        .collect();
-        assert_eq!(
-            crossed,
-            vec![
-                BridgeMetadataAuthor::Nobody,
-                BridgeMetadataAuthor::Prefill,
-                BridgeMetadataAuthor::Identification,
-                BridgeMetadataAuthor::Person,
-            ]
-        );
-    }
-
     /// A restore row shows which account a Dropbox or OneDrive library is in,
     /// so the label crosses to the app and back unchanged.
     #[test]

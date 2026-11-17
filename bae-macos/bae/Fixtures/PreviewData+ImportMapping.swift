@@ -130,7 +130,6 @@ extension PreviewData {
         file: BridgeFileInfo(
             name: "Album Image.flac",
             size: 221_100_000,
-            dirPrefix: nil,
             fileName: "Album Image.flac",
             audioFormat: BridgeAudioFormat(
                 codec: "FLAC",
@@ -222,7 +221,6 @@ extension PreviewData {
             number: UInt32(index + 1),
             title: "Track Title \(index + 1)",
             containerId: mappedAudioContainer.file.name,
-            containerName: mappedAudioContainer.file.fileName,
             previewTarget: BridgePreviewTarget(
                 path: fakePath(mappedAudioContainer.file.name),
                 name: mappedAudioContainer.file.fileName,
@@ -332,7 +330,6 @@ extension PreviewData {
             files: files,
             trackCount: 9,
             skipped: false,
-            isAdded: false
         )
     }
 
@@ -397,8 +394,6 @@ extension PreviewData {
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,
                         releaseLink: releaseLink,
-                        metadataAuthor: metadataProvenance == nil
-                            ? .nobody : .person,
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
@@ -451,7 +446,6 @@ extension PreviewData {
             files: moreTracksCandidateFiles,
             trackCount: 1,
             skipped: false,
-            isAdded: false
         ),
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(

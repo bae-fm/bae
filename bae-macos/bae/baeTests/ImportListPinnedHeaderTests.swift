@@ -152,7 +152,6 @@ extension ImportListPinnedHeaderTests {
                 candidateKey: Data("/library/Group/Release \(index)".utf8),
                 folderName: "Release \(index)",
                 watchedFolderPath: Data("/library".utf8),
-                displayPath: "Group/Release \(index)",
                 actionable: true,
                 placement: .pending,
                 live: BridgeCandidateLiveState(

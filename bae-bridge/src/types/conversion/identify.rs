@@ -266,8 +266,9 @@ impl BridgeReleaseGroup {
             labels,
             cover_art,
             sources,
-            year_min,
-            year_max,
+            // No screen shows a card's span of years.
+            year_min: _,
+            year_max: _,
             sections,
         } = g;
         BridgeReleaseGroup {
@@ -277,8 +278,6 @@ impl BridgeReleaseGroup {
             labels,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources.into_iter().map(BridgeReleaseGroupSource::from_core).collect(),
-            year_min,
-            year_max,
             sections: sections.into_iter().map(BridgePressingSection::from_core).collect(),
         }
     }

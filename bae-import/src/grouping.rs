@@ -305,11 +305,6 @@ fn shared_folder(members: &[FolderCandidate]) -> PathBuf {
 fn prefixed(entry: &CandidateFile, prefix: &str) -> CandidateFile {
     let mut entry = entry.clone();
     entry.file.relative_path = format!("{prefix}{}", entry.file.relative_path);
-    entry.file.dir_prefix = match entry.file.dir_prefix.take() {
-        Some(directory) => Some(format!("{prefix}{directory}")),
-        None if prefix.is_empty() => None,
-        None => Some(prefix.to_string()),
-    };
     if let FileRole::TrackSheet { binding, .. } = &mut entry.role {
         match binding {
             SheetBinding::Resolved { files }

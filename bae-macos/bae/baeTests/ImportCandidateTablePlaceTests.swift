@@ -420,7 +420,6 @@ extension ImportCandidateTablePlaceTests {
                 candidateKey: Data(folderPath(index).utf8),
                 folderName: folderName,
                 watchedFolderPath: Data("/library".utf8),
-                displayPath: "Release \(index)",
                 actionable: true,
                 placement: .skipped,
                 live: BridgeCandidateLiveState(

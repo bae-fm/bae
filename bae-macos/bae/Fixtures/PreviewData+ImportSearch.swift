@@ -108,8 +108,6 @@ extension PreviewData {
                 albumLinksUnread: false
             ),
         ],
-        yearMin: 1988,
-        yearMax: 1996,
         sections: [
             BridgePressingSection(
                 album: nil,
@@ -161,8 +159,6 @@ extension PreviewData {
                     albumLinksUnread: false
                 )
             ],
-            yearMin: 1996,
-            yearMax: 1996,
             sections: [
                 BridgePressingSection(
                     album: nil,
@@ -249,8 +245,6 @@ extension PreviewData {
                     albumLinksUnread: false
                 ),
             ],
-            yearMin: 2005,
-            yearMax: 2005,
             sections: [
                 BridgePressingSection(
                     album: nil,
@@ -325,8 +319,6 @@ extension PreviewData {
                 albumLinksUnread: false
             )
         ],
-        yearMin: 1996,
-        yearMax: 1996,
         sections: [
             BridgePressingSection(
                 album: nil,
@@ -379,8 +371,6 @@ extension PreviewData {
                 albumLinksUnread: false
             )
         ],
-        yearMin: 2001,
-        yearMax: 2001,
         sections: [
             BridgePressingSection(
                 album: nil,
@@ -739,8 +729,6 @@ extension PreviewData {
                         labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
-                        yearMin: 1996,
-                        yearMax: 1996,
                         sections: [
                             BridgePressingSection(
                                 album: nil,
@@ -783,8 +771,6 @@ extension PreviewData {
                         labels: ["Label Name"],
                         coverArt: nil,
                         sources: searchGroupExactBridge.sources,
-                        yearMin: 1996,
-                        yearMax: 1996,
                         sections: [
                             BridgePressingSection(
                                 album: nil,

@@ -31,7 +31,6 @@ extension PreviewData {
             file: BridgeFileInfo(
                 name: dirPrefix.map { $0 + name } ?? name,
                 size: size,
-                dirPrefix: dirPrefix,
                 fileName: name,
                 audioFormat: role.isAudio ? previewSourceAudioFormat : nil
             ),

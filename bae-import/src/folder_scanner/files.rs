@@ -30,9 +30,6 @@ pub struct ScannedFile {
     /// under these names (see [`bae_records::stored_name`]), so it cannot
     /// carry the writing platform's separator.
     pub relative_path: String,
-    /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
-    /// file is at the candidate-folder root.
-    pub dir_prefix: Option<String>,
     /// File name without directory prefix.
     pub file_name: String,
     pub source_audio: Option<ScannedAudio>,
@@ -40,16 +37,13 @@ pub struct ScannedFile {
 
 impl ScannedFile {
     pub fn new(path: PathBuf, relative_path: String, size: u64, modified_at_ns: i64) -> Self {
-        let (dir_prefix, file_name) = match relative_path.rfind('/') {
-            Some(idx) => {
-                (Some(relative_path[..=idx].to_string()), relative_path[idx + 1..].to_string())
-            }
-            None => (None, relative_path.clone()),
+        let file_name = match relative_path.rfind('/') {
+            Some(idx) => relative_path[idx + 1..].to_string(),
+            None => relative_path.clone(),
         };
         Self {
             version: FileVersion { path, size, modified_at_ns },
             relative_path,
-            dir_prefix,
             file_name,
             source_audio: None,
         }

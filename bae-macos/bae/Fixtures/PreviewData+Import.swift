@@ -128,7 +128,6 @@ extension PreviewData {
             files: bridgeCandidateFiles,
             trackCount: 9,
             skipped: false,
-            isAdded: false
         ),
         BridgeFolderCandidate(
             parts: [],
@@ -144,7 +143,6 @@ extension PreviewData {
             trackCount: 12,
             // Skipped.
             skipped: true,
-            isAdded: false
         ),
         BridgeFolderCandidate(
             parts: [],
@@ -155,7 +153,6 @@ extension PreviewData {
             files: bridgeCandidateFiles,
             trackCount: 15,
             skipped: false,
-            isAdded: false
         ),
         BridgeFolderCandidate(
             parts: [],
@@ -166,7 +163,6 @@ extension PreviewData {
             files: bridgeCandidateFiles,
             trackCount: 5,
             skipped: false,
-            isAdded: false
         ),
         BridgeFolderCandidate(
             parts: [],
@@ -176,9 +172,7 @@ extension PreviewData {
             watchedFolderPath: Data("/Music/Downloads".utf8),
             files: bridgeCandidateFiles,
             trackCount: 18,
-            // Already imported (content-hash match).
             skipped: false,
-            isAdded: true
         ),
         // Two more, so Pending shows a group beside an ungrouped row.
         BridgeFolderCandidate(
@@ -190,7 +184,6 @@ extension PreviewData {
             files: bridgeCandidateFiles,
             trackCount: 11,
             skipped: false,
-            isAdded: false
         ),
         BridgeFolderCandidate(
             parts: [],
@@ -201,7 +194,6 @@ extension PreviewData {
             files: candidateFilesTracks,
             trackCount: 2,
             skipped: false,
-            isAdded: false
         ),
     ]
     .map { Candidate(folder: $0, folders: .one(folderPath: $0.folderPath)) }
@@ -215,7 +207,6 @@ extension PreviewData {
             folderPath: Data("/Music/Downloads/Half Copied".utf8),
             sourceFolderName: "Half Copied",
             watchedFolderPath: Data("/Music/Downloads".utf8),
-            displayPath: "Half Copied",
             separable: false,
             reason: .damagedAudio(count: 2),
             tags: BridgeSkippedTags(
@@ -229,7 +220,6 @@ extension PreviewData {
             folderPath: Data("/Music/Downloads/Broken Rip".utf8),
             sourceFolderName: "Broken Rip",
             watchedFolderPath: Data("/Music/Downloads".utf8),
-            displayPath: "Broken Rip",
             separable: false,
             reason: .damagedAudio(count: 1),
             tags: nil,
@@ -240,7 +230,6 @@ extension PreviewData {
             folderPath: Data("/Music/Downloads/Documents Only".utf8),
             sourceFolderName: "Documents Only",
             watchedFolderPath: Data("/Music/Downloads".utf8),
-            displayPath: "Documents Only",
             separable: false,
             reason: .noValidAudio,
             tags: nil,
@@ -257,14 +246,13 @@ extension PreviewData {
 
     private static func releaseQueueRow(
         name: String,
-        displayPath: String,
+        folder: String,
         separable: Bool
     ) -> BridgeTriageRow {
         BridgeTriageRow(
-            candidateKey: Data("\(releaseQueueRoot)/\(displayPath)".utf8),
+            candidateKey: Data("\(releaseQueueRoot)/\(folder)".utf8),
             folderName: name,
             watchedFolderPath: Data(releaseQueueRoot.utf8),
-            displayPath: displayPath,
             actionable: true,
             placement: .pending,
             live: BridgeCandidateLiveState(
@@ -289,17 +277,17 @@ extension PreviewData {
     private static let releaseQueueRows = [
         releaseQueueRow(
             name: "Release 01",
-            displayPath: "Collection/Release 01",
+            folder: "Collection/Release 01",
             separable: false
         ),
         releaseQueueRow(
             name: "Release 02",
-            displayPath: "Collection/Release 02",
+            folder: "Collection/Release 02",
             separable: false
         ),
         releaseQueueRow(
             name: "Release 03",
-            displayPath: "Release 03",
+            folder: "Release 03",
             separable: false
         ),
     ]
@@ -316,7 +304,6 @@ extension PreviewData {
                 files: candidateFilesTracks,
                 trackCount: 9,
                 skipped: false,
-                isAdded: false
             ),
             folders: .one(folderPath: row.candidateKey)
         )

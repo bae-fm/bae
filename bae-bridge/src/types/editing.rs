@@ -320,7 +320,6 @@ pub struct BridgeMappingEntry {
     pub title: Option<String>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
-    pub container_name: String,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: BridgePreviewTarget,
     pub audio_format: BridgeAudioFormat,

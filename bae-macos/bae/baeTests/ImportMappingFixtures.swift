@@ -244,7 +244,6 @@ extension MappingFixtures {
                     number: UInt32(index + 1),
                     title: "Sheet Track \(index + 1)",
                     containerId: containerId,
-                    containerName: containerId,
                     previewTarget: previewTarget,
                     audioFormat: audioFormat
                 )
@@ -395,7 +394,6 @@ extension MappingFixtures {
         edit: BridgeRawReleaseEdit = albumEdit,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         releaseLink: BridgeReleaseLink? = releaseLink,
-        metadataAuthor: BridgeMetadataAuthor? = nil,
         failure: BridgeError? = nil,
         presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: Data = MappingFixtures.candidateKey,
@@ -436,8 +434,6 @@ extension MappingFixtures {
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
                     releaseLink: releaseLink,
-                    metadataAuthor: metadataAuthor
-                        ?? (metadataProvenance == nil ? .nobody : .person),
                     mapping: mapping
                         ?? BridgeMappingTable(
                             images: [],
@@ -472,7 +468,6 @@ extension MappingFixtures {
             ),
             trackCount: 13,
             skipped: false,
-            isAdded: false
         )
     }
 

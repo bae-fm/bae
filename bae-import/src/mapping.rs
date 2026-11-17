@@ -173,7 +173,6 @@ pub struct MappingEntry {
     pub title: Option<String>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
-    pub container_name: String,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: bae_track_audio::PreviewTarget,
     pub audio_format: bae_types::audio_format::AudioFormat,

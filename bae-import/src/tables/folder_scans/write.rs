@@ -390,9 +390,9 @@ fn insert_file(
              (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
               size, modified_at_ns, audio_content_type, audio_container, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
-              file_name, dir_prefix, role, document_kind, sheet_binding, \
+              file_name, role, document_kind, sheet_binding, \
               sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             coven::path_bytes(watched_folder_path),
             candidate_path,
@@ -413,7 +413,6 @@ fn insert_file(
             file.file.source_audio.as_ref().and_then(|audio| audio.format.bitrate_kbps),
             file.file.source_audio.as_ref().map(|audio| audio.format.channels),
             file.file.file_name,
-            file.file.dir_prefix,
             columns.role,
             columns.document_kind,
             columns.sheet_binding,
