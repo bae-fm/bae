@@ -58,6 +58,8 @@ struct FindOnlineAutomaticSection: View {
 
     var body: some View {
         switch area {
+        case .unread:
+            EmptyView()
         case .notStarted:
             FindOnlineEmptyZone {
                 if configStore.config.hasSourceToSearch {
@@ -186,7 +188,7 @@ struct FindOnlineAutomaticSection: View {
             }
         case .awaitingCatalog:
             FindOnlineEmptyZone { keepOwnDraft }
-        case .notStarted, .queued, .noSignals, .error:
+        case .notStarted, .queued, .noSignals, .error, .unread:
             EmptyView()
         }
     }
@@ -240,7 +242,7 @@ struct FindOnlineAutomaticSection: View {
         case .groups, .awaitingCatalog, .nothingFound:
             state.needsYou?.sentence
         case .identifying, .failureLines, .notStarted,
-            .queued, .noSignals, .error:
+            .queued, .noSignals, .error, .unread:
             nil
         }
     }

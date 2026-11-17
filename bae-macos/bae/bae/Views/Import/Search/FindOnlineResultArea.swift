@@ -28,9 +28,14 @@ enum FindOnlineResultArea: Equatable {
     case notStarted
     /// Waiting on the identification queue for its run.
     case queued
+    /// Core's runtime read has not answered yet, so the pane does not know
+    /// what identification is doing: the area draws nothing.
+    case unread
 
-    init(identifyState: IdentifyState) {
+    init(identifyState: IdentifyState?) {
         switch identifyState {
+        case nil:
+            self = .unread
         case .idle:
             self = .notStarted
         case .queued:

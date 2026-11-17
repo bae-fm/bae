@@ -17,10 +17,11 @@ enum FindOnlineSectionGlyph: Equatable {
     /// Nothing to run.
     case nothing
 
-    /// What identification has to say about itself.
-    init(identifyState: IdentifyState) {
+    /// What identification has to say about itself; nothing until core's
+    /// runtime read answers.
+    init(identifyState: IdentifyState?) {
         switch identifyState {
-        case .idle:
+        case .idle, nil:
             self = .none
         case .queued:
             self = .queued

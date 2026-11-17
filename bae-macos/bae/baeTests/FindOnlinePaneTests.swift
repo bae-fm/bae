@@ -392,6 +392,10 @@ struct FindOnlineSectionGlyphTests {
 struct FindOnlineResultAreaTests {
     @Test("each identify state picks its own area")
     func eachStatePicksItsArea() {
+        // Until core's runtime read answers, the pane does not claim that
+        // nothing has run.
+        #expect(FindOnlineResultArea(identifyState: nil) == .unread)
+        #expect(FindOnlineSectionGlyph(identifyState: nil) == .none)
         #expect(FindOnlineResultArea(identifyState: .idle) == .notStarted)
         #expect(FindOnlineResultArea(identifyState: .queued) == .queued)
         #expect(

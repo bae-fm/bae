@@ -5,7 +5,9 @@ import BaeKit
 /// (search bindings) and the actions stay separate; this is the read-only
 /// display state.
 struct ImportSearchState {
-    let identifyState: IdentifyState
+    /// What identification shows for the candidate, as core's runtime read
+    /// says; `nil` until that read answers.
+    let identifyState: IdentifyState?
     let error: String?
     /// The typed search submitted for this candidate, as its providers land.
     /// `nil` before one is submitted and after it is cleared.
@@ -24,7 +26,7 @@ struct ImportSearchState {
 
     /// The run as its ledger, while there is one to lay out.
     var run: BridgeIdentifyRun? {
-        identifyState.run
+        identifyState?.run
     }
 
     /// The album cards identification is offering, then the cards all of whose
@@ -35,14 +37,14 @@ struct ImportSearchState {
         case .found(_, let groups, _, _, _, _, _): groups
         case .failed(_, _, let groups, _, _, _): groups
         case .triangulating(_, let groups, _, _): groups
-        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: []
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error, nil: []
         }
     }
 
     /// How many rows the signals' agreement left out of the offered ones —
     /// what the AUTOMATIC section's disclosure counts.
     var narrowedOutCount: UInt32 {
-        identifyState.narrowedOutCount
+        identifyState?.narrowedOutCount ?? 0
     }
 
     /// What the candidate's own text agrees with about each offered pressing,
@@ -52,20 +54,20 @@ struct ImportSearchState {
         case .found(_, _, _, let agreements, _, _, _): agreements
         case .failed(_, _, _, let agreements, _, _): agreements
         case .triangulating(_, _, let agreements, _): agreements
-        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error, nil: [:]
         }
     }
 
     /// Whether the offered rows are several pressings of one album, which
     /// the folder can be linked to with its pressing unknown.
     var offersSharedAlbum: Bool {
-        identifyState.offersSharedAlbum
+        identifyState?.offersSharedAlbum ?? false
     }
 
     /// The check against the folder the found release failed: why nothing
     /// was picked.
     var folderCheck: BridgeFolderCheck? {
-        identifyState.folderCheck
+        identifyState?.folderCheck
     }
 
     /// The automatic lookups that failed where no cell of the band shows
