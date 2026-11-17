@@ -165,7 +165,7 @@ pub struct ReleaseEditSeed {
 /// A library release's edit session as its editor shows it now: the form
 /// with each change the person made in it, the release's cover as it is now,
 /// the tracks beside the form, the album a save files the release under,
-/// what the library holds for each artist credit the form carries, whether a
+/// how the form's album artists stand to the library, whether a
 /// save would write anything the session did not open on, and why the form
 /// can't be saved, when it can't.
 #[cfg(desktop)]
@@ -183,7 +183,8 @@ pub struct ReleaseEditDraft {
     /// release's file order; `None` when it carries none.
     pub files: Option<Vec<crate::MappingFile>>,
     pub album: DraftAlbum,
-    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
+    /// `None` when the form names no album artist.
+    pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     pub changed: bool,
     pub invalid: Option<EditValidationError>,
 }

@@ -25,26 +25,8 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeCreditResolution = bae_records::CreditResolution,
-    from_core: fn,
-    into_core: fn,
-    variants: {
-        Library { artist: (BridgeExistingArtist) },
-        New,
-        Ambiguous { artists: (each BridgeExistingArtist) },
-    },
-}
-
-mirror_struct! {
-    BridgeResolvedCredit = bae_records::ResolvedCredit,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    fields: { credit: (BridgeArtistCredit), resolution: (BridgeCreditResolution) },
-}
-
-mirror_enum! {
     BridgeArtistStanding = bae_import::ArtistStanding,
-    from_core: pub(crate) fn,
+    from_core: fn,
     variants: {
         Library,
         New,
@@ -54,7 +36,7 @@ mirror_enum! {
 
 mirror_enum! {
     BridgeArtistsStanding = bae_import::ArtistsStanding,
-    from_core: pub(crate) fn,
+    from_core: fn,
     variants: {
         Library,
         New,
@@ -62,6 +44,12 @@ mirror_enum! {
         Choose { choices },
         SomeToChoose { count },
     },
+}
+
+mirror_struct! {
+    BridgeArtistFieldStanding = bae_import::ArtistFieldStanding,
+    from_core: pub(crate) fn,
+    fields: { field: (BridgeArtistsStanding), artists: (each BridgeArtistStanding) },
 }
 
 mirror_enum! {
@@ -182,6 +170,7 @@ mirror_struct! {
     fields: {
         edit: (BridgeRawTrackEdit),
         context: (BridgeReleaseEditTrackContext),
+        artist_standing: (opt BridgeArtistFieldStanding),
     },
 }
 
@@ -222,7 +211,7 @@ impl BridgeReleaseEditDraft {
             sides,
             files,
             album,
-            artist_resolutions,
+            album_artist_standing,
             changed,
             invalid,
         } = draft;
@@ -235,10 +224,7 @@ impl BridgeReleaseEditDraft {
             }),
             files: files.map(|files| files.into_iter().map(BridgeMappingFile::from_core).collect()),
             album: BridgeDraftAlbum::from_core(album),
-            artist_resolutions: artist_resolutions
-                .into_iter()
-                .map(BridgeResolvedCredit::from_core)
-                .collect(),
+            album_artist_standing: album_artist_standing.map(BridgeArtistFieldStanding::from_core),
             changed,
             invalid: invalid.map(BridgeValidationReason::from_core),
         }

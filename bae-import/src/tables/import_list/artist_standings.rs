@@ -1,40 +1,47 @@
-//! What the library holds for each artist credit of a candidate's draft or
-//! of a release editor's session, which one statement over its credits
-//! reads.
+//! How each artist field of a candidate's draft or of a release editor's
+//! session stands to the library: the album's artists, and each track's own.
+//! One set of WITH clauses over the field's credits reads it, which the
+//! statements of the pane and the editor put in front of their own and join
+//! to the rows they read.
 //!
-//! The statement states the rule an import commits by (`bae_records`'
+//! The clauses state the rule an import commits by (`bae_records`'
 //! `artist_resolution` and `catalog_match`) as a read of the credits alone, in
 //! SQL: a credit's catalog ids name the library artist holding them, followed
-//! through merges to the smallest id and filled with the ids and sort name the
-//! other holders have; when the ids name different artists, the statement
-//! takes the artist the MusicBrainz id names; Various Artists is one artist
-//! in both catalogs; a credit no id places is the one library artist of its
-//! folded name, or ambiguous between several.
-//! `credit_resolutions_tests` runs the statement and the rule's own function
+//! through merges to the smallest id; when the ids name different artists,
+//! the clauses take the artist the MusicBrainz id names; Various Artists is
+//! one artist in both catalogs; a credit no id places is the one library
+//! artist of its folded name, or ambiguous between several. A picked artist
+//! is in the library. A field's own standing counts its artists' with GROUP
+//! BY. `artist_standings_tests` runs the clauses and the rule's own function
 //! over the same credits and libraries and requires the same answers.
 
 use super::*;
-use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
+use crate::{ArtistFieldStanding, ArtistStanding, ArtistsStanding};
+use bae_records::ExistingArtist;
 
-/// The resolution of every distinct credit that the source's statement
-/// ([`CreditSource::raw`]) selects, in the order the draft lists them: its
-/// album's credits, then each explicit track's.
+/// The WITH clauses that end in `artist_field_standing (part, track_id,
+/// standing)`: one row per artist field the source's statement
+/// ([`CreditSource::raw`]) selects a credit of, the album's in part 0 and
+/// each explicit track's in part 1 by its track id, with the field's
+/// standing as JSON ([`artist_field_standing_of_json`]).
 ///
 /// SQLite copies a WITH name's whole definition at every place that names it,
 /// and a statement holding more than `SQLITE_LIMIT_EXPR_DEPTH` (1000) cursors
 /// in all stops with "VIEWs and/or subqueries nested too deep" (as
-/// `cards_sql` explains). So the statement names each WITH name below only
-/// once, collects the artists holding a catalog id into one JSON column, and
-/// puts the four tries of a credit's ids in columns of one row.
-const CREDIT_RESOLUTIONS: &str = "
-WITH
+/// `cards_sql` explains). So the clauses name each WITH name below only
+/// once, collect the artists holding a catalog id into one JSON column, and
+/// put the four tries of a credit's ids in columns of one row; a statement
+/// that puts them in front of its own names `artist_field_standing` once,
+/// which SQLite then reads once.
+const ARTIST_STANDING_CLAUSES: &str = "
 raw AS ({raw}),
 credit AS (
     SELECT ROW_NUMBER() OVER (ORDER BY first_seen) AS idx, credited_as, name, sort_name, mb, dg,
            bae_artist_name_key(name) AS name_key
     FROM (SELECT credited_as, name, sort_name, mb, dg,
                  MIN(part * 1000000000000 + track_position * 1000000 + position) AS first_seen
-          FROM raw GROUP BY credited_as, name, sort_name, mb, dg)
+          FROM raw WHERE assignment_kind = 'credit'
+          GROUP BY credited_as, name, sort_name, mb, dg)
 ),
 -- The ids a credit is tried by: as it is (0); with the other catalog's Various
 -- Artists id beside the one it names (1); and each by its MusicBrainz id alone
@@ -136,12 +143,13 @@ placed AS (
                  CASE WHEN r.o0 = 'unmatched' AND r.o1 IS NOT NULL AND r.o1 <> 'unmatched'
                       THEN 1 ELSE 0 END AS pick
           FROM tries AS r) AS q
-)
+),
 -- A credit no id places is the library artist of its folded name: an artist
 -- goes by its own name and by each other printed name, an artist a merge
 -- absorbed by the artist it shows as, and no catalog id the credit and the
 -- artist both carry may differ.
-SELECT p.credited_as, p.name, p.sort_name, p.cmb AS mb, p.cdg AS dg,
+resolved AS (
+SELECT p.idx, p.credited_as, p.name, p.sort_name, p.cmb AS mb, p.cdg AS dg,
        CASE WHEN p.holder IS NOT NULL THEN 'library'
             ELSE CASE json_array_length(p.named)
                       WHEN 0 THEN 'new' WHEN 1 THEN 'library' ELSE 'ambiguous' END
@@ -172,9 +180,48 @@ FROM (SELECT z.*,
                 AND (a.musicbrainz_artist_id IS NULL OR z.name_mb IS NULL
                      OR a.musicbrainz_artist_id = z.name_mb)) AS named
       FROM placed AS z) AS p
-ORDER BY p.idx";
+),
+-- Each place of each field with its artist's standing: a picked artist is in
+-- the library, and a credit stands as it resolved, with the library artists
+-- it could be when it is ambiguous.
+placed_standing AS (
+    SELECT raw.part, raw.track_id, raw.position,
+           CASE WHEN raw.assignment_kind = 'picked' THEN 'library' ELSE r.kind END AS kind,
+           CASE WHEN r.kind = 'ambiguous' THEN r.artists END AS choices
+    FROM raw
+    LEFT JOIN resolved AS r
+        ON raw.assignment_kind = 'credit'
+       AND r.credited_as IS raw.credited_as AND r.name = raw.name
+       AND r.sort_name IS raw.sort_name AND r.mb IS raw.mb AND r.dg IS raw.dg
+),
+-- Each field's standing, counted over its places: one artist that could be
+-- several is a choice among them; else any such artist leaves that many to
+-- choose; else the field is new, in the library, or partly new.
+field_counts AS (
+    SELECT part, track_id, COUNT(*) AS total,
+           SUM(kind = 'ambiguous') AS to_choose, SUM(kind = 'new') AS new_count,
+           MAX(json_array_length(choices)) AS choice_count,
+           json_group_array(json_object('kind', kind, 'choices', json(choices))
+                            ORDER BY position) AS artists
+    FROM placed_standing GROUP BY part, track_id
+),
+artist_field_standing AS MATERIALIZED (
+    SELECT part, track_id,
+           json_object(
+               'kind', CASE WHEN total = 1 AND to_choose = 1 THEN 'choose'
+                            WHEN to_choose > 0 THEN 'some_to_choose'
+                            WHEN new_count = total THEN 'new'
+                            WHEN new_count = 0 THEN 'library'
+                            ELSE 'some_new' END,
+               'count', CASE WHEN total = 1 AND to_choose = 1 THEN choice_count
+                             WHEN to_choose > 0 THEN to_choose
+                             WHEN new_count = total OR new_count = 0 THEN NULL
+                             ELSE new_count END,
+               'artists', json(artists)) AS standing
+    FROM field_counts
+)";
 
-/// Whose credits a resolution statement reads: a candidate's draft, or a
+/// Whose artist fields the standing clauses read: a candidate's draft, or a
 /// release editor's session by its id.
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
@@ -183,10 +230,10 @@ pub(crate) enum CreditSource<'a> {
 }
 
 impl CreditSource<'_> {
-    /// The statement selecting each credit of the source's album artists and
-    /// explicit tracks' artists as `(part, track_position, position,
-    /// credited_as, name, sort_name, mb, dg)`: the album's in part 0, each
-    /// track's in part 1.
+    /// The statement selecting each artist of the source's album artists and
+    /// explicit tracks' artists as `(part, track_id, track_position,
+    /// position, assignment_kind, credited_as, name, sort_name, mb, dg)`: the
+    /// album's in part 0 with no track, each track's in part 1.
     fn raw(self) -> String {
         let (tables, track, owner) = match self {
             Self::Candidate(candidate) => (
@@ -199,17 +246,17 @@ impl CreditSource<'_> {
             }
         };
         format!(
-            "SELECT 0 AS part, 0 AS track_position, a.position AS position, a.credited_as, \
-                    a.name, a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
+            "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position, \
+                    a.assignment_kind, a.credited_as, a.name, a.sort_name, \
+                    a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
              FROM {album_artist} AS a \
-             WHERE a.{key} = {owner} AND a.assignment_kind = 'credit' \
+             WHERE a.{key} = {owner} \
              UNION ALL \
-             SELECT 1, t.position, a.position, a.credited_as, a.name, a.sort_name, \
-                    a.musicbrainz_artist_id, a.discogs_artist_id \
+             SELECT 1, t.track_id, t.position, a.position, a.assignment_kind, a.credited_as, \
+                    a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id \
              FROM {track_artist} AS a \
              JOIN {track} AS t ON t.{key} = a.{key} AND t.track_id = a.track_id \
-             WHERE a.{key} = {owner} AND a.assignment_kind = 'credit' \
-               AND t.artist_assignment_kind = 'explicit'",
+             WHERE a.{key} = {owner} AND t.artist_assignment_kind = 'explicit'",
             album_artist = tables.album_artist,
             track_artist = tables.track_artist,
             key = tables.key,
@@ -217,7 +264,7 @@ impl CreditSource<'_> {
     }
 
     /// What [`Self::raw`] binds, as a statement's parameters.
-    fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
+    pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match self {
             Self::Candidate(candidate) => candidate.params(),
             Self::Session(session) => vec![(":session", *session as &dyn rusqlite::ToSql)],
@@ -225,11 +272,12 @@ impl CreditSource<'_> {
     }
 }
 
-/// The statement over `source`'s credits with the ids it names: the Various
+/// The clauses over `source`'s credits with the ids they name: the Various
 /// Artists entries of both catalogs, how a try's ids agree with the ids an
 /// artist holds, and a column of the credit's row for each column of each
-/// try.
-fn statement(source: CreditSource<'_>) -> String {
+/// try. A statement puts them after its WITH and binds
+/// [`CreditSource::params`].
+pub(crate) fn artist_standing_clauses(source: CreditSource<'_>) -> String {
     // Whether no catalog id the try's credit carries differs from the one the
     // holder's columns (`dg`, `mb` prefixed by `side`) have, once filled.
     let agree = |side: &str| {
@@ -272,7 +320,7 @@ fn statement(source: CreditSource<'_>) -> String {
             alone = alone(prefix),
         )
     };
-    CREDIT_RESOLUTIONS
+    ARTIST_STANDING_CLAUSES
         .replace("{raw}", &source.raw())
         .replace("{VA_DISCOGS}", bae_records::VARIOUS_ARTISTS.discogs)
         .replace("{VA_MUSICBRAINZ}", bae_records::VARIOUS_ARTISTS.musicbrainz)
@@ -290,45 +338,90 @@ fn statement(source: CreditSource<'_>) -> String {
         )
 }
 
-/// What the library holds for each distinct artist credit of `source`, in
-/// the order its draft lists them.
-pub(crate) fn credit_resolutions_on(
+/// An expression for the standing JSON of the artist field of the track
+/// whose id `track_id` holds, in a statement that puts
+/// [`artist_standing_clauses`] after its WITH; NULL when the track takes its
+/// album's artists or has none of its own.
+pub(crate) fn track_artist_standing_sql(track_id: &str) -> String {
+    format!(
+        "(SELECT standing FROM artist_field_standing \
+          WHERE part = 1 AND track_id = {track_id})"
+    )
+}
+
+/// How the album artists of `source` stand to the library; `None` when the
+/// album has no artists.
+pub(crate) fn album_artist_standing_on(
     sql: &impl coven::SqlRead,
     source: CreditSource<'_>,
-) -> Result<Vec<ResolvedCredit>, DbError> {
-    Ok(sql.query(&statement(source), source.params().as_slice(), |row| {
-        let unreadable = |error: String| {
-            rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, error.into())
+) -> Result<Option<ArtistFieldStanding>, DbError> {
+    let json: Option<String> = sql
+        .query_row(
+            &format!(
+                "WITH {} SELECT standing FROM artist_field_standing WHERE part = 0",
+                artist_standing_clauses(source)
+            ),
+            source.params().as_slice(),
+            |row| row.get(0),
+        )
+        .optional()?;
+    json.as_deref().map(artist_field_standing_of_json).transpose()
+}
+
+/// One artist's standing as the clauses write it.
+#[derive(serde::Deserialize)]
+struct ArtistStandingJson {
+    kind: String,
+    choices: Option<Vec<ExistingArtist>>,
+}
+
+/// One field's standing as the clauses write it.
+#[derive(serde::Deserialize)]
+pub(crate) struct FieldStandingJson {
+    kind: String,
+    count: Option<u32>,
+    artists: Vec<ArtistStandingJson>,
+}
+
+impl FieldStandingJson {
+    /// The standing the clauses wrote, or what in it no clause writes.
+    pub(crate) fn standing(self) -> Result<ArtistFieldStanding, String> {
+        let field = match (self.kind.as_str(), self.count) {
+            ("library", None) => ArtistsStanding::Library,
+            ("new", None) => ArtistsStanding::New,
+            ("some_new", Some(count)) => ArtistsStanding::SomeNew { count },
+            ("choose", Some(choices)) => ArtistsStanding::Choose { choices },
+            ("some_to_choose", Some(count)) => ArtistsStanding::SomeToChoose { count },
+            (kind, count) => return Err(format!("a field standing {kind} of count {count:?}")),
         };
-        let artists: Vec<ExistingArtist> = match row.get::<_, Option<String>>("artists")? {
-            Some(json) => {
-                serde_json::from_str(&json).map_err(|error| unreadable(error.to_string()))?
-            }
-            None => Vec::new(),
-        };
-        let resolution = match (row.get::<_, String>("kind")?.as_str(), artists.len()) {
-            ("new", 0) => CreditResolution::New,
-            ("library", 1) => CreditResolution::Library {
-                artist: artists.into_iter().next().expect("one artist"),
-            },
-            ("ambiguous", count) if count > 1 => CreditResolution::Ambiguous { artists },
-            (kind, count) => {
-                return Err(unreadable(format!("a {kind} credit resolution with {count} artists")))
-            }
-        };
-        Ok(ResolvedCredit {
-            credit: bae_catalogs::credits::ArtistCredit {
-                credited_as: row.get("credited_as")?,
-                name: row.get("name")?,
-                sort_name: row.get("sort_name")?,
-                musicbrainz_artist_id: row.get("mb")?,
-                discogs_artist_id: row.get("dg")?,
-            },
-            resolution,
-        })
-    })?)
+        let artists = self
+            .artists
+            .into_iter()
+            .map(|artist| match (artist.kind.as_str(), artist.choices) {
+                ("library", None) => Ok(ArtistStanding::Library),
+                ("new", None) => Ok(ArtistStanding::New),
+                ("ambiguous", Some(choices)) => Ok(ArtistStanding::Choose { choices }),
+                (kind, choices) => Err(format!(
+                    "an artist standing {kind} {} choices",
+                    if choices.is_some() { "with" } else { "without" }
+                )),
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(ArtistFieldStanding { field, artists })
+    }
+}
+
+/// The field standing the clauses wrote as `json`.
+pub(crate) fn artist_field_standing_of_json(json: &str) -> Result<ArtistFieldStanding, DbError> {
+    let stated: FieldStandingJson =
+        serde_json::from_str(json).map_err(|source| DbError::UnreadableJson {
+            what: "an artist field's standing".to_string(),
+            json: json.to_string(),
+            source,
+        })?;
+    stated.standing().map_err(|stated| DbError::unreadable("an artist field's standing", stated))
 }
 
 #[cfg(test)]
-#[path = "credit_resolutions_tests.rs"]
+#[path = "artist_standings_tests.rs"]
 mod tests;

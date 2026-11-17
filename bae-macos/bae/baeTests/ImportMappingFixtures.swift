@@ -80,7 +80,8 @@ extension MappingFixtures {
             ),
             position: "\(index)",
             length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
     }
 
@@ -114,7 +115,8 @@ extension MappingFixtures {
                                 ),
                                 position: "13",
                                 length: bridgeLengthClock(ms: UInt64(213_000)),
-                                listedLength: nil
+                                listedLength: nil,
+                                artistStanding: nil
                             )
                         ]
                 )
@@ -192,7 +194,8 @@ extension MappingFixtures {
                         ),
                         position: "1",
                         length: bridgeLengthClock(ms: 2_400_000),
-                        listedLength: nil
+                        listedLength: nil,
+                        artistStanding: nil
                     )
                 ]
             )
@@ -259,7 +262,8 @@ extension MappingFixtures {
             ),
             position: "\(index + 1)",
             length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
     }
 
@@ -309,7 +313,8 @@ extension MappingFixtures {
                             length: bridgeLengthClock(
                                 ms: UInt64(200_000 + index * 1000)
                             ),
-                            listedLength: nil
+                            listedLength: nil,
+                            artistStanding: nil
                         )
                     }
             )
@@ -402,7 +407,7 @@ extension MappingFixtures {
                     pickedLibraryStatus: nil,
                     album: .new,
                     metadataDraft: edit,
-                    artistResolutions: [],
+                    albumArtistStanding: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
                     releaseLink: releaseLink,

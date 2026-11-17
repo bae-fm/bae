@@ -7,8 +7,8 @@ import Testing
 
 @Suite("Artist assignments field")
 struct ArtistAssignmentsFieldTests {
-    /// The closed field badges a picked library artist and a new one
-    /// differently, from the summary it draws.
+    /// The closed field badges a library artist and a new one differently,
+    /// from the standing core's read gives the field.
     @MainActor
     @Test("library and new artists remain visibly distinct")
     func assignmentIdentityIsVisible() throws {
@@ -17,19 +17,18 @@ struct ArtistAssignmentsFieldTests {
             artistId: "artist-1"
         )
         let credited = PreviewData.artistCredit("Artist Name")
-        let resolutions = [PreviewData.resolvedCredit("Artist Name", .new)]
 
         let linked = try #require(
             ArtistAssignmentsSummary(
                 assignments: [picked],
-                resolutions: resolutions
+                standing: .library
             )?
             .identityLabel
         )
         let new = try #require(
             ArtistAssignmentsSummary(
                 assignments: [credited],
-                resolutions: resolutions
+                standing: .new
             )?
             .identityLabel
         )
@@ -84,6 +83,7 @@ struct ArtistAssignmentsFieldTests {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: values,
+                albumArtistStanding: nil,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },

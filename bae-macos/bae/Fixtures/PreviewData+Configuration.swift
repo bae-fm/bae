@@ -107,7 +107,8 @@ extension PreviewData {
                                             name: "Track \(index + 1).flac",
                                             layout: .file
                                         )
-                                    )
+                                    ),
+                                    artistStanding: nil
                                 )
                             )
                         }
@@ -121,7 +122,7 @@ extension PreviewData {
                     artistLine: .named("Preview Artist")
                 )
             ),
-            artistResolutions: [],
+            albumArtistStanding: nil,
             changed: false,
             invalid: nil
         )

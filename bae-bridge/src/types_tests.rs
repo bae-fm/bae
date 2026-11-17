@@ -515,6 +515,7 @@ mod conversion_roundtrip {
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),
                             },
+                            artist_standing: None,
                         },
                     )],
                 }]),
@@ -526,7 +527,7 @@ mod conversion_roundtrip {
                         artist_line: bae_types::credits::CreditLine::of_name("Album Artist"),
                     },
                 },
-                artist_resolutions: Vec::new(),
+                album_artist_standing: None,
                 changed: true,
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });

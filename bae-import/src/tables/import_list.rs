@@ -21,8 +21,11 @@
 //! `follows_library`).
 
 mod actions;
-mod credit_resolutions;
-pub(crate) use credit_resolutions::{credit_resolutions_on, CreditSource};
+mod artist_standings;
+pub(crate) use artist_standings::{
+    album_artist_standing_on, artist_field_standing_of_json, artist_standing_clauses,
+    track_artist_standing_sql, CreditSource, FieldStandingJson,
+};
 mod folder_images;
 mod follows_candidates;
 mod follows_groupings;

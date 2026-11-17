@@ -171,7 +171,8 @@ struct ImportMappingTracksLayoutTests {
             track: pairedMapping.track,
             position: "1",
             length: bridgeLengthClock(ms: 180_000),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
         let size = NSSize(
             width: ReleaseMetadataTrackColumns.idealTableWidth,
@@ -204,7 +205,8 @@ struct ImportMappingTracksLayoutTests {
             track: pairedMapping.track,
             position: "1",
             length: bridgeLengthClock(ms: 180_000),
-            listedLength: bridgeLengthClock(ms: 210_000)
+            listedLength: bridgeLengthClock(ms: 210_000),
+            artistStanding: nil
         )
 
         #expect(DurationClock.label(mapping.length) == "3:00")
@@ -379,7 +381,8 @@ extension ImportMappingTracksLayoutTests {
             ),
             position: "1",
             length: bridgeLengthClock(ms: 180_000),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
     }
 
@@ -452,7 +455,8 @@ extension ImportMappingTracksLayoutTests {
             ),
             position: String(number),
             length: bridgeLengthClock(ms: 180_000),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
     }
 

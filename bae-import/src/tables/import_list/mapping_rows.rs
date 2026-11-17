@@ -22,12 +22,15 @@ use bae_types::audio_format::AudioFormat;
 
 /// The mapping table as one JSON document, for the release the scan stores
 /// at the key the statement binds as `:key`, over the draft stored under its
-/// content hash. Each row carries its draft track whole (`track_json_sql`),
-/// so the rows need no join to another read's draft.
-fn mapping_sql() -> String {
+/// content hash. Each row carries its draft track whole (`track_json_sql`)
+/// and how the track's own artists stand to the library
+/// (`artist_standing_clauses`), so the rows need no join to another read's
+/// draft. `key` is the key the statement binds.
+fn mapping_sql(key: &crate::CandidateKey) -> String {
     format!(
         "
 WITH RECURSIVE
+{standing_clauses},
 candidate AS (
     SELECT watched_folder_path, path, content_hash FROM scan_candidate WHERE path = :key LIMIT 1
 ),
@@ -53,7 +56,7 @@ mediums AS (
     FROM import_candidate_medium AS m WHERE m.content_hash = (SELECT content_hash FROM candidate)
 ),
 rows AS (
-    SELECT t.position, t.title,
+    SELECT t.position, t.title, t.track_id,
            (SELECT {track} FROM import_candidate_track AS track
             WHERE track.content_hash = t.content_hash AND track.track_id = t.track_id)
                AS track_json,
@@ -187,6 +190,7 @@ runs AS (
                'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
                'rows', json_group_array(json_object(
                    'track', json(track_json), 'matches', unit_matches,
+                   'artist_standing', json({track_standing}),
                    'position', position_text,
                    'listed_ms', listed_ms,
                    'kind', file_kind, 'audio', json(audio), 'unit_ms', unit_ms,
@@ -227,6 +231,10 @@ SELECT json_object(
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
               WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key))",
         track = crate::tables::import_state::track_json_sql(),
+        standing_clauses = super::artist_standing_clauses(super::CreditSource::Candidate(
+            crate::tables::import_state::OneCandidate::Scanned(key)
+        )),
+        track_standing = super::track_artist_standing_sql("n.track_id"),
     )
 }
 
@@ -267,6 +275,9 @@ impl AudioJson {
 struct RowJson {
     /// The draft track the row maps.
     track: crate::tables::import_state::StoredTrack,
+    /// How the track's own artists stand to the library, as the standing
+    /// clauses wrote it; `None` when it has none of its own.
+    artist_standing: Option<super::FieldStandingJson>,
     #[serde(deserialize_with = "flag")]
     matches: bool,
     position: String,
@@ -378,7 +389,7 @@ pub(super) fn load_mapping_rows_on(
     key: &crate::CandidateKey,
 ) -> Result<MappingRows, DbError> {
     let document: String =
-        sql.query_row(&mapping_sql(), named_params! { ":key": key }, |row| row.get(0))?;
+        sql.query_row(&mapping_sql(key), named_params! { ":key": key }, |row| row.get(0))?;
     Ok(MappingRows { document })
 }
 
@@ -612,12 +623,18 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             )))
         }
     };
+    let artist_standing =
+        row.artist_standing
+            .map(super::FieldStandingJson::standing)
+            .transpose()
+            .map_err(|stated| internal(format!("a track's artist standing: {stated}")))?;
     Ok(TrackMapping {
         source,
         track: track.edit.as_edit(),
         position: row.position,
         length_ms,
         listed_length_ms: row.listed_ms,
+        artist_standing,
     })
 }
 

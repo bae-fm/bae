@@ -109,6 +109,7 @@ struct InlineFieldHeightTests {
         return try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: draft.edit,
+                albumArtistStanding: draft.albumArtistStanding,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },

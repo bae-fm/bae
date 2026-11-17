@@ -327,7 +327,7 @@ pub use types::ImportCommand;
 #[cfg(desktop)]
 pub use types::ReleaseLink;
 pub use types::{
-    artists_standing, credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistStanding,
+    credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistFieldStanding, ArtistStanding,
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
     MetadataProvenance, PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit,

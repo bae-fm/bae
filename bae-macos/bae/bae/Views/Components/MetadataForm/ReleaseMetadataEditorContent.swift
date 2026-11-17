@@ -46,6 +46,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 lead()
                 ReleaseMetadataHeader(
                     values: draft.edit,
+                    albumArtistStanding: draft.albumArtistStanding,
                     writer: session.fieldWriter,
                     editingCommands: session.editingCommands,
                     artistSearch: library.artistSearch,
@@ -78,7 +79,6 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             }
         }
         .disabled(session.isBusy)
-        .environment(\.artistResolutions, draft.artistResolutions)
     }
 
     private var cover: some View {
@@ -207,6 +207,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             sourceCell(row.context, sourceIsInCaption: sourceIsInCaption)
             ReleaseMetadataTrackRow(
                 track: row.edit,
+                artistStanding: row.artistStanding,
                 length: row.context.durationClock,
                 listedLength: nil,
                 columns: columns,

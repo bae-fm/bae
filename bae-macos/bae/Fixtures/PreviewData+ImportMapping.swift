@@ -72,7 +72,8 @@ extension PreviewData {
             // Track 4's release lists a longer length than its audio measures.
             listedLength: index == 4
                 ? bridgeLengthClock(ms: UInt64(180_000 + index * 15000 + 21000))
-                : nil
+                : nil,
+            artistStanding: nil
         )
     }
 
@@ -200,7 +201,8 @@ extension PreviewData {
                             track: moreTracksEditValues.tracks[0],
                             position: "1",
                             length: bridgeLengthClock(ms: 2_720_000),
-                            listedLength: nil
+                            listedLength: nil,
+                            artistStanding: nil
                         )
                     ])
                 ]
@@ -234,7 +236,8 @@ extension PreviewData {
             track: confirmEditValues.tracks[index],
             position: "\(index + 1)",
             length: bridgeLengthClock(ms: durationMs),
-            listedLength: nil
+            listedLength: nil,
+            artistStanding: nil
         )
     }
 
@@ -390,7 +393,7 @@ extension PreviewData {
                         pickedLibraryStatus: nil,
                         album: .new,
                         metadataDraft: edit,
-                        artistResolutions: [],
+                        albumArtistStanding: nil,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,
                         releaseLink: releaseLink,

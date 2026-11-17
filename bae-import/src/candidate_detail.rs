@@ -85,9 +85,9 @@ pub struct DraftProjection {
     pub draft_blank: bool,
     /// Whether the draft would import, as the write that stored it judged.
     pub draft_valid: bool,
-    /// What the library holds, as this read found it, for every artist credit
-    /// the draft carries.
-    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
+    /// How the draft's album artists stand to the library, as this read
+    /// found them; `None` when the draft names no album artist.
+    pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -232,7 +232,7 @@ impl ImportCandidateDetailProjection {
                     metadata_draft,
                     draft_blank,
                     draft_valid,
-                    artist_resolutions,
+                    album_artist_standing,
                     mapping,
                     cover,
                     lookup_choices,
@@ -285,7 +285,7 @@ impl ImportCandidateDetailProjection {
                         picked_library_status,
                         album,
                         metadata_draft,
-                        artist_resolutions,
+                        album_artist_standing,
                         metadata_draft_is_blank: draft_blank,
                         metadata_provenance,
                         release_link,
@@ -445,9 +445,10 @@ pub struct CandidateDraftPane {
     /// The library album an import of it files under.
     pub album: crate::DraftAlbum,
     pub metadata_draft: RawReleaseEdit,
-    /// What the library holds for every artist credit of the draft and the
-    /// mapping rows, as the pane's live read found it.
-    pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
+    /// How the draft's album artists stand to the library, as the pane's
+    /// live read found them; each mapping row carries its track's own.
+    /// `None` when the draft names no album artist.
+    pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// What the candidate is linked to in the catalogs, which Unlink clears.

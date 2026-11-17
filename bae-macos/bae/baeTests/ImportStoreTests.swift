@@ -111,7 +111,7 @@ private func detail(
                 pickedLibraryStatus: nil,
                 album: .new,
                 metadataDraft: MappingFixtures.albumEdit,
-                artistResolutions: [],
+                albumArtistStanding: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,
                 releaseLink: MappingFixtures.releaseLink,

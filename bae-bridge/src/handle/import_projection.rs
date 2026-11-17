@@ -672,7 +672,7 @@ impl crate::types::BridgeCandidateDraftPane {
             picked_library_status,
             album,
             metadata_draft,
-            artist_resolutions,
+            album_artist_standing,
             metadata_draft_is_blank,
             metadata_provenance,
             release_link,
@@ -689,10 +689,8 @@ impl crate::types::BridgeCandidateDraftPane {
                 .map(crate::types::BridgeLibraryStatus::from_core),
             album: crate::types::BridgeDraftAlbum::from_core(album),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
-            artist_resolutions: artist_resolutions
-                .into_iter()
-                .map(crate::types::BridgeResolvedCredit::from_core)
-                .collect(),
+            album_artist_standing: album_artist_standing
+                .map(crate::types::BridgeArtistFieldStanding::from_core),
             metadata_draft_is_blank,
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),

@@ -3,7 +3,7 @@
 
 use super::raw_release_edit::trim_to_option;
 use bae_catalogs::credits::{ArtistCredit, SourceCredit};
-use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
+use bae_records::ExistingArtist;
 use serde::{Deserialize, Serialize};
 
 /// One artist credited on an album or track.
@@ -120,6 +120,15 @@ pub enum ArtistStanding {
     Choose { choices: Vec<ExistingArtist> },
 }
 
+/// How one artist field (an album's artists, or a track's own) stands to the
+/// library, as the read that returns the field's rows finds it: the field's
+/// badge, and each artist's, in the field's order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtistFieldStanding {
+    pub field: ArtistsStanding,
+    pub artists: Vec<ArtistStanding>,
+}
+
 /// How a whole artist field — an album's artists, or a track's — stands to
 /// the library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,24 +176,6 @@ impl ArtistAssignment {
             Self::Picked { credit_name, .. } => credit_name.clone(),
             Self::Credit { credit } => Some(bae_records::credits::CreditName::of(credit.printed())),
         }
-    }
-
-    /// How this artist stands to the library, read from `resolutions`: a
-    /// picked artist is in it; a credit stands as it resolved. `None` for a
-    /// credit `resolutions` has no answer for.
-    pub fn standing(&self, resolutions: &[ResolvedCredit]) -> Option<ArtistStanding> {
-        let credit = match self {
-            Self::Picked { .. } => return Some(ArtistStanding::Library),
-            Self::Credit { credit } => credit,
-        };
-        let resolved = resolutions.iter().find(|resolved| resolved.credit == *credit)?;
-        Some(match &resolved.resolution {
-            CreditResolution::Library { .. } => ArtistStanding::Library,
-            CreditResolution::New => ArtistStanding::New,
-            CreditResolution::Ambiguous { artists } => {
-                ArtistStanding::Choose { choices: artists.clone() }
-            }
-        })
     }
 
     /// The artist row this assignment stands for in a write: a picked library
@@ -270,37 +261,3 @@ impl ArtistAssignment {
         }
     }
 }
-
-/// How the artist field holding `assignments` stands to the library, read
-/// from `resolutions`. `None` for an empty field, or one with a credit
-/// `resolutions` has no answer for.
-pub fn artists_standing(
-    assignments: &[ArtistAssignment],
-    resolutions: &[ResolvedCredit],
-) -> Option<ArtistsStanding> {
-    let standings = assignments
-        .iter()
-        .map(|assignment| assignment.standing(resolutions))
-        .collect::<Option<Vec<_>>>()?;
-    let count = |wanted: fn(&ArtistStanding) -> bool| {
-        u32::try_from(standings.iter().filter(|standing| wanted(standing)).count())
-            .expect("an artist field holds fewer than 2^32 artists")
-    };
-    let to_choose = count(|standing| matches!(standing, ArtistStanding::Choose { .. }));
-    let new = count(|standing| matches!(standing, ArtistStanding::New));
-    Some(match standings.as_slice() {
-        [] => return None,
-        [ArtistStanding::Choose { choices }] => ArtistsStanding::Choose {
-            choices: u32::try_from(choices.len())
-                .expect("a name is shared by fewer than 2^32 artists"),
-        },
-        _ if to_choose > 0 => ArtistsStanding::SomeToChoose { count: to_choose },
-        all if new as usize == all.len() => ArtistsStanding::New,
-        _ if new == 0 => ArtistsStanding::Library,
-        _ => ArtistsStanding::SomeNew { count: new },
-    })
-}
-
-#[cfg(test)]
-#[path = "artist_assignment_tests.rs"]
-mod tests;

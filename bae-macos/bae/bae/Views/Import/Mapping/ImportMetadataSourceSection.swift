@@ -56,6 +56,7 @@ struct ImportMetadataSourceSection: View {
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
+                albumArtistStanding: candidate.draft?.albumArtistStanding,
                 records: candidate.records,
                 releaseLink: candidate.releaseLink,
                 editActions: editActions,

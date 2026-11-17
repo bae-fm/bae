@@ -197,21 +197,17 @@ async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
         .await
         .unwrap();
     let draft = manager.subscribe_release_edit_draft(&session);
-    let stands = |resolution: fn(&bae_records::CreditResolution) -> bool| {
+    let stands = |wanted: bae_import::ArtistStanding| {
         move |draft: &Option<bae_import::ReleaseEditDraft>| {
             draft.as_ref().is_some_and(|draft| {
-                draft.artist_resolutions.iter().any(|resolved| {
-                    resolved.credit.name == "Newcomer" && resolution(&resolved.resolution)
-                })
+                draft
+                    .album_artist_standing
+                    .as_ref()
+                    .is_some_and(|standing| standing.artists == std::slice::from_ref(&wanted))
             })
         }
     };
-    draft_until(
-        &draft,
-        "the credit as new",
-        stands(|resolution| matches!(resolution, bae_records::CreditResolution::New)),
-    )
-    .await;
+    draft_until(&draft, "the credit as new", stands(bae_import::ArtistStanding::New)).await;
 
     manager
         .records
@@ -229,7 +225,7 @@ async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
     draft_until(
         &draft,
         "the credit as the library's artist",
-        stands(|resolution| matches!(resolution, bae_records::CreditResolution::Library { .. })),
+        stands(bae_import::ArtistStanding::Library),
     )
     .await;
 }

@@ -106,6 +106,10 @@ pub struct TrackMapping {
     /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from the
     /// measured one.
     pub listed_length_ms: Option<u64>,
+    /// How the track's own artists stand to the library, as the read that
+    /// returned the row found them; `None` when the track takes its album's
+    /// artists or names none.
+    pub artist_standing: Option<crate::ArtistFieldStanding>,
 }
 
 /// The left half of a row: what the folder offers for it.

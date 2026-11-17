@@ -271,10 +271,10 @@ pub struct BridgeCandidateDraftPane {
     pub album: BridgeDraftAlbum,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: BridgeRawReleaseEdit,
-    /// What the library holds for every artist credit of the draft and the
-    /// mapping rows, as the pane's live read found it. Rendered through
-    /// `bridge_artist_standing` / `bridge_artists_standing`.
-    pub artist_resolutions: Vec<crate::types::BridgeResolvedCredit>,
+    /// How the draft's album artists stand to the library, as the pane's
+    /// live read found them; each mapping row carries its track's own.
+    /// `None` when the draft names no album artist.
+    pub album_artist_standing: Option<crate::types::BridgeArtistFieldStanding>,
     /// Whether the draft contains no authored or sourced metadata.
     pub metadata_draft_is_blank: bool,
     /// Where the current draft began, absent for direct entry and after clear.

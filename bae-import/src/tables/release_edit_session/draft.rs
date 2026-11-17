@@ -87,8 +87,8 @@ fn cover_version_on(sql: &impl coven::SqlRead, session: i64) -> Result<Option<St
     )?)
 }
 
-/// The rows bae reads a session's draft from: its rows, what the library
-/// holds for each credit its form carries, the album a save files it under,
+/// The rows bae reads a session's draft from: its rows, how its form's album
+/// artists stand to the library, the album a save files it under,
 /// its release's cover, its release's tracks with their audio, on the
 /// mediums that the catalog the person applied in the session gives them or
 /// else on the release's own, each with its form row, whether the release has tracks,
@@ -96,7 +96,7 @@ fn cover_version_on(sql: &impl coven::SqlRead, session: i64) -> Result<Option<St
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseEditDraftRows {
     session: StoredReleaseEdit,
-    artist_resolutions: Vec<bae_records::ResolvedCredit>,
+    album_artist_standing: Option<crate::ArtistFieldStanding>,
     album: DraftAlbum,
     cover_version: Option<String>,
     tracks: Vec<DraftTrackRow>,
@@ -105,12 +105,15 @@ pub(crate) struct ReleaseEditDraftRows {
 }
 
 /// One track of a session's draft as its statement returns it: what the
-/// library holds about the track, and the form row that edits it as JSON,
-/// `None` when the form holds no row for the track.
+/// library holds about the track, the form row that edits it as JSON (`None`
+/// when the form holds no row for the track), and how the form row's own
+/// artists stand to the library as JSON (`None` when it has none of its
+/// own).
 #[derive(Debug, Clone, PartialEq)]
 struct DraftTrackRow {
     track: bae_records::DbReleaseEditTrack,
     form: Option<String>,
+    artist_standing: Option<String>,
 }
 
 /// The session's release, as an SQL expression over the parameter
@@ -145,7 +148,7 @@ pub(crate) fn release_edit_draft_rows_on(
     );
     Ok(Some(ReleaseEditDraftRows {
         session: stored,
-        artist_resolutions: credit_resolutions_on(sql, CreditSource::Session(&session))?,
+        album_artist_standing: album_artist_standing_on(sql, CreditSource::Session(&session))?,
         album: release_edit_album_on(sql, session)?,
         cover_version: cover_version_on(sql, session)?,
         tracks: draft_tracks_on(
@@ -168,7 +171,7 @@ pub(crate) fn release_edit_draft_rows_on(
 
 /// The tracks of the session `session`'s release in release order, on the
 /// mediums `source` names for them, each with the row of the session's form
-/// that edits it.
+/// that edits it and how that row's own artists stand to the library.
 fn draft_tracks_on(
     sql: &impl coven::SqlRead,
     source: bae_records::records::MediumsSource<'_>,
@@ -176,11 +179,15 @@ fn draft_tracks_on(
 ) -> Result<Vec<DraftTrackRow>, DbError> {
     Ok(sql.query(
         &format!(
-            "SELECT library.*, \
+            "WITH {standing_clauses} \
+             SELECT library.*, \
                     (SELECT {form} FROM release_edit_track t \
-                     WHERE t.session = :session AND t.track_id = library.id) AS form \
+                     WHERE t.session = :session AND t.track_id = library.id) AS form, \
+                    {standing} AS artist_standing \
              FROM ({tracks}) AS library ORDER BY library.position",
+            standing_clauses = artist_standing_clauses(CreditSource::Session(&session)),
             form = form_track_json_sql(),
+            standing = track_artist_standing_sql("library.id"),
             tracks = bae_records::records::release_edit_tracks_sql(SESSION_RELEASE, source),
         ),
         named_params! { ":session": session },
@@ -188,6 +195,7 @@ fn draft_tracks_on(
             Ok(DraftTrackRow {
                 track: bae_records::records::release_edit_track_of_row(row)?,
                 form: row.get("form")?,
+                artist_standing: row.get("artist_standing")?,
             })
         },
     )?)
@@ -208,6 +216,11 @@ impl DraftTrackRow {
         Ok(crate::ReleaseEditTrackRow {
             edit: stored.form_row()?,
             context: crate::ReleaseEditTrackContext::of_track(self.track).map_err(unreadable)?,
+            artist_standing: self
+                .artist_standing
+                .as_deref()
+                .map(artist_field_standing_of_json)
+                .transpose()?,
         })
     }
 }
@@ -218,8 +231,15 @@ impl ReleaseEditDraftRows {
     /// save would write anything the session did not open on, and why the
     /// editor can't save the form, when it can't.
     pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {
-        let Self { session, artist_resolutions, album, cover_version, tracks, has_tracks, files } =
-            self;
+        let Self {
+            session,
+            album_artist_standing,
+            album,
+            cover_version,
+            tracks,
+            has_tracks,
+            files,
+        } = self;
         let StoredReleaseEdit { release_id, opened, form, applied, album_pick } = session;
         let changed = form != opened.edit || applied.is_some() || album_pick != AlbumPick::Records;
         let unreadable = |error: crate::ReleaseEditLoadError| {
@@ -239,7 +259,7 @@ impl ReleaseEditDraftRows {
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),
             album,
-            artist_resolutions,
+            album_artist_standing,
             changed,
             invalid,
         })

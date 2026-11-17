@@ -5,7 +5,7 @@ import Testing
 @testable import bae
 
 /// How a closed artist field summarizes its artists: the names, and the badge
-/// core's reading of the credits gives the whole field.
+/// core's read gives the whole field.
 @Suite("Artist assignments summary")
 struct ArtistAssignmentsSummaryTests {
     @Test("one library artist reads as its own name and badge")
@@ -18,35 +18,11 @@ struct ArtistAssignmentsSummaryTests {
                         artistId: "artist-1"
                     )
                 ],
-                resolutions: []
+                standing: .library
             )
         )
 
         #expect(summary.names == "Artist Name")
-        #expect(summary.identityLabel == "Library")
-    }
-
-    @Test("a credit the library holds reads as a library artist")
-    func creditInLibrarySummary() throws {
-        let library = BridgeExistingArtist(
-            artistId: "artist-1",
-            name: "Artist Name",
-            sortName: nil,
-            musicbrainzArtistId: nil,
-            discogsArtistId: nil
-        )
-        let summary = try #require(
-            ArtistAssignmentsSummary(
-                assignments: [PreviewData.artistCredit("Artist Name")],
-                resolutions: [
-                    PreviewData.resolvedCredit(
-                        "Artist Name",
-                        .library(artist: library)
-                    )
-                ]
-            )
-        )
-
         #expect(summary.identityLabel == "Library")
     }
 
@@ -55,9 +31,7 @@ struct ArtistAssignmentsSummaryTests {
         let summary = try #require(
             ArtistAssignmentsSummary(
                 assignments: [PreviewData.artistCredit("New Artist Name")],
-                resolutions: [
-                    PreviewData.resolvedCredit("New Artist Name", .new)
-                ]
+                standing: .new
             )
         )
 
@@ -67,37 +41,22 @@ struct ArtistAssignmentsSummaryTests {
 
     @Test("a credit several library artists could be counts them")
     func ambiguousCreditSummary() throws {
-        let artists = ["artist-1", "artist-2"]
-            .map {
-                BridgeExistingArtist(
-                    artistId: $0,
-                    name: "Artist Name",
-                    sortName: nil,
-                    musicbrainzArtistId: nil,
-                    discogsArtistId: nil
-                )
-            }
         let summary = try #require(
             ArtistAssignmentsSummary(
                 assignments: [PreviewData.artistCredit("Artist Name")],
-                resolutions: [
-                    PreviewData.resolvedCredit(
-                        "Artist Name",
-                        .ambiguous(artists: artists)
-                    )
-                ]
+                standing: .choose(choices: 2)
             )
         )
 
         #expect(summary.identityLabel == "2 in library")
     }
 
-    @Test("a credit nothing has read yet carries no badge")
-    func unreadCreditSummary() throws {
+    @Test("a field core has no standing for carries no badge")
+    func unreadFieldSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
                 assignments: [PreviewData.artistCredit("Artist Name")],
-                resolutions: []
+                standing: nil
             )
         )
 
@@ -105,40 +64,35 @@ struct ArtistAssignmentsSummaryTests {
         #expect(summary.identityLabel == nil)
     }
 
-    @Test("artists all already in the library carry one Library badge")
-    func allLibraryArtistsSummary() throws {
+    @Test("several artists read as one list with one badge")
+    func severalArtistsSummary() throws {
         let names = ["First Artist", "Second Artist", "Third Artist"]
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: names.enumerated()
-                    .map { index, name in
-                        PreviewData.pickedArtist(
-                            name,
-                            artistId: "artist-\(index)"
-                        )
-                    },
-                resolutions: []
+                assignments: names.map(PreviewData.artistCredit),
+                standing: .someNew(count: 2)
             )
         )
 
         #expect(
             summary.names == "First Artist, Second Artist, and Third Artist"
         )
-        #expect(summary.identityLabel == "Library")
+        #expect(summary.identityLabel == "2 new")
     }
 
-    @Test("artists all new to the library carry one New badge")
-    func allNewArtistsSummary() throws {
-        let names = ["First Artist", "Second Artist"]
+    @Test("artists left to choose are counted")
+    func artistsToChooseSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: names.map(PreviewData.artistCredit),
-                resolutions: names.map { PreviewData.resolvedCredit($0, .new) }
+                assignments: [
+                    PreviewData.artistCredit("First Artist"),
+                    PreviewData.artistCredit("Second Artist"),
+                ],
+                standing: .someToChoose(count: 1)
             )
         )
 
-        #expect(summary.names == "First Artist and Second Artist")
-        #expect(summary.identityLabel == "New")
+        #expect(summary.identityLabel == "1 to choose")
     }
 
     @Test("a credit list prints each credit's printed name and join")
@@ -164,53 +118,15 @@ struct ArtistAssignmentsSummaryTests {
                     ),
                     PreviewData.artistCredit("Second Artist"),
                 ],
-                resolutions: [PreviewData.resolvedCredit("Second Artist", .new)]
+                standing: .someNew(count: 1)
             )
         )
 
         #expect(summary.names == "First Alias feat. Second Artist")
     }
 
-    @Test("a mixed set counts the artists new to the library")
-    func mixedArtistsSummaryCountsTheNewOnes() throws {
-        let summary = try #require(
-            ArtistAssignmentsSummary(
-                assignments: [
-                    PreviewData.pickedArtist("First Artist", artistId: "a-1"),
-                    PreviewData.artistCredit("Second Artist"),
-                    PreviewData.pickedArtist("Third Artist", artistId: "a-3"),
-                    PreviewData.artistCredit("Fourth Artist"),
-                ],
-                resolutions: [
-                    PreviewData.resolvedCredit("Second Artist", .new),
-                    PreviewData.resolvedCredit("Fourth Artist", .new),
-                ]
-            )
-        )
-
-        #expect(
-            summary.names
-                == "First Artist, Second Artist, Third Artist, and Fourth Artist"
-        )
-        #expect(summary.identityLabel == "2 new")
-    }
-}
-
-extension PreviewData {
-    /// What the library holds for the name-only credit `name`.
-    static func resolvedCredit(
-        _ name: String,
-        _ resolution: BridgeCreditResolution
-    ) -> BridgeResolvedCredit {
-        BridgeResolvedCredit(
-            credit: BridgeArtistCredit(
-                name: name,
-                sortName: nil,
-                musicbrainzArtistId: nil,
-                discogsArtistId: nil,
-                creditedAs: nil
-            ),
-            resolution: resolution
-        )
+    @Test("an empty field has no summary, so it shows its placeholder")
+    func emptyFieldHasNoSummary() {
+        #expect(ArtistAssignmentsSummary(assignments: [], standing: nil) == nil)
     }
 }

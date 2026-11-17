@@ -49,9 +49,8 @@ pub struct BridgeTrackUserEdit {
 /// One artist credited on an album or track. Mirror of
 /// `bae_import::ArtistAssignment`: a library artist the person picked,
 /// or a credit — what a source or the person's typing said, which claims
-/// nothing about the library. How a credit stands to the library is read
-/// beside the draft ([`BridgeResolvedCredit`]) and asked of core with
-/// `bridge_artist_standing` / `bridge_artists_standing`.
+/// nothing about the library. How a credit stands to the library comes with
+/// the field that holds it ([`BridgeArtistFieldStanding`]).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistAssignment {
     /// A library artist, printed by `credit_name` (one of its other printed
@@ -143,30 +142,8 @@ pub struct BridgeArtistCredit {
     pub credited_as: Option<String>,
 }
 
-/// What the library holds for one credit, as it stood when read. Mirror of
-/// `bae_records::CreditResolution`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCreditResolution {
-    /// The credit names this library artist.
-    Library { artist: BridgeExistingArtist },
-    /// No library artist is this one: committing creates it.
-    New,
-    /// Several library artists carry the name and no catalog id tells them
-    /// apart. Committing creates a new artist unless the person picks one.
-    Ambiguous { artists: Vec<BridgeExistingArtist> },
-}
-
-/// One credit and what it resolves to. Mirror of
-/// `bae_records::ResolvedCredit`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeResolvedCredit {
-    pub credit: BridgeArtistCredit,
-    pub resolution: BridgeCreditResolution,
-}
-
-/// How one assigned artist stands to the library — what its badge says.
+/// How one assigned artist stands to the library: what its badge says.
 /// Mirror of `bae_import::ArtistStanding`.
-#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistStanding {
     Library,
@@ -180,7 +157,6 @@ pub enum BridgeArtistStanding {
 
 /// How a whole artist field stands to the library. Mirror of
 /// `bae_import::ArtistsStanding`.
-#[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistsStanding {
     Library,
@@ -190,34 +166,14 @@ pub enum BridgeArtistsStanding {
     SomeToChoose { count: u32 },
 }
 
-/// How `assignment` stands to the library, as `resolutions` says: the
-/// answers the draft's read returned for its credits. `None` for a credit
-/// `resolutions` has no answer for yet.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_artist_standing(
-    assignment: BridgeArtistAssignment,
-    resolutions: Vec<BridgeResolvedCredit>,
-) -> Option<BridgeArtistStanding> {
-    let resolutions: Vec<_> =
-        resolutions.into_iter().map(BridgeResolvedCredit::into_core).collect();
-    assignment.into_core().standing(&resolutions).map(BridgeArtistStanding::from_core)
-}
-
-/// How the artist field holding `assignments` stands to the library, read
-/// from `resolutions`. `None` for an empty field, or one with a credit
-/// `resolutions` has no answer for yet.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_artists_standing(
-    assignments: Vec<BridgeArtistAssignment>,
-    resolutions: Vec<BridgeResolvedCredit>,
-) -> Option<BridgeArtistsStanding> {
-    let assignments: Vec<_> =
-        assignments.into_iter().map(BridgeArtistAssignment::into_core).collect();
-    let resolutions: Vec<_> =
-        resolutions.into_iter().map(BridgeResolvedCredit::into_core).collect();
-    bae_import::artists_standing(&assignments, &resolutions).map(BridgeArtistsStanding::from_core)
+/// How one artist field (an album's artists, or a track's own) stands to the
+/// library, as the read that returned the field found it: the field's badge,
+/// and each artist's, one per credit of the field in its order. Mirror of
+/// `bae_import::ArtistFieldStanding`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeArtistFieldStanding {
+    pub field: BridgeArtistsStanding,
+    pub artists: Vec<BridgeArtistStanding>,
 }
 
 /// The line a credit list prints: each credit's printed name, with its join,
@@ -355,6 +311,9 @@ pub struct BridgeTrackMapping {
     /// marks the same rows. The listed length marks a row and disables
     /// nothing.
     pub listed_length: Option<BridgeDurationClock>,
+    /// How the track's own artists stand to the library; `None` when the
+    /// track takes its album's artists or names none.
+    pub artist_standing: Option<BridgeArtistFieldStanding>,
 }
 
 /// The audio a track sheet describes. Mirror of bae-library's `MappingContainer`.
@@ -652,7 +611,7 @@ mirror_enum! {
 /// now, the summary of its audio, its tracks in the table's sides beside
 /// their form rows, the
 /// files no track plays from, the album a save files the release under,
-/// what the library holds for each artist credit the form carries, whether a
+/// how the form's album artists stand to the library, whether a
 /// save would write anything the session did not open on, and why the form
 /// can't be saved, when it can't. Mirrors `bae_import::ReleaseEditDraft`.
 #[cfg(desktop)]
@@ -669,7 +628,8 @@ pub struct BridgeReleaseEditDraft {
     /// `None` when it carries none.
     pub files: Option<Vec<BridgeMappingFile>>,
     pub album: BridgeDraftAlbum,
-    pub artist_resolutions: Vec<BridgeResolvedCredit>,
+    /// `None` when the form names no album artist.
+    pub album_artist_standing: Option<BridgeArtistFieldStanding>,
     pub changed: bool,
     pub invalid: Option<BridgeValidationReason>,
 }
@@ -695,12 +655,14 @@ pub struct BridgeReleaseEditTrackContext {
 }
 
 /// One row of the editor's track table: the form row that edits a track,
-/// and the library's facts about the track. Mirrors
-/// `bae_import::ReleaseEditTrackRow`.
+/// the library's facts about the track, and how the track's own artists
+/// stand to the library (`None` when it takes its album's or names none).
+/// Mirrors `bae_import::ReleaseEditTrackRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackRow {
     pub edit: BridgeRawTrackEdit,
     pub context: BridgeReleaseEditTrackContext,
+    pub artist_standing: Option<BridgeArtistFieldStanding>,
 }
 
 /// Consecutive rows of one side that the editor's table draws together.

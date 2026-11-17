@@ -5,6 +5,9 @@ import SwiftUI
 /// the source and actions.
 struct ReleaseMetadataTrackRow: View {
     let track: BridgeRawTrackEdit
+    /// How the track's own artists stand to the library, as core's read found
+    /// them; `nil` while the track takes its album's artists or names none.
+    let artistStanding: BridgeArtistFieldStanding?
     /// The length the track's audio measures, and the length its source lists
     /// when core found the two more than three seconds apart.
     let length: BridgeDurationClock
@@ -51,6 +54,7 @@ struct ReleaseMetadataTrackRow: View {
     private var artistField: some View {
         ArtistAssignmentsField(
             assignments: explicitArtists,
+            standing: artistStanding,
             placeholder: localizedCoreString("ui.import.mapping.column.artist"),
             width: .column,
             inheritsAlbumArtists: inheritsAlbumArtists,

@@ -72,6 +72,7 @@ struct ReleaseEditorTests {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: draft.edit,
+                albumArtistStanding: draft.albumArtistStanding,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
@@ -216,7 +217,8 @@ struct ReleaseEditorTests {
                                 : "Disc 1/0\(index + 1) A source track with a long filename.flac",
                             layout: layout
                         )
-                    )
+                    ),
+                    artistStanding: nil
                 )
             }
         // Core lays two tracks a sheet carves from one file out as one run,

@@ -61,6 +61,9 @@ struct ReleaseMetadataHeader<
     AlbumRow: View
 >: View {
     let values: BridgeRawReleaseEdit
+    /// How the album artists stand to the library, as core's read found
+    /// them; `nil` while the album names none.
+    let albumArtistStanding: BridgeArtistFieldStanding?
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     /// Opens the live artist search the album artist field reads while open.
@@ -92,6 +95,7 @@ struct ReleaseMetadataHeader<
                     )
                 ReleaseAlbumIdentityEditor(
                     values: values,
+                    albumArtistStanding: albumArtistStanding,
                     writer: writer,
                     editingCommands: editingCommands,
                     artistSearch: artistSearch,
@@ -112,6 +116,7 @@ struct ReleaseMetadataHeader<
 /// The album identity drawn as a heading that is editable in place.
 struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
     let values: BridgeRawReleaseEdit
+    let albumArtistStanding: BridgeArtistFieldStanding?
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     let artistSearch: ArtistSearchOpener
@@ -132,6 +137,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
             )
             ArtistAssignmentsField(
                 assignments: values.albumArtistAssignments,
+                standing: albumArtistStanding,
                 placeholder: String(localized: "Album artist"),
                 artistSearch: artistSearch,
                 onChange: { assignments in
@@ -447,14 +453,6 @@ extension BridgeCredited {
     }
 }
 
-extension EnvironmentValues {
-    // swiftui-environment-audit: optional
-    /// What the library holds for the artist credits on screen; empty (not read
-    /// yet, or the read failed) shows no badge.
-    @Entry
-    var artistResolutions: [BridgeResolvedCredit] = []
-}
-
 extension BridgeArtistStanding {
     /// The badge naming how one artist stands to the library.
     var label: String {
@@ -482,8 +480,8 @@ extension BridgeArtistsStanding {
     }
 }
 
-/// A closed artist field's text: the names as one localized list and, once
-/// core has read them, one badge for the whole set.
+/// A closed artist field's text: the names as one localized list and the
+/// badge core's read gives the whole set.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
     let identityLabel: String?
@@ -491,16 +489,11 @@ struct ArtistAssignmentsSummary: Equatable {
     /// `nil` when nothing is assigned, so the field shows its placeholder.
     init?(
         assignments: [BridgeCredited],
-        resolutions: [BridgeResolvedCredit]
+        standing: BridgeArtistsStanding?
     ) {
         guard !assignments.isEmpty else { return nil }
         names = bridgeCreditLine(credits: assignments).text
-        identityLabel =
-            bridgeArtistsStanding(
-                assignments: assignments.map(\.artist),
-                resolutions: resolutions
-            )?
-            .label
+        identityLabel = standing?.label
     }
 }
 
@@ -538,6 +531,9 @@ struct ArtistAssignmentsField: View {
     }
 
     let assignments: [BridgeCredited]
+    /// How the field's artists stand to the library, as core's read found
+    /// them; `nil` while the field names none.
+    let standing: BridgeArtistFieldStanding?
     let placeholder: String
     var width: Width = .value
     var inheritsAlbumArtists = false
@@ -548,8 +544,6 @@ struct ArtistAssignmentsField: View {
 
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(\.artistResolutions)
-    private var resolutions
     @State
     private var isPresented = false
 
@@ -570,6 +564,7 @@ struct ArtistAssignmentsField: View {
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
                 assignments: assignments,
+                standing: standing,
                 onUseAlbumArtists: onUseAlbumArtists,
                 artistSearch: artistSearch,
                 onChange: onChange,
@@ -590,7 +585,7 @@ struct ArtistAssignmentsField: View {
         }
         else if let summary = ArtistAssignmentsSummary(
             assignments: assignments,
-            resolutions: resolutions
+            standing: standing?.field
         ) {
             HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
@@ -615,14 +610,13 @@ private struct ArtistAssignmentsEditor: View {
     static let resultsHeight: CGFloat = 280
 
     let assignments: [BridgeCredited]
+    let standing: BridgeArtistFieldStanding?
     let onUseAlbumArtists: (() -> Void)?
     let artistSearch: ArtistSearchOpener
     let onChange: ([BridgeCredited]) -> Void
     /// Show a library artist's page, closing the field.
     let onViewArtist: (String) -> Void
 
-    @Environment(\.artistResolutions)
-    private var resolutions
     @State
     private var query = ""
     @State
@@ -634,13 +628,10 @@ private struct ArtistAssignmentsEditor: View {
                 Button("Album artist", action: onUseAlbumArtists)
                     .buttonStyle(.accentBorderless)
             }
-            ForEach(Array(assignments.enumerated()), id: \.offset) {
+            ForEach(Array(rows.enumerated()), id: \.offset) {
                 index,
-                assignment in
-                let standing = bridgeArtistStanding(
-                    assignment: assignment.artist,
-                    resolutions: resolutions
-                )
+                row in
+                let (assignment, standing) = row
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                     HStack(spacing: ThemeSpace.related) {
                         ArtistAssignmentLabel(
@@ -684,6 +675,13 @@ private struct ArtistAssignmentsEditor: View {
             await Task.untilCancelled()
             opened.close()
         }
+    }
+
+    /// Each assigned artist beside its badge, which core's read returns in
+    /// the field's order; no badges while the read has none.
+    private var rows: [(BridgeCredited, BridgeArtistStanding?)] {
+        guard let standing else { return assignments.map { ($0, nil) } }
+        return Array(zip(assignments, standing.artists.map { Optional($0) }))
     }
 
     /// What the search finds, each row holding the page it sits in.

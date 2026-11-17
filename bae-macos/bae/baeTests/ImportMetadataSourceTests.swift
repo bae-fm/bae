@@ -513,6 +513,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             coverContent: nil,
             hasCoverOptions: false,
             editValues: editValues,
+            albumArtistStanding: nil,
             records: [],
             releaseLink: nil,
             editActions: ReleaseFieldWriter { _, _ in },

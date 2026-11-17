@@ -155,14 +155,21 @@ mirror_enum! {
 
 impl BridgeTrackMapping {
     fn from_core(mapping: bae_import::TrackMapping) -> Self {
-        let bae_import::TrackMapping { source, track, position, length_ms, listed_length_ms } =
-            mapping;
+        let bae_import::TrackMapping {
+            source,
+            track,
+            position,
+            length_ms,
+            listed_length_ms,
+            artist_standing,
+        } = mapping;
         BridgeTrackMapping {
             source: BridgeMappingSource::from_core(source),
             track: BridgeRawTrackEdit::from_core(track),
             position,
             length: BridgeDurationClock::of_length(length_ms),
             listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
+            artist_standing: artist_standing.map(BridgeArtistFieldStanding::from_core),
         }
     }
 }

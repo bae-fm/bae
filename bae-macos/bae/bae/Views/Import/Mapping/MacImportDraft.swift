@@ -90,6 +90,9 @@ struct MacImportDraft: View {
     let hasCoverOptions: Bool
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
+    /// How the draft's album artists stand to the library, as core's read
+    /// found them; `nil` while the draft names none.
+    let albumArtistStanding: BridgeArtistFieldStanding?
     /// Every catalog that describes the release the candidate is linked to.
     /// Empty for a candidate linked to no release.
     let records: [BridgeReleaseRecord]
@@ -133,6 +136,7 @@ struct MacImportDraft: View {
             if let editValues {
                 ReleaseMetadataHeader(
                     values: editValues,
+                    albumArtistStanding: albumArtistStanding,
                     writer: editActions,
                     editingCommands: editingCommands,
                     artistSearch: library.artistSearch,

@@ -503,10 +503,16 @@ writes the credit, so nothing landing in between can make it wrong:
 A credit that matches an artist fills in that artist's missing ids and sort
 name.
 
-The import pane shows beside each credit of a draft the artist these rules
-name for it now, or that it would be new, or the several artists it leaves
-ambiguous. One SQL statement over the draft's credits reads them; a test runs
-that statement and the committing rule over the same libraries and requires
+The import pane and the release editor show beside each credit of a draft
+the artist these rules name for it now, or that it would be new, or the
+several artists it leaves ambiguous. Each artist field (the album's artists,
+or a track's own) shows one badge for all its artists: Library when every
+artist is in the library, New when every one is new, how many are new, how
+many library artists its one credit could be, or how many of its credits
+are left to choose. The statement that reads a field's rows reads its badges
+too: SQL resolves each credit by the rules above and counts each field's
+artists with GROUP BY, and a picked artist is in the library. A test runs
+that resolution and the committing rule over the same libraries and requires
 the same answers.
 
 **Edge cases.**

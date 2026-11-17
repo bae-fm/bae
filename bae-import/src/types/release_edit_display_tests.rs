@@ -36,11 +36,11 @@ fn form_row(id: &str) -> crate::RawTrackEdit {
 
 /// The sides of `tracks`, each beside a form row of its own.
 fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
-    ReleaseEditTrackSide::lay_out(
-        tracks
-            .into_iter()
-            .map(|context| ReleaseEditTrackRow { edit: form_row(&context.track_id), context }),
-    )
+    ReleaseEditTrackSide::lay_out(tracks.into_iter().map(|context| ReleaseEditTrackRow {
+        edit: form_row(&context.track_id),
+        context,
+        artist_standing: None,
+    }))
 }
 
 /// Each run as the track ids it holds, and the file a sheet run names.

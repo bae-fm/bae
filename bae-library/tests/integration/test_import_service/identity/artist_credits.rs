@@ -265,13 +265,12 @@ async fn open_tagged_pane(
     (key, pane)
 }
 
-/// What the pane's read says about the credit named `name`, waiting through
-/// its values until `accept` admits one.
-async fn next_resolution(
+/// How the pane's read says the draft's one album artist stands to the
+/// library, waiting through its values until `accept` admits one.
+async fn next_standing(
     pane: &mut PaneQuery,
-    name: &str,
-    mut accept: impl FnMut(&bae_records::CreditResolution) -> bool,
-) -> bae_records::CreditResolution {
+    mut accept: impl FnMut(&bae_import::ArtistStanding) -> bool,
+) -> bae_import::ArtistStanding {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let projection = pane
@@ -281,17 +280,14 @@ async fn next_resolution(
                 .result
                 .expect("the pane reads")
                 .expect("the candidate stays in the queue");
-            let Some(resolved) = projection
-                .draft()
-                .unwrap()
-                .artist_resolutions
-                .iter()
-                .find(|resolved| resolved.credit.name == name)
-            else {
+            let Some(standing) = projection.draft().unwrap().album_artist_standing.clone() else {
                 continue;
             };
-            if accept(&resolved.resolution) {
-                return resolved.resolution.clone();
+            let [artist] = standing.artists.as_slice() else {
+                panic!("the album credits one artist, got {standing:?}");
+            };
+            if accept(artist) {
+                return artist.clone();
             }
         }
     })
@@ -310,22 +306,12 @@ async fn an_open_pane_reads_its_credit_into_the_library_when_another_import_comm
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
     let (tagged_key, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 
-    next_resolution(&mut pane, "Artist Name", |resolution| {
-        *resolution == bae_records::CreditResolution::New
-    })
-    .await;
+    next_standing(&mut pane, |standing| *standing == bae_import::ArtistStanding::New).await;
 
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
     let catalog_artist = album_artist_id(&f, &catalog_album).await;
 
-    let resolution = next_resolution(&mut pane, "Artist Name", |resolution| {
-        matches!(resolution, bae_records::CreditResolution::Library { .. })
-    })
-    .await;
-    let bae_records::CreditResolution::Library { artist } = resolution else {
-        unreachable!("accepted only a library artist")
-    };
-    assert_eq!(artist.artist_id, catalog_artist);
+    next_standing(&mut pane, |standing| *standing == bae_import::ArtistStanding::Library).await;
 
     let import_id = f.handle.start_import(&tagged_key).await.unwrap().expect_queued();
     let mut progress_rx = f.handle.subscribe_import(import_id);
@@ -354,12 +340,12 @@ async fn a_pane_offers_the_library_artists_a_shared_name_could_be() {
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
     let (_, mut pane) = open_tagged_pane(&f, &tagged_dir).await;
 
-    let resolution = next_resolution(&mut pane, "Artist Name", |_| true).await;
+    let standing = next_standing(&mut pane, |_| true).await;
 
-    let bae_records::CreditResolution::Ambiguous { artists } = resolution else {
-        panic!("expected the credit to be ambiguous, got {resolution:?}");
+    let bae_import::ArtistStanding::Choose { choices } = standing else {
+        panic!("expected the credit to be ambiguous, got {standing:?}");
     };
-    let mut offered: Vec<_> = artists.into_iter().map(|artist| artist.artist_id).collect();
+    let mut offered: Vec<_> = choices.into_iter().map(|artist| artist.artist_id).collect();
     offered.sort();
     let mut expected = vec![first.id, second.id];
     expected.sort();
