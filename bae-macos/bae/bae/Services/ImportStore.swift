@@ -43,8 +43,8 @@ class ImportStore {
 
     /// The folders bae is scanning, each with how many folders its scan has
     /// stored, from their own subscription: each folder a scan walks raises
-    /// its count, and that change leaves the folder scans as they are.
-    /// Empty until the first delivery.
+    /// its count, and that change leaves the folder scans as they are. The
+    /// list is empty until the first delivery.
     private(set) var scanningFolders: [BridgeScanningFolder] = []
 
     /// The scan alerts this store raised whose write that marks them shown

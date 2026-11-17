@@ -31,7 +31,7 @@ fn the_upload_bar_is_the_share_of_its_batch_stored() {
     run_on_library_with_storage(async |store, originals| {
         let records = bae_records::test_fixtures::test_records(store);
         write_releases_with_files(store, originals).await;
-        assert_eq!(bars_now(store).await.uploads, empty_bar(), "nothing is queued");
+        assert_eq!(bars_now(store).await.uploads, empty_bar(), "the upload queue is empty");
 
         queue_upload(store, RELEASE_EARLY).await;
         queue_upload(store, RELEASE_LATE).await;

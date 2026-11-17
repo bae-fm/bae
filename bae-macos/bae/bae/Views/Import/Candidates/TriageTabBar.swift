@@ -20,7 +20,8 @@ struct TriageTabBar: View {
 
     private func segment(_ tab: BridgeTriageTab) -> some View {
         let isActive = activeTab == tab
-        // `nil` until the list's count arrives; each chip is empty until then.
+        // `tabCounts` is nil until the list's count arrives, and each chip
+        // stays empty until then.
         let counts = listSlot.tabCounts
         return Button {
             activeTab = tab
