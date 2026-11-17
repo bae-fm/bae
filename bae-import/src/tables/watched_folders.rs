@@ -232,15 +232,6 @@ impl ImportTables {
         self.store.read(move |sql| is_watched_on(&sql, &path)).await
     }
 
-    /// The watched folder that holds `path` inside it, not `path` itself.
-    pub async fn watched_import_folder_above(
-        &self,
-        path: &Path,
-    ) -> Result<Option<PathBuf>, DbError> {
-        let path = path.to_path_buf();
-        self.store.read(move |sql| watched_folder_among_on(&sql, path.ancestors().skip(1))).await
-    }
-
     /// The watched folders inside `path`, not `path` itself, in their order:
     /// those whose key lies in the range of paths below it.
     pub async fn watched_import_folders_below(&self, path: &Path) -> Result<Vec<PathBuf>, DbError> {

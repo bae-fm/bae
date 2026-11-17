@@ -27,20 +27,15 @@ impl ImportServiceHandle {
         self.committed(async move { this.add_watched_folder_write(path).await }).await
     }
 
-    /// Store `path` as watched and ask for it to be read. bae refuses a folder
-    /// inside a watched one before it writes anything, and a folder holding
-    /// watched folders takes them over.
+    /// Store `path` as watched and ask for it to be read. A folder holding
+    /// watched folders takes them over. The write that would watch a folder
+    /// inside a watched one refuses it and stores nothing.
     async fn add_watched_folder_write(
         &self,
         path: std::path::PathBuf,
     ) -> Result<(), crate::ImportError> {
         let path = crate::tables::watched_path::canonical_absolute_root(&path)?;
         let shown = coven::path_text(&path);
-        if let Some(watched) = self.services.tables.watched_import_folder_above(&path).await? {
-            return Err(
-                crate::tables::WatchedFolderRefusal::Overlap { folder: path, watched }.into()
-            );
-        }
         let inner: Vec<std::path::PathBuf> =
             self.services.tables.watched_import_folders_below(&path).await?;
         if !inner.is_empty() {

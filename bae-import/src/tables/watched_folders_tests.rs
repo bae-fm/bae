@@ -51,22 +51,16 @@ async fn a_folder_is_watched_only_by_its_own_key() {
     assert!(!tables.is_watched_import_folder(&host_root("/musical")).await.unwrap());
 }
 
-/// The watched folder above a folder is the one holding it, never the folder
-/// itself, and the watched folders below one are those inside it, in their
-/// order, never one beside it whose name only begins with its own.
+/// The read of the watched folders below a folder returns those inside it, in
+/// their order, and never one beside it whose name only begins with its own.
 #[tokio::test]
-async fn the_watched_folders_above_and_below_a_folder_are_read_by_path() {
+async fn the_watched_folders_below_a_folder_are_read_by_path() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     for folder in ["/music/b", "/music/a", "/musical"] {
         tables.add_watched_import_folder(&host_root(folder)).await.unwrap();
     }
 
-    assert_eq!(
-        tables.watched_import_folder_above(&host_root("/music/a/disc")).await.unwrap(),
-        Some(host_root("/music/a"))
-    );
-    assert_eq!(tables.watched_import_folder_above(&host_root("/music/a")).await.unwrap(), None);
     assert_eq!(
         tables.watched_import_folders_below(&host_root("/music")).await.unwrap(),
         [host_root("/music/b"), host_root("/music/a")]

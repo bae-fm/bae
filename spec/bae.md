@@ -1030,11 +1030,10 @@ different things about one file fails the scan.
   folders takes them over: one write stops watching them and watches the new
   folder. What is known about a folder is keyed by its path on disk, so the
   person's groupings survive. Unwatching the folder that covers a grouping
-  deletes it. bae refuses to watch a folder inside a watched one before it
-  writes anything, and the error names both folders. The write that watches a
-  folder checks again that no watched folder holds it or lies in it, and
-  refuses it when the watched folders changed while bae added it, so no two
-  watched folders ever overlap and no read checks them for it.
+  deletes it. The write that watches a folder checks that no watched folder
+  holds it or lies in it. That write refuses a folder inside a watched one and
+  stores nothing, and the error names both folders. No two watched folders
+  ever overlap, so no read checks them for it.
 - **A dismissed candidate** is skipped by path, so a later scan doesn't offer it
   again.
 
@@ -6996,7 +6995,7 @@ with one of these categories and a detail:
 | `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
 | `FilenamePatternInvalid`, `FolderPatternInvalid` | fixes the file or folder name pattern in Settings: a save named by a pattern that can't make a name wrote nothing, and the detail says why |
-| `WatchedFolderOverlap` | watches another folder: the one they asked for lies in a watched folder, or bae started watching a folder that holds it or lies in it while it added theirs, and the detail names both |
+| `WatchedFolderOverlap` | watches another folder: the one they asked for lies in a watched folder, or holds one that bae started watching while it added theirs, and the detail names both |
 | `CandidateImportInProgress`, `CandidateBeingIdentified` | waits |
 | `FilesAlreadyImported` | finds the release this device already imported from these files; they aren't imported again |
 | `AlbumGone` | picks another album or New album: the album the import files under was deleted after the import was prepared, and nothing was written |
