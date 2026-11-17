@@ -2,28 +2,14 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// The system's small progress bar for a share of bytes. The bar reads its
-/// key's latest value once per display frame while the stream sends new values for
-/// the key, with no SwiftUI update. Before the stream holds the key, the bar
-/// is empty.
-final class ShareBarNSView: NSProgressIndicator {
+/// The design system's progress track for a share of bytes. The bar reads its
+/// key's latest value once per display frame while the stream sends new values
+/// for the key, with no SwiftUI update. Before the stream holds the key, the
+/// bar is empty.
+final class ShareBarNSView: ProgressTrackNSView {
     private lazy var following = FrameFollowing<Double>(view: self) {
         [weak self] share in
-        self?.doubleValue = share ?? 0
-    }
-
-    init() {
-        super.init(frame: .zero)
-        style = .bar
-        controlSize = .small
-        isIndeterminate = false
-        minValue = 0
-        maxValue = 1
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        fatalError()
+        self?.progress = share ?? 0
     }
 
     func follow(_ share: LatestSource<Double>) {
@@ -36,17 +22,22 @@ final class ShareBarNSView: NSProgressIndicator {
 }
 
 /// SwiftUI's view of a transfer line's bar: it gives the bar its key of the
-/// stream, never a value.
+/// stream and the accent the person chose, never a value.
 struct ShareBar: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     let share: LatestSource<Double>
 
     func makeNSView(context _: Context) -> ShareBarNSView {
-        let view = ShareBarNSView()
+        let view = ShareBarNSView(progress: 0, accent: fill)
         view.follow(share)
         return view
     }
 
     func updateNSView(_ view: ShareBarNSView, context _: Context) {
+        view.accent = fill
         view.follow(share)
     }
 
@@ -54,14 +45,18 @@ struct ShareBar: NSViewRepresentable {
         view.stopFollowing()
     }
 
+    private var fill: NSColor {
+        NSColor(accent.color(in: colorScheme))
+    }
+
     func sizeThatFits(
         _ proposal: ProposedViewSize,
-        nsView: ShareBarNSView,
+        nsView _: ShareBarNSView,
         context _: Context
     ) -> CGSize? {
         CGSize(
             width: proposal.width ?? 0,
-            height: nsView.intrinsicContentSize.height
+            height: ProgressTrackNSView.trackHeight
         )
     }
 }

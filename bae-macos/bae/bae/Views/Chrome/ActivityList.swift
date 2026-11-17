@@ -267,9 +267,7 @@ private struct TransferLine: View {
                     .accessibilityLabel(title)
             }
             else {
-                ProgressView()
-                    .progressViewStyle(.linear)
-                    .controlSize(.small)
+                ProgressTrackBar(progress: nil)
                     .accessibilityLabel(title)
             }
         }
