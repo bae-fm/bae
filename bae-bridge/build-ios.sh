@@ -119,10 +119,15 @@ rm -f "$COMPLETION_STAMP"
 # bae-library again.
 run_host_cargo build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
+# Without --no-format the generator runs `swift format <file>`, which prints
+# the formatted file to stdout and leaves the file on disk as it was. The
+# generator discards that output, so formatting changed nothing. On the macOS
+# bindings it took 13 seconds.
 "$BINDGEN" generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
-    --out-dir "$SWIFT_BINDINGS_DIR/"
+    --out-dir "$SWIFT_BINDINGS_DIR/" \
+    --no-format
 
 echo "Generating localization String Catalog (Apple)..."
 run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
