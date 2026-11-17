@@ -194,13 +194,7 @@ final class ImportListSlot {
     /// How many rows each tab holds, which core sends with the list's count.
     /// The value is `nil` until core sends the count.
     var tabCounts: BridgeTriageTabCounts? {
-        guard let count = list?.count else { return nil }
-        guard case .import(_, let tabs) = count.extra else {
-            preconditionFailure(
-                "the import list's count carried \(count.extra)"
-            )
-        }
-        return tabs
+        list?.importCount?.tabs
     }
 
 }
@@ -565,12 +559,23 @@ extension PaginatedList<BridgeImportListItem> {
     /// it, as the list's count says; `nil` while they narrow nothing, or
     /// until core delivers the count.
     fileprivate var narrowed: BridgeNarrowedCount? {
+        importCount?.narrowed
+    }
+
+    /// What core sends with the import list's count beside its rows: how
+    /// many rows the filters keep, and how many rows each tab holds. The
+    /// value is `nil` until core delivers the count. Core sends an import
+    /// list's count with the import kind of extra only, so any other kind
+    /// stops the app.
+    fileprivate var importCount:
+        (narrowed: BridgeNarrowedCount?, tabs: BridgeTriageTabCounts)?
+    {
         guard let count else { return nil }
-        guard case .import(let narrowed, _) = count.extra else {
+        guard case .import(let narrowed, let tabs) = count.extra else {
             preconditionFailure(
                 "the import list's count carried \(count.extra)"
             )
         }
-        return narrowed
+        return (narrowed, tabs)
     }
 }
