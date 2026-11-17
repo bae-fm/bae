@@ -681,16 +681,6 @@ pub mod worker_moves {
 /// The download queue at the sizes the lists' window costs are measured at.
 #[cfg(any(test, feature = "test-utils"))]
 pub mod bulk {
-    /// Drop every trigger the transfers SQL creates from the closed library
-    /// file under `directory`, so a test can time a write without them.
-    pub fn drop_queue_triggers(directory: &std::path::Path) {
-        bae_store::test_fixtures::planted_damage::drop_triggers_of(
-            directory,
-            "download_queue",
-            super::SQL,
-        );
-    }
-
     use super::*;
 
     /// Queue the releases `start..end` to download, release `i` at place `i`
@@ -708,48 +698,6 @@ pub mod bulk {
             "{rows} INSERT INTO download_queue \
                     (position, release_id, created_at, file_count, total_size, state, kind) \
                  SELECT i, {release_id_sql}, i, 0, 0, 'queued', 'pin' FROM k;"
-        ))?;
-        Ok(())
-    }
-
-    /// Queues every hundredth release of `start..end`, named by
-    /// `release_id_sql`, to pin and marks every fifth of those failed, in one
-    /// SQL statement, as [`queue_downloads_on`] does.
-    pub fn queue_shaped_downloads_on(
-        sql: &CovenWrite<'_>,
-        start: u64,
-        end: u64,
-        release_id_sql: &str,
-    ) -> Result<(), DbError> {
-        let rows = bae_store::test_fixtures::window_cost::numbered(start, end);
-        sql.execute_batch(&format!(
-            "{rows} INSERT INTO download_queue \
-                    (position, release_id, created_at, file_count, total_size, state, error, kind) \
-                 SELECT i, {release_id_sql}, i, 0, 0, \
-                        CASE WHEN i % 500 = 0 THEN 'failed' ELSE 'queued' END, \
-                        CASE WHEN i % 500 = 0 THEN 'the seed failed it' END, 'pin' \
-                 FROM k WHERE i % 100 = 0;"
-        ))?;
-        Ok(())
-    }
-
-    /// Queues the releases of `start..end` numbered below `count`, named by
-    /// `release_id_sql`, to export.
-    pub fn queue_shaped_outputs_on(
-        sql: &CovenWrite<'_>,
-        start: u64,
-        end: u64,
-        count: u64,
-        release_id_sql: &str,
-    ) -> Result<(), DbError> {
-        if start >= end.min(count) {
-            return Ok(());
-        }
-        let rows = bae_store::test_fixtures::window_cost::numbered(start, end.min(count));
-        sql.execute_batch(&format!(
-            "{rows} INSERT INTO output_queue \
-                    (position, release_id, created_at, file_count, total_size, state, target_dir, kind) \
-                 SELECT i, {release_id_sql}, i, 0, 0, 'queued', CAST('/export' AS BLOB), 'export' FROM k;"
         ))?;
         Ok(())
     }

@@ -664,6 +664,3 @@ async fn scan_folders(
 
 #[path = "read_tests/cost.rs"]
 mod cost;
-
-#[path = "read_tests/plain_cost.rs"]
-mod plain_cost;

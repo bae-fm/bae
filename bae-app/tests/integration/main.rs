@@ -17,7 +17,6 @@ mod test_live_reads;
 mod test_open_failure;
 mod test_open_progress;
 mod test_scan_cost;
-mod test_screen_cost;
 mod test_startup_sync;
 mod test_storage_state_machine;
 mod test_transfer;

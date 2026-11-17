@@ -53,20 +53,6 @@ pub(super) fn settle_credit_name(
     settle_credit_name_beside(conn, artist_id, &own, credit, now)
 }
 
-/// Give `artist_id` the other printed name `name`, inside the caller's write.
-/// The function makes a [`CreditName`] of `name` and calls
-/// [`settle_credit_name`]; the fixtures that write libraries row by row use
-/// it.
-#[cfg(any(test, feature = "test-utils"))]
-pub(crate) fn add_credit_name_on(
-    conn: &CovenWrite<'_>,
-    artist_id: &str,
-    name: &str,
-    now: &str,
-) -> Result<(), DbError> {
-    settle_credit_name(conn, artist_id, Some(&CreditName::of(name)), now).map(|_| ())
-}
-
 /// [`settle_credit_name`] for an artist whose own name's key is `own`.
 fn settle_credit_name_beside(
     conn: &CovenWrite<'_>,

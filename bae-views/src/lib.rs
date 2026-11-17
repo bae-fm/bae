@@ -38,8 +38,6 @@ mod storage_browse;
 #[cfg(desktop)]
 pub mod storage_inspector;
 mod sync_activity;
-#[cfg(any(test, feature = "test-utils"))]
-pub mod trigger_families;
 mod uploads;
 
 pub use activity_bytes::{
