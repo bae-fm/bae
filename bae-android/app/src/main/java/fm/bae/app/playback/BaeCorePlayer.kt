@@ -224,7 +224,7 @@ class BaeCorePlayer(
     private var playWhenReady: Boolean = false
 
     /** The up-next tracks in play order that core sends for the session (Up Next, then the context's tracks, at
-     *  most [SESSION_UP_NEXT_LIMIT]), for the Media3 playlist. */
+     *  most [fm.bae.app.SESSION_UP_NEXT_LIMIT]), for the Media3 playlist. */
     private var entries: List<Meta> = emptyList()
 
     /** The queue's two sections, kept apart for the in-app queue. */

@@ -19,7 +19,6 @@ import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.BaeCorePlayer
 import fm.bae.app.playback.PlaybackService
-import fm.bae.app.playback.SESSION_UP_NEXT_LIMIT
 import fm.bae.app.widget.NowPlayingWidget
 import fm.bae.fastvalues.LatestFeed
 import fm.bae.fastvalues.feed
@@ -45,6 +44,10 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 
 private val logger = BaeLogger("bae.OpenLibrary")
+
+/** How many tracks the Media3 playlist lists after the current one: the Up Next tracks, then the context's tracks, in
+ *  the order core sends them for the session. */
+internal const val SESSION_UP_NEXT_LIMIT = 100
 
 /**
  * The bridge handle of one open library: every call the app makes on it, and
