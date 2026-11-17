@@ -14,7 +14,8 @@ pub enum BridgeOpenError {
     /// finishes it, and the app runs it at once.
     #[error("{error}")]
     ReplacementUnfinished { by: BridgeReplacedBy, error: BridgeError },
-    /// This device is removing the library; finishing the removal ends it.
+    /// This device is removing the library, and the app offers to finish the
+    /// removal.
     #[error("{error}")]
     DeletionUnfinished { error: BridgeError },
     /// The OS keychain refused the library's key for now, as it does while

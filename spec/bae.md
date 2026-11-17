@@ -3400,8 +3400,8 @@ library's storage until its invite ends, and the person's saved restore code
 stays. A
 library that fails to open on a Mac shows the failure joined to its row, under
 its name: **Could not open**, with **Details**; when core says Reset from
-cloud replaces what failed (the open fails as `ResetFromCloud`: the library's
-data on this Mac can't be used, such as a damaged database file or tables
+cloud replaces what failed (the open fails as `ResetFromCloud`: bae can't use
+the library's data on this Mac, such as a damaged database file or tables
 that don't match the app's, and the library has storage to load it from), it
 says "Something is wrong with this library’s data." and offers **Reset from
 cloud…**, the reset below, in place of *Retry*. Core reads whether the

@@ -135,8 +135,8 @@ struct AppDelegateTests {
         #expect(resetting == "lib-02")
     }
 
-    /// A damaged copy offers its reset under the library's row, not on a
-    /// screen of its own.
+    /// For a damaged copy, bae offers the reset under the library's row, not
+    /// on a screen of its own.
     @Test("a failed open with no recovery here lands on none")
     func otherOpenFailuresHaveNoRecovery() {
         #expect(

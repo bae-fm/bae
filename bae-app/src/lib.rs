@@ -579,8 +579,8 @@ where
     let owner =
         timing.stage(&library_id, "compose frontend owner", || compose(app_services, runtime))?;
 
-    // The durable active-library pointer names the library the user last actually
-    // landed in, so launch ordering (discovery sorts active-first) and
+    // The durable active-library pointer names the library the person last
+    // opened, so launch ordering (discovery sorts active-first) and
     // forget_library's pointer check both refer to a library that opens. bae
     // advances the pointer only after an open that finished, and writes it after
     // the frontend owner has started, never for a locked library: when the person

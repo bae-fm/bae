@@ -119,8 +119,8 @@ impl BridgeHost {
         ))
     }
 
-    /// The handle a bootstrap of a store already open built, or its failure
-    /// shipped as `app_start_failed` and returned.
+    /// The handle a bootstrap of a store already open built, or, after this
+    /// host ships `app_start_failed`, the bootstrap's failure.
     fn opened(
         &self,
         bootstrapped: Result<AppHandle, BootstrapError>,
@@ -703,8 +703,8 @@ pub fn init_app_on_fixture(
     host.open_app_on_fixture(fixture_path.into(), library_id, restore_playback, &opening)
 }
 
-/// The store a library id the app opens names; an id that names none fails
-/// the open with nothing to recover.
+/// The store that `library_id` names. When the id names no store, this
+/// returns `BridgeOpenError::Failed`, which offers the app no recovery.
 fn registered_store(library_id: &str) -> Result<coven::StoreId, BridgeOpenError> {
     crate::from_app::store(library_id).map_err(|error| BridgeOpenError::Failed { error })
 }

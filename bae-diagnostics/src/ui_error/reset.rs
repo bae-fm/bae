@@ -1,8 +1,8 @@
 //! This module decides whether resetting a library from the cloud replaces
 //! the data that caused a failure. bae-diagnostics decides this here, where
-//! it knows the failure's class. A
-//! failed open offers *Reset from cloud…* by this answer when the library
-//! also has storage (`bae_app::OpenFailure`).
+//! it knows the failure's class. When a library fails to open,
+//! `bae_app::OpenFailure` offers *Reset from cloud…* if this answer is true
+//! and the library has storage.
 
 use super::UiErrorCategory;
 
