@@ -7,8 +7,8 @@ import Foundation
 /// Releases" undoes. The folders that go in are the selected ones the list
 /// shows.
 ///
-/// The selection takes the combined release, and this reveals it. A failure
-/// leaves the selection as it was, for another attempt.
+/// ImportSelection selects the combined release, and the action reveals it.
+/// A failure leaves the selection as it was, for another attempt.
 @MainActor
 struct ImportCandidateCombineAction {
     let selection: ImportSelection

@@ -1,7 +1,10 @@
-//! A list's selection, which the surface keeps as keys: what the rows at the
-//! keys hold and offer whatever the list shows, the ones the list shows in its
-//! order, each offering what its tables and what is running for it allow, and
-//! the keys a Shift run and Select All select.
+//! Tests of the import list's selection. The surface (the app's import list
+//! screen) keeps the selection as keys. These tests check that the summary
+//! reads the rows at the keys whether or not the list shows them, that the
+//! selected rows a bulk action runs over are the ones the list shows, in its
+//! order, and that each row offers what its tables and what is running for
+//! it allow. They also check the keys that Shift-clicking a row and Select
+//! All select.
 
 use super::*;
 use crate::selection::SingleSelection;
@@ -49,9 +52,9 @@ async fn offer(
         .find(|offer| offer.action == action)
 }
 
-/// The summary reads the rows at the keys asked for, whatever the list
-/// shows: a row the list hides by a change to it is still counted, and a key
-/// whose row the tables no longer hold names nothing.
+/// The summary reads the rows at the keys asked for, whether or not the list
+/// shows them: the summary still counts a row the list hides after a change
+/// to it, and a key whose row the tables no longer hold names nothing.
 #[tokio::test]
 async fn the_summary_reads_the_rows_at_its_keys_whatever_the_list_shows() {
     let lib = five_rows().await;
@@ -396,8 +399,8 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("Loose") }));
 }
 
-/// A selected release the scan no longer holds names no row, and is
-/// counted again when the scan finds it again.
+/// A selected release the scan no longer holds names no row, and the
+/// summary counts it again when the scan finds it again.
 #[tokio::test]
 async fn a_release_gone_from_the_scan_names_no_row_until_it_is_back() {
     let lib = five_rows().await;

@@ -255,8 +255,9 @@ struct ImportListSlotTests {
         #expect(try await slot.revealFirstIdentifying() == nil)
     }
 
-    /// A view change passes the kept keys and takes out the ones the write
-    /// says leave; a fold passes them and takes out the ones it hid.
+    /// A view change sends core the selected keys and removes from the
+    /// selection the keys its write returns; a fold does the same with the
+    /// keys of the rows it hid.
     @Test("a view change and a fold take out the selected rows they hide")
     func viewChangesAndFoldsTakeOutWhatTheyHide() async throws {
         let first = candidateKey(1)

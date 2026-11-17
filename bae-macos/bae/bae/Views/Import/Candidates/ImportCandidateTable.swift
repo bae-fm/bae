@@ -10,9 +10,9 @@ import SwiftUI
 ///
 /// The screen keeps the selection as the keys of the rows the person
 /// selected, and each update sets the table's highlight from them. What a
-/// person does to the rows — clicks, Command- and Shift-clicks, arrow keys,
-/// typing a row's first letters, Select All — changes the kept keys; a Shift
-/// run and Select All take their keys from core.
+/// person does to the rows (clicks, Command- and Shift-clicks, arrow keys,
+/// typing a row's first letters, Select All) changes the kept keys. A
+/// Shift-click and Select All take their keys from core.
 struct ImportCandidateTable: NSViewRepresentable {
     let list: PaginatedList<BridgeImportListItem>
     let importStore: ImportStore

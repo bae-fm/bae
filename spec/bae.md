@@ -1167,10 +1167,11 @@ person makes to the view takes out of the selection the rows it stops showing:
 another tab, filter or search takes out each selected row the new view doesn't
 show, a fold takes out the selected rows it hides, and a row they hid comes
 back unselected when it is shown again. A row that leaves the list through a
-change to the row itself — one that starts importing under Identified, a Found
-row whose import finishes, a folder the scan no longer finds — stays selected:
-the list draws no highlight for it while it is hidden, draws it selected again
-if it comes back, and no action applies to it while it is hidden. So a selected
+change to the row itself stays selected: a row that starts importing under
+Identified, a Found row whose import finishes, or a folder the scan no longer
+finds. The list draws no highlight for it while it is hidden, draws it
+selected again if it comes back, and no action applies to it while it is
+hidden. So a selected
 Found row whose import finishes moves to Imported, but the list stays on Found,
 the row stays selected and its pane stays open, showing the release as
 imported (Imported's pane, above) with its way to open the release in the
@@ -1192,9 +1193,9 @@ the list hands out, holding it while the action runs. A broken folder offers
 no action, so selected among others it counts
 toward the selection but holds back combining it. Combining selects the release
 it makes, and keeping a release as separate releases selects the releases it
-returns. A Shift run and Select All take their keys from core, which reads
-every release the list shows from one release to another in its order, or
-every release it shows, loaded or not.
+returns. Selecting a range with Shift-click and Select All take their keys
+from core, which reads every release the list shows from one release to
+another in its order, or every release it shows, loaded or not.
 
 Another tab, filter, search or order is a view the list has not read yet:
 until the read reflecting it lands, the list shows no rows rather than the

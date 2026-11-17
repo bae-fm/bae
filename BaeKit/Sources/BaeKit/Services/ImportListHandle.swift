@@ -50,8 +50,9 @@ import Foundation
         /// Found's filter entries with how many rows each holds.
         public let filterEntries:
             @Sendable () -> PulledValues<[BridgePendingFilterEntry]>
-        /// What the rows the screen keeps selected hold and the actions the
-        /// person can run on them, read for the keys the screen sets on it.
+        /// A live query of the selected rows: what they hold and the actions
+        /// the person can run on them. The screen sets the selected keys on
+        /// the query, and the query reads the rows at those keys.
         public let selection: @Sendable () -> ImportSelectionQuery
         private let applyView:
             @Sendable (BridgeImportListView, [Data]) async throws

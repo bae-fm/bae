@@ -841,7 +841,8 @@ impl<'a> Items<'a> {
     fn numbered(&self, at: usize, part: Part) -> String {
         let order = self.part_order(part);
         let numbered = match self.run_sources() {
-            // Found runs in one part, its runs numbered in their order.
+            // Found's runs all sit in one part, and the statement numbers
+            // them in their order.
             Some(sources) => format!(
                 "SELECT r.*, row_number() OVER (ORDER BY {ordering}) - 1 AS position \
                  FROM ({run}) AS r",

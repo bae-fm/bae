@@ -30,8 +30,8 @@ extension SelectionGesture {
 /// key, read as the change it makes to the keys the screen keeps selected.
 ///
 /// The table's own selection only proposes rows by position, some of them
-/// headers or rows whose page has not landed, and this says what that
-/// proposal means for the kept keys.
+/// headers or rows whose page has not loaded, and ImportListSelectionRequest
+/// says what that proposal means for the kept keys.
 struct ImportListSelectionRequest {
     /// The rows the table proposes to have selected.
     let proposed: IndexSet
@@ -48,8 +48,8 @@ struct ImportListSelectionRequest {
     /// header and for a row whose page has not landed.
     let key: (Int) -> Data?
 
-    /// A run of rows a Shift gesture spans, by the keys at its two ends:
-    /// core reads every row between them, loaded or not.
+    /// The rows a Shift-click spans, by the keys at its two ends: core reads
+    /// every row between them, loaded or not.
     struct Run: Equatable {
         let from: Data
         let to: Data
@@ -102,9 +102,10 @@ struct ImportListSelectionRequest {
         }
     }
 
-    /// A Shift gesture: the rows it proposes join the kept keys at once, and
-    /// the run goes to core by its two ends, for every row between them,
-    /// loaded or not. One that only shrinks the run takes out what it drops.
+    /// A Shift-click or Shift-arrow: the rows it proposes join the kept keys
+    /// at once, and core gets the two ends of the rows it spans, to read
+    /// every row between them, loaded or not. A Shift gesture that only
+    /// shrinks the rows it spans takes out the rows it drops.
     private func extended(
         _ proposedKeys: Set<Data>,
         highlighted: Set<Data>

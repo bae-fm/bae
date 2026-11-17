@@ -2,7 +2,7 @@
 //! (a range of the list's order, read by its keys), how many items the list
 //! holds, where a key sits in it, the watched folders, whether Found has
 //! groups, and what the view narrows by, Found's filter entries, and what the
-//! rows the surface keeps selected hold and offer. coven reruns each when a write changes what it
+//! selected rows hold and which actions they offer. coven reruns each when a write changes what it
 //! read, so when a scan writes rows, coven reruns the count and the windows
 //! whose ranges hold those rows, and nothing else. Beside them, the reads a surface makes once: the
 //! key at a position.
@@ -83,9 +83,9 @@ impl ImportTables {
         self.store.subscribe(move |sql| summary::filter_entries(&sql))
     }
 
-    /// What the rows at the keys of its request hold and the actions the
-    /// person can run on them, whatever a list shows, as a live query whose
-    /// keys the caller changes on the same query.
+    /// What the rows at the caller's keys hold and the actions the person
+    /// can run on them, in any list and whether or not a list shows them, as
+    /// a live query whose keys the caller changes on the same query.
     pub(crate) fn subscribe_import_selection(
         &self,
     ) -> coven::ReconfigurableLiveQuery<

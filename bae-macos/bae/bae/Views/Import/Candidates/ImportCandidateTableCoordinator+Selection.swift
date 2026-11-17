@@ -4,11 +4,11 @@ import BaeKit
 // MARK: - Selection
 
 /// The screen keeps the selection as the keys of the rows the person
-/// selected, and each row the table draws takes its highlight from them: the
-/// table's own selection handling only proposes rows, and each proposal is
-/// read as the change it makes to the kept keys. A Shift run and Select All
-/// take their keys from core, which reads every row between two rows, or
-/// every row the list shows, loaded or not.
+/// selected, and each row the table draws takes its highlight from them. The
+/// table's own selection handling only proposes rows, and the coordinator
+/// reads each proposal as the change it makes to the kept keys. A Shift-click
+/// and Select All take their keys from core, which reads every row between
+/// two rows, or every row the list shows, loaded or not.
 extension ImportCandidateTableCoordinator {
     func tableView(
         _ tableView: NSTableView,

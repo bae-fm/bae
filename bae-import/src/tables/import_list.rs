@@ -6,8 +6,8 @@
 //! keep in the write that changes any table they come from. A surface runs a
 //! live query (`read`) for each window (a range of the list's order, `order`,
 //! whose rows `window` reads by key), for the count and summary (`summary`),
-//! and for what the rows the surface keeps selected hold and offer
-//! (`selection`). A search reads the rows its index (`import_list_search`)
+//! and for what the selected rows hold and offer (`selection`); the surface
+//! keeps the selection itself. A search reads the rows its index (`import_list_search`)
 //! finds. SQLite places, filters, sorts and counts every row; no Rust code
 //! does. The pane reads one candidate (`pane`) from the same placement. A
 //! surface changes the list it has open by its view and folds (`writes`).

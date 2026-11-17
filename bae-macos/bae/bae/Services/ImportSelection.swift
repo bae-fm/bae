@@ -17,9 +17,9 @@ struct RunningSelectionAction {
 /// the import list the sidebar reads now, with the keys the screen keeps
 /// selected.
 struct ImportSelectionOperations: Sendable {
-    /// The keys of the rows the list shows on a tab in an order, the ones
-    /// the screen shows, from one row to another, both included: what a
-    /// Shift run selects.
+    /// The keys of the rows the list shows from one row to another, both
+    /// included, on the tab and in the order the screen shows: what
+    /// Shift-clicking a row selects.
     let keysBetween:
         @Sendable (BridgeTriageTab, BridgeImportListOrder, Data, Data)
             async throws -> [Data]
@@ -117,16 +117,18 @@ enum ImportListSelectionOwnerError: Error {
 
 /// The import list's selection, which the screen keeps: the keys of the rows
 /// the person selected. Each row the table draws takes its highlight from
-/// them. What they hold and can be told to do arrives as core's live read,
-/// asked for these keys whatever the list shows, and each action on them
-/// sends them, for core to act on the ones the list shows.
+/// them. ImportSelection asks core's live read about these keys, and the read
+/// says what the selected rows hold and which actions they offer, whether or
+/// not the list shows them. Each action sends the keys, and core acts on the
+/// ones the list shows.
 @MainActor
 @Observable
 final class ImportSelection {
     /// The keys of the rows the person selected. A row the list hides by a
     /// change to the row itself keeps its key here.
     private(set) var keys: Set<Data> = []
-    /// What the selected rows hold and can be told to do, as core last said.
+    /// What the selected rows hold and which actions they offer, as core
+    /// last said.
     private(set) var summary = BridgeSelectionSummary(
         count: 0,
         single: nil,
@@ -268,8 +270,8 @@ final class ImportSelection {
     }
 
     /// Run `action` over every selected row the list shows that offers it,
-    /// in the order the list shows them, after `before`; the rows it fails
-    /// on are reported together once it ends.
+    /// in the order the list shows them, after `before`. Once it ends, the
+    /// app shows one error that lists every row it failed on.
     @discardableResult
     func start(
         _ action: BridgeCandidateAction,
@@ -330,8 +332,8 @@ final class ImportSelection {
 }
 
 extension Set<Data> {
-    /// The keys in the order of their bytes, so the same keys always cross in
-    /// one order.
+    /// The keys in the order of their bytes, so core always gets the same
+    /// keys in one order.
     var inByteOrder: [Data] {
         sorted { $0.lexicographicallyPrecedes($1) }
     }

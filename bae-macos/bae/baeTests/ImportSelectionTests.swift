@@ -95,7 +95,7 @@ struct ImportSelectionTests {
     }
 
     @Test(
-        "The action runs in core over the kept keys, and each row it failed on is named"
+        "The action runs in core over the kept keys, and the error line names each row it failed on"
     )
     func failuresNameEachRow() async {
         let requested = CallLog<BridgeCandidateAction>()

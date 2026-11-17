@@ -4,10 +4,11 @@ import Foundation
 // types only for desktop targets, so the iOS bindings do not have them.
 #if os(macOS)
 
-    /// A live query reads what the rows the import list's screen keeps
-    /// selected hold and offer, whatever the list shows. The caller changes
-    /// the selected keys on the same query, and each value answers for the
-    /// keys the caller set last.
+    /// A live query that reads the summary of the import list's selected
+    /// rows: what they hold and which actions they offer. The query reads
+    /// every selected row, including rows the list does not show. The caller
+    /// changes the selected keys on the same query, and each value
+    /// summarizes the keys the caller set last.
     public struct ImportSelectionQuery: Sendable {
         public let setSelected: @Sendable ([Data]) throws -> Void
         public let values: PulledValues<BridgeSelectionSummary>

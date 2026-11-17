@@ -74,13 +74,14 @@ impl LiveImportList {
         Ok(Self { list, tables, closing, bugs })
     }
 
-    /// Show a different tab, filter or order, where the surface keeps the
-    /// rows at `selected` selected, and answer where the new view opens, at
-    /// the first of those rows it shows or its top, and which of them leave
-    /// the selection: on another tab, filter or search, the ones the new view
-    /// doesn't show. The view it already shows changes nothing, and answers
-    /// nothing. A surface that gets an answer drops the windows it holds and
-    /// opens new ones from that place.
+    /// Show a different tab, filter or order. `selected` holds the keys the
+    /// surface keeps selected. The answer says where the new view opens: at
+    /// the first selected row the view shows, or at its top. On another tab,
+    /// filter or search, the answer also lists the selected keys the new view
+    /// doesn't show, which leave the selection. The view the list already
+    /// shows changes nothing, and the call answers nothing. A surface that
+    /// gets an answer drops the windows it holds and opens new ones from the
+    /// place the answer names.
     pub async fn set_view(
         &self,
         view: ImportListView,
@@ -210,9 +211,9 @@ impl LiveImportList {
         self.tables.subscribe_import_filter_entries()
     }
 
-    /// What the rows at the keys of its request hold and the actions the
-    /// person can run on them, whatever the list shows, as a live query whose
-    /// keys the caller changes on the same query.
+    /// What the rows at the caller's keys hold and the actions the person
+    /// can run on them, whether or not the list shows them, as a live query
+    /// whose keys the caller changes on the same query.
     pub fn subscribe_selection(
         &self,
     ) -> coven::ReconfigurableLiveQuery<BTreeSet<CandidateKey>, SelectionSummary, DbError> {

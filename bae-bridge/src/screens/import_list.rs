@@ -145,12 +145,14 @@ impl ImportSelectionSubscription {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl ImportList {
-    /// Show `view`, where the app keeps the rows at `selected` selected, and
-    /// answer where it opens, at the first of those rows it shows, by key and
-    /// position, or its top, and which of them leave the selection: on
-    /// another tab, filter or search, the ones the new view doesn't show.
-    /// Nothing when it is the view the list already shows. The app drops the
-    /// windows it holds and opens new ones from that place.
+    /// Show `view`. `selected` holds the keys the app keeps selected. The
+    /// answer says where the new view opens: at the first selected row the
+    /// view shows, by key and position, or at its top. On another tab,
+    /// filter or search, the answer also lists the selected keys the new
+    /// view doesn't show, which leave the selection. The call answers
+    /// nothing when `view` is the view the list already shows. The app drops
+    /// the windows it holds and opens new ones from the place the answer
+    /// names.
     pub async fn set_view(
         self: std::sync::Arc<Self>,
         view: crate::types::BridgeImportListView,
@@ -288,11 +290,12 @@ impl ImportList {
             .await
     }
 
-    /// The keys of the rows the list shows on `tab` in `order`, the tab and
-    /// order the app shows it in, from the row `from` to the row `to`, both
-    /// included, in that order: what a Shift gesture selects. The one it
-    /// shows when it shows only one of the two, and none when it shows
-    /// neither, or when the list shows another tab.
+    /// The keys of the rows the list shows from the row `from` to the row
+    /// `to`, both included, in the list's order: what Shift-clicking a row
+    /// selects. The app passes the tab and order it shows the list in as
+    /// `tab` and `order`. When the list shows only one of `from` and `to`,
+    /// the answer holds that row's key alone. When the list shows neither,
+    /// or shows another tab, the answer holds no keys.
     pub async fn keys_between(
         self: std::sync::Arc<Self>,
         tab: crate::types::BridgeTriageTab,

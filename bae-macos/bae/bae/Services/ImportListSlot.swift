@@ -288,7 +288,8 @@ extension ImportListSlot {
                 return
             }
             // The rows the new tab, filter or search doesn't show leave the
-            // selection, whichever view is asked for since.
+            // selection, even when the person has asked for another view
+            // since this change started.
             if let change, selection.generation == generation {
                 selection.remove(change.left)
             }
@@ -461,10 +462,11 @@ extension ImportListSlot {
     }
 
     /// Send a fold to core's list, with the keys the selection holds then,
-    /// once the folds asked for before it have landed, so they land in the
-    /// order the person made them, and take the selected rows it hid out of
-    /// the selection; a failure is reported. A list whose read failed is
-    /// rebuilt instead, and the rebuilt list starts with no group folded.
+    /// once the folds asked for before it have finished, so core makes them
+    /// in the order the person made them. Then take the selected rows the
+    /// fold hid out of the selection. The slot reports a failure. The slot
+    /// rebuilds a list whose read failed instead, and the rebuilt list
+    /// starts with no group folded.
     private func foldGroups(
         _ fold:
             @escaping @MainActor (ImportListHandle, [Data]) async throws ->

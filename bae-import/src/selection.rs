@@ -1,10 +1,11 @@
-//! The import list's selection: what it holds and what it can be told to do.
+//! The import list's selection: what it holds and what the surface can ask it
+//! to do.
 //!
 //! The surface keeps the keys of the rows the person selected, and passes
-//! them to each read and action on them. What they hold and offer is read
-//! from their rows' placement and what is running for each, whatever the list
-//! shows, and a bulk action runs in core over the ones the list shows that
-//! offer it.
+//! them to each read and action on them. Core reads what the selected rows
+//! hold and offer from their rows' placement and from what is running for
+//! each, including rows the list does not show. A bulk action runs in core
+//! over the selected rows the list shows that offer it.
 
 use super::triage::SelectionOffer;
 use super::CandidateKey;
