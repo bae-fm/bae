@@ -533,7 +533,6 @@ impl AppServices {
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
-    delegate_lib!(membership, get_members => members() -> bae_people::membership::Members);
     delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());
     delegate_values!(subscribe_members => subscribe_members() -> bae_people::membership::Members);
     delegate_sync!(manager, hold_invite_screen_sync => hold_invite_screen_sync() -> coven::SyncOftenGuard);

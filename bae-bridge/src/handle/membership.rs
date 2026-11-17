@@ -234,7 +234,6 @@ impl AppHandle {
 }
 forward! {async this => {
     fn add_device()->BridgeAddDevice {Ok(BridgeAddDevice::from_core(this.services.add_device().await?))}
-    fn get_members()->BridgeMembership {Ok(BridgeMembership::from_core(this.services.get_members().await?))}
     fn remove_member(member:String)->() {Ok(this.services.remove_member(&crate::from_app::member(&member)?).await?)}
     fn remove_device(device:u64)->BridgeDeviceRemoval {Ok(BridgeDeviceRemoval::from_core(this.services.remove_device(coven::DeviceId(device)).await?))}
     fn confirm_device_cut_off(device:u64)->BridgeDeviceCutOff {Ok(BridgeDeviceCutOff::from_core(this.services.confirm_device_cut_off(coven::DeviceId(device)).await?))}

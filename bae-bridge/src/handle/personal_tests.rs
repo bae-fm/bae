@@ -168,7 +168,9 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(playlists[0].sharing, bae_people::people::Sharing::Household);
         app.clone().delete_playlist(playlist_id).await.unwrap();
         assert!(playlists_now(&store).await.is_empty());
-        let members = app.clone().get_members().await.unwrap();
+        let membership = app.subscribe_members();
+        let members = membership.clone().next().await.unwrap();
+        membership.cancel().await.unwrap();
         assert!(members.self_is_admin);
         let device = &members.members[0].active_devices[0];
         assert!(device.is_self);

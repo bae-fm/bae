@@ -43,7 +43,6 @@ import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
@@ -785,8 +784,6 @@ internal open class FakeAppHandle(
     override suspend fun declineJoinRequest(request: BridgeJoinRequest) {
         unfaked("declineJoinRequest")
     }
-
-    override suspend fun getMembers(): BridgeMembership = unfaked("getMembers")
 
     override suspend fun invitePerson(
         role: BridgeMemberRole,

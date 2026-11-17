@@ -16,7 +16,7 @@ struct HandlelessFakeTests {
             processExitsWith: .signal(SIGTRAP),
             observing: [\.standardErrorContent]
         ) {
-            _ = try await AppHandle(noHandle: AppHandle.NoHandle()).getMembers()
+            _ = try await AppHandle(noHandle: AppHandle.NoHandle()).getConfig()
         }
         let exit = try #require(result)
         let message = try #require(
@@ -24,7 +24,7 @@ struct HandlelessFakeTests {
         )
         #expect(
             message.contains(
-                "a handle-less AppHandle reached core from getMembers()"
+                "a handle-less AppHandle reached core from getConfig()"
             )
         )
     }
