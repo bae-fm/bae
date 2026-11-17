@@ -138,9 +138,13 @@ struct ImportCandidateTablePlaceTests {
 
             slot.setFilterText("release")
 
+            // The sidebar replaces the table while the narrowed list's count
+            // is out, so the wait looks for a table without recording a miss.
             try await Wait.until {
                 slot.answersView
-                    && (try? ImportListHosting.table(in: content))
+                    && SnapshotTestSupport.descendants(of: content)
+                        .compactMap { $0 as? ImportCandidateTableView }
+                        .first
                         .map { Self.topRow(of: $0) == 0 } ?? false
             }
         }
