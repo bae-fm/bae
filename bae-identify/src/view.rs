@@ -233,7 +233,8 @@ pub enum IdentifyStateView {
         /// offered row's pressing, the fetches applying the release the run
         /// picked — and, with no ledger, every one. A failure a cell shows is
         /// said there, beside its retry — see `IdentifyRunView::shows`.
-        failure_lines: FailureLines,
+        /// `None` when a cell shows every failure.
+        failure_lines: Option<FailureLines>,
         groups: Vec<ReleaseGroup>,
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
@@ -273,9 +274,9 @@ pub struct VerdictCards {
     /// What a found verdict decides; `None` for every other shape.
     pub decision: Option<FoundDecision>,
     /// The failures of a failed verdict that no cell of its ledger shows,
-    /// which a surface says in lines of their own beneath it. Empty for every
-    /// other shape.
-    pub failure_lines: FailureLines,
+    /// which a surface says in lines of their own beneath it. `None` when a
+    /// cell shows every failure, and for every other shape.
+    pub failure_lines: Option<FailureLines>,
 }
 
 /// The failures of a failed verdict that no cell of its ledger shows, in the
@@ -284,11 +285,10 @@ pub struct VerdictCards {
 /// that offers no releases; and for a page that offers releases, the
 /// fetches of the release the run picked, and each lookup whose results the
 /// list is missing.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FailureLines {
-    /// Every one, in the order the run met them; `None` when the ledger's
-    /// cells show every failure.
-    pub all: Option<Vec<super::IdentifyFailure>>,
+    /// Every one, in the order the run met them: at least one.
+    pub all: Vec<super::IdentifyFailure>,
     /// The failed fetches of the release the run picked: its cover. They
     /// leave no results missing from the list, and they are why the run did
     /// not apply its pick. `None` when no fetch of the picked release failed.

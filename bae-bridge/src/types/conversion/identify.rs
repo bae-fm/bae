@@ -499,7 +499,7 @@ impl BridgeIdentifyState {
                 offers_shared_album,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
-                failure_lines: failure_lines_of(failure_lines),
+                failure_lines: failure_lines.map(failure_lines_of),
                 groups: groups.into_iter().map(BridgeReleaseGroup::from_core).collect(),
                 agreements: agreements
                     .into_iter()
@@ -521,7 +521,7 @@ mirror_enum! {
 fn failure_lines_of(lines: bae_identify::FailureLines) -> crate::types::BridgeFailureLines {
     let bae_identify::FailureLines { all, pick_failures, missing_searches } = lines;
     crate::types::BridgeFailureLines {
-        all: all.map(|failures| failures.into_iter().map(identify_failure).collect()),
+        all: all.into_iter().map(identify_failure).collect(),
         pick_failures: pick_failures
             .map(|failures| failures.into_iter().map(identify_failure).collect()),
         missing_searches: missing_searches

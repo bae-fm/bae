@@ -72,7 +72,7 @@ enum IdentifyState: Equatable {
     /// failure beside its retry button.
     case failed(
         run: BridgeIdentifyRun?,
-        failureLines: BridgeFailureLines,
+        failureLines: BridgeFailureLines?,
         groups: [ReleaseGroup],
         agreements: [String: BridgeAgreements],
         narrowedOutCount: UInt32,

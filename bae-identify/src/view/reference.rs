@@ -69,7 +69,7 @@ pub fn reference_cards(
         // Only the stored cards' statement picks the failures of a failed
         // verdict that no ledger cell shows; tests check its lines against
         // fixed values, so the reference leaves them empty.
-        failure_lines: crate::FailureLines::default(),
+        failure_lines: None,
     }
 }
 

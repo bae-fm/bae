@@ -626,7 +626,7 @@ async fn a_cover_the_host_fails_to_serve_is_stored_as_the_runs_lookup_failure() 
     assert!(
         matches!(
             &pane.resumed_identify_state,
-            bae_identify::IdentifyStateView::Failed { failure_lines: shown, .. } if shown.all.as_ref() == Some(failures)
+            bae_identify::IdentifyStateView::Failed { failure_lines: shown, .. } if shown.as_ref().map(|lines| &lines.all) == Some(failures)
         ),
         "the pane states the stored failure, got {:?}",
         pane.resumed_identify_state

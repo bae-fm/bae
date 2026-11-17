@@ -490,7 +490,7 @@ pub(super) struct StoredVerdictCards {
     decision: Option<StoredDecision>,
     /// The failures no cell of the ledger shows, as
     /// [`super::verdict_failure_rows::failure_lines_sql`] answers them.
-    failure_lines: super::verdict_failure_rows::StoredFailureLines,
+    failure_lines: Option<super::verdict_failure_rows::StoredFailureLines>,
 }
 
 /// A found verdict's row of `import_candidate_verdict_decision`: the release
@@ -601,7 +601,9 @@ pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
         narrowed_out_count,
         shared_album: shared_album.map(StoredSharedAlbum::shared_album).transpose()?,
         decision: decision.map(StoredDecision::decision).transpose()?,
-        failure_lines: super::verdict_failure_rows::failure_lines_of(failure_lines)?,
+        failure_lines: failure_lines
+            .map(super::verdict_failure_rows::failure_lines_of)
+            .transpose()?,
     })
 }
 

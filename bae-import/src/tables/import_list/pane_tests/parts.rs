@@ -322,17 +322,11 @@ async fn the_pane_names_the_album_the_linked_release_s_records_name() {
     assert_eq!(pane_draft(&db, &candidate).await.album, named(&copy));
 }
 
-/// The pane shows a failed verdict's failures on lines of their own only when
-/// no cell of its ledger shows them: the Disc ID lookup's failure and the
-/// catalog number's are on their cells, and the cover's has no cell.
-#[tokio::test]
-async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
-    use bae_catalogs::search::SourceFailure;
+/// A ledger whose Disc ID cell failed with HTTP 503 and whose Discogs cell
+/// for catalog number AB-1 timed out.
+fn failing_ledger() -> bae_identify::IdentifyRunView {
     use bae_catalogs::LookupFailure;
-    use bae_identify::IdentifyFailure;
-    let (db, _tmp, root) = watched_root().await;
-    let candidate = scanned(&db, &root, "Album").await;
-    let ledger = bae_identify::IdentifyRunView {
+    bae_identify::IdentifyRunView {
         providers: vec![LookupCatalog::MusicBrainz],
         disc_id: bae_identify::DiscIdStepView::Read {
             discs: vec![bae_identify::DiscIdRow {
@@ -365,7 +359,20 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
         },
         isrc: bae_identify::IsrcStepView::Absent,
         search: bae_identify::SearchStepView::NotNeeded,
-    };
+    }
+}
+
+/// The pane shows a failed verdict's failures on lines of their own only when
+/// no cell of its ledger shows them: the Disc ID lookup's failure and the
+/// catalog number's are on their cells, and the cover's has no cell.
+#[tokio::test]
+async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
+    use bae_catalogs::search::SourceFailure;
+    use bae_catalogs::LookupFailure;
+    use bae_identify::IdentifyFailure;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let ledger = failing_ledger();
     let cover = IdentifyFailure::Cover(SourceFailure {
         source: Catalog::MusicBrainz,
         failure: LookupFailure::Network,
@@ -397,14 +404,53 @@ async fn the_pane_says_only_the_failures_its_ledger_does_not_show() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
+    let Some(bae_identify::IdentifyStateView::Failed {
+        failure_lines: Some(failure_lines), ..
+    }) = detail.stored_verdict
+    else {
+        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
+    };
+    assert_eq!(failure_lines.all, vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover]);
+}
+
+/// A failed verdict whose ledger cells show every failure has no failure
+/// lines, so the pane draws no lines and no Retry beneath its band.
+#[tokio::test]
+async fn a_verdict_whose_cells_show_every_failure_has_no_failure_lines() {
+    use bae_catalogs::search::SourceFailure;
+    use bae_catalogs::LookupFailure;
+    use bae_identify::IdentifyFailure;
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    store_verdict(
+        &db,
+        &candidate,
+        TerminalVerdict::Failed {
+            failures: vec![
+                IdentifyFailure::DiscId(LookupFailure::Provider { status: Some(503) }),
+                IdentifyFailure::Catalog(SourceFailure {
+                    source: Catalog::Discogs,
+                    failure: LookupFailure::Timeout,
+                }),
+            ],
+            findings: bae_identify::Findings::default(),
+            track_count: 1,
+            ledger: Some(failing_ledger()),
+        },
+    )
+    .await;
+
+    let detail = crate::tables::ImportTables::new(db.clone())
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .expect("the scanned candidate has a pane");
+
     let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
     else {
         panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(
-        failure_lines.all,
-        Some(vec![IdentifyFailure::DiscId(LookupFailure::Timeout), cover])
-    );
+    assert_eq!(failure_lines, None);
 }
 
 /// A failed verdict with no ledger has no cell that shows a failure, so the
@@ -446,11 +492,13 @@ async fn the_pane_says_every_failure_of_a_verdict_with_no_ledger() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
+    let Some(bae_identify::IdentifyStateView::Failed {
+        failure_lines: Some(failure_lines), ..
+    }) = detail.stored_verdict
     else {
-        panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
+        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines.all, Some(failures));
+    assert_eq!(failure_lines.all, failures);
     assert_eq!(failure_lines.pick_failures, Some(vec![cover]));
     let missing = |step, catalog| MissingSearch { step, catalog };
     assert_eq!(
@@ -490,11 +538,13 @@ async fn a_verdict_with_no_failed_fetch_of_its_pick_has_no_pick_failures() {
         .unwrap()
         .expect("the scanned candidate has a pane");
 
-    let Some(bae_identify::IdentifyStateView::Failed { failure_lines, .. }) = detail.stored_verdict
+    let Some(bae_identify::IdentifyStateView::Failed {
+        failure_lines: Some(failure_lines), ..
+    }) = detail.stored_verdict
     else {
-        panic!("a failed verdict resumes failed, got {:?}", detail.stored_verdict);
+        panic!("a failed verdict resumes failed with lines, got {:?}", detail.stored_verdict);
     };
-    assert_eq!(failure_lines.all, Some(failures));
+    assert_eq!(failure_lines.all, failures);
     assert_eq!(failure_lines.pick_failures, None);
 }
 

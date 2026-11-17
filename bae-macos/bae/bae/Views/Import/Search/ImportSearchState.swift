@@ -70,17 +70,12 @@ struct ImportSearchState {
     }
 
     /// The automatic lookups that failed where no cell of the band shows
-    /// them, each said in a line of its own — which ones is core's answer.
-    var failureLines: BridgeFailureLines {
+    /// them, each said in a line of its own. Core chooses which ones, and
+    /// sends `nil` when a cell shows every failure or the run did not fail.
+    var failureLines: BridgeFailureLines? {
         guard
             case .failed(_, let failureLines, _, _, _, _) = identifyState
-        else {
-            return BridgeFailureLines(
-                all: nil,
-                pickFailures: nil,
-                missingSearches: []
-            )
-        }
+        else { return nil }
         return failureLines
     }
 }

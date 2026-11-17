@@ -658,11 +658,7 @@ extension PreviewData {
         identifyState: .failed(
             run: identifyRunProviderFailed,
             // The band's cell shows the failure.
-            failureLines: BridgeFailureLines(
-                all: nil,
-                pickFailures: nil,
-                missingSearches: []
-            ),
+            failureLines: nil,
             groups: [searchGroupExact],
             agreements: searchAgreementsExact,
             narrowedOutCount: 0,
@@ -699,11 +695,7 @@ extension PreviewData {
                 readingArtwork: false
             ),
             // The band's cells show both failures.
-            failureLines: BridgeFailureLines(
-                all: nil,
-                pickFailures: nil,
-                missingSearches: []
-            ),
+            failureLines: nil,
             groups: [],
             agreements: [:],
             narrowedOutCount: 0,

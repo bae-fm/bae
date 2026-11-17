@@ -147,7 +147,7 @@ struct FindOnlineAutomaticSection: View {
             identifiedList {
                 // The run picked a release and could not apply it: why, with
                 // the retry, since the band has no failed cell to offer one.
-                if let failures = state.failureLines.pickFailures {
+                if let failures = state.failureLines?.pickFailures {
                     FindOnlineFailureLines(
                         failures: failures,
                         onRetry: onRetryFailed
@@ -164,7 +164,10 @@ struct FindOnlineAutomaticSection: View {
                 linkSharedAlbum
                     .padding(.leading, ThemeSpace.group)
                 narrowedOut
-                ForEach(state.failureLines.missingSearches, id: \.self) {
+                ForEach(
+                    state.failureLines?.missingSearches ?? [],
+                    id: \.self
+                ) {
                     MissingSourceNote(text: Self.missingText($0))
                 }
                 keepOwnDraft
@@ -178,11 +181,11 @@ struct FindOnlineAutomaticSection: View {
                 keepOwnDraft
             }
         case .failureLines:
-            if let failures = state.failureLines.all {
+            if let lines = state.failureLines {
                 // No cell shows these, so none offers their retry: the lines
                 // do.
                 FindOnlineFailureLines(
-                    failures: failures,
+                    failures: lines.all,
                     onRetry: onRetryFailed
                 )
             }

@@ -323,9 +323,8 @@ pub(crate) fn automation_identify_state(
             // Automation lists every failure. A page that offers releases
             // decides how to split them.
             failure_lines: failure_lines
-                .all
                 .into_iter()
-                .flatten()
+                .flat_map(|lines| lines.all)
                 .map(AutomationIdentifyFailure::from_core)
                 .collect(),
             groups: groups.into_iter().map(AutomationReleaseGroup::from_core).collect(),

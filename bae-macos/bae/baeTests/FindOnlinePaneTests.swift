@@ -43,8 +43,8 @@ final class FindOnlinePaneTests: XCTestCase {
             FindOnlineResultArea(identifyState: withoutBand.identifyState),
             .failureLines
         )
-        XCTAssertNotNil(withoutBand.failureLines.all)
-        XCTAssertNil(withBand.failureLines.all)
+        XCTAssertNotNil(withoutBand.failureLines)
+        XCTAssertNil(withBand.failureLines)
     }
 
     /// A sole match whose release lists no tracks says why it was not

@@ -84,15 +84,20 @@ const NO_CELL_SHOWS: &str = "NOT EXISTS (SELECT 1 FROM import_candidate_lookup A
 
 /// Builds the SQL for the failures of the verdict joined as `verdict` that no
 /// cell of its ledger shows, as one JSON object that [`failure_lines_of`]
-/// reads: every one, in the order the run met them (`all`); the failed
-/// fetches of the release the run picked, its cover, which leave no results
-/// missing from the list (`pick_failures`), each of these two null when it
-/// holds no failure; and each other failure's lookup,
-/// once, in the order the run first met it (`missing_searches`). MusicBrainz
-/// is the only catalog asked by Disc ID and by ISRC, so those lookups name it.
+/// reads, or null when a cell shows every failure. The object holds every
+/// failure, in the order the run met them (`all`); the failed fetches of the
+/// release the run picked, its cover, which leave no results missing from the
+/// list (`pick_failures`), or null when no fetch of the pick failed; and each
+/// other failure's lookup, once, in the order the run first met it
+/// (`missing_searches`). MusicBrainz is the only catalog asked by Disc ID and
+/// by ISRC, so those lookups name it.
 pub(super) fn failure_lines_sql(verdict: &str) -> String {
     format!(
-        "json_object('all', json(NULLIF({all}, '[]')), \
+        "json(CASE WHEN EXISTS (SELECT 1 FROM import_candidate_verdict_failure AS failure \
+                               WHERE failure.content_hash IS {verdict}.content_hash \
+                                 AND failure.identify_run IS {verdict}.identify_run \
+                                 AND {NO_CELL_SHOWS}) \
+         THEN json_object('all', json({all}), \
                      'pick_failures', json(NULLIF({pick}, '[]')), \
                      'missing_searches', json((SELECT json_group_array(json_object( \
                          'lookup', missing.lookup, 'catalog', missing.catalog) \
@@ -105,7 +110,7 @@ pub(super) fn failure_lines_sql(verdict: &str) -> String {
                              AND failure.identify_run IS {verdict}.identify_run \
                              AND {NO_CELL_SHOWS} AND failure.lookup <> 'cover' \
                            GROUP BY failure.lookup, COALESCE(failure.catalog, 'musicbrainz')) \
-                          AS missing)))",
+                          AS missing))) END)",
         all = failures_json_sql(verdict, NO_CELL_SHOWS),
         pick = failures_json_sql(verdict, &format!("{NO_CELL_SHOWS} AND failure.lookup = 'cover'")),
     )
@@ -114,7 +119,7 @@ pub(super) fn failure_lines_sql(verdict: &str) -> String {
 /// What a [`failure_lines_sql`] column holds.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredFailureLines {
-    all: Option<Vec<StoredFailure>>,
+    all: Vec<StoredFailure>,
     pick_failures: Option<Vec<StoredFailure>>,
     missing_searches: Vec<StoredMissingSearch>,
 }
@@ -140,7 +145,7 @@ pub(super) fn failure_lines_of(
     use bae_identify::LookupStep;
     let StoredFailureLines { all, pick_failures, missing_searches } = stored;
     Ok(bae_identify::FailureLines {
-        all: all.map(failures_of_block).transpose()?,
+        all: failures_of_block(all)?,
         pick_failures: pick_failures.map(failures_of_block).transpose()?,
         missing_searches: missing_searches
             .into_iter()

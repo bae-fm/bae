@@ -334,7 +334,8 @@ pub enum BridgeIdentifyState {
         run: Option<BridgeIdentifyRun>,
         /// The failures no cell of `run` shows, each said in a line of its
         /// own: a failure a cell shows is said there, beside its retry.
-        failure_lines: BridgeFailureLines,
+        /// `None` when a cell shows every failure.
+        failure_lines: Option<BridgeFailureLines>,
         groups: Vec<BridgeReleaseGroup>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
@@ -350,9 +351,8 @@ pub enum BridgeIdentifyState {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFailureLines {
     /// Every one, in the order the run met them: the lines of a page that
-    /// offers no releases, which the page draws with one Retry. `None` when
-    /// the ledger's cells show every failure, so the page draws no lines.
-    pub all: Option<Vec<BridgeIdentifyFailure>>,
+    /// offers no releases, which the page draws with one Retry. At least one.
+    pub all: Vec<BridgeIdentifyFailure>,
     /// The failed fetches of the release the run picked, which say why bae
     /// did not apply the pick and leave no results missing from the list. The
     /// page draws them with one Retry. `None` when no fetch of the picked
