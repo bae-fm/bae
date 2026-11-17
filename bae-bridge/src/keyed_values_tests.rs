@@ -324,9 +324,9 @@ fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
     assert_eq!(requested, 60, "600 frames over 10 s; only the first second asks");
 }
 
-/// A pull rests a key whose value has gone [`QUIET`] unchanged, whatever
-/// feed writes it: a call's step that counts nothing rests as a stalled
-/// download does, and the pull names it.
+/// A pull rests a key whose value has stayed unchanged for [`QUIET`],
+/// whatever feed writes it: a share that stops changing rests as a stalled
+/// download's does, and the pull returns its key.
 #[test]
 fn a_pull_rests_a_key_left_unchanged_for_the_quiet_time() {
     let runtime = tokio::runtime::Runtime::new().unwrap();

@@ -41,7 +41,7 @@ class ImportStore {
     /// changed, so `applyFolderScans` writes each delivery as it arrives.
     private(set) var folderScans: BridgeFolderScans?
 
-    /// The folders being scanned, each with how many folders its scan has
+    /// The folders bae is scanning, each with how many folders its scan has
     /// stored, from their own subscription: a scan moves its count with
     /// every folder it walks, which moves nothing the folder scans show.
     /// Empty until the first delivery.

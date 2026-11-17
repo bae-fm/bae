@@ -1,7 +1,7 @@
 //! Each watched folder's scan status: scanning, complete, failed, or
-//! read but not watched; whether the folder is on a network volume; the
-//! folders being scanned, for the list's chrome; and the problems whose alert
-//! the app has not raised yet.
+//! read but not watched; whether the folder is on a network volume; whether
+//! bae is scanning any folder, for the list's chrome; and the problems whose
+//! alert the app has not raised yet.
 //!
 //! One live query reads it all (`folder_scans/progress.sql`). The query puts
 //! each folder's stored scan beside the state the folder scan coordinator
@@ -61,7 +61,7 @@ pub struct FolderScanProgress {
     pub statuses: Vec<WatchedFolderScanStatus>,
     /// Whether any root's last scan failed or left it not watched.
     pub has_problem: bool,
-    /// Whether any root is being scanned, for the filter bar's scan
+    /// Whether bae is scanning any root, for the filter bar's scan
     /// indicator.
     pub scanning: bool,
     /// Each root's problem that the app has raised no alert for, in
@@ -90,7 +90,7 @@ pub enum FolderScanAlertKind {
     NotWatched,
 }
 
-/// A root being scanned, with how many folders its scan has stored so far,
+/// A root bae is scanning, with how many folders its scan has stored so far,
 /// in watched-folder order, as the scan indicator lists it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScanningFolder {

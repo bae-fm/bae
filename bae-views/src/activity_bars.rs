@@ -1,4 +1,4 @@
-//! The rows each Activity transfer line's bar is made from: the share of the
+//! The rows that bae-library builds each Activity transfer line's bar from: the share of the
 //! line's batch whose bytes are done, and each file or release that bae is
 //! uploading or downloading now with its share of the batch. How far a file
 //! or release has got changes with every byte and is in no table: a watcher

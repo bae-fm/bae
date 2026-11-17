@@ -1,8 +1,8 @@
 //! Where each watched folder's scan stands, as one live query
 //! (`progress.sql`): each folder's status from its stored scan and what the
 //! folder scan coordinator holds of it, whether any folder has a problem,
-//! the folders being scanned, and the problems the app has raised no alert
-//! for. Also the coordinator's writes of what it holds, and the app's record
+//! whether bae is scanning any folder, and the problems the app has raised
+//! no alert for. Also the coordinator's writes of what it holds, and the app's record
 //! of the alerts it raised.
 //!
 //! The found count moves with every folder a scan walks, so it is not read
@@ -228,9 +228,9 @@ fn stored_outcome(
     })
 }
 
-/// The folders being scanned, in the order the folders are listed, each
-/// with the folders its scan's current generation has stored, counted off
-/// the candidates' index.
+/// The folders bae is scanning, in the order the folders are listed, each
+/// with how many folders its scan's current generation has stored, which
+/// the query counts through the index on `scan_candidate`.
 const SCANNING_FOLDERS: &str = "SELECT folder.watched_folder_path, \
             (SELECT COUNT(*) FROM scan_candidate AS candidate \
              WHERE candidate.watched_folder_path = roots.watched_folder_path \
@@ -254,14 +254,14 @@ fn load_scanning_folders_on(sql: &SqlReadContext<'_>) -> Result<Vec<ScanningFold
 }
 
 impl ImportTables {
-    /// The folders being scanned now, each with how many folders its scan
+    /// The folders bae is scanning now, each with how many folders its scan
     /// has stored.
     #[cfg(test)]
     pub(crate) async fn load_scanning_folders(&self) -> Result<Vec<ScanningFolder>, DbError> {
         self.store.read(move |sql| load_scanning_folders_on(&sql)).await
     }
 
-    /// The folders being scanned, each with how many folders its scan has
+    /// The folders bae is scanning, each with how many folders its scan has
     /// stored, live: a value for every write that changes one.
     pub fn subscribe_scanning_folders(
         &self,

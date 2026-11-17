@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The import sidebar: the tabs with their counts, the filter row (the filter
 /// field, then the controls the caller puts at its end), and the list beneath
-/// them. The sidebar draws the values it is given, except the tab counts,
+/// them. The sidebar draws the values its caller passes in, except the tab counts,
 /// which the tab bar reads from `listSlot`; `MacImportSidebarContainer`
 /// reads the stores for it.
 struct MacImportSidebar<Trailing: View, Content: View>: View {

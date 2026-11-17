@@ -1925,7 +1925,7 @@ allowed = [
     { path = "bae-transfers/src/queued_releases/tables.rs", item = "queue_row", shape = "aggregate", count = 1, reason = "counts a row type's constant column list (`COLUMNS.len()`) to find where its columns start; not rows" },
     { path = "bae-transfers/src/release_queue.rs", item = "transfer_summary", shape = "filter", count = 1, reason = "drops the zero counts from a transfer's fixed list of count kinds; not rows" },
     { path = "bae-transfers/src/release_transfers.rs", item = "ReleaseTransfersWatch::next", shape = "length-branch", count = 1, reason = "tests whether a transfer watch's update changed any release; the value stream's own fast values, not rows" },
-    { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, reason = "diffs the download transfers it last told against the new ones by release; the in-memory transfer progress, not rows" },
+    { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, reason = "diffs the download transfers it last delivered against the new ones by release; the in-memory transfer progress, not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "cutoff", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "is_placeholder", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },
