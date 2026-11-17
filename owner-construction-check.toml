@@ -1625,7 +1625,6 @@ tables = [
     "import_list_search",
     "import_list",
     "import_list_collapsed",
-    "import_list_selection",
 ]
 
 [[database.domains]]

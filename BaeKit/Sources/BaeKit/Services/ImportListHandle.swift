@@ -10,7 +10,7 @@ import Foundation
             switch self {
             case .groupHeader(let stableKey, _, _, _, _),
                 .candidate(let stableKey, _, _),
-                .invalid(let stableKey, _, _):
+                .invalid(let stableKey, _):
                 return stableKey
             }
         }
@@ -50,16 +50,16 @@ import Foundation
         /// Found's filter entries with how many rows each holds.
         public let filterEntries:
             @Sendable () -> PulledValues<[BridgePendingFilterEntry]>
-        /// What the selection holds and the actions the person can run on it.
-        public let selection:
-            @Sendable () -> PulledValues<BridgeSelectionSummary>
+        /// What the rows the screen keeps selected hold and the actions the
+        /// person can run on them, read for the keys the screen sets on it.
+        public let selection: @Sendable () -> ImportSelectionQuery
         private let applyView:
-            @Sendable (BridgeImportListView) async throws
-                -> BridgeImportListOpening?
+            @Sendable (BridgeImportListView, [Data]) async throws
+                -> BridgeImportListViewChange?
         private let fold:
-            @Sendable (BridgeFolderReleaseDecisionKey, Bool) async throws ->
-                Void
-        private let foldAll: @Sendable (Bool) async throws -> Void
+            @Sendable (BridgeFolderReleaseDecisionKey, Bool, [Data])
+                async throws -> [Data]
+        private let foldAll: @Sendable (Bool, [Data]) async throws -> [Data]
         private let locate:
             @Sendable (Data) async throws -> BridgeImportCandidateListLocation?
         private let firstIdentifying: @Sendable () async throws -> Data?
@@ -73,15 +73,16 @@ import Foundation
                 @escaping @Sendable () -> PulledValues<
                     [BridgePendingFilterEntry]
                 >,
-            selection:
-                @escaping @Sendable () -> PulledValues<BridgeSelectionSummary>,
+            selection: @escaping @Sendable () -> ImportSelectionQuery,
             setView:
-                @escaping @Sendable (BridgeImportListView) async throws
-                -> BridgeImportListOpening?,
+                @escaping @Sendable (BridgeImportListView, [Data]) async throws
+                -> BridgeImportListViewChange?,
             setGroupFolded:
-                @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool)
-                async throws -> Void,
-            setAllGroupsFolded: @escaping @Sendable (Bool) async throws -> Void,
+                @escaping @Sendable (
+                    BridgeFolderReleaseDecisionKey, Bool, [Data]
+                ) async throws -> [Data],
+            setAllGroupsFolded:
+                @escaping @Sendable (Bool, [Data]) async throws -> [Data],
             locateCandidate:
                 @escaping @Sendable (Data) async throws
                 -> BridgeImportCandidateListLocation?,
@@ -113,13 +114,17 @@ import Foundation
                 filterEntries: {
                     PulledValues(list.subscribeFilterEntries())
                 },
-                selection: { PulledValues(list.subscribeSelection()) },
-                setView: { try await list.setView(view: $0) },
+                selection: { ImportSelectionQuery(list.subscribeSelection()) },
+                setView: { try await list.setView(view: $0, selected: $1) },
                 setGroupFolded: {
-                    try await list.setGroupFolded(group: $0, folded: $1)
+                    try await list.setGroupFolded(
+                        group: $0,
+                        folded: $1,
+                        selected: $2
+                    )
                 },
                 setAllGroupsFolded: {
-                    try await list.setAllGroupsFolded(folded: $0)
+                    try await list.setAllGroupsFolded(folded: $0, selected: $1)
                 },
                 locateCandidate: {
                     try await list.locateCandidate(candidateKey: $0)
@@ -131,27 +136,37 @@ import Foundation
             )
         }
 
-        /// Show `view`, and answer where it opens: its first selected row,
-        /// or the list's top. `nil` when it is the view the list already
-        /// shows. The caller drops the windows it holds and opens new ones
-        /// from that place.
-        public func setView(_ view: BridgeImportListView) async throws
-            -> BridgeImportListOpening?
-        {
-            try await applyView(view)
+        /// Show `view`, where the screen keeps the rows at `selected`
+        /// selected, and answer where it opens, at the first of those rows
+        /// it shows or the list's top, and which of them leave the
+        /// selection: on another tab, filter or search, the ones the new view
+        /// doesn't show. `nil` when it is the view the list already shows.
+        /// The caller drops the windows it holds and opens new ones from that
+        /// place.
+        public func setView(
+            _ view: BridgeImportListView,
+            selected: [Data]
+        ) async throws -> BridgeImportListViewChange? {
+            try await applyView(view, selected)
         }
 
-        /// Fold one group shut, or open it.
+        /// Fold one group shut, or open it, and answer with the keys of
+        /// `selected` whose rows the fold hid.
         public func setGroupFolded(
             _ group: BridgeFolderReleaseDecisionKey,
-            _ folded: Bool
-        ) async throws {
-            try await fold(group, folded)
+            _ folded: Bool,
+            selected: [Data]
+        ) async throws -> [Data] {
+            try await fold(group, folded, selected)
         }
 
-        /// Fold every group shut, or open them all, as one change.
-        public func setAllGroupsFolded(_ folded: Bool) async throws {
-            try await foldAll(folded)
+        /// Fold every group shut, or open them all, as one change, and answer
+        /// with the keys of `selected` whose rows the fold hid.
+        public func setAllGroupsFolded(
+            _ folded: Bool,
+            selected: [Data]
+        ) async throws -> [Data] {
+            try await foldAll(folded, selected)
         }
 
         /// Where the list shows the candidate after it clears the filters and
@@ -164,8 +179,7 @@ import Foundation
             try await locate(candidateKey)
         }
 
-        /// Close the list: every read opened from it ends, and its folds and
-        /// selection go.
+        /// Close the list: every read opened from it ends, and its folds go.
         public func close() async throws {
             try await closeList()
         }

@@ -1,33 +1,29 @@
-//! A list's selection (`import_list_selection`): the rows a person points
-//! at, which are only ever rows the list shows, except a release on a
-//! Pending list whose import finished. This module holds what the selection
-//! holds and offers, read as a live query of its own; the selected rows a
-//! bulk action takes, in the list's order; and the writes that change it,
-//! which return nothing; coven reruns the windows that hold the rows a write
-//! changed.
+//! A list's selection, which the surface keeps as the keys of the rows the
+//! person selected: what those rows hold and offer, read as a live query of
+//! its own whatever the list shows; the ones the list shows, in its order,
+//! which a bulk action takes; and the keys a Shift run and Select All select.
 
 use super::actions::{action_columns, offers};
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
 use super::*;
-use crate::selection::{
-    SelectedCandidate, SelectedRows, SelectionChange, SelectionSummary, SingleSelection,
-};
+use crate::selection::{SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection};
 use crate::triage::SelectionOffer;
 use crate::{CandidateAction, CandidateKey};
 
-/// What the list's selection holds and offers, in one statement: how many
-/// rows it holds, the one row when it holds one, and for each command how many
-/// of the rows offer it and whether it can run as the selection stands. The
-/// rows are the summary (position 0) and then each command offered, by its
-/// place in [`CandidateAction::ALL`]. Each command runs row by row over the
-/// rows that offer it, so the selection offers it when any row does. Combine
-/// is one command over the whole selection: the selection offers Combine for
-/// two or more rows and enables it only when Combine can merge every row. A
-/// row that Combine cannot merge shows the reason, and Combine stays in the
-/// offers.
+/// What the rows at `keys` hold and offer, in one statement, whatever the
+/// list shows: how many rows the keys name, the one row when they name one,
+/// and for each command how many of the rows offer it and whether it can run
+/// as the selection stands. A key whose row the tables no longer hold names
+/// no row. The rows are the summary (position 0) and then each command
+/// offered, by its place in [`CandidateAction::ALL`]. Each command runs row
+/// by row over the rows that offer it, so the selection offers it when any
+/// row does. Combine is one command over the whole selection: the selection
+/// offers Combine for two or more rows and enables it only when Combine can
+/// merge every row. A row that Combine cannot merge shows the reason, and
+/// Combine stays in the offers.
 pub(super) fn selection(
     sql: &SqlReadContext<'_>,
-    list: ImportListId,
+    keys: &[CandidateKey],
 ) -> Result<SelectionSummary, DbError> {
     let sums = CandidateAction::ALL
         .iter()
@@ -53,10 +49,10 @@ pub(super) fn selection(
         &format!(
             "WITH chosen AS ( \
                  SELECT p.item, p.key, {actions} \
-                 FROM import_list_selection AS s \
-                 JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
-                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
-                 WHERE s.list_id = ?), \
+                 FROM json_each(?) AS asked \
+                 JOIN import_list_placement AS p \
+                     ON p.key = unhex(asked.value) AND p.item <> 'group' \
+                 LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key), \
              total AS ( \
                  SELECT COUNT(*) AS n_rows, MIN(item) AS item, MIN(key) AS key, \
                         MIN(can_Combine) AS every_can_combine, {sums} \
@@ -66,7 +62,7 @@ pub(super) fn selection(
              UNION ALL {offers} ORDER BY 1",
             actions = action_columns(),
         ),
-        [list.0],
+        [crate::tables::key_hex_list(keys.iter())],
         |row| {
             Ok((
                 row.get::<_, usize>(0)?,
@@ -101,12 +97,13 @@ pub(super) fn selection(
     Ok(summary)
 }
 
-/// The selected rows of the list, in its order, and, when the caller names a
-/// command in `acting`, only the rows that offer it; `None` once the list is
-/// closed.
+/// The rows at `keys` the list `list` shows, in its order, and, when the
+/// caller names a command in `acting`, only the rows that offer it; `None`
+/// once the list is closed.
 pub(super) fn selected(
     sql: &impl coven::SqlRead,
     list: ImportListId,
+    keys: &[CandidateKey],
     acting: Option<CandidateAction>,
 ) -> Result<Option<SelectedRows>, DbError> {
     let Some(row) = super::list_row(sql, list)? else {
@@ -121,20 +118,25 @@ pub(super) fn selected(
         &format!(
             "WITH {uploading} \
              SELECT p.item, p.key, c.name \
-             FROM import_list_selection AS s \
-             JOIN import_list_placement AS p ON p.key = s.key AND p.item <> 'group' \
+             FROM json_each(:keys) AS asked \
+             JOIN import_list_shown AS shown \
+                 ON shown.list_id = :list AND shown.key = unhex(asked.value) \
+             JOIN import_list_placement AS p ON p.key = shown.key AND p.item <> 'group' \
              {unit} \
              JOIN scan_candidate AS c \
                  ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
              LEFT JOIN import_candidate_standing AS st ON st.candidate_key = p.key \
              LEFT JOIN uploading AS u ON u.key = p.key \
-             WHERE s.list_id = ? AND {offering} \
+             WHERE {offering} \
              ORDER BY u.position IS NULL, u.position, {terms}",
             uploading = uploading_cte(),
             unit = unit_join("p", "unit"),
             terms = sorted_terms(row.view.order, "p", "unit"),
         ),
-        [list.0],
+        named_params! {
+            ":keys": crate::tables::key_hex_list(keys.iter()),
+            ":list": list.0,
+        },
         |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, CandidateKey>(1)?, row.get::<_, String>(2)?))
         },
@@ -151,137 +153,98 @@ pub(super) fn selected(
     Ok(Some(selected))
 }
 
-impl ImportTables {
-    /// The rows the list `list` has selected, in the order it shows them:
-    /// what a bulk action runs over. When the caller names a command in
-    /// `acting`, the method returns only the rows that offer it.
-    pub async fn load_import_list_selected(
-        &self,
-        list: ImportListId,
-        acting: Option<CandidateAction>,
-    ) -> Result<crate::selection::SelectedRows, ImportListError> {
-        self.store
-            .read(move |sql| selected(&sql, list, acting))
-            .await?
-            .ok_or(ImportListError::Closed(list))
-    }
-
-    /// Apply a change a person made by pointing at rows of `list`. A row the
-    /// list does not show is never selected.
-    pub async fn change_import_list_selection(
-        &self,
-        list: ImportListId,
-        change: SelectionChange,
-    ) -> Result<SelectionWrite, ImportListError> {
-        self.store
-            .call(move |sql| {
-                let Some(row) = list_row(sql, list)? else {
-                    return Ok(None);
-                };
-                // A release whose import finished while the list was on
-                // Pending stays selected until the person selects again.
-                let kept_unshown: bool = sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM import_list_selection AS s \
-                     WHERE s.list_id = ? AND NOT EXISTS ( \
-                         SELECT 1 FROM import_list_shown AS shown \
-                         WHERE shown.list_id = s.list_id AND shown.key = s.key))",
-                    [list.0],
-                    |row| row.get(0),
-                )?;
-                if kept_unshown {
-                    sql.execute(
-                        "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND NOT EXISTS ( \
-                             SELECT 1 FROM import_list_shown AS shown \
-                             WHERE shown.list_id = import_list_selection.list_id \
-                               AND shown.key = import_list_selection.key)",
-                        [list.0],
-                    )?;
-                }
-                match change {
-                    SelectionChange::Replace { keys } => {
-                        sql.execute(
-                            "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key NOT IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, crate::tables::key_hex_list(keys.iter())],
-                        )?;
-                        select_shown(sql, list, &keys)?;
-                    }
-                    SelectionChange::Toggle { add, remove } => {
-                        sql.execute(
-                            "DELETE FROM import_list_selection \
-                         WHERE list_id = ? AND key IN (SELECT unhex(value) FROM json_each(?))",
-                            params![list.0, crate::tables::key_hex_list(remove.iter())],
-                        )?;
-                        select_shown(sql, list, &add)?;
-                    }
-                    SelectionChange::Extend { from, to } => {
-                        let items = row.items(Shown::View);
-                        let (Some((from, _)), Some((to, _))) =
-                            (items.position_of(sql, &from)?, items.position_of(sql, &to)?)
-                        else {
-                            return Ok(Some(SelectionWrite::RunNotShown));
-                        };
-                        items.select_window(sql, from.min(to), from.abs_diff(to) + 1)?;
-                    }
-                }
-                Ok(Some(SelectionWrite::Changed))
-            })
-            .await?
-            .ok_or(ImportListError::Closed(list))
-    }
-
-    /// Select every row `list` shows.
-    pub(crate) async fn select_all_in_import_list(
-        &self,
-        list: ImportListId,
-    ) -> Result<(), ImportListError> {
-        self.store
-            .call(move |sql| {
-                if list_row(sql, list)?.is_none() {
-                    return Ok(None);
-                }
-                sql.execute(
-                    "INSERT INTO import_list_selection (list_id, key) \
-                 SELECT list_id, key FROM import_list_shown WHERE list_id = ? \
-                 ON CONFLICT (list_id, key) DO NOTHING",
-                    [list.0],
-                )?;
-                Ok(Some(()))
-            })
-            .await?
-            .ok_or(ImportListError::Closed(list))
-    }
-}
-
-/// What a change to a selection came to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SelectionWrite {
-    /// The selection is as asked.
-    Changed,
-    /// A run of rows was asked for between rows the list does not show, so
-    /// nothing changed.
-    RunNotShown,
-}
-
-/// Insert every key of `keys` the list shows into its selection.
-fn select_shown(
-    sql: &CovenWrite<'_>,
+/// The keys of `keys` whose rows the list `list` shows.
+pub(super) fn shown_among(
+    sql: &impl coven::SqlRead,
     list: ImportListId,
     keys: &[CandidateKey],
-) -> Result<(), DbError> {
-    sql.execute(
-        "INSERT INTO import_list_selection (list_id, key) \
-         SELECT shown.list_id, shown.key FROM json_each(:keys) AS w \
-         JOIN import_list_shown AS shown ON shown.key = unhex(w.value) \
-         WHERE shown.list_id = :list \
-         ON CONFLICT (list_id, key) DO NOTHING",
+) -> Result<Vec<CandidateKey>, DbError> {
+    Ok(sql.query(
+        "SELECT shown.key FROM json_each(:keys) AS asked \
+         JOIN import_list_shown AS shown \
+             ON shown.list_id = :list AND shown.key = unhex(asked.value)",
         named_params! {
             ":keys": crate::tables::key_hex_list(keys.iter()),
             ":list": list.0,
         },
-    )?;
-    Ok(())
+        |row| row.get(0),
+    )?)
+}
+
+/// The keys of `keys` whose rows the list `list` doesn't show.
+pub(super) fn unshown_among(
+    sql: &impl coven::SqlRead,
+    list: ImportListId,
+    keys: &[CandidateKey],
+) -> Result<Vec<CandidateKey>, DbError> {
+    Ok(sql.query(
+        "SELECT unhex(asked.value) FROM json_each(:keys) AS asked \
+         WHERE NOT EXISTS (SELECT 1 FROM import_list_shown AS shown \
+                           WHERE shown.list_id = :list AND shown.key = unhex(asked.value))",
+        named_params! {
+            ":keys": crate::tables::key_hex_list(keys.iter()),
+            ":list": list.0,
+        },
+        |row| row.get(0),
+    )?)
+}
+
+impl ImportTables {
+    /// The rows at `keys` the list `list` shows, in its order: what a bulk
+    /// action runs over. When the caller names a command in `acting`, the
+    /// method returns only the rows that offer it.
+    pub async fn load_import_list_selected(
+        &self,
+        list: ImportListId,
+        keys: Vec<CandidateKey>,
+        acting: Option<CandidateAction>,
+    ) -> Result<SelectedRows, ImportListError> {
+        self.store
+            .read(move |sql| selected(&sql, list, &keys, acting))
+            .await?
+            .ok_or(ImportListError::Closed(list))
+    }
+
+    /// The keys of every release the list `list` shows, loaded by a surface
+    /// or not: what Select All selects.
+    pub async fn import_list_keys(
+        &self,
+        list: ImportListId,
+    ) -> Result<Vec<CandidateKey>, ImportListError> {
+        self.store
+            .read(move |sql| {
+                if list_row(&sql, list)?.is_none() {
+                    return Ok(None);
+                }
+                Ok(Some(sql.query(
+                    "SELECT key FROM import_list_shown WHERE list_id = ?",
+                    [list.0],
+                    |row| row.get(0),
+                )?))
+            })
+            .await?
+            .ok_or(ImportListError::Closed(list))
+    }
+
+    /// The releases the list `list` shows on `tab` in `order`, the tab and
+    /// order the surface shows it in, from the release `from` to the release
+    /// `to`, both included, in that order: what a Shift gesture selects. The
+    /// one it shows when it shows only one of the two, and none when it shows
+    /// neither, or when the list shows another tab or is closed.
+    pub async fn import_list_keys_between(
+        &self,
+        list: ImportListId,
+        tab: crate::TriageTab,
+        order: crate::ImportListOrder,
+        from: CandidateKey,
+        to: CandidateKey,
+    ) -> Result<Vec<CandidateKey>, DbError> {
+        self.store
+            .read(move |sql| {
+                Items::new(list, tab, order, Shown::View).keys_between(&sql, &from, &to)
+            })
+            .await
+    }
 }
 
 #[cfg(test)]

@@ -1,9 +1,8 @@
 -- Each import list a surface has open, as it is viewed: its tab, filter
--- entry and filter text, and its order; which of its groups are folded shut
--- (`import_list_collapsed`); and the rows selected in it
--- (`import_list_selection`). What a list shows is a query over these and the
--- placement, so a change to any of them is a write the list's live query
--- answers. No list outlives the process that opened it: the import service
+-- entry and filter text, and its order; and which of its groups are folded
+-- shut (`import_list_collapsed`). What a list shows is a query over these and
+-- the placement, so a change to any of them is a write the list's live query
+-- answers. The surface keeps the rows the person selects. No list outlives the process that opened it: the import service
 -- empties these tables as the library opens.
 CREATE TABLE IF NOT EXISTS import_list (
     id                 INTEGER PRIMARY KEY,
@@ -35,17 +34,6 @@ CREATE TABLE IF NOT EXISTS import_list_collapsed (
 
 CREATE INDEX IF NOT EXISTS import_list_collapsed_by_group
     ON import_list_collapsed (watched_folder_path, item, group_folder);
-
--- The rows selected in a list, by key: only ever rows it shows. A row the
--- list stops showing, by a change to its view or to the row, leaves the
--- selection in that write.
-CREATE TABLE IF NOT EXISTS import_list_selection (
-    list_id INTEGER NOT NULL REFERENCES import_list (id) ON DELETE CASCADE,
-    key     BLOB NOT NULL,
-    PRIMARY KEY (list_id, key)
-) STRICT;
-
-CREATE INDEX IF NOT EXISTS import_list_selection_by_key ON import_list_selection (key);
 
 -- Each list's view as the queries below read it: whether its filters
 -- narrow its tab, by filter text or by a filter entry on Found, whether it
@@ -104,52 +92,3 @@ WHERE j.keeps_all
 -- Each list's releases it shows.
 CREATE VIEW IF NOT EXISTS import_list_shown AS
 SELECT * FROM import_list_item WHERE item <> 'group';
-
--- A selected release a change moves out of what a list shows leaves its
--- selection, except a release whose import finished while the list is on
--- Pending: the pane keeps it, shown as imported, until the person selects
--- another row or changes the view.
-CREATE TRIGGER IF NOT EXISTS import_list_selected_moved AFTER UPDATE ON import_list_placement
-WHEN NEW.item <> 'group'
- AND (OLD.tab, OLD.pending_state, OLD.filter_title, OLD.filter_artists, OLD.group_folder)
-     IS NOT (NEW.tab, NEW.pending_state, NEW.filter_title, NEW.filter_artists, NEW.group_folder)
-BEGIN
-    DELETE FROM import_list_selection
-    WHERE key = NEW.key
-      AND NOT EXISTS (SELECT 1 FROM import_list_shown AS shown
-                      WHERE shown.list_id = import_list_selection.list_id
-                        AND shown.key = NEW.key)
-      AND NOT (NEW.tab = 'done'
-               AND (SELECT l.tab FROM import_list AS l
-                    WHERE l.id = import_list_selection.list_id) = 'pending');
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_selected_removed AFTER DELETE ON import_list_placement
-WHEN OLD.item <> 'group'
-BEGIN
-    DELETE FROM import_list_selection
-    WHERE key = OLD.key
-      AND NOT EXISTS (SELECT 1 FROM import_list_shown AS shown
-                      WHERE shown.list_id = import_list_selection.list_id
-                        AND shown.key = OLD.key);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_view_changed
-AFTER UPDATE OF tab, pending_filter, filter_text ON import_list
-WHEN (OLD.tab, OLD.pending_filter, OLD.filter_text)
-     IS NOT (NEW.tab, NEW.pending_filter, NEW.filter_text)
-BEGIN
-    DELETE FROM import_list_selection
-    WHERE list_id = NEW.id
-      AND NOT EXISTS (SELECT 1 FROM import_list_shown AS shown
-                      WHERE shown.list_id = NEW.id AND shown.key = import_list_selection.key);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_list_group_folded AFTER INSERT ON import_list_collapsed
-BEGIN
-    DELETE FROM import_list_selection
-    WHERE list_id = NEW.list_id
-      AND key IN (SELECT key FROM import_list_placement
-                  WHERE watched_folder_path = NEW.watched_folder_path
-                    AND group_folder = NEW.group_folder AND item <> 'group');
-END;

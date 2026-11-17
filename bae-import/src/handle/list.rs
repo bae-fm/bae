@@ -228,7 +228,7 @@ impl ImportServiceHandle {
     ) -> crate::list::ImportListRead {
         let list = self.subscribe_whole_list(view).await;
         loop {
-            let read = list.next().await;
+            let read = list.next(Vec::new()).await;
             if accept(&read) {
                 return read;
             }

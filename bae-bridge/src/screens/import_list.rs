@@ -1,17 +1,18 @@
 //! The import tab's list as the app holds it open: its view and folds, the
-//! selection it owns and the bulk actions over it, and the live reads of its
-//! windows, count, position, and its summary.
+//! bulk actions over the rows the app keeps selected, and the live reads of
+//! its windows, count, position, its summary and what the selected rows hold.
 
 use crate::types::{BridgeError, BridgeSortValue};
 
 /// The import tab's open list. Its windows, count and position are the same
 /// live reads every list has (`subscribe_list_window`, `subscribe_list_count`,
 /// `subscribe_list_position` and `list_key_at`), opened from the list because
-/// they read the list's own view, folds and selection; the list opens a
-/// separate live read for its summary, Found's filter entries and the
-/// selection. When the app cancels the list, every read opened from the list
-/// ends. The selection only ever holds rows the list shows, so changing it
-/// and acting on it are this list's to do.
+/// they read the list's own view and folds; the list opens a separate live
+/// read for its summary, Found's filter entries and what the selected rows
+/// hold. When the app cancels the list, every read opened from the list ends.
+/// The app keeps the keys of the rows the person selected, and passes them to
+/// each call that reads or acts on them; each action acts on the ones the
+/// list shows.
 #[derive(uniffi::Object)]
 pub struct ImportList {
     inner: bae_import::LiveImportList,
@@ -92,7 +93,9 @@ impl ImportList {
         )
     }
 
-    /// What the selection holds and the actions it offers, read live.
+    /// What the rows the app keeps selected hold and the actions they offer,
+    /// whatever the list shows, read live. The read starts with no row, and
+    /// `set_selected` names the rows.
     pub fn subscribe_selection(&self) -> std::sync::Arc<ImportSelectionSubscription> {
         import_selection(bae_app::import_list_selection(&self.inner), self.runtime.clone())
     }
@@ -120,33 +123,48 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// What the import list's selection holds and the actions it offers.
+    /// What the rows the app keeps selected in the import list hold and the
+    /// actions they offer. `set_selected` changes the rows without opening a
+    /// new read.
     ImportSelectionSubscription:
-        bae_store::live_query::LiveValues<bae_import::selection::SelectionSummary>
-            => crate::types::BridgeSelectionSummary,
+        bae_app::live_reads::LiveImportSelection => crate::types::BridgeSelectionSummary,
     converted by crate::types::BridgeSelectionSummary::from_core,
     built by import_selection
 }
 
+#[uniffi::export]
+impl ImportSelectionSubscription {
+    /// Read what the rows at `selected` hold from now on.
+    pub fn set_selected(&self, selected: Vec<Vec<u8>>) -> Result<(), BridgeError> {
+        self.inner
+            .set(selected.into_iter().map(bae_import::CandidateKey::from).collect())
+            .map(|_revision| ())
+            .map_err(BridgeError::from)
+    }
+}
+
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl ImportList {
-    /// Show `view`, and answer where it opens: its first selected row, by
-    /// key and position, or its top. Nothing when it is the view the list
-    /// already shows. The app drops the windows it holds and opens new ones
-    /// from that place.
+    /// Show `view`, where the app keeps the rows at `selected` selected, and
+    /// answer where it opens, at the first of those rows it shows, by key and
+    /// position, or its top, and which of them leave the selection: on
+    /// another tab, filter or search, the ones the new view doesn't show.
+    /// Nothing when it is the view the list already shows. The app drops the
+    /// windows it holds and opens new ones from that place.
     pub async fn set_view(
         self: std::sync::Arc<Self>,
         view: crate::types::BridgeImportListView,
-    ) -> Result<Option<crate::types::BridgeImportListOpening>, BridgeError> {
+        selected: Vec<Vec<u8>>,
+    ) -> Result<Option<crate::types::BridgeImportListViewChange>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportList.set_view", move || async move {
                 Ok(self
                     .inner
-                    .set_view(view.into_core())
+                    .set_view(view.into_core(), keys(selected))
                     .await
                     .map_err(list_error)?
-                    .map(crate::types::BridgeImportListOpening::from_core))
+                    .map(crate::types::BridgeImportListViewChange::from_core))
             })
             .await
     }
@@ -172,8 +190,7 @@ impl ImportList {
             .await
     }
 
-    /// Close the list: every read opened from it ends, and its folds and
-    /// selection go.
+    /// Close the list: every read opened from it ends, and its folds go.
     pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
         let runtime = self.runtime.clone();
         runtime
@@ -183,29 +200,43 @@ impl ImportList {
             .await
     }
 
-    /// Fold one group shut, or open it.
+    /// Fold one group shut, or open it, and answer with the keys of
+    /// `selected`, the rows the app keeps selected, whose rows the fold hid.
     pub async fn set_group_folded(
         self: std::sync::Arc<Self>,
         group: crate::types::BridgeFolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<(), BridgeError> {
+        selected: Vec<Vec<u8>>,
+    ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportList.set_group_folded", move || async move {
-                self.inner.set_group_folded(group.into_core()?, folded).await.map_err(list_error)
+                Ok(bytes(
+                    self.inner
+                        .set_group_folded(group.into_core()?, folded, keys(selected))
+                        .await
+                        .map_err(list_error)?,
+                ))
             })
             .await
     }
 
-    /// Fold every group shut, or open them all.
+    /// Fold every group shut, or open them all, and answer with the keys of
+    /// `selected`, the rows the app keeps selected, whose rows the fold hid.
     pub async fn set_all_groups_folded(
         self: std::sync::Arc<Self>,
         folded: bool,
-    ) -> Result<(), BridgeError> {
+        selected: Vec<Vec<u8>>,
+    ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportList.set_all_groups_folded", move || async move {
-                self.inner.set_all_groups_folded(folded).await.map_err(list_error)
+                Ok(bytes(
+                    self.inner
+                        .set_all_groups_folded(folded, keys(selected))
+                        .await
+                        .map_err(list_error)?,
+                ))
             })
             .await
     }
@@ -246,34 +277,47 @@ impl ImportList {
             .await
     }
 
-    /// Apply a change a person made by pointing at rows of the list. The
-    /// windows holding the rows it changed show it.
-    pub async fn change_selection(
+    /// The keys of every row the list shows, loaded by the app or not: what
+    /// Select All selects.
+    pub async fn keys(self: std::sync::Arc<Self>) -> Result<Vec<Vec<u8>>, BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("ImportList.keys", move || async move {
+                Ok(bytes(self.inner.keys().await.map_err(list_error)?))
+            })
+            .await
+    }
+
+    /// The keys of the rows the list shows on `tab` in `order`, the tab and
+    /// order the app shows it in, from the row `from` to the row `to`, both
+    /// included, in that order: what a Shift gesture selects. The one it
+    /// shows when it shows only one of the two, and none when it shows
+    /// neither, or when the list shows another tab.
+    pub async fn keys_between(
         self: std::sync::Arc<Self>,
-        change: crate::types::BridgeSelectionChange,
-    ) -> Result<(), BridgeError> {
+        tab: crate::types::BridgeTriageTab,
+        order: crate::types::BridgeImportListOrder,
+        from: Vec<u8>,
+        to: Vec<u8>,
+    ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportList.change_selection", move || async move {
-                self.inner.change_selection(change.into_core()).await.map_err(list_error)
+            .run("ImportList.keys_between", move || async move {
+                Ok(bytes(
+                    self.inner
+                        .keys_between(tab.into_core(), order.into_core(), from.into(), to.into())
+                        .await
+                        .map_err(list_error)?,
+                ))
             })
             .await
     }
 
-    /// Select every row the list shows, loaded by the surface or not.
-    pub async fn select_all(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportList.select_all", move || async move {
-                self.inner.select_all().await.map_err(list_error)
-            })
-            .await
-    }
-
-    /// The folders of every selected candidate, as coven's bytes for each
-    /// path.
+    /// The folders of every candidate at `selected` the list shows, as
+    /// coven's bytes for each path.
     pub async fn selection_source_folders(
         self: std::sync::Arc<Self>,
+        selected: Vec<Vec<u8>>,
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
@@ -281,7 +325,7 @@ impl ImportList {
                 Ok(self
                     .services
                     .import_selection_source_folders(
-                        &self.inner.selected().await.map_err(list_error)?,
+                        &self.inner.selected(keys(selected)).await.map_err(list_error)?,
                     )
                     .await
                     .map_err(BridgeError::from)?
@@ -292,59 +336,57 @@ impl ImportList {
             .await
     }
 
-    /// Read every selected candidate as one release, select it, and answer
-    /// with its key.
-    pub async fn combine_selection(self: std::sync::Arc<Self>) -> Result<Vec<u8>, BridgeError> {
+    /// Read every candidate at `selected` the list shows as one release, and
+    /// answer with its key, which the app selects.
+    pub async fn combine_selection(
+        self: std::sync::Arc<Self>,
+        selected: Vec<Vec<u8>>,
+    ) -> Result<Vec<u8>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportList.combine_selection", move || async move {
-                let key = self
+                Ok(self
                     .services
-                    .combine_import_selection(&self.inner.selected().await.map_err(list_error)?)
+                    .combine_import_selection(
+                        &self.inner.selected(keys(selected)).await.map_err(list_error)?,
+                    )
                     .await
-                    .map_err(BridgeError::from)?;
-                self.inner
-                    .change_selection(bae_import::selection::SelectionChange::Replace {
-                        keys: vec![key.clone()],
-                    })
-                    .await
-                    .map_err(list_error)?;
-                Ok(key.into())
+                    .map_err(BridgeError::from)?
+                    .into())
             })
             .await
     }
 
-    /// Read the one selected release as the releases it is made of, select
-    /// them, and answer with their keys.
+    /// Read the one release at `selected` as the releases it is made of, and
+    /// answer with their keys, which the app selects.
     pub async fn separate_selection(
         self: std::sync::Arc<Self>,
+        selected: Vec<Vec<u8>>,
     ) -> Result<Vec<Vec<u8>>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
             .run("ImportList.separate_selection", move || async move {
-                let keys = self
-                    .services
-                    .separate_import_selection(&self.inner.selected().await.map_err(list_error)?)
-                    .await
-                    .map_err(BridgeError::from)?;
-                self.inner
-                    .change_selection(bae_import::selection::SelectionChange::Replace {
-                        keys: keys.clone(),
-                    })
-                    .await
-                    .map_err(list_error)?;
-                Ok(keys.into_iter().map(Vec::<u8>::from).collect())
+                Ok(bytes(
+                    self.services
+                        .separate_import_selection(
+                            &self.inner.selected(keys(selected)).await.map_err(list_error)?,
+                        )
+                        .await
+                        .map_err(BridgeError::from)?,
+                ))
             })
             .await
     }
 
-    /// Run `action` on every selected candidate that offers it, in the order
-    /// the list shows them, and answer with the candidates it failed on. How
-    /// far it has got is the stream [`Self::selection_action_progress`] last
-    /// handed out, which holds it while the action runs.
+    /// Run `action` on every candidate at `selected` the list shows that
+    /// offers it, in the order the list shows them, and answer with the
+    /// candidates it failed on. How far it has got is the stream
+    /// [`Self::selection_action_progress`] last handed out, which holds it
+    /// while the action runs.
     pub async fn run_selection_action(
         self: std::sync::Arc<Self>,
         action: crate::types::BridgeCandidateAction,
+        selected: Vec<Vec<u8>>,
     ) -> Result<Vec<crate::types::BridgeSelectionActionFailure>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
@@ -355,7 +397,7 @@ impl ImportList {
                     .run_import_selection_action(
                         &self
                             .inner
-                            .selected_offering(action.into_core())
+                            .selected_offering(keys(selected), action.into_core())
                             .await
                             .map_err(list_error)?,
                         action.into_core(),
@@ -386,9 +428,16 @@ impl ImportList {
 fn list_error(error: bae_import::ImportListFailure) -> BridgeError {
     match error {
         bae_import::ImportListFailure::Closed => BridgeError::Cancelled,
-        error @ bae_import::ImportListFailure::RunNotShown => {
-            BridgeError::internal(error.to_string())
-        }
         bae_import::ImportListFailure::Database(error) => BridgeError::from(error),
     }
+}
+
+/// Candidate keys as the app sends them.
+fn keys(keys: Vec<Vec<u8>>) -> Vec<bae_import::CandidateKey> {
+    keys.into_iter().map(bae_import::CandidateKey::from).collect()
+}
+
+/// Candidate keys as the app reads them.
+fn bytes(keys: Vec<bae_import::CandidateKey>) -> Vec<Vec<u8>> {
+    keys.into_iter().map(Vec::<u8>::from).collect()
 }

@@ -46,6 +46,14 @@ where
 pub type LiveStorageSelection =
     LiveRead<std::collections::BTreeSet<String>, bae_views::StorageSelection>;
 
+/// A live read of what the rows an import list's surface keeps selected hold
+/// and offer. The selected keys change in place through [`LiveRead::set`].
+#[cfg(desktop)]
+pub type LiveImportSelection = LiveRead<
+    std::collections::BTreeSet<bae_import::CandidateKey>,
+    bae_import::selection::SelectionSummary,
+>;
+
 /// A live read of the covers a library release's or a candidate's picker
 /// shows. The release or candidate and the source change in place through
 /// [`LiveRead::set`]; `None` reads nothing.

@@ -183,8 +183,6 @@ pub struct TriageRow {
     /// records.
     pub release_link: Option<ReleaseLink>,
     pub reading: TriageReading,
-    /// Whether the person has selected the row.
-    pub selected: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

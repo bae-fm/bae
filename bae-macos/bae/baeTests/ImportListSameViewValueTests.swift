@@ -6,19 +6,17 @@ import Testing
 
 /// A new value of the view the list already shows: typing into the selected
 /// row's pane writes its draft, and the list's next value carries the row as
-/// the draft now reads, still selected.
+/// the draft now reads, which the kept key still selects.
 @Suite("Import list value for the same view")
 struct ImportListSameViewValueTests {
-    /// The table keeps the row highlighted, asks core for nothing and leaves
-    /// the window's focus where it was.
+    /// The table keeps the row highlighted, keeps the selection as it was
+    /// and leaves the window's focus where it was.
     @MainActor
     @Test("a new value of the same view keeps the selected row and the focus")
     func aNewValueOfTheSameViewKeepsTheSelection() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let changes = CallLog<BridgeSelectionChange>()
-        var selected = PreviewData.triageRowIdentified
-        selected.selected = true
+        let selected = PreviewData.triageRowIdentified
         let other = PreviewData.candidateItem(PreviewData.triageRowUnidentified)
         let source = MutableImportList(items: [
             PreviewData.candidateItem(selected), other,
@@ -26,15 +24,12 @@ struct ImportListSameViewValueTests {
         let slot = ImportListSlot(
             importStore: store,
             uiStore: uiStore,
-            selection: ImportSelection(
-                operations: .stub(change: { change in
-                    changes.record(change)
-                })
-            ),
+            selection: ImportSelection(),
             makeHandle: { _ in source.handle }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.row(at: 1) != nil }
+        slot.selection.select([selected.candidateKey])
         try await ImportListHosting.withList(
             store: store,
             slot: slot,
@@ -55,9 +50,8 @@ struct ImportListSameViewValueTests {
             try await Wait.untilSteady { table.selectedRowIndexes }
 
             #expect(table.selectedRowIndexes == [0])
-            #expect(changes.all.isEmpty)
             #expect(slot.answersView)
-            #expect(slot.list?.selectedKeys == [edited.candidateKey])
+            #expect(slot.selection.keys == [edited.candidateKey])
             #expect(window.firstResponder === focused)
         }
     }

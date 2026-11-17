@@ -35,7 +35,7 @@ extension ImportView {
     }
 
     /// Read the selected release as the folders it is made of: the pane's
-    /// "Keep as separate releases". Core selects the releases it returns.
+    /// "Keep as separate releases". The releases it returns are selected.
     func separateSelectedCandidate() {
         let taskKey = ImportTaskKey.separateSelection
         candidateMutationTasks[taskKey]?.cancel()

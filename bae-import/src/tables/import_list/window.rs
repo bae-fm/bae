@@ -219,7 +219,6 @@ struct ReleaseRows {
     block: (Option<String>, Option<String>, Option<String>),
     failure: Option<crate::ImportFailureReason>,
     facts: RuntimeFactColumns,
-    selected: bool,
     /// What the scan read of a folder that failed validation.
     invalid: Option<folder_scans::InvalidColumns>,
     /// The header of the group the release is listed under, by its stable
@@ -267,8 +266,6 @@ fn rows_statement(position: &str, columns: &str) -> String {
                 g.blocked, g.blocked_subject, g.blocked_holder, \
                 failure.content_hash IS NOT NULL AS failed, {FAILURE_REASON_COLUMNS}, \
                 {RUNTIME_FACT_COLUMNS}, \
-                EXISTS (SELECT 1 FROM import_list_selection AS chosen \
-                        WHERE chosen.list_id = :list AND chosen.key = p.key) AS selected, \
                 p.group_folder AS group_folder, \
                 {library_cover} AS library_cover, \
                 {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
@@ -357,7 +354,6 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
             false => None,
         },
         facts: RuntimeFactColumns::read(row, 26)?,
-        selected: row.get("selected")?,
         invalid: folder_scans::InvalidColumns::read(row)?,
         header_key: row
             .get::<_, Option<RelativeFolder>>("group_folder")?
@@ -417,7 +413,7 @@ fn invalid_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         ));
     };
     let candidate = invalid.candidate(&release.key, release.name, release.watched_folder_path)?;
-    Ok(ImportListItem::Invalid { candidate, selected: release.selected })
+    Ok(ImportListItem::Invalid { candidate })
 }
 
 /// A candidate's row: its placement and the keyed rows beside it, listed
@@ -435,7 +431,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         block,
         failure,
         facts,
-        selected,
         header_key,
         upload,
         library_records,
@@ -498,7 +493,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         upload: imported.and(upload),
         metadata_provenance: shown.metadata_provenance,
         release_link: shown.release_link,
-        selected,
     };
     Ok(ImportListItem::Candidate {
         row,

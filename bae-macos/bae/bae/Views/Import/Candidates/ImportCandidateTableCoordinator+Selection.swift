@@ -3,9 +3,12 @@ import BaeKit
 
 // MARK: - Selection
 
-/// The table's highlight is core's selection, and what a person does to the
-/// rows goes to core: the table's own selection handling only proposes rows,
-/// and each proposal is read as the change it asks of core's selection.
+/// The screen keeps the selection as the keys of the rows the person
+/// selected, and each row the table draws takes its highlight from them: the
+/// table's own selection handling only proposes rows, and each proposal is
+/// read as the change it makes to the kept keys. A Shift run and Select All
+/// take their keys from core, which reads every row between two rows, or
+/// every row the list shows, loaded or not.
 extension ImportCandidateTableCoordinator {
     func tableView(
         _ tableView: NSTableView,
@@ -17,7 +20,7 @@ extension ImportCandidateTableCoordinator {
         let request = ImportListSelectionRequest(
             proposed: proposed,
             current: tableView.selectedRowIndexes,
-            shown: list.selectedKeys,
+            kept: listSlot.selection.keys,
             gesture: SelectionGesture(event?.modifierFlags ?? []),
             target: event.flatMap { table?.pressedRow($0) },
             anchor: anchorKey,
@@ -30,17 +33,20 @@ extension ImportCandidateTableCoordinator {
             return event?.type == .keyDown ? [] : tableView.selectedRowIndexes
         case .unchanged:
             return tableView.selectedRowIndexes
-        case .change(let change, let shown, let anchor):
+        case .change(let kept, let run, let anchor):
             anchorKey = anchor
             endPendingPlace()
             onPersonSelected()
-            listSlot.changeSelection(change)
-            return rows(selecting: shown)
+            listSlot.selection.select(kept)
+            if let run {
+                listSlot.extendSelection(from: run.from, to: run.to)
+            }
+            return rows(selecting: kept)
         }
     }
 
-    /// Select every row the list shows, loaded or not: core's Select All,
-    /// not the table's, which knows only the rows it has loaded.
+    /// Select every row the list shows, loaded or not: core's keys, not the
+    /// table's Select All, which knows only the rows it has loaded.
     func selectAllShown() {
         onPersonSelected()
         listSlot.selectAllShown()

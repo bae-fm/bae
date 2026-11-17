@@ -48,8 +48,7 @@ extension PreviewData {
     ) -> BridgeImportListItem {
         .invalid(
             stableKey: "invalid:\(hex(candidate.folderPath))",
-            invalidCandidate: candidate,
-            selected: false
+            invalidCandidate: candidate
         )
     }
 
@@ -130,7 +129,8 @@ extension PreviewData {
         )
     }
 
-    /// A selection of `keys` as core's selection statement answers it: each
+    /// A selection of `keys`, with what it offers as core's selection
+    /// statement answers it: each
     /// action offered once per selected candidate whose live state lists it,
     /// in the order the surfaces list them. The fixture offers Combine when
     /// the person selects two or more rows, and enables it only when every
@@ -163,6 +163,7 @@ extension PreviewData {
                 ) : nil
         }
         let selection = ImportSelection()
+        selection.select(Set(keys))
         selection.apply(
             BridgeSelectionSummary(
                 count: UInt64(keys.count),

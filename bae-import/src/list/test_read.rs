@@ -42,7 +42,8 @@ impl ImportListRead {
 /// A list followed through one window: FollowedImportList reads each value
 /// the window delivers in full, together with the count, summary, filter
 /// entries and selection, so a test sees one snapshot per change to the rows
-/// it holds.
+/// it holds. The test keeps the selected keys, as a surface does, and passes
+/// them to each call that reads or changes what they select.
 pub struct FollowedImportList {
     list: super::LiveImportList,
     windows: bae_store::live_query::CancellableLiveQuery<
@@ -53,32 +54,27 @@ pub struct FollowedImportList {
 }
 
 impl FollowedImportList {
-    /// Show `view` in the list.
+    /// Show `view` in the list, with `selected` the keys the test keeps
+    /// selected; the change names the ones the new view takes out.
     pub async fn set_view(
         &self,
         view: crate::ImportListView,
-    ) -> Result<Option<crate::ImportListOpening>, super::ImportListFailure> {
-        self.list.set_view(view).await
+        selected: Vec<crate::CandidateKey>,
+    ) -> Result<Option<crate::ImportListViewChange>, super::ImportListFailure> {
+        self.list.set_view(view, selected).await
     }
 
-    /// Apply `change` to the list's selection.
-    pub async fn change_selection(
-        &self,
-        change: crate::selection::SelectionChange,
-    ) -> Result<(), super::ImportListFailure> {
-        self.list.change_selection(change).await
+    /// The keys of every row the list shows: what Select All selects.
+    pub async fn keys(&self) -> Result<Vec<crate::CandidateKey>, super::ImportListFailure> {
+        self.list.keys().await
     }
 
-    /// Select every row the list shows.
-    pub async fn select_all(&self) -> Result<(), super::ImportListFailure> {
-        self.list.select_all().await
-    }
-
-    /// The selected rows, in the order the list shows them.
+    /// The rows of `selected` the list shows, in its order.
     pub async fn selected(
         &self,
+        selected: Vec<crate::CandidateKey>,
     ) -> Result<crate::selection::SelectedRows, super::ImportListFailure> {
-        self.list.selected().await
+        self.list.selected(selected).await
     }
 
     /// `list` followed through `window`.
@@ -94,12 +90,17 @@ impl FollowedImportList {
         }
     }
 
-    /// The next value of the window, with everything else the list shows read
-    /// beside it.
-    pub async fn next(&self) -> ImportListRead {
+    /// Everything the list shows now, and what `selected` holds.
+    pub async fn read(&self, selected: Vec<crate::CandidateKey>) -> ImportListRead {
+        self.list.read_for_test(selected).await
+    }
+
+    /// The next value of the window, with everything else the list shows and
+    /// what `selected` holds read beside it.
+    pub async fn next(&self, selected: Vec<crate::CandidateKey>) -> ImportListRead {
         if self.windows.next().await.is_err() {
             panic!("the import list stays open");
         }
-        self.list.read_for_test().await
+        self.list.read_for_test(selected).await
     }
 }

@@ -1,26 +1,13 @@
-//! The import list's selection: what it holds, how a person changes it, and
-//! what it can be told to do.
+//! The import list's selection: what it holds and what it can be told to do.
 //!
-//! Each list holds its selection in a table beside its view
-//! (`import_list_selection`), and it only ever holds rows the list shows: the
-//! write that stops the list showing a row, by a change to the row or to the
-//! view, takes the row out of the selection with it. What it offers is read
-//! from the selected rows' placement and what is running for each, and a bulk
-//! action runs in core over the selected keys that offer it.
+//! The surface keeps the keys of the rows the person selected, and passes
+//! them to each read and action on them. What they hold and offer is read
+//! from their rows' placement and what is running for each, whatever the list
+//! shows, and a bulk action runs in core over the ones the list shows that
+//! offer it.
 
 use super::triage::SelectionOffer;
 use super::CandidateKey;
-
-/// How a person changed the selection by pointing at rows.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SelectionChange {
-    /// Select exactly these rows, and nothing else.
-    Replace { keys: Vec<CandidateKey> },
-    /// Add these rows and take those out, leaving the rest as it is.
-    Toggle { add: Vec<CandidateKey>, remove: Vec<CandidateKey> },
-    /// Add every row the list shows from `from` to `to`, both included.
-    Extend { from: CandidateKey, to: CandidateKey },
-}
 
 /// One selected candidate, and the name a report of a bulk action gives it.
 #[derive(Debug, Clone, PartialEq)]

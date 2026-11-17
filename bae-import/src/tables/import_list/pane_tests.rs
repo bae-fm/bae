@@ -496,7 +496,7 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 
 /// A folder that failed validation is listed under Skipped as what the scan
 /// read of it — its files, what its tags call it, the image it leads with —
-/// selected like any row when the list selects it, and read whole by the pane that looks into it. A
+/// selected like any row, and read whole by the pane that looks into it. A
 /// scan that finds it again finds it unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
@@ -554,13 +554,12 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         .iter()
         .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
-            ImportListItem::Invalid { candidate, selected, .. } => {
-                Some((candidate.clone(), *selected))
-            }
+            ImportListItem::Invalid { candidate } => Some(candidate.clone()),
             _ => None,
         })
         .collect();
-    assert_eq!(listed, [(invalid.clone(), true)]);
+    assert_eq!(listed, std::slice::from_ref(&invalid));
+    assert_eq!(list.selection.count, 1, "the folder is selected like any row");
     assert_eq!(
         invalid.cover_image(),
         Some(crate::CoverImageSource::Local { file: version("front.jpg", 4) })

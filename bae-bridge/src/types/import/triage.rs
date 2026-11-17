@@ -422,18 +422,6 @@ mirror_enum! {
     variants: { Candidate { key: (into) }, InvalidCandidate { key: (into) } },
 }
 
-/// How a person changed the selection by pointing at rows. Mirrors
-/// `bae_import::selection::SelectionChange`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSelectionChange {
-    /// Select exactly these rows, and nothing else.
-    Replace { keys: Vec<Vec<u8>> },
-    /// Add these rows and take those out, leaving the rest as it is.
-    Toggle { add: Vec<Vec<u8>>, remove: Vec<Vec<u8>> },
-    /// Add every row the list shows from `from` to `to`, both included.
-    Extend { from: Vec<u8>, to: Vec<u8> },
-}
-
 /// How many of the candidates a bulk action runs on it has finished.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionActionProgress {
@@ -689,8 +677,6 @@ pub struct BridgeTriageRow {
     pub upload: Option<crate::types::BridgeUploadProgress>,
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     pub reading: BridgeTriageReading,
-    /// Whether the person has selected the row.
-    pub selected: bool,
 }
 
 /// The release this device imported from a candidate's files.

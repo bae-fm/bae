@@ -1,13 +1,14 @@
-//! The import list's selection through the app: the list owns it and holds
-//! only the rows it shows, and a bulk action runs in core over the selected
-//! keys in the order the list shows them.
+//! The import list's selection through the app: the surface keeps the
+//! selected keys, a view change takes out the ones the new view doesn't show,
+//! and a bulk action runs in core over the selected keys the list shows, in
+//! the order it shows them.
 
 use bae_app::AppServices;
-use bae_import::selection::{SelectionChange, SelectionSummary, SingleSelection};
+use bae_import::selection::SingleSelection;
 use bae_import::{
-    Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
-    FollowedImportList, ImportListItem, ImportListOrder, ImportListRead, ImportListView,
-    PendingFilter, TriageTab,
+    Admission, ArtistAssignment, CandidateAction, CandidateKey, CandidateRuntimeChange,
+    CandidateRuntimeSnapshot, FollowedImportList, ImportListItem, ImportListOrder, ImportListRead,
+    ImportListView, PendingFilter, TriageTab,
 };
 use bae_store::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
@@ -55,14 +56,16 @@ async fn tab_counts_until(
     .expect("the tab counts get there");
 }
 
-/// The list's snapshots until one `accept` admits.
+/// The list's snapshots, each with the selection of `selected`, until one
+/// `accept` admits.
 async fn until(
     list: &FollowedImportList,
+    selected: &[CandidateKey],
     accept: impl Fn(&ImportListRead) -> bool,
 ) -> ImportListRead {
     tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let snapshot = list.next().await;
+            let snapshot = list.next(selected.to_vec()).await;
             if accept(&snapshot) {
                 return snapshot;
             }
@@ -84,7 +87,7 @@ async fn list_showing(
         list,
         ListWindow::Forward { from: None, until: None, limit: 50 },
     );
-    let snapshot = until(&list, |snapshot| {
+    let snapshot = until(&list, &[], |snapshot| {
         snapshot.total_count == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
     })
@@ -92,18 +95,14 @@ async fn list_showing(
     (list, snapshot)
 }
 
-/// The keys the snapshot's page shows selected, top to bottom.
-fn selected_on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
-    snapshot
-        .windows
-        .iter()
-        .flat_map(|window| &window.rows)
-        .filter_map(|item| match item {
-            ImportListItem::Candidate { row, .. } if row.selected => {
-                Some(row.candidate_key.clone())
-            }
-            _ => None,
-        })
+/// The keys of `selected` the list shows, in its order.
+async fn selected_keys(list: &FollowedImportList, selected: &[CandidateKey]) -> Vec<CandidateKey> {
+    list.selected(selected.to_vec())
+        .await
+        .unwrap()
+        .candidates
+        .into_iter()
+        .map(|candidate| candidate.candidate_key)
         .collect()
 }
 
@@ -120,8 +119,9 @@ fn on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
         .collect()
 }
 
-/// Skipping the selection runs in core over every selected row, and each
-/// skipped row leaves the selection as it leaves the rows Found shows.
+/// Skipping the selection runs in core over every selected row; each skipped
+/// row leaves the rows Found shows, so no later action applies to it, while
+/// the selection still holds it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_action_runs_over_every_selected_row() {
     bae_util::test_logs::install();
@@ -130,12 +130,12 @@ async fn a_bulk_action_runs_over_every_selected_row() {
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
 
-    list.select_all().await.unwrap();
-    until(&list, |snapshot| snapshot.selection.count == 3).await;
+    let selected = list.keys().await.unwrap();
+    assert_eq!(list.read(selected.clone()).await.selection.count, 3);
 
     let failures = services
         .run_import_selection_action(
-            &list.selected().await.unwrap(),
+            &list.selected(selected.clone()).await.unwrap(),
             CandidateAction::Skip,
             |_, _| {},
         )
@@ -143,17 +143,16 @@ async fn a_bulk_action_runs_over_every_selected_row() {
         .unwrap();
 
     assert!(failures.is_empty(), "{failures:?}");
-    let settled = until(&list, |snapshot| snapshot.total_count == 0).await;
+    let settled = until(&list, &selected, |snapshot| snapshot.total_count == 0).await;
     tab_counts_until(&services, |counts| counts.pending == 0 && counts.skipped == 3).await;
-    assert_eq!(settled.selection, SelectionSummary::default());
-    assert!(list.selected().await.unwrap().candidates.is_empty());
+    assert_eq!(settled.selection.count, 3, "the selection keeps the skipped rows");
+    assert!(selected_keys(&list, &selected).await.is_empty(), "the list shows none of them");
     services.close().await.unwrap();
 }
 
-/// Rows whose state moves them out of the filter the list shows leave the
-/// selection in the read that stops showing them, and what the selection
-/// offers follows: with nothing it shows selected, it offers nothing. Shown
-/// again, they come back unselected.
+/// Rows whose state moves them out of the filter the list shows stay
+/// selected, though no action applies to them while the list hides them, and
+/// a view that shows them again shows them selected.
 #[tokio::test(flavor = "multi_thread")]
 async fn rows_that_leave_the_filter_leave_the_selection() {
     bae_util::test_logs::install();
@@ -163,10 +162,10 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     let not_looked_up =
         ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
     let (list, shown) = list_showing(&services, not_looked_up, 3).await;
-    let picked: Vec<bae_import::CandidateKey> = on_page(&shown).into_iter().take(2).collect();
-    list.change_selection(SelectionChange::Replace { keys: picked.clone() }).await.unwrap();
-    let selected = until(&list, |snapshot| snapshot.selection.count == 2).await;
-    assert_eq!(selected_on_page(&selected), picked);
+    let picked: Vec<CandidateKey> = on_page(&shown).into_iter().take(2).collect();
+    let selected = list.read(picked.clone()).await;
+    assert_eq!(selected.selection.count, 2);
+    assert_eq!(selected_keys(&list, &picked).await, picked);
     assert!(selected
         .selection
         .offers
@@ -175,7 +174,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
 
     let failures = services
         .run_import_selection_action(
-            &list.selected().await.unwrap(),
+            &list.selected(picked.clone()).await.unwrap(),
             CandidateAction::Identify,
             |_, _| {},
         )
@@ -183,15 +182,19 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
 
-    let left = until(&list, |snapshot| snapshot.total_count == 1).await;
-    assert_eq!(left.selection, SelectionSummary::default());
-    assert!(selected_on_page(&left).is_empty());
-    assert!(list.selected().await.unwrap().candidates.is_empty());
+    let left = until(&list, &picked, |snapshot| snapshot.total_count == 1).await;
+    assert_eq!(left.selection.count, 2, "the hidden rows stay selected");
+    assert!(selected_keys(&list, &picked).await.is_empty(), "no action applies to a hidden row");
 
-    list.set_view(ImportListView::default()).await.unwrap();
-    let all = until(&list, |snapshot| on_page(snapshot).len() == 3).await;
-    assert!(selected_on_page(&all).is_empty(), "rows shown again come back unselected");
-    assert_eq!(all.selection.count, 0);
+    let change = list.set_view(ImportListView::default(), picked.clone()).await.unwrap().unwrap();
+    assert!(change.left.is_empty(), "the new view shows both rows");
+    let all = until(&list, &picked, |snapshot| on_page(snapshot).len() == 3).await;
+    assert_eq!(all.selection.count, 2);
+    let mut shown_selected = selected_keys(&list, &picked).await;
+    shown_selected.sort();
+    let mut picked = picked;
+    picked.sort();
+    assert_eq!(shown_selected, picked, "rows shown again are still selected");
     services.close().await.unwrap();
 }
 
@@ -205,24 +208,28 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
-    list.select_all().await.unwrap();
-    until(&list, |snapshot| snapshot.selection.count == 3).await;
+    let mut selected = list.keys().await.unwrap();
 
-    list.set_view(ImportListView {
-        filter_text: "Album 1".to_string(),
-        ..ImportListView::default()
-    })
-    .await
-    .unwrap();
-    let narrowed = until(&list, |snapshot| snapshot.total_count == 1).await;
+    let change = list
+        .set_view(
+            ImportListView { filter_text: "Album 1".to_string(), ..ImportListView::default() },
+            selected.clone(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(change.left.len(), 2, "the filter hides two selected rows");
+    selected.retain(|key| !change.left.contains(key));
+    let narrowed = until(&list, &selected, |snapshot| snapshot.total_count == 1).await;
     assert_eq!(narrowed.selection.count, 1);
-    assert_eq!(selected_on_page(&narrowed).len(), 1);
-    assert_eq!(list.selected().await.unwrap().candidates.len(), 1);
+    let kept = selected_keys(&list, &selected).await;
+    assert_eq!(kept, selected);
 
-    list.set_view(ImportListView::default()).await.unwrap();
-    let cleared = until(&list, |snapshot| on_page(snapshot).len() == 3).await;
+    let change = list.set_view(ImportListView::default(), selected.clone()).await.unwrap().unwrap();
+    assert!(change.left.is_empty(), "clearing the filter hides nothing");
+    let cleared = until(&list, &selected, |snapshot| on_page(snapshot).len() == 3).await;
     assert_eq!(cleared.selection.count, 1);
-    assert_eq!(selected_on_page(&cleared), selected_on_page(&narrowed));
+    assert_eq!(selected_keys(&list, &selected).await, kept);
     services.close().await.unwrap();
 }
 
@@ -246,25 +253,19 @@ async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_imp
         .collect()
 }
 
-/// Select the shown rows `picks` names, by their place in the list and out of
-/// order, and return the selected keys in the order the list shows them.
+/// The keys of the shown rows `picks` names, by their place in the list and
+/// out of order, as a surface keeps them selected, and the same keys in the
+/// order the list shows them.
 async fn select_out_of_order(
     services: &AppServices,
-    list: &FollowedImportList,
     view: ImportListView,
     picks: &[usize],
-) -> Vec<bae_import::CandidateKey> {
+) -> (Vec<CandidateKey>, Vec<CandidateKey>) {
     let shown = shown_keys(services, view).await;
-    list.change_selection(SelectionChange::Toggle {
-        add: picks.iter().map(|&pick| shown[pick].clone()).collect(),
-        remove: Vec::new(),
-    })
-    .await
-    .unwrap();
-    until(list, |snapshot| snapshot.selection.count == picks.len() as u64).await;
+    let selected = picks.iter().map(|&pick| shown[pick].clone()).collect();
     let mut in_view_order = picks.to_vec();
     in_view_order.sort_unstable();
-    in_view_order.into_iter().map(|pick| shown[pick].clone()).collect()
+    (selected, in_view_order.into_iter().map(|pick| shown[pick].clone()).collect())
 }
 
 /// The keys the runtime's changes bring to `reached`, in the order they get
@@ -304,12 +305,12 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
     let (list, _) = list_showing(&services, descending(), 4).await;
-    let expected = select_out_of_order(&services, &list, descending(), &[3, 0, 2]).await;
+    let (selected, expected) = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
 
     let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
         .run_import_selection_action(
-            &list.selected().await.unwrap(),
+            &list.selected(selected).await.unwrap(),
             CandidateAction::Identify,
             |_, _| {},
         )
@@ -345,12 +346,12 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
             .unwrap();
     }
     let (list, _) = list_showing(&services, descending(), 4).await;
-    let expected = select_out_of_order(&services, &list, descending(), &[3, 0, 2]).await;
+    let (selected, expected) = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
 
     let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
         .run_import_selection_action(
-            &list.selected().await.unwrap(),
+            &list.selected(selected).await.unwrap(),
             CandidateAction::Import,
             |_, _| {},
         )
@@ -386,13 +387,13 @@ async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
     let (list, _) = list_showing(&services, skipped, 1).await;
     let key = bae_import::CandidateKey::folder(&broken);
 
-    list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
-    let selected = until(&list, |snapshot| snapshot.selection.count == 1).await;
+    let selected = list.read(vec![key.clone()]).await;
+    assert_eq!(selected.selection.count, 1);
     assert_eq!(
         selected.selection.single,
         Some(SingleSelection::InvalidCandidate { key: key.clone() })
     );
     assert!(selected.selection.offers.is_empty());
-    assert_eq!(list.selected().await.unwrap().invalid, [key]);
+    assert_eq!(list.selected(vec![key.clone()]).await.unwrap().invalid, [key]);
     services.close().await.unwrap();
 }

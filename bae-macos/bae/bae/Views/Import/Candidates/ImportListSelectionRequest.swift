@@ -27,18 +27,19 @@ extension SelectionGesture {
 }
 
 /// What the table's own selection handling proposed for a person's click or
-/// key, read as the change it asks of core's selection.
+/// key, read as the change it makes to the keys the screen keeps selected.
 ///
-/// The table keeps no selection of its own: it proposes rows by position,
-/// some of them headers or rows whose page has not landed, and this says what
-/// that proposal means for the selection core holds.
+/// The table's own selection only proposes rows by position, some of them
+/// headers or rows whose page has not landed, and this says what that
+/// proposal means for the kept keys.
 struct ImportListSelectionRequest {
     /// The rows the table proposes to have selected.
     let proposed: IndexSet
-    /// The rows the table has selected now.
+    /// The rows the table highlights now.
     let current: IndexSet
-    /// The loaded rows shown selected now.
-    let shown: Set<Data>
+    /// The keys the screen keeps selected now, the rows the list hides
+    /// included.
+    let kept: Set<Data>
     let gesture: SelectionGesture
     /// The row the pointer pressed, for a click.
     let target: Int?
@@ -50,20 +51,23 @@ struct ImportListSelectionRequest {
     /// header and for a row whose page has not landed.
     let key: (Int) -> Data?
 
-    /// What the proposal asks of core's selection.
+    /// A run of rows a Shift gesture spans, by the keys at its two ends:
+    /// core reads every row between them, loaded or not.
+    struct Run: Equatable {
+        let from: Data
+        let to: Data
+    }
+
+    /// What the proposal asks of the kept keys.
     enum Answer: Equatable {
         /// It lands on nothing that can be selected: a header, a row still
         /// loading.
         case rejected
         /// It changes nothing.
         case unchanged
-        /// Change the selection by `change`, show `shown` selected until core
-        /// reflects it, and extend from `anchor` next.
-        case change(
-            BridgeSelectionChange,
-            shown: Set<Data>,
-            anchor: Data?
-        )
+        /// Keep `kept` selected, add the rows of `run` once core reads them,
+        /// and extend from `anchor` next.
+        case change(kept: Set<Data>, run: Run?, anchor: Data?)
     }
 
     var answer: Answer {
@@ -71,41 +75,43 @@ struct ImportListSelectionRequest {
         guard proposed.isEmpty || !proposedKeys.isEmpty else {
             return .rejected
         }
+        let highlighted = Set(current.compactMap(key))
         switch gesture {
         case .replace:
-            // Sent even when the rows shown selected are the ones proposed:
-            // core's selection may hold rows past the loaded pages too.
             return .change(
-                .replace(keys: proposedKeys.inByteOrder),
-                shown: proposedKeys,
+                kept: proposedKeys,
+                run: nil,
                 anchor: target.flatMap(key)
                     ?? (proposedKeys.count == 1 ? proposedKeys.first : anchor)
             )
         case .toggle:
-            let add = proposedKeys.subtracting(shown)
-            let remove = shown.subtracting(proposedKeys)
+            let add = proposedKeys.subtracting(highlighted)
+            let remove = highlighted.subtracting(proposedKeys)
             guard !add.isEmpty || !remove.isEmpty else { return .unchanged }
             return .change(
-                .toggle(add: add.inByteOrder, remove: remove.inByteOrder),
-                shown: proposedKeys,
+                kept: kept.union(add).subtracting(remove),
+                run: nil,
                 anchor: target.flatMap(key) ?? anchor
             )
         case .extend:
-            return extended(proposedKeys)
+            return extended(proposedKeys, highlighted: highlighted)
         }
     }
 
-    /// A Shift gesture: the run it adds goes to core by its two ends, and
-    /// core selects every row between them, loaded or not. One that only
-    /// shrinks the selection takes out what it drops.
-    private func extended(_ proposedKeys: Set<Data>) -> Answer {
+    /// A Shift gesture: the rows it proposes join the kept keys at once, and
+    /// the run goes to core by its two ends, for every row between them,
+    /// loaded or not. One that only shrinks the run takes out what it drops.
+    private func extended(
+        _ proposedKeys: Set<Data>,
+        highlighted: Set<Data>
+    ) -> Answer {
         let added = proposed.subtracting(current)
         guard let first = added.first, let last = added.last else {
-            let remove = shown.subtracting(proposedKeys)
+            let remove = highlighted.subtracting(proposedKeys)
             guard !remove.isEmpty else { return .unchanged }
             return .change(
-                .toggle(add: [], remove: remove.inByteOrder),
-                shown: proposedKeys,
+                kept: kept.subtracting(remove),
+                run: nil,
                 anchor: anchor
             )
         }
@@ -120,8 +126,8 @@ struct ImportListSelectionRequest {
         guard let from = key(start) ?? anchor ?? firstKey(from: start, to: end)
         else { return .rejected }
         return .change(
-            .extend(from: from, to: to),
-            shown: proposedKeys,
+            kept: kept.union(proposedKeys),
+            run: Run(from: from, to: to),
             anchor: anchor ?? from
         )
     }
@@ -133,13 +139,5 @@ struct ImportListSelectionRequest {
             .lazy
             .compactMap(key)
             .first
-    }
-}
-
-extension Set<Data> {
-    /// The keys in the order of their bytes, so the same keys always cross in
-    /// one order.
-    fileprivate var inByteOrder: [Data] {
-        sorted { $0.lexicographicallyPrecedes($1) }
     }
 }

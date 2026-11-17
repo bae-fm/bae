@@ -48,7 +48,10 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2")).await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    tables.set_import_list_group_folded(list, lib.group_key("Group"), true).await.unwrap();
+    tables
+        .set_import_list_group_folded(list, lib.group_key("Group"), true, Vec::new())
+        .await
+        .unwrap();
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group Group"]);
     assert_eq!(read.total_count, 1);
@@ -58,7 +61,10 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     assert!(!expanded);
     assert_eq!(*entry_count, 2, "the header still says how much is folded away");
 
-    tables.set_import_list_group_folded(list, lib.group_key("Group"), false).await.unwrap();
+    tables
+        .set_import_list_group_folded(list, lib.group_key("Group"), false, Vec::new())
+        .await
+        .unwrap();
     assert_eq!(
         sequence(&lib.read(list).await),
         ["group Group", "candidate Group/Release 1", "candidate Group/Release 2"]
@@ -157,7 +163,7 @@ async fn a_folded_lists_members_name_their_header() {
     )
     .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    tables.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
+    tables.set_import_list_group_folded(list, lib.group_key("A"), true, Vec::new()).await.unwrap();
     let read = lib.read(list).await;
     assert_eq!(
         sequence(&read),
@@ -307,7 +313,7 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
         items_sequence(&lib.window_at(list, 1, 2).await.read.rows),
         ["candidate A/Old", "group B"]
     );
-    tables.set_import_list_group_folded(list, lib.group_key("A"), true).await.unwrap();
+    tables.set_import_list_group_folded(list, lib.group_key("A"), true, Vec::new()).await.unwrap();
     assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
@@ -632,7 +638,10 @@ async fn found_reads_its_windows_off_its_runs() {
     ] {
         for folded in [false, true] {
             let list = lib.open(ordered(TriageTab::Pending, order)).await;
-            tables.set_import_list_group_folded(list, lib.group_key("Box"), folded).await.unwrap();
+            tables
+                .set_import_list_group_folded(list, lib.group_key("Box"), folded, Vec::new())
+                .await
+                .unwrap();
             // Found runs in one part, read by its offset off the three runs'
             // indexes, and by each seek from its first item, which searches
             // them, or reaches the row it holds every term up to the folder

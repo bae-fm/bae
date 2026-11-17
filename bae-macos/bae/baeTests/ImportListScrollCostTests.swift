@@ -142,7 +142,7 @@ enum ScrollCostFixture {
                     switch item {
                     case .candidate(_, let row, _):
                         row.cover.map(ImageContent.init(bridge:))
-                    case .invalid(_, let invalid, _):
+                    case .invalid(_, let invalid):
                         invalid.cover.map(ImageContent.init(bridge:))
                     case .groupHeader:
                         nil

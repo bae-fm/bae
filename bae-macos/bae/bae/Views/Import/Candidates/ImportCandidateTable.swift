@@ -8,10 +8,11 @@ import SwiftUI
 /// drawn blank until their page lands. Each row is the SwiftUI view the list
 /// has always drawn, hosted in a cell.
 ///
-/// The table keeps no selection of its own. Each delivery sets its highlight
-/// from the rows core marks selected, and what a person does to the rows —
-/// clicks, Command- and Shift-clicks, arrow keys, typing a row's first
-/// letters, Select All — goes to core as the change it is.
+/// The screen keeps the selection as the keys of the rows the person
+/// selected, and each update sets the table's highlight from them. What a
+/// person does to the rows — clicks, Command- and Shift-clicks, arrow keys,
+/// typing a row's first letters, Select All — changes the kept keys; a Shift
+/// run and Select All take their keys from core.
 struct ImportCandidateTable: NSViewRepresentable {
     let list: PaginatedList<BridgeImportListItem>
     let importStore: ImportStore
@@ -107,7 +108,7 @@ struct ImportCandidateTable: NSViewRepresentable {
         coordinator.environment = rowEnvironment
         coordinator.onPersonSelected = onPersonSelected
         // Reading these `@Observable` fields here is what makes SwiftUI
-        // update the table when the list delivers or its selection moves.
+        // update the table when the list delivers or the kept keys change.
         let rows = ImportCandidateTableRows(
             count: list.positionCount,
             revision: list.contentRevision
@@ -119,7 +120,7 @@ struct ImportCandidateTable: NSViewRepresentable {
                 narrowing: listSlot.opened.narrowing,
                 openedAt: listSlot.opened.position
             ),
-            shownSelected: list.selectedKeys,
+            shownSelected: listSlot.selection.keys,
             revealing: revealInProgress
         )
     }

@@ -3,7 +3,7 @@ import Foundation
 import Observation
 
 /// Where a view change opened the list: what the list was narrowed by, and
-/// the row it shows on top, its first selected row or its top.
+/// the row it shows on top, the first selected row it shows or its top.
 struct ImportListOpened: Equatable {
     let narrowing: BridgeImportListNarrowing
     let position: Int
@@ -59,10 +59,9 @@ final class ImportListSlot {
     private let importStore: ImportStore
     @ObservationIgnored
     private let uiStore: UiStore
-    /// What a person does to the rows goes here; core's list keeps it to the
-    /// rows the view shows.
-    @ObservationIgnored
-    private let selection: ImportSelection
+    /// The keys of the rows the person selected, which the table draws its
+    /// highlight from and each view change and fold passes to core.
+    let selection: ImportSelection
     /// Where the selection's values go beside the selection the panes read.
     @ObservationIgnored
     private let onSelection:
@@ -71,9 +70,6 @@ final class ImportListSlot {
     /// the selection.
     @ObservationIgnored
     private var surroundings: [any Sendable] = []
-    /// The last selection write asked for, which the next one waits on.
-    @ObservationIgnored
-    private var selectionTask: Task<Void, Never>?
     /// The last fold asked for, which the next one waits on.
     @ObservationIgnored
     private var foldTask: Task<Void, Never>?
@@ -113,6 +109,7 @@ final class ImportListSlot {
         self.importStore = importStore
         self.uiStore = uiStore
         self.selection = selection
+        selection.onError = { [uiStore] in uiStore.showError($0) }
         self.onSelection = onSelection
         self.makeHandle = makeHandle
         self.defaults = defaults
@@ -220,7 +217,11 @@ extension ImportListSlot {
         uiStore.setImportCandidateFilterText("")
         uiStore.setImportCandidatePendingFilter(.all)
         if let groupKey = location.groupKey {
-            try await handle.setGroupFolded(groupKey, false)
+            _ = try await handle.setGroupFolded(
+                groupKey,
+                false,
+                selected: selection.keys.inByteOrder
+            )
         }
         var next = view
         next.tab = location.tab
@@ -228,11 +229,13 @@ extension ImportListSlot {
         next.pendingFilter = .all
         view = next
         answersView = false
-        // The list keeps only the rows its view shows selected, so it is
-        // asked for the view that shows the candidate before it selects it.
-        // The reveal's own place replaces the one the view would open at.
-        _ = try await handle.setView(next)
-        try await selectOnly(candidateKey)
+        // The reveal's own place replaces the one the view would open at,
+        // and the candidate alone replaces the selection.
+        _ = try await handle.setView(
+            next,
+            selected: selection.keys.inByteOrder
+        )
+        selectOnly(candidateKey)
         guard let list else { return nil }
         let position = Int(location.visiblePosition)
         await list.reopen(at: location.key, position: position)
@@ -272,16 +275,25 @@ extension ImportListSlot {
         viewChange = Task { [weak self] in
             await previous?.value
             guard let self, view == next, let handle, let list else { return }
-            let opening: BridgeImportListOpening?
+            let generation = selection.generation
+            let change: BridgeImportListViewChange?
             do {
-                opening = try await handle.setView(next)
+                change = try await handle.setView(
+                    next,
+                    selected: selection.keys.inByteOrder
+                )
             }
             catch {
                 fail(error)
                 return
             }
+            // The rows the new tab, filter or search doesn't show leave the
+            // selection, whichever view is asked for since.
+            if let change, selection.generation == generation {
+                selection.remove(change.left)
+            }
             guard view == next else { return }
-            if let opening {
+            if let opening = change?.opening {
                 switch opening {
                 case .top:
                     await list.reopen(at: nil, position: 0)
@@ -365,9 +377,11 @@ extension ImportListSlot {
     }
 
     /// Open the reads that follow what surrounds the list; they end with the
-    /// list.
+    /// list. The selection starts empty on the list.
     private func openSurroundings(of handle: ImportListHandle) {
         let importStore = importStore
+        let selectionQuery = handle.selection()
+        selection.attach(selectionQuery)
         let onSelection = onSelection
         let failed: @MainActor @Sendable (any Error) -> Void = {
             [weak self] error in
@@ -385,7 +399,7 @@ extension ImportListSlot {
                 onError: failed
             ),
             ScreenSubscription(
-                handle.selection(),
+                selectionQuery.values,
                 onValue: { onSelection($0) },
                 onError: failed
             ),
@@ -436,20 +450,25 @@ extension ImportListSlot {
         _ group: BridgeFolderReleaseDecisionKey,
         _ expanded: Bool
     ) {
-        foldGroups { try await $0.setGroupFolded(group, !expanded) }
+        foldGroups {
+            try await $0.setGroupFolded(group, !expanded, selected: $1)
+        }
     }
 
     /// Fold every group open or shut as one change.
     func setAllGroupsExpanded(_ expanded: Bool) {
-        foldGroups { try await $0.setAllGroupsFolded(!expanded) }
+        foldGroups { try await $0.setAllGroupsFolded(!expanded, selected: $1) }
     }
 
-    /// Send a fold to core's list once the folds asked for before it have
-    /// landed, so they land in the order the person made them; a failure is
-    /// reported. A list whose read failed is rebuilt instead, and the rebuilt
-    /// list starts with no group folded.
+    /// Send a fold to core's list, with the keys the selection holds then,
+    /// once the folds asked for before it have landed, so they land in the
+    /// order the person made them, and take the selected rows it hid out of
+    /// the selection; a failure is reported. A list whose read failed is
+    /// rebuilt instead, and the rebuilt list starts with no group folded.
     private func foldGroups(
-        _ fold: @escaping @MainActor (ImportListHandle) async throws -> Void
+        _ fold:
+            @escaping @MainActor (ImportListHandle, [Data]) async throws ->
+            [Data]
     ) {
         if sourceFailed {
             startLoad()
@@ -457,10 +476,13 @@ extension ImportListSlot {
         }
         guard let handle else { return }
         let previous = foldTask
-        foldTask = Task { [uiStore] in
+        foldTask = Task { [uiStore, selection] in
             await previous?.value
             do {
-                try await fold(handle)
+                let generation = selection.generation
+                let hidden = try await fold(handle, selection.keys.inByteOrder)
+                guard selection.generation == generation else { return }
+                selection.remove(hidden)
             }
             catch {
                 uiStore.showError(error)
@@ -500,50 +522,48 @@ extension ImportListSlot {
 // MARK: - Selection
 
 extension ImportListSlot {
-    /// Apply what a person did to the list's rows: `change` goes to core,
-    /// and the windows holding the rows it changed show it.
-    func changeSelection(_ change: BridgeSelectionChange) {
-        writeSelection { try await $0.change(change) }
+    /// Make `candidateKey` the whole selection.
+    func selectOnly(_ candidateKey: Data) {
+        selection.select([candidateKey])
     }
 
-    /// Make `candidateKey` the whole selection, once the writes asked for
-    /// before it have landed.
-    func selectOnly(_ candidateKey: Data) async throws {
-        try await queueSelectionWrite {
-            try await $0.change(.replace(keys: [candidateKey]))
-        }
-        .value
-    }
-
-    /// Select every row the list shows under its view, loaded or not.
-    func selectAllShown() {
-        writeSelection { try await $0.selectAll() }
-    }
-
-    /// Run `write` once every selection write asked for before it has ended,
-    /// so the writes land in the order the person made them; a failure is
-    /// reported.
-    private func writeSelection(
-        _ write: @escaping @MainActor (ImportSelection) async throws -> Void
-    ) {
-        let task = queueSelectionWrite(write)
-        Task { [uiStore] in
-            if case .failure(let error) = await task.result {
+    /// Add to the selection every row the list shows from `from` to `to`,
+    /// loaded or not, as core reads them on the tab and in the order the
+    /// slot shows. A list rebuilt since is a new list, which the run's keys
+    /// mean nothing on.
+    func extendSelection(from: Data, to: Data) {
+        let generation = selection.generation
+        let (tab, order) = (view.tab, view.order)
+        Task { [selection, uiStore] in
+            do {
+                let run = try await selection.keysBetween(
+                    on: tab,
+                    in: order,
+                    from: from,
+                    to: to
+                )
+                guard selection.generation == generation else { return }
+                selection.select(selection.keys.union(run))
+            }
+            catch {
                 uiStore.showError(error)
             }
         }
     }
 
-    private func queueSelectionWrite(
-        _ write: @escaping @MainActor (ImportSelection) async throws -> Void
-    ) -> Task<Void, any Error> {
-        let previous = selectionTask
-        let task = Task { [selection] in
-            await previous?.value
-            try await write(selection)
+    /// Select every row the list shows under its view, loaded or not.
+    func selectAllShown() {
+        let generation = selection.generation
+        Task { [selection, uiStore] in
+            do {
+                let all = try await selection.allKeys()
+                guard selection.generation == generation else { return }
+                selection.select(Set(all))
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
-        selectionTask = Task { _ = await task.result }
-        return task
     }
 }
 
@@ -555,24 +575,6 @@ extension PaginatedList<BridgeImportListItem> {
         await withPage(containing: position) {
             idAt(position) == stableKey
         }
-    }
-
-    /// The keys of the loaded rows the person has selected, as core's rows
-    /// say: what the table highlights. Rows past the loaded windows may be
-    /// selected too; core holds the whole selection.
-    var selectedKeys: Set<Data> {
-        Set(
-            loadedRows.compactMap { item -> Data? in
-                switch item {
-                case .candidate(_, let row, _):
-                    row.selected ? row.candidateKey : nil
-                case .invalid(_, let invalid, let selected):
-                    selected ? invalid.candidateKey : nil
-                case .groupHeader:
-                    nil
-                }
-            }
-        )
     }
 
     /// Whether the text filter or the filter entry narrows the list, as the

@@ -23,14 +23,18 @@ final class CallLog<Value>: @unchecked Sendable {
 extension ImportSelectionOperations {
     /// The inert operations with the ones a test watches replaced.
     static func stub(
-        change:
-            @escaping @Sendable (BridgeSelectionChange) async throws -> Void =
-            { _ in },
-        selectAll: @escaping @Sendable () async throws -> Void = {},
-        combine: @escaping @Sendable () async throws -> Data = {
+        keysBetween:
+            @escaping @Sendable (
+                BridgeTriageTab,
+                BridgeImportListOrder,
+                Data,
+                Data
+            ) async throws -> [Data] = { _, _, _, _ in [] },
+        allKeys: @escaping @Sendable () async throws -> [Data] = { [] },
+        combine: @escaping @Sendable ([Data]) async throws -> Data = { _ in
             throw StubError.notImplemented
         },
-        separate: @escaping @Sendable () async throws -> [Data] = {
+        separate: @escaping @Sendable ([Data]) async throws -> [Data] = { _ in
             throw StubError.notImplemented
         },
         progressStream:
@@ -40,12 +44,13 @@ extension ImportSelectionOperations {
         run:
             @escaping @Sendable (
                 BridgeCandidateAction,
+                [Data],
                 LatestStream<BridgeSelectionActionProgress>
-            ) async throws -> [BridgeSelectionActionFailure] = { _, _ in [] }
+            ) async throws -> [BridgeSelectionActionFailure] = { _, _, _ in [] }
     ) -> ImportSelectionOperations {
         ImportSelectionOperations(
-            change: change,
-            selectAll: selectAll,
+            keysBetween: keysBetween,
+            allKeys: allKeys,
             sourceFolders: inert.sourceFolders,
             combine: combine,
             separate: separate,
@@ -62,7 +67,7 @@ struct ImportSelectionTests {
     func cancelRunningAction() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, _ in
+            operations: .stub(run: { _, _, _ in
                 entered.continuation.yield(())
                 try await Task.neverAnswers()
             })
@@ -90,13 +95,17 @@ struct ImportSelectionTests {
     }
 
     @Test(
-        "The action runs in core in the list's order, and each row it failed on is named"
+        "The action runs in core over the kept keys, and each row it failed on is named"
     )
     func failuresNameEachRow() async {
         let requested = CallLog<BridgeCandidateAction>()
+        let sent = CallLog<[Data]>()
+        let album = Data("/music/Album".utf8)
+        let other = Data("/music/Other Album".utf8)
         let selection = ImportSelection(
-            operations: .stub(run: { action, _ in
+            operations: .stub(run: { action, keys, _ in
                 requested.record(action)
+                sent.record(keys)
                 return [
                     BridgeSelectionActionFailure(
                         candidateKey: Data("/music/Album".utf8),
@@ -117,10 +126,12 @@ struct ImportSelectionTests {
                 ]
             })
         )
+        selection.select([album, other])
         let uiStore = UiStore()
         await selection.perform(.import, uiStore: uiStore)
 
         #expect(requested.all == [.import])
+        #expect(sent.all.map(Set.init) == [[album, other]])
         let line = uiStore.lastError?.line ?? ""
         #expect(line.contains("Album"))
         #expect(line.contains("Other Album"))
@@ -143,7 +154,7 @@ struct ImportSelectionTests {
         let selection = ImportSelection(
             operations: .stub(
                 progressStream: { progress.stream },
-                run: { _, _ in
+                run: { _, _, _ in
                     progress.set(
                         BridgeSelectionActionProgress(completed: 1, total: 3)
                     )
@@ -205,45 +216,39 @@ struct ImportSelectionTests {
     }
 }
 
-/// The list shows a row as selected when the row's selected flag is set. A
-/// click writes the selection, and core sends the changed rows again with
-/// the new flag.
+/// Combining and separating send the kept keys, and the release they make
+/// or return becomes the selection.
 @MainActor
-@Suite("The selection the list's rows show")
-struct ListSelectionTests {
-    private static let album = Data("/music/Album".utf8)
-    private static let otherAlbum = Data("/music/Other Album".utf8)
+@Suite("The selection after combining and separating")
+struct ImportSelectionReplacementTests {
+    nonisolated private static let parts = [
+        Data("/music/Box/1".utf8), Data("/music/Box/2".utf8),
+    ]
+    nonisolated private static let combined = Data("grouping-new".utf8)
 
-    private static func list(
-        selecting selected: Data?
-    ) -> PaginatedList<BridgeImportListItem> {
-        let items = [album, otherAlbum]
-            .map { key in
-                var row = PreviewData.triageRowIdentified
-                row.candidateKey = key
-                row.selected = key == selected
-                return PreviewData.candidateItem(row)
-            }
-        let list = PaginatedList<BridgeImportListItem>(
-            queries: .fixed(
-                items,
-                answers: UnansweredCount(),
-                extra: .import(narrowed: nil)
-            ),
-            onError: { _ in }
+    @Test("combining selects the release it makes")
+    func combiningSelectsTheRelease() async throws {
+        let sent = CallLog<[Data]>()
+        let selection = ImportSelection(
+            operations: .stub(combine: {
+                sent.record($0)
+                return Self.combined
+            })
         )
-        list.preloadRows(rows: items, extra: .import(narrowed: nil))
-        return list
+        selection.select(Set(Self.parts))
+        let key = try await selection.combine()
+        #expect(key == Self.combined)
+        #expect(sent.all.map(Set.init) == [Set(Self.parts)])
+        #expect(selection.keys == [Self.combined])
     }
 
-    @Test("the rows' own selected flags are the loaded selection")
-    func theRowsSayWhatIsSelected() {
-        #expect(Self.list(selecting: Self.album).selectedKeys == [Self.album])
-        #expect(
-            Self.list(selecting: Self.otherAlbum).selectedKeys == [
-                Self.otherAlbum
-            ]
+    @Test("separating selects the releases it returns")
+    func separatingSelectsTheReleases() async throws {
+        let selection = ImportSelection(
+            operations: .stub(separate: { _ in Self.parts })
         )
-        #expect(Self.list(selecting: nil).selectedKeys.isEmpty)
+        selection.select([Self.combined])
+        try await selection.separate()
+        #expect(selection.keys == Set(Self.parts))
     }
 }

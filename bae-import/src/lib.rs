@@ -273,8 +273,8 @@ pub use list::{FollowedImportList, ImportListRead};
 pub use list::{
     ImportCandidateListLocation, ImportCounts, ImportListCount, ImportListFailure, ImportListId,
     ImportListItem, ImportListNarrowing, ImportListOpening, ImportListOrder, ImportListView,
-    ImportQueueSummary, ImportWindow, LiveImportList, NarrowedCount, PendingFilter,
-    PendingFilterEntry,
+    ImportListViewChange, ImportQueueSummary, ImportWindow, LiveImportList, NarrowedCount,
+    PendingFilter, PendingFilterEntry,
 };
 #[cfg(desktop)]
 pub use mapping::{

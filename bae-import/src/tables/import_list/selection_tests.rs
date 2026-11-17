@@ -1,9 +1,9 @@
-//! A list's selection and the writes that change it: it holds only rows the
-//! list shows, in its order, each offering what its tables and what is
-//! running for it allow.
+//! A list's selection, which the surface keeps as keys: what the rows at the
+//! keys hold and offer whatever the list shows, the ones the list shows in its
+//! order, each offering what its tables and what is running for it allow, and
+//! the keys a Shift run and Select All select.
 
 use super::*;
-use crate::selection::SelectionChange;
 use crate::selection::SingleSelection;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
@@ -13,89 +13,164 @@ use crate::ImportListItem;
 use crate::ImportListOrder;
 use crate::TriageTab;
 
-/// The keys `list`'s selection runs `action` over, in the list's order, with
-/// what is running for each.
+/// The keys a bulk action of `action` over the rows at `selected` runs over in
+/// `list`, in the list's order.
 async fn keys_running(
     lib: &Library,
     list: ImportListId,
+    selected: &[crate::CandidateKey],
     action: CandidateAction,
 ) -> Vec<crate::CandidateKey> {
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let selected = tables.load_import_list_selected(list, Some(action)).await.unwrap();
+    let selected = lib
+        .tables()
+        .load_import_list_selected(list, selected.to_vec(), Some(action))
+        .await
+        .unwrap();
     selected.candidates.into_iter().map(|candidate| candidate.candidate_key).collect()
 }
 
-/// The offer for `action` of `list`'s selection.
+/// The keys of every row `list` shows: what Select All selects.
+async fn all_keys(lib: &Library, list: ImportListId) -> Vec<crate::CandidateKey> {
+    lib.tables().import_list_keys(list).await.unwrap()
+}
+
+/// The offer for `action` of the rows at `selected`.
 async fn offer(
     lib: &Library,
     list: ImportListId,
+    selected: &[crate::CandidateKey],
     action: CandidateAction,
 ) -> Option<SelectionOffer> {
-    lib.read(list).await.selection.offers.into_iter().find(|offer| offer.action == action)
+    lib.read_selecting(list, selected.to_vec())
+        .await
+        .selection
+        .offers
+        .into_iter()
+        .find(|offer| offer.action == action)
 }
 
-/// A row whose own change moves it out of what the list shows leaves the
-/// selection in the write that moves it; one the list still shows stays.
+/// The summary reads the rows at the keys asked for, whatever the list
+/// shows: a row the list hides by a change to it is still counted, and a key
+/// whose row the tables no longer hold names nothing.
 #[tokio::test]
-async fn a_row_moved_out_of_the_view_leaves_the_selection_in_its_write() {
+async fn the_summary_reads_the_rows_at_its_keys_whatever_the_list_shows() {
     let lib = five_rows().await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("B")] }).await;
+    let selected = vec![lib.key("A"), lib.key("B")];
+    let read = lib.read_selecting(list, selected.clone()).await;
+    assert_eq!(read.selection.count, 2);
+    assert_eq!(read.selection.single, None);
     lib.run(lib.linked("A")).await;
-    let read = lib.read(list).await;
+    let read = lib.read_selecting(list, selected.clone()).await;
+    assert!(!sequence(&read).contains(&"candidate A".to_string()), "the filter hides A");
+    assert_eq!(read.selection.count, 2, "A is still selected while the list hides it");
+    let read = lib.read_selecting(list, vec![lib.key("B"), lib.key("Nowhere")]).await;
     assert_eq!(read.selection.count, 1);
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("B") }));
-    lib.run(lib.draft("B", "Album")).await;
-    assert_eq!(
-        lib.read(list).await.selection.count,
-        1,
-        "a change that keeps the row shown keeps it selected"
-    );
 }
 
-/// A selected release whose import finishes stays selected on Pending, shown
-/// as imported in its pane, until the person selects another row.
+/// A selected release whose import finishes is still in the summary, as the
+/// one selected row, so its pane stays open showing it as imported, while the
+/// Pending list no longer shows its row.
 #[tokio::test]
-async fn a_selected_release_whose_import_lands_stays_selected_until_another_is() {
+async fn a_selected_release_whose_import_lands_stays_in_the_summary() {
     let lib = five_rows().await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
     imported_release(&lib.db, &lib.candidate("A")).await;
-
-    let read = lib.read(list).await;
+    let read = lib.read_selecting(list, vec![lib.key("A")]).await;
     assert_eq!(read.selection.count, 1);
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("A") }));
     assert!(
-        !lib.items(view(TriageTab::Pending)).await.iter().any(|name| name == "A"),
+        !sequence(&read).contains(&"candidate A".to_string()),
         "the list no longer shows the row"
     );
     let pane = lib.tables().load_import_candidate(&lib.key("A")).await.unwrap().unwrap();
     assert!(pane.draft().is_none(), "the pane holds the imported release");
-
-    lib.run(lib.linked("B")).await;
-    assert_eq!(lib.read(list).await.selection.count, 1, "a change to another row keeps it");
-
-    lib.select(list, SelectionChange::Toggle { add: vec![lib.key("B")], remove: vec![] }).await;
-    let read = lib.read(list).await;
-    assert_eq!(read.selection.count, 1, "selecting another row drops the imported one");
-    assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("B") }));
 }
 
-/// A selected release whose import finishes leaves the selection when the
-/// person changes the list's tab.
+/// A bulk action runs over the rows at its keys the list shows, and skips one
+/// the list hides: here a release whose import finished, and one the filter
+/// hides.
 #[tokio::test]
-async fn a_release_kept_after_its_import_leaves_with_the_view() {
+async fn a_bulk_action_runs_over_the_keys_the_list_shows() {
     let lib = five_rows().await;
-    let list = lib.open(view(TriageTab::Pending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
+    let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
     imported_release(&lib.db, &lib.candidate("A")).await;
-    lib.tables()
-        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))
+    lib.run(lib.linked("B")).await;
+    let selected = [lib.key("A"), lib.key("B"), lib.key("C"), lib.key("D")];
+    let rows = lib.tables().load_import_list_selected(list, selected.to_vec(), None).await.unwrap();
+    let mut keys: Vec<_> =
+        rows.candidates.into_iter().map(|candidate| candidate.candidate_key).collect();
+    keys.sort();
+    assert_eq!(keys, [lib.key("C"), lib.key("D")]);
+}
+
+/// Changing the tab, filter or search answers with the selected rows the new
+/// view doesn't show, which leave the selection, a release whose import
+/// finished among them; another order answers none.
+#[tokio::test]
+async fn a_view_change_answers_the_selected_rows_that_leave() {
+    let lib = five_rows().await;
+    lib.run(lib.linked("D")).await;
+    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    imported_release(&lib.db, &lib.candidate("A")).await;
+    let selected = vec![lib.key("A"), lib.key("B"), lib.key("D")];
+    let left = |view| {
+        let (tables, selected) = (lib.tables(), selected.clone());
+        async move {
+            let mut left =
+                tables.set_import_list_view(list, view, selected).await.unwrap().unwrap().left;
+            left.sort();
+            left
+        }
+    };
+    assert!(
+        left(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await.is_empty(),
+        "another order keeps every selected row, the imported one too"
+    );
+    let mut hidden = vec![lib.key("A"), lib.key("B")];
+    hidden.sort();
+    assert_eq!(
+        left(ImportListView {
+            pending_filter: PendingFilter::Identified,
+            ..ordered(TriageTab::Pending, ImportListOrder::PathDescending)
+        })
+        .await,
+        hidden,
+        "Identified shows D alone"
+    );
+    let mut hidden = vec![lib.key("B"), lib.key("D")];
+    hidden.sort();
+    assert_eq!(left(view(TriageTab::Done)).await, hidden, "Done shows A alone");
+}
+
+/// Folding a group answers with the selected rows it hid; opening it hides
+/// none, and a selected row the list hid by a change to it is no row the fold
+/// hid.
+#[tokio::test]
+async fn folding_a_group_answers_the_selected_rows_it_hid() {
+    let lib = Library::new().await;
+    let tables = lib.tables();
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose")).await;
+    let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
+    lib.run(lib.linked("Box/2")).await;
+    let selected = vec![lib.key("Box/1"), lib.key("Box/2"), lib.key("Loose")];
+    assert_eq!(
+        tables
+            .set_import_list_group_folded(list, lib.group_key("Box"), true, selected.clone())
+            .await
+            .unwrap(),
+        [lib.key("Box/1")]
+    );
+    assert!(tables
+        .set_import_list_group_folded(list, lib.group_key("Box"), false, selected.clone())
         .await
-        .unwrap();
-    assert_eq!(lib.read(list).await.selection.count, 1, "an order change keeps the view");
-    lib.tables().set_import_list_view(list, view(TriageTab::Skipped)).await.unwrap();
-    assert_eq!(lib.read(list).await.selection.count, 0);
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        tables.set_import_list_groups_folded(list, true, selected).await.unwrap(),
+        [lib.key("Box/1")]
+    );
 }
 
 /// The selected rows a bulk action takes are in the order the list shows
@@ -105,15 +180,10 @@ async fn the_selected_rows_come_in_the_list_s_order() {
     let lib = five_rows().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await;
-    lib.select(
-        list,
-        SelectionChange::Toggle {
-            add: vec![lib.key("B"), lib.key("D"), lib.key("A")],
-            remove: Vec::new(),
-        },
-    )
-    .await;
-    let selected = tables.load_import_list_selected(list, None).await.unwrap();
+    let selected = tables
+        .load_import_list_selected(list, vec![lib.key("B"), lib.key("D"), lib.key("A")], None)
+        .await
+        .unwrap();
     assert_eq!(
         selected
             .candidates
@@ -133,15 +203,19 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan_as("Broken", "invalid")).await;
     let list = lib.open(view(TriageTab::Skipped)).await;
-    tables.select_all_in_import_list(list).await.unwrap();
-    let read = lib.read(list).await;
+    let selected = all_keys(&lib, list).await;
+    let read = lib.read_selecting(list, selected.clone()).await;
     assert_eq!(read.selection.count, 1);
     assert_eq!(
         read.selection.single,
         Some(SingleSelection::InvalidCandidate { key: lib.key("Broken") })
     );
     assert!(read.selection.offers.is_empty());
-    assert!(matches!(&read.windows[0].rows[0], ImportListItem::Invalid { selected: true, .. }));
+    assert!(matches!(&read.windows[0].rows[0], ImportListItem::Invalid { .. }));
+    assert_eq!(
+        tables.load_import_list_selected(list, selected, None).await.unwrap().invalid,
+        [lib.key("Broken")]
+    );
 }
 
 /// A selection of identified rows offers no Identify; a mixed one counts only
@@ -156,21 +230,17 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
     )
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("C")] }).await;
-    assert_eq!(offer(&lib, list, CandidateAction::Identify).await, None);
-    lib.select(
-        list,
-        SelectionChange::Replace {
-            keys: vec![lib.key("A"), lib.key("B"), lib.key("D"), lib.key("E")],
-        },
-    )
-    .await;
+    let identified = [lib.key("A"), lib.key("C")];
+    assert_eq!(offer(&lib, list, &identified, CandidateAction::Identify).await, None);
+    let mixed = [lib.key("A"), lib.key("B"), lib.key("D"), lib.key("E")];
     assert_eq!(
-        offer(&lib, list, CandidateAction::Identify).await.map(|offer| offer.count),
+        offer(&lib, list, &mixed, CandidateAction::Identify).await.map(|offer| offer.count),
         Some(2)
     );
     assert_eq!(
-        offer(&lib, list, CandidateAction::RetryIdentification).await.map(|offer| offer.count),
+        offer(&lib, list, &mixed, CandidateAction::RetryIdentification)
+            .await
+            .map(|offer| offer.count),
         Some(1)
     );
 }
@@ -181,7 +251,6 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
 #[tokio::test]
 async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     let identified: Write = ["Identified", "Picked Among Several"]
         .into_iter()
         .map(|display_path| lib.linked(display_path) + lib.valid_draft(display_path))
@@ -195,8 +264,8 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     .await;
 
     let identified = lib.open(under(TriageTab::Pending, PendingFilter::Identified)).await;
-    tables.select_all_in_import_list(identified).await.unwrap();
-    let mut imported = keys_running(&lib, identified, CandidateAction::Import).await;
+    let all = all_keys(&lib, identified).await;
+    let mut imported = keys_running(&lib, identified, &all, CandidateAction::Import).await;
     imported.sort();
     assert_eq!(
         imported,
@@ -205,26 +274,20 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     );
 
     let everything = lib.open(view(TriageTab::Pending)).await;
-    lib.select(
-        everything,
-        SelectionChange::Replace {
-            keys: vec![
-                lib.key("Identified"),
-                lib.key("Picked Among Several"),
-                lib.key("Several"),
-                lib.key("Tagged"),
-            ],
-        },
-    )
-    .await;
-    let mut imported = keys_running(&lib, everything, CandidateAction::Import).await;
+    let picked = [
+        lib.key("Identified"),
+        lib.key("Picked Among Several"),
+        lib.key("Several"),
+        lib.key("Tagged"),
+    ];
+    let mut imported = keys_running(&lib, everything, &picked, CandidateAction::Import).await;
     imported.sort();
     assert_eq!(
         imported,
         [lib.key("Identified"), lib.key("Picked Among Several"), lib.key("Tagged")]
     );
     assert_eq!(
-        offer(&lib, everything, CandidateAction::Import).await.map(|offer| offer.count),
+        offer(&lib, everything, &picked, CandidateAction::Import).await.map(|offer| offer.count),
         Some(3)
     );
 }
@@ -234,7 +297,6 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
 #[tokio::test]
 async fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(
         scanned_with_states(&lib, &["Identified", "Tagged"])
             + lib.linked("Identified")
@@ -244,12 +306,14 @@ async fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
     )
     .await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
-    tables.select_all_in_import_list(list).await.unwrap();
-    let read = lib.read(list).await;
+    let all = all_keys(&lib, list).await;
+    let read = lib.read_selecting(list, all.clone()).await;
     assert_eq!(read.selection.count, 2, "the entry shows the rows being identified");
     assert!(!read.selection.offers.iter().any(|offer| offer.action == CandidateAction::Import));
     assert_eq!(
-        offer(&lib, list, CandidateAction::CancelIdentification).await.map(|offer| offer.count),
+        offer(&lib, list, &all, CandidateAction::CancelIdentification)
+            .await
+            .map(|offer| offer.count),
         Some(2)
     );
 }
@@ -260,7 +324,6 @@ async fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
 #[tokio::test]
 async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     let releases = ["Broke", "Failed Import", "Lookup Failed", "Nothing Found", "Several Tagged"];
     lib.run(
         scanned_with_states(&lib, &releases)
@@ -274,25 +337,25 @@ async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
     )
     .await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::NeedsYou)).await;
-    tables.select_all_in_import_list(list).await.unwrap();
+    let all = all_keys(&lib, list).await;
     let sorted = |mut keys: Vec<crate::CandidateKey>| {
         keys.sort();
         keys
     };
     assert_eq!(
-        sorted(keys_running(&lib, list, CandidateAction::Import).await),
+        sorted(keys_running(&lib, list, &all, CandidateAction::Import).await),
         [lib.key("Failed Import"), lib.key("Several Tagged")],
         "a draft imports and a failed import imports again; no draft, no import"
     );
     assert_eq!(
-        sorted(keys_running(&lib, list, CandidateAction::RetryIdentification).await),
+        sorted(keys_running(&lib, list, &all, CandidateAction::RetryIdentification).await),
         [lib.key("Broke"), lib.key("Lookup Failed")]
     );
 }
 
 /// A release the scan writes again over its stored row — its files changed —
-/// keeps its place in the list: it stays selected, and the group it is
-/// folded under stays folded.
+/// keeps its place in the list: its key still names it, so it stays
+/// selected, and the group it is folded under stays folded.
 #[tokio::test]
 async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
     let lib = Library::new().await;
@@ -309,12 +372,11 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
             .unwrap();
     }
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("Loose")] }).await;
     let group = crate::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
         relative_folder: crate::RelativeFolder::test("Box"),
     };
-    tables.set_import_list_group_folded(list, group, true).await.unwrap();
+    tables.set_import_list_group_folded(list, group, true, Vec::new()).await.unwrap();
     for name in ["Box/2", "Loose"] {
         let mut changed = release(name);
         changed.files.files[0].file = crate::folder_scanner::ScannedFile::new(
@@ -329,118 +391,82 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
             .await
             .unwrap();
     }
-    let read = lib.read(list).await;
+    let read = lib.read_selecting(list, vec![lib.key("Loose")]).await;
     assert_eq!(sequence(&read), ["group Box", "candidate Loose"]);
     assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("Loose") }));
 }
 
-/// A selected release the scan no longer holds leaves the selection with it,
-/// and comes back unselected when the scan finds it again.
+/// A selected release the scan no longer holds names no row, and is
+/// counted again when the scan finds it again.
 #[tokio::test]
-async fn a_release_gone_from_the_scan_leaves_the_selection() {
+async fn a_release_gone_from_the_scan_names_no_row_until_it_is_back() {
     let lib = five_rows().await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("A")] }).await;
+    let selected = vec![lib.key("A")];
     lib.run(lib.unscan("A")).await;
-    assert_eq!(lib.read(list).await.selection.count, 0);
+    assert_eq!(lib.read_selecting(list, selected.clone()).await.selection.count, 0);
     lib.run(
         lib.begin_pass()
             + scanned_with_states(&lib, &["A", "B", "C", "D", "E"])
             + lib.finish_pass(),
     )
     .await;
-    let read = lib.read(list).await;
+    let read = lib.read_selecting(list, selected).await;
     assert_eq!(read.total_count, 5);
-    assert_eq!(read.selection.count, 0, "it comes back unselected");
+    assert_eq!(read.selection.count, 1);
 }
 
-/// A selection only ever holds rows the list shows: a key it does not show is
-/// never selected, and the rows a view change hides leave it in that write.
+/// Select All takes every release the list shows and no header.
 #[tokio::test]
-async fn a_selection_holds_only_rows_the_list_shows() {
-    let lib = five_rows().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(lib.skip("E") + lib.linked("D")).await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    lib.select(
-        list,
-        SelectionChange::Replace { keys: vec![lib.key("A"), lib.key("D"), lib.key("E")] },
-    )
-    .await;
-    let read = lib.read(list).await;
-    assert_eq!(read.selection.count, 2, "E is on Skipped, which the list does not show");
-
-    tables
-        .set_import_list_view(
-            list,
-            ImportListView {
-                pending_filter: PendingFilter::Identified,
-                ..ordered(TriageTab::Pending, ImportListOrder::PathAscending)
-            },
-        )
-        .await
-        .unwrap();
-    let read = lib.read(list).await;
-    assert_eq!(read.selection.count, 1, "A left the selection as the view hid it");
-    assert_eq!(read.selection.single, Some(SingleSelection::Candidate { key: lib.key("D") }));
-
-    tables
-        .set_import_list_view(list, ordered(TriageTab::Pending, ImportListOrder::PathAscending))
-        .await
-        .unwrap();
-    assert_eq!(
-        lib.read(list).await.selection.count,
-        1,
-        "a row the view shows again comes back unselected"
-    );
-}
-
-/// Folding a group takes its selected rows out of the selection.
-#[tokio::test]
-async fn folding_a_group_takes_its_rows_out_of_the_selection() {
+async fn select_all_takes_every_release_the_list_shows() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
-    lib.run(lib.scan("Box/1") + lib.scan("Box/2")).await;
+    lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    tables.select_all_in_import_list(list).await.unwrap();
-    assert_eq!(lib.read(list).await.selection.count, 2);
-    tables.set_import_list_groups_folded(list, true).await.unwrap();
-    assert_eq!(lib.read(list).await.selection.count, 0);
+    let mut all = all_keys(&lib, list).await;
+    all.sort();
+    let mut expected = vec![lib.key("A"), lib.key("Box/1"), lib.key("Box/2"), lib.key("C")];
+    expected.sort();
+    assert_eq!(all, expected);
 }
 
-/// A run of rows is selected along the list's order, both ends included,
-/// headers between them no row; ends the list does not show select nothing.
+/// A run of rows is read along the list's order, both ends included,
+/// whichever end comes first, headers between them no row; one end the list
+/// does not show gives the other alone, and neither gives nothing.
 #[tokio::test]
-async fn extending_selects_the_run_between_two_rows() {
+async fn the_keys_between_two_rows_are_the_run_between_them() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    lib.select(list, SelectionChange::Extend { from: lib.key("C"), to: lib.key("Box/1") }).await;
-    let selected = tables.load_import_list_selected(list, None).await.unwrap();
-    assert_eq!(
-        selected
-            .candidates
-            .iter()
-            .map(|candidate| candidate.candidate_key.clone())
-            .collect::<Vec<_>>(),
-        [lib.key("Box/1"), lib.key("Box/2"), lib.key("C")],
-        "the run in the list's order"
-    );
-    assert_eq!(
-        tables
-            .change_import_list_selection(
-                list,
-                SelectionChange::Extend { from: lib.key("A"), to: lib.key("Nowhere") },
-            )
-            .await
-            .unwrap(),
-        crate::tables::SelectionWrite::RunNotShown
-    );
-    lib.select(
-        list,
-        SelectionChange::Toggle { add: vec![lib.key("A")], remove: vec![lib.key("Box/2")] },
-    )
-    .await;
-    assert_eq!(lib.read(list).await.selection.count, 3);
+    let between = |from: &str, to: &str| {
+        let (tables, from, to) = (tables.clone(), lib.key(from), lib.key(to));
+        async move {
+            tables
+                .import_list_keys_between(
+                    list,
+                    TriageTab::Pending,
+                    ImportListOrder::PathAscending,
+                    from,
+                    to,
+                )
+                .await
+                .unwrap()
+        }
+    };
+    let run = [lib.key("Box/1"), lib.key("Box/2"), lib.key("C")];
+    assert_eq!(between("C", "Box/1").await, run, "the run in the list's order");
+    assert_eq!(between("Box/1", "C").await, run);
+    assert_eq!(between("A", "Nowhere").await, [lib.key("A")]);
+    assert!(between("Nowhere", "Nor here").await.is_empty());
+    let on_done = tables
+        .import_list_keys_between(
+            list,
+            TriageTab::Done,
+            ImportListOrder::PathAscending,
+            lib.key("A"),
+            lib.key("C"),
+        )
+        .await
+        .unwrap();
+    assert!(on_done.is_empty(), "a tab the list doesn't show reads nothing");
 }

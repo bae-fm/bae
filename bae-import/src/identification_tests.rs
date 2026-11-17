@@ -818,7 +818,7 @@ pub(crate) fn page_window(limit: u64) -> bae_store::ListWindow {
 pub(crate) async fn next_page(
     list: &crate::list::FollowedImportList,
 ) -> crate::list::ImportListRead {
-    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers")
+    tokio::time::timeout(HANG_GUARD, list.next(Vec::new())).await.expect("the list delivers")
 }
 
 /// How many of Found's rows a snapshot counts under `filter`.

@@ -6,7 +6,6 @@
 use super::*;
 use crate::folder_scanner::{FolderCandidate, ScanItem};
 use crate::list::ImportListRead;
-use crate::selection::SelectionChange;
 use crate::tables::folder_scans::{ScanItemSeed, ScanItemToWrite};
 use crate::tables::tests::*;
 use crate::FolderReleaseDecisionKey;
@@ -290,11 +289,22 @@ impl Library {
         self.tables().open_import_list(view).await.unwrap()
     }
 
-    /// One read of `list` through one window over every item. Found's items
-    /// read in runs and read sorted must agree.
+    /// One read of `list` through one window over every item, with nothing
+    /// selected. Found's items read in runs and read sorted must agree.
     pub(crate) async fn read(&self, list: ImportListId) -> ImportListRead {
+        self.read_selecting(list, Vec::new()).await
+    }
+
+    /// One read of `list` through one window over every item, with what the
+    /// rows at `selected` hold and offer. Found's items read in runs and read
+    /// sorted must agree.
+    pub(crate) async fn read_selecting(
+        &self,
+        list: ImportListId,
+        selected: Vec<crate::CandidateKey>,
+    ) -> ImportListRead {
         let tables = self.tables();
-        let read = tables.read_import_list_for_test(list).await.unwrap();
+        let read = tables.read_import_list_for_test(list, selected).await.unwrap();
         if let Some((walked, other)) = tables.import_list_read_both_ways(list).await.unwrap() {
             assert_eq!(
                 walked, other,
@@ -334,16 +344,6 @@ impl Library {
     /// The items a list opened on `view` shows.
     pub(crate) async fn items(&self, view: ImportListView) -> Vec<String> {
         sequence(&self.shown(view).await)
-    }
-
-    /// Change `list`'s selection.
-    pub(crate) async fn select(&self, list: ImportListId, change: SelectionChange) {
-        match self.tables().change_import_list_selection(list, change).await.unwrap() {
-            crate::tables::SelectionWrite::Changed => {}
-            crate::tables::SelectionWrite::RunNotShown => {
-                panic!("the run's ends are shown")
-            }
-        }
     }
 
     /// The group at `name` under the watched folder.
@@ -566,7 +566,7 @@ pub(crate) fn window_rows(window: &crate::ImportWindow) -> Vec<crate::TriageRow>
         .collect()
 }
 
-/// One read of a list: its view, and the rows it has selected.
+/// One read of a list: its view, and the rows its surface keeps selected.
 pub(crate) struct ListRead {
     pub(crate) view: ImportListView,
     pub(crate) selected: Vec<crate::CandidateKey>,
@@ -584,14 +584,7 @@ impl ImportTables {
         read: ListRead,
     ) -> Result<ImportListRead, ImportListError> {
         let list = self.open_import_list(read.view).await?;
-        if !read.selected.is_empty() {
-            self.change_import_list_selection(
-                list,
-                crate::selection::SelectionChange::Replace { keys: read.selected },
-            )
-            .await?;
-        }
-        let projection = self.read_import_list_for_test(list).await;
+        let projection = self.read_import_list_for_test(list, read.selected).await;
         self.close_import_list(list).await?;
         Ok(projection?)
     }

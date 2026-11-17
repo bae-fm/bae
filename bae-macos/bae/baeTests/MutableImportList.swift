@@ -123,40 +123,14 @@ final class MutableImportList: @unchecked Sendable {
         )
     }
 
-    /// Apply a selection change the way core does: each candidate's row says
-    /// whether it is selected, and the change reaches every window the way any
-    /// other change of the items does.
-    func apply(_ change: BridgeSelectionChange) async {
-        let next = lock.withLock { items }
-            .map {
-                item -> BridgeImportListItem in
-                guard
-                    case .candidate(let stableKey, var row, let headerKey) =
-                        item
-                else { return item }
-                switch change {
-                case .replace(let keys):
-                    row.selected = keys.contains(row.candidateKey)
-                case .toggle(let add, let remove):
-                    if add.contains(row.candidateKey) { row.selected = true }
-                    if remove.contains(row.candidateKey) {
-                        row.selected = false
-                    }
-                case .extend:
-                    break
-                }
-                return .candidate(
-                    stableKey: stableKey,
-                    row: row,
-                    headerKey: headerKey
-                )
-            }
-        await replaceItems(next)
-    }
-
     /// A handle over this list, whose view changes open at the top.
     var handle: ImportListHandle {
-        .stub(queries: queries, setView: { _ in .top })
+        .stub(
+            queries: queries,
+            setView: { _, _ in
+                BridgeImportListViewChange(opening: .top, left: [])
+            }
+        )
     }
 
     private var queries: BridgeListQueries<BridgeImportListItem> {

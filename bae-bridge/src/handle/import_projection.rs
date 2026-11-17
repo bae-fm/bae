@@ -232,7 +232,6 @@ impl crate::types::BridgeTriageRow {
             // The row's reading names the linked release's records.
             release_link: _,
             reading,
-            selected,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key: candidate_key.into(),
@@ -250,7 +249,6 @@ impl crate::types::BridgeTriageRow {
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
-            selected,
         }
     }
 }
@@ -284,7 +282,7 @@ mirror_enum! {
 mirror_enum! {
     crate::types::BridgeTriageTab = bae_import::TriageTab,
     from_core: pub(super) fn,
-    into_core: pub(super) fn,
+    into_core: pub(crate) fn,
     variants: { Pending, Done, Skipped },
 }
 
@@ -414,7 +412,7 @@ mirror_struct! {
 
 mirror_enum! {
     crate::types::BridgeImportListOrder = bae_import::ImportListOrder,
-    into_core: fn,
+    into_core: pub(crate) fn,
     variants: { NewestFirst, OldestFirst, PathAscending, PathDescending },
 }
 
@@ -481,10 +479,9 @@ impl crate::types::BridgeImportListItem {
                 row: crate::types::BridgeTriageRow::from_core(row, live),
                 header_key,
             },
-            bae_import::ImportListItem::Invalid { candidate, selected } => Self::Invalid {
+            bae_import::ImportListItem::Invalid { candidate } => Self::Invalid {
                 stable_key,
                 invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
-                selected,
             },
         }
     }
@@ -588,6 +585,15 @@ impl crate::types::BridgeImportListOpening {
             bae_import::ImportListOpening::At { key, position } => {
                 Self::At { key: crate::types::BridgeSortValue::of_key(&key), position }
             }
+        }
+    }
+}
+
+impl crate::types::BridgeImportListViewChange {
+    pub(crate) fn from_core(change: bae_import::ImportListViewChange) -> Self {
+        Self {
+            opening: crate::types::BridgeImportListOpening::from_core(change.opening),
+            left: change.left.into_iter().map(Vec::<u8>::from).collect(),
         }
     }
 }
@@ -732,14 +738,4 @@ impl crate::types::BridgeCandidateDraftPane {
             session: crate::types::BridgeCandidateSession::from_core(session),
         }
     }
-}
-
-mirror_enum! {
-    crate::types::BridgeSelectionChange = bae_import::selection::SelectionChange,
-    into_core: pub(crate) fn,
-    variants: {
-        Replace { keys: (each into) },
-        Toggle { add: (each into), remove: (each into) },
-        Extend { from: (into), to: (into) },
-    },
 }

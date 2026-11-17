@@ -5,20 +5,19 @@ import Testing
 
 @testable import bae
 
-/// The list's rows selected through its table: each press and key reaches
-/// core as the selection change it is, the table highlights what core holds,
-/// and Select All
-/// asks core for every row the list shows.
+/// The list's rows selected through its table: each press and key changes
+/// the keys the screen keeps, the table highlights the rows they name, and
+/// Select All asks core for every row the list shows.
 @Suite("Import list selection")
 struct ImportListSelectionTests {
     @MainActor
-    @Test("a click on a row reaches core as the selection")
+    @Test("a click on a row selects it")
     func candidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(grouped: false)
     }
 
     @MainActor
-    @Test("a click on a group member reaches core as the selection")
+    @Test("a click on a group member selects it")
     func groupedCandidateCanBeSelected() async throws {
         try await assertCandidateCanBeSelected(grouped: true)
     }
@@ -30,7 +29,6 @@ struct ImportListSelectionTests {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         let store = PreviewData.importTabScene().store
-        let changes = CallLog<BridgeSelectionChange>()
         let slot = try await Self.selectingSlot(
             items: (grouped ? [Self.groupHeader] : [])
                 + [
@@ -40,8 +38,7 @@ struct ImportListSelectionTests {
                     )
                 ],
             store: store,
-            uiStore: uiStore,
-            changes: changes
+            uiStore: uiStore
         )
         try await ImportListHosting.withList(
             store: store,
@@ -51,42 +48,30 @@ struct ImportListSelectionTests {
             let row = grouped ? 1 : 0
             try ImportListHosting.press(row: row, in: table)
 
-            try await Wait.until { !changes.all.isEmpty }
-            #expect(
-                changes.all == [
-                    .replace(keys: [
-                        PreviewData.triageRowIdentified.candidateKey
-                    ])
-                ]
-            )
-            // The table highlights the rows that core's windows mark as
-            // selected, once the windows send them.
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [row]
-                    && slot.list?.selectedKeys == [
+                    && slot.selection.keys == [
                         PreviewData.triageRowIdentified.candidateKey
                     ]
             }
         }
     }
 
-    /// The table highlights the rows its list holds as selected: a click
-    /// writes the selection, and the highlight follows once the windows
-    /// holding the rows the click changed deliver them.
+    /// The table highlights the rows whose keys the screen keeps: a click
+    /// replaces them, and the highlight follows at once.
     @MainActor
-    @Test("the highlight follows the selected rows the list delivers")
-    func theHighlightFollowsTheListsRows() async throws {
+    @Test("the highlight follows the kept keys")
+    func theHighlightFollowsTheKeptKeys() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let changes = CallLog<BridgeSelectionChange>()
         let slot = try await Self.selectingSlot(
             items: [
-                Self.row(PreviewData.triageRowIdentified, selected: true),
-                Self.row(PreviewData.triageRowUnidentified, selected: false),
+                PreviewData.candidateItem(PreviewData.triageRowIdentified),
+                PreviewData.candidateItem(PreviewData.triageRowUnidentified),
             ],
             store: store,
             uiStore: uiStore,
-            changes: changes
+            selected: [PreviewData.triageRowIdentified.candidateKey]
         )
         try await ImportListHosting.withList(
             store: store,
@@ -97,33 +82,28 @@ struct ImportListSelectionTests {
             let secondKey = PreviewData.triageRowUnidentified.candidateKey
 
             try ImportListHosting.press(row: 1, in: table)
-            try await Wait.until { !changes.all.isEmpty }
-            #expect(changes.all == [.replace(keys: [secondKey])])
-
-            // The windows that hold the two rows the click changed send them
-            // again.
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [1]
-                    && slot.list?.selectedKeys == [secondKey]
+                    && slot.selection.keys == [secondKey]
             }
         }
     }
 
     /// Command-click adds a row and takes one out, keeping the rest.
     @MainActor
-    @Test("a Command-click toggles its row in core's selection")
+    @Test("a Command-click toggles its row in the kept keys")
     func commandClickToggles() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let changes = CallLog<BridgeSelectionChange>()
+        let hidden = Data("/library/hidden".utf8)
         let slot = try await Self.selectingSlot(
             items: [
-                Self.row(PreviewData.triageRowIdentified, selected: true),
-                Self.row(PreviewData.triageRowUnidentified, selected: false),
+                PreviewData.candidateItem(PreviewData.triageRowIdentified),
+                PreviewData.candidateItem(PreviewData.triageRowUnidentified),
             ],
             store: store,
             uiStore: uiStore,
-            changes: changes
+            selected: [PreviewData.triageRowIdentified.candidateKey, hidden]
         )
         try await ImportListHosting.withList(
             store: store,
@@ -132,29 +112,27 @@ struct ImportListSelectionTests {
         ) { table in
             try ImportListHosting.press(row: 1, in: table, modifiers: .command)
 
-            try await Wait.until { !changes.all.isEmpty }
-            #expect(
-                changes.all == [
-                    .toggle(
-                        add: [PreviewData.triageRowUnidentified.candidateKey],
-                        remove: []
-                    )
-                ]
-            )
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [0, 1]
             }
+            #expect(
+                slot.selection.keys == [
+                    PreviewData.triageRowIdentified.candidateKey,
+                    PreviewData.triageRowUnidentified.candidateKey,
+                    hidden,
+                ],
+                "a key whose row the list hides stays selected"
+            )
         }
     }
 
-    /// A header is never selected: a press on one asks nothing of core, and
-    /// the down arrow from the row above it goes on to the row past it.
+    /// A header is never selected: a press on one changes nothing, and the
+    /// down arrow from the row above it goes on to the row past it.
     @MainActor
     @Test("headers are skipped by clicks and the arrow keys")
     func headersAreNotSelected() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let changes = CallLog<BridgeSelectionChange>()
         let header = PreviewData.groupHeaderItem(
             key: BridgeFolderReleaseDecisionKey(
                 watchedFolderPath: Data("/library".utf8),
@@ -163,9 +141,10 @@ struct ImportListSelectionTests {
             name: "Group",
             entryCount: 1
         )
+        let first = PreviewData.triageRowIdentified.candidateKey
         let slot = try await Self.selectingSlot(
             items: [
-                Self.row(PreviewData.triageRowIdentified, selected: true),
+                PreviewData.candidateItem(PreviewData.triageRowIdentified),
                 header,
                 PreviewData.candidateItem(
                     PreviewData.triageRowUnidentified,
@@ -174,7 +153,7 @@ struct ImportListSelectionTests {
             ],
             store: store,
             uiStore: uiStore,
-            changes: changes
+            selected: [first]
         )
         try await ImportListHosting.withList(
             store: store,
@@ -183,22 +162,19 @@ struct ImportListSelectionTests {
         ) { table in
             let window = try #require(table.window)
             try ImportListHosting.press(row: 1, in: table)
-            #expect(changes.all.isEmpty)
+            #expect(slot.selection.keys == [first])
             #expect(table.selectedRowIndexes == [0])
 
             #expect(HostedInput.focus(table, in: window))
             try HostedInput.keyDown(.downArrow, in: window)
-            try await Wait.until { !changes.all.isEmpty }
-            #expect(
-                changes.all == [
-                    .replace(keys: [
-                        PreviewData.triageRowUnidentified.candidateKey
-                    ])
-                ]
-            )
             try await Wait.until(notices: [.selection(of: table)]) {
                 table.selectedRowIndexes == [2]
             }
+            #expect(
+                slot.selection.keys == [
+                    PreviewData.triageRowUnidentified.candidateKey
+                ]
+            )
         }
     }
 
@@ -210,7 +186,10 @@ struct ImportListSelectionTests {
     func selectAllAsksCore() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let selectAlls = CallLog<Void>()
+        let everything: [Data] = [
+            PreviewData.triageRowIdentified.candidateKey,
+            Data("/library/not-loaded".utf8),
+        ]
         let slot = ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
@@ -218,7 +197,7 @@ struct ImportListSelectionTests {
                 PreviewData.candidateItem(PreviewData.triageRowIdentified)
             ],
             selection: ImportSelection(
-                operations: .stub(selectAll: { selectAlls.record(()) })
+                operations: .stub(allKeys: { everything })
             )
         )
         try await ImportListHosting.withList(
@@ -236,48 +215,35 @@ struct ImportListSelectionTests {
                 )
             )
 
-            try await Wait.until { !selectAlls.all.isEmpty }
-            #expect(selectAlls.all.count == 1)
-            #expect(table.selectedRowIndexes.isEmpty)
+            try await Wait.until(notices: [.selection(of: table)]) {
+                table.selectedRowIndexes == [0]
+            }
+            #expect(slot.selection.keys == Set(everything))
         }
     }
 
-    /// A slot over a list that takes each selection change the way core does:
-    /// it records the change, marks the rows, and delivers them, so the
-    /// table's highlight is what the delivered windows say.
+    /// A slot over `items`, with `selected` kept selected once the list has
+    /// loaded.
     @MainActor
     private static func selectingSlot(
         items: [BridgeImportListItem],
         store: ImportStore,
         uiStore: UiStore,
-        changes: CallLog<BridgeSelectionChange>
+        selected: Set<Data> = []
     ) async throws -> ImportListSlot {
         let source = MutableImportList(items: items)
         let slot = ImportListSlot(
             importStore: store,
             uiStore: uiStore,
-            selection: ImportSelection(
-                operations: .stub(change: { change in
-                    changes.record(change)
-                    await source.apply(change)
-                })
-            ),
+            selection: ImportSelection(),
             makeHandle: { _ in source.handle }
         )
         slot.startLoad()
         try await Wait.until {
             slot.list?.row(at: items.count - 1) != nil
         }
+        slot.selection.select(selected)
         return slot
-    }
-
-    private static func row(
-        _ row: BridgeTriageRow,
-        selected: Bool
-    ) -> BridgeImportListItem {
-        var row = row
-        row.selected = selected
-        return PreviewData.candidateItem(row)
     }
 
     /// The header of a group, `Group`, under the library's folder.
@@ -322,7 +288,7 @@ enum ImportListHosting {
         )
         .environment(OutboxStore(uploadsPaused: false))
         .environment(uiStore)
-        .environment(ImportSelection())
+        .environment(slot.selection)
         .environment(imageStore)
     }
 

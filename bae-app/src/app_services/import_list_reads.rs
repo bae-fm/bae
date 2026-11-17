@@ -65,9 +65,12 @@ pub fn import_list_filter_entries(
     list.values_until_closed(list.subscribe_filter_entries())
 }
 
-/// What `list`'s selection holds and the actions the person can run on it.
-pub fn import_list_selection(
-    list: &LiveImportList,
-) -> LiveValues<bae_import::selection::SelectionSummary> {
-    list.values_until_closed(list.subscribe_selection())
+/// What the rows the surface keeps selected in `list` hold and the actions
+/// the person can run on them, whatever the list shows. The selection starts
+/// empty, and the caller changes it on this same read.
+pub fn import_list_selection(list: &LiveImportList) -> crate::live_reads::LiveImportSelection {
+    crate::live_reads::LiveImportSelection::new(
+        list.until_closed(list.subscribe_selection(Default::default())),
+        |_read, summary| Some(summary),
+    )
 }

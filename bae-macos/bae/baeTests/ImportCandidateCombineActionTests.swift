@@ -16,7 +16,7 @@ struct ImportCandidateCombineActionTests {
 
         await ImportCandidateCombineAction(
             selection: ImportSelection(
-                operations: .stub(combine: {
+                operations: .stub(combine: { _ in
                     combined.record(())
                     return Data("grouping-new".utf8)
                 })
@@ -39,7 +39,7 @@ struct ImportCandidateCombineActionTests {
 
         await ImportCandidateCombineAction(
             selection: ImportSelection(
-                operations: .stub(combine: { throw CombineRefused() })
+                operations: .stub(combine: { _ in throw CombineRefused() })
             ),
             uiStore: uiStore
         )

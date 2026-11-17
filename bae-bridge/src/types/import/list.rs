@@ -79,12 +79,7 @@ pub enum BridgeImportListItem {
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.
-    Invalid {
-        stable_key: String,
-        invalid_candidate: BridgeInvalidCandidate,
-        /// Whether the person has selected the row.
-        selected: bool,
-    },
+    Invalid { stable_key: String, invalid_candidate: BridgeInvalidCandidate },
 }
 
 /// The list view and place that reveal one candidate at its current
@@ -103,11 +98,23 @@ pub struct BridgeImportCandidateListLocation {
 /// Where a list's view opens after the app sets the view.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportListOpening {
-    /// The list's top: the view showed no selected row.
+    /// The list's top: the view shows none of the selected rows.
     Top,
-    /// Its first selected row, as the write that set the view found it: the
-    /// key a chain of windows starts at, and the position the row sits at.
+    /// The first selected row the new view shows, as the write that set the
+    /// view found it: the key a chain of windows starts at, and the position
+    /// the row sits at.
     At { key: Vec<BridgeSortValue>, position: u64 },
+}
+
+/// What setting a list's view came to. Mirrors
+/// `bae_import::ImportListViewChange`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportListViewChange {
+    pub opening: BridgeImportListOpening,
+    /// The keys of the selected rows that leave the selection: on another
+    /// tab, filter or search, each selected row the new view doesn't show,
+    /// and none on another order.
+    pub left: Vec<Vec<u8>>,
 }
 
 /// What the chrome around the list shows beside its rows and counts. Where

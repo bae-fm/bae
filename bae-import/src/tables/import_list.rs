@@ -1,18 +1,16 @@
 //! The import tab's list, read from its placement.
 //!
 //! Each list a surface has open is a row of `import_list`, beside the groups
-//! it folds (`import_list_collapsed`) and the rows it selects
-//! (`import_list_selection`); every release's tab, Found state, group, dates,
+//! it folds (`import_list_collapsed`); every release's tab, Found state, group, dates,
 //! shown text and command basis are in `import_list_placement`, which triggers
 //! keep in the write that changes any table they come from. A surface runs a
 //! live query (`read`) for each window (a range of the list's order, `order`,
 //! whose rows `window` reads by key), for the count and summary (`summary`),
-//! and for what the selection holds and offers (`selection`). A search reads
-//! the rows its index (`import_list_search`) finds. SQLite places, filters,
-//! sorts and counts every row; no Rust code does. The pane reads one
-//! candidate (`pane`) from the same placement. A surface changes the list it
-//! has open by its view and folds (`writes`) and by its selection
-//! (`selection`).
+//! and for what the rows the surface keeps selected hold and offer
+//! (`selection`). A search reads the rows its index (`import_list_search`)
+//! finds. SQLite places, filters, sorts and counts every row; no Rust code
+//! does. The pane reads one candidate (`pane`) from the same placement. A
+//! surface changes the list it has open by its view and folds (`writes`).
 //!
 //! Its schema is the SQL files beside
 //! this one, a file per family of rules: the placement and the rules it is
@@ -52,7 +50,6 @@ use order::{Items, Shown};
 pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
 };
-pub use selection::SelectionWrite;
 
 /// Why a read or a write of one open list failed.
 #[derive(Debug, thiserror::Error)]

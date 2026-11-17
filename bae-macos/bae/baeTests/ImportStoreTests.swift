@@ -109,8 +109,7 @@ func identifiedRow(
                     catalog: .musicBrainz,
                     url: "https://musicbrainz.org/release/rel-\(path)"
                 )
-            ]),
-        selected: false
+            ])
     )
 }
 

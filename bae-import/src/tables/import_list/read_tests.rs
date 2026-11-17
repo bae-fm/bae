@@ -3,7 +3,6 @@
 //! imported, and that the windows of a chain hold every row exactly once.
 
 use super::*;
-use crate::selection::SelectionChange;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
 use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
@@ -511,18 +510,18 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     let before = query.next_inline().await.unwrap().unwrap();
     assert_eq!(before.rows, whole(&tables, list).await.len() as u64);
     let mut follows = async |what: &str| {
-        let fresh = tables.read_import_list_for_test(list).await.unwrap();
+        let fresh = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
         let fresh =
             crate::list::ImportListCount { rows: fresh.total_count, narrowed: fresh.narrowed };
         count_until(&mut query, &format!("{fresh:?} after {what}"), |count| *count == fresh).await
     };
-    tables.set_import_list_groups_folded(list, true).await.unwrap();
+    tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();
     let folded = follows("folding every group").await;
     assert!(
         folded.rows < before.rows,
         "folded groups hide their members: {folded:?} of {before:?}"
     );
-    tables.set_import_list_groups_folded(list, false).await.unwrap();
+    tables.set_import_list_groups_folded(list, false, Vec::new()).await.unwrap();
     assert_eq!(follows("opening every group").await, before);
     grow_grouped_import_list(&db, tmp.path(), 100, 200).await;
     let grown = follows("a scan adds matching folders").await;
@@ -550,37 +549,32 @@ async fn a_fold_reruns_the_windows_holding_the_group() {
     settled(&mut above).await;
     settled(&mut below).await;
 
-    tables.set_import_list_group_folded(list, lib.group_key("C"), true).await.unwrap();
+    tables.set_import_list_group_folded(list, lib.group_key("C"), true, Vec::new()).await.unwrap();
     assert!(below.is_marked_for_rerun(), "the window holding the group reruns");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
     let folded = below.next_inline().await.expect("the query stays open").result.unwrap();
     assert!(!items_sequence(&folded.read.rows).contains(&"candidate C/One".to_string()));
 }
 
-/// A selection write reruns the windows holding the rows it changed and the
-/// selection summary, and every other window of the list too, for the reason
-/// a scan item does (`a_scan_item_reruns_the_windows_and_the_count`): the
-/// statements read the placement through a correlated subquery coven cannot
-/// bound by a range.
+/// What the selected rows hold is a live query keyed by its request: new
+/// keys read their rows on the same query, and a write to a row at the keys
+/// reruns it.
 #[tokio::test]
-async fn a_selection_write_reruns_the_windows_holding_its_rows() {
-    let (lib, list) = scanned_list(&["A", "B", "C", "D", "E", "F"]).await;
+async fn the_selection_summary_follows_its_keys_and_their_rows() {
+    let (lib, _list) = scanned_list(&["A", "B", "C"]).await;
     let tables = lib.tables();
-    let middle = tables.import_key_at(list, 3).await.unwrap().unwrap();
-    let mut above = tables.subscribe_import_window(list, until(&middle));
-    let mut below = tables.subscribe_import_window(list, from(&middle, 50));
-    let mut selection = tables.subscribe_import_selection(list);
-    settled(&mut above).await;
-    settled(&mut below).await;
-    selection.next_inline().await.expect("the query stays open").unwrap();
-
-    lib.select(list, SelectionChange::Replace { keys: vec![lib.key("E")] }).await;
-    assert!(below.is_marked_for_rerun(), "the window holding E reruns");
-    assert!(selection.is_marked_for_rerun(), "the selection summary reruns");
-    assert!(above.is_marked_for_rerun(), "coven bounds neither window's read by its range");
-    let selected = below.next_inline().await.expect("the query stays open").result.unwrap();
-    assert!(window_rows(&selected).iter().any(|row| row.selected && row.display_path == "E"));
-    assert_eq!(selection.next_inline().await.expect("the query stays open").unwrap().count, 1);
+    let mut selection = tables.subscribe_import_selection(Default::default());
+    let requests = selection.requests();
+    let first = selection.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(first.count, 0, "no key reads no row");
+    requests.set([lib.key("A"), lib.key("B")].into_iter().collect()).unwrap();
+    let read = selection.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(read.count, 2);
+    lib.run(lib.skip("A")).await;
+    assert!(selection.is_marked_for_rerun(), "a write to a selected row reruns the summary");
+    let skipped = selection.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(skipped.count, 2, "the skipped row is still selected");
+    assert!(skipped.offers.iter().any(|offer| offer.action == crate::CandidateAction::Restore));
 }
 
 /// Scan `start..end` more folders into the import list, each its own album

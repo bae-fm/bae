@@ -833,84 +833,60 @@ impl<'a> Items<'a> {
         to_u64(count, "an import list position")
     }
 
-    /// Add to the list's selection every release the `limit` items from
-    /// `offset` cover, its groups' headers left out.
-    pub(super) fn select_window(
-        &self,
-        sql: &CovenWrite<'_>,
-        offset: u64,
-        limit: u64,
-    ) -> Result<(), DbError> {
-        let arms: Vec<String> = self
-            .parts()
-            .iter()
-            .map(|&part| {
-                let rows = self.window_statement_with(
-                    part,
-                    &self.part_order(part).everything(),
-                    "LIMIT -1",
-                );
-                format!("SELECT w.item, w.key FROM ({rows}) AS w")
-            })
-            .collect();
-        let statement = format!(
-            "INSERT INTO import_list_selection (list_id, key) \
-             SELECT :list, w.key FROM ({} LIMIT :limit OFFSET :offset) AS w \
-             WHERE w.item <> 'group' \
-             ON CONFLICT (list_id, key) DO NOTHING",
-            arms.join(" UNION ALL ")
-        );
-        self.part_order(self.parts()[0]).everything().bound(limit, offset, |window| {
-            self.bound(&statement, window, |bound| {
-                sql.execute(&statement, bound)?;
-                Ok(())
-            })
-        })
+    /// Each item of `part`, the part at `at` of the tab's parts, with its
+    /// place in the whole list as `position`: one statement numbers the
+    /// part's items in its order and adds the count of the parts before it.
+    /// Its columns are the stream's `watched_folder_path`, `item` and `key`,
+    /// then `position`, then the part's order's key columns.
+    fn numbered(&self, at: usize, part: Part) -> String {
+        let order = self.part_order(part);
+        let numbered = match self.run_sources() {
+            // Found runs in one part, its runs numbered in their order.
+            Some(sources) => format!(
+                "SELECT r.*, row_number() OVER (ORDER BY {ordering}) - 1 AS position \
+                 FROM ({run}) AS r",
+                ordering = order.key_ordering("r"),
+                run = run(self.order, sources, &order.everything()),
+            ),
+            None => {
+                let PartSql { with, from, order: ordering } = self.part(part);
+                format!(
+                    "{with} SELECT i.watched_folder_path, i.item, i.key, {keys}, \
+                            row_number() OVER (ORDER BY {ordering}) - 1 AS position \
+                     FROM {from}",
+                    keys = order.key_columns(),
+                )
+            }
+        };
+        format!(
+            "SELECT s.watched_folder_path, s.item, s.key, s.position + ({before}) AS position, \
+                    {keys} \
+             FROM ({numbered}) AS s",
+            before = self.held_before(at),
+            keys = order.key_columns_padded("s", self.key_width()),
+        )
     }
 
     /// Where the first item meeting `condition` (over the stream's columns
     /// `watched_folder_path`, `item` and `key`, and the alias `s` for the
     /// row) sits in the list and its key; `None` when no item does. One
-    /// statement numbers each part's first matching item within its part,
-    /// adds the count of the parts before it, and `position_where` takes the
-    /// first row.
-    pub(super) fn position_where(
+    /// statement takes each part's first matching item, numbered in the whole
+    /// list, and `position_where` takes the first row.
+    fn position_where(
         &self,
         sql: &impl coven::SqlRead,
         condition: &str,
         extra: &[(&'static str, &dyn ToSql)],
     ) -> Result<Option<(u64, OrderKey)>, DbError> {
-        let width = self.key_width();
         let arms: Vec<String> = self
             .parts()
             .iter()
             .enumerate()
             .map(|(at, &part)| {
-                let order = self.part_order(part);
-                let numbered = match self.run_sources() {
-                    // Found runs in one part, its runs numbered in their order.
-                    Some(sources) => format!(
-                        "SELECT r.*, row_number() OVER (ORDER BY {ordering}) - 1 AS position \
-                         FROM ({run}) AS r",
-                        ordering = order.key_ordering("r"),
-                        run = run(self.order, sources, &order.everything()),
-                    ),
-                    None => {
-                        let PartSql { with, from, order: ordering } = self.part(part);
-                        format!(
-                            "{with} SELECT i.watched_folder_path, i.item, i.key, {keys}, \
-                                    row_number() OVER (ORDER BY {ordering}) - 1 AS position \
-                             FROM {from}",
-                            keys = order.key_columns(),
-                        )
-                    }
-                };
                 format!(
-                    "SELECT * FROM (SELECT {at} AS part, s.position + ({before}) AS position, \
-                                    {keys} \
-                             FROM ({numbered}) AS s WHERE {condition} LIMIT 1)",
-                    before = self.held_before(at),
-                    keys = order.key_columns_padded("s", width),
+                    "SELECT * FROM (SELECT {at} AS part, s.* FROM ({numbered}) AS s \
+                     WHERE {condition} LIMIT 1)",
+                    numbered = self.numbered(at, part),
                 )
             })
             .collect();
@@ -924,18 +900,53 @@ impl<'a> Items<'a> {
         .transpose()
     }
 
-    /// Where the list's first selected item sits and its key; `None` when the
-    /// list shows no selected item.
-    pub(super) fn position_of_first_selected(
+    /// The releases the list shows from the release `from` to the release
+    /// `to`, both included, in the list's order, its groups' headers left
+    /// out: what a Shift gesture selects. The one the list shows when it
+    /// shows only one of the two, and none when it shows neither. One
+    /// statement numbers the list's items and keeps the releases between the
+    /// two ends' numbers.
+    pub(super) fn keys_between(
         &self,
         sql: &impl coven::SqlRead,
+        from: &crate::CandidateKey,
+        to: &crate::CandidateKey,
+    ) -> Result<Vec<crate::CandidateKey>, DbError> {
+        let arms: Vec<String> = self
+            .parts()
+            .iter()
+            .enumerate()
+            .map(|(at, &part)| {
+                format!(
+                    "SELECT * FROM (SELECT n.item, n.key, n.position FROM ({}) AS n)",
+                    self.numbered(at, part)
+                )
+            })
+            .collect();
+        let statement = format!(
+            "WITH items AS ({items}), \
+                  ends AS (SELECT MIN(position) AS low, MAX(position) AS high FROM items \
+                           WHERE item <> 'group' AND key IN (:from, :to)) \
+             SELECT items.key FROM items, ends \
+             WHERE items.item <> 'group' AND items.position BETWEEN ends.low AND ends.high \
+             ORDER BY items.position",
+            items = arms.join(" UNION ALL "),
+        );
+        self.query(sql, &statement, &[(":from", from), (":to", to)], |row| row.get(0))
+    }
+
+    /// Where the first item of `keys` the list shows sits and its key;
+    /// `None` when the list shows none of them.
+    pub(super) fn position_of_first(
+        &self,
+        sql: &impl coven::SqlRead,
+        keys: &[crate::CandidateKey],
     ) -> Result<Option<(u64, OrderKey)>, DbError> {
+        let keys = crate::tables::key_hex_list(keys.iter());
         self.position_where(
             sql,
-            "s.item <> 'group' \
-             AND s.key IN (SELECT chosen.key FROM import_list_selection AS chosen \
-                           WHERE chosen.list_id = :list)",
-            &[],
+            "s.item <> 'group' AND s.key IN (SELECT unhex(value) FROM json_each(:keys))",
+            &[(":keys", &keys)],
         )
     }
 

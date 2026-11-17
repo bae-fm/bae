@@ -2,7 +2,7 @@
 //! (a range of the list's order, read by its keys), how many items the list
 //! holds, where a key sits in it, the watched folders, whether Found has
 //! groups, and what the view narrows by, Found's filter entries, and what the
-//! selection holds and offers. coven reruns each when a write changes what it
+//! rows the surface keeps selected hold and offer. coven reruns each when a write changes what it
 //! read, so when a scan writes rows, coven reruns the count and the windows
 //! whose ranges hold those rows, and nothing else. Beside them, the reads a surface makes once: the
 //! key at a position.
@@ -83,13 +83,20 @@ impl ImportTables {
         self.store.subscribe(move |sql| summary::filter_entries(&sql))
     }
 
-    /// What `list`'s selection holds and the actions the person can run on
-    /// it, live.
+    /// What the rows at the keys of its request hold and the actions the
+    /// person can run on them, whatever a list shows, as a live query whose
+    /// keys the caller changes on the same query.
     pub(crate) fn subscribe_import_selection(
         &self,
-        list: ImportListId,
-    ) -> coven::LiveQuery<crate::selection::SelectionSummary, DbError> {
-        self.store.subscribe(move |sql| selection::selection(&sql, list))
+        initial: std::collections::BTreeSet<crate::CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<
+        std::collections::BTreeSet<crate::CandidateKey>,
+        crate::selection::SelectionSummary,
+        DbError,
+    > {
+        self.store.subscribe_reconfigurable(initial, move |keys, sql| {
+            selection::selection(&sql, &keys.iter().cloned().collect::<Vec<_>>())
+        })
     }
 
     /// One window of `list`, once.
@@ -130,12 +137,13 @@ impl ImportTables {
         self.store.read(move |sql| position_on(&sql, list, &key)).await
     }
 
-    /// Every item of `list`, with its count, summary, filter entries and
-    /// selection, read in one snapshot.
+    /// Every item of `list`, with its count, summary, filter entries and what
+    /// the rows at `selected` hold and offer, read in one snapshot.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn read_import_list_for_test(
         &self,
         list: ImportListId,
+        selected: Vec<crate::CandidateKey>,
     ) -> Result<crate::list::ImportListRead, DbError> {
         self.store
             .read(move |sql| {
@@ -146,7 +154,7 @@ impl ImportTables {
                     summary::count(&sql, list)?,
                     summary::summary(&sql, list)?,
                     summary::filter_entries(&sql)?,
-                    selection::selection(&sql, list)?,
+                    selection::selection(&sql, &selected)?,
                 ))
             })
             .process(|(rows, count, summary, entries, selection)| {

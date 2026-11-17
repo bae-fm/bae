@@ -14,8 +14,8 @@ extension ImportView {
         performCandidateAction(offer)
     }
 
-    /// Core runs every action over the selection it holds, so a row's own
-    /// action first makes that row the selection.
+    /// Every action runs over the selected rows, so a row's own action first
+    /// makes that row the selection.
     func performCandidateAction(_ offer: ImportCandidateActionOffer) {
         if offer.action == .revealFolder, let key = offer.rowKey {
             revealCandidateSources(key)
@@ -27,13 +27,7 @@ extension ImportView {
         candidateMutationTasks[taskKey]?.cancel()
         candidateMutationTasks[taskKey] = Task {
             defer { candidateMutationTasks[taskKey] = nil }
-            if let key = offer.rowKey {
-                do { try await listSlot.selectOnly(key) }
-                catch {
-                    uiStore.showError(error)
-                    return
-                }
-            }
+            if let key = offer.rowKey { listSlot.selectOnly(key) }
             switch offer.action {
             case .combine:
                 await commitAndEndEditing()

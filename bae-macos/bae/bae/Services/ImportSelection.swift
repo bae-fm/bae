@@ -14,13 +14,20 @@ struct RunningSelectionAction {
 }
 
 /// The calls the selection makes, as values a test can replace. Each goes to
-/// the import list that owns the selection.
+/// the import list the sidebar reads now, with the keys the screen keeps
+/// selected.
 struct ImportSelectionOperations: Sendable {
-    let change: @Sendable (BridgeSelectionChange) async throws -> Void
-    let selectAll: @Sendable () async throws -> Void
-    let sourceFolders: @Sendable () async throws -> [Data]
-    let combine: @Sendable () async throws -> Data
-    let separate: @Sendable () async throws -> [Data]
+    /// The keys of the rows the list shows on a tab in an order, the ones
+    /// the screen shows, from one row to another, both included: what a
+    /// Shift run selects.
+    let keysBetween:
+        @Sendable (BridgeTriageTab, BridgeImportListOrder, Data, Data)
+            async throws -> [Data]
+    /// The keys of every row the list shows: what Select All selects.
+    let allKeys: @Sendable () async throws -> [Data]
+    let sourceFolders: @Sendable ([Data]) async throws -> [Data]
+    let combine: @Sendable ([Data]) async throws -> Data
+    let separate: @Sendable ([Data]) async throws -> [Data]
     /// A new stream for one action's progress: unfed until `run` feeds it
     /// from the list it runs on.
     let progressStream:
@@ -30,6 +37,7 @@ struct ImportSelectionOperations: Sendable {
     let run:
         @Sendable (
             BridgeCandidateAction,
+            [Data],
             LatestStream<BridgeSelectionActionProgress>
         ) async throws -> [BridgeSelectionActionFailure]
 
@@ -37,19 +45,34 @@ struct ImportSelectionOperations: Sendable {
         -> ImportSelectionOperations
     {
         ImportSelectionOperations(
-            change: { try await list.current().changeSelection(change: $0) },
-            selectAll: { _ = try await list.current().selectAll() },
-            sourceFolders: {
-                try await list.current().selectionSourceFolders()
+            keysBetween: { tab, order, from, to in
+                try await list.current()
+                    .keysBetween(
+                        tab: tab,
+                        order: order,
+                        from: from,
+                        to: to
+                    )
             },
-            combine: { try await list.current().combineSelection() },
-            separate: { try await list.current().separateSelection() },
+            allKeys: { try await list.current().keys() },
+            sourceFolders: {
+                try await list.current().selectionSourceFolders(selected: $0)
+            },
+            combine: {
+                try await list.current().combineSelection(selected: $0)
+            },
+            separate: {
+                try await list.current().separateSelection(selected: $0)
+            },
             progressStream: { .bulkActionProgress() },
-            run: { action, progress in
+            run: { action, selected, progress in
                 let list = try list.current()
                 let feed = progress.feed(from: list)
                 defer { feed.cancel() }
-                return try await list.runSelectionAction(action: action)
+                return try await list.runSelectionAction(
+                    action: action,
+                    selected: selected
+                )
             }
         )
     }
@@ -57,20 +80,19 @@ struct ImportSelectionOperations: Sendable {
     /// Operations that change nothing, for shots and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
-        change: { _ in },
-        selectAll: {},
-        sourceFolders: { [] },
-        combine: { throw StubError.notImplemented },
-        separate: { throw StubError.notImplemented },
+        keysBetween: { _, _, _, _ in [] },
+        allKeys: { [] },
+        sourceFolders: { _ in [] },
+        combine: { _ in throw StubError.notImplemented },
+        separate: { _ in throw StubError.notImplemented },
         progressStream: { .bulkActionProgress() },
-        run: { _, _ in [] }
+        run: { _, _, _ in [] }
     )
 }
 
-/// The import list the selection belongs to: core's open list owns the
-/// selection beside the rows it shows, so what a person does to the
-/// selection goes to the list the sidebar reads now. A list rebuilt after a
-/// failed read is a new list, with a selection of its own.
+/// The import list the selection's calls go to: the list the sidebar reads
+/// now. A list rebuilt after a failed read is a new list, and the selection
+/// starts empty on it.
 final class ImportListSelectionOwner: @unchecked Sendable {
     private let lock = NSLock()
     private var list: (any ImportListProtocol)?
@@ -93,14 +115,18 @@ enum ImportListSelectionOwnerError: Error {
     case noList
 }
 
-/// The import list's selection. Core's import list holds it, and only ever
-/// with rows the list shows, so a selection of any size is one core call to
-/// change and one to act on; what it holds and can be told to do arrives here
-/// as its own read, and ImportSelection keeps no selection of its own.
+/// The import list's selection, which the screen keeps: the keys of the rows
+/// the person selected. Each row the table draws takes its highlight from
+/// them. What they hold and can be told to do arrives as core's live read,
+/// asked for these keys whatever the list shows, and each action on them
+/// sends them, for core to act on the ones the list shows.
 @MainActor
 @Observable
 final class ImportSelection {
-    /// What the selection holds and can be told to do, as core last said.
+    /// The keys of the rows the person selected. A row the list hides by a
+    /// change to the row itself keeps its key here.
+    private(set) var keys: Set<Data> = []
+    /// What the selected rows hold and can be told to do, as core last said.
     private(set) var summary = BridgeSelectionSummary(
         count: 0,
         single: nil,
@@ -112,6 +138,16 @@ final class ImportSelection {
     private var task: Task<Void, Never>?
     @ObservationIgnored
     private let operations: ImportSelectionOperations
+    /// The read of what the selected rows hold, which takes the keys.
+    @ObservationIgnored
+    private var query: ImportSelectionQuery?
+    /// Counts the lists the selection has been on, so an answer read for an
+    /// earlier list changes nothing.
+    @ObservationIgnored
+    private(set) var generation = 0
+    /// Where a failure to tell the read the keys goes.
+    @ObservationIgnored
+    var onError: @MainActor (any Error) -> Void = { _ in }
 
     init(operations: ImportSelectionOperations = .inert) {
         self.operations = operations
@@ -119,41 +155,79 @@ final class ImportSelection {
 
     var isRunning: Bool { task != nil || running != nil }
 
+    /// Read what the selected rows hold through `query`, on a list the
+    /// selection starts empty on.
+    func attach(_ query: ImportSelectionQuery?) {
+        generation += 1
+        self.query = query
+        keys = []
+    }
+
     /// Take core's latest summary.
     func apply(_ summary: BridgeSelectionSummary) {
         guard summary != self.summary else { return }
         self.summary = summary
     }
 
-    /// Apply `change`; the windows holding the rows it changed show it.
-    func change(_ change: BridgeSelectionChange) async throws {
-        try await operations.change(change)
+    /// Make `keys` the selection.
+    func select(_ keys: Set<Data>) {
+        guard keys != self.keys else { return }
+        self.keys = keys
+        do {
+            try query?.setSelected(keys.inByteOrder)
+        }
+        catch {
+            onError(error)
+        }
     }
 
-    /// Select every row the list shows, whether or not its page has loaded.
-    func selectAll() async throws {
-        try await operations.selectAll()
+    /// Take `left` out of the selection.
+    func remove(_ left: [Data]) {
+        guard !left.isEmpty else { return }
+        select(keys.subtracting(left))
+    }
+
+    /// The keys of the rows the list shows on `tab` in `order` from `from`
+    /// to `to`.
+    func keysBetween(
+        on tab: BridgeTriageTab,
+        in order: BridgeImportListOrder,
+        from: Data,
+        to: Data
+    ) async throws -> [Data] {
+        try await operations.keysBetween(tab, order, from, to)
+    }
+
+    /// The keys of every row the list shows, whether or not its page has
+    /// loaded.
+    func allKeys() async throws -> [Data] {
+        try await operations.allKeys()
     }
 
     func sourceFolders() async throws -> [Data] {
-        try await operations.sourceFolders()
+        try await operations.sourceFolders(keys.inByteOrder)
     }
 
-    /// Read every selected folder as one release, which core selects.
+    /// Read every selected folder the list shows as one release, and select
+    /// it.
     func combine() async throws -> Data {
-        try await operations.combine()
+        let key = try await operations.combine(keys.inByteOrder)
+        select([key])
+        return key
     }
 
-    /// Read the one selected release as the releases it is made of, which
-    /// core selects.
+    /// Read the one selected release as the releases it is made of, and
+    /// select them.
     @discardableResult
     func separate() async throws -> [Data] {
-        try await operations.separate()
+        let separated = try await operations.separate(keys.inByteOrder)
+        select(Set(separated))
+        return separated
     }
 
-    /// Run `action` over every selected row that offers it, in the order
-    /// the list shows them, after `before`; the rows it fails on are reported
-    /// together once it ends.
+    /// Run `action` over every selected row the list shows that offers it,
+    /// in the order the list shows them, after `before`; the rows it fails
+    /// on are reported together once it ends.
     @discardableResult
     func start(
         _ action: BridgeCandidateAction,
@@ -184,7 +258,11 @@ final class ImportSelection {
         defer { running = nil }
         let failures: [BridgeSelectionActionFailure]
         do {
-            failures = try await operations.run(action, progress)
+            failures = try await operations.run(
+                action,
+                keys.inByteOrder,
+                progress
+            )
         }
         catch is CancellationError { return }
         catch {
@@ -206,5 +284,13 @@ final class ImportSelection {
                     ? nil : details.joined(separator: "\n\n")
             )
         )
+    }
+}
+
+extension Set<Data> {
+    /// The keys in the order of their bytes, so the same keys always cross in
+    /// one order.
+    var inByteOrder: [Data] {
+        sorted { $0.lexicographicallyPrecedes($1) }
     }
 }

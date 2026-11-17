@@ -2,8 +2,7 @@ use super::*;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
-    /// Open an import list showing `view`, with nothing folded and nothing
-    /// selected.
+    /// Open an import list showing `view`, with nothing folded.
     pub async fn subscribe_import_list(
         &self,
         view: crate::types::BridgeImportListView,

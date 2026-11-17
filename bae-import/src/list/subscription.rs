@@ -1,11 +1,13 @@
 //! One list a surface has open: its row in the tables, and the live queries
 //! that read it.
 //!
-//! Opening the list writes its row (`import_list`); its view, the groups it
-//! folds and its selection are rows too, so changing any of them is a write,
-//! and the live queries that read them rerun on it. Each window of the list,
-//! its count, its summary, Found's filter entries and its selection are live
-//! queries of their own, opened from here and ended when the list closes.
+//! Opening the list writes its row (`import_list`); its view and the groups
+//! it folds are rows too, so changing either is a write, and the live queries
+//! that read them rerun on it. Each window of the list, its count, its
+//! summary, Found's filter entries and what the selected rows hold are live
+//! queries of their own, opened from here and ended when the list closes. The
+//! surface keeps the keys of the rows the person selected, and passes them to
+//! each call that reads or acts on them.
 //! LiveImportList keeps nothing about the windows a surface holds: a window's
 //! request is the range of the list it reads, and the surface moves each
 //! window.
@@ -15,23 +17,22 @@
 //! their own subscription.
 
 use super::{
-    ImportCandidateListLocation, ImportListCount, ImportListId, ImportListOpening, ImportListView,
-    ImportQueueSummary, ImportWindow, PendingFilterEntry,
+    ImportCandidateListLocation, ImportListCount, ImportListId, ImportListView,
+    ImportListViewChange, ImportQueueSummary, ImportWindow, PendingFilterEntry,
 };
-use crate::selection::{SelectedRows, SelectionChange, SelectionSummary};
-use crate::tables::{ImportListError, ImportTables, SelectionWrite};
-use crate::FolderReleaseDecisionKey;
+use crate::selection::{SelectedRows, SelectionSummary};
+use crate::tables::{ImportListError, ImportTables};
+use crate::{CandidateKey, FolderReleaseDecisionKey};
 use bae_store::list_windows::OrderKey;
 use bae_store::live_query::{CancellableLiveQuery, IntoLiveSource, LiveValues};
 use bae_store::{DbError, ListWindow};
+use std::collections::BTreeSet;
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportListFailure {
     #[error("the import list is closed")]
     Closed,
-    #[error("the list does not show both ends of the run of rows to select")]
-    RunNotShown,
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -61,9 +62,8 @@ pub struct LiveImportList {
 }
 
 impl LiveImportList {
-    /// Open a list showing `view`, with nothing folded and nothing selected.
-    /// `closing` is the library's cancellation: the list's live queries end
-    /// with it.
+    /// Open a list showing `view`, with nothing folded. `closing` is the
+    /// library's cancellation: the list's live queries end with it.
     pub(crate) async fn open(
         tables: ImportTables,
         closing: CancellationToken,
@@ -74,59 +74,80 @@ impl LiveImportList {
         Ok(Self { list, tables, closing, bugs })
     }
 
-    /// Show a different tab, filter or order, and answer where the new view
-    /// opens: its first selected row, or its top. The view it already shows
-    /// changes nothing, and answers nothing. A surface that gets an answer
-    /// drops the windows it holds and opens new ones from that place.
+    /// Show a different tab, filter or order, where the surface keeps the
+    /// rows at `selected` selected, and answer where the new view opens, at
+    /// the first of those rows it shows or its top, and which of them leave
+    /// the selection: on another tab, filter or search, the ones the new view
+    /// doesn't show. The view it already shows changes nothing, and answers
+    /// nothing. A surface that gets an answer drops the windows it holds and
+    /// opens new ones from that place.
     pub async fn set_view(
         &self,
         view: ImportListView,
-    ) -> Result<Option<ImportListOpening>, ImportListFailure> {
-        Ok(self.tables.set_import_list_view(self.list, view).await?)
+        selected: Vec<CandidateKey>,
+    ) -> Result<Option<ImportListViewChange>, ImportListFailure> {
+        Ok(self.tables.set_import_list_view(self.list, view, selected).await?)
     }
 
-    /// Fold one group shut or open it. Its entries leave the list when it
-    /// folds, so the windows holding the group change and those below it move.
+    /// Fold one group shut or open it, and answer with the keys of
+    /// `selected`, the rows the surface keeps selected, whose rows the fold
+    /// hid. Its entries leave the list when it folds, so the windows holding
+    /// the group change and those below it move.
     pub async fn set_group_folded(
         &self,
         group: FolderReleaseDecisionKey,
         folded: bool,
-    ) -> Result<(), ImportListFailure> {
-        Ok(self.tables.set_import_list_group_folded(self.list, group, folded).await?)
+        selected: Vec<CandidateKey>,
+    ) -> Result<Vec<CandidateKey>, ImportListFailure> {
+        Ok(self.tables.set_import_list_group_folded(self.list, group, folded, selected).await?)
     }
 
-    /// Fold every group shut, or open them all, as one change.
-    pub async fn set_all_groups_folded(&self, folded: bool) -> Result<(), ImportListFailure> {
-        Ok(self.tables.set_import_list_groups_folded(self.list, folded).await?)
+    /// Fold every group shut, or open them all, as one change, and answer
+    /// with the keys of `selected` whose rows the fold hid.
+    pub async fn set_all_groups_folded(
+        &self,
+        folded: bool,
+        selected: Vec<CandidateKey>,
+    ) -> Result<Vec<CandidateKey>, ImportListFailure> {
+        Ok(self.tables.set_import_list_groups_folded(self.list, folded, selected).await?)
     }
 
-    /// Apply a change a person made by pointing at rows of the list. The
-    /// windows holding the rows it changed show it.
-    pub async fn change_selection(&self, change: SelectionChange) -> Result<(), ImportListFailure> {
-        match self.tables.change_import_list_selection(self.list, change).await? {
-            SelectionWrite::Changed => Ok(()),
-            SelectionWrite::RunNotShown => Err(ImportListFailure::RunNotShown),
-        }
+    /// The keys of every row the list shows, whether or not a surface loaded
+    /// it: what Select All selects.
+    pub async fn keys(&self) -> Result<Vec<CandidateKey>, ImportListFailure> {
+        Ok(self.tables.import_list_keys(self.list).await?)
     }
 
-    /// Select every row the list shows, whether or not a surface loaded it.
-    pub async fn select_all(&self) -> Result<(), ImportListFailure> {
-        Ok(self.tables.select_all_in_import_list(self.list).await?)
+    /// The keys of the rows the list shows on `tab` in `order`, the tab and
+    /// order the surface shows it in, from the row `from` to the row `to`,
+    /// both included, in that order: what a Shift gesture selects.
+    pub async fn keys_between(
+        &self,
+        tab: crate::TriageTab,
+        order: super::ImportListOrder,
+        from: CandidateKey,
+        to: CandidateKey,
+    ) -> Result<Vec<CandidateKey>, ImportListFailure> {
+        Ok(self.tables.import_list_keys_between(self.list, tab, order, from, to).await?)
     }
 
-    /// The selected rows, in the order the list shows them: what a bulk
+    /// The rows at `selected` the list shows, in its order: what a bulk
     /// action runs over.
-    pub async fn selected(&self) -> Result<SelectedRows, ImportListFailure> {
-        Ok(self.tables.load_import_list_selected(self.list, None).await?)
+    pub async fn selected(
+        &self,
+        selected: Vec<CandidateKey>,
+    ) -> Result<SelectedRows, ImportListFailure> {
+        Ok(self.tables.load_import_list_selected(self.list, selected, None).await?)
     }
 
-    /// The selected rows that offer `action`, in the order the list shows
-    /// them: what a bulk action of that kind runs over.
+    /// The rows at `selected` the list shows that offer `action`, in its
+    /// order: what a bulk action of that kind runs over.
     pub async fn selected_offering(
         &self,
+        selected: Vec<CandidateKey>,
         action: crate::CandidateAction,
     ) -> Result<SelectedRows, ImportListFailure> {
-        Ok(self.tables.load_import_list_selected(self.list, Some(action)).await?)
+        Ok(self.tables.load_import_list_selected(self.list, selected, Some(action)).await?)
     }
 
     /// The view and place that reveal the candidate at `candidate_key` at its
@@ -189,9 +210,14 @@ impl LiveImportList {
         self.tables.subscribe_import_filter_entries()
     }
 
-    /// What the selection holds and the actions the person can run on it.
-    pub fn subscribe_selection(&self) -> coven::LiveQuery<SelectionSummary, DbError> {
-        self.tables.subscribe_import_selection(self.list)
+    /// What the rows at the keys of its request hold and the actions the
+    /// person can run on them, whatever the list shows, as a live query whose
+    /// keys the caller changes on the same query.
+    pub fn subscribe_selection(
+        &self,
+        initial: BTreeSet<CandidateKey>,
+    ) -> coven::ReconfigurableLiveQuery<BTreeSet<CandidateKey>, SelectionSummary, DbError> {
+        self.tables.subscribe_import_selection(initial)
     }
 
     /// `query` as a subscription a surface pulls the values of, which this
@@ -216,14 +242,15 @@ impl LiveImportList {
         LiveValues::new(query, self.closing.child_token(), self.bugs.clone())
     }
 
-    /// Everything the list shows, in one read.
+    /// Everything the list shows, and what the rows at `selected` hold and
+    /// offer, in one read.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn read_for_test(&self) -> super::ImportListRead {
-        self.tables.read_import_list_for_test(self.list).await.expect("the list reads")
+    pub async fn read_for_test(&self, selected: Vec<CandidateKey>) -> super::ImportListRead {
+        self.tables.read_import_list_for_test(self.list, selected).await.expect("the list reads")
     }
 
-    /// Close the list: every live query opened from it ends, and its row,
-    /// folds and selection go.
+    /// Close the list: every live query opened from it ends, and its row and
+    /// folds go.
     pub async fn cancel(&self) -> Result<(), ImportListFailure> {
         self.closing.cancel();
         Ok(self.tables.close_import_list(self.list).await?)

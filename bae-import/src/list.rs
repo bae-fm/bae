@@ -1,15 +1,16 @@
 //! The import tab's list: one ordered sequence of items, served a window at a
 //! time.
 //!
-//! Each surface's list is a row of its own (`import_list`), holding its view,
-//! the groups it folds shut and the rows it has selected, and what the list
-//! shows is a query over that row and the placement the import tables keep
-//! (`import_list_placement`). Each window of it is a live query of its own
-//! whose request is a range of the list's order, and the count, the summary,
-//! Found's filter entries and what the selection offers are live queries of
-//! their own: coven reruns each live query whose reads a write changed.
-//! Changing the view, folding a group or selecting rows is a write, and coven
-//! reruns the live queries it changes.
+//! Each surface's list is a row of its own (`import_list`), holding its view
+//! and the groups it folds shut, and what the list shows is a query over that
+//! row and the placement the import tables keep (`import_list_placement`).
+//! Each window of it is a live query of its own whose request is a range of
+//! the list's order, and the count, the summary, Found's filter entries and
+//! what the selection offers are live queries of their own: coven reruns each
+//! live query whose reads a write changed. Changing the view or folding a
+//! group is a write, and coven reruns the live queries it changes. The surface
+//! keeps the rows the person selects, and passes their keys to the selection's
+//! live query and to each action on them.
 //!
 //! What is running for a candidate right now — a run queued or in flight, an
 //! import that owns it — is in the standings table the candidate runtime
@@ -101,11 +102,7 @@ pub enum ImportListItem {
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.
-    Invalid {
-        candidate: InvalidCandidate,
-        /// Whether the person has selected the row.
-        selected: bool,
-    },
+    Invalid { candidate: InvalidCandidate },
 }
 
 /// The stable key of a group's header item.
@@ -183,11 +180,23 @@ pub struct ImportListCount {
 /// on top.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportListOpening {
-    /// The list's top: the view showed no selected row.
+    /// The list's top: the view shows none of the selected rows.
     Top,
-    /// Its first selected row, as the write that set the view found it: the
-    /// key a chain of windows starts at, and the position the row sits at.
+    /// The first selected row the new view shows, as the write that set the
+    /// view found it: the key a chain of windows starts at, and the position
+    /// the row sits at.
     At { key: OrderKey, position: u64 },
+}
+
+/// What setting a list's view came to: where the new view opens, and the
+/// selected rows it takes out of the selection.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportListViewChange {
+    pub opening: ImportListOpening,
+    /// The keys of the selected rows that leave the selection: on another
+    /// tab, filter or search, each selected row the new view doesn't show,
+    /// and none on another order.
+    pub left: Vec<crate::CandidateKey>,
 }
 
 /// One window of the list as it is read: its items, and the header of the

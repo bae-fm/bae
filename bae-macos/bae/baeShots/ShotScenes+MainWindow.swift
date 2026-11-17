@@ -22,6 +22,7 @@ extension ShotScenes {
         size: CGSize = CGSize(width: 1280, height: 800)
     ) -> some View {
         let importScene = PreviewData.importTabScene()
+        let slot = importListSlot ?? importScene.slot(uiStore: uiStore)
         return MacMainWindowContainer()
             .environment(backing.library)
             .environment(backing.session)
@@ -35,10 +36,8 @@ extension ShotScenes {
                 \.previewPosition,
                 importScene.store.previewPosition.only
             )
-            .environment(
-                importListSlot ?? importScene.slot(uiStore: uiStore)
-            )
-            .environment(ImportSelection())
+            .environment(slot)
+            .environment(slot.selection)
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())

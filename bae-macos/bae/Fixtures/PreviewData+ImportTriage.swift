@@ -33,8 +33,7 @@ extension PreviewData {
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: metadataProvenance,
-            reading: reading,
-            selected: false
+            reading: reading
         )
     }
 

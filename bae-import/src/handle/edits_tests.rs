@@ -5,7 +5,7 @@
 use super::*;
 use crate::handle::tests::*;
 use crate::list::{FollowedImportList, ImportListRead};
-use crate::selection::{SelectionChange, SingleSelection};
+use crate::selection::SingleSelection;
 use crate::{
     ArtistAssignment, CandidateEditField, Credited, DraftFieldEdit, ImportListItem, ImportListView,
     PendingFilter, PressingFactEdit, RawLabelEdit,
@@ -159,9 +159,9 @@ async fn the_draft_keeps_its_label_rows_as_typed() {
     assert_eq!(stored_draft(&fixture.handle, &hash).await.pressing.labels, kept);
 }
 
-/// The next snapshot the list delivers.
-async fn delivered(list: &FollowedImportList) -> ImportListRead {
-    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers")
+/// The next snapshot the list delivers, with the selection of `selected`.
+async fn delivered(list: &FollowedImportList, selected: &[crate::CandidateKey]) -> ImportListRead {
+    tokio::time::timeout(HANG_GUARD, list.next(selected.to_vec())).await.expect("the list delivers")
 }
 
 /// The candidate rows `snapshot` holds: each one's stable key, and its row.
@@ -205,20 +205,14 @@ fn field_edits() -> Vec<DraftFieldEdit> {
 async fn edits_under(view: ImportListView) {
     let (handle, _tmp, key) = picked_fixture("edited-while-selected").await;
     let list = handle.subscribe_whole_list(view).await;
-    let opened = delivered(&list).await;
+    let opened = delivered(&list, &[]).await;
     let stable_key = crate::list::candidate_stable_key(&key);
     assert_eq!(
         candidate_rows(&opened).into_iter().map(|(stable, _)| stable).collect::<Vec<_>>(),
         vec![stable_key.clone()],
         "the view shows the identified row"
     );
-    list.change_selection(SelectionChange::Replace { keys: vec![key.clone()] }).await.unwrap();
-    let selected = loop {
-        let snapshot = delivered(&list).await;
-        if snapshot.selection.count == 1 {
-            break snapshot;
-        }
-    };
+    let selected = list.read(vec![key.clone()]).await;
     assert_eq!(selected.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
 
     for edit in field_edits() {
@@ -248,7 +242,7 @@ async fn edits_under(view: ImportListView) {
         .unwrap();
 
     let edited = loop {
-        let snapshot = delivered(&list).await;
+        let snapshot = delivered(&list, std::slice::from_ref(&key)).await;
         let rows = candidate_rows(&snapshot);
         let shows_title = rows.iter().any(|(_, row)| {
             row.metadata_summary
@@ -265,7 +259,6 @@ async fn edits_under(view: ImportListView) {
         vec![stable_key],
         "the row keeps its key"
     );
-    assert!(rows[0].1.selected, "the row stays selected");
     assert_eq!(edited.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
     assert_eq!(edited.selection, selected.selection, "no edit moved the selection");
     assert_eq!(edited.summary.narrowing, selected.summary.narrowing, "no edit moved the view");

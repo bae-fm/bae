@@ -15,14 +15,16 @@ extension ImportListHandle {
         items: [BridgeImportListItem] = [],
         queries: BridgeListQueries<BridgeImportListItem>? = nil,
         setView:
-            @escaping @Sendable (BridgeImportListView) async throws
-            -> BridgeImportListOpening? = { _ in nil },
+            @escaping @Sendable (BridgeImportListView, [Data]) async throws
+            -> BridgeImportListViewChange? = { _, _ in nil },
         setGroupFolded:
-            @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool)
-            async throws -> Void = { _, _ in },
-        setAllGroupsFolded: @escaping @Sendable (Bool) async throws -> Void = {
-            _ in
-        },
+            @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool, [Data])
+            async throws -> [Data] = { _, _, _ in [] },
+        setAllGroupsFolded:
+            @escaping @Sendable (Bool, [Data]) async throws -> [Data] = {
+                _,
+                _ in []
+            },
         locateCandidate:
             @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
@@ -114,8 +116,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             importStatus: nil,
             upload: nil,
             metadataProvenance: nil,
-            reading: .unidentified,
-            selected: false
+            reading: .unidentified
         ),
         headerKey: nil
     )
@@ -150,8 +151,8 @@ struct ImportListSlotTests {
                 defaults: defaults,
                 makeHandle: { view in
                     requests.set(view)
-                    return .stub(setView: {
-                        requests.set($0)
+                    return .stub(setView: { view, _ in
+                        requests.set(view)
                         return nil
                     })
                 }
@@ -254,41 +255,45 @@ struct ImportListSlotTests {
         #expect(try await slot.revealFirstIdentifying() == nil)
     }
 
-    /// Each selection write waits for the ones before it, so core applies
-    /// them in the order the person made them. A view change writes nothing
-    /// to the selection: core's list keeps it to the rows the view shows.
-    @Test("selection writes land in order, and a view change writes none")
-    func selectionWritesLandInOrder() async throws {
-        let writes = CallLog<String>()
-        let toggleEntered = AsyncStream<Void>.makeStream()
-        let releaseToggle = AsyncStream<Void>.makeStream()
-        let selection = ImportSelection(
-            operations: .stub(
-                change: { _ in
-                    toggleEntered.continuation.yield(())
-                    for await _ in releaseToggle.stream { break }
-                    writes.record("toggle")
-                },
-                selectAll: { writes.record("select all") }
-            )
-        )
+    /// A view change passes the kept keys and takes out the ones the write
+    /// says leave; a fold passes them and takes out the ones it hid.
+    @Test("a view change and a fold take out the selected rows they hide")
+    func viewChangesAndFoldsTakeOutWhatTheyHide() async throws {
+        let first = candidateKey(1)
+        let second = candidateKey(2)
+        let third = candidateKey(3)
+        let sent = CallLog<Set<Data>>()
+        let selection = ImportSelection()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: selection,
-            makeHandle: { _ in .stub(items: (0..<80).map(candidateItem)) }
+            makeHandle: { _ in
+                .stub(
+                    items: (0..<5).map(candidateItem),
+                    setView: { _, selected in
+                        sent.record(Set(selected))
+                        return BridgeImportListViewChange(
+                            opening: .top,
+                            left: [first]
+                        )
+                    },
+                    setAllGroupsFolded: { _, selected in
+                        sent.record(Set(selected))
+                        return [second]
+                    }
+                )
+            }
         )
+        slot.startLoad()
+        try await Wait.until { slot.list != nil }
+        selection.select([first, second, third])
 
-        let album = Data("/music/Album".utf8)
-        slot.changeSelection(.toggle(add: [album], remove: []))
-        var entered = toggleEntered.stream.makeAsyncIterator()
-        await entered.next()
-        slot.selectAllShown()
         slot.setTab(.done)
-        releaseToggle.continuation.yield(())
-        try await Wait.until { writes.all.count == 2 }
-
-        #expect(writes.all == ["toggle", "select all"])
+        try await Wait.until { selection.keys == [second, third] }
+        slot.setAllGroupsExpanded(false)
+        try await Wait.until { selection.keys == [third] }
+        #expect(sent.all == [[first, second, third], [second, third]])
     }
 
     /// Folding is core's list's: the slot tells it which group to fold or
@@ -306,14 +311,16 @@ struct ImportListSlotTests {
             selection: ImportSelection(),
             makeHandle: { _ in
                 .stub(
-                    setGroupFolded: { group, folded in
+                    setGroupFolded: { group, folded, _ in
                         let folder =
                             String(bytes: group.relativeFolder, encoding: .utf8)
                             ?? "not UTF-8"
                         folds.record("\(folder) \(folded)")
+                        return []
                     },
-                    setAllGroupsFolded: { folded in
+                    setAllGroupsFolded: { folded, _ in
                         folds.record("all \(folded)")
+                        return []
                     }
                 )
             }
@@ -350,7 +357,7 @@ struct ImportListSlotViewChangeTests {
             makeHandle: { _ in
                 .stub(
                     items: (0..<3).map(candidateItem),
-                    setView: { view in
+                    setView: { view, _ in
                         await delivery.wait(for: view)
                         return nil
                     }
@@ -382,11 +389,14 @@ struct ImportListSlotViewChangeTests {
             makeHandle: { _ in
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    setView: { _ in
-                        .at(
-                            key: BridgeListQueries<BridgeImportListItem>
-                                .fixedKey(60),
-                            position: 60
+                    setView: { _, _ in
+                        BridgeImportListViewChange(
+                            opening: .at(
+                                key: BridgeListQueries<BridgeImportListItem>
+                                    .fixedKey(60),
+                                position: 60
+                            ),
+                            left: []
                         )
                     }
                 )
@@ -416,8 +426,8 @@ struct ImportListSlotViewChangeTests {
             selection: ImportSelection(),
             makeHandle: { view in
                 requests.set(view)
-                return .stub(setView: {
-                    requests.set($0)
+                return .stub(setView: { view, _ in
+                    requests.set(view)
                     return nil
                 })
             }
@@ -470,7 +480,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             makeHandle: { _ in
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    setView: { view in
+                    setView: { view, _ in
                         await delivery.wait(for: view)
                         return nil
                     },

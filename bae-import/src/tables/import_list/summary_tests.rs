@@ -57,7 +57,7 @@ async fn a_list_counts_what_it_lists() {
                 let list = lib.open(view.clone()).await;
                 for group in folded {
                     tables
-                        .set_import_list_group_folded(list, lib.group_key(group), true)
+                        .set_import_list_group_folded(list, lib.group_key(group), true, Vec::new())
                         .await
                         .unwrap();
                 }
@@ -472,7 +472,7 @@ async fn candidate_location_opens_only_its_group() {
         watched_folder_path: lib.root.clone(),
         relative_folder: crate::RelativeFolder::test(group),
     };
-    tables.set_import_list_groups_folded(list, true).await.unwrap();
+    tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();
     let location = tables
         .locate_import_candidate(list, &lib.key("Target/Release 1"))
         .await

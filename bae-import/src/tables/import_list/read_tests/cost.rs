@@ -151,7 +151,7 @@ async fn import_list_search_window_cost() {
 pub(super) async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     let tables = crate::tables::ImportTables::new(db.clone());
     let list = tables.open_import_list(view).await.unwrap();
-    let total = tables.read_import_list_for_test(list).await.unwrap().total_count;
+    let total = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().total_count;
     tables.close_import_list(list).await.unwrap();
     total
 }
@@ -215,7 +215,11 @@ async fn measure_import_list_typed(db: &Store) {
         for _ in 0..RUNS {
             let started = Instant::now();
             tables
-                .set_import_list_view(list, found_view(text, PendingFilter::All, PathAscending))
+                .set_import_list_view(
+                    list,
+                    found_view(text, PendingFilter::All, PathAscending),
+                    Vec::new(),
+                )
                 .await
                 .unwrap();
             let mut window = tables.subscribe_import_window(list, first(LIMIT));
@@ -223,7 +227,11 @@ async fn measure_import_list_typed(db: &Store) {
             runs.push(started.elapsed());
             kept = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap().rows;
             tables
-                .set_import_list_view(list, found_view("", PendingFilter::All, PathAscending))
+                .set_import_list_view(
+                    list,
+                    found_view("", PendingFilter::All, PathAscending),
+                    Vec::new(),
+                )
                 .await
                 .unwrap();
         }
@@ -270,25 +278,22 @@ async fn measure_import_list_first_selected(db: &Store) {
     };
     let middle = candidates(total / 2).await.remove(0);
     let end = candidates(total - 10).await.pop().unwrap();
-    tables
-        .change_import_list_selection(list, SelectionChange::Replace { keys: vec![middle, end] })
-        .await
-        .unwrap();
+    let selected = vec![middle, end];
     let mut runs = [Vec::with_capacity(RUNS), Vec::with_capacity(RUNS)];
     let mut opened = [0, 0];
     for run in 0..2 * RUNS + 2 {
         let which = (run % 2 == 1) as usize;
         let order = [PathDescending, PathAscending][which];
         let started = Instant::now();
-        let opening = tables
-            .set_import_list_view(list, found_view("", PendingFilter::All, order))
+        let change = tables
+            .set_import_list_view(list, found_view("", PendingFilter::All, order), selected.clone())
             .await
             .unwrap();
         let took = started.elapsed();
         if run >= 2 {
             runs[which].push(took);
         }
-        opened[which] = match opening {
+        opened[which] = match change.map(|change| change.opening) {
             Some(crate::ImportListOpening::At { position, .. }) => position,
             Some(crate::ImportListOpening::Top) | None => 0,
         };

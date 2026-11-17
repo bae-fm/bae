@@ -932,7 +932,7 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     .await;
 
     let list = open_in_path_order(&lib.db, crate::TriageTab::Pending).await;
-    let listed = tables.read_import_list_for_test(list).await.unwrap();
+    let listed = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
     let row = listed
         .windows
         .iter()

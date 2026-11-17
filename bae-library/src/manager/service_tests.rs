@@ -172,7 +172,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager.store, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
-    assert_eq!(tables.read_import_list_for_test(list).await.unwrap().total_count, 4);
+    assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().total_count, 4);
     assert!(across.read.beyond.is_some(), "A lies past the window");
     // A key leads with the number of the part its row is in: C and B are
     // still uploading, A and D are not.
@@ -190,24 +190,23 @@ async fn done_runs_the_releases_still_uploading_first() {
     let location =
         tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
-    tables
-        .change_import_list_selection(
+    let selected = vec![key("A"), key("B")];
+    let opening = tables
+        .set_import_list_view(
             list,
-            bae_import::selection::SelectionChange::Replace { keys: vec![key("A"), key("B")] },
+            done(bae_import::ImportListOrder::OldestFirst),
+            selected.clone(),
         )
         .await
-        .unwrap();
-    let opening = tables
-        .set_import_list_view(list, done(bae_import::ImportListOrder::OldestFirst))
-        .await
-        .unwrap();
+        .unwrap()
+        .map(|change| change.opening);
     assert!(
         matches!(opening, Some(bae_import::ImportListOpening::At { position: 1, .. })),
         "the view opens at B, still uploading, behind C: {opening:?}"
     );
     assert_eq!(
         tables
-            .load_import_list_selected(list, None)
+            .load_import_list_selected(list, selected, None)
             .await
             .unwrap()
             .candidates
@@ -306,8 +305,8 @@ async fn a_done_row_carries_its_release_upload() {
     .expect("every row's files are stored");
 }
 
-/// A run of rows selected on Done takes the rows between its ends across the
-/// part still uploading and the rest, both ends included.
+/// A run of rows read on Done takes the rows between its ends across the part
+/// still uploading and the rest, both ends included.
 #[tokio::test]
 async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -323,21 +322,19 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
         })
         .await
         .unwrap();
-    tables
-        .change_import_list_selection(
+    let run = tables
+        .import_list_keys_between(
             list,
-            bae_import::selection::SelectionChange::Extend { from: key("A"), to: key("B") },
+            bae_import::TriageTab::Done,
+            bae_import::ImportListOrder::NewestFirst,
+            key("A"),
+            key("B"),
         )
         .await
         .unwrap();
     assert_eq!(
-        tables
-            .load_import_list_selected(list, None)
-            .await
-            .unwrap()
-            .candidates
-            .into_iter()
-            .map(|candidate| candidate.name)
+        run.iter()
+            .map(|run_key| keys.iter().find(|(_, key)| key == run_key).unwrap().0.clone())
             .collect::<Vec<_>>(),
         ["B", "D", "A"],
         "C, B, D, A from B to A"
@@ -366,14 +363,20 @@ async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let requested = window.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
 
-    let opening = list
-        .set_view(bae_import::ImportListView {
-            tab: bae_import::TriageTab::Done,
-            ..bae_import::ImportListView::default()
-        })
+    let change = list
+        .set_view(
+            bae_import::ImportListView {
+                tab: bae_import::TriageTab::Done,
+                ..bae_import::ImportListView::default()
+            },
+            Vec::new(),
+        )
         .await
         .unwrap();
-    assert!(matches!(opening, Some(bae_import::ImportListOpening::Top)));
+    assert!(matches!(
+        change.map(|change| change.opening),
+        Some(bae_import::ImportListOpening::Top)
+    ));
     let summary = list.subscribe_summary().next_inline().await.expect("the summary").unwrap();
     assert_eq!(summary.narrowing.tab, bae_import::TriageTab::Done);
 }
@@ -401,7 +404,7 @@ async fn cancelling_closes_the_list() {
         .unwrap()
         .is_empty());
     assert!(matches!(
-        list.set_view(bae_import::ImportListView::default()).await,
+        list.set_view(bae_import::ImportListView::default(), Vec::new()).await,
         Err(bae_import::ImportListFailure::Closed)
     ));
     assert!(window.next().await.is_err(), "the window's read ended with the list");

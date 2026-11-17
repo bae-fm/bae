@@ -369,18 +369,21 @@
                         PulledValues<[BridgePendingFilterEntry]>.fixed([])
                     },
                     selection: {
-                        PulledValues<BridgeSelectionSummary>
-                            .fixed(
-                                BridgeSelectionSummary(
-                                    count: 0,
-                                    single: nil,
-                                    offers: []
+                        ImportSelectionQuery(
+                            setSelected: { _ in },
+                            values: PulledValues<BridgeSelectionSummary>
+                                .fixed(
+                                    BridgeSelectionSummary(
+                                        count: 0,
+                                        single: nil,
+                                        offers: []
+                                    )
                                 )
-                            )
+                        )
                     },
-                    setView: { _ in nil },
-                    setGroupFolded: { _, _ in },
-                    setAllGroupsFolded: { _ in },
+                    setView: { _, _ in nil },
+                    setGroupFolded: { _, _, _ in [] },
+                    setAllGroupsFolded: { _, _ in [] },
                     locateCandidate: { locate($0, in: items, on: tab) },
                     firstIdentifyingCandidate: { nil }
                 )
@@ -396,7 +399,7 @@
                     switch item {
                     case .candidate(_, let row, _):
                         row.candidateKey == key
-                    case .invalid(_, let invalid, _):
+                    case .invalid(_, let invalid):
                         invalid.candidateKey == key
                     case .groupHeader:
                         false

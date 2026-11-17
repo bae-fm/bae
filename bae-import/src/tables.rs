@@ -51,7 +51,6 @@ pub(crate) use folder_scans::{
 };
 pub use import_list::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot, ImportListError,
-    SelectionWrite,
 };
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,

@@ -177,7 +177,7 @@ fn fixture_candidate(folder: &str, state: crate::FixtureCandidateState) -> crate
 async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListRead {
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let list = tables.open_import_list(bae_import::ImportListView::default()).await.unwrap();
-    tables.read_import_list_for_test(list).await.unwrap()
+    tables.read_import_list_for_test(list, Vec::new()).await.unwrap()
 }
 
 /// Each candidate of a watched folder lands on Found in the state the

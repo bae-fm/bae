@@ -43,10 +43,10 @@ async fn decision_never_beside_identifying(
     decided: impl Fn(&[(TriageRow, bool)]) -> bool,
 ) {
     let list = handle.subscribe_whole_list(view).await;
-    tokio::time::timeout(HANG_GUARD, list.next()).await.expect("the list delivers");
+    tokio::time::timeout(HANG_GUARD, list.next(Vec::new())).await.expect("the list delivers");
     let decision = tokio::spawn(decide);
     loop {
-        let snapshot = tokio::time::timeout(HANG_GUARD, list.next())
+        let snapshot = tokio::time::timeout(HANG_GUARD, list.next(Vec::new()))
             .await
             .expect("the list delivers the decision");
         let rows = rows(&snapshot);

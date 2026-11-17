@@ -256,7 +256,9 @@ extension MacImportSidebarContainer {
     /// What a row's menu offers: the selection's actions when the row is
     /// one of several selected, and the row's own otherwise.
     private func menuOffers(for row: BridgeTriageRow) -> CandidateActionMenu {
-        if row.selected, importSelection.summary.count > 1 {
+        if importSelection.keys.contains(row.candidateKey),
+            importSelection.summary.count > 1
+        {
             return CandidateActionMenu(
                 offers: ImportCandidateActionOffer.selection(
                     importSelection.summary

@@ -153,7 +153,8 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         }
         if list !== self.list {
             // The rows held the replaced list's pages, a rebuilt list's
-            // selection starts empty, and its rows are loaded anew.
+            // selection starts empty, so nothing extends from the anchor,
+            // and its rows are loaded anew.
             releaseHolds()
             anchorKey = nil
             shownRows = nil

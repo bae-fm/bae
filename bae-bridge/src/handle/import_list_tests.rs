@@ -2,8 +2,8 @@
 
 use crate::types::{
     BridgeImportListItem, BridgeImportListOrder, BridgeImportListView, BridgeListRows,
-    BridgeListWindow, BridgeListWindowValue, BridgePendingFilter, BridgeSelectionChange,
-    BridgeSelectionSummary, BridgeTriageTab,
+    BridgeListWindow, BridgeListWindowValue, BridgePendingFilter, BridgeSelectionSummary,
+    BridgeTriageTab,
 };
 use std::sync::Arc;
 
@@ -12,23 +12,18 @@ fn page() -> BridgeListWindow {
     BridgeListWindow::Forward { from: None, until: None, limit: 50 }
 }
 
-/// The candidate keys the window shows, and those it shows selected, top to
-/// bottom.
-fn rows(value: &BridgeListWindowValue) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
+/// The candidate keys the window shows, top to bottom.
+fn rows(value: &BridgeListWindowValue) -> Vec<Vec<u8>> {
     let BridgeListRows::Import { items, .. } = &value.rows else {
         panic!("the import list's window holds the import list's rows");
     };
-    let shown: Vec<_> = items
+    items
         .iter()
         .filter_map(|item| match item {
-            BridgeImportListItem::Candidate { row, .. } => Some(row),
+            BridgeImportListItem::Candidate { row, .. } => Some(row.candidate_key.clone()),
             _ => None,
         })
-        .collect();
-    (
-        shown.iter().map(|row| row.candidate_key.clone()).collect(),
-        shown.iter().filter(|row| row.selected).map(|row| row.candidate_key.clone()).collect(),
-    )
+        .collect()
 }
 
 /// The window's values until one `accept` admits.
@@ -71,8 +66,9 @@ fn until_selected(
     })
 }
 
-/// Keeping a combined release as separate releases selects the releases it
-/// returns, as combining selects the release it makes.
+/// Combining the selected releases answers with the release it makes, and
+/// keeping it as separate releases answers with the releases it returns:
+/// the keys the app selects next.
 #[test]
 fn separating_the_selection_selects_the_releases_it_returns() {
     let handle = crate::handle::tests::fresh_bridge_handle("separate-selection");
@@ -106,25 +102,24 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         .expect("the list opens");
     let window = list.subscribe_list_window(page());
     let selection = list.subscribe_selection();
-    until(handle.handle(), &window, |value| rows(value).0 == parts);
+    until(handle.handle(), &window, |value| rows(value) == parts);
 
-    handle
+    selection.set_selected(parts.clone()).unwrap();
+    until_selected(handle.handle(), &selection, |summary| summary.count == 2);
+    let combined =
+        handle.handle().runtime.block_on(list.clone().combine_selection(parts.clone())).unwrap();
+    selection.set_selected(vec![combined.clone()]).unwrap();
+    until_selected(handle.handle(), &selection, |summary| summary.count == 1);
+    until(handle.handle(), &window, |value| rows(value) == vec![combined.clone()]);
+
+    let returned = handle
         .handle()
         .runtime
-        .block_on(
-            list.clone().change_selection(BridgeSelectionChange::Replace { keys: parts.clone() }),
-        )
+        .block_on(list.clone().separate_selection(vec![combined.clone()]))
         .unwrap();
-    until_selected(handle.handle(), &selection, |summary| summary.count == 2);
-    let combined = handle.handle().runtime.block_on(list.clone().combine_selection()).unwrap();
-    until_selected(handle.handle(), &selection, |summary| summary.count == 1);
-    until(handle.handle(), &window, |value| {
-        rows(value) == (vec![combined.clone()], vec![combined.clone()])
-    });
-
-    let returned = handle.handle().runtime.block_on(list.clone().separate_selection()).unwrap();
     assert_eq!(returned, parts);
-    until(handle.handle(), &window, |value| rows(value) == (parts.clone(), parts.clone()));
+    until(handle.handle(), &window, |value| rows(value) == parts);
+    selection.set_selected(returned).unwrap();
     let separated = until_selected(handle.handle(), &selection, |summary| summary.count == 2);
     assert_eq!(separated.count, 2);
     handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
@@ -159,22 +154,18 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         .expect("the list opens");
     let window = list.subscribe_list_window(page());
     let selection = list.subscribe_selection();
-    until(handle.handle(), &window, |value| rows(value).0 == [key.clone()]);
-    handle
-        .handle()
-        .runtime
-        .block_on(
-            list.clone()
-                .change_selection(BridgeSelectionChange::Replace { keys: vec![key.clone()] }),
-        )
-        .unwrap();
+    until(handle.handle(), &window, |value| rows(value) == [key.clone()]);
+    selection.set_selected(vec![key.clone()]).unwrap();
     until_selected(handle.handle(), &selection, |summary| summary.count == 1);
 
     let progress = list.selection_action_progress();
     handle
         .handle()
         .runtime
-        .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
+        .block_on(
+            list.clone()
+                .run_selection_action(crate::types::BridgeCandidateAction::Skip, vec![key.clone()]),
+        )
         .unwrap();
     assert_eq!(
         handle.handle().runtime.block_on(progress.clone().next()),
@@ -187,7 +178,10 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     handle
         .handle()
         .runtime
-        .block_on(list.clone().run_selection_action(crate::types::BridgeCandidateAction::Skip))
+        .block_on(
+            list.clone()
+                .run_selection_action(crate::types::BridgeCandidateAction::Skip, vec![key.clone()]),
+        )
         .unwrap();
     assert_eq!(
         handle.handle().runtime.block_on(progress.clone().next()),
