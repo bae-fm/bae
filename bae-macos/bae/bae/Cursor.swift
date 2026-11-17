@@ -46,18 +46,15 @@ extension Cursor where Item: LightboxImage {
     /// current one, wrapping around the ends, and none for a lone item.
     var place: LightboxPlace<Item> {
         guard canCycle else {
-            return LightboxPlace(
-                items: items,
-                current: current,
-                previous: nil,
-                next: nil
-            )
+            return LightboxPlace(items: items, current: current, neighbors: nil)
         }
         return LightboxPlace(
             items: items,
             current: current,
-            previous: items[(index - 1 + items.count) % items.count].id,
-            next: items[(index + 1) % items.count].id
+            neighbors: LightboxNeighbors(
+                previous: items[(index - 1 + items.count) % items.count].id,
+                next: items[(index + 1) % items.count].id
+            )
         )
     }
 }

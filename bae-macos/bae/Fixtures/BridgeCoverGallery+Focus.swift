@@ -12,14 +12,18 @@ extension BridgeCoverGallery {
         var gallery = self
         let place = covers.firstIndex { $0.key == key } ?? covers.indices.first
         gallery.focus = place.map { place in
-            let lone = covers.count == 1
-            return BridgeGalleryFocus(
+            BridgeGalleryFocus(
                 cover: covers[place],
                 position: UInt32(place),
-                previous: lone
+                neighbors: covers.count == 1
                     ? nil
-                    : covers[(place + covers.count - 1) % covers.count].key,
-                next: lone ? nil : covers[(place + 1) % covers.count].key
+                    : BridgeCoverNeighbors(
+                        previous: covers[
+                            (place + covers.count - 1) % covers.count
+                        ]
+                        .key,
+                        next: covers[(place + 1) % covers.count].key
+                    )
             )
         }
         return gallery

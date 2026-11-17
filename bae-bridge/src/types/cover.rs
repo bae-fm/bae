@@ -93,15 +93,28 @@ pub struct BridgeCoverSection {
     pub count: u32,
 }
 
+/// The covers before and after the one a picker focuses, wrapping around
+/// the ends.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCoverNeighbors {
+    pub previous: BridgeCoverKey,
+    pub next: BridgeCoverKey,
+}
+
+mirror_struct! {
+    BridgeCoverNeighbors = bae_import::Neighbors<bae_import::CoverKey>,
+    from_core: fn,
+    fields: { previous: (BridgeCoverKey), next: (BridgeCoverKey) },
+}
+
 /// The cover a picker focuses: the cover, where it sits among the covers in
 /// the order the picker walks them, and the covers before and after it,
-/// wrapping around the ends; a picker of one cover has none before or after.
+/// which a picker of one cover lacks.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeGalleryFocus {
     pub cover: BridgeGalleryCover,
     pub position: u32,
-    pub previous: Option<BridgeCoverKey>,
-    pub next: Option<BridgeCoverKey>,
+    pub neighbors: Option<BridgeCoverNeighbors>,
 }
 
 /// A cover picker under one filter: a library release's saved cover, the
@@ -134,8 +147,7 @@ impl BridgeCoverGallery {
             focus: gallery.focus.map(|focus| BridgeGalleryFocus {
                 cover: BridgeGalleryCover::from_core(focus.cover),
                 position: focus.position,
-                previous: focus.previous.map(BridgeCoverKey::from_core),
-                next: focus.next.map(BridgeCoverKey::from_core),
+                neighbors: focus.neighbors.map(BridgeCoverNeighbors::from_core),
             }),
         }
     }

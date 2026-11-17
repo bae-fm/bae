@@ -320,9 +320,13 @@ async fn read_focused(
 
 /// Where the gallery's focus is: its cover's key, its place, and the covers
 /// before and after it.
-fn focus_of(gallery: &CoverGallery) -> (CoverKey, u32, Option<CoverKey>, Option<CoverKey>) {
+fn focus_of(gallery: &CoverGallery) -> (CoverKey, u32, Option<(CoverKey, CoverKey)>) {
     let focus = gallery.focus.clone().expect("a gallery with covers focuses one");
-    (focus.cover.key, focus.position, focus.previous, focus.next)
+    (
+        focus.cover.key,
+        focus.position,
+        focus.neighbors.map(|neighbors| (neighbors.previous, neighbors.next)),
+    )
 }
 
 fn remote_key(url: &str) -> CoverKey {
@@ -344,8 +348,7 @@ async fn a_release_focuses_its_saved_cover_unless_asked() {
         (
             CoverKey::Saved,
             0,
-            Some(file_key("file-back")),
-            Some(remote_key("https://caa.example/front"))
+            Some((file_key("file-back"), remote_key("https://caa.example/front")))
         )
     );
 }
@@ -363,8 +366,10 @@ async fn the_cover_asked_for_is_focused_where_it_sits() {
         (
             remote_key("https://discogs.example/1"),
             2,
-            Some(remote_key("https://caa.example/front")),
-            Some(remote_key("https://discogs.example/2"))
+            Some((
+                remote_key("https://caa.example/front"),
+                remote_key("https://discogs.example/2")
+            ))
         )
     );
     let file = read_focused(&tables, CoverFilter::All, Some(file_key("file-art"))).await;
@@ -388,12 +393,14 @@ async fn a_hidden_cover_leaves_the_focus_on_the_first() {
         (
             remote_key("https://discogs.example/1"),
             0,
-            Some(remote_key("https://discogs.example/2")),
-            Some(remote_key("https://discogs.example/2"))
+            Some((
+                remote_key("https://discogs.example/2"),
+                remote_key("https://discogs.example/2")
+            ))
         )
     );
     let archive = read_focused(&tables, CoverFilter::Catalog(Catalog::MusicBrainz), None).await;
-    assert_eq!(focus_of(&archive), (remote_key("https://caa.example/front"), 0, None, None));
+    assert_eq!(focus_of(&archive), (remote_key("https://caa.example/front"), 0, None));
 }
 
 /// A picker that shows no cover focuses none.

@@ -152,8 +152,7 @@ struct LibraryArtworkBrowserTests {
                 place: LightboxPlace(
                     items: [cover],
                     current: cover,
-                    previous: nil,
-                    next: nil
+                    neighbors: nil
                 ),
                 load: lightbox,
                 onSelect: { _ in },

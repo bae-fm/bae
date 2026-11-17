@@ -111,16 +111,22 @@ pub struct CoverSection {
     pub count: u32,
 }
 
+/// The items before and after the one a reader focuses, wrapping around the
+/// ends.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Neighbors<K> {
+    pub previous: K,
+    pub next: K,
+}
+
 /// The cover a picker focuses: the cover, where it sits among the covers in
 /// the order the picker walks them (the saved cover, then each section's), and
-/// the covers before and after it, wrapping around the ends. A picker of one
-/// cover has none before or after it.
+/// the covers before and after it, which a picker of one cover lacks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GalleryFocus {
     pub cover: GalleryCover,
     pub position: u32,
-    pub previous: Option<CoverKey>,
-    pub next: Option<CoverKey>,
+    pub neighbors: Option<Neighbors<CoverKey>>,
 }
 
 /// A cover picker: a library release's saved cover, the sections the filter

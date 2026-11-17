@@ -302,7 +302,7 @@ pub use tables::SCHEMA_PARTS;
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
     CoverGallerySnapshot, CoverKey, CoverSection, CoverSectionSource, GalleryCover, GalleryFocus,
-    GalleryLabel,
+    GalleryLabel, Neighbors,
 };
 
 /// The schema this crate's tests open their stores on: records' and release

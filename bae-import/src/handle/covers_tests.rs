@@ -281,12 +281,14 @@ async fn a_candidates_picker_focuses_its_chosen_cover_unless_asked() {
 
     let own = own.focus.expect("the picker shows covers");
     assert_eq!(
-        (own.cover.key, own.position, own.previous, own.next),
+        (own.cover.key, own.position, own.neighbors),
         (
             File("cover.jpg".to_string()),
             2,
-            Some(Remote(back.to_string())),
-            Some(Remote(front.to_string()))
+            Some(crate::Neighbors {
+                previous: Remote(back.to_string()),
+                next: Remote(front.to_string())
+            })
         )
     );
     let asked = asked.focus.expect("the picker shows covers");

@@ -46,10 +46,11 @@ SELECT {fetched},
        CASE WHEN COUNT(w.n) > 0 THEN json_object(
            'item', json(MAX(CASE WHEN w.n = f.n THEN w.item END)),
            'position', MAX(f.n),
-           'previous', json(MAX(CASE WHEN w.total > 1 AND w.n = (f.n + w.total - 1) % w.total
-                                     THEN json_object('kind', w.kind, 'key', w.key) END)),
-           'next', json(MAX(CASE WHEN w.total > 1 AND w.n = (f.n + 1) % w.total
-                                 THEN json_object('kind', w.kind, 'key', w.key) END)))
+           'neighbors', CASE WHEN COUNT(w.n) > 1 THEN json_object(
+               'previous', json(MAX(CASE WHEN w.n = (f.n + w.total - 1) % w.total
+                                         THEN json_object('kind', w.kind, 'key', w.key) END)),
+               'next', json(MAX(CASE WHEN w.n = (f.n + 1) % w.total
+                                     THEN json_object('kind', w.kind, 'key', w.key) END))) END)
        END
 FROM walk AS w LEFT JOIN focused AS f"
     )
@@ -84,13 +85,20 @@ struct KeyJson {
     key: Option<String>,
 }
 
+/// The covers before and after the focused one, as a picker's statement
+/// returns them.
+#[derive(serde::Deserialize)]
+struct NeighborsJson {
+    previous: KeyJson,
+    next: KeyJson,
+}
+
 /// The focused cover as a picker's statement returns it.
 #[derive(serde::Deserialize)]
 struct FocusJson {
     item: ItemJson,
     position: u32,
-    previous: Option<KeyJson>,
-    next: Option<KeyJson>,
+    neighbors: Option<NeighborsJson>,
 }
 
 impl CoverKey {
@@ -237,8 +245,15 @@ impl GalleryColumns {
                 Ok::<_, DbError>(GalleryFocus {
                     cover: focus.item.cover(release_id)?,
                     position: focus.position,
-                    previous: focus.previous.map(CoverKey::of_json).transpose()?,
-                    next: focus.next.map(CoverKey::of_json).transpose()?,
+                    neighbors: focus
+                        .neighbors
+                        .map(|neighbors| {
+                            Ok::<_, DbError>(Neighbors {
+                                previous: CoverKey::of_json(neighbors.previous)?,
+                                next: CoverKey::of_json(neighbors.next)?,
+                            })
+                        })
+                        .transpose()?,
                 })
             })
             .transpose()?;

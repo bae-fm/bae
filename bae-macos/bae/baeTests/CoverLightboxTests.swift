@@ -184,8 +184,10 @@ struct CoverLightboxTests {
                 place: LightboxPlace(
                     items: [item, back],
                     current: item,
-                    previous: back.id,
-                    next: back.id
+                    neighbors: LightboxNeighbors(
+                        previous: back.id,
+                        next: back.id
+                    )
                 ),
                 load: LightboxImageLoad(),
                 onSelect: { _ in },

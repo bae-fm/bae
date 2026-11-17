@@ -161,12 +161,12 @@ struct CoverGalleryView: View {
             }
             .onKeyPress(.leftArrow) {
                 guard browser.layout == .grid else { return .ignored }
-                focus(content.focus?.previous)
+                focus(content.focus?.neighbors?.previous)
                 return .handled
             }
             .onKeyPress(.rightArrow) {
                 guard browser.layout == .grid else { return .ignored }
-                focus(content.focus?.next)
+                focus(content.focus?.neighbors?.next)
                 return .handled
             }
     }
@@ -180,8 +180,12 @@ struct CoverGalleryView: View {
                         place: LightboxPlace(
                             items: content.items,
                             current: CoverItem(gallery: focus.cover),
-                            previous: focus.previous,
-                            next: focus.next
+                            neighbors: focus.neighbors.map {
+                                LightboxNeighbors(
+                                    previous: $0.previous,
+                                    next: $0.next
+                                )
+                            }
                         ),
                         load: lightboxLoad,
                         onSelect: { focusedCover = $0 },
@@ -408,7 +412,7 @@ extension CoverGalleryView {
                     .foregroundStyle(.secondary)
                 HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
                     Button {
-                        self.focus(focus.previous)
+                        self.focus(focus.neighbors?.previous)
                     } label: {
                         Image(systemName: "chevron.backward")
                     }
@@ -416,14 +420,14 @@ extension CoverGalleryView {
                     Text("\(Int(focus.position) + 1) of \(content.total)")
                         .monospacedDigit().foregroundStyle(.secondary)
                     Button {
-                        self.focus(focus.next)
+                        self.focus(focus.neighbors?.next)
                     } label: {
                         Image(systemName: "chevron.forward")
                     }
                     .accessibilityLabel(Text("Next image"))
                 }
                 .buttonStyle(.accentBorderless)
-                .disabled(focus.next == nil || isSaving)
+                .disabled(focus.neighbors == nil || isSaving)
             }
         }
         else {

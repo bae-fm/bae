@@ -27,17 +27,23 @@ struct LightboxItem: LightboxImage {
     var sourceLabel: String { String(localized: "Release files") }
 }
 
+/// The images before and after the one a lightbox shows, wrapping around the
+/// ends.
+struct LightboxNeighbors<ID: Hashable>: Equatable {
+    let previous: ID
+    let next: ID
+}
+
 /// Where a lightbox stands among its images: the images its strip shows, the
-/// one it shows, and the ones before and after it, which whoever shows the
-/// lightbox works out. There are none before or after a lone image.
+/// one it shows, and the ones before and after it, which a lone image lacks.
+/// Core works out the place, and whoever shows the lightbox passes it in.
 struct LightboxPlace<Item: LightboxImage>: Equatable {
     let items: [Item]
     let current: Item
-    let previous: Item.ID?
-    let next: Item.ID?
+    let neighbors: LightboxNeighbors<Item.ID>?
 
     /// Whether the lightbox moves between images.
-    var canCycle: Bool { next != nil }
+    var canCycle: Bool { neighbors != nil }
 }
 
 struct LightboxView<Item: LightboxImage>: View {
@@ -205,11 +211,11 @@ struct LightboxView<Item: LightboxImage>: View {
 
 extension LightboxView {
     fileprivate func goPrevious() {
-        if let previous = place.previous { onSelect(previous) }
+        if let previous = place.neighbors?.previous { onSelect(previous) }
     }
 
     fileprivate func goNext() {
-        if let next = place.next { onSelect(next) }
+        if let next = place.neighbors?.next { onSelect(next) }
     }
 
     fileprivate var labelView: some View {
