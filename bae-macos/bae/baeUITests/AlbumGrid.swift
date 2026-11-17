@@ -96,8 +96,8 @@ extension XCTestCase {
     /// Search for `title` in the title bar and pick the result it titles.
     @MainActor
     func pickSearchResult(_ title: String, in app: XCUIApplication) {
-        // The field reports as a search field, which XCUIElement files apart
-        // from the text fields.
+        // The field's element type is a search field, so XCUIElement lists
+        // it in `searchFields` and not in `textFields`.
         let field = app.searchFields
             .matching(NSPredicate(format: "placeholderValue == %@", "Search"))
             .firstMatch

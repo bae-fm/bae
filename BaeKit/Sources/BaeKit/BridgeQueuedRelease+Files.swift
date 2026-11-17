@@ -2,7 +2,7 @@ import Foundation
 
 extension BridgeQueuedRelease {
     /// A queue row's file count (a localized plural) and total size, which
-    /// the queue stored when it added the entry: "12 files · 350 MB".
+    /// core stored when the person queued the release: "12 files · 350 MB".
     /// bae-library emits the raw byte count; the UI formats it.
     public static func filesText(fileCount: UInt64, totalSize: UInt64)
         -> String

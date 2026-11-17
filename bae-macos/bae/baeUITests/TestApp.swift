@@ -259,8 +259,8 @@ extension XCTestCase {
 
 extension XCUIElement {
     /// The title bar's tab that selects the section named `name`: the strip
-    /// reports each tab as a tab (a radio button with the tab subrole), which
-    /// XCUIElement files under a type of its own.
+    /// reports each tab as a radio button with the tab subrole, which
+    /// XCUITest reports as its own element type, `.tab`.
     func sectionTab(_ name: String) -> XCUIElement {
         descendants(matching: .tab)
             .matching(NSPredicate(format: "label == %@", name))

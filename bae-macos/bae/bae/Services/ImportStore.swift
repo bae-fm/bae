@@ -36,9 +36,9 @@ class ImportStore {
 
     /// Where each watched folder's scan stands, from the folder scans' own
     /// subscription: a scan moves its found count with every folder it walks,
-    /// which moves nothing the list shows. `nil` until the first delivery.
-    /// Core's query sends a value only when it changed, so
-    /// `applyFolderScans` writes each delivery as it arrives.
+    /// which moves nothing the list shows. The value is `nil` until core
+    /// sends the first folder scans. Core's query sends a value only when it
+    /// changed, so `applyFolderScans` writes each delivery as it arrives.
     private(set) var folderScans: BridgeFolderScans?
 
     /// The scan alerts this store raised whose write that marks them shown

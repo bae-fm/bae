@@ -19,5 +19,8 @@ fun Context.ratersText(rating: BridgeAlbumRating): String =
         }
     }
 
-/** The stars a tap on the [tapped] star asks for: the stars the person already gave clear the rating. */
+/**
+ * Returns the stars to set when the person taps the [tapped] star, or null to clear the rating when [tapped] is
+ * the rating the person already gave.
+ */
 fun BridgeAlbumRating.starsAfterTapping(tapped: BridgeStars): BridgeStars? = if (tapped == mine) null else tapped

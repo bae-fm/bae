@@ -1,6 +1,7 @@
 extension BridgeStars: CaseIterable {
-    /// The stars from one up. Swift writes this list only for an enum it
-    /// declares itself, and the bindings declare this one.
+    /// The stars from one up. Swift generates `allCases` only when the
+    /// `CaseIterable` conformance is in the file that declares the enum, and
+    /// the generated bindings declare `BridgeStars` in another file.
     public static let allCases: [BridgeStars] = [
         .one, .two, .three, .four, .five,
     ]
