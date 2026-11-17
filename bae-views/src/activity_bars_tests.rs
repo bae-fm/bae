@@ -14,8 +14,8 @@ async fn bars_now(store: &bae_store::Store) -> ActivityBarRows {
     store.read(|sql| activity_bars_on(&sql)).await.unwrap()
 }
 
-/// Send what the upload queue can, with `FILE_LATE`'s original gone, so only
-/// the early release's file is stored.
+/// Send what the upload queue can, with `FILE_LATE`'s original gone, so bae
+/// stores only the early release's file.
 async fn upload_all_but_the_late_file(store: &bae_store::Store, originals: &std::path::Path) {
     std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
     store.set_uploads_paused(false).await.unwrap();
@@ -23,9 +23,9 @@ async fn upload_all_but_the_late_file(store: &bae_store::Store, originals: &std:
     store.set_uploads_paused(true).await.unwrap();
 }
 
-/// The Uploading line's bar is the share of its releases' bytes stored: none
-/// while every file waits, the early release's 3 bytes of 8 once its file
-/// is stored, and an empty bar once the batch empties.
+/// The Uploading line's bar is the share of its releases' bytes that bae has
+/// stored: none while every file waits, the early release's 3 bytes of 8
+/// once bae stores its file, and an empty bar once the batch empties.
 #[test]
 fn the_upload_bar_is_the_share_of_its_batch_stored() {
     run_on_library_with_storage(async |store, originals| {
@@ -49,8 +49,9 @@ fn the_upload_bar_is_the_share_of_its_batch_stored() {
     });
 }
 
-/// A release that leaves the library while its batch lasts counts none of its
-/// bytes, while another release's files are queued.
+/// The upload bar counts none of the bytes of a release that bae deletes
+/// from the library during its batch, while another release's files wait in
+/// the queue.
 #[test]
 fn a_release_removed_from_the_library_counts_none_of_its_bytes() {
     run_on_library_with_storage(async |store, originals| {

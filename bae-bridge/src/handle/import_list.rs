@@ -29,7 +29,7 @@ impl AppHandle {
         crate::screens::folder_scans(self.services.subscribe_folder_scans(), self.runtime.clone())
     }
 
-    /// The folders being scanned, each with how many folders its scan has
+    /// The folders bae is scanning, each with how many folders its scan has
     /// stored, now and as they change.
     pub fn subscribe_scanning_folders(&self) -> std::sync::Arc<crate::ScanningFoldersSubscription> {
         crate::screens::scanning_folders(

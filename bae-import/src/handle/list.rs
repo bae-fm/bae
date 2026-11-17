@@ -52,7 +52,7 @@ impl ImportServiceHandle {
         )
     }
 
-    /// The folders being scanned, each with how many folders its scan has
+    /// The folders bae is scanning, each with how many folders its scan has
     /// stored: the first value at once, then a value after each write that
     /// changes one. Closing the library ends the subscription.
     pub fn subscribe_scanning_folders(

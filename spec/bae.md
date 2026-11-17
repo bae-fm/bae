@@ -939,12 +939,12 @@ scanning while a scan of all of it runs or is owed, or a removal holds it.
 A folder that no scan has opened a generation for shows Not scanned. The folder
 scans list every watched folder with its status and whether it is on a network
 volume, and say whether any folder's last scan failed or left it not watched
-and whether any folder is being scanned, so the list's menu draws them without
+and whether bae is scanning any folder, so the list's menu draws them without
 joining anything; one live query reads them all. Until that query sends its first value,
 the menu's Folders section says *Reading…* and lists no folder. How many folders a scan has
-stored moves with every folder it walks, so it is not part of that query: a
-live query of its own lists each folder being scanned with that count, which
-it counts off the index of the scan's candidates. The scan indicator's list of
+stored goes up with every folder it walks, so it is not part of that query: a
+live query of its own lists each folder bae is scanning with that count,
+which the query counts from the index of the scan's candidates. The scan indicator's list of
 folders shows that query's rows, through a subscription like any other
 screen's, and each folder a scan stores makes coven run only that query again. A pass whose failure the
 store won't take, a whole scan's or a changed folder's reading's, still shows as
@@ -1212,11 +1212,12 @@ shows. The pane a selection opens reads only that selection,
 so with nothing selected it shows nothing selected. A bulk action, combining,
 keeping separate and showing the folders take the selected keys, and each runs in core over
 the selected rows the list shows that offer it, in the order the list shows
-them; a bulk action answers with the rows it failed on; how many it has done,
-with the share of the rows done its bar fills to (none before it has counted
-them, while its bar moves without a count), moves
-with each row, so it reaches the app only in a `KeyedValueStream` (§10.2)
-the list hands out, holding it while the action runs. A broken folder offers
+them; a bulk action answers with the rows it failed on. Core also sends how
+many rows the action has done and the share of the rows done, which its bar
+fills to. Before the action has counted the rows, core sends no share, and
+the bar moves without a count. That progress changes with each row, so it
+reaches the app only in a `KeyedValueStream` (§10.2) that the list hands out
+and holds while the action runs. A broken folder offers
 no action, so selected among others it counts
 toward the selection but holds back combining it. Combining selects the release
 it makes, and keeping a release as separate releases selects the releases it
