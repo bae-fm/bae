@@ -108,7 +108,7 @@ impl ListedColumns {
             needs_you_reason: row.get(state + 1)?,
             reason_pressings: row.get(state + 2)?,
             error_detail: row.get(state + 3)?,
-            actions: super::actions::read_actions(row)?,
+            actions: super::actions::read_actions(row, &crate::CandidateAction::ROW)?,
         })
     }
 

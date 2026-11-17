@@ -69,22 +69,10 @@ impl Offered for CandidateActionBasis {
                     columns = action_columns(),
                 ),
                 [],
-                every_offered,
+                |row| read_actions(row, &CandidateAction::ALL),
             )
             .unwrap()
     }
-}
-
-/// Every command whose column is set, Combine included, in
-/// [`CandidateAction::ALL`]'s order.
-fn every_offered(row: &Row<'_>) -> rusqlite::Result<Vec<CandidateAction>> {
-    let mut offered = Vec::new();
-    for action in CandidateAction::ALL {
-        if row.get::<_, bool>(format!("can_{action:?}").as_str())? {
-            offered.push(action);
-        }
-    }
-    Ok(offered)
 }
 
 fn basis(placement: TriagePlacement, lookup: Option<StoredLookup>) -> CandidateActionBasis {

@@ -77,12 +77,16 @@ pub(super) fn action_columns() -> String {
         .join(", ")
 }
 
-/// The commands one row offers alone, from the columns [`action_columns`]
-/// gave, in [`CandidateAction::ROW`]'s order: the row's `can_Combine` says
-/// only whether the row can join a selection that combines.
-pub(super) fn read_actions(row: &Row<'_>) -> rusqlite::Result<Vec<CandidateAction>> {
+/// The commands among `actions` whose columns, from [`action_columns`], are
+/// set, in the order of `actions`. A row reads [`CandidateAction::ROW`],
+/// since the row's `can_Combine` says only whether the row can join a
+/// selection that combines.
+pub(super) fn read_actions(
+    row: &Row<'_>,
+    actions: &[CandidateAction],
+) -> rusqlite::Result<Vec<CandidateAction>> {
     let mut offered = Vec::new();
-    for action in CandidateAction::ROW {
+    for &action in actions {
         if row.get::<_, bool>(format!("can_{action:?}").as_str())? {
             offered.push(action);
         }
