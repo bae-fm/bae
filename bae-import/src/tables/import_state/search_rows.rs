@@ -153,8 +153,8 @@ fn parts_column(search_run: &str) -> String {
 
 /// Where the search a column names stands as a whole, as the text
 /// [`status_of`] reads: searching while a part is, else failed when a part
-/// failed, else no matches when a part answered and no part returned a
-/// release, else found.
+/// failed, else no matches when no part returned a release, a search that
+/// asked no catalog among them, else found.
 fn status_column(search_run: &str) -> String {
     let part_in = |state: &str| {
         format!(
@@ -165,13 +165,12 @@ fn status_column(search_run: &str) -> String {
     format!(
         "CASE WHEN {searching} THEN 'searching' \
               WHEN {failed} THEN 'failed' \
-              WHEN {done} AND NOT EXISTS (SELECT 1 FROM import_candidate_match AS found \
-                                          WHERE found.search_run = {search_run}) \
+              WHEN NOT EXISTS (SELECT 1 FROM import_candidate_match AS found \
+                               WHERE found.search_run = {search_run}) \
                   THEN 'no_matches' \
               ELSE 'found' END",
         searching = part_in("searching"),
         failed = part_in("failed"),
-        done = part_in("done"),
     )
 }
 

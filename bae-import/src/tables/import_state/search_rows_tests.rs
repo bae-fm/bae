@@ -209,9 +209,9 @@ async fn a_started_search_asks_only_the_catalogs_the_library_asks() {
 }
 
 /// The search's read decides its status: searching while a part is,
-/// failed when a part failed whatever the others found, no matches when a
-/// part answered and no part returned a release, and found otherwise. A part
-/// that was not asked is not an empty answer.
+/// failed when a part failed whatever the others found, no matches when no
+/// part returned a release, and found otherwise. A search that asked no
+/// catalog found nothing.
 #[tokio::test]
 async fn the_read_decides_where_the_search_stands() {
     use SourceAvailability::{NotConfigured, Off, On};
@@ -265,11 +265,7 @@ async fn the_read_decides_where_the_search_stands() {
     assert_eq!(status().await, SearchStatus::NoMatches);
 
     start(&tables, key, &availability(Off, NotConfigured)).await;
-    assert_eq!(
-        status().await,
-        SearchStatus::Found,
-        "the search asked no catalog, so no catalog returned an empty answer"
-    );
+    assert_eq!(status().await, SearchStatus::NoMatches, "the search asked no catalog");
 }
 
 /// A new search replaces the key's search on a new run: the replaced run's
