@@ -122,10 +122,7 @@ pub(crate) fn committed_rows(values: ReleaseValues) -> bae_records::ReleaseRows 
         .collect();
     let draft = candidate_draft(values, units);
     let clock = coven::FixedClock::new(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .expect("a fixed instant")
-            .with_timezone(&chrono::Utc)
-            .into(),
+        bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").expect("a fixed instant").into(),
     );
     crate::assemble::assemble_release(&draft, &clock, &coven::SequentialIds::new())
         .expect("the reading's draft commits")

@@ -36,7 +36,7 @@ fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
 }
 
 /// A named artist with no external ids and no sort name.
-fn test_artist(id: &str, name: &str, now: chrono::DateTime<chrono::Utc>) -> DbArtist {
+fn test_artist(id: &str, name: &str, now: time::UtcDateTime) -> DbArtist {
     DbArtist {
         id: id.to_string(),
         name: name.to_string(),
@@ -48,7 +48,7 @@ fn test_artist(id: &str, name: &str, now: chrono::DateTime<chrono::Utc>) -> DbAr
 }
 
 /// A 2026 album; its credits are the import's rows.
-fn test_album(id: &str, title: &str, now: chrono::DateTime<chrono::Utc>) -> DbAlbum {
+fn test_album(id: &str, title: &str, now: time::UtcDateTime) -> DbAlbum {
     DbAlbum {
         id: id.to_string(),
         title: title.to_string(),
@@ -59,7 +59,7 @@ fn test_album(id: &str, title: &str, now: chrono::DateTime<chrono::Utc>) -> DbAl
 }
 
 /// A local release read from file tags, pressed on CD in 2026.
-fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) -> DbRelease {
+fn test_release(id: &str, album_id: &str, now: time::UtcDateTime) -> DbRelease {
     DbRelease {
         id: id.to_string(),
         album_id: album_id.to_string(),
@@ -79,12 +79,7 @@ fn test_release(id: &str, album_id: &str, now: chrono::DateTime<chrono::Utc>) ->
 }
 
 /// Track one, side one, one second long.
-fn test_track(
-    id: &str,
-    release_id: &str,
-    title: &str,
-    now: chrono::DateTime<chrono::Utc>,
-) -> DbTrack {
+fn test_track(id: &str, release_id: &str, title: &str, now: time::UtcDateTime) -> DbTrack {
     DbTrack {
         id: id.to_string(),
         release_id: release_id.to_string(),
@@ -309,9 +304,7 @@ async fn finalize_refuses_an_album_deleted_since_the_import_was_prepared() {
 async fn finalize_import_persists_composer_work_and_role_rows() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap();
 
     let album_artist = test_artist(ARTIST_ALBUM, "Album Artist A", now);
     let composer = DbArtist {
@@ -525,9 +518,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
 async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap();
     let by_discogs = DbArtist {
         discogs_artist_id: Some("discogs-1".to_string()),
         ..test_artist("artist-by-discogs", "Artist Name", now)

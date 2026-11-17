@@ -24,7 +24,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         &[(&track, "Interlude")],
     )
     .await;
-    let started = "2026-10-18T16:30:00Z".parse().unwrap();
+    let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
     let mut local = people
         .begin_play(
             coven::IdSource::new_id(&coven::UuidIds),
@@ -123,7 +123,7 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
     let person =
         bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
             .await;
-    let started = "2026-10-18T16:30:00Z".parse().unwrap();
+    let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
     let mut before = people
         .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
         .await
@@ -174,7 +174,7 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         devices.converge("SELECT id FROM tracks").await;
         devices.b().stop_sync().await;
         let people = devices.b().people();
-        let started = "2026-10-18T16:00:00Z".parse().unwrap();
+        let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:00:00Z").unwrap();
         let mut awaiting_profile = people
             .begin_play(
                 coven::IdSource::new_id(&coven::UuidIds),

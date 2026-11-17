@@ -9,7 +9,7 @@ use crate::{
 };
 use bae_catalogs::catalog::Catalog;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
-use chrono::{DateTime, Utc};
+use time::UtcDateTime;
 
 /// The rows of a test library, each kind inserted in this order.
 #[derive(Default)]
@@ -33,7 +33,7 @@ pub struct LibraryRows {
 /// [`RecordsFixture::at`] names another.
 pub struct RecordsFixture {
     rows: LibraryRows,
-    at: DateTime<Utc>,
+    at: UtcDateTime,
 }
 
 impl Default for RecordsFixture {
@@ -48,8 +48,8 @@ impl RecordsFixture {
         Self { rows: LibraryRows::default(), at: Self::time("2026-01-01T00:00:00Z") }
     }
 
-    fn time(at: &str) -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(at).expect("an RFC 3339 time").with_timezone(&Utc)
+    fn time(at: &str) -> UtcDateTime {
+        bae_util::timestamp::parse_rfc3339(at).expect("an RFC 3339 time")
     }
 
     /// The rows described after this are written at `at`, in RFC 3339.

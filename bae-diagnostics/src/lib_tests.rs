@@ -21,9 +21,8 @@ fn config() -> DatadogDiagnosticsConfig {
 }
 
 fn start() -> std::time::SystemTime {
-    DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
+    bae_util::timestamp::parse_rfc3339("2026-06-20T00:00:00Z")
         .expect("test timestamp parses")
-        .with_timezone(&Utc)
         .into()
 }
 
@@ -112,6 +111,8 @@ fn event_serialization_carries_typed_schema_and_app_metadata() {
     // Datadog's reserved severity + display line.
     assert_eq!(json["status"], "info");
     assert_eq!(json["message"], "playback_started");
+    // Datadog reads the timestamp as RFC 3339 text in UTC.
+    assert_eq!(json["timestamp"], "2026-06-20T00:00:00Z");
     // Correlation keys ship as plain top-level fields, not nested.
     assert_eq!(json["device_id"], "device-abc");
     assert_eq!(json["session_id"], "session-xyz");

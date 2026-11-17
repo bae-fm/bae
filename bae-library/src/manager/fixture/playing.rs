@@ -29,7 +29,7 @@ impl LibraryManager {
     pub(super) async fn seeded_playing_album(
         &self,
         playing: &FixturePlaying,
-        added: chrono::DateTime<chrono::Utc>,
+        added: time::UtcDateTime,
         artists: &mut Vec<DbArtist>,
     ) -> Result<(SeededAlbum, String), LibraryFixtureError> {
         let invalid = |detail: String| {

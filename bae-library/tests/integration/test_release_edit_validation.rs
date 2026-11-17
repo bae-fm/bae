@@ -10,7 +10,7 @@
 use bae_import::{ArtistAssignment, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit};
 use bae_library::LibraryError;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
-use chrono::Utc;
+use time::UtcDateTime;
 
 /// One album, one release, one track — enough for an edit to land on.
 async fn seed(records: &bae_records::Records) -> (String, String) {
@@ -20,14 +20,14 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let album = DbAlbum {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: "Original Album".to_string(),
         year: None,
         is_compilation: false,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let release = DbRelease {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
@@ -38,7 +38,7 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         source_folder_name: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let track = DbTrack {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
@@ -48,7 +48,7 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     records.insert_album(&album).await.unwrap();

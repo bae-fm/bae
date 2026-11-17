@@ -33,7 +33,7 @@ thiserror = { workspace = true }
 # The locks people and history writes take.
 tokio = { workspace = true, features = ["sync"] }
 uuid = { workspace = true, features = ["v4", "v5"] }
-chrono = { workspace = true, features = ["serde"] }
+time = { workspace = true }
 
 [dev-dependencies]
 bae-store = { workspace = true, features = ["test-utils"] }

@@ -105,7 +105,7 @@ fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbR
                     "release-id",
                     bae_types::mediums::medium_position(index),
                     *medium,
-                    chrono::Utc::now(),
+                    time::UtcDateTime::now(),
                 )
             })
             .collect(),

@@ -31,7 +31,7 @@ async fn started_reporting(
     let handle = PlaybackProgressHandle::new(
         progress_rx,
         tokio::runtime::Handle::current(),
-        Arc::new(crate::ManualPlaybackClock::new(chrono::Utc::now())),
+        Arc::new(crate::ManualPlaybackClock::new(time::UtcDateTime::now())),
         crate::tables::PlaybackNowRow::new(db.clone()),
         crate::tables::PlaybackTimelineRow::new(db.clone()),
         diagnostics,

@@ -6,7 +6,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{NewReleaseFile, ReleaseFileRole};
 use bae_util::content_type::ContentType;
-use chrono::Utc;
+use time::UtcDateTime;
 
 /// Seed `release_id`'s file `name` in `role`, holding `bytes`, as an import
 /// stages it on this device.
@@ -24,7 +24,7 @@ async fn seed(
         ContentType::PlainText,
         role,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     let path = dir.join(name);
     std::fs::write(&path, bytes).unwrap();

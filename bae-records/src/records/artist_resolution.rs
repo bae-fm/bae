@@ -37,6 +37,7 @@
 
 use super::catalog_match::*;
 use super::*;
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// Why a write's credits cannot be written as the library stands. Nothing of
 /// the write landed.
@@ -111,7 +112,7 @@ pub struct ArtistIdMerge {
     /// the survivor takes where it has none.
     pub absorbed: DbArtist,
     /// When the credit that found the two was written.
-    pub at: DateTime<Utc>,
+    pub at: UtcDateTime,
 }
 
 impl ResolvedArtists {
@@ -277,7 +278,7 @@ pub fn resolve_credit_on<Q: coven::SqlRead>(
         sort_name: credit.sort_name.clone(),
         discogs_artist_id: credit.discogs_artist_id.clone(),
         musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
-        created_at: chrono::DateTime::<Utc>::MIN_UTC,
+        created_at: time::UtcDateTime::MIN,
     };
     let committed = WriteSoFar { inserts: &[], staged: &[] };
     let (row, matched) = settled_catalog_match_on(sql, &row, committed)?;
@@ -568,7 +569,7 @@ fn merge_into(
     ids: &mut [String],
     survivor: &str,
     absorbed: DbArtist,
-    at: DateTime<Utc>,
+    at: UtcDateTime,
 ) {
     for id in ids.iter_mut().filter(|id| **id == absorbed.id) {
         *id = survivor.to_string();

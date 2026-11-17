@@ -47,7 +47,7 @@ serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
 uuid = { workspace = true, features = ["v4", "v5"] }
-chrono = { workspace = true, features = ["serde"] }
+time = { workspace = true }
 hex = { workspace = true }
 # The cancellation token a library's closing ends import's live reads with.
 tokio-util = { workspace = true }

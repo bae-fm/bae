@@ -193,7 +193,7 @@ impl ArtistAssignment {
     pub fn write_row(
         &self,
         ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
+        now: time::UtcDateTime,
     ) -> bae_records::DbArtist {
         match self {
             Self::Picked { artist, .. } => bae_records::DbArtist {

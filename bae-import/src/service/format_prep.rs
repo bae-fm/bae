@@ -63,7 +63,7 @@ fn cue_backed_audio_format(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
     id: String,
-    now: chrono::DateTime<chrono::Utc>,
+    now: time::UtcDateTime,
 ) -> Result<DbAudioFormat, ImportError> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
     let audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;
@@ -97,7 +97,7 @@ fn standalone_audio_format(
     file_path: &Path,
     source_audio: &crate::folder_scanner::ScannedAudio,
     id: String,
-    now: chrono::DateTime<chrono::Utc>,
+    now: time::UtcDateTime,
 ) -> Result<bae_records::DbAudioFormat, ImportError> {
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
@@ -120,7 +120,7 @@ pub(super) fn audio_segment(
     file_id: &str,
     span: SegmentSpan,
     ids: &dyn coven::IdSource,
-    now: chrono::DateTime<chrono::Utc>,
+    now: time::UtcDateTime,
 ) -> DbAudioSegment {
     DbAudioSegment {
         id: ids.new_id().to_string(),

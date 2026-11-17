@@ -26,7 +26,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     let album = DbAlbum::new_test("Album Title", &coven::UuidIds);

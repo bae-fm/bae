@@ -2,9 +2,7 @@ use super::*;
 
 #[test]
 fn artists_replaced_by_edits_are_not_reconciled() {
-    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
     let mut artists = vec![
         bae_records::DbArtist {
             id: "artist-referenced".into(),
@@ -41,9 +39,7 @@ fn artists_replaced_by_edits_are_not_reconciled() {
 
 #[test]
 fn existing_album_does_not_retain_its_transient_album_artist() {
-    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
     let mut artists = vec![bae_records::DbArtist {
         id: "artist-album-only".into(),
         name: "Album Artist".into(),

@@ -1,5 +1,6 @@
 use super::*;
 use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay, PlayRecordError};
+use bae_util::timestamp::StoredTimestamp as _;
 use std::time::Duration;
 
 impl People {
@@ -10,7 +11,7 @@ impl People {
         id: uuid::Uuid,
         track_id: &str,
         duration: Option<Duration>,
-        started_at: DateTime<Utc>,
+        started_at: UtcDateTime,
     ) -> Result<Option<HistoryPlay>, DbError> {
         let audience = match self.own_person().await? {
             Some(crate::people::Person { profile: Some(profile), membership }) => {

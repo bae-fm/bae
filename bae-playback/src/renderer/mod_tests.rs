@@ -16,7 +16,7 @@ use super::RendererMedia;
 /// matches a predicate.
 /// A clock for a session whose statuses a test reads no time from.
 fn test_clock() -> crate::PlaybackClockRef {
-    Arc::new(crate::ManualPlaybackClock::new(chrono::DateTime::UNIX_EPOCH))
+    Arc::new(crate::ManualPlaybackClock::new(time::UtcDateTime::UNIX_EPOCH))
 }
 
 #[derive(Clone)]
@@ -235,7 +235,7 @@ fn session_reports_finished_for_queue_advance() {
 /// A clock the test moves, so a status's stamp says which instant it was said
 /// at.
 fn manual_clock() -> (Arc<crate::ManualPlaybackClock>, crate::PlaybackClockRef) {
-    let clock = Arc::new(crate::ManualPlaybackClock::new(chrono::DateTime::UNIX_EPOCH));
+    let clock = Arc::new(crate::ManualPlaybackClock::new(time::UtcDateTime::UNIX_EPOCH));
     (clock.clone(), clock)
 }
 
@@ -351,8 +351,8 @@ fn position_status(
     }
 }
 
-fn after(seconds: i64) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::UNIX_EPOCH + chrono::Duration::seconds(seconds)
+fn after(seconds: i64) -> time::UtcDateTime {
+    time::UtcDateTime::UNIX_EPOCH + time::Duration::seconds(seconds)
 }
 
 #[test]

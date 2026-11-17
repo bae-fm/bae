@@ -5,6 +5,7 @@
 //! should, in that write.
 
 use crate::tables::import_list::tests::*;
+use bae_util::timestamp::StoredTimestamp as _;
 use std::collections::BTreeMap;
 
 /// A placement row's columns, past its key.
@@ -33,7 +34,7 @@ pub(crate) type Moved = BTreeMap<Item, Option<Placed>>;
 /// When the scans first saw a folder no filesystem date dates: the time of
 /// the test store's clock, in milliseconds.
 pub(crate) fn seen() -> i64 {
-    bae_store::test_fixtures::fixed_now().timestamp_millis()
+    bae_store::test_fixtures::fixed_now().unix_timestamp_millis()
 }
 
 /// A release on Found nobody has looked up, as its scan alone places it:

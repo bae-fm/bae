@@ -1,10 +1,10 @@
 use bae_records::DbTrack;
-use chrono::Utc;
+use time::UtcDateTime;
 
 use bae_library::test_libraries::{test_album, test_release};
 
 fn create_test_track(release_id: &str, track_number: i32) -> DbTrack {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbTrack {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),

@@ -16,8 +16,8 @@ use crate::store_read::StoreRead;
 use crate::DbError;
 
 /// `clock`'s time as a UTC date-time.
-pub fn utc_now(clock: &dyn coven::Clock) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::<chrono::Utc>::from(clock.now())
+pub fn utc_now(clock: &dyn coven::Clock) -> time::UtcDateTime {
+    time::UtcDateTime::from(clock.now())
 }
 
 struct StoreInner {
@@ -225,7 +225,7 @@ impl Store {
     }
 
     /// Now, by the clock the store's writes stamp their rows with, as a UTC date-time.
-    pub fn now_utc(&self) -> chrono::DateTime<chrono::Utc> {
+    pub fn now_utc(&self) -> time::UtcDateTime {
         utc_now(self.inner.clock.as_ref())
     }
 

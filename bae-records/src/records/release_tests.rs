@@ -25,7 +25,7 @@ async fn seed_two_discs(db: &bae_store::Store) -> [String; 2] {
             RELEASE,
             std::num::NonZeroU16::new(position).unwrap(),
             bae_types::mediums::ReleaseMedium::one_sided(Some(Medium::Cd)),
-            chrono::Utc::now(),
+            time::UtcDateTime::now(),
         );
         records.insert_release_medium(&medium).await.unwrap();
         ids.push(medium.id);
@@ -365,7 +365,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
                 container: bae_util::audio_container::AudioContainer::Flac,
                 duration_ms: 1_000,
             }),
-            created_at: chrono::Utc::now(),
+            created_at: time::UtcDateTime::now(),
         };
         aggregate_ordering::insert_file(&db, tmp.path(), file.clone(), 1).await;
         files.push(file);
@@ -377,7 +377,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
         std::num::NonZeroU32::new(16),
         std::num::NonZeroU32::new(2).unwrap(),
         bae_util::test_ids::test_uuid("format"),
-        chrono::Utc::now(),
+        time::UtcDateTime::now(),
     );
     let segment =
         |index: i64, role: DbAudioSegmentRole, file: &NewReleaseFile| crate::DbAudioSegment {
@@ -390,7 +390,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
             end_sample: None,
             start_byte: None,
             end_byte: None,
-            created_at: chrono::Utc::now(),
+            created_at: time::UtcDateTime::now(),
         };
     records
         .insert_audio_format_with_segments_for_test(

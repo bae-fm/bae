@@ -25,7 +25,7 @@ impl SidePauseTestFixture {
     /// holds exactly the wait the earlier commands left.
     async fn assert_next_side_waits(
         &mut self,
-        countdown_end: Option<chrono::DateTime<chrono::Utc>>,
+        countdown_end: Option<time::UtcDateTime>,
         message: &str,
     ) {
         let side_b_track_id = self.track_ids[2].clone();
@@ -72,14 +72,14 @@ async fn side_pause_countdown_starts_the_next_side_when_it_runs_out() {
             assert_eq!(
                 side_pause_countdown(&paused),
                 Some(PlaybackSideCountdown {
-                    resumes_at: side_pause_clock_start() + chrono::Duration::seconds(5),
+                    resumes_at: side_pause_clock_start() + time::Duration::seconds(5),
                 })
             );
 
             fixture.clock.advance(Duration::from_secs(4));
             fixture
                 .assert_next_side_waits(
-                    Some(side_pause_clock_start() + chrono::Duration::seconds(5)),
+                    Some(side_pause_clock_start() + time::Duration::seconds(5)),
                     "a second before the countdown ends, side B waits",
                 )
                 .await;

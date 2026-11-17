@@ -254,14 +254,14 @@ impl PlaybackService {
     /// setting — `None` when it waits for Play.
     async fn side_pause_countdown_from_now(
         &self,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>, bae_store::DbError> {
+    ) -> Result<Option<time::UtcDateTime>, bae_store::DbError> {
         let Some(length) =
             bae_preferences::preferences(&self.store).await?.side_pause_countdown.duration()
         else {
             return Ok(None);
         };
         let length =
-            chrono::Duration::from_std(length).expect("a side-pause countdown fits a duration");
+            time::Duration::try_from(length).expect("a side-pause countdown fits a duration");
         Ok(Some(self.clock.now() + length))
     }
 
@@ -443,7 +443,7 @@ impl PlaybackService {
     /// runs (not side-paused, or a pause that waits for Play). Read from the
     /// phase every time, so anything that leaves the side pause ends the
     /// countdown with it.
-    pub(super) fn side_pause_countdown_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    pub(super) fn side_pause_countdown_deadline(&self) -> Option<time::UtcDateTime> {
         match &self.slot {
             PlaybackSlot::Active(cur) => match &cur.phase {
                 TrackPhase::Paused(PausePhase::SideEnded(decision)) => decision.resumes_at,
@@ -473,10 +473,7 @@ impl PlaybackService {
     /// way Play does. Dropped when that countdown is no longer the one running
     /// — the run loop re-arms its wait from the phase before each command, so
     /// this is the guard against one that ended in the same turn.
-    pub(super) async fn side_pause_countdown_elapsed(
-        &mut self,
-        deadline: chrono::DateTime<chrono::Utc>,
-    ) {
+    pub(super) async fn side_pause_countdown_elapsed(&mut self, deadline: time::UtcDateTime) {
         if self.side_pause_countdown_deadline() != Some(deadline) {
             debug!("ignoring a side-pause countdown that is no longer running");
             return;

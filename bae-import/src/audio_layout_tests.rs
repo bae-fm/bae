@@ -94,7 +94,7 @@ fn file_ids(units: &[AudioFile]) -> Vec<&str> {
 /// A blank row over every unit, in the units' order — what the draft commits
 /// when nobody named anything.
 pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_records::TrackRow, AudioFile)> {
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     units
         .into_iter()
         .enumerate()

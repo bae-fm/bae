@@ -123,11 +123,11 @@ async fn a_fresh_service_plays_nothing_until_a_press_asks_it_to() {
 struct ClockThatBreaks(bae_playback::PlaybackClockRef);
 
 impl PlaybackClock for ClockThatBreaks {
-    fn now(&self) -> chrono::DateTime<chrono::Utc> {
+    fn now(&self) -> time::UtcDateTime {
         self.0.now()
     }
 
-    fn sleep_until(&self, _deadline: chrono::DateTime<chrono::Utc>) -> PlaybackSleep {
+    fn sleep_until(&self, _deadline: time::UtcDateTime) -> PlaybackSleep {
         Box::pin(async { panic!("the clock broke") })
     }
 }

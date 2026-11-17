@@ -1,8 +1,8 @@
 use super::*;
 use crate::progress::PlaybackPosition;
 
-fn at(ms: i64) -> DateTime<Utc> {
-    DateTime::<Utc>::from_timestamp_millis(1_700_000_000_000 + ms).unwrap()
+fn at(ms: i64) -> UtcDateTime {
+    bae_util::timestamp::from_unix_timestamp_millis(1_700_000_000_000 + ms).unwrap()
 }
 
 fn position(track_id: &str, position_ms: i64) -> PlaybackPositions {

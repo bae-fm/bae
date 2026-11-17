@@ -35,7 +35,7 @@ bae-types = { workspace = true }
 bae-util = { workspace = true }
 # The store's files, clock and ids.
 coven = { workspace = true }
-chrono = { workspace = true }
+time = { workspace = true }
 rusqlite = { workspace = true }
 # The ring the decoder fills and the device drains.
 rtrb = { workspace = true }

@@ -8,6 +8,7 @@ use crate::FolderCandidate;
 use crate::TriageTab;
 use crate::{folder_scanner::FolderDate, ImportListOrder};
 use bae_store::test_fixtures::fixed_now;
+use bae_util::timestamp::StoredTimestamp as _;
 use coven::FixedClock;
 use std::sync::Arc;
 
@@ -53,14 +54,14 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     assert_eq!(
         stored,
         vec![
-            ("A".into(), fixed_now().timestamp_millis(), Some(100), Some("created".into())),
+            ("A".into(), fixed_now().unix_timestamp_millis(), Some(100), Some("created".into())),
             (
                 "B".into(),
-                fixed_now().timestamp_millis(),
+                fixed_now().unix_timestamp_millis(),
                 Some(200),
                 Some("added_to_directory".into())
             ),
-            ("C".into(), fixed_now().timestamp_millis(), None, None),
+            ("C".into(), fixed_now().unix_timestamp_millis(), None, None),
         ]
     );
     let names = |projection: crate::list::ImportListRead| {
@@ -71,7 +72,7 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         ["C", "B", "A"]
     );
     let later_db = db.under_clock_for_test(Arc::new(FixedClock::new(
-        (fixed_now() + chrono::Duration::days(1)).into(),
+        (fixed_now() + time::Duration::days(1)).into(),
     )));
     let later = crate::tables::ImportTables::new(later_db.clone());
     let generation = later.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -118,14 +119,19 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
         .unwrap();
     assert_eq!(
         dates(&db).await,
-        vec![("Album".into(), fixed_now().timestamp_millis(), Some(123), Some("created".into()))]
+        vec![(
+            "Album".into(),
+            fixed_now().unix_timestamp_millis(),
+            Some(123),
+            Some("created".into())
+        )]
     );
 }
 
 /// `db` under a clock `days` after the fixtures' pinned instant.
 fn days_later(db: &Store, days: i64) -> Store {
     db.under_clock_for_test(Arc::new(FixedClock::new(
-        (fixed_now() + chrono::Duration::days(days)).into(),
+        (fixed_now() + time::Duration::days(days)).into(),
     )))
 }
 

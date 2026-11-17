@@ -60,13 +60,13 @@ async fn the_shown_position_moves_on_each_tick_with_no_new_status() {
     updates(&mut rx);
 
     let first = service.remote_display_deadline().expect("a tick is due while the device plays");
-    assert_eq!(first, test_clock_start() + chrono::Duration::from_std(INTERVAL).unwrap());
+    assert_eq!(first, test_clock_start() + time::Duration::try_from(INTERVAL).unwrap());
     clock.advance(INTERVAL);
     service.remote_display_tick(first);
     assert_eq!(updates(&mut rx), [30_050]);
 
     let second = service.remote_display_deadline().expect("the next tick");
-    assert_eq!(second, first + chrono::Duration::from_std(INTERVAL).unwrap());
+    assert_eq!(second, first + time::Duration::try_from(INTERVAL).unwrap());
     clock.advance(Duration::from_millis(950));
     service.remote_display_tick(second);
     assert_eq!(updates(&mut rx), [31_000]);
@@ -102,9 +102,8 @@ async fn a_seek_waits_for_the_devices_next_status_before_the_position_moves_on()
 
 /// How long after `start` the play is due to count as played, from the
 /// service's deadline.
-fn due_after(service: &PlaybackService, start: chrono::DateTime<chrono::Utc>) -> Duration {
-    (service.audible_deadline().expect("the play is due to count") - start)
-        .to_std()
+fn due_after(service: &PlaybackService, start: time::UtcDateTime) -> Duration {
+    Duration::try_from(service.audible_deadline().expect("the play is due to count") - start)
         .expect("after the start")
 }
 
@@ -121,7 +120,7 @@ async fn a_play_counts_when_the_clock_reaches_its_deadline_and_not_before() {
     service.observe_remote_now();
     service.checkpoint_listening().await;
     assert!(service.people.history().await.unwrap().is_empty(), "a millisecond early");
-    assert_eq!(service.audible_deadline(), Some(start + chrono::Duration::from_std(wait).unwrap()));
+    assert_eq!(service.audible_deadline(), Some(start + time::Duration::try_from(wait).unwrap()));
 
     clock.advance(Duration::from_millis(1));
     service.observe_remote_now();

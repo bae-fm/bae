@@ -34,7 +34,7 @@ fn catalog_artist(
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
         musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     }
 }
 
@@ -213,7 +213,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 disambiguation: None,
                 work_type: None,
                 musicbrainz_work_id: MB_WORK.to_string(),
-                created_at: chrono::Utc::now(),
+                created_at: time::UtcDateTime::now(),
             };
             let track_work = DbTrackWork::new(
                 &track.id,
@@ -221,7 +221,7 @@ fn one_catalog_work_performed_on_two_devices_is_one_work() {
                 0,
                 Catalog::MusicBrainz,
                 coven::IdSource::new_id(&coven::UuidIds).to_string(),
-                chrono::Utc::now(),
+                time::UtcDateTime::now(),
             );
             device
                 .records()

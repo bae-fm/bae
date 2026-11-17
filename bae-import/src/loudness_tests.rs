@@ -170,10 +170,8 @@ async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
 
 // ── measure_loudness ───────────────────────────────────────────
 
-fn now() -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc)
+fn now() -> time::UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap()
 }
 
 fn audio_format(track_id: &str, id: &str) -> bae_records::DbAudioFormat {
@@ -788,9 +786,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     std::fs::write(temp.path(), damaged).expect("damaged MP3 fixture");
     let probe = bae_audio::probe_audio_from_path(temp.path(), bae_util::test_files::place())
         .expect("damaged MP3 probe");
-    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
     // The track's stored length is the probe's, as an import measures it.
     let mut db_track = bae_records::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
     db_track.duration_ms =

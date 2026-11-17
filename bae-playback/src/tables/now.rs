@@ -20,6 +20,7 @@ use crate::{
     PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
     PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// The `playback_now` row, as playback writes it.
 #[derive(Clone)]
@@ -284,7 +285,7 @@ impl<'a> StateColumns<'a> {
                         columns.side_resumes_at = prompt
                             .countdown
                             .as_ref()
-                            .map(|countdown| countdown.resumes_at.timestamp_millis());
+                            .map(|countdown| countdown.resumes_at.unix_timestamp_millis());
                     }
                 }
             }
@@ -382,9 +383,9 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
                         side_label: row.get("side_label")?,
                         countdown: resumes_at
                             .map(|millis| {
-                                chrono::DateTime::from_timestamp_millis(millis)
+                                bae_util::timestamp::from_unix_timestamp_millis(millis)
                                     .map(|resumes_at| PlaybackSideCountdown { resumes_at })
-                                    .ok_or_else(|| {
+                                    .map_err(|_out_of_range| {
                                         unknown(row, "side_resumes_at", &millis.to_string())
                                     })
                             })

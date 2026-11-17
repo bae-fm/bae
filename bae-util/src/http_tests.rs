@@ -76,9 +76,7 @@ async fn read_body_capped_rejects_stream_past_limit() {
 
 #[test]
 fn a_told_wait_reads_seconds_and_dates() {
-    let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = http_date("Sat, 26 Sep 2026 06:51:45 GMT").unwrap();
     assert_eq!(told_wait_at("120", None, now), Some(Duration::from_secs(120)));
     assert_eq!(told_wait_at(" 0 ", None, now), Some(Duration::ZERO));
     // A date is measured from the response's own clock, not this one.
@@ -102,10 +100,8 @@ fn a_told_wait_reads_seconds_and_dates() {
 #[test]
 #[cfg(desktop)]
 fn a_wait_until_an_epoch_instant_is_measured_from_the_responses_clock() {
-    let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-    let epoch = |date: &str| chrono::DateTime::parse_from_rfc2822(date).unwrap().timestamp();
+    let now = http_date("Sat, 26 Sep 2026 06:51:45 GMT").unwrap();
+    let epoch = |date: &str| http_date(date).unwrap().unix_timestamp();
     assert_eq!(
         wait_until_epoch_at(
             epoch("Sat, 26 Sep 2026 07:00:10 GMT"),
@@ -139,8 +135,7 @@ fn a_wait_until_an_epoch_instant_is_measured_from_the_responses_clock() {
 
 #[test]
 fn a_told_wait_is_read_off_the_headers() {
-    let now: std::time::SystemTime =
-        chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT").unwrap().into();
+    let now: std::time::SystemTime = http_date("Sat, 26 Sep 2026 06:51:45 GMT").unwrap().into();
     let mut headers = reqwest::header::HeaderMap::new();
     assert_eq!(told_wait(&headers, now), None);
     headers.insert(reqwest::header::RETRY_AFTER, reqwest::header::HeaderValue::from_static("7"));

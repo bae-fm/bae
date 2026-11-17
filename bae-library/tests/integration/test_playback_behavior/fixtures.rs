@@ -417,8 +417,8 @@ impl SidePauseTestFixture {
 }
 
 /// Where a side-pause fixture's playback clock starts.
-pub(super) fn side_pause_clock_start() -> chrono::DateTime<chrono::Utc> {
-    "2026-01-01T00:00:00Z".parse().unwrap()
+pub(super) fn side_pause_clock_start() -> time::UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap()
 }
 
 pub(super) fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRelease {

@@ -4,7 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbAlbumArtist, DbRelease};
-use chrono::Utc;
+use time::UtcDateTime;
 
 fn discogs_identity(group: &str, release: &str) -> bae_catalogs::records::ReleaseRecord {
     bae_catalogs::records::ReleaseRecord::new(
@@ -250,7 +250,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     manager.records.insert_track(&track).await.unwrap();
 
@@ -287,7 +287,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let primary = artist("755ab566-9e71-4a7f-88df-fc5f573f882f", "Primary");
     let secondary = artist("1d4f0221-7e2b-4e87-8376-93eaf8998bd7", "Secondary");
@@ -310,7 +310,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
                 &album_a.id,
                 artist_id,
                 position,
-                Utc::now(),
+                UtcDateTime::now(),
             ))
             .await
             .unwrap();
@@ -334,7 +334,7 @@ async fn set_records_to_a_fresh_album_preserves_album_artists() {
 async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     let beta_track_id = TRACK_BETA.to_string();
 
     // album_a carries two releases on g1, release_alpha made primary. Move
@@ -403,7 +403,7 @@ async fn set_records_atomic_rechecks_the_source_count_inside_the_transaction() {
 
     // Build the fresh-album row the manager would have produced —
     // we're driving the atomic API by hand.
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     let fresh_album = DbAlbum {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: album_a.title.clone(),

@@ -31,7 +31,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
                 content_type: bae_util::content_type::ContentType::from_mime(mime),
                 role: bae_records::ReleaseFileRole::Other,
                 source_audio: None,
-                created_at: chrono::Utc::now(),
+                created_at: time::UtcDateTime::now(),
             },
             size,
         )

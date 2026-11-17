@@ -7,7 +7,7 @@
 use super::*;
 use crate::{DbArtist, IdentityWriteError};
 use bae_store::test_fixtures::temp_db;
-use chrono::Utc;
+use time::UtcDateTime;
 
 const NOW: &str = "2026-01-01T00:00:00Z";
 
@@ -40,7 +40,7 @@ fn credit(
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
         musicbrainz_artist_id: musicbrainz_artist_id.map(str::to_string),
-        created_at: chrono::DateTime::parse_from_rfc3339(NOW).unwrap().with_timezone(&Utc),
+        created_at: bae_util::timestamp::parse_rfc3339(NOW).unwrap(),
     }
 }
 
@@ -514,7 +514,7 @@ async fn a_read_credit_whose_id_two_artists_hold_is_the_smaller_one() {
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbArtist {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),

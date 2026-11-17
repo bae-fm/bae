@@ -33,7 +33,7 @@ async fn release_file_source_audio_facts_round_trip_without_track_rows() {
             content_type: bae_util::content_type::ContentType::Flac,
             role: crate::ReleaseFileRole::Audio,
             source_audio: Some(source_audio.clone()),
-            created_at: chrono::Utc::now(),
+            created_at: time::UtcDateTime::now(),
         },
         12_345,
     )

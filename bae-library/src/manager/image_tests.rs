@@ -6,8 +6,8 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
-use chrono::Utc;
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 /// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
 /// before storing it: a 900×300 PNG release image lands as a 600×200 JPEG file
@@ -54,7 +54,7 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
         ContentType::Png,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.add_external_file_for_test(&file, &source_path).await.unwrap();
 
@@ -93,7 +93,7 @@ async fn assert_changed_cover(
         content_type,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.add_external_file_for_test(&file, &source_path).await.unwrap();
 
@@ -154,7 +154,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
             ContentType::Png,
             bae_records::ReleaseFileRole::Artwork,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            Utc::now(),
+            UtcDateTime::now(),
         )
     };
     let green = add_source("green.png", &png([20, 160, 90]));

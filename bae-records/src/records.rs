@@ -1,8 +1,8 @@
 use crate::credits::LibraryCredit;
 use crate::models::*;
 use bae_util::content_type::ContentType;
-use chrono::{DateTime, Utc};
 use rusqlite::{params, OptionalExtension, Row};
+use time::UtcDateTime;
 // coven owns production connections; row-mapping tests also use bare SQLite.
 use bae_store::Store;
 use bae_store::{DbError, WriteError};

@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::folder_scanner::{FolderReading, FolderReleaseDecisionKey};
+use bae_util::timestamp::StoredTimestamp as _;
 use std::ffi::OsString;
 use std::path::Component;
 
@@ -164,7 +165,7 @@ impl ImportTables {
         }
         let read_under = generation_column(stamp.read_under)?;
         let generation = generation_column(stamp.generation)?;
-        let observed_at = self.store.now_utc().timestamp_millis();
+        let observed_at = self.store.now_utc().unix_timestamp_millis();
         self.store
             .write(move |sql| {
                 let sql = &sql;

@@ -16,7 +16,7 @@ fn the_disc_a_track_states_is_its_medium_of_several() {
             "release-id",
             NonZeroU16::new(position).expect("mediums count from one"),
             ReleaseMedium::one_sided(Some(Medium::Cd)),
-            chrono::Utc::now(),
+            time::UtcDateTime::now(),
         )
     };
     let mut track = DbTrack::new_test("release-id", "track-id", "Track Title", 3);

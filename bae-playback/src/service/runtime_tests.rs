@@ -528,7 +528,7 @@ async fn the_loop_completes_an_airplay_track_when_its_last_audio_is_heard() {
         .handle_audio_event(AudioEvent::Completion(source.take_completion_event().unwrap()))
         .await;
     assert!(drained_track_completed_ids(&mut progress).is_empty());
-    assert_eq!(service.audible_deadline(), Some(test_clock_start() + chrono::Duration::seconds(2)));
+    assert_eq!(service.audible_deadline(), Some(test_clock_start() + time::Duration::seconds(2)));
 
     let commands = service.command_tx.clone();
     let hear_the_tail = async move {

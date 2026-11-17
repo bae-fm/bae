@@ -128,7 +128,7 @@ async fn scenarios(db: &Store, label: &str) {
                 9,
                 Catalog::MusicBrainz,
                 format!("{run:08x}-0009-4000-8000-{:012x}", 777),
-                chrono::Utc::now(),
+                time::UtcDateTime::now(),
             ));
             records.insert_library_rows_for_test(rows).await.unwrap();
         }
@@ -146,7 +146,7 @@ async fn scenarios(db: &Store, label: &str) {
                 CreditedAs::of(CreditRoleKind::Mixer),
                 None,
                 format!("{run:08x}-000b-4000-8000-{:012x}", 778),
-                chrono::Utc::now(),
+                time::UtcDateTime::now(),
             ));
             records.insert_library_rows_for_test(rows).await.unwrap();
         }
@@ -172,7 +172,7 @@ async fn scenarios(db: &Store, label: &str) {
                     content_type: bae_util::content_type::ContentType::Flac,
                     role: ReleaseFileRole::Other,
                     source_audio: None,
-                    created_at: chrono::Utc::now(),
+                    created_at: time::UtcDateTime::now(),
                 };
                 records.insert_files_placed_for_test(vec![(file, original, place)]).await.unwrap();
             }

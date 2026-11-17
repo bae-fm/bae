@@ -83,14 +83,14 @@ impl ReceiverStatus {
     /// rate, keeps its stated position. `None` when it stated none.
     pub fn position_at(
         &self,
-        observed_at: chrono::DateTime<chrono::Utc>,
-        now: chrono::DateTime<chrono::Utc>,
+        observed_at: time::UtcDateTime,
+        now: time::UtcDateTime,
     ) -> Option<Duration> {
         let stated = self.position?;
         let (RendererPlayerState::Playing, Some(rate)) = (self.player_state, self.rate) else {
             return Some(stated);
         };
-        let elapsed = (now - observed_at).to_std().unwrap_or(Duration::ZERO);
+        let elapsed = Duration::try_from(now - observed_at).unwrap_or(Duration::ZERO);
         let moved =
             Duration::try_from_secs_f64(elapsed.as_secs_f64() * rate).unwrap_or(Duration::ZERO);
         let reached = stated + moved;

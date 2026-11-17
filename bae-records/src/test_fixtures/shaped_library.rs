@@ -28,9 +28,10 @@ use bae_catalogs::catalog::Catalog;
 use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 use bae_types::mediums::ReleaseMedium;
 use bae_types::pressing::Medium;
-use chrono::{DateTime, Utc};
+use bae_util::timestamp::StoredTimestamp as _;
 use coven::CovenWrite;
 use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
+use time::UtcDateTime;
 
 /// How many albums one write holds.
 const CHUNK: u64 = 250;
@@ -152,7 +153,7 @@ pub fn work_id(w: u64) -> String {
 }
 
 /// Album `i`'s title and year, in an order unrelated to the numbers.
-fn album(i: u64, at: DateTime<Utc>) -> DbAlbum {
+fn album(i: u64, at: UtcDateTime) -> DbAlbum {
     DbAlbum {
         id: album_id(i),
         title: format!("Album {:05}", (i * 16807) % 99_991),
@@ -162,16 +163,18 @@ fn album(i: u64, at: DateTime<Utc>) -> DbAlbum {
     }
 }
 
-fn at(i: u64) -> DateTime<Utc> {
-    DateTime::from_timestamp(1_600_000_000 + i64::try_from((i * 7919) % 50_000_000).unwrap(), 0)
-        .unwrap()
+fn at(i: u64) -> UtcDateTime {
+    UtcDateTime::from_unix_timestamp(
+        1_600_000_000 + i64::try_from((i * 7919) % 50_000_000).unwrap(),
+    )
+    .unwrap()
 }
 
 fn medium_row(
     release: &str,
     disc: u64,
     medium: ReleaseMedium,
-    created: DateTime<Utc>,
+    created: UtcDateTime,
 ) -> DbReleaseMedium {
     let named =
         uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, format!("{release}/{disc}").as_bytes());
@@ -185,7 +188,7 @@ fn medium_row(
 }
 
 fn medium_id(release: &str, disc: u64) -> String {
-    medium_row(release, disc, ReleaseMedium::one_sided(None), Utc::now()).id
+    medium_row(release, disc, ReleaseMedium::one_sided(None), UtcDateTime::now()).id
 }
 
 /// Rows for albums `start..end`.

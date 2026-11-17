@@ -1,7 +1,7 @@
 use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
 use bae_store::SortDirection;
 use bae_views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
-use chrono::{Duration, Utc};
+use time::{Duration, UtcDateTime};
 
 /// A test album and its one credit, inserted together.
 struct ListedAlbum {
@@ -15,7 +15,7 @@ fn make_album(
     year: Option<i32>,
     created_offset_hours: i64,
 ) -> ListedAlbum {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     let album = DbAlbum {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: title.to_string(),
@@ -47,14 +47,14 @@ async fn insert_default_artist(records: &bae_records::Records) -> String {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     artist.id
 }
 
 fn make_artist(name: &str, sort_name: Option<&str>) -> DbArtist {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbArtist {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),

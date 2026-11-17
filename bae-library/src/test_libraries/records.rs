@@ -4,7 +4,7 @@
 
 use super::TestLibrary;
 use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
-use chrono::Utc;
+use time::UtcDateTime;
 
 /// An album with a fresh id, titled "Test Album".
 pub fn test_album() -> DbAlbum {
@@ -51,7 +51,7 @@ pub async fn insert_local_release_with_files(
     let release = test_release(&album.id);
     insert_release(library.records(), &release).await;
     std::fs::create_dir_all(dir).unwrap();
-    let created_at = Utc::now();
+    let created_at = UtcDateTime::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
         let path = dir.join(name);
         std::fs::write(&path, bytes).unwrap();

@@ -9,6 +9,7 @@
 
 use super::*;
 use bae_transfers::{DownloadRequest, DownloadTransfer};
+use bae_util::timestamp::StoredTimestamp as _;
 
 impl LibraryManager {
     /// Enqueue releases to pin for offline, in one write that passes over ids
@@ -20,7 +21,7 @@ impl LibraryManager {
     /// file count, and size from the library as it shows the row. Wakes the
     /// parked worker.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
-        let enqueued_at = bae_store::utc_now(self.clock.as_ref()).timestamp_millis();
+        let enqueued_at = bae_store::utc_now(self.clock.as_ref()).unix_timestamp_millis();
         match self.downloads.enqueue_pinnable(release_ids, enqueued_at).await {
             Ok(true) => self.downloads.queued(),
             Ok(false) => debug!("enqueue_pins: nothing to pin"),

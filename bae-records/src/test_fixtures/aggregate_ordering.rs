@@ -134,7 +134,7 @@ pub async fn insert_files_out_of_natural_order(db: &bae_store::Store, dir: &std:
                 content_type: bae_util::content_type::ContentType::from_mime(mime),
                 role: crate::ReleaseFileRole::Other,
                 source_audio: None,
-                created_at: chrono::Utc::now(),
+                created_at: time::UtcDateTime::now(),
             },
             1,
         )

@@ -77,7 +77,7 @@ impl LibraryManager {
     pub async fn write_fixture(&self, fixture: &LibraryFixture) -> Result<(), LibraryFixtureError> {
         let now = bae_store::utc_now(self.clock.as_ref());
         let count = (fixture.albums.len() + usize::from(fixture.playing.is_some())) as i64;
-        let added = |index: usize| now - chrono::Duration::seconds(count - 1 - index as i64);
+        let added = |index: usize| now - time::Duration::seconds(count - 1 - index as i64);
         let mut artists: Vec<DbArtist> = Vec::new();
         let mut albums = Vec::with_capacity(count as usize);
         for (index, album) in fixture.albums.iter().enumerate() {
@@ -111,7 +111,7 @@ impl LibraryManager {
     async fn seeded_album(
         &self,
         album: &FixtureAlbum,
-        added: chrono::DateTime<chrono::Utc>,
+        added: time::UtcDateTime,
         artists: &mut Vec<DbArtist>,
     ) -> Result<SeededAlbum, LibraryFixtureError> {
         let credited: Vec<String> =
@@ -190,7 +190,7 @@ impl LibraryManager {
     fn fixture_artist(
         &self,
         name: &str,
-        added: chrono::DateTime<chrono::Utc>,
+        added: time::UtcDateTime,
         artists: &mut Vec<DbArtist>,
     ) -> String {
         if let Some(artist) = artists.iter().find(|artist| artist.name == name) {

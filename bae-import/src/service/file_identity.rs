@@ -37,7 +37,9 @@ pub(super) fn require_scanned_identity(
     modified_at: std::time::SystemTime,
 ) -> Result<(), crate::ImportError> {
     let scanned: std::time::SystemTime =
-        chrono::DateTime::from_timestamp_nanos(file.version.modified_at_ns).into();
+        time::UtcDateTime::from_unix_timestamp_nanos(file.version.modified_at_ns.into())
+            .expect("every i64 count of nanoseconds is a date a UtcDateTime holds")
+            .into();
     if size != file.version.size || modified_at != scanned {
         return Err(changed_after_scan(file));
     }

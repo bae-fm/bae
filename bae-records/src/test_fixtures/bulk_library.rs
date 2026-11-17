@@ -42,10 +42,9 @@ pub fn file_id(i: u64, j: u64) -> String {
 }
 
 /// When row `i` was written.
-pub fn created_at(i: u64) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::from_timestamp(
+pub fn created_at(i: u64) -> time::UtcDateTime {
+    time::UtcDateTime::from_unix_timestamp(
         1_600_000_000 + i64::try_from((i * 7919) % 50_000_000).unwrap(),
-        0,
     )
     .unwrap()
 }

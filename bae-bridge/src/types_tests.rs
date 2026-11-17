@@ -237,7 +237,7 @@ mod conversion_roundtrip {
     fn side_pause_prompt_carries_its_kind_and_countdown_deadline_in_epoch_millis() {
         use bae_playback::{PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt};
 
-        let resumes_at = "2026-01-01T00:00:05Z".parse().unwrap();
+        let resumes_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:05Z").unwrap();
         let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {
             id: "next:1:Cd".to_string(),
             boundary: PlaybackPauseBoundary::Disc,
@@ -335,7 +335,7 @@ mod conversion_roundtrip {
                 sort_name: Some("Name, Artist".to_string()),
                 discogs_artist_id: Some("discogs-1".to_string()),
                 musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-                created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
+                created_at: bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap(),
             },
             image: Some(bae_records::ImageRef {
                 id: "artist-1".to_string(),

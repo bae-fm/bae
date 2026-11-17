@@ -479,7 +479,7 @@ fn upload_progress_keeps_the_counts_and_their_phase() {
 
 #[test]
 fn composer_detail_conversion_carries_the_composer_and_its_first_work() {
-    let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+    let created_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap();
     let detail = ComposerDetail {
         composer: DbComposerSummary {
             artist: DbArtist {
@@ -510,7 +510,7 @@ fn composer_detail_conversion_carries_the_composer_and_its_first_work() {
 
 #[test]
 fn composer_detail_row_conversion_carries_its_heading_and_part() {
-    let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+    let created_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap();
     let row = ComposerDetailRow {
         id: 7,
         heading: Some(ComposerHeading::Works),
@@ -547,7 +547,7 @@ fn composer_detail_row_conversion_carries_its_heading_and_part() {
 
 #[test]
 fn work_detail_conversion_preserves_work_release_rows() {
-    let created_at = "2026-01-01T00:00:00Z".parse().unwrap();
+    let created_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap();
     let work = DbWorkSummary {
         work: DbWork {
             id: "work-a".to_string(),

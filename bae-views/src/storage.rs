@@ -319,7 +319,7 @@ pub(crate) type StorageRowParts = (
     Option<String>,
     AlbumSummaryRow,
     crate::album_detail::StorageRowStatus,
-    DateTime<Utc>,
+    UtcDateTime,
 );
 
 fn storage_row_parts(row: &Row<'_>) -> rusqlite::Result<StorageRowParts> {

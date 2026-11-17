@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::timestamp::StoredTimestamp as _;
 #[cfg(any(test, feature = "test-utils", desktop))]
 use rusqlite::Params;
 

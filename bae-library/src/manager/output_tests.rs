@@ -5,7 +5,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbRelease, NewReleaseFile};
-use chrono::Utc;
+use time::UtcDateTime;
 
 #[test]
 fn replace_output_dir_restores_prior_export_when_staging_rename_fails() {
@@ -141,7 +141,7 @@ async fn insert_export_release_rows(
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     std::fs::create_dir_all(source_dir).unwrap();
-    let created_at = Utc::now();
+    let created_at = UtcDateTime::now();
     let mut inserted_files = Vec::with_capacity(files.len());
     for (index, (name, bytes)) in files.iter().enumerate() {
         let file = NewReleaseFile::new(
@@ -388,7 +388,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             bae_util::content_type::ContentType::Flac,
             bae_records::ReleaseFileRole::Other,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            Utc::now(),
+            UtcDateTime::now(),
         );
         manager.add_external_file_for_test(&file, &source_dir.join(name)).await.unwrap();
     }

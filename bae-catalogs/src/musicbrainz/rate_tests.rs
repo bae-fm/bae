@@ -95,8 +95,10 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
     // The reset is measured from the refusal's own `Date`, so the wait is
     // thirty seconds whatever this machine's clock says.
     const DATE: &str = "Sat, 26 Sep 2026 06:51:00 GMT";
-    let reset =
-        chrono::DateTime::parse_from_rfc2822(DATE).expect("the date parses").timestamp() + 30;
+    let reset = time::OffsetDateTime::parse(DATE, &time::format_description::well_known::Rfc2822)
+        .expect("the date parses")
+        .unix_timestamp()
+        + 30;
     let (url, requests, _) = mb_raw_server(vec![rate_refusal(&format!(
         "Date: {DATE}\r\nx-ratelimit-reset: {reset}\r\n"
     ))])
@@ -143,7 +145,12 @@ impl crate::rate_limiter::load_model::Window for MusicBrainzSecond {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
             reqwest::header::DATE,
-            chrono::DateTime::from_timestamp(seconds, 0).unwrap().to_rfc2822().parse().unwrap(),
+            time::UtcDateTime::from_unix_timestamp(seconds)
+                .unwrap()
+                .format(&time::format_description::well_known::Rfc2822)
+                .unwrap()
+                .parse()
+                .unwrap(),
         );
         headers.insert("x-ratelimit-limit", 1900.into());
         headers.insert("x-ratelimit-remaining", 1500.into());

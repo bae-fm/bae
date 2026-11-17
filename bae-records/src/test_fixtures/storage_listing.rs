@@ -35,7 +35,7 @@ pub async fn insert_file(
                 bae_util::content_type::ContentType::Jpeg,
                 crate::ReleaseFileRole::Artwork,
                 id.to_string(),
-                chrono::Utc::now(),
+                time::UtcDateTime::now(),
             ),
             &original,
         )

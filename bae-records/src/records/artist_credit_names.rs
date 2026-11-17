@@ -9,6 +9,7 @@
 
 use super::*;
 use crate::credits::{ArtistCreditName, CreditName};
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// Why an artist's other printed name could not be added or renamed.
 #[derive(Debug, thiserror::Error)]

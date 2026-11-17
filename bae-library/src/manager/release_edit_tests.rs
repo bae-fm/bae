@@ -7,7 +7,7 @@ use crate::manager::tests::*;
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::records::LookupRef;
 use bae_records::DbAlbum;
-use chrono::Utc;
+use time::UtcDateTime;
 
 // ── Re-identify: a catalog applied in an edit session, then saved ─────
 //
@@ -280,7 +280,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mb-composer-1".to_string()),
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     manager.records.insert_artist(&composer).await.unwrap();
     let work = bae_records::DbWork {
@@ -289,7 +289,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
         disambiguation: None,
         work_type: None,
         musicbrainz_work_id: "mb-work-1".to_string(),
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     manager
         .records
@@ -300,7 +300,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
                 0,
                 bae_catalogs::catalog::Catalog::MusicBrainz,
                 coven::IdSource::new_id(&coven::UuidIds).to_string(),
-                Utc::now(),
+                UtcDateTime::now(),
             )],
             works: vec![work],
             track_artist_roles: vec![bae_records::DbTrackArtistRole {
@@ -313,7 +313,7 @@ async fn a_reidentify_leaves_none_of_the_previous_source_s_roles_or_works() {
                     bae_types::credit_role::CreditRoleKind::Composer,
                 ),
                 credit: None,
-                created_at: Utc::now(),
+                created_at: UtcDateTime::now(),
             }],
             ..bae_records::test_fixtures::library::LibraryRows::default()
         })
@@ -865,7 +865,7 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
         &release.id,
         std::num::NonZeroU16::new(2).expect("disc 2"),
         bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
-        chrono::Utc::now(),
+        time::UtcDateTime::now(),
     );
     second.medium_id.clone_from(&second_disc.id);
     manager.records.insert_album(&album).await.unwrap();

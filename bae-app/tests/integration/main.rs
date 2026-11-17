@@ -61,7 +61,7 @@ pub(crate) async fn create_local_release_in_folder(
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, Vec<u8>)>) {
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     // Shared across every release this helper seeds, so only the first call
     // inserts it.
     let artist_id = bae_util::test_ids::test_uuid("test-storage-artist");

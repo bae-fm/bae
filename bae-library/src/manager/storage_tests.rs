@@ -4,7 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbRelease, NewReleaseFile};
-use chrono::Utc;
+use time::UtcDateTime;
 
 /// Two release ids whose lexical order is fixed, for the `r.id` tiebreaker.
 const TIEBREAK_LO: &str = "066483e0-f9fc-4636-865d-08c069510b2e";
@@ -19,7 +19,7 @@ async fn storage_page_id_tiebreaker_stable_across_pages() {
     // Two releases sharing album title + created_at — the ORDER BY clause
     // falls through to the `r.id` tiebreaker. The ids are canonical UUIDs
     // (coven takes no other shape on a synced row) chosen so LO sorts first.
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     let mut album = create_test_album();
     album.title = "Same Title".to_string();
     manager.records.insert_album(&album).await.unwrap();
@@ -543,7 +543,7 @@ async fn storage_page_sort_by_artist_names() {
             sort_name: None,
             discogs_artist_id: None,
             musicbrainz_artist_id: None,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         manager.records.insert_artist(&artist).await.unwrap();
         let mut album = create_test_album();
@@ -636,7 +636,7 @@ async fn storage_page_sort_by_file_count() {
                 content_type: bae_util::content_type::ContentType::Flac,
                 role: bae_records::ReleaseFileRole::Other,
                 source_audio: None,
-                created_at: Utc::now(),
+                created_at: UtcDateTime::now(),
             };
             manager.add_file(&file, 1000).await.unwrap();
         }
@@ -670,7 +670,7 @@ async fn storage_page_sort_by_total_size() {
             content_type: bae_util::content_type::ContentType::Flac,
             role: bae_records::ReleaseFileRole::Other,
             source_audio: None,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         manager.add_file(&file, *file_size).await.unwrap();
     }
@@ -692,7 +692,8 @@ async fn storage_page_sort_by_total_size() {
 async fn storage_page_sort_by_date_added() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let at = |seconds: i64| chrono::DateTime::from_timestamp(1_700_000_000 + seconds, 0).unwrap();
+    let at =
+        |seconds: i64| time::UtcDateTime::from_unix_timestamp(1_700_000_000 + seconds).unwrap();
     for (title, added) in &[
         ("Album First", at(0)),
         ("Album Last", at(20)),

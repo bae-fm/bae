@@ -7,10 +7,7 @@ use bae_types::credit_role::{CreditRoleKind, CreditedAs};
 
 fn clock() -> coven::FixedClock {
     coven::FixedClock::new(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc)
-            .into(),
+        bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap().into(),
     )
 }
 

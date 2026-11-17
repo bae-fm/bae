@@ -258,7 +258,7 @@ fn stored_file(
         }),
         file: coven::FileId(uuid::Uuid::nil()),
         stored: false,
-        created_at: chrono::DateTime::UNIX_EPOCH,
+        created_at: time::UtcDateTime::UNIX_EPOCH,
     }
 }
 

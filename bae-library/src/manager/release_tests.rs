@@ -7,7 +7,7 @@ use bae_catalogs::catalog::Catalog;
 use bae_records::test_fixtures::library::LibraryRows;
 use bae_records::{DbRelease, DbTrackWork, DbWork, LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
-use chrono::Utc;
+use time::UtcDateTime;
 
 #[tokio::test]
 async fn work_detail_release_rows_are_display_ready() {
@@ -17,7 +17,7 @@ async fn work_detail_release_rows_are_display_ready() {
     let mut release = create_test_release(&album.id);
     release.pressing.facts = bae_types::pressing::made_of(bae_types::pressing::Medium::Cd, 1);
     let track = bae_records::DbTrack::new_test(&release.id, TRACK_A, "Track Title", 1);
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     let work = DbWork {
         id: WORK_A.to_string(),
         title: "Work Title".to_string(),
@@ -336,7 +336,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         bae_util::content_type::ContentType::Jpeg,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.add_file(&file, 5).await.unwrap();
 
@@ -506,7 +506,7 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             facts.content_type.clone(),
             bae_records::ReleaseFileRole::Audio,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            Utc::now(),
+            UtcDateTime::now(),
         );
         file.source_audio = Some(facts);
         manager.library.manager().add_file(&file, 1000).await.unwrap();
@@ -578,10 +578,15 @@ async fn display_artist_is_set_only_for_a_compilation() {
             sort_name: None,
             discogs_artist_id: None,
             musicbrainz_artist_id: None,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
-        let track_artist =
-            bae_records::DbTrackArtist::new(&coven::UuidIds, &track.id, &guest.id, 0, Utc::now());
+        let track_artist = bae_records::DbTrackArtist::new(
+            &coven::UuidIds,
+            &track.id,
+            &guest.id,
+            0,
+            UtcDateTime::now(),
+        );
         manager.records.insert_album(&album).await.unwrap();
         insert_release(manager, &release).await;
         manager.records.insert_artist(&guest).await.unwrap();
@@ -617,7 +622,7 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         bae_util::content_type::ContentType::Jpeg,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.library.manager().add_file(&image, 1234).await.unwrap();
 
@@ -664,7 +669,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
             content_type,
             bae_records::ReleaseFileRole::Artwork,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            Utc::now(),
+            UtcDateTime::now(),
         );
         manager.library.manager().add_file(&file, 100).await.unwrap();
         if supports_cover {
@@ -770,7 +775,7 @@ async fn a_gallery_read_refuses_another_releases_file() {
         bae_util::content_type::ContentType::Jpeg,
         bae_records::ReleaseFileRole::Artwork,
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.library.manager().add_file(&file, 5).await.unwrap();
 

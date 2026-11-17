@@ -6,7 +6,7 @@ pub(super) struct AudibleCompletion {
     pub(super) fmt: Arc<TrackFmt>,
     pub(super) errors: u32,
     pub(super) samples: u64,
-    pub(super) audible_at: chrono::DateTime<chrono::Utc>,
+    pub(super) audible_at: time::UtcDateTime,
 }
 
 impl PlaybackService {
@@ -27,7 +27,7 @@ impl PlaybackService {
                 errors: error_count,
                 samples: samples_decoded,
                 audible_at: self.clock.now()
-                    + chrono::Duration::from_std(latency)
+                    + time::Duration::try_from(latency)
                         .expect("receiver latency fits a clock deadline"),
             });
             if let PlaybackSlot::Active(cur) = &mut self.slot {

@@ -4,6 +4,7 @@
 
 use super::release::AlbumFields;
 use super::*;
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// What a save writes over the release's rows.
 #[cfg(desktop)]

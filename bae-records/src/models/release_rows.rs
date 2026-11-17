@@ -42,7 +42,7 @@ pub struct TrackRow {
     pub medium_id: String,
     pub side: std::num::NonZeroU8,
     pub track_number: std::num::NonZeroU32,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: time::UtcDateTime,
 }
 
 impl TrackRow {

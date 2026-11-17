@@ -27,7 +27,7 @@ async fn image_file(db: &Store, dir: &std::path::Path, id: &str, name: &str, kin
             kind,
             bae_records::ReleaseFileRole::Artwork,
             id.to_string(),
-            chrono::Utc::now(),
+            time::UtcDateTime::now(),
         ),
         1,
     )

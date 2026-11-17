@@ -16,7 +16,7 @@ pub enum HistoryAudience {
 pub struct HistoryEntry {
     pub id: uuid::Uuid,
     pub track_id: String,
-    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub started_at: time::UtcDateTime,
     pub played: Duration,
     pub audience: HistoryAudience,
 }

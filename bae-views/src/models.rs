@@ -3,7 +3,7 @@
 
 use bae_records::*;
 use bae_store::*;
-use chrono::{DateTime, Utc};
+use time::UtcDateTime;
 
 /// Raw combined search-result aggregate. No formatting — resolving it
 /// produces the display-ready `crate::album_detail::SearchResults`.
@@ -346,7 +346,7 @@ pub struct DbReleaseSummary {
 pub struct DbStorageRow {
     pub release: DbReleaseSummary,
     /// When the release was added to the library.
-    pub date_added: DateTime<Utc>,
+    pub date_added: UtcDateTime,
     /// The version of the release's own cover; `None` when it has none.
     pub release_cover_version: Option<String>,
     pub album: DbAlbumSummary,

@@ -17,9 +17,9 @@ use bae_records::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, ReleaseRows, WorkGraphRows,
 };
-use chrono::{DateTime, Utc};
 use coven::{Clock, IdSource};
 use std::collections::{HashMap, HashSet};
+use time::UtcDateTime;
 
 /// The rows one import writes, before its artists are resolved and its
 /// tracks bound to their audio.
@@ -252,11 +252,11 @@ struct ArtistRows<'a> {
     rows: Vec<DbArtist>,
     picked: HashSet<String>,
     ids: &'a dyn IdSource,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 }
 
 impl<'a> ArtistRows<'a> {
-    fn new(ids: &'a dyn IdSource, now: DateTime<Utc>) -> Self {
+    fn new(ids: &'a dyn IdSource, now: UtcDateTime) -> Self {
         Self { rows: Vec::new(), picked: HashSet::new(), ids, now }
     }
 
@@ -296,7 +296,7 @@ struct WorkRows {
 fn work_rows<Binding>(
     draft: &ReleaseDraft<Binding>,
     artists: &mut ArtistRows<'_>,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 ) -> WorkRows {
     let mut rows = WorkRows {
         works: Vec::with_capacity(draft.works.works.len()),

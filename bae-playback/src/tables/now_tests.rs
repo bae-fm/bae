@@ -61,7 +61,7 @@ async fn each_change_reads_back_as_written() {
     let row = PlaybackNowRow::new(db.clone());
     let track = PlayingTrack { track_id: tracks[0].clone(), duration_ms: Some(1_000) };
     let unknown_length = PlayingTrack { duration_ms: None, ..track.clone() };
-    let resumes_at = chrono::DateTime::from_timestamp_millis(1_800_000_000_000).unwrap();
+    let resumes_at = bae_util::timestamp::from_unix_timestamp_millis(1_800_000_000_000).unwrap();
     for state in [
         PlaybackState::Loading {
             track: LoadingTrack::Unprepared(tracks[0].clone()),

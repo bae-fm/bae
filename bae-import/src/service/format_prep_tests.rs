@@ -20,10 +20,7 @@ pub(super) fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
 
 pub(super) fn test_clock() -> coven::FixedClock {
     coven::FixedClock::new(
-        (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc))
-        .into(),
+        (bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap()).into(),
     )
 }
 
@@ -116,9 +113,7 @@ INDEX 01 00:00:00
             },
         }],
     };
-    let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
+    let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
 
     let error =
         cue_backed_audio_format("track-id", &cue_pair, 0, "audio-format-id".to_string(), now)

@@ -7,7 +7,7 @@ use std::sync::Arc;
 /// with no files or tracks yet.
 async fn library_with_release(root: &std::path::Path) -> (Store, String) {
     use bae_records::{DbAlbum, DbArtist, DbRelease};
-    use chrono::Utc;
+    use time::UtcDateTime;
 
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
@@ -21,7 +21,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     let album = DbAlbum {
@@ -29,7 +29,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         title: "Test Album".to_string(),
         year: None,
         is_compilation: false,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_album(&album).await.unwrap();
     records
@@ -44,7 +44,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         source_folder_name: None,
         album_loudness_lufs: None,
         album_peak_linear: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_release(&release).await.unwrap();
     (db, release.id)
@@ -54,7 +54,7 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
 async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
     use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
-    use chrono::Utc;
+    use time::UtcDateTime;
 
     let temp = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(temp.path()).await;
@@ -67,7 +67,7 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
         content_type: ContentType::Jpeg,
         role: bae_records::ReleaseFileRole::Artwork,
         source_audio: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let missing_dir = temp.path().join("missing-image-dir");
     std::fs::create_dir_all(&missing_dir).unwrap();
@@ -108,7 +108,7 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
 async fn test_resolve_release_identity_local() {
     use bae_records::{DbTrack, NewReleaseFile};
     use bae_util::content_type::ContentType;
-    use chrono::Utc;
+    use time::UtcDateTime;
 
     let temp = tempfile::TempDir::new().unwrap();
     let local_dir = temp.path().join("rip");
@@ -145,7 +145,7 @@ async fn test_resolve_release_identity_local() {
             content_type,
             role,
             source_audio: None,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         records.insert_file_for_test(&file, &abs).await.unwrap();
     }
@@ -169,7 +169,7 @@ async fn test_resolve_release_identity_local() {
             )
             .expect("track numbers count from one"),
             duration_ms: 180_000 + n as u64,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         records.insert_track(&track).await.unwrap();
     }
@@ -210,7 +210,7 @@ async fn folder_and_library_disc_ids_with_decisions(
 ) -> (Vec<String>, Vec<String>) {
     use bae_records::NewReleaseFile;
     use bae_util::content_type::ContentType;
-    use chrono::Utc;
+    use time::UtcDateTime;
 
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -265,7 +265,7 @@ async fn folder_and_library_disc_ids_with_decisions(
                     duration_ms: audio.duration_ms,
                 }
             }),
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         records.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }

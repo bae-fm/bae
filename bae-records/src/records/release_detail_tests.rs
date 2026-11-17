@@ -212,7 +212,7 @@ async fn import_file(
         content_type,
         crate::ReleaseFileRole::Other,
         bae_util::test_ids::test_uuid(name),
-        chrono::Utc::now(),
+        time::UtcDateTime::now(),
     );
     crate::test_fixtures::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
 }

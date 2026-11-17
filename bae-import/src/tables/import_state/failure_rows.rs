@@ -5,6 +5,7 @@ pub(super) const SQL: &str = include_str!("failure_rows.sql");
 
 use super::*;
 use crate::{ImportFailure, ImportFailureReason};
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// The diagnostic column read by both the list and the candidate pane.
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";

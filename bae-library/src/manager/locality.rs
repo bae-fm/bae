@@ -4,6 +4,7 @@
 use super::*;
 use bae_diagnostics::{LocalId, TelemetryEvent};
 use bae_transfers::storage_moves::UnpinRefusal;
+use bae_util::timestamp::StoredTimestamp as _;
 
 impl LibraryManager {
     /// Queue the uploaded releases of a selection to be moved to this device into
@@ -22,7 +23,7 @@ impl LibraryManager {
         release_ids: Vec<String>,
         folder: &std::path::Path,
     ) -> Result<(), LibraryError> {
-        let enqueued_at = bae_store::utc_now(self.clock.as_ref()).timestamp_millis();
+        let enqueued_at = bae_store::utc_now(self.clock.as_ref()).unix_timestamp_millis();
         match self
             .downloads
             .enqueue_moves_to_this_device(release_ids, folder.to_path_buf(), enqueued_at)

@@ -119,7 +119,7 @@ pub(super) fn cue_segments(
     file_ids: &HashMap<PathBuf, String>,
     byte_landings_by_file: &HashMap<PathBuf, HashMap<u64, u64>>,
     ids: &dyn coven::IdSource,
-    now: chrono::DateTime<chrono::Utc>,
+    now: time::UtcDateTime,
 ) -> Result<Vec<DbAudioSegment>, ImportError> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
     let main_audio = cue_audio_file(cue_pair, &cue_track.file_reference)?;

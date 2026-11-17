@@ -1,4 +1,5 @@
 use super::{BridgeCastReceiver, BridgeCreditLine, BridgeImageRef, BridgeRepeatMode};
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// One local file range to audition, by sample bounds only: an import
 /// candidate has no byte seek positions yet.
@@ -192,7 +193,7 @@ pub struct BridgeSideCountdown {
 impl BridgeSideCountdown {
     fn from_core(countdown: bae_playback::PlaybackSideCountdown) -> Self {
         let bae_playback::PlaybackSideCountdown { resumes_at } = countdown;
-        Self { resumes_at_ms: resumes_at.timestamp_millis() }
+        Self { resumes_at_ms: resumes_at.unix_timestamp_millis() }
     }
 }
 

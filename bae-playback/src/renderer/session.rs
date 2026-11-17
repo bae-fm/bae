@@ -39,11 +39,7 @@ pub struct SessionId(pub u64);
 #[derive(Debug, Clone, PartialEq)]
 pub enum RendererSessionEvent {
     /// A status read off, or said by, the renderer, and when it arrived.
-    Status {
-        session: SessionId,
-        status: ReceiverStatus,
-        observed_at: chrono::DateTime<chrono::Utc>,
-    },
+    Status { session: SessionId, status: ReceiverStatus, observed_at: time::UtcDateTime },
     /// The renderer refused a command — a load, a play, a seek. The session
     /// goes on: the link is still up, and the next command may land.
     CommandFailed { session: SessionId, error: RendererError },

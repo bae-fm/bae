@@ -5,8 +5,8 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbRelease};
-use chrono::Utc;
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 #[tokio::test]
 async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
@@ -128,12 +128,12 @@ async fn credited_library_holding(discogs_artist_id: Option<&str>) -> CreditedLi
                 sort_name: None,
                 discogs_artist_id: discogs_artist_id.map(str::to_string),
                 musicbrainz_artist_id: None,
-                created_at: Utc::now(),
+                created_at: UtcDateTime::now(),
             })
             .await
             .unwrap();
     }
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     for (artist, position, credit, join) in
         [(CREDIT_ARTIST_A, 0, None, Some(" & ")), (CREDIT_ARTIST_B, 1, Some("B Alias"), None)]
     {
@@ -299,7 +299,7 @@ async fn a_merged_artists_credit_prints_the_survivor_unless_a_printed_name_was_s
         sort_name: None,
         discogs_artist_id: Some("credited-discogs-id".to_string()),
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     let resolved =
         library.manager.library.manager().records.find_or_create_artists(&[credit]).await.unwrap();

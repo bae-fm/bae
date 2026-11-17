@@ -254,7 +254,7 @@ async fn a_play_that_counts_partway_through_the_airplay_tail_is_saved_then() {
 
     // One second heard, three still in the receiver.
     assert!(service.people.history().await.unwrap().is_empty());
-    let second = |seconds| test_clock_start() + chrono::Duration::seconds(seconds);
+    let second = |seconds| test_clock_start() + time::Duration::seconds(seconds);
     assert_eq!(service.audible_deadline(), Some(second(1)));
 
     clock.advance(Duration::from_secs(1));

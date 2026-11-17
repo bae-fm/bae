@@ -33,7 +33,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 # Row ids, and the ids derived from catalog ids.
 uuid = { workspace = true, features = ["v4", "v5"] }
-chrono = { workspace = true, features = ["serde"] }
+time = { workspace = true }
 # Stored paths are hex-encoded bytes.
 hex = { workspace = true }
 # The temporary directory a test database lives in.

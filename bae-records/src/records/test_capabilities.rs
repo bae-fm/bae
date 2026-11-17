@@ -431,7 +431,7 @@ impl crate::test_fixtures::library::LibraryRows {
     pub fn pressing_parts(
         &self,
         ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
+        now: time::UtcDateTime,
     ) -> Vec<PressingParts> {
         self.releases
             .iter()

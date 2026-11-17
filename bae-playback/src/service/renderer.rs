@@ -234,14 +234,14 @@ pub(super) struct RemoteRenderer {
     last_status: Option<ObservedStatus>,
     /// When the shown position is next brought up to date, while the device
     /// plays.
-    next_display_tick: Option<chrono::DateTime<chrono::Utc>>,
+    next_display_tick: Option<time::UtcDateTime>,
 }
 
 /// A status and the moment it arrived.
 #[derive(Clone, Copy)]
 pub(super) struct ObservedStatus {
     pub(super) status: ReceiverStatus,
-    pub(super) observed_at: chrono::DateTime<chrono::Utc>,
+    pub(super) observed_at: time::UtcDateTime,
 }
 
 impl RemoteRenderer {
@@ -486,7 +486,7 @@ impl PlaybackService {
     async fn apply_remote_status(
         &mut self,
         status: ReceiverStatus,
-        observed_at: chrono::DateTime<chrono::Utc>,
+        observed_at: time::UtcDateTime,
     ) {
         let PlaybackSlot::Active(cur) = &mut self.slot else {
             return;
@@ -494,8 +494,7 @@ impl PlaybackService {
         if let Renderer::Remote(remote) = &mut self.renderer {
             remote.last_status = Some(ObservedStatus { status, observed_at });
             remote.next_display_tick.get_or_insert_with(|| {
-                observed_at
-                    + chrono::Duration::milliseconds(self.position_update_interval_ms.into())
+                observed_at + time::Duration::milliseconds(self.position_update_interval_ms.into())
             });
         }
         let track_id = cur.prepared.track_id.clone();
@@ -548,7 +547,7 @@ impl PlaybackService {
     /// The next moment the shown position is brought up to date: while the
     /// device plays the track at a known rate, every
     /// `position_update_interval_ms`, the cadence local playback uses.
-    pub(super) fn remote_display_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    pub(super) fn remote_display_deadline(&self) -> Option<time::UtcDateTime> {
         let Renderer::Remote(remote) = &self.renderer else {
             return None;
         };
@@ -566,9 +565,9 @@ impl PlaybackService {
     /// Bring the shown position up to date: where the device has reached by
     /// now, worked out from its last status. `due` is the moment that was
     /// waited for; the next is one interval after it.
-    pub(super) fn remote_display_tick(&mut self, due: chrono::DateTime<chrono::Utc>) {
+    pub(super) fn remote_display_tick(&mut self, due: time::UtcDateTime) {
         let now = self.clock.now();
-        let interval = chrono::Duration::milliseconds(self.position_update_interval_ms.into());
+        let interval = time::Duration::milliseconds(self.position_update_interval_ms.into());
         let Renderer::Remote(remote) = &mut self.renderer else {
             return;
         };

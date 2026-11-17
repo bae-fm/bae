@@ -14,6 +14,7 @@ use bae_records::records::write::{
     insert_work_row, replace_album_artists, upsert_album_row, upsert_library_image_row,
     write_release_records,
 };
+use bae_util::timestamp::StoredTimestamp as _;
 use std::collections::BTreeSet;
 
 /// Why an import's commit was refused. Nothing of it was written; the person

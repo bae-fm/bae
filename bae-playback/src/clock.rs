@@ -7,18 +7,18 @@
 //! library's injected wall clock and waits on the service runtime's timer; tests
 //! move a [`ManualPlaybackClock`] forward by hand.
 
-use chrono::{DateTime, Utc};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use time::UtcDateTime;
 
 /// A wait that completes once its deadline has passed.
 pub type PlaybackSleep = Pin<Box<dyn Future<Output = ()> + Send>>;
 
 pub trait PlaybackClock: Send + Sync {
-    fn now(&self) -> DateTime<Utc>;
+    fn now(&self) -> UtcDateTime;
     /// Complete once `now()` has reached `deadline` — at once if it already has.
-    fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep;
+    fn sleep_until(&self, deadline: UtcDateTime) -> PlaybackSleep;
 }
 
 pub type PlaybackClockRef = Arc<dyn PlaybackClock>;
@@ -38,12 +38,13 @@ impl WallPlaybackClock {
 }
 
 impl PlaybackClock for WallPlaybackClock {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         self.wall.now().into()
     }
 
-    fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
-        let remaining = (deadline - self.now()).to_std().unwrap_or(std::time::Duration::ZERO);
+    fn sleep_until(&self, deadline: UtcDateTime) -> PlaybackSleep {
+        let remaining = std::time::Duration::try_from(deadline - self.now())
+            .unwrap_or(std::time::Duration::ZERO);
         self.wall.deadline(remaining)
     }
 }
@@ -52,14 +53,14 @@ impl PlaybackClock for WallPlaybackClock {
 /// [`PlaybackClock::sleep_until`] whose deadline the move reaches completes.
 #[cfg(any(test, feature = "test-utils"))]
 pub struct ManualPlaybackClock {
-    now: tokio::sync::watch::Sender<DateTime<Utc>>,
+    now: tokio::sync::watch::Sender<UtcDateTime>,
     /// One entry per wait handed out; it upgrades while the wait is pending.
-    waits: std::sync::Mutex<Vec<std::sync::Weak<DateTime<Utc>>>>,
+    waits: std::sync::Mutex<Vec<std::sync::Weak<UtcDateTime>>>,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 impl ManualPlaybackClock {
-    pub fn new(start: DateTime<Utc>) -> Self {
+    pub fn new(start: UtcDateTime) -> Self {
         let (now, _) = tokio::sync::watch::channel(start);
         Self { now, waits: std::sync::Mutex::new(Vec::new()) }
     }
@@ -67,25 +68,25 @@ impl ManualPlaybackClock {
     /// The deadlines of the waits handed out that have neither completed nor
     /// been dropped, in the order they were handed out. A holder that gives up
     /// a wait drops it, so this is what the clock's users are still waiting on.
-    pub fn pending_waits(&self) -> Vec<DateTime<Utc>> {
+    pub fn pending_waits(&self) -> Vec<UtcDateTime> {
         let mut waits = self.waits.lock().unwrap();
         waits.retain(|wait| wait.strong_count() > 0);
         waits.iter().filter_map(|wait| wait.upgrade().map(|deadline| *deadline)).collect()
     }
 
     pub fn advance(&self, by: std::time::Duration) {
-        let by = chrono::Duration::from_std(by).expect("test advance fits a chrono duration");
+        let by = time::Duration::try_from(by).expect("a test advance fits a time::Duration");
         self.now.send_modify(|now| *now += by);
     }
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 impl PlaybackClock for ManualPlaybackClock {
-    fn now(&self) -> DateTime<Utc> {
+    fn now(&self) -> UtcDateTime {
         *self.now.borrow()
     }
 
-    fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
+    fn sleep_until(&self, deadline: UtcDateTime) -> PlaybackSleep {
         let mut now = self.now.subscribe();
         let wait = Arc::new(deadline);
         self.waits.lock().unwrap().push(Arc::downgrade(&wait));

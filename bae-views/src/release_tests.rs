@@ -401,7 +401,7 @@ async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
             ContentType::from_mime(mime),
             role,
             bae_util::test_ids::test_uuid(&format!("filed-{index}")),
-            chrono::Utc::now(),
+            time::UtcDateTime::now(),
         );
         file.source_audio = layout.map(source);
         insert_file(&db, tmp.path(), file, size).await;

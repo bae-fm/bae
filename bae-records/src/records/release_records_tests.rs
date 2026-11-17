@@ -9,8 +9,8 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
 use bae_store::test_fixtures::exec_batch;
 use bae_store::test_fixtures::temp_db;
-use chrono::Utc;
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 /// A store holding a single test artist that the helpers below reference
 /// for inserted albums.
@@ -23,7 +23,7 @@ async fn setup_test_db_with_artist() -> (Records, TempDir) {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     (records, tmp)
@@ -34,7 +34,7 @@ async fn setup_test_db_with_artist() -> (Records, TempDir) {
 const TEST_ARTIST_ID: &str = "e36744a5-1a36-460f-891c-e7e558034edf";
 
 fn make_album(title: &str) -> DbAlbum {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbAlbum {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         title: title.to_string(),
@@ -45,7 +45,7 @@ fn make_album(title: &str) -> DbAlbum {
 }
 
 fn make_release(album_id: &str) -> DbRelease {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbRelease {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         album_id: album_id.to_string(),
@@ -65,7 +65,7 @@ fn make_release(album_id: &str) -> DbRelease {
 }
 
 fn make_track(release_id: &str, number: i32) -> DbTrack {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbTrack {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         release_id: release_id.to_string(),
@@ -509,7 +509,7 @@ async fn ids(store: &Store, query: &'static str) -> Vec<String> {
 async fn a_record_takes_its_id_from_its_fact() {
     let (db, _tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
-    let now = Utc::now();
+    let now = UtcDateTime::now();
 
     let artist = DbArtist {
         id: ARTIST_1.to_string(),

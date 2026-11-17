@@ -59,36 +59,28 @@ pub fn wait_until_epoch(
 }
 
 #[cfg(desktop)]
-fn wait_until_epoch_at(
-    epoch: i64,
-    date: Option<&str>,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<Duration> {
-    let until = chrono::DateTime::from_timestamp(epoch, 0)?;
+fn wait_until_epoch_at(epoch: i64, date: Option<&str>, now: time::UtcDateTime) -> Option<Duration> {
+    let until = time::UtcDateTime::from_unix_timestamp(epoch).ok()?;
     let from = date.and_then(http_date).unwrap_or(now);
-    Some((until - from).to_std().unwrap_or(Duration::ZERO))
+    Some(Duration::try_from(until - from).unwrap_or(Duration::ZERO))
 }
 
-fn told_wait_at(
-    retry_after: &str,
-    date: Option<&str>,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<Duration> {
+fn told_wait_at(retry_after: &str, date: Option<&str>, now: time::UtcDateTime) -> Option<Duration> {
     let retry_after = retry_after.trim();
     if let Ok(seconds) = retry_after.parse::<u64>() {
         return Some(Duration::from_secs(seconds));
     }
     let until = http_date(retry_after)?;
     let from = date.and_then(http_date).unwrap_or(now);
-    Some((until - from).to_std().unwrap_or(Duration::ZERO))
+    Some(Duration::try_from(until - from).unwrap_or(Duration::ZERO))
 }
 
 /// An HTTP-date in its preferred form, `Sun, 06 Nov 1994 08:49:37 GMT`, which
 /// is an RFC 2822 date.
-fn http_date(value: &str) -> Option<chrono::DateTime<chrono::Utc>> {
-    chrono::DateTime::parse_from_rfc2822(value.trim())
+fn http_date(value: &str) -> Option<time::UtcDateTime> {
+    time::OffsetDateTime::parse(value.trim(), &time::format_description::well_known::Rfc2822)
         .ok()
-        .map(|date| date.with_timezone(&chrono::Utc))
+        .map(time::OffsetDateTime::to_utc)
 }
 
 /// One provider response worth keeping: the status it came back with and the

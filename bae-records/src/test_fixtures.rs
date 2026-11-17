@@ -108,7 +108,7 @@ pub fn credit(name: &str) -> crate::DbArtist {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     }
 }
 

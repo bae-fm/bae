@@ -1,8 +1,8 @@
 //! Reading a column of a row into a typed value, naming the column when its
 //! stored value is not one.
 
-use chrono::{DateTime, Utc};
 use rusqlite::Row;
+use time::UtcDateTime;
 
 /// The error of reading column `column` (its name or index) of `row`, whose
 /// stored value the mapper could not turn into its typed value, `cause`
@@ -54,9 +54,9 @@ where
 
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
 /// column-conversion error rather than panicking on the parse.
-pub fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {
+pub fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<UtcDateTime> {
     let raw: String = row.get(column)?;
-    DateTime::parse_from_rfc3339(&raw).map(|dt| dt.with_timezone(&Utc)).map_err(|e| {
+    bae_util::timestamp::parse_rfc3339(&raw).map_err(|e| {
         column_conversion_error(
             row,
             column,

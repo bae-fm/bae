@@ -1,6 +1,7 @@
 //! Export domain operations for [`LibraryManager`].
 
 use super::*;
+use bae_util::timestamp::StoredTimestamp as _;
 use tracing::info;
 
 /// A hidden file bae writes into every output folder — export or save — naming
@@ -77,7 +78,7 @@ impl LibraryManager {
 
         let entry = bae_transfers::OutputEntry {
             release_id: release_id.to_string(),
-            created_at: bae_store::utc_now(self.clock.as_ref()).timestamp_millis(),
+            created_at: bae_store::utc_now(self.clock.as_ref()).unix_timestamp_millis(),
             payload: bae_transfers::OutputRequest { target_dir, kind },
         };
         self.outputs.enqueue_all(vec![entry]).await?;

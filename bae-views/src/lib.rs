@@ -91,10 +91,10 @@ use bae_store::read::*;
 use bae_store::*;
 use bae_transfers::download_entry_sql;
 use bae_util::search_text::search_pattern;
-use chrono::{DateTime, Utc};
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::BTreeSet;
+use time::UtcDateTime;
 
 /// The library views' part of the library's schema: one domain, its files in
 /// the order each runs after the files creating the tables its triggers fire

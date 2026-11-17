@@ -17,7 +17,7 @@ async fn a_play_begun_as_another_person_is_refused() {
         entry: HistoryEntry {
             id: uuid::Uuid::from_u128(2),
             track_id: "track".to_string(),
-            started_at: "2026-10-18T16:30:00Z".parse().unwrap(),
+            started_at: bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap(),
             played: Duration::from_secs(30),
             audience: HistoryAudience::Person { person, audience: coven::Audience::Store },
         },

@@ -39,6 +39,7 @@ use super::release_groupings::{store_folder_reading, validate_decision_key_owner
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::CandidateKey;
+use bae_util::timestamp::StoredTimestamp as _;
 use std::path::{Path, PathBuf};
 
 // `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
@@ -244,7 +245,7 @@ impl ImportTables {
     {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
-        let observed_at = self.store.now_utc().timestamp_millis();
+        let observed_at = self.store.now_utc().unix_timestamp_millis();
         self.store
             .write(move |sql| {
                 let sql = &sql;

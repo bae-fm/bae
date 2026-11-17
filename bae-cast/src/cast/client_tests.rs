@@ -482,7 +482,7 @@ struct Listener {
 
 fn listener() -> Listener {
     let (events, heard) = tokio::sync::mpsc::unbounded_channel();
-    let clock = Arc::new(bae_playback::ManualPlaybackClock::new(chrono::DateTime::UNIX_EPOCH));
+    let clock = Arc::new(bae_playback::ManualPlaybackClock::new(time::UtcDateTime::UNIX_EPOCH));
     let sink = StatusSink::new(
         SessionId(4),
         clock.clone(),
@@ -511,7 +511,7 @@ impl Listener {
     }
 }
 
-fn status_of(event: RendererSessionEvent) -> (ReceiverStatus, chrono::DateTime<chrono::Utc>) {
+fn status_of(event: RendererSessionEvent) -> (ReceiverStatus, time::UtcDateTime) {
     match event {
         RendererSessionEvent::Status { session, status, observed_at } => {
             assert_eq!(session, SessionId(4));
@@ -549,7 +549,7 @@ async fn a_pause_the_device_makes_is_said_as_it_happens_and_stamped_by_the_clock
     let (paused, observed_at) = status_of(listener.next().await);
 
     assert_eq!(paused.player_state, RendererPlayerState::Paused);
-    assert_eq!(observed_at, chrono::DateTime::UNIX_EPOCH + chrono::Duration::seconds(9));
+    assert_eq!(observed_at, time::UtcDateTime::UNIX_EPOCH + time::Duration::seconds(9));
     fake.finish_track();
     let (finished, _) = status_of(listener.next().await);
     assert_eq!(finished.player_state, RendererPlayerState::Finished);

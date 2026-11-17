@@ -2,14 +2,14 @@ use super::*;
 use bae_util::test_channels::HANG_GUARD;
 use std::time::Duration;
 
-fn start() -> DateTime<Utc> {
-    "2026-01-01T00:00:00Z".parse().unwrap()
+fn start() -> UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap()
 }
 
 #[tokio::test]
 async fn manual_clock_wait_completes_only_once_the_deadline_is_reached() {
     let clock = ManualPlaybackClock::new(start());
-    let deadline = start() + chrono::Duration::seconds(5);
+    let deadline = start() + time::Duration::seconds(5);
     let mut sleep = clock.sleep_until(deadline);
 
     clock.advance(Duration::from_secs(4));
@@ -27,12 +27,12 @@ async fn manual_clock_wait_completes_only_once_the_deadline_is_reached() {
 #[tokio::test]
 async fn manual_clock_lists_only_the_waits_still_pending() {
     let clock = ManualPlaybackClock::new(start());
-    let soon = start() + chrono::Duration::seconds(5);
-    let later = start() + chrono::Duration::seconds(60);
-    let dropped = clock.sleep_until(start() + chrono::Duration::seconds(30));
+    let soon = start() + time::Duration::seconds(5);
+    let later = start() + time::Duration::seconds(60);
+    let dropped = clock.sleep_until(start() + time::Duration::seconds(30));
     let mut completes = clock.sleep_until(soon);
     let _held = clock.sleep_until(later);
-    assert_eq!(clock.pending_waits(), vec![start() + chrono::Duration::seconds(30), soon, later]);
+    assert_eq!(clock.pending_waits(), vec![start() + time::Duration::seconds(30), soon, later]);
 
     drop(dropped);
     clock.advance(Duration::from_secs(5));

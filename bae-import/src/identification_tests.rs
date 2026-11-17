@@ -127,10 +127,8 @@ pub(crate) struct Fixture {
 }
 
 /// The fixed instant every stored row is stamped with.
-pub(crate) fn fixed_now() -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339("2024-03-01T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc)
+pub(crate) fn fixed_now() -> time::UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2024-03-01T12:00:00Z").unwrap()
 }
 
 /// Pull `query` until a value satisfies `wanted` and return it. A query that

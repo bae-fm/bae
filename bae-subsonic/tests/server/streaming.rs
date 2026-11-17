@@ -348,10 +348,10 @@ async fn musicbrainz_id_surfaces_when_present() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("mbid-abc-123".to_string()),
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     library.manager().insert_artist(&artist).await.unwrap();
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     let album = DbAlbum {
         id: bae_util::test_ids::test_uuid("mb-album-1"),
         title: "MB Album".to_string(),
@@ -556,7 +556,7 @@ async fn an_album_prints_its_credit_line_and_lists_every_credited_artist() {
     // OpenSubsonic: `artist` is the display line, `artists` every credited
     // artist; `artistId` stays the protocol's one id, the first credit's.
     let (library, _t) = new_library().await;
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     let artist_a = bae_util::test_ids::test_uuid("credit-artist-a");
     let artist_b = bae_util::test_ids::test_uuid("credit-artist-b");
     for (id, name) in [(&artist_a, "Artist A"), (&artist_b, "Artist B")] {

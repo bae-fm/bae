@@ -16,9 +16,9 @@ use bae_identify::LookupChoiceEdit;
 use bae_records::{DbAlbum, DbArtist, DbRelease};
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
-use chrono::Utc;
 use std::path::Path;
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 /// What an import service is started from over a fresh store asking no
 /// catalog, the store, and the directory holding it.
@@ -63,7 +63,7 @@ pub(super) async fn setup_test_import_over(
 }
 
 pub(crate) fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     DbArtist {
         id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
         name: name.to_string(),

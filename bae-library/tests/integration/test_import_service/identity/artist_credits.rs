@@ -98,7 +98,7 @@ fn library_artist(name: &str, discogs_artist_id: Option<&str>) -> bae_records::D
         sort_name: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     }
 }
 

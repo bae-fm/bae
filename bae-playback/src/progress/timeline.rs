@@ -11,7 +11,7 @@
 //! own views draw each position the output reports (`PlaybackPositions`), with
 //! no line.
 
-use chrono::{DateTime, Utc};
+use time::UtcDateTime;
 
 use super::{PlaybackPositions, PlaybackValues, PreviewState};
 use crate::service::PlaybackState;
@@ -103,17 +103,20 @@ impl Line for PreviewTimelinePoint {
 #[derive(Debug, Clone)]
 struct Told<Point> {
     point: Point,
-    at: DateTime<Utc>,
+    at: UtcDateTime,
 }
 
 impl<Point: Line + Clone> Told<Point> {
     /// Whether `next`, read at `now`, leaves the line this was told.
-    fn leaves(&self, next: &Point, now: DateTime<Utc>) -> bool {
+    fn leaves(&self, next: &Point, now: UtcDateTime) -> bool {
         if !self.point.same_line(next) {
             return true;
         }
-        let elapsed_ms =
-            if self.point.moving() { (now - self.at).num_milliseconds().max(0) as u64 } else { 0 };
+        let elapsed_ms = if self.point.moving() {
+            (now - self.at).whole_milliseconds().max(0) as u64
+        } else {
+            0
+        };
         let expected = self.point.position_ms().saturating_add(elapsed_ms);
         expected.abs_diff(next.position_ms()) > JUMP_THRESHOLD_MS
     }
@@ -123,7 +126,7 @@ impl<Point: Line + Clone> Told<Point> {
 fn fold_point<Point: Line + Clone>(
     told: &mut Option<Told<Point>>,
     next: Option<Point>,
-    now: DateTime<Utc>,
+    now: UtcDateTime,
 ) -> bool {
     let leaves = match (told.as_ref(), next.as_ref()) {
         (None, None) => false,
@@ -156,7 +159,7 @@ impl TimelineFold {
         positions: &PlaybackPositions,
         values: &PlaybackValues,
         seeked: bool,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Option<PlaybackTimeline> {
         let library = positions.library.as_ref().map(|position| {
             // The pregap plays before the track's start, where this timeline

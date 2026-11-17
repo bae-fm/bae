@@ -5,7 +5,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::LibraryImageType;
 use bae_records::{DbScrubPoints, ScrubPoint};
-use chrono::Utc;
+use time::UtcDateTime;
 
 /// A track's display carries the cover reference the UI caches its art under,
 /// so it has to carry the `covers` row's version, not just the release id — and
@@ -23,7 +23,7 @@ async fn track_display_carries_the_cover_version() {
         &track.id,
         &bae_util::test_ids::test_uuid("e36744a5-1a36-460f-891c-e7e558034edf"),
         0,
-        Utc::now(),
+        UtcDateTime::now(),
     );
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
@@ -259,7 +259,7 @@ async fn resolve_to_track_ids_expands_album_to_primary_release() {
     let album = create_test_album();
     // release1 is the album's first release; release2 is then made primary.
     let mut release1 = create_test_release(&album.id);
-    release1.created_at = Utc::now() - chrono::Duration::days(1);
+    release1.created_at = UtcDateTime::now() - time::Duration::days(1);
     let release2 = create_test_release(&album.id);
 
     manager.records.insert_album(&album).await.unwrap();

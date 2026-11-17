@@ -10,9 +10,9 @@ use bae_import::ImportError;
 use bae_records::{DbAlbum, DbFile, DbLibraryImage, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::content_type::ContentType;
-use chrono::Utc;
 use coven::{MemoryStorage, Storage};
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 // Fixture row ids. coven validates every synced row's primary key as a
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
@@ -79,7 +79,7 @@ pub(super) async fn setup_test_manager_with(
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: Utc::now(),
+        created_at: UtcDateTime::now(),
     };
     manager.records().insert_artist(&artist).await.unwrap();
     (TestManager { library: manager, fakes, storage, installation }, temp_dir)
@@ -364,7 +364,7 @@ pub(super) async fn insert_local_release_in_album(
     let release = create_test_release(album_id);
     insert_release(manager, &release).await;
     std::fs::create_dir_all(dir).unwrap();
-    let created_at = Utc::now();
+    let created_at = UtcDateTime::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
         let path = dir.join(name);
         std::fs::write(&path, bytes).unwrap();
@@ -570,7 +570,7 @@ pub(super) async fn insert_n_tracks(records: &bae_records::Records, release_id: 
             )
             .expect("track numbers count from one"),
             duration_ms: 200_000,
-            created_at: Utc::now(),
+            created_at: UtcDateTime::now(),
         };
         records.insert_track(&track).await.unwrap();
     }
@@ -835,7 +835,7 @@ pub(super) async fn add_track_audio_sources(
     sources: &[(&str, bae_records::source_audio::SourceAudioLayout)],
 ) -> Vec<NewReleaseFile> {
     assert!(matches!(sources.len(), 1 | 2), "a track's audio is a body and at most one pregap");
-    let now = Utc::now();
+    let now = UtcDateTime::now();
     let mut files = Vec::with_capacity(sources.len());
     for (name, layout) in sources {
         let mut file = NewReleaseFile::new(

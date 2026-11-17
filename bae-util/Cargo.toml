@@ -33,8 +33,10 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 # Carries dependencies' `log` crate records into that subscriber, admitting no
 # level finer than a sink keeps of them.
 tracing-log = { workspace = true }
-# HTTP-date and epoch arithmetic for a response's asked-for wait (src/http.rs).
-chrono = { workspace = true }
+# Reads the HTTP date and epoch time a response asks bae to wait until
+# (src/http.rs), and writes and reads the stored forms of a date-time
+# (src/timestamp.rs).
+time = { workspace = true }
 # The jitter drawn into each retry wait (src/retry.rs).
 rand = { workspace = true }
 # The version-7 ids bae makes (src/time_ordered_ids.rs).

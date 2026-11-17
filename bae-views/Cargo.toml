@@ -36,7 +36,7 @@ bae-types = { workspace = true }
 # Content types and the duration and size labels the screens show.
 bae-util = { workspace = true }
 coven = { workspace = true }
-chrono = { workspace = true }
+time = { workspace = true }
 rusqlite = { workspace = true }
 # A playlist's covers come back as JSON columns, which serde reads into typed
 # rows.

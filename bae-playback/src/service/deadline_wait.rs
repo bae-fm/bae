@@ -8,10 +8,10 @@
 //! the moment the state no longer carries one.
 
 use crate::{PlaybackClock, PlaybackSleep};
-use chrono::{DateTime, Utc};
+use time::UtcDateTime;
 
 pub(super) struct DeadlineWait {
-    armed: Option<(DateTime<Utc>, PlaybackSleep)>,
+    armed: Option<(UtcDateTime, PlaybackSleep)>,
 }
 
 impl DeadlineWait {
@@ -20,7 +20,7 @@ impl DeadlineWait {
     }
 
     /// Match the wait to the state's current deadline.
-    pub(super) fn follow(&mut self, deadline: Option<DateTime<Utc>>, clock: &dyn PlaybackClock) {
+    pub(super) fn follow(&mut self, deadline: Option<UtcDateTime>, clock: &dyn PlaybackClock) {
         if self.armed.as_ref().map(|(armed, _)| *armed) != deadline {
             self.armed = deadline.map(|deadline| (deadline, clock.sleep_until(deadline)));
         }
@@ -33,7 +33,7 @@ impl DeadlineWait {
     /// Complete once the armed deadline passes, disarming and returning it.
     /// Never completes while nothing is armed. Dropping this future mid-wait
     /// keeps the wait armed for the next turn.
-    pub(super) async fn elapsed(&mut self) -> DateTime<Utc> {
+    pub(super) async fn elapsed(&mut self) -> UtcDateTime {
         let Some((deadline, sleep)) = self.armed.as_mut() else {
             return std::future::pending().await;
         };

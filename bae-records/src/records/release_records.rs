@@ -2,6 +2,7 @@
 //! it.
 
 use super::*;
+use bae_util::timestamp::StoredTimestamp as _;
 
 impl Records {
     /// Test seam: write a release's records outside the atomic import path,
@@ -159,7 +160,7 @@ pub struct RecordsChange {
 pub(super) fn set_records_on(
     tx: &CovenWrite<'_>,
     change: &RecordsChange,
-    now_dt: chrono::DateTime<chrono::Utc>,
+    now_dt: time::UtcDateTime,
     ids: &dyn coven::IdSource,
 ) -> Result<(), DbError> {
     let now = now_dt.to_rfc3339();

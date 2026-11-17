@@ -664,7 +664,7 @@ async fn a_release_moving_refreshes_its_listing_once() {
             title: "Album Title B".to_string(),
             year: None,
             is_compilation: false,
-            created_at: chrono::Utc::now(),
+            created_at: time::UtcDateTime::now(),
         };
         move_release(&records, RELEASE_LATE, (ALBUM_A, ALBUM_B), Some(album_b)).await;
         assert_eq!(

@@ -247,9 +247,7 @@ impl Library {
         created_at: &str,
         album_title: &str,
     ) -> (bae_records::DbAlbum, bae_records::DbRelease) {
-        let created_at = chrono::DateTime::parse_from_rfc3339(created_at)
-            .expect("an RFC 3339 time")
-            .with_timezone(&chrono::Utc);
+        let created_at = bae_util::timestamp::parse_rfc3339(created_at).expect("an RFC 3339 time");
         let album = bae_records::DbAlbum {
             id: self.album_id(display_path),
             title: album_title.to_string(),

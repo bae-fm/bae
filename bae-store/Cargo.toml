@@ -25,7 +25,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 # The cancellation that ends a live query with the library.
 tokio-util = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
+time = { workspace = true }
 # Stored paths are hex-encoded bytes.
 hex = { workspace = true }
 # The select and channels the sync-state follower waits on.

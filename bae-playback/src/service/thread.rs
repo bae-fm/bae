@@ -529,13 +529,13 @@ enum Wake {
     StagedSides(Vec<PlaybackTrackInfo>),
     /// The output pushed audio events: drain them.
     AudioEvents,
-    CountdownElapsed(chrono::DateTime<chrono::Utc>),
+    CountdownElapsed(time::UtcDateTime),
     /// Audio still in the AirPlay receiver has been heard, or a play in it
     /// came to count as played (`audible_deadline`).
     AudibleDeadline,
     /// The device plays: bring the shown position up to date from its last
     /// status (`remote_display_deadline`).
-    RemoteDisplayTick(chrono::DateTime<chrono::Utc>),
+    RemoteDisplayTick(time::UtcDateTime),
     Command(PlaybackCommand),
     /// The library's facts of the tracks playback holds, `held`, which
     /// leave out each one it no longer holds.

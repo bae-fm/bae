@@ -44,13 +44,13 @@ pub use ui_error::{GroupingBlockReason, UiError, UiErrorCategory, UiErrorClass};
 
 use std::{collections::VecDeque, fmt, sync::Arc, time::Duration};
 
-use chrono::{DateTime, Utc};
 use coven::{ClockRef, IdSourceRef};
 use reqwest::{
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
     StatusCode, Url,
 };
 use serde::{Deserialize, Serialize};
+use time::UtcDateTime;
 use tokio::sync::{mpsc, oneshot};
 
 use bae_util::retry::retry_with_backoff_if;
@@ -151,7 +151,8 @@ pub struct DiagnosticEvent {
     #[serde(rename = "status")]
     pub level: DiagnosticLevel,
     pub message: String,
-    pub timestamp: DateTime<Utc>,
+    #[serde(with = "bae_util::timestamp::rfc3339_z")]
+    pub timestamp: UtcDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub device_id: Option<String>,
     pub session_id: String,
@@ -351,7 +352,7 @@ impl Diagnostics {
             name: event.name().to_string(),
             level: event.level(),
             message: event.name().to_string(),
-            timestamp: chrono::DateTime::<chrono::Utc>::from(clock.now()),
+            timestamp: time::UtcDateTime::from(clock.now()),
             // The worker stamps the device id when it has one (set-once
             // enrichment); an event enqueued before that ships without it.
             device_id: None,

@@ -20,7 +20,7 @@ async fn cover_db() -> (Store, tempfile::TempDir) {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     for (album_id, title, releases) in [

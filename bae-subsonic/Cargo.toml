@@ -69,7 +69,7 @@ tempfile = { workspace = true }
 tokio = { workspace = true, features = ["net", "sync", "rt", "rt-multi-thread", "macros", "time"] }
 serde_json = { workspace = true }
 tower = { workspace = true, features = ["util"] }
-chrono = { workspace = true }
+time = { workspace = true }
 
 [lints]
 workspace = true

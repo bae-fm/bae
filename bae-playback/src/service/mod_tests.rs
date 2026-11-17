@@ -118,7 +118,7 @@ pub(super) async fn seed_test_releases(
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     for (release_id, track_ids) in releases {
@@ -334,8 +334,8 @@ pub(super) fn playback_service_and_commands_over(
 }
 
 /// Where a test's playback clock starts.
-pub(super) fn test_clock_start() -> chrono::DateTime<chrono::Utc> {
-    "2026-01-01T00:00:00Z".parse().unwrap()
+pub(super) fn test_clock_start() -> time::UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:00Z").unwrap()
 }
 
 /// An already-exited decoder with a fresh token — the current track's decoder for
@@ -496,7 +496,7 @@ pub(super) fn drained_track_completed_ids(
 pub(super) fn side_paused_between(
     current: &str,
     next: &str,
-    resumes_at: Option<chrono::DateTime<chrono::Utc>>,
+    resumes_at: Option<time::UtcDateTime>,
 ) -> PlaybackSlot {
     let buffer = create_sparse_buffer(1_024);
     active_slot(
@@ -526,8 +526,8 @@ pub(super) fn drained_states(
     states
 }
 
-pub(super) fn countdown_deadline() -> chrono::DateTime<chrono::Utc> {
-    test_clock_start() + chrono::Duration::seconds(5)
+pub(super) fn countdown_deadline() -> time::UtcDateTime {
+    test_clock_start() + time::Duration::seconds(5)
 }
 
 /// Wait until `predicate` holds of the fake channel's state, woken by each
@@ -596,7 +596,7 @@ async fn seed_track(
 ) {
     use bae_records::source_audio::{SourceAudioFile, SourceAudioLayout};
     use bae_records::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, NewReleaseFile};
-    let now = chrono::Utc::now();
+    let now = time::UtcDateTime::now();
     let lossless = content_type.is_lossless_audio();
     let file_id = bae_util::test_ids::test_uuid(&format!("{track_id}-file"));
     let mut file = NewReleaseFile::new(

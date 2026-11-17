@@ -115,7 +115,7 @@ async fn a_crossing_before_its_load_resolves_reports_the_finished_track_playing(
 }
 
 /// A side-pause phase resuming into `next`, with `resumes_at` as its countdown.
-fn side_paused_slot(resumes_at: Option<chrono::DateTime<chrono::Utc>>) -> PlaybackSlot {
+fn side_paused_slot(resumes_at: Option<time::UtcDateTime>) -> PlaybackSlot {
     side_paused_between("t", "next", resumes_at)
 }
 

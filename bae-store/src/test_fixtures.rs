@@ -30,10 +30,8 @@ pub async fn temp_db_hearing_bugs(
 }
 
 /// The instant the import fixtures pin their clock to.
-pub fn fixed_now() -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc)
+pub fn fixed_now() -> time::UtcDateTime {
+    bae_util::timestamp::parse_rfc3339("2026-01-15T12:00:00Z").unwrap()
 }
 
 /// `temp_db` under that pinned clock instead of the system one.

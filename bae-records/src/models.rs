@@ -12,8 +12,8 @@
 
 use bae_catalogs::catalog::Catalog;
 use bae_util::content_type::ContentType;
-use chrono::{DateTime, Utc};
 use std::num::NonZeroU32;
+use time::UtcDateTime;
 
 mod artist_identity;
 mod images;
@@ -50,7 +50,7 @@ pub struct DbArtist {
     pub discogs_artist_id: Option<String>,
     /// Artist ID from MusicBrainz (for deduplication across imports)
     pub musicbrainz_artist_id: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 /// Well-known "Various Artists" IDs per metadata source.
 pub struct VariousArtistsIds {
@@ -97,7 +97,7 @@ pub struct DbAlbumArtist {
     pub credit: Option<crate::credits::CreditName>,
     /// Printed after the credit when another follows; `None` prints ", ".
     pub join_phrase: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 /// One place in a track's own credit list, as [`DbAlbumArtist`] is for an
 /// album's.
@@ -110,7 +110,7 @@ pub struct DbTrackArtist {
     pub position: u32,
     pub credit: Option<crate::credits::CreditName>,
     pub join_phrase: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -124,7 +124,7 @@ pub struct DbWork {
     /// The MusicBrainz work this row came from — the only source of works — and
     /// what an import dedups on.
     pub musicbrainz_work_id: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,7 +138,7 @@ pub struct DbWorkArtist {
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -147,7 +147,7 @@ pub struct DbWorkPart {
     pub child_work_id: String,
     pub position: i32,
     pub source: Catalog,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -157,7 +157,7 @@ pub struct DbTrackWork {
     pub work_id: String,
     pub position: i32,
     pub source: Catalog,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -172,7 +172,7 @@ pub struct DbReleaseArtistRole {
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -187,7 +187,7 @@ pub struct DbTrackArtistRole {
     /// The other printed name of the artist's this credit prints, as
     /// [`DbAlbumArtist::credit`] is.
     pub credit: Option<crate::credits::CreditName>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 /// A logical album (the "master"): the metadata common to every physical release
 /// of it ("1973 Original", "2016 Remaster", …). The releases themselves, and
@@ -206,7 +206,7 @@ pub struct DbAlbum {
     pub year: Option<i32>,
     /// True for "Various Artists" compilation albums
     pub is_compilation: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 /// Raw album-summary aggregate: artist names, release IDs and the primary
@@ -249,7 +249,7 @@ impl DbArtist {
     pub fn of_credit(
         credit: &bae_catalogs::credits::ArtistCredit,
         ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
+        now: time::UtcDateTime,
     ) -> Self {
         Self {
             id: ids.new_id().to_string(),
@@ -347,7 +347,7 @@ pub struct DbRelease {
     /// Album-level true peak as a linear ratio (1.0 = 0 dBTP), the max across
     /// tracks. `None` = not measured. Playback caps the album gain at `1.0/peak`.
     pub album_peak_linear: Option<f64>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 /// A single track on a specific release, not on the logical album — track
@@ -368,7 +368,7 @@ pub struct DbTrack {
     pub track_number: NonZeroU32,
     /// How long the track's audio plays, measured when it was imported.
     pub duration_ms: u64,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 /// One medium a release holds, at its position among the release's mediums.
@@ -378,7 +378,7 @@ pub struct DbReleaseMedium {
     pub release_id: String,
     pub position: std::num::NonZeroU16,
     pub medium: bae_types::mediums::ReleaseMedium,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 impl DbReleaseMedium {
@@ -389,7 +389,7 @@ impl DbReleaseMedium {
         release_id: &str,
         position: std::num::NonZeroU16,
         medium: bae_types::mediums::ReleaseMedium,
-        created_at: DateTime<Utc>,
+        created_at: UtcDateTime,
     ) -> Self {
         Self {
             id: ids.new_id().to_string(),
@@ -459,7 +459,7 @@ pub struct DbFile {
     /// Whether coven records the file as stored: its move to the cloud
     /// finished.
     pub stored: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 impl DbFile {
@@ -487,7 +487,7 @@ pub struct NewReleaseFile {
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::source_audio::SourceAudioFile>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 /// Track-level audio format metadata, one row per track: codec/display metadata,
@@ -521,7 +521,7 @@ pub struct DbAudioFormat {
     /// channels. `None` = not measured. Playback caps the track gain at
     /// `1.0/peak`.
     pub track_peak_linear: Option<f64>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -589,7 +589,7 @@ pub struct DbAudioSegment {
     pub start_byte: Option<u64>,
     /// One past this segment's last byte within its backing file.
     pub end_byte: Option<u64>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: UtcDateTime,
 }
 
 impl DbAudioSegment {
@@ -632,7 +632,7 @@ impl DbAlbumArtist {
         album_id: &str,
         artist_id: &str,
         position: u32,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbAlbumArtist {
             id: ids.new_id().to_string(),
@@ -648,7 +648,7 @@ impl DbAlbumArtist {
     /// A test album's one credit: `artist_id` at position 0.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn new_test(album_id: &str, artist_id: &str) -> Self {
-        Self::new(&coven::UuidIds, album_id, artist_id, 0, chrono::Utc::now())
+        Self::new(&coven::UuidIds, album_id, artist_id, 0, time::UtcDateTime::now())
     }
 }
 impl DbTrackArtist {
@@ -659,7 +659,7 @@ impl DbTrackArtist {
         track_id: &str,
         artist_id: &str,
         position: u32,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbTrackArtist {
             id: ids.new_id().to_string(),
@@ -686,7 +686,7 @@ impl DbWorkArtist {
         source: Catalog,
         role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbWorkArtist {
             work_id: work_id.to_string(),
@@ -711,7 +711,7 @@ impl DbWorkPart {
         child_work_id: &str,
         position: i32,
         source: Catalog,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbWorkPart {
             parent_work_id: parent_work_id.to_string(),
@@ -730,7 +730,7 @@ impl DbTrackWork {
         position: i32,
         source: Catalog,
         id: String,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbTrackWork {
             id,
@@ -752,7 +752,7 @@ impl DbReleaseArtistRole {
         role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
         id: String,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbReleaseArtistRole {
             id,
@@ -776,7 +776,7 @@ impl DbTrackArtistRole {
         role: bae_types::credit_role::CreditedAs,
         credit: Option<crate::credits::CreditName>,
         id: String,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbTrackArtistRole {
             id,
@@ -793,7 +793,7 @@ impl DbTrackArtistRole {
 impl DbAlbum {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn new_test(title: &str, ids: &dyn coven::IdSource) -> Self {
-        let now = chrono::Utc::now();
+        let now = time::UtcDateTime::now();
         DbAlbum {
             id: ids.new_id().to_string(),
             title: title.to_string(),
@@ -814,7 +814,7 @@ impl DbRelease {
     #[cfg(any(test, feature = "test-utils"))]
     /// A release fixture with no attached files.
     pub fn new_test(album_id: &str, release_id: &str) -> Self {
-        let now = chrono::Utc::now();
+        let now = time::UtcDateTime::now();
         DbRelease {
             id: release_id.to_string(),
             album_id: album_id.to_string(),
@@ -833,7 +833,7 @@ impl DbTrack {
     /// ([`DbReleaseMedium::new_test`]).
     #[cfg(any(test, feature = "test-utils"))]
     pub fn new_test(release_id: &str, track_id: &str, title: &str, track_number: u32) -> Self {
-        let now = chrono::Utc::now();
+        let now = time::UtcDateTime::now();
         DbTrack {
             id: track_id.to_string(),
             release_id: release_id.to_string(),
@@ -867,7 +867,7 @@ impl DbReleaseMedium {
                 release_id,
                 std::num::NonZeroU16::MIN,
                 bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd)),
-                chrono::Utc::now(),
+                time::UtcDateTime::now(),
             )
         }
     }
@@ -882,7 +882,7 @@ impl NewReleaseFile {
         content_type: ContentType,
         role: crate::ReleaseFileRole,
         id: String,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         NewReleaseFile {
             id,
@@ -903,7 +903,7 @@ impl DbAudioFormat {
         bits_per_sample: Option<NonZeroU32>,
         channels: NonZeroU32,
         id: String,
-        now: DateTime<Utc>,
+        now: UtcDateTime,
     ) -> Self {
         DbAudioFormat {
             id,

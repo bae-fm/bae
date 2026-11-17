@@ -20,7 +20,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     let album = bae_records::DbAlbum {
@@ -28,7 +28,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         title: "Schema Album".into(),
         year: None,
         is_compilation: false,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     let release = bae_records::DbRelease::new_test(
         &album.id,
@@ -45,7 +45,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         bae_util::content_type::ContentType::Flac,
         bae_records::ReleaseFileRole::Other,
         coven::IdSource::new_id(&**sources.ids()).to_string(),
-        chrono::Utc::now(),
+        time::UtcDateTime::now(),
     );
     let original = directory.path().join("track.flac");
     std::fs::write(&original, vec![0; 42]).unwrap();
@@ -89,7 +89,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: None,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();
     let album = bae_records::DbAlbum {
@@ -97,7 +97,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         title: "Album".into(),
         year: None,
         is_compilation: false,
-        created_at: chrono::Utc::now(),
+        created_at: time::UtcDateTime::now(),
     };
     let release = bae_records::DbRelease::new_test(
         &album.id,
@@ -116,7 +116,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         bae_util::content_type::ContentType::Flac,
         bae_records::ReleaseFileRole::Other,
         coven::IdSource::new_id(&**library.ids()).to_string(),
-        chrono::Utc::now(),
+        time::UtcDateTime::now(),
     );
     library.manager().add_external_file_for_test(&file, &source).await.unwrap();
     library.manager().upload_release(&release.id).await.unwrap();

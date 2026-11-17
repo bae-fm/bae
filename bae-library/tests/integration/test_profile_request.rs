@@ -34,7 +34,7 @@ async fn a_profile_asked_for_offline_is_written_once_its_circle_lands() {
     )
     .await;
     // A play before any profile stays on this device.
-    let started = "2026-10-18T16:00:00Z".parse().unwrap();
+    let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:00:00Z").unwrap();
     let mut played = people
         .begin_play(play.parse().unwrap(), &track, None, started)
         .await

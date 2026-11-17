@@ -17,29 +17,28 @@ pub(super) struct BufferedListening {
 struct AudibleTail {
     fmt: Arc<TrackFmt>,
     position: StreamPosition,
-    finishes_at: chrono::DateTime<chrono::Utc>,
+    finishes_at: time::UtcDateTime,
     /// When the play comes to count as played partway through the tail, and
     /// so is due a save: the tail is heard at the rate it plays. `None` when
     /// it already counted, or counts only at the tail's end or not at all.
     /// Cleared once passed.
-    qualifies_at: Option<chrono::DateTime<chrono::Utc>>,
+    qualifies_at: Option<time::UtcDateTime>,
 }
 
 impl AudibleTail {
     /// The next moment this tail makes a save due.
-    fn next_due(&self) -> chrono::DateTime<chrono::Utc> {
+    fn next_due(&self) -> time::UtcDateTime {
         self.qualifies_at.map_or(self.finishes_at, |at| at.min(self.finishes_at))
     }
 }
 
 impl BufferedListening {
-    fn advance(&mut self, now: chrono::DateTime<chrono::Utc>) {
+    fn advance(&mut self, now: time::UtcDateTime) {
         let Some(tail) = &self.tail else {
             return;
         };
         let remaining = if now < tail.finishes_at {
-            (tail.finishes_at - now)
-                .to_std()
+            Duration::try_from(tail.finishes_at - now)
                 .expect("a future audio deadline has positive duration")
         } else {
             Duration::ZERO
@@ -64,7 +63,7 @@ enum ListeningSave {
 
 enum ListeningMeter {
     Local(Option<(Arc<TrackFmt>, Duration)>),
-    Remote { position: StreamPosition, reported_at: chrono::DateTime<chrono::Utc> },
+    Remote { position: StreamPosition, reported_at: time::UtcDateTime },
 }
 
 impl Listening {
@@ -172,14 +171,14 @@ impl PlaybackService {
             let listening = self.listening.take().expect("the finishing play is present");
             let now = self.clock.now();
             let finishes_at = now
-                + chrono::Duration::from_std(latency)
+                + time::Duration::try_from(latency)
                     .expect("receiver latency fits a clock deadline");
             // A tail that starts before the track body is heard slower at
             // first, so this can come early; the save is then due at the end.
             let qualifies_at = listening
                 .play
                 .left_to_qualify()
-                .and_then(|left| chrono::Duration::from_std(left).ok())
+                .and_then(|left| time::Duration::try_from(left).ok())
                 .map(|left| now + left)
                 .filter(|at| *at < finishes_at);
             self.buffered_listening.push(BufferedListening {
@@ -196,7 +195,7 @@ impl PlaybackService {
     /// a finished play whose audio has been heard, or comes to count as played,
     /// and saves; a drained track whose last audio has been heard, and
     /// completes. The run loop waits for it, then checkpoints and publishes.
-    pub(super) fn audible_deadline(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    pub(super) fn audible_deadline(&self) -> Option<time::UtcDateTime> {
         let completing = matches!(
             &self.slot,
             PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Completed)
@@ -313,7 +312,7 @@ impl PlaybackService {
     /// device's movement counts at most as fast as real time, as
     /// [`Self::observe_remote_listening`] counts it. `None` when the device
     /// isn't playing at a known rate, or the play already counts.
-    pub(super) fn remote_qualifies_at(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+    pub(super) fn remote_qualifies_at(&self) -> Option<time::UtcDateTime> {
         let listening = self.listening.as_ref()?;
         let ListeningMeter::Remote { position, reported_at } = listening.meter else {
             return None;
@@ -337,14 +336,14 @@ impl PlaybackService {
             / rate;
         let after = (to_body + left.as_secs_f64() / rate).max(left.as_secs_f64());
         let after = Duration::try_from_secs_f64(after).ok()?;
-        Some(reported_at + chrono::Duration::from_std(after).ok()?)
+        Some(reported_at + time::Duration::try_from(after).ok()?)
     }
 
     pub(super) fn observe_remote_listening(
         &mut self,
         position: StreamPosition,
         playing: bool,
-        now: chrono::DateTime<chrono::Utc>,
+        now: time::UtcDateTime,
     ) {
         let track_start = match &self.slot {
             PlaybackSlot::Active(cur) => cur.prepared.timeline.track_start().as_duration(),
@@ -356,7 +355,7 @@ impl PlaybackService {
         if let ListeningMeter::Remote { position: previous, reported_at } = listening.meter {
             if playing {
                 // A device-side seek must not turn skipped positions into listening.
-                let elapsed = match (now - reported_at).to_std() {
+                let elapsed = match Duration::try_from(now - reported_at) {
                     Ok(elapsed) => elapsed,
                     Err(_) => {
                         warn!("playback clock moved backwards while reading remote listening");

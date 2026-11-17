@@ -9,8 +9,8 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
-use chrono::Utc;
 use tempfile::TempDir;
+use time::UtcDateTime;
 
 #[path = "uploads_tests/failed_moves.rs"]
 mod failed_moves;
@@ -384,7 +384,7 @@ async fn upload_keeps_every_file_in_the_queue() {
     insert_release(manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
     std::fs::create_dir_all(&source_dir).unwrap();
-    let created_at = Utc::now();
+    let created_at = UtcDateTime::now();
     for (id, name, bytes) in [
         ("00000000-0000-4000-8000-000000000001", "Track 10.flac", b"ten".as_slice()),
         ("ffffffff-ffff-4fff-bfff-ffffffffffff", "track 2.flac", b"two".as_slice()),

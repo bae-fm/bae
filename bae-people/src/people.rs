@@ -2,10 +2,10 @@
 //! self-only circle.
 
 use bae_store::{DbError, Store};
-use chrono::{DateTime, Utc};
 use coven::{CovenWrite, SqlReadContext};
 use rusqlite::{params, OptionalExtension, Params, Row};
 use std::sync::Arc;
+use time::UtcDateTime;
 
 mod collections;
 pub use collections::{album_ratings_on, own_track_stars_sql};

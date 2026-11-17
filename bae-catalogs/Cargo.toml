@@ -59,8 +59,9 @@ axum = { workspace = true, features = ["http1", "tokio", "json", "form"] }
 image = { workspace = true, features = ["png"] }
 # The rate limiter's load model draws its request times.
 rand = { workspace = true }
-# The reset times the MusicBrainz rate tests state.
-chrono = { workspace = true }
+# The MusicBrainz rate tests state reset times, and `formatting` writes each
+# test response's HTTP date.
+time = { workspace = true, features = ["formatting"] }
 
 [features]
 default = []

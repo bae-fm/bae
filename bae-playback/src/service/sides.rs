@@ -83,7 +83,7 @@ pub enum PlaybackPauseBoundary {
 /// they all show the same number; core decides when the next side starts.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSideCountdown {
-    pub resumes_at: chrono::DateTime<chrono::Utc>,
+    pub resumes_at: time::UtcDateTime,
 }
 
 /// The side or disc boundary between two tracks.
@@ -100,7 +100,7 @@ pub(super) struct SideBoundary {
 pub(super) struct SidePauseDecision {
     pub(super) track_id: String,
     pub(super) boundary: SideBoundary,
-    pub(super) resumes_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub(super) resumes_at: Option<time::UtcDateTime>,
 }
 
 impl SidePauseDecision {

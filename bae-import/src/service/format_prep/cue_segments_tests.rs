@@ -61,7 +61,7 @@ INDEX 01 00:00:00
         &analysis,
         1,
         "format-2".to_string(),
-        chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
+        time::UtcDateTime::from(coven::Clock::now(&test_clock())),
     )
     .expect("build audio format");
 
@@ -296,10 +296,7 @@ INDEX 01 11:01:30
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
     let clock = coven::FixedClock::new(
-        (chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc))
-        .into(),
+        (bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap()).into(),
     );
     let ids = coven::SequentialIds::new();
 
@@ -369,7 +366,7 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
         &HashMap::from([(path, "file-1".to_string())]),
         &HashMap::new(),
         &coven::SequentialIds::new(),
-        chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
+        time::UtcDateTime::from(coven::Clock::now(&test_clock())),
     )
     .expect("build segments");
 
@@ -686,7 +683,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 )
                 .expect("track numbers count from one"),
                 duration_ms: 180_000,
-                created_at: chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
+                created_at: time::UtcDateTime::from(coven::Clock::now(&test_clock())),
             },
             audio: crate::TrackAudio::CueBacked {
                 cue_pair: Arc::clone(&cue_pair),

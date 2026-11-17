@@ -127,7 +127,7 @@ pub struct StorageRow {
     /// mid-transition, or its move failed.
     pub cancel_only: bool,
     /// When the release was added to the library.
-    pub date_added: chrono::DateTime<chrono::Utc>,
+    pub date_added: time::UtcDateTime,
 }
 
 impl StorageRow {

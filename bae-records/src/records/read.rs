@@ -140,14 +140,13 @@ pub(super) fn credits_of(credits: Vec<CreditJson>) -> Result<Vec<LibraryCredit>,
     credits
         .into_iter()
         .map(|credit| {
-            let created_at = DateTime::parse_from_rfc3339(&credit.created_at)
-                .map_err(|_unparsed| {
+            let created_at =
+                bae_util::timestamp::parse_rfc3339(&credit.created_at).map_err(|_unparsed| {
                     DbError::unreadable(
                         format!("artist {} created_at", credit.id),
                         &credit.created_at,
                     )
-                })?
-                .with_timezone(&Utc);
+                })?;
             let credit_name =
                 joined_credit_name(credit.credit_key, credit.credit_name).map_err(|error| {
                     DbError::unreadable(format!("artist {} credit name", credit.id), error)
@@ -582,17 +581,15 @@ pub(super) fn file_of(columns: FileColumns) -> Result<DbFile, (&'static str, Str
                     ),
                 )
             })?;
-    let created_at = chrono::DateTime::parse_from_rfc3339(&columns.created_at)
-        .map(|created_at| created_at.with_timezone(&chrono::Utc))
-        .map_err(|error| {
-            (
-                "created_at",
-                format!(
-                    "created_at {:?} is not a valid rfc3339 timestamp: {error}",
-                    columns.created_at
-                ),
-            )
-        })?;
+    let created_at = bae_util::timestamp::parse_rfc3339(&columns.created_at).map_err(|error| {
+        (
+            "created_at",
+            format!(
+                "created_at {:?} is not a valid rfc3339 timestamp: {error}",
+                columns.created_at
+            ),
+        )
+    })?;
     Ok(DbFile {
         id: columns.id,
         release_id: columns.release_id,

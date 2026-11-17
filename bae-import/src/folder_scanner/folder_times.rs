@@ -14,6 +14,7 @@
 use super::scan::{ScanCancellation, FOLDERS_AT_ONCE};
 use super::FolderScanError;
 use bae_util::task_failure::{caught_sync, Bug};
+use bae_util::timestamp::StoredTimestamp as _;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -69,7 +70,7 @@ impl FolderTimes {
     /// When the folder arrived, as far as the system says: its date added,
     /// else its creation time. Never its modification time.
     fn arrival(&self) -> Option<FolderDate> {
-        let millis = |at: SystemTime| chrono::DateTime::<chrono::Utc>::from(at).timestamp_millis();
+        let millis = |at: SystemTime| time::UtcDateTime::from(at).unix_timestamp_millis();
         match (self.added, self.created) {
             (Some(added), _) => Some(FolderDate::AddedToDirectory(millis(added))),
             (None, Some(created)) => Some(FolderDate::Created(millis(created))),

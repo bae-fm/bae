@@ -35,6 +35,7 @@
 use super::catalog_match::*;
 use super::*;
 use bae_types::pressing::ReleaseLabel;
+use bae_util::timestamp::StoredTimestamp as _;
 
 /// What a write of a release's pressing decides by, beside the pressing: the
 /// ids it makes rows with, and its time.
@@ -82,7 +83,7 @@ impl PressingParts {
     /// label that may be new and each row of its labels, barcodes and media.
     pub fn new(
         ids: &dyn coven::IdSource,
-        now: chrono::DateTime<chrono::Utc>,
+        now: time::UtcDateTime,
         pressing: &bae_types::pressing::Pressing,
     ) -> Self {
         let mint = |count: usize| (0..count).map(|_| ids.new_id().to_string()).collect::<Vec<_>>();

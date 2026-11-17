@@ -67,7 +67,7 @@ async fn library_album(
     record: ReleaseRecord,
 ) -> bae_records::DbAlbum {
     let records = bae_records::test_fixtures::test_records(db);
-    let created_at = chrono::DateTime::parse_from_rfc3339(created_at).unwrap().to_utc();
+    let created_at = bae_util::timestamp::parse_rfc3339(created_at).unwrap();
     let album = bae_records::DbAlbum {
         id: bae_util::test_ids::test_uuid(title),
         title: title.to_string(),
