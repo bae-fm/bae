@@ -4,7 +4,6 @@
 //! plays, and one summary of its audio.
 
 use super::*;
-use crate::cover_art::CoverChoice;
 use crate::folder_scanner::FileVersion;
 use crate::{PaneFile, PaneFileRole, PaneFiles};
 use bae_records::source_audio::{source_audio_summary_sql, SourceAudioSummary};
@@ -75,8 +74,7 @@ entries AS (
                'bits_per_sample', f.audio_bits_per_sample, 'bitrate_kbps', f.audio_bitrate_kbps,
                'channels', f.audio_channels,
                'sheet_tracks', CASE WHEN f.role = 'track_sheet'
-                                    THEN COALESCE(sheet_tracks.count, 0) END,
-               'cover', f.role = 'artwork' AND bae_supported_cover(f.relative_path)) AS json
+                                    THEN COALESCE(sheet_tracks.count, 0) END) AS json
     FROM f LEFT JOIN sheet_tracks ON sheet_tracks.relative_path = f.relative_path
 )
 SELECT json_object(
@@ -130,7 +128,6 @@ struct FileJson {
     bitrate_kbps: Option<i64>,
     channels: Option<i64>,
     sheet_tracks: Option<u32>,
-    cover: i64,
 }
 
 /// The display name of the codec a stored content type names.
@@ -170,16 +167,7 @@ impl FileJson {
                     DbError::unreadable(format!("the tracks of sheet {}", self.name), None::<u32>)
                 })?,
             },
-            "artwork" => PaneFileRole::Artwork {
-                choice: (self.cover != 0).then(|| CoverChoice::Local {
-                    file_id: self.name.clone(),
-                    file: FileVersion {
-                        path: self.path.clone(),
-                        size: self.size,
-                        modified_at_ns: self.modified_at_ns,
-                    },
-                }),
-            },
+            "artwork" => PaneFileRole::Artwork,
             "damaged_image" => PaneFileRole::DamagedImage,
             "document" => PaneFileRole::Document,
             "other" => PaneFileRole::Other,

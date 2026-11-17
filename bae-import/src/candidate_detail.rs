@@ -144,10 +144,8 @@ pub enum PaneFileRole {
     TrackSheet {
         track_count: u32,
     },
-    /// An image, with the cover it makes when a cover picker can show it.
-    Artwork {
-        choice: Option<CoverChoice>,
-    },
+    /// An image.
+    Artwork,
     DamagedImage,
     Document,
     Other,

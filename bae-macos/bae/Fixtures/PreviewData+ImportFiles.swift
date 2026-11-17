@@ -44,15 +44,10 @@ extension PreviewData {
         size: UInt64,
         dirPrefix: String? = nil
     ) -> BridgeCandidateFile {
-        let file = previewArtFile(name)
-        let choice = BridgeCoverChoice(
-            selection: .releaseImage(fileId: name),
-            image: .local(file: file)
-        )
-        return previewFile(
+        previewFile(
             name: name,
             size: size,
-            role: .artwork(choice: choice),
+            role: .artwork,
             dirPrefix: dirPrefix
         )
     }

@@ -200,18 +200,11 @@ struct CoverPickerTests {
         #expect(
             remoteItem.sourceLabel == bridgeCatalogName(catalog: .musicBrainz)
         )
-        let coverFile = try #require(
-            PreviewData.bridgeCandidateFiles.coverFiles.first
-        )
-        guard case .artwork(let file?) = coverFile.role else {
-            Issue.record("a cover file carries its cover choice")
-            return
-        }
         let fileItem = CoverItem(
             gallery: BridgeGalleryCover(
                 key: .file(fileId: "front.png"),
-                selection: file.selection,
-                image: file.image,
+                selection: .releaseImage(fileId: "front.png"),
+                image: .local(file: PreviewData.previewArtFile("front.png")),
                 label: .file(name: "front.png")
             )
         )

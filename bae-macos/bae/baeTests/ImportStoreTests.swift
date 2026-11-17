@@ -272,13 +272,10 @@ struct ImportStoreSidebarCoverTests {
         let path = "/w/subject"
         let key = Data(path.utf8)
         let remoteCover = try #require(PreviewData.remoteCovers.last)
-        let localArtwork = try #require(
-            PreviewData.bridgeCandidateFiles.coverFiles.last
+        let localChoice = BridgeCoverChoice(
+            selection: .releaseImage(fileId: "cover.jpg"),
+            image: .local(file: PreviewData.previewArtFile("cover.jpg"))
         )
-        guard case .artwork(let localChoice?) = localArtwork.role else {
-            Issue.record("a cover file carries its cover choice")
-            return
-        }
         let choices = [remoteCover.coverChoice, localChoice]
         for choice in choices {
             let row = identifiedRow(

@@ -19,9 +19,7 @@ impl BridgeCandidateFile {
         let role = match entry.role {
             PaneFileRole::Audio => BridgeFileRole::Audio,
             PaneFileRole::TrackSheet { track_count } => BridgeFileRole::TrackSheet { track_count },
-            PaneFileRole::Artwork { choice } => {
-                BridgeFileRole::Artwork { choice: choice.map(BridgeCoverChoice::from_core) }
-            }
+            PaneFileRole::Artwork => BridgeFileRole::Artwork,
             PaneFileRole::DamagedImage => BridgeFileRole::DamagedImage,
             PaneFileRole::Document => BridgeFileRole::Document,
             PaneFileRole::Other => BridgeFileRole::Other,

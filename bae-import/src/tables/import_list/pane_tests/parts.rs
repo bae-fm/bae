@@ -184,25 +184,14 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
         files.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
         vec!["booklet.bmp", "cover.jpg", "drawing.svg", "scan.webp"]
     );
-    // Every image keeps its role; only the ones a picker can show offer a
-    // cover.
-    let covers = files
+    // Every image keeps its role, whether or not a picker can show it.
+    let images = files
         .files
         .iter()
-        .filter_map(|file| match &file.role {
-            crate::PaneFileRole::Artwork { choice } => Some((file.name.as_str(), choice.is_some())),
-            _ => None,
-        })
+        .filter(|file| file.role == crate::PaneFileRole::Artwork)
+        .map(|file| file.name.as_str())
         .collect::<Vec<_>>();
-    assert_eq!(
-        covers,
-        vec![
-            ("booklet.bmp", false),
-            ("cover.jpg", true),
-            ("drawing.svg", false),
-            ("scan.webp", true)
-        ]
-    );
+    assert_eq!(images, vec!["booklet.bmp", "cover.jpg", "drawing.svg", "scan.webp"]);
     assert_eq!(files.files.len(), 7);
 }
 

@@ -124,10 +124,7 @@ pub enum BridgeFileRole {
         /// Playable tracks the sheet carves.
         track_count: u32,
     },
-    Artwork {
-        /// Absent for previewable artwork the cover decoder does not support.
-        choice: Option<BridgeCoverChoice>,
-    },
+    Artwork,
     /// Named as an image, but its bytes do not decode as one: carried with
     /// the release, never artwork.
     DamagedImage,
