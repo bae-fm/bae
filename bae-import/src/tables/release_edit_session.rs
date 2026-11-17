@@ -5,7 +5,7 @@
 //! Each command an editor sends is one write to its session's rows, and the
 //! write refuses a command to a session whose row is gone
 //! ([`ReleaseEditSessionRefusal::Closed`]). The editor reads its draft from
-//! the rows ([`ImportTables::load_release_edit_draft`]). A save writes the
+//! the rows ([`ImportTables::subscribe_release_edit_draft`]). A save writes the
 //! release and then the session again from the release as saved, in one
 //! write; closing the editor deletes its session; no session outlives the
 //! process, so bae empties the tables as the library opens. Deleting the
@@ -944,18 +944,6 @@ impl ImportTables {
         session: i64,
     ) -> Result<Option<StoredReleaseEdit>, DbError> {
         self.store.read(move |sql| load_release_edit_session_on(&sql, session)).await
-    }
-
-    /// The session `session`'s draft as its editor shows it; `None` once it
-    /// is closed.
-    pub async fn load_release_edit_draft(
-        &self,
-        session: i64,
-    ) -> Result<Option<ReleaseEditDraft>, DbError> {
-        self.store
-            .read(move |sql| release_edit_draft_rows_on(&sql, session))
-            .process(|rows| rows.map(ReleaseEditDraftRows::draft).transpose())
-            .await
     }
 
     /// The session `session`'s draft, live: it reruns after each write that

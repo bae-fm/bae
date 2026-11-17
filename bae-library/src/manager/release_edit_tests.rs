@@ -576,7 +576,7 @@ async fn a_session_holds_each_change_until_its_save() {
     insert_release(manager, &release).await;
     insert_editable_tracks(manager, &release.id, 2).await;
     let session = manager.open_release_edit(&release.id).await.unwrap();
-    let opened = manager.release_edit_draft(&session).await.unwrap();
+    let opened = draft_now(manager, &session).await;
     assert!(!opened.changed, "nothing changed yet");
     let library_titles = |manager: &LibraryManager| {
         let release_id = release.id.clone();
@@ -601,7 +601,7 @@ async fn a_session_holds_each_change_until_its_save() {
     assert_eq!(draft.edit.tracks[1].title, "Renamed Track");
     assert!(draft.changed);
     assert_eq!(library_titles(manager).await, stored, "the library holds no change yet");
-    assert_eq!(manager.release_edit_draft(&session).await.unwrap().edit, draft.edit);
+    assert_eq!(draft_now(manager, &session).await.edit, draft.edit);
 
     let blank = draft_after(
         manager,
@@ -618,10 +618,10 @@ async fn a_session_holds_each_change_until_its_save() {
     assert_eq!(blank.invalid, Some(bae_import::EditValidationError::EmptyAlbumTitle));
     assert!(manager.save_release_edit(&session).await.is_err(), "a blank title can't be saved");
     title_session(manager, &session, "Album Title").await;
-    assert_eq!(manager.release_edit_draft(&session).await.unwrap().invalid, None);
+    assert_eq!(draft_now(manager, &session).await.invalid, None);
 
     let reopened = manager.open_release_edit(&release.id).await.unwrap();
-    let reopened = manager.release_edit_draft(&reopened).await.unwrap();
+    let reopened = draft_now(manager, &reopened).await;
     assert_eq!(reopened.edit, opened.edit, "opening again drops what the session held");
     assert!(!reopened.changed);
 
@@ -913,7 +913,7 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     let seed = opened(manager, &session).await;
 
     assert_eq!(
-        manager.release_edit_draft(&session).await.unwrap().cover.map(|cover| cover.id),
+        draft_now(manager, &session).await.cover.map(|cover| cover.id),
         Some(release.id.clone())
     );
     let sides = &seed.display.sides;
@@ -948,7 +948,20 @@ pub(super) async fn draft_after(
     command: impl std::future::Future<Output = Result<(), LibraryError>>,
 ) -> bae_import::ReleaseEditDraft {
     command.await.unwrap();
-    manager.release_edit_draft(session).await.unwrap()
+    draft_now(manager, session).await
+}
+
+/// `session`'s draft as its live query reads it now.
+pub(super) async fn draft_now(
+    manager: &LibraryManager,
+    session: &ReleaseEdit,
+) -> bae_import::ReleaseEditDraft {
+    manager
+        .subscribe_release_edit_draft(session)
+        .next()
+        .await
+        .expect("the draft reads")
+        .expect("the session is open")
 }
 
 /// What `session` opened on, as its rows hold it.
@@ -957,7 +970,7 @@ pub(super) async fn opened(
     session: &ReleaseEdit,
 ) -> bae_import::ReleaseEditSeed {
     bae_import::tables::ImportTables::new(manager.store.clone())
-        .load_release_edit_session(session.session())
+        .load_release_edit_session(session.session)
         .await
         .unwrap()
         .expect("the session is open")

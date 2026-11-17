@@ -61,15 +61,6 @@ impl Records {
         self.store.read(move |sql| find_album_by_id_on(&sql, &album_id)).await
     }
 
-    /// Build the credit line of the album `album_id` from its credits.
-    pub async fn album_credit_line(
-        &self,
-        album_id: &str,
-    ) -> Result<bae_types::credits::CreditLine, DbError> {
-        let album_id = album_id.to_string();
-        self.store.read(move |sql| album_credit_line_on(&sql, &album_id)).await
-    }
-
     /// Follow `DbRelease.album_id` → `DbAlbum`. FK navigation — the row must
     /// exist. See the method conventions above.
     pub async fn get_album_for_release(&self, release: &DbRelease) -> Result<DbAlbum, DbError> {

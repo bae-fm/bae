@@ -826,12 +826,10 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
         ..bae_catalogs::credits::ArtistCredit::named("Artist Name")
     };
     for device in [devices.a(), devices.b()] {
-        let resolved = crate::test_fixtures::test_records(device)
-            .resolve_artist_credits(std::slice::from_ref(&read))
-            .await
-            .unwrap();
-        let crate::CreditResolution::Library { artist } = &resolved[0].resolution else {
-            panic!("the id names one artist, got {:?}", resolved[0].resolution);
+        let read = read.clone();
+        let resolution = device.read(move |sql| resolve_credit_on(&sql, &read)).await.unwrap();
+        let crate::CreditResolution::Library { artist } = &resolution else {
+            panic!("the id names one artist, got {resolution:?}");
         };
         assert_eq!(artist.artist_id, "artist-a");
     }

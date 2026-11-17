@@ -1,7 +1,7 @@
 //! A release edit session's rows: what each change writes, what a save and
 //! Cancel write again, and when the rows go.
 
-use super::tests::{draft_after, insert_editable_tracks};
+use super::tests::{draft_after, draft_now, insert_editable_tracks};
 use super::*;
 use crate::manager::tests::*;
 use bae_import::tables::ImportTables;
@@ -44,7 +44,7 @@ async fn a_session_holds_its_changes_in_its_rows() {
     manager.edit_release_edit_field(&session, album_title("Edited Title")).await.unwrap();
 
     let stored = ImportTables::new(manager.store.clone())
-        .load_release_edit_session(session.session())
+        .load_release_edit_session(session.session)
         .await
         .unwrap()
         .expect("the session is open");
@@ -59,7 +59,7 @@ async fn closing_a_session_deletes_its_rows() {
     let manager = test.library.manager();
     let release_id = release_of_two_tracks(manager).await;
     let session = manager.open_release_edit(&release_id).await.unwrap();
-    let id = session.session();
+    let id = session.session;
 
     drop(session);
 
@@ -78,8 +78,9 @@ async fn opening_the_library_deletes_sessions_left_behind() {
         .await
         .unwrap();
 
-    assert!(
-        manager.release_edit_draft(&session).await.is_err(),
+    assert_eq!(
+        manager.subscribe_release_edit_draft(&session).next().await.expect("the draft reads"),
+        None,
         "the library opens with no session"
     );
 }
@@ -93,10 +94,10 @@ async fn deleting_the_release_deletes_its_sessions() {
 
     manager.delete_release(&release_id).await.unwrap();
 
-    assert!(matches!(
-        manager.release_edit_draft(&session).await,
-        Err(LibraryError::ReleaseEditClosed { .. })
-    ));
+    assert_eq!(
+        manager.subscribe_release_edit_draft(&session).next().await.expect("the draft reads"),
+        None
+    );
 }
 
 #[tokio::test]
@@ -116,7 +117,7 @@ async fn a_save_reopens_the_session_on_what_it_saved_in_its_write() {
 
     manager.save_release_edit(&session).await.unwrap();
 
-    let draft = manager.release_edit_draft(&session).await.unwrap();
+    let draft = draft_now(manager, &session).await;
     assert_eq!(draft.edit.album_title, "Saved Title");
     assert!(!draft.changed, "the session opened again on what it saved");
     manager.edit_release_edit_field(&session, album_title("Saved Again")).await.unwrap();
@@ -129,7 +130,7 @@ async fn cancel_reopens_the_session_on_the_release_as_it_is() {
     let manager = test.library.manager();
     let release_id = release_of_two_tracks(manager).await;
     let session = manager.open_release_edit(&release_id).await.unwrap();
-    let opened = manager.release_edit_draft(&session).await.unwrap();
+    let opened = draft_now(manager, &session).await;
     manager.edit_release_edit_field(&session, album_title("Discarded")).await.unwrap();
     let other = manager.open_release_edit(&release_id).await.unwrap();
     manager.edit_release_edit_field(&other, album_title("Written Elsewhere")).await.unwrap();
@@ -156,7 +157,7 @@ async fn a_change_to_a_closed_session_is_refused() {
     let release_id = release_of_two_tracks(manager).await;
     let session = manager.open_release_edit(&release_id).await.unwrap();
     ImportTables::new(manager.store.clone())
-        .close_release_edit_session(session.session())
+        .close_release_edit_session(session.session)
         .await
         .unwrap();
 

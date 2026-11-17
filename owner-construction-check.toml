@@ -1837,8 +1837,6 @@ frozen = [
     { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "filter", count = 2, finding = "`resolve_by_name_on` filters with `filter` (found by the check)" },
     { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "length-branch", count = 3, finding = "`resolve_by_name_on` branches on how many rows there are, and on whether any name matched with `is_empty` (found by the check)" },
     { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "pick", count = 1, finding = "`resolve_by_name_on` picks with `any` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_credit_on", shape = "aggregate", count = 1, finding = "branches on how many artists a credited name matched (`len`)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_credits_with", shape = "pick", count = 1, finding = "`resolve_credits_with` picks with `any` (found by the check)" },
     { path = "bae-records/src/records/artist_resolution.rs", item = "stage_artist_update", shape = "pick", count = 1, finding = "`stage_artist_update` picks with `find` (found by the check)" },
     { path = "bae-records/src/records/catalog_match.rs", item = "exact_holder", shape = "pick", count = 2, finding = "`exact_holder` picks with `find` (found by the check)" },
     { path = "bae-records/src/records/catalog_match.rs", item = "exact_holder", shape = "sort", count = 1, finding = "`exact_holder` sorts with `sort_by` (found by the check)" },

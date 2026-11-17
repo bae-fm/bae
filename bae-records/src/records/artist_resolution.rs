@@ -76,15 +76,6 @@ impl Records {
             })
             .await
     }
-
-    /// What the library holds for each of `credits` as it stands now.
-    pub async fn resolve_artist_credits(
-        &self,
-        credits: &[bae_catalogs::credits::ArtistCredit],
-    ) -> Result<Vec<crate::ResolvedCredit>, DbError> {
-        let credits = credits.to_vec();
-        self.store.read(move |sql| resolve_credits_on(&sql, &credits)).await
-    }
 }
 
 /// The resolved artist of every credit an import or edit writes, in input
@@ -264,9 +255,9 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 }
 
 /// What the library holds for one credit as it stands now: the rule every
-/// write commits by, applied to the credit alone. What the import pane shows
-/// beside a credit, read inside its live query so an artist another import
-/// commits reads it again.
+/// write commits by, applied to the credit alone. The tests hold the import
+/// pane's resolution statement to it.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn resolve_credit_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &bae_catalogs::credits::ArtistCredit,
@@ -302,15 +293,9 @@ pub fn resolve_credit_on<Q: coven::SqlRead>(
     })
 }
 
-/// Every distinct credit of `assignments`, resolved as [`resolve_credit_on`]
-/// resolves it, in the order the credits first appear.
-pub(crate) fn resolve_credits_on<'a, Q: coven::SqlRead>(
-    sql: &Q,
-    credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
-) -> Result<Vec<crate::ResolvedCredit>, DbError> {
-    resolve_credits_with(credits, |credit| resolve_credit_on(sql, credit))
-}
-
+/// Every distinct credit of `credits`, each resolved by `resolve`, in the
+/// order the credits first appear.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn resolve_credits_with<'a>(
     credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
     mut resolve: impl FnMut(

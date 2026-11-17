@@ -190,9 +190,9 @@ pub enum BridgeArtistsStanding {
     SomeToChoose { count: u32 },
 }
 
-/// How `assignment` stands to the library, read from `resolutions` — the
-/// credits' answers the draft's read, or `resolve_artist_credits`, returned.
-/// `None` for a credit `resolutions` has no answer for yet.
+/// How `assignment` stands to the library, read from `resolutions`: the
+/// answers the draft's read returned for its credits. `None` for a credit
+/// `resolutions` has no answer for yet.
 #[cfg(desktop)]
 #[uniffi::export]
 pub fn bridge_artist_standing(

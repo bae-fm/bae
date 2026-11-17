@@ -40,11 +40,6 @@ impl ReleaseEdit {
     pub fn release_id(&self) -> &str {
         &self.release_id
     }
-
-    /// The session's row id.
-    pub fn session(&self) -> i64 {
-        self.session
-    }
 }
 
 impl Drop for ReleaseEdit {
@@ -94,19 +89,6 @@ impl LibraryManager {
         session: &ReleaseEdit,
     ) -> bae_store::live_query::LiveValues<Option<bae_import::ReleaseEditDraft>> {
         self.values_until_closed(session.tables.subscribe_release_edit_draft(session.session))
-    }
-
-    /// The session's draft as its editor shows it now, read once.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn release_edit_draft(
-        &self,
-        session: &ReleaseEdit,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
-        session
-            .tables
-            .load_release_edit_draft(session.session)
-            .await?
-            .ok_or(LibraryError::ReleaseEditClosed { release_id: session.release_id.clone() })
     }
 
     /// Write one change of the form as `change` makes it.
