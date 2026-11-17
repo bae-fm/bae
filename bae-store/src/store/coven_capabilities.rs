@@ -68,6 +68,13 @@ impl Store {
         Ok(self.reported(self.inner.handle.release_memory().await)?)
     }
 
+    /// coven's sync state now, then again after each change to it.
+    pub fn subscribe_coven_sync_status(
+        &self,
+    ) -> coven::LiveQuery<coven::SyncStatus, coven::CovenError> {
+        self.inner.handle.subscribe_sync_status()
+    }
+
     /// coven's sync state followed beside the read `rows` of the library's
     /// tables, each pair made into one value by `make`, the rows read after
     /// the state they are put with.

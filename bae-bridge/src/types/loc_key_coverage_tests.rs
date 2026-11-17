@@ -68,7 +68,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.cast.ended",
     // The recovery screens' reset warning (`bridge_recovery_lines`).
     "core.sync.reset_device.warning",
-    // The notice after a reset the app ran at once (`bridge_copy_reset_notice`).
+    // The notice after a copy reset core decided (`BridgeCopyReset::from_core`).
     "core.sync.copy_reset.notice",
     "core.sync.copy_reset.edits",
     "core.sync.copy_reset.files",

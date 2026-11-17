@@ -35,6 +35,23 @@ impl LibraryManager {
             .await?)
     }
 
+    /// Returns once coven's sync state says another installation uses this
+    /// device's id and this copy is the one behind, with the edits and files
+    /// this copy had not sent: core then resets the copy at once, without
+    /// asking. A failed read of the state fails the wait. Fails as cancelled
+    /// when the library closes first.
+    pub async fn copy_behind(
+        &self,
+    ) -> Result<coven::UnsentWork, bae_store::live_query::LiveQueryError> {
+        let states = self.values_until_closed(self.store.subscribe_coven_sync_status());
+        loop {
+            let status = states.next().await?;
+            if let Some(unsent) = bae_sync_status::copy_behind(&status.state) {
+                return Ok(unsent);
+            }
+        }
+    }
+
     /// Stop the sync loop: returns once no pass runs.
     pub async fn stop_sync(&self) -> Result<(), LibraryError> {
         Ok(self.store.stop_sync().await?)

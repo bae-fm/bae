@@ -450,6 +450,15 @@ impl AppServices {
     }
     delegate_sync!(store, trigger_sync => sync_now() -> ());
     delegate_lib!(store, release_memory => release_memory() -> ());
+    /// Returns once coven's sync state says another installation uses this
+    /// device's id and this copy is the one behind, with the edits and files
+    /// this copy had not sent. Fails as cancelled when the library closes
+    /// first.
+    pub async fn copy_behind(
+        &self,
+    ) -> Result<coven::UnsentWork, bae_store::live_query::LiveQueryError> {
+        self.inner.manager.copy_behind().await
+    }
     delegate_async!(manager, retry_now => retry_now() -> Result<impl std::future::Future<Output = bae_sync_status::SyncRetryOutcome> + Send + 'static, bae_library::LibraryError>);
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), bae_library::LibraryError>);
     delegate_sync!(store, cancel_storage_setup => cancel_storage_setup() -> coven::SetupCancellation);

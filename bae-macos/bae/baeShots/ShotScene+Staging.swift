@@ -110,8 +110,7 @@ struct SettingsWindowShot<Page: View>: View {
                         shown: shown,
                         pending: pending,
                         setupRunning: false,
-                        undoneSetup: undoneSetup,
-                        copyBehind: nil
+                        undoneSetup: undoneSetup
                     )
                 )
             )

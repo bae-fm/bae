@@ -837,6 +837,7 @@ OpenCalls = "LibrarySessions"
     "TwoDevices::settle",
     "TwoDevices::converge",
     "TestDevice::reopen_with",
+    "TestDevice::open_again",
     "device",
 ]
 # A test's library: it opens the library as the app's opening step does, and

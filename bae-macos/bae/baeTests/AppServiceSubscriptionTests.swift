@@ -98,8 +98,7 @@ struct SyncStatusSubscriptionTests {
             shown: .fixtureSynced,
             pending: [],
             setupRunning: false,
-            undoneSetup: nil,
-            copyBehind: nil
+            undoneSetup: nil
         )
         handle.deliverSyncStatus(synced)
         try await Wait.until { store.shown?.status == .synced }
@@ -143,8 +142,7 @@ struct StorageSetupSubscriptionTests {
                     ) : .fixtureSynced,
                 pending: [],
                 setupRunning: running,
-                undoneSetup: nil,
-                copyBehind: nil
+                undoneSetup: nil
             )
         }
 

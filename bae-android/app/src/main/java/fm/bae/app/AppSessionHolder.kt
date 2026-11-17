@@ -37,6 +37,7 @@ import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
 import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeCopyReset
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeException
@@ -53,9 +54,7 @@ import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeSetupProgress
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
-import uniffi.bae_bridge.BridgeUnsentWork
 import uniffi.bae_bridge.OpenedLibrary
-import uniffi.bae_bridge.bridgeCopyResetNotice
 import uniffi.bae_bridge.bridgeRecoveryLines
 import uniffi.bae_bridge.initApp
 
@@ -494,12 +493,14 @@ object AppSessionHolder {
      * Open what a restore, a join or a device reset produced, on the handle it
      * carries: the store is already open, so it is never reopened by id. A
      * failure after the store was published opens it all the same and shows
-     * the failure. An open that was cancelled shows nothing and stays on the
+     * the failure. [notice], when there is one, shows over the opened
+     * library. An open that was cancelled shows nothing and stays on the
      * library already open, or onboarding when none is.
      */
     suspend fun openBootstrapped(
         context: Context,
         result: BridgeBootstrapResult,
+        notice: DisplayError?,
         onScreen: (AppScreen) -> Unit,
     ) {
         val (library, failure) =
@@ -534,6 +535,7 @@ object AppSessionHolder {
                 return
             }
         refreshLibraries(app.host, context)
+        notice?.let { session.messages.show(it) }
         session.messages.show(failure?.let(context::displayError))
         onScreen(AppScreen.LibraryOpen(session))
     }
@@ -582,58 +584,54 @@ object AppSessionHolder {
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
-    ) = resetDevice(context, libraryId, reset, onScreen) { AppScreen.ResetOffered(libraryId, it) }
+    ) = resetDevice(context, libraryId, reset, onScreen, notice = null)
 
     /**
-     * Another installation uses this device's id and this copy is the one behind: reset [libraryId] at once, without
-     * the warning, closing its open session first. Once the library opens again, a notice names the [unsent] edits
-     * and files this copy had not sent and did not keep, when there were any. A failed reset shows the screen that
-     * offers it, with why.
+     * Core decided [reset]: another installation uses this device's id and this copy is the one behind. Reset
+     * [libraryId] at once, without the warning, closing its open session first. Once the library opens again, the
+     * reset's notice names the edits and files this copy had not sent and did not keep, when there were any. A failed
+     * reset shows the screen that offers it, with why.
      */
-    suspend fun resetCopyBehind(
+    private suspend fun resetCopyBehind(
         context: Context,
         libraryId: String,
-        unsent: BridgeUnsentWork,
+        reset: BridgeCopyReset,
         onScreen: (AppScreen) -> Unit,
     ) {
-        val parts = bridgeCopyResetNotice(unsent)
+        logger.info("another installation uses this device's id; resetting $libraryId at once")
         val notice =
-            if (parts.counts.isEmpty()) {
-                null
-            } else {
-                (listOf(context.coreString(parts.introKey)) + parts.counts.map(context::coreString)).joinToString(" ")
+            reset.notice?.let { notice ->
+                val text =
+                    (listOf(context.coreString(notice.introKey)) + notice.counts.map(context::coreString))
+                        .joinToString(" ")
+                DisplayError(text, detail = null, offersRetry = false)
             }
-        resetDevice(context, libraryId, prepareDeviceReset(context, libraryId).reset, onScreen) {
-            AppScreen.ResetOffered(libraryId, it)
-        }
-        // A reset that opened the library leaves its session current; one that failed leaves none.
-        notice?.let { text ->
-            current
-                ?.takeIf { it.libraryId == libraryId }
-                ?.messages
-                ?.show(DisplayError(text, detail = null, offersRetry = false))
-        }
+        val prepared = prepareDeviceReset(context, libraryId).reset
+        resetDevice(context, libraryId, prepared, onScreen, notice)
     }
 
     /**
-     * Reset from cloud after the person accepted [reset]'s warning: the
-     * open session of that library closes first, then coven loads the
-     * library from storage again under a new device id. A failed reset shows
-     * [failed] with why, the screen it was started from; a cancelled one
-     * shows that screen with nothing.
+     * Reset from cloud after the person accepted [reset]'s warning, or
+     * without one when core decided it: the open session of that library
+     * closes first, then coven loads the library from storage again under a
+     * new device id, and [notice], when there is one, shows over it. A
+     * failed reset shows the screen that offers it, with why; a cancelled
+     * one shows that screen with nothing.
      */
-    suspend fun resetDevice(
+    private suspend fun resetDevice(
         context: Context,
         libraryId: String,
         reset: BridgeDeviceReset,
         onScreen: (AppScreen) -> Unit,
-        failed: (ScreenFailure?) -> AppScreen,
+        notice: DisplayError?,
     ) {
         current?.takeIf { it.libraryId == libraryId }?.let { open ->
             current = null
             closeShowing(open, context, onScreen)
         }
-        resetShowing(context, libraryId, onScreen, failed) { setup -> reset.confirm(setup) }
+        val failed = { failure: ScreenFailure? -> AppScreen.ResetOffered(libraryId, failure) }
+        val result = resetShowing(context, libraryId, onScreen, failed) { setup -> reset.confirm(setup) } ?: return
+        openBootstrapped(context, result, notice, onScreen)
     }
 
     /**
@@ -648,17 +646,21 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
     ) {
         val host = (context.applicationContext as BaeApp).host
-        resetShowing(context, libraryId, onScreen, { AppScreen.ResetUnfinished(libraryId, it) }) { setup ->
-            // A reset under way goes on whatever is cancelled, so nothing
-            // cancels this.
-            host.resumeReplacement(libraryId, BridgeReplacedBy.RESET, setup, BootstrapCancellation())
-        }
+        val failed = { failure: ScreenFailure? -> AppScreen.ResetUnfinished(libraryId, failure) }
+        val result =
+            resetShowing(context, libraryId, onScreen, failed) { setup ->
+                // A reset under way goes on whatever is cancelled, so nothing
+                // cancels this.
+                host.resumeReplacement(libraryId, BridgeReplacedBy.RESET, setup, BootstrapCancellation())
+            } ?: return
+        openBootstrapped(context, result, notice = null, onScreen)
     }
 
     /**
      * Run [reset] on [libraryId], showing where it stands as
-     * [AppScreen.Resetting], then open what it produced. A failed reset
-     * shows [failed] with why; a cancelled one shows it with nothing.
+     * [AppScreen.Resetting], and return what it produced for the caller to
+     * open. A failed reset shows [failed] with why and returns null; a
+     * cancelled one shows it with nothing.
      */
     private suspend fun resetShowing(
         context: Context,
@@ -666,35 +668,33 @@ object AppSessionHolder {
         onScreen: (AppScreen) -> Unit,
         failed: (ScreenFailure?) -> AppScreen,
         reset: suspend (BridgeLibrarySetup) -> BridgeBootstrapResult,
-    ) {
+    ): BridgeBootstrapResult? {
         val app = context.applicationContext as BaeApp
         onScreen(AppScreen.Resetting(status = null, steps = null))
-        val result =
-            try {
-                LibrarySetupStatus.of(app.host, appScope, app.bugs).use { setup ->
-                    onScreen(AppScreen.Resetting(status = null, steps = setup.steps))
-                    coroutineScope {
-                        val following =
-                            launch {
-                                setup.followStates { state ->
-                                    onScreen(AppScreen.Resetting(state.status, setup.steps))
-                                }
+        return try {
+            LibrarySetupStatus.of(app.host, appScope, app.bugs).use { setup ->
+                onScreen(AppScreen.Resetting(status = null, steps = setup.steps))
+                coroutineScope {
+                    val following =
+                        launch {
+                            setup.followStates { state ->
+                                onScreen(AppScreen.Resetting(state.status, setup.steps))
                             }
-                        try {
-                            reset(setup.setup)
-                        } finally {
-                            following.cancel()
                         }
+                    try {
+                        reset(setup.setup)
+                    } finally {
+                        following.cancel()
                     }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: BridgeException) {
-                logger.error("resetting the device for $libraryId failed", e)
-                onScreen(failed(context.displayError(e)?.let { ScreenFailure(FailedStep.DEVICE_RESET, it) }))
-                return
             }
-        openBootstrapped(context, result, onScreen)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: BridgeException) {
+            logger.error("resetting the device for $libraryId failed", e)
+            onScreen(failed(context.displayError(e)?.let { ScreenFailure(FailedStep.DEVICE_RESET, it) }))
+            null
+        }
     }
 
     /**
@@ -905,8 +905,37 @@ object AppSessionHolder {
             )
         current = session
         session.wireUp(sessionScope)
+        waitForCopyReset(sessionScope, libraryId, handle, appContext, onScreen)
         diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
         return session
+    }
+
+    /**
+     * Wait, in [sessionScope], for core to decide a copy-behind reset of [libraryId], which it does at most once for
+     * the open library [handle], and run it in the app's scope: the reset closes the session, which ends
+     * [sessionScope]. A library that closes first ends the wait with nothing to show; any other failure of the wait
+     * reaches [sessionScope]'s handler, which reports it as a bug.
+     */
+    private fun waitForCopyReset(
+        sessionScope: CoroutineScope,
+        libraryId: String,
+        handle: AppHandle,
+        context: Context,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        sessionScope.launch {
+            val reset =
+                try {
+                    handle.copyReset()
+                } catch (e: BridgeException.Cancelled) {
+                    logger.debug("the wait for a copy reset of $libraryId ended with its library", e)
+                    return@launch
+                } catch (e: BridgeException.ShuttingDown) {
+                    logger.debug("the wait for a copy reset of $libraryId ended with the process", e)
+                    return@launch
+                }
+            appScope.launch { resetCopyBehind(context, libraryId, reset, onScreen) }
+        }
     }
 
     private fun buildStores(

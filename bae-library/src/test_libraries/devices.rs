@@ -295,6 +295,45 @@ impl TestDevice {
         self.library = RunningLibrary::new(self.app.clone(), handle, &self.sources).await;
         self.store().start_sync().await.unwrap();
     }
+
+    /// Leave the device holding a copy of its store that is behind storage,
+    /// as restoring a backup after the device uploaded more does: close the
+    /// library and keep a copy of its store's folder, open it again and run
+    /// `newer`, wait until the device has sent every write, then close it,
+    /// put the kept copy back and open that. Sync stays stopped until the
+    /// test starts it.
+    pub async fn restore_backup_behind(&mut self, newer: impl AsyncFnOnce(&TestDevice)) {
+        let id = self.store().store_id();
+        let folder = self.app.coven_app_dir().join("stores").join(id.to_string());
+        let backup = TempDir::new().unwrap();
+        self.close().await;
+        stores::copy_folder(&folder, backup.path());
+        self.open_again(id).await;
+        self.store().start_sync().await.unwrap();
+        newer(&*self).await;
+        self.wait_until("the newer writes are sent", || async {
+            self.store().unsent_before_removal().await.unwrap().writes == 0
+        })
+        .await;
+        self.close().await;
+        std::fs::remove_dir_all(&folder).unwrap();
+        stores::copy_folder(backup.path(), &folder);
+        self.open_again(id).await;
+    }
+
+    /// Open the device's store `id` again with bae's schema and run its
+    /// library over it.
+    async fn open_again(&mut self, id: coven::StoreId) {
+        let handle = stores::open_store(
+            crate::SCHEMA,
+            &self.installation,
+            &self.sources,
+            self.storage.clone(),
+            id,
+        )
+        .await;
+        self.library = RunningLibrary::new(self.app.clone(), handle, &self.sources).await;
+    }
 }
 
 /// The store a device runs and the record of its sync cycles, which the

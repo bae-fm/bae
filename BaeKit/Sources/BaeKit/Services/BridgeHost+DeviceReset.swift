@@ -54,17 +54,11 @@ extension BridgeHost {
     }
 }
 
-extension BridgeUnsentWork {
-    /// The notice bae shows after this device's library finds another
-    /// installation using its device id and resets right away. The notice
-    /// names the edits and files that the reset discarded; nil when it
-    /// discarded none.
-    public var copyResetNotice: String? {
-        let notice = bridgeCopyResetNotice(unsent: self)
-        guard !notice.counts.isEmpty else { return nil }
-        return
-            ([localizedCoreString(notice.introKey)]
-            + notice.counts.map(\.localizedLine))
+extension BridgeCopyResetNotice {
+    /// The notice's words: its first sentence, then one sentence for each
+    /// kind of unsent work the reset did not keep.
+    public var text: String {
+        ([localizedCoreString(introKey)] + counts.map(\.localizedLine))
             .joined(separator: " ")
     }
 }

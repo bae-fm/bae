@@ -441,18 +441,6 @@ pub struct BridgeSyncStatusSnapshot {
     /// it, shown until the person dismisses it with
     /// `AppHandle::dismiss_undone_storage_setup`.
     pub undone_setup: Option<BridgeUndoneStorageSetup>,
-    /// Another installation uses this device's id and this copy lacks the
-    /// other installation's newer changes: the app closes the library and
-    /// resets this device at once, without asking, and then tells the person
-    /// that the reset discarded these edits and files.
-    pub copy_behind: Option<BridgeUnsentWork>,
-}
-
-/// The edits and files this device committed and never sent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeUnsentWork {
-    pub writes: u64,
-    pub files: u64,
 }
 
 /// A storage setup that ended undone, and why: its line says storage isn't
@@ -467,9 +455,6 @@ pub struct BridgeUndoneStorageSetup {
 impl BridgeSyncStatusSnapshot {
     pub(crate) fn from_core(snapshot: bae_sync_status::SyncStatusSnapshot) -> Self {
         let shown = BridgeSyncShown::from_core(snapshot.shown());
-        let copy_behind = snapshot
-            .copy_behind()
-            .map(|unsent| BridgeUnsentWork { writes: unsent.writes, files: unsent.files });
         let bae_sync_status::SyncStatusSnapshot {
             coven: _,
             pending,
@@ -492,7 +477,6 @@ impl BridgeSyncStatusSnapshot {
             shown,
             setup_running,
             undone_setup,
-            copy_behind,
             pending: pending
                 .into_iter()
                 .map(crate::types::BridgePendingRecord::from_core)

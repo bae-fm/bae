@@ -49,7 +49,6 @@ import fm.bae.app.ui.onboarding.WelcomeLibraryActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
@@ -161,7 +160,7 @@ private fun AppScreenRouter(
             OnboardingScreen(
                 oauthProvidersError = oauthProvidersError,
                 onBootstrapped = { result ->
-                    scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
+                    scope.launch { AppSessionHolder.openBootstrapped(context, result, notice = null, onScreen) }
                 },
                 restoreOver = null,
                 libraryActions =
@@ -173,14 +172,6 @@ private fun AppScreenRouter(
         }
 
         is AppScreen.LibraryOpen -> {
-            // Another installation uses this device's id and this copy is the one behind: reset at once, without
-            // asking. The reset runs in the screen's scope, which outlives this session's screens as it closes.
-            LaunchedEffect(current.session) {
-                current.session.syncStatusStore.copyBehind.filterNotNull().collectLatest { unsent ->
-                    val libraryId = current.session.libraryId
-                    scope.launch { AppSessionHolder.resetCopyBehind(context, libraryId, unsent, onScreen) }
-                }
-            }
             SessionScreen(current.session) {
                 LibraryOpenScreen(
                     session = current.session,
@@ -294,7 +285,7 @@ private fun RestoreOverScreen(
     OnboardingScreen(
         oauthProvidersError = oauthProvidersError,
         onBootstrapped = { result ->
-            scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
+            scope.launch { AppSessionHolder.openBootstrapped(context, result, notice = null, onScreen) }
         },
         restoreOver = restoreOver,
     )
@@ -338,9 +329,7 @@ private fun sessionActions(
     switchLibrary = { library -> openListed(context, scope, library, onScreen) },
     resetDevice = { reset ->
         scope.launch {
-            AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) { failure ->
-                AppScreen.ResetOffered(session.libraryId, failure)
-            }
+            AppSessionHolder.resetOffered(context, session.libraryId, reset, onScreen)
         }
     },
     restoreFromCode = { scope.launch { AppSessionHolder.presentDeviceRestore(context, onScreen) } },

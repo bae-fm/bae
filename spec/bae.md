@@ -4523,8 +4523,9 @@ warning the person already accepted.
 coven's reason *Device ID in use* (`ResetReason::DeviceIdInUse`: this copy
 found another installation of its device, such as a restored backup or a
 cloned disk, using its device id, and this copy is the one behind), bae asks
-nothing. The sync status snapshot carries the edits and files this copy had
-not sent (`copy_behind`). The app closes the open library, which stops
+nothing. Core decides this reset: the open library's `copy_reset` call
+returns once when sync finds it, with the notice to show. The app then
+closes the open library, which stops
 playback for the few seconds the reset takes, and calls coven's reset, showing
 the reset's steps on the screen a reset shows. The reset registers this copy as
 a new device of the same member and replaces nothing, so the other
@@ -4533,11 +4534,14 @@ app shows one notice: "Another installation of this device had newer changes,
 so bae reset this device’s copy from the cloud.", then "bae did not keep N edits that had
 not synced." when N is above zero, then "bae did not keep M files that had not
 uploaded." when M is above zero, each with its own plural forms in every
-language. The counts come from the snapshot. With none unsent, no notice shows. A reset
+language. The counts are the edits and files coven's sync state says this
+copy had not sent. With none unsent, no notice shows. A reset
 that fails returns to the screen that offers Reset from cloud, saying why. When
 another installation replaced this device (`ResetReason::Replaced`), or the
-member's keys changed, bae still asks before it resets. The app starts this
-reset once for each open library.
+member's keys changed, bae still asks before it resets. `copy_reset` returns
+at most once for each open library, so the reset starts once for it. A
+library that closes first ends the call as cancelled, and the app shows
+nothing.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
 person's current code, loads the new copy beside this device's copy, records

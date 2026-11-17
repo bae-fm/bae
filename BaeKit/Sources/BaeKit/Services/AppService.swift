@@ -242,11 +242,11 @@ open class AppService: @unchecked Sendable, Observable {
         }
     #endif
 
-    /// Run `handler` once, with what this copy will not keep, when sync finds
-    /// that another installation uses this device's id and this copy is the
-    /// one behind.
-    public func onCopyBehind(_ handler: @escaping (BridgeUnsentWork) -> Void) {
-        syncStatusStore.onCopyBehind = handler
+    /// Returns once, when core decides to reset this copy at once: sync
+    /// found that another installation uses this device's id and this copy
+    /// is the one behind. Fails as cancelled when the library closes first.
+    public func copyReset() async throws -> BridgeCopyReset {
+        try await appHandle.copyReset()
     }
 
     /// Report that a host UI screen was opened, as a typed telemetry event,

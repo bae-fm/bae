@@ -111,6 +111,5 @@ class SyncPullsTest {
         pending = emptyList(),
         setupRunning = false,
         undoneSetup = null,
-        copyBehind = null,
     )
 }

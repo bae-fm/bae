@@ -124,7 +124,7 @@ impl KeptSeeds {
                 let keychain = building.join("keychain");
                 let (store, from) = match &previous {
                     Some((from, before)) => {
-                        copy_dir(&before.join("app"), &app);
+                        crate::test_devices::copy_folder(&before.join("app"), &app);
                         let id = read_store_id(before);
                         std::fs::copy(before.join("keychain"), &keychain)
                             .expect("copy the keychain");
@@ -163,27 +163,12 @@ impl KeptSeeds {
         let tmp = tempfile::TempDir::new().expect("create the copy's folder");
         let app = tmp.path().join("app");
         let keychain = tmp.path().join("keychain");
-        copy_dir(&seed.join("app"), &app);
+        crate::test_devices::copy_folder(&seed.join("app"), &app);
         std::fs::copy(seed.join("keychain"), &keychain).expect("copy the keychain");
         plant(&app);
         let store =
             open_kept(self.schema, &app, &keychain, read_store_id(&seed), kept_clock()).await;
         (store, tmp)
-    }
-}
-
-fn copy_dir(from: &Path, to: &Path) {
-    std::fs::create_dir_all(to).expect("create the copy's folder");
-    for entry in std::fs::read_dir(from).expect("read the seed folder") {
-        let entry = entry.expect("read a seed entry");
-        let target = to.join(entry.file_name());
-        let kind = entry.file_type().expect("read a seed entry's kind");
-        if kind.is_dir() {
-            copy_dir(&entry.path(), &target);
-        } else {
-            assert!(kind.is_file(), "{} is neither a file nor a folder", entry.path().display());
-            std::fs::copy(entry.path(), target).expect("copy a seed file");
-        }
     }
 }
 

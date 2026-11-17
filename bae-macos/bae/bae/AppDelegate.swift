@@ -150,6 +150,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let renameSlot = CancellableTaskSlot()
     /// In-flight device reset.
     private let resetSlot = CancellableTaskSlot()
+    /// The open library's wait for core to decide a copy-behind reset.
+    private let copyResetSlot = CancellableTaskSlot()
     /// The one graceful shutdown that Close and Quit share.
     @ObservationIgnored
     private let shutdownCoordinator =
@@ -487,15 +489,16 @@ extension AppDelegate {
         }
     }
 
-    /// Another installation uses this Mac's device id and this copy is the one
-    /// behind: close the library and reset it at once, without asking.
-    /// Playback stops. Once the library opens again, a notice names the edits
-    /// and files this copy had not sent and did not keep.
-    func resetCopyBehind(libraryId: String, unsent: BridgeUnsentWork) {
+    /// Core decided `reset`: another installation uses this Mac's device id
+    /// and this copy is the one behind. Close the library and reset it at
+    /// once, without asking. Playback stops. Once the library opens again,
+    /// the notice names the edits and files this copy had not sent and did
+    /// not keep.
+    func resetCopyBehind(libraryId: String, reset: BridgeCopyReset) {
         baeAppLogger.info(
             "Another installation uses this device's id; resetting at once"
         )
-        resetDevice(libraryId: libraryId, notice: unsent.copyResetNotice)
+        resetDevice(libraryId: libraryId, notice: reset.notice?.text)
     }
 
     /// Finish a reset of this Mac's copy of a library that stopped partway,
@@ -538,6 +541,7 @@ extension AppDelegate {
         }
         appService = service
         screen = .home
+        waitForCopyReset(service)
         service.reportScreen(.library)
         reloadLibraries()
         showAddLibrarySheet = false
@@ -560,11 +564,34 @@ extension AppDelegate {
             host: requiredApplicationServices.host
         )
         service.wireUp()
-        let libraryId = config.libraryId
-        service.onCopyBehind { [weak self] unsent in
-            self?.resetCopyBehind(libraryId: libraryId, unsent: unsent)
-        }
         return service
+    }
+
+    /// Wait for core to decide a copy-behind reset of `service`'s library,
+    /// which it does at most once, and run it. A library that closes first
+    /// ends the wait with nothing to show; any other failure of the wait is
+    /// a bug.
+    private func waitForCopyReset(_ service: AppService) {
+        let libraryId = service.libraryId
+        copyResetSlot.replace(
+            "copy reset of \(libraryId)",
+            work: { try await service.copyReset() },
+            onSuccess: {
+                self.resetCopyBehind(libraryId: libraryId, reset: $0)
+            },
+            onError: { error in
+                switch error {
+                case BridgeError.Cancelled, BridgeError.ShuttingDown:
+                    return
+                default:
+                    CoreBugReporter()
+                        .report(
+                            operation: "AppHandle.copyReset",
+                            detail: String(reflecting: error)
+                        )
+                }
+            }
+        )
     }
 
     /// Close the open library and return to the welcome once it has shut
@@ -624,6 +651,7 @@ extension AppDelegate {
         // An open still in flight must not replace this session.
         opener.cancel()
         renameSlot.cancel()
+        copyResetSlot.cancel()
     }
 
     /// Close the library another one replaced, off the main actor: releasing

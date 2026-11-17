@@ -257,19 +257,6 @@ impl SyncStatusSnapshot {
         )
     }
 
-    /// What this copy will not keep when it resets: set while another
-    /// installation uses this device's id and this copy lacks the other
-    /// installation's newer changes, and the app then resets it right away
-    /// without asking. The work is the edits and files this copy never sent.
-    pub fn copy_behind(&self) -> Option<coven::UnsentWork> {
-        match self.coven.state {
-            coven::SyncState::NeedsReset { reason: coven::ResetReason::DeviceIdInUse, unsent } => {
-                Some(unsent)
-            }
-            _ => None,
-        }
-    }
-
     /// A pass is moving, or a file is being sent or downloaded, as coven's
     /// sync state says.
     pub fn syncing(&self) -> bool {
@@ -550,3 +537,16 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
 #[cfg(test)]
 #[path = "sync_status_tests.rs"]
 pub(crate) mod tests;
+
+/// What this copy will not keep when it resets, when coven's sync `state`
+/// says another installation uses this device's id and this copy lacks the
+/// other installation's newer changes: core then resets the copy at once,
+/// without asking. The work is the edits and files this copy never sent.
+pub fn copy_behind(state: &coven::SyncState) -> Option<coven::UnsentWork> {
+    match *state {
+        coven::SyncState::NeedsReset { reason: coven::ResetReason::DeviceIdInUse, unsent } => {
+            Some(unsent)
+        }
+        _ => None,
+    }
+}

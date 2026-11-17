@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
+import kotlinx.coroutines.awaitCancellation
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
@@ -21,6 +22,7 @@ import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeCopyReset
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
@@ -907,6 +909,9 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun retryNow(): BridgeSyncRetryOutcome = unfaked("retryNow")
+
+    /** A session waits for a copy reset from its start, so this copy is never behind: the wait ends only with it. */
+    override suspend fun copyReset(): BridgeCopyReset = awaitCancellation()
 
     override suspend fun retryOutbox() {
         unfaked("retryOutbox")

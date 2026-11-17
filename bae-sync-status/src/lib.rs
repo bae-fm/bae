@@ -7,9 +7,9 @@ mod pending_item;
 pub use pending_item::{HeldImage, HeldImageKind, PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;
 pub use sync_status::{
-    pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow, SetupDismissError,
-    StartFailureRecordError, StorageSetupState, SyncRetryOutcome, SyncStatus, SyncStatusRows,
-    SyncStatusSnapshot,
+    copy_behind, pending_action, sync_status_rows_on, FileRow, PendingAction, PendingRow,
+    SetupDismissError, StartFailureRecordError, StorageSetupState, SyncRetryOutcome, SyncStatus,
+    SyncStatusRows, SyncStatusSnapshot,
 };
 mod sync_shown;
 pub use sync_shown::{SyncCauseLine, SyncFix, SyncShown, SyncStatusWord, SyncTone};

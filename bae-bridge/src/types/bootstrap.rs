@@ -571,55 +571,68 @@ pub fn bridge_recovery_lines() -> BridgeRecoveryLines {
     }
 }
 
+/// Core's decision to reset this copy at once: sync found that another
+/// installation uses this device's id and this copy is the one behind. The
+/// app closes the library, runs the device reset with no warning, and once
+/// the library opens again shows `notice`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCopyReset {
+    /// What to show once the library opens again. `None` when nothing was
+    /// unsent, and then nothing shows.
+    pub notice: Option<BridgeCopyResetNotice>,
+}
+
 /// The notice bae shows after a library finds its device id in use and
 /// resets right away: its first sentence, then one sentence for each kind of
 /// unsent work the reset discarded. The app looks up the words of each
-/// sentence by its `Core` table key and joins them with a space. `counts` is
-/// empty when nothing was unsent, and then the app shows no notice.
+/// sentence by its `Core` table key and joins them with a space.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCopyResetNotice {
     pub intro_key: String,
     pub counts: Vec<crate::BridgeCountLabel>,
 }
 
-/// The notice for a reset that did not keep `unsent`.
-#[uniffi::export]
-pub fn bridge_copy_reset_notice(unsent: super::BridgeUnsentWork) -> BridgeCopyResetNotice {
-    let part = |key: &str, count: u64| {
-        (count > 0).then(|| crate::BridgeCountLabel {
-            key: key.to_string(),
-            count: u32::try_from(count).unwrap_or(u32::MAX),
-        })
-    };
-    BridgeCopyResetNotice {
-        intro_key: "core.sync.copy_reset.notice".to_string(),
-        counts: [
+impl BridgeCopyReset {
+    /// The reset of a copy that did not send `unsent`.
+    pub fn from_core(unsent: coven::UnsentWork) -> Self {
+        let part = |key: &str, count: u64| {
+            (count > 0).then(|| crate::BridgeCountLabel {
+                key: key.to_string(),
+                count: u32::try_from(count).unwrap_or(u32::MAX),
+            })
+        };
+        let counts: Vec<_> = [
             part("core.sync.copy_reset.edits", unsent.writes),
             part("core.sync.copy_reset.files", unsent.files),
         ]
         .into_iter()
         .flatten()
-        .collect(),
+        .collect();
+        Self {
+            notice: (!counts.is_empty()).then(|| BridgeCopyResetNotice {
+                intro_key: "core.sync.copy_reset.notice".to_string(),
+                counts,
+            }),
+        }
     }
 }
 
 #[cfg(test)]
-mod copy_reset_notice_tests {
+mod copy_reset_tests {
     use super::*;
 
     /// A count of zero has no sentence, and no unsent work has no notice.
     #[test]
     fn the_notice_names_only_what_was_not_kept() {
         let keys = |writes, files| {
-            bridge_copy_reset_notice(super::super::BridgeUnsentWork { writes, files })
-                .counts
-                .into_iter()
-                .map(|label| (label.key, label.count))
-                .collect::<Vec<_>>()
+            BridgeCopyReset::from_core(coven::UnsentWork { writes, files }).notice.map(|notice| {
+                assert_eq!(notice.intro_key, "core.sync.copy_reset.notice");
+                notice.counts.into_iter().map(|label| (label.key, label.count)).collect::<Vec<_>>()
+            })
         };
-        assert!(keys(0, 0).is_empty());
-        assert_eq!(keys(2, 0), vec![("core.sync.copy_reset.edits".to_string(), 2)]);
-        assert_eq!(keys(0, 1), vec![("core.sync.copy_reset.files".to_string(), 1)]);
-        assert_eq!(keys(3, 1).len(), 2);
+        assert_eq!(keys(0, 0), None);
+        assert_eq!(keys(2, 0), Some(vec![("core.sync.copy_reset.edits".to_string(), 2)]));
+        assert_eq!(keys(0, 1), Some(vec![("core.sync.copy_reset.files".to_string(), 1)]));
+        assert_eq!(keys(3, 1).map(|counts| counts.len()), Some(2));
     }
 }
