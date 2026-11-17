@@ -137,7 +137,7 @@ impl ImportSelectionSubscription {
     /// Read what the rows at `selected` hold from now on.
     pub fn set_selected(&self, selected: Vec<Vec<u8>>) -> Result<(), BridgeError> {
         self.inner
-            .set(selected.into_iter().map(bae_import::CandidateKey::from).collect())
+            .set(keys(selected).into_iter().collect())
             .map(|_revision| ())
             .map_err(BridgeError::from)
     }
