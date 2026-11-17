@@ -4,12 +4,12 @@
 
 use super::*;
 
-/// The detail view's album as it changes, read for the album and chosen
-/// release the subscription is set to: its rows, with each release's pin
-/// marker, download-queue entry and storage transition, and whether the
-/// library syncs. `resolve_album_detail_projection` resolves the rows against
-/// that state. When the view shows another album or release, it sends a new
-/// request to the same read.
+/// Follow the album and the chosen release that the view last requested. The
+/// live query returns the album's rows, with each release's pin marker,
+/// download-queue entry and storage transition, and whether the library
+/// syncs. `resolve_album_detail_projection` resolves the rows against that
+/// state. When the view shows another album or release, the view sends a new
+/// request to the same live query.
 pub fn subscribe_album_detail(
     library: &LibraryManager,
     library_views: &LibraryViews,

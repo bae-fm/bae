@@ -215,9 +215,10 @@ struct AlbumDetailView: View {
     }
 
     /// Point the view's one read at `albumRequest`. When the request names
-    /// another album, this clears what the read returned for the last album.
-    /// When it names another release of the same album, the view keeps
-    /// drawing the last value until the new release's value arrives.
+    /// another album, `showAlbum` clears what the read returned for the last
+    /// album. When the request names another release of the same album, the
+    /// view keeps drawing the last value until the new release's value
+    /// arrives.
     private func showAlbum() {
         let request = albumRequest
         if detailReader?.id?.albumId != request.albumId {

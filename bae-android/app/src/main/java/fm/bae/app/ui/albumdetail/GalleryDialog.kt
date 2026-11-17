@@ -82,8 +82,8 @@ private val logger = BaeLogger(TAG)
 
 /**
  * Full-screen viewer over a release's gallery items: swipe between them, pinch
- * to zoom, swipe down to dismiss. [count] is how many items the release's read
- * counts, and the page counter shows it.
+ * to zoom, swipe down to dismiss. [count] is the number of gallery items that
+ * the release's query counts, and the page counter shows that number.
  */
 @Composable
 fun GalleryDialog(
