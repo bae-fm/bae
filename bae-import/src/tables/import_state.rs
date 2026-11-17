@@ -16,6 +16,7 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     album_pick_rows::SQL,
     pane_rows::PROVENANCE_SQL,
     release_link_rows::SQL,
+    claim_rows::SQL,
     session_rows::SQL,
     standing_rows::SQL,
     run_rows::SQL,
@@ -70,6 +71,7 @@ mod album_pick_rows;
 mod blank_draft_rows;
 mod candidate_rows;
 mod cards_read;
+mod claim_rows;
 mod column_list;
 mod cover_rows;
 mod draft_store;
@@ -99,6 +101,10 @@ mod verdict_rows;
 pub(super) use album_pick_rows::album_pick_sql;
 pub(super) use candidate_rows::{current_at_scan_sql, CandidateRows, OneCandidate, SCANNED_HASH};
 pub(super) use cards_read::{load_candidate_verdict_cards_on, load_verdict_cards_on};
+pub(super) use claim_rows::{
+    claimed_records_of_json, claimed_records_sql, offered_covers_sql, store_claims_of_albums_on,
+    store_claims_of_releases_on,
+};
 pub(super) use cover_rows::{cover_read_columns, read_cover, StoredCover};
 use failure_rows::{delete_failure_on, load_failure_on};
 pub(super) use file_decision_rows::load_candidate_file_edits_on;

@@ -1511,6 +1511,8 @@ tables = [
     "import_candidate_release_link",
     "import_candidate_release_link_partner",
     "import_candidate_release_link_album",
+    "import_candidate_claimed_record",
+    "import_candidate_offered_cover",
     "import_candidate_session",
     "import_candidate_standing",
     "import_identification_batch",

@@ -36,10 +36,6 @@ use bae_catalogs::source_release::{
 use bae_types::pressing::{Medium, Pressing, ReleaseLabel, StatedFormat, StatedMedia};
 use tracklist::{insert_entry, insert_release_role, load_mediums, load_release_roles, Numbering};
 
-mod claimed_records;
-mod offered_covers;
-pub(crate) use claimed_records::{claimed_records_of_json, claimed_records_sql};
-pub(crate) use offered_covers::{offered_covers_sql, OfferedCover};
 mod tracklist;
 
 /// The tables under `source_release`, children before the tables they hang
@@ -745,11 +741,13 @@ pub(crate) fn load_source_release_on<S: coven::SqlRead>(
 /// copy read a document the stored one lists as unfetched — a copy read
 /// before the stored one was would otherwise overwrite a fuller read. A
 /// release no row names is not stored: a catalog release is stored only while
-/// something names it.
+/// something names it. What each link claiming a release this stores claims
+/// is stored again from it.
 pub(crate) fn store_named_releases_on(
     sql: &CovenWrite<'_>,
     releases: &[SourceRelease],
 ) -> Result<(), DbError> {
+    let mut stored_now = Vec::new();
     for release in releases {
         let catalog = release.release.catalog.as_str();
         let key = release.release.key.as_str();
@@ -788,9 +786,11 @@ pub(crate) fn store_named_releases_on(
         };
         if !stored || reads_more()? {
             replace_source_release_on(sql, release)?;
+            stored_now.push(&release.release);
         }
     }
-    Ok(())
+    // Once every release is stored, since a link claims several.
+    super::import_state::store_claims_of_releases_on(sql, &stored_now)
 }
 
 impl ImportTables {

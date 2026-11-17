@@ -14,8 +14,8 @@ use crate::tables::import_state::{
     album_pick_sql, current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on,
     load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate, SCANNED_HASH,
 };
+use crate::tables::import_state::{claimed_records_of_json, claimed_records_sql};
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
-use crate::tables::source_releases::{claimed_records_of_json, claimed_records_sql};
 use crate::ImportedRelease;
 use crate::{DraftProjection, ProjectedStage};
 use bae_records::records::release_records::{
@@ -161,9 +161,9 @@ fn draft_rows_on(
         sql,
         super::credit_resolutions::CreditSource::Candidate(OneCandidate::Scanned(key)),
     )?;
-    // Every catalog record of what the candidate is linked to, merged in one
-    // statement over the stored releases: the linked pressing's releases
-    // describe it, an album names its own.
+    // Every catalog record of what the candidate is linked to, as the write
+    // that stored the link, or a claimed release, merged them: the linked
+    // pressing's releases describe it, an album names its own.
     let records =
         claimed_records_of_json(&while_current_on(sql, key, &claimed_records_sql(SCANNED_HASH))?)?;
     let picked_library_status = picked_library_status_on(sql, key)?;

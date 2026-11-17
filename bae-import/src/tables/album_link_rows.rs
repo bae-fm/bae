@@ -178,12 +178,24 @@ impl ImportTables {
 
 /// Keep, inside the caller's write, the albums reading these release groups
 /// found each to be, replacing whatever an earlier reading of the same group
-/// found.
+/// found, and store again what each link claims whose claimed release joins
+/// the albums kept before or now.
 pub(super) fn replace_group_album_links_on(
     sql: &CovenWrite<'_>,
     read: &[(String, Vec<MetadataRef>)],
 ) -> Result<(), DbError> {
+    let mut changed: Vec<MetadataRef> = Vec::new();
     for (group, albums) in read {
+        let kept_before = sql.query(
+            "SELECT catalog, key FROM release_group_album_link WHERE release_group = ?",
+            params![group],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?;
+        changed.push(MetadataRef::new(Catalog::MusicBrainz, group.clone()));
+        for (catalog, key) in kept_before {
+            changed.push(MetadataRef::new(catalog_of(&catalog)?, key));
+        }
+        changed.extend(albums.iter().cloned());
         sql.execute(
             "DELETE FROM release_group_album_link WHERE release_group = ?",
             params![group],
@@ -197,7 +209,7 @@ pub(super) fn replace_group_album_links_on(
             )?;
         }
     }
-    Ok(())
+    super::import_state::store_claims_of_albums_on(sql, &changed)
 }
 
 #[cfg(test)]

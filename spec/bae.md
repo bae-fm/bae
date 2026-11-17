@@ -1276,9 +1276,9 @@ stored releases name, not the releases whole. The list reads each window in one
 statement, which takes the window's range of the order as its first table. The
 statement joins these rows to the range by each item's key: each group's header,
 each release's placement, scan, link and draft, the records and the upload
-standing of an imported release, the records of the stored releases a linked row
-claims (each release's album, its own records and the albums kept for those),
-the file versions its folder-image and embedded covers name, and the header of
+standing of an imported release, the records stored for what a linked row's
+link claims (each release's album, its own records and the albums kept for
+those), the file versions its folder-image and embedded covers name, and the header of
 the group a window starts inside of, with the key of the item beyond the window.
 Core sends each offer with the number shown beside it and whether it can run:
 a row's own offers, each for that one row and leaving out Combine, come with
@@ -1796,10 +1796,13 @@ whether it holds the linked release and whether bae is reading it as the run's
 pick. The query reads both from the candidate's link and its standing, so
 the pane never looks for a release among the rows it shows.
 A pick claims its release and, where the pick pairs another catalog's, that
-catalog's release. The pane reads the claimed releases' records merged by one
-query over the stored releases: each claimed release's own record outranks what
-another says about its catalog, the applied catalog comes first, and the albums
-kept for the releases' albums join them.
+catalog's release. The write that stores the link merges the claimed releases'
+records, as the releases are stored, and stores them with the link: each
+claimed release's own record outranks what another says about its catalog, the
+applied catalog comes first, and the albums kept for the releases' albums join
+them. A write that stores a claimed release again, or changes the albums kept
+for a claimed release's album, merges them again in its own transaction. The
+pane and the import list read the stored records.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
@@ -2109,10 +2112,12 @@ so having a picture comes before which picture it is.
 
 While the draft is the one read from the pressing
 the candidate is linked to, the picker offers that pressing's covers: every
-claimed release's own images, then their albums', read from the stored
-releases as they stand, in one query, so a later fetch that stored more shows
-it, and a MusicBrainz release group a kept statement joins to a claimed release
-offers its front image after that release's own album images. The first is the
+claimed release's own images, then their albums'. The write that stores the
+link works them out from the claimed releases as they are stored and stores
+them with it, and a write that stores a claimed release again or changes the
+albums kept for its album works them out again, so a later fetch that stored
+more shows it. A MusicBrainz release group a kept statement joins to a claimed
+release offers its front image after that release's own album images. The first is the
 draft's cover when the release is applied, until the person picks another. Core
 names each image by pieces, and each app words them in its language: the service
 that serves it (the Cover Art Archive, Discogs), the album's front image as the
@@ -6743,6 +6748,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
+| `import_candidate_claimed_record`, `import_candidate_offered_cover` | what the link claims (§3.5, §3.7): the records its claimed releases describe it by, merged, or a linked album's albums; and the covers a linked pressing offers the picker, in order. The write that stores the link stores them, and a write that stores a claimed release again or changes the albums kept for a claimed release's album stores them again. They go with the link |
 | `import_candidate_session` | where the pane was, and its last failure |
 | `import_candidate_failure` | why the last import failed |
 

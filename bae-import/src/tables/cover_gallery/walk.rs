@@ -5,7 +5,6 @@
 
 use super::*;
 use crate::folder_scanner::FileVersion;
-use crate::tables::source_releases::OfferedCover;
 
 /// The rest of a picker's statement, after the statement's own tables end
 /// with `items (rank, pos, kind, key, preferred, item)`: one row for each
@@ -62,11 +61,9 @@ FROM walk AS w LEFT JOIN focused AS f"
 pub(super) enum ItemJson {
     /// The library release's saved cover, at its version.
     Saved { version: String },
-    /// A cover a fetch stored.
+    /// A cover a fetch stored, or one the candidate's linked pressing offers
+    /// while bae read the draft from it.
     Remote { cover: RemoteCover },
-    /// A cover that the pressing offers, where the pressing is the one bae
-    /// read the candidate's draft from.
-    Offered { cover: OfferedCover },
     /// An image file of the library release.
     ReleaseFile { id: String, name: String },
     /// An image of the candidate's folder, at the version the scan read.
@@ -150,7 +147,6 @@ impl ItemJson {
                 }
             }
             Self::Remote { cover } => remote(cover),
-            Self::Offered { cover } => remote(cover.cover()?),
             Self::ReleaseFile { id, name } => GalleryCover {
                 key: CoverKey::File(id.clone()),
                 label: GalleryLabel::File { name, selection: CoverSelection::Local(id.clone()) },

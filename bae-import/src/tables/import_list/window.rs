@@ -22,13 +22,13 @@ use crate::list::{ImportListItem, ImportWindow};
 use crate::tables::folder_scans::{
     self, cover_version_joins, CoverVersionColumns, COVER_VERSION_COLUMNS,
 };
+use crate::tables::import_state::{claimed_records_of_json, claimed_records_sql};
 use crate::tables::import_state::{
     cover_read_columns, read_cover, read_provenance, read_release_link, RuntimeFactColumns,
     StoredCover, StoredProvenance, StoredReleaseLink, PROVENANCE_COLUMNS, RELEASE_LINK_COLUMNS,
     RUNTIME_FACT_COLUMNS,
 };
 use crate::tables::release_groupings::block_of;
-use crate::tables::source_releases::{claimed_records_of_json, claimed_records_sql};
 use crate::triage::{
     import_status_of, TriageGroup, TriageMetadataSummary, TriageReading, TriageRow,
 };

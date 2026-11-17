@@ -6,8 +6,7 @@
 //! refetch replaces them.
 
 use super::*;
-use crate::tables::import_state::{current_at_scan_sql, SCANNED_HASH};
-use crate::tables::source_releases::offered_covers_sql;
+use crate::tables::import_state::{current_at_scan_sql, offered_covers_sql};
 
 /// The link of the candidate whose content hash the expression `hash` names,
 /// as one JSON value: its kind, catalog and release, its partners and its
@@ -52,12 +51,12 @@ listed (rank, pos, kind, key, item) AS (
     FROM candidate_cover_entry AS e JOIN fetch USING (content_hash)
     WHERE :filter IN ('all', e.source)
     UNION ALL
-    SELECT 1, o.key, 'remote', o.value ->> 'url',
-           json_object('kind', 'offered', 'cover', json(o.value))
-    FROM json_each(CASE WHEN EXISTS (SELECT 1 FROM fetch) THEN '[]'
-                        WHEN EXISTS (SELECT 1 FROM import_candidate_state AS state WHERE {current})
-                        THEN ({offered}) ELSE '[]' END) AS o
-    WHERE :filter IN ('all', o.value ->> 'source')
+    SELECT 1, o.position, 'remote', json_extract(o.cover, '$.image.url'),
+           json_object('kind', 'remote', 'cover', json(o.cover))
+    FROM ({offered}) AS o
+    WHERE NOT EXISTS (SELECT 1 FROM fetch)
+      AND EXISTS (SELECT 1 FROM import_candidate_state AS state WHERE {current})
+      AND :filter IN ('all', o.source)
     UNION ALL
     SELECT 2, f.position, 'file', f.relative_path,
            json_object('kind', 'folder_file', 'id', f.relative_path, 'path', hex(f.absolute_path),
@@ -73,7 +72,7 @@ items (rank, pos, kind, key, preferred, item) AS (
 ){walk}",
         link = link_sql("c.content_hash"),
         current = current_at_scan_sql("state"),
-        offered = offered_covers_sql(SCANNED_HASH),
+        offered = offered_covers_sql("c"),
         walk = super::walk::walk_sql("(SELECT linked FROM fetch)"),
     )
 }

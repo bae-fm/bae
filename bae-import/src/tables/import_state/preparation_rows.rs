@@ -400,6 +400,11 @@ pub(super) fn save_preparation_on(
     // The verdict, link and provenance written above name these, or some
     // of them; the rows naming a release that are gone took it with them.
     crate::tables::source_releases::store_named_releases_on(sql, &extras.releases)?;
+    // What the link claims comes from the releases it names, which this
+    // write stored above.
+    if stored.link != prep.link {
+        super::claim_rows::store_claims_on(sql, content_hash)?;
+    }
     if extras.ends_identification {
         super::change_identification_on(
             sql,
