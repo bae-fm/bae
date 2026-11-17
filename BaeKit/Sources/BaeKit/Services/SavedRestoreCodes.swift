@@ -22,18 +22,6 @@ public final class SavedRestoreCodes {
 
     public init() {}
 
-    #if DEBUG
-        /// Codes already read, for shots, with the delete confirmation
-        /// open for `confirming`.
-        public init(
-            previewing entries: [SavedRestoreEntry],
-            confirming: SavedRestoreEntry? = nil
-        ) {
-            list = .loaded(entries)
-            pendingDelete = confirming
-        }
-    #endif
-
     /// Read the saved codes.
     public func load(from setup: LibrarySetup) async {
         do {

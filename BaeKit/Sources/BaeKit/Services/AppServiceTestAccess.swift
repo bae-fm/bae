@@ -1,6 +1,4 @@
 #if DEBUG
-    import Combine
-
     @MainActor
     final class AppServiceTestAccess {
         private let playbackStore: PlaybackStore
@@ -12,14 +10,8 @@
         var state: AppServiceTestState {
             AppServiceTestState(
                 nowPlaying: playbackStore.nowPlaying,
-                manualQueueEntryIds: playbackStore.manualQueue.map(\.entryId),
-                settings: playbackStore.settings,
                 failure: playbackStore.failure
             )
-        }
-
-        var queueItemsAddedPublisher: AnyPublisher<Int, Never> {
-            playbackStore.queueItemsAddedPublisher
         }
     }
 #endif

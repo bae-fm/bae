@@ -1,4 +1,3 @@
-import Combine
 import Foundation
 import Observation
 import SwiftUI
@@ -65,8 +64,6 @@ public struct AppServiceComponents {
 #if DEBUG
     public struct AppServiceTestState {
         public let nowPlaying: BridgePlaybackValueState
-        public let manualQueueEntryIds: [String]
-        public let settings: PlaybackSettings?
         public let failure: BridgePlaybackErrorReason?
     }
 #endif
@@ -305,11 +302,6 @@ open class AppService: @unchecked Sendable, Observable {
     #if DEBUG
         public var stateForTesting: AppServiceTestState {
             testAccess.state
-        }
-
-        public var queueItemsAddedPublisherForTesting: AnyPublisher<Int, Never>
-        {
-            testAccess.queueItemsAddedPublisher
         }
 
         public var syncStatusStoreForTesting: SyncStatusStore {

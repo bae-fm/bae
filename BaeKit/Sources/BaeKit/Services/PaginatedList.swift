@@ -439,11 +439,6 @@ extension PaginatedList {
         placed.lazy.compactMap(\.leadingHeader).first { $0.id == id }
     }
 
-    /// Every row the list holds, in order.
-    public var loadedRows: [Row] {
-        placed.flatMap(\.rows)
-    }
-
     /// The row of `id` the list holds, or nil if no window holds it. A row
     /// shown more than once is the same row at each place.
     public func row(of id: Row.ID) -> Row? {
@@ -464,11 +459,6 @@ extension PaginatedList {
             $0.id == id && section(at: $0.position)?.id == sectionId
         }?
         .position
-    }
-
-    /// All IDs currently held, in order.
-    public var allLoadedIds: [Row.ID] {
-        placed.flatMap { $0.rows.map(\.id) }
     }
 
     /// Every held position with the id held there, in position order.
