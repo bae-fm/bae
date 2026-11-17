@@ -13,6 +13,7 @@ import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteEntry
 import uniffi.bae_bridge.BridgePlaybackTimeline
 import uniffi.bae_bridge.BridgePlaybackValues
+import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
@@ -24,6 +25,7 @@ import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
+import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.SyncActivitySubscription
 import uniffi.bae_bridge.SyncStatusSubscription
 
@@ -218,5 +220,20 @@ internal class FakeDeviceStorageSubscription : DeviceStorageSubscription(NoHandl
 
     override fun close() {
         pulls.close(BridgeException.Cancelled())
+    }
+}
+
+/** A playlists read that delivers nothing: a page that only needs to open it, and never closes it, shows no playlists. */
+internal class FakePlaylistsSubscription : PlaylistsSubscription(NoHandle) {
+    private val events = Channel<BridgePlaylistListing>(Channel.UNLIMITED)
+
+    override suspend fun next(): BridgePlaylistListing = events.receive()
+
+    override suspend fun cancel() {
+        events.close(BridgeException.Cancelled())
+    }
+
+    override fun close() {
+        events.close(BridgeException.Cancelled())
     }
 }

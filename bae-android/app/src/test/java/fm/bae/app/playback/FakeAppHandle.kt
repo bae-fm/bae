@@ -1,7 +1,6 @@
 package fm.bae.app.playback
 
 import fm.bae.app.BridgeFixtures
-import kotlinx.coroutines.channels.Channel
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
@@ -47,7 +46,6 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgeOutboxFeeds
 import uniffi.bae_bridge.BridgePlayOutcome
-import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeQueueLane
 import uniffi.bae_bridge.BridgeRatingTarget
@@ -92,7 +90,6 @@ import uniffi.bae_bridge.ListCountSubscription
 import uniffi.bae_bridge.ListPositionSubscription
 import uniffi.bae_bridge.ListWindowSubscription
 import uniffi.bae_bridge.MembersSubscription
-import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.OpenInviteSubscription
 import uniffi.bae_bridge.PeopleSubscription
 import uniffi.bae_bridge.PersonSubscription
@@ -990,20 +987,5 @@ internal open class FakeAppHandle(
 
     override suspend fun setSyncPaused(paused: Boolean) {
         unfaked("setSyncPaused")
-    }
-}
-
-/** A playlists read that delivers nothing: a page that only needs to open it, and never closes it, shows no playlists. */
-internal class FakePlaylistsSubscription : PlaylistsSubscription(NoHandle) {
-    private val events = Channel<BridgePlaylistListing>(Channel.UNLIMITED)
-
-    override suspend fun next(): BridgePlaylistListing = events.receive()
-
-    override suspend fun cancel() {
-        events.close(BridgeException.Cancelled())
-    }
-
-    override fun close() {
-        events.close(BridgeException.Cancelled())
     }
 }
