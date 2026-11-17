@@ -271,7 +271,7 @@ extension ShotScene {
                         MacMenuInPlace(
                             {
                                 MacPopUpMenu(
-                                    PeopleAndDevicesPage.historySharingOptions,
+                                    BridgeHistorySharing.popUpOptions,
                                     selection: BridgeHistorySharing.private,
                                     select: { _ in }
                                 )
