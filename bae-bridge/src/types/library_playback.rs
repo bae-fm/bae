@@ -545,8 +545,8 @@ pub struct BridgeTrackGroup {
     /// Whether the release has more than one group, so each shows its own
     /// playing time beside the release's.
     pub shows_time: bool,
-    /// The place among the group's tracks of the first one its second column
-    /// lists, or none when one column lists them all.
+    /// The index in `tracks` of the first track in the second column, or
+    /// none when one column holds every track.
     pub second_column_start: Option<u32>,
 }
 

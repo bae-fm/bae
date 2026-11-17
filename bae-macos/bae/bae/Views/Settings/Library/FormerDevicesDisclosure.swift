@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A person's removed and replaced devices, collapsed until opened. They no
-/// longer have access, so they offer no actions.
+/// A person's removed and replaced devices, collapsed until the person opens
+/// them. These devices no longer have access, so the view shows no actions
+/// for them.
 struct FormerDevicesDisclosure: View {
     let devices: [BridgeFormerDevice]
     let count: UInt32

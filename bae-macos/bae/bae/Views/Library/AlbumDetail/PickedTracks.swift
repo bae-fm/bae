@@ -11,8 +11,8 @@ final class PickedTracks {
     private(set) var ids: Set<String> = []
     private(set) var anchorId: String?
     /// The read of the range a shift-click picks, while core reads it. Any
-    /// later change to the picks cancels the read, so a range that core
-    /// returns after the picks changed is never added to them.
+    /// later change to the picks cancels the read, so the picks never take
+    /// in a range that core returns after they changed.
     @ObservationIgnored
     private(set) var rangeRead: Task<Void, Never>?
 
@@ -34,8 +34,8 @@ final class PickedTracks {
 
     /// Pick the tracks from the anchor to `targetId`, which `readRange`
     /// reads, and keep the anchor. With no anchor, pick `targetId` alone and
-    /// make it the anchor. When `readRange` fails, this picks nothing and
-    /// passes the error to `onFailure`.
+    /// make it the anchor. When `readRange` fails, pick nothing and pass the
+    /// error to `onFailure`.
     @MainActor
     func extend(
         to targetId: String,
