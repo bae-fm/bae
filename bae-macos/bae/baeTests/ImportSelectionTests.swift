@@ -256,7 +256,7 @@ struct ImportSelectionReplacementTests {
 /// A click while core reads the keys of a Shift-click range or of Select
 /// All cancels that read, so its answer never replaces the click.
 @MainActor
-@Suite("Key reads a later click cancels", .timeLimit(.minutes(1)))
+@Suite("A later click cancels a key read", .timeLimit(.minutes(1)))
 struct ImportSelectionKeysReadTests {
     nonisolated private static let clicked = Data("/music/Clicked".utf8)
 

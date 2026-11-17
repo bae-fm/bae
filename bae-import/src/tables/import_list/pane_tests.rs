@@ -495,9 +495,9 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 }
 
 /// The list shows a folder that failed validation under Skipped as what the
-/// scan read of it: its files, what its tags call it and the image it leads
-/// with. The list selects it like any row, and the pane reads it whole. A
-/// scan that finds it again finds it unchanged.
+/// scan read of it: its files, what its tags call it and its cover image.
+/// The list selects it like any row, and the pane reads it whole. A scan that
+/// finds it again finds it unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     use crate::folder_scanner::{
