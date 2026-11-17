@@ -13,8 +13,8 @@ pub(crate) use listing::{
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
 mod search_albums;
+use search_albums::first_search_albums_on;
 pub use search_albums::resolve_search_album_window;
-use search_albums::{search_album_order, search_album_rows_on};
 
 impl LibraryViews {
     /// Search the library for a parsed, non-blank query. The result count is
@@ -533,6 +533,25 @@ fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResul
     })
 }
 
+/// The rows `statement` returns, in its order, each as `read` reads it, and
+/// how many rows that is. The count is a window over the statement's own
+/// rows in the same statement, so it counts the rows the statement lists
+/// (after its `LIMIT`); a statement that returns no rows counts zero.
+fn counted_rows<T>(
+    sql: &SqlReadContext<'_>,
+    statement: &str,
+    params: impl rusqlite::Params,
+    mut read: impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<T>,
+) -> Result<(Vec<T>, u64), DbError> {
+    let rows = sql.query(
+        &format!("SELECT listed.*, COUNT(*) OVER () AS section_count FROM ({statement}) AS listed"),
+        params,
+        |row| Ok((read(row)?, bae_store::read::count_column::<u64>(row, "section_count")?)),
+    )?;
+    let count = rows.first().map_or(0, |(_, count)| *count);
+    Ok((rows.into_iter().map(|(row, _)| row).collect(), count))
+}
+
 /// The library rows holding the search `pattern` (see [`search_pattern`]),
 /// each kind's first `limit` in its order, ties going by id. Each kind finds
 /// its rows through its search table, then reads what it shows for those
@@ -542,20 +561,10 @@ fn search_library_on(
     pattern: &str,
     limit: i64,
 ) -> Result<DbLibrarySearchResults, DbError> {
-    let order = search_album_order();
-    let albums = search_album_rows_on(
+    // Each section's statement counts its own rows beside them.
+    let (albums, album_count) = first_search_albums_on(sql, pattern, limit as u64)?;
+    let (tracks, track_count) = counted_rows(
         sql,
-        pattern,
-        limit as u64,
-        &order,
-        &order.everything(),
-        limit as u64,
-        0,
-    )?
-    .into_iter()
-    .map(|(album, _)| album)
-    .collect();
-    let tracks = sql.query(
         &format!(
             r#"
             {select}
@@ -574,7 +583,8 @@ fn search_library_on(
         params![pattern, limit],
         track_hit_row,
     )?;
-    let artists = sql.query(
+    let (artists, artist_count) = counted_rows(
+        sql,
         &artist_listing_query(
             None,
             Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
@@ -583,7 +593,8 @@ fn search_library_on(
         params![pattern, limit],
         row_to_artist_summary,
     )?;
-    let composers = sql.query(
+    let (composers, composer_count) = counted_rows(
+        sql,
         &composer_listing_query(
             None,
             Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
@@ -592,7 +603,8 @@ fn search_library_on(
         params![pattern, limit],
         row_to_composer_summary,
     )?;
-    let works = sql.query(
+    let (works, work_count) = counted_rows(
+        sql,
         &work_summary_query(
             Some(&format!(
                 "WHERE w.id IN (
@@ -667,44 +679,13 @@ fn search_library_on(
         params![pattern],
         |row| row.get(0),
     )?;
-    // How many rows each section above lists: the same matches, at most
-    // `limit` of each.
-    let section_counts = sql.query_row(
-        &format!(
-            "SELECT (SELECT COUNT(*) FROM (SELECT 1 FROM albums a WHERE {album_matches} LIMIT ?2)) AS albums, \
-                    (SELECT COUNT(*) FROM (SELECT 1 FROM tracks found \
-                        WHERE found.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1) \
-                        LIMIT ?2)) AS tracks, \
-                    (SELECT COUNT(*) FROM ({artists})) AS artists, \
-                    (SELECT COUNT(*) FROM ({composers})) AS composers, \
-                    (SELECT COUNT(*) FROM ({works})) AS works",
-            album_matches = album_matches_sql("a.id", "?1"),
-            artists = artist_listing_query(
-                None,
-                Some(&format!("WHERE ar.id IN ({})", artists_found_sql("?1"))),
-                Some("LIMIT ?2"),
-            ),
-            composers = composer_listing_query(
-                None,
-                Some(&format!("WHERE composer.id IN ({})", artists_found_sql("?1"))),
-                Some("LIMIT ?2"),
-            ),
-            works = work_summary_query(
-                Some("WHERE w.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)"),
-                Some("LIMIT ?2"),
-            ),
-        ),
-        params![pattern, limit],
-        |row| {
-            Ok(crate::SearchSectionCounts {
-                albums: bae_store::read::count_column(row, "albums")?,
-                artists: bae_store::read::count_column(row, "artists")?,
-                tracks: bae_store::read::count_column(row, "tracks")?,
-                composers: bae_store::read::count_column(row, "composers")?,
-                works: bae_store::read::count_column(row, "works")?,
-            })
-        },
-    )?;
+    let section_counts = crate::SearchSectionCounts {
+        albums: album_count,
+        artists: artist_count,
+        tracks: track_count,
+        composers: composer_count,
+        works: work_count,
+    };
     Ok(DbLibrarySearchResults {
         albums,
         artists,

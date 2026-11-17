@@ -128,7 +128,7 @@ pub fn resolve_search_album_window(
 const LISTED: u64 = crate::SEARCH_RESULT_LIMIT as u64;
 
 /// The order of the albums a search lists: by title, ties going by id.
-pub(super) fn search_album_order() -> ListOrder {
+fn search_album_order() -> ListOrder {
     ListOrder::new(vec![
         SortTerm::ascending(crate::sort_key_sql("a.title")),
         SortTerm::ascending("a.id"),
@@ -149,9 +149,8 @@ fn search_album_from() -> String {
 
 /// The albums `seek` reads in `order`, each with its key: at most `limit` of
 /// them from `offset`. The seek reads among the first `cap` albums that hold
-/// the search `pattern`. The statement reads each album's main release, cover
-/// and credit line only for the albums the seek returns.
-pub(super) fn search_album_rows_on(
+/// the search `pattern`.
+fn search_album_rows_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
     cap: u64,
@@ -160,7 +159,34 @@ pub(super) fn search_album_rows_on(
     limit: u64,
     offset: u64,
 ) -> Result<Vec<Keyed<DbAlbumSearchResult>>, DbError> {
-    let statement = format!(
+    let statement = search_album_statement(order, seek);
+    with_search_album_params(pattern, cap, seek, limit, offset, |params| {
+        Ok(sql.query(&statement, params, |row| Ok((album_hit_row(row)?, order.key_of(row)?)))?)
+    })
+}
+
+/// The first `limit` albums a library search for `pattern` lists, in
+/// [`search_album_order`], and how many that is. The statement that lists
+/// the albums also counts them.
+pub(super) fn first_search_albums_on(
+    sql: &SqlReadContext<'_>,
+    pattern: &str,
+    limit: u64,
+) -> Result<(Vec<DbAlbumSearchResult>, u64), DbError> {
+    let order = search_album_order();
+    let seek = order.everything();
+    let statement = search_album_statement(&order, &seek);
+    with_search_album_params(pattern, limit, &seek, limit, 0, |params| {
+        counted_rows(sql, &statement, params, album_hit_row)
+    })
+}
+
+/// The statement that reads the albums `seek` holds in `order`, each with
+/// its key, over the parameters [`with_search_album_params`] binds. The
+/// statement reads each album's main release, cover and credit line only for
+/// the albums the seek returns.
+fn search_album_statement(order: &ListOrder, seek: &Seek) -> String {
+    format!(
         r#"
         SELECT a.id, a.title, a.year,
                {primary_release} AS primary_release_id,
@@ -181,26 +207,39 @@ pub(super) fn search_album_rows_on(
         from = search_album_from(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
-    );
+    )
+}
+
+/// Runs `run` with the parameters a [`search_album_statement`] over `seek`
+/// reads: the seek's own, the window's `limit` and `offset`, the search
+/// `pattern`, and the `cap` on how many of the albums that hold it the seek
+/// reads among.
+fn with_search_album_params<T>(
+    pattern: &str,
+    cap: u64,
+    seek: &Seek,
+    limit: u64,
+    offset: u64,
+    run: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> T,
+) -> T {
     let cap = bae_store::list_windows::sql_bound(cap);
-    Ok(seek.bound(limit, offset, |params| {
+    seek.bound(limit, offset, |params| {
         let mut params = params.to_vec();
         params.push((":pattern", &pattern as &dyn rusqlite::ToSql));
         params.push((":cap", &cap as &dyn rusqlite::ToSql));
-        sql.query(&statement, params.as_slice(), |row| {
-            Ok((
-                DbAlbumSearchResult {
-                    id: row.get("id")?,
-                    title: row.get("title")?,
-                    year: row.get("year")?,
-                    primary_release_id: row.get("primary_release_id")?,
-                    cover_version: row.get("cover_version")?,
-                    artist_line: credit_line_column(row, "artist_name")?,
-                },
-                order.key_of(row)?,
-            ))
-        })
-    })?)
+        run(params.as_slice())
+    })
+}
+
+fn album_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbAlbumSearchResult> {
+    Ok(DbAlbumSearchResult {
+        id: row.get("id")?,
+        title: row.get("title")?,
+        year: row.get("year")?,
+        primary_release_id: row.get("primary_release_id")?,
+        cover_version: row.get("cover_version")?,
+        artist_line: credit_line_column(row, "artist_name")?,
+    })
 }
 
 /// How many albums a search for `pattern` lists: those that hold it, counting
