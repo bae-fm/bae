@@ -185,9 +185,9 @@ impl ReleaseEditSession {
 
     /// Save this session into the album it files the release under: every
     /// value, in one write, which opens the session again on what it saved.
-    /// Returns the album the release is on after the save. Refused, writing
-    /// nothing, when the form can't be saved, or when the release changed
-    /// after the session opened on it
+    /// Returns the album the release is on after the save. Core refuses the
+    /// save and writes nothing when the form can't be saved, or when the
+    /// release changed after the session opened on it
     /// (`BridgeErrorCategory::ReleaseChangedSinceOpened`).
     pub async fn save(self: std::sync::Arc<Self>) -> Result<String, BridgeError> {
         let runtime = self.runtime.clone();

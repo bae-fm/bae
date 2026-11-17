@@ -2293,11 +2293,10 @@ editor says the release changed after it opened; *Cancel* opens it again as
 it is now. Only the cover, which is written at once, never makes a session
 out of date. The check and the rows are one write, so nothing lands between
 them. After a save, the editor works in a fresh
-session opened on what it saved. A release deleted while its editor is open
-leaves the editor nothing to edit, so the editor closes: in the album
-detail the release's sheet goes with the release, and in the import pane
-the folder returns to Found with its draft (A.5,
-`import_candidate_edit`).
+session opened on what it saved. When the person, another device or MCP
+deletes a release while its editor is open, the editor closes: in the album
+detail the release's sheet closes, and in the import pane the folder
+returns to Found with its draft (A.5, `import_candidate_edit`).
 
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
@@ -6722,7 +6721,7 @@ deletes its sessions:
 | `release_edit_label`, `release_edit_barcode`, `release_edit_album_artist` | the form's label and barcode rows as typed and its album artists, as the candidate's tables hold them |
 | `release_edit_track`, `release_edit_track_artist` | each track row of the form by the library track it edits, in release order: its title, whether it takes the album's artists, and its own artists |
 | `release_edit_album_pick` | the album the person picked for the release, as `import_candidate_album_pick` holds a candidate's |
-| `release_edit_applied` | one row once a catalog release is applied in the session; the rows below hold what the apply read and go with it |
+| `release_edit_applied` | one row once the person applies a catalog release in the session; the rows below hold what the apply read, and deleting this row deletes them |
 | `release_edit_medium`, `release_edit_track_place` | the applied mediums, and each track's medium, side, number and the length the catalog lists for it |
 | `release_edit_track_role`, `release_edit_release_role`, `release_edit_work`, `release_edit_work_credit`, `release_edit_work_part`, `release_edit_track_work` | the roles and works the applied release credits |
 | `release_edit_record` | the records the apply read, the applied one first, which a save writes |

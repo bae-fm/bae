@@ -9,7 +9,8 @@
 //! release and then the session again from the release as saved, in one
 //! write; closing the editor deletes its session; no session outlives the
 //! process, so bae empties the tables as the library opens. Deleting the
-//! release deletes its sessions. Its tables are `release_edit_session.sql`.
+//! release deletes its sessions. This module's tables are in
+//! `release_edit_session.sql`.
 
 use super::import_list::{credit_resolutions_on, CreditSource};
 use super::import_state::pane_rows::{
