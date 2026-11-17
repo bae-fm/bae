@@ -93,21 +93,6 @@ pub async fn pair_store(
         .unwrap()
 }
 
-/// Open the device's store `store` again, as the app opens a library.
-pub async fn open_store(
-    schema: crate::Schema,
-    installation: &coven::Coven,
-    sources: &crate::TestSources,
-    storage: Arc<coven::MemoryStorage>,
-    store: coven::StoreId,
-) -> coven::CovenHandle {
-    crate::configure_store(sources.builder(installation), schema)
-        .storage_connector(storage)
-        .open(store, |_| ())
-        .await
-        .expect("open the device's store again")
-}
-
 /// Copy every file and folder in `from` into `to`, making `to` and each
 /// folder below it, as copying an installation's folder to a backup does.
 pub fn copy_folder(from: &std::path::Path, to: &std::path::Path) {
@@ -125,18 +110,23 @@ pub fn copy_folder(from: &std::path::Path, to: &std::path::Path) {
     }
 }
 
-/// Open the device's store `store` again with `migrations` in place of
-/// `schema`'s own, as an update of the app that brings a new schema does.
+/// Open the device's store `store` again, as the app opens a library. With
+/// `migrations`, the store opens with them in place of `schema`'s own, as an
+/// update of the app that brings a new schema does.
 pub async fn reopen_store(
     schema: crate::Schema,
     installation: &coven::Coven,
     sources: &crate::TestSources,
     storage: Arc<coven::MemoryStorage>,
     store: coven::StoreId,
-    migrations: Vec<coven::Migration>,
+    migrations: Option<Vec<coven::Migration>>,
 ) -> coven::CovenHandle {
-    crate::configure_store(sources.builder(installation), schema)
-        .migrations(migrations)
+    let builder = crate::configure_store(sources.builder(installation), schema);
+    let builder = match migrations {
+        Some(migrations) => builder.migrations(migrations),
+        None => builder,
+    };
+    builder
         .storage_connector(storage)
         .open(store, |_| ())
         .await

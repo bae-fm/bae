@@ -283,16 +283,7 @@ impl TestDevice {
     /// brings a new schema does, then sync again.
     pub async fn reopen_with(&mut self, migrations: Vec<coven::Migration>) {
         self.close().await;
-        let handle = stores::reopen_store(
-            crate::SCHEMA,
-            &self.installation,
-            &self.sources,
-            self.storage.clone(),
-            self.store().store_id(),
-            migrations,
-        )
-        .await;
-        self.library = RunningLibrary::new(self.app.clone(), handle, &self.sources).await;
+        self.open_again(Some(migrations)).await;
         self.store().start_sync().await.unwrap();
     }
 
@@ -308,7 +299,7 @@ impl TestDevice {
         let backup = TempDir::new().unwrap();
         self.close().await;
         stores::copy_folder(&folder, backup.path());
-        self.open_again(id).await;
+        self.open_again(None).await;
         self.store().start_sync().await.unwrap();
         newer(&*self).await;
         self.wait_until("the newer writes are sent", || async {
@@ -318,18 +309,20 @@ impl TestDevice {
         self.close().await;
         std::fs::remove_dir_all(&folder).unwrap();
         stores::copy_folder(backup.path(), &folder);
-        self.open_again(id).await;
+        self.open_again(None).await;
     }
 
-    /// Open the device's store `id` again with bae's schema and run its
+    /// Open the device's closed store again with bae's schema, and with
+    /// `migrations` in place of bae's own when there are any, then run its
     /// library over it.
-    async fn open_again(&mut self, id: coven::StoreId) {
-        let handle = stores::open_store(
+    async fn open_again(&mut self, migrations: Option<Vec<coven::Migration>>) {
+        let handle = stores::reopen_store(
             crate::SCHEMA,
             &self.installation,
             &self.sources,
             self.storage.clone(),
-            id,
+            self.store().store_id(),
+            migrations,
         )
         .await;
         self.library = RunningLibrary::new(self.app.clone(), handle, &self.sources).await;
