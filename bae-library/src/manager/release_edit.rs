@@ -21,10 +21,12 @@
 
 use super::*;
 
-/// A release as the editor reads it: its detail, its album's artists, and
-/// its tracks' audio in release order.
+/// A release as the editor reads it: its detail, its album's title, year and
+/// artists, and its tracks' audio in release order.
 pub(crate) struct ReleaseEditContext {
     pub(crate) detail: bae_records::DbReleaseDetail,
+    pub(crate) album_title: String,
+    pub(crate) album_year: Option<i32>,
     pub(crate) album_artists: Vec<bae_records::credits::LibraryCredit>,
     pub(crate) tracks: Vec<bae_records::DbReleaseEditTrack>,
 }
@@ -116,7 +118,7 @@ impl LibraryManager {
         let release_id = release_id.to_string();
         self.store
             .read(move |sql| release_edit_rows_on(&sql, &release_id))
-            .process(|rows| Ok(rows.map(|rows| rows.processed().0)))
+            .process(|rows| Ok(rows.map(ReleaseEditRows::processed)))
             .await
     }
 
@@ -127,13 +129,13 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
         let id = release_id.to_string();
-        let (context, album) = self
+        let context = self
             .store
             .read(move |sql| release_edit_rows_on(&sql, &id))
             .process(|rows| Ok::<_, LibraryError>(rows.map(ReleaseEditRows::processed)))
             .await?
             .ok_or_else(|| LibraryError::release_missing(release_id, super::ReleaseWork::Edit))?;
-        release_edit_seed(context, album)
+        release_edit_seed(context)
     }
 
     /// The session's draft as its editor shows it now.
@@ -462,8 +464,7 @@ impl LibraryManager {
             let Some(rows) = release_edit_rows_on(sql, &id)? else {
                 return Ok(false);
             };
-            let (context, album) = rows.processed();
-            let seed = release_edit_seed(context, album).map_err(|error| {
+            let seed = release_edit_seed(rows.processed()).map_err(|error| {
                 bae_store::DbError::unreadable(format!("release {id} as an editor reads it"), error)
             })?;
             Ok(seed.holds_the_values_of(&opened))
@@ -489,51 +490,53 @@ fn release_edit_save_error(
 }
 
 /// The rows a release's edit seed is made of, as `sql` holds them: its
-/// detail, its album's artists, its tracks' audio in release order and its
-/// album. `None` when the release is gone. Read through a write too, so a
-/// save can find the release as it stands in the write itself.
+/// detail with its album's title, year and artists, and its tracks' audio in
+/// release order. `None` when the release is gone. Read through a write too,
+/// so a save can find the release as it stands in the write itself.
 fn release_edit_rows_on<Q: coven::SqlRead>(
     sql: &Q,
     release_id: &str,
 ) -> Result<Option<ReleaseEditRows>, bae_store::DbError> {
-    let Some((detail, ())) = bae_records::records::release_detail_rows_on(
-        sql,
-        release_id,
-        bae_records::records::NO_STARS,
-        "",
-        |_| Ok(()),
-    )?
+    let Some((detail, (album_title, album_year, album_artists))) =
+        bae_records::records::release_detail_rows_on(
+            sql,
+            release_id,
+            bae_records::records::NO_STARS,
+            &bae_records::records::read::album_of_release_sql(),
+            bae_records::records::read::album_of_release_columns,
+        )?
     else {
         return Ok(None);
     };
-    let album_id = detail.release().album_id.clone();
-    let album =
-        bae_records::records::read::find_album_by_id_on(sql, &album_id)?.ok_or_else(|| {
-            bae_store::DbError::unreadable(format!("album of release {release_id}"), album_id)
-        })?;
-    let album_artists = bae_records::records::read::get_artists_for_album_on(sql, &album.id)?;
     let tracks = bae_records::records::release_edit_tracks_on(sql, release_id)?;
-    Ok(Some(ReleaseEditRows { detail, album_artists, tracks, album }))
+    Ok(Some(ReleaseEditRows { detail, album_title, album_year, album_artists, tracks }))
 }
 
 /// [`release_edit_rows_on`]'s rows.
 struct ReleaseEditRows {
     detail: bae_records::records::DbReleaseDetailRows,
+    album_title: String,
+    album_year: Option<i32>,
     album_artists: Vec<bae_records::credits::LibraryCredit>,
     tracks: Vec<bae_records::DbReleaseEditTrack>,
-    album: DbAlbum,
 }
 
 impl ReleaseEditRows {
-    /// The rows as the editor reads them, and the album.
-    fn processed(self) -> (ReleaseEditContext, DbAlbum) {
-        let Self { detail, album_artists, tracks, album } = self;
-        (ReleaseEditContext { detail: detail.process(), album_artists, tracks }, album)
+    /// The rows as the editor reads them.
+    fn processed(self) -> ReleaseEditContext {
+        let Self { detail, album_title, album_year, album_artists, tracks } = self;
+        ReleaseEditContext {
+            detail: detail.process(),
+            album_title,
+            album_year,
+            album_artists,
+            tracks,
+        }
     }
 }
 
-/// The editor's seed for a release as `context` and `album` hold it, filed
-/// under `album`.
+/// The editor's seed for a release as `context` holds it, filed under the
+/// album it is in.
 ///
 /// The album title and artists, the release's pressing fields and each
 /// track's title and artists, rendered into the raw editor form. A track
@@ -541,9 +544,9 @@ impl ReleaseEditRows {
 /// album artist"); the album artists seed the album artist field.
 fn release_edit_seed(
     context: ReleaseEditContext,
-    album: DbAlbum,
 ) -> Result<bae_import::ReleaseEditSeed, LibraryError> {
-    let ReleaseEditContext { detail, album_artists, tracks: edit_tracks } = context;
+    let ReleaseEditContext { detail, album_title, album_year, album_artists, tracks: edit_tracks } =
+        context;
     let release = &detail.release;
     let release_id = release.id.as_str();
     let display = bae_import::ReleaseEditDisplayContext::from_raw(&detail, edit_tracks)?;
@@ -578,23 +581,22 @@ fn release_edit_seed(
 
     let edit = raw_release_edit_with_persisted_track_ids(
         bae_import::ReleaseUserEdit {
-            album_title: album.title.clone(),
+            album_title: album_title.clone(),
             album_artist_assignments,
-            album_year: album.year,
+            album_year,
             pressing: release.pressing.clone(),
             tracks: tracks.iter().map(|(_, track)| track.clone()).collect(),
         },
         tracks.iter().map(|(id, _)| id.as_str()),
     )?;
 
-    let DbAlbum { id: album_id, title, .. } = album;
     Ok(bae_import::ReleaseEditSeed {
         edit,
         cover,
         display,
         album: bae_import::DraftAlbum::Named {
-            album_id,
-            line: bae_import::AlbumLine::of(title, artist_line),
+            album_id: release.album_id.clone(),
+            line: bae_import::AlbumLine::of(album_title, artist_line),
         },
     })
 }

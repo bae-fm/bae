@@ -1782,7 +1782,6 @@ frozen = [
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::changed", shape = "kept-state", count = 3, finding = "keeps the latest byte measurement (`latest`) and advances the image watch (`images`) between deliveries" },
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage::next", shape = "kept-state", count = 1, finding = "keeps the last storage it delivered (`last`) to skip an equal one" },
     { path = "bae-library/src/manager/device_storage.rs", item = "LiveDeviceStorage", shape = "kept-state", count = 1, finding = "keeps the catalog image cache's watch, which holds a `Mutex`, beside coven's byte watch" },
-    { path = "bae-library/src/manager/release_edit.rs", item = "release_edit_rows_on", shape = "keyed-statement", count = 2, finding = "reads the album and its artists keyed by the album id the first statement returned" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "group", count = 1, finding = "groups the files coven is uploading by release in a `BTreeMap`" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "join", count = 2, finding = "joins each file coven is uploading to its rate and progress by file id (`get`)" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "length-branch", count = 1, finding = "shows no upload bar when coven uploads no file (`is_empty`)" },
