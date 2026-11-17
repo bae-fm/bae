@@ -3,9 +3,8 @@ import Testing
 
 @testable import bae
 
-/// What a library that failed to open offers: Reset from cloud when core
-/// failed the open as one a reset from the cloud loads the library again
-/// from, nothing to reset from otherwise.
+/// A library that failed to open offers Reset from cloud when core says a
+/// reset from the cloud can load it again, and offers nothing otherwise.
 struct OpenFailureOfferTests {
     private let damaged = BridgeError.Diagnostic(
         category: .databaseDamaged,
@@ -16,7 +15,7 @@ struct OpenFailureOfferTests {
         try #require(LoadError(openOf: "library-1", failedWith: error))
     }
 
-    @Test("a failed open core offers the reset for offers Reset from cloud")
+    @Test("an open that core says a reset can fix offers Reset from cloud")
     func resetFromCloud() throws {
         let failure = try openFailure(.ResetFromCloud(error: damaged))
         #expect(failure.step == .libraryOpen(offersReset: true))
@@ -24,7 +23,7 @@ struct OpenFailureOfferTests {
     }
 
     @Test(
-        "a damaged library core fails plainly, as one with no storage, offers no reset"
+        "a damaged library that core fails without offering a reset, such as one with no storage, offers no reset"
     )
     func failed() throws {
         #expect(

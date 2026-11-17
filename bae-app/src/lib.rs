@@ -65,7 +65,7 @@ pub enum BootstrapError {
     Config(String),
     #[error("{0}")]
     Database(String),
-    /// This device's copy of the library's data can't be used: its database
+    /// bae can't open this device's copy of the library's data: its database
     /// file is damaged.
     #[error("{0}")]
     Damaged(String),
@@ -167,18 +167,19 @@ pub enum OpenFailure {
 }
 
 impl OpenFailure {
-    /// Why the open failed, whichever way on it has.
+    /// The open's error, whether or not a reset from the cloud can load the
+    /// library.
     pub fn error(&self) -> &BootstrapError {
         match self {
             Self::ResetFromCloud(error) | Self::Failed(error) => error,
         }
     }
 
-    /// `error`, met opening the library in `store_dir`, with its way on: a
-    /// failure in this device's copy of the library's data offers the reset
-    /// when the library has storage, which this reads on `runtime`. When
-    /// that read fails, the open fails with the read's error, and the open's
-    /// own error is logged.
+    /// The failure of an open of the library in `store_dir` that met `error`.
+    /// A failure in this device's copy of the library's data offers the
+    /// reset when the library has storage, which this reads on `runtime`.
+    /// When that read fails, the open fails with the read's error, and this
+    /// logs the open's own error.
     fn of(
         error: BootstrapError,
         store_dir: &coven::StoreDir,
@@ -210,8 +211,8 @@ impl OpenFailure {
 }
 
 /// A failure met where the open has no runtime to read the library's
-/// storage on: before its runtime starts, or once the open library is handed
-/// on. None of these is in the library's data, so none offers a reset.
+/// storage on: before its runtime starts, or once `compose` takes the open
+/// library. None of these is in the library's data, so none offers a reset.
 impl From<BootstrapError> for OpenFailure {
     fn from(error: BootstrapError) -> Self {
         Self::Failed(error)
@@ -463,9 +464,9 @@ enum Opening {
     Fixture(std::path::PathBuf),
 }
 
-/// Bring the library `opening` names up. A failure met while the open's
-/// runtime runs is told to the caller by `told`, on that runtime; any other
-/// is told as itself.
+/// Bring the library `opening` names up. `told` turns a failure met while
+/// the open's runtime runs into the caller's error, on that runtime; this
+/// returns any other failure unchanged.
 fn bootstrap_opening<T, F, E>(
     opening: Opening,
     app_dir: bae_app_dir::AppDir,
@@ -580,10 +581,10 @@ where
 
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first) and
-    // forget_library's pointer check both refer to a library that opens. It
-    // advances only over a fully-realized open: written after the frontend owner
-    // has started, and never for a locked library — cancelling the unlock screen
-    // must leave the previously-active library in charge. A successful unlock
+    // forget_library's pointer check both refer to a library that opens. bae
+    // advances the pointer only over a fully-realized open, and writes it after
+    // the frontend owner has started, never for a locked library: cancelling the
+    // unlock screen must leave the previously-active library in charge. A successful unlock
     // re-runs bootstrap unlocked and advances the pointer then.
     if advance_active_pointer {
         timing

@@ -150,7 +150,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let renameSlot = CancellableTaskSlot()
     /// In-flight device reset.
     private let resetSlot = CancellableTaskSlot()
-    /// The open library's wait for core to decide a copy-behind reset.
+    /// The open library's wait for core to decide that its copy is behind and
+    /// must reset.
     private let copyResetSlot = CancellableTaskSlot()
     /// The one graceful shutdown that Close and Quit share.
     @ObservationIgnored
@@ -567,10 +568,10 @@ extension AppDelegate {
         return service
     }
 
-    /// Wait for core to decide a copy-behind reset of `service`'s library,
-    /// which it does at most once, and run it. A library that closes first
-    /// ends the wait with nothing to show; any other failure of the wait is
-    /// a bug.
+    /// Wait for core to decide that the copy of `service`'s library is behind
+    /// and must reset, which core decides at most once, and run the reset. A
+    /// library that closes first ends the wait with nothing to show; any
+    /// other failure of the wait is a bug.
     private func waitForCopyReset(_ service: AppService) {
         let libraryId = service.libraryId
         copyResetSlot.replace(

@@ -79,14 +79,16 @@ internal fun DeviceResetDialog(
 }
 
 /**
- * This device's copy can't be used, and only a device reset fixes it; the
- * reset is offered after its warning. A failed open says the library did not
- * open, that its data is wrong, and why behind Details. With no failure, as
- * when a reset was cancelled or the Sync page offered it, the screen says the
- * reset's line. A reset that failed is titled by what failed instead, and
- * Retry resets again without the warning the person already accepted. Back
- * leaves without resetting. Preparing the reset can itself fail (it reads this
- * device's state); that shows as a failed reset does, with the same Retry.
+ * bae can't open this device's copy of the library, and only a device reset
+ * fixes it; the screen offers the reset after its warning. After a failed
+ * open, the notice says the library did not open and that its data is wrong,
+ * and Details shows why. With no failure, as when the person cancelled a reset
+ * or the Sync page offered it, the screen says the reset's line. When a reset
+ * fails, the notice's title names the step that failed instead, and Retry
+ * resets again without the warning the person already accepted. Back leaves
+ * without resetting. Preparing the reset reads this device's state and can
+ * fail; a failed preparation shows the same notice and Retry as a failed
+ * reset.
  */
 @Composable
 internal fun ResetOfferedScreen(
@@ -127,7 +129,7 @@ internal fun ResetOfferedScreen(
             )
         }
 
-        // A failed open names the failed step, says the data is wrong and offers Reset from cloud.
+        // After a failed open, the notice names the failed step, says the data is wrong and offers Reset from cloud.
         shown != null && shown.step == FailedStep.LIBRARY_OPEN -> {
             Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
                 AndroidNotice(

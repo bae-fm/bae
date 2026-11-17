@@ -1,11 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// Offered from Settings when sync found another installation in this
-/// device's place: why, as a centred notice, with the reset, whose warning an
-/// alert shows before it runs. A reset that failed says so, and Retry runs
-/// it again without the warning the person already accepted. Also offers finishing a reset that stopped
-/// partway, once finishing it failed. Cancel leaves either without resetting.
+/// Settings shows this screen when sync finds another installation in this
+/// device's place. The screen says why in a centred notice and offers the
+/// reset, whose warning an alert shows before the reset runs. When a reset
+/// fails, the screen says so, and Retry runs it again without the warning
+/// the person already accepted. The screen also offers finishing a reset
+/// that stopped partway, once finishing it failed. Cancel leaves either
+/// without resetting.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
     enum Prompt {
@@ -42,8 +44,8 @@ struct DeviceResetView: View {
             }
     }
 
-    /// Why a reset is offered: the reset's own line. A failed reset is
-    /// titled by what failed instead, its error behind Details.
+    /// The notice shows the reset's own line, or after a failed reset, the
+    /// step that failed as its title with the error behind Details.
     @ViewBuilder
     private var offeredNotice: some View {
         let cancel = ErrorAction(

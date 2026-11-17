@@ -18,7 +18,7 @@ fn a_copy_behind_another_installation_answers_with_its_unsent_work() {
         let copy = devices.a();
         copy.manager().records.insert_album(&create_test_album()).await.unwrap();
         let unsent = copy.store().unsent_before_removal().await.unwrap();
-        assert!(unsent.writes > 0, "the copy's own write waits to be sent");
+        assert!(unsent.writes > 0, "the copy has not sent its own write yet");
 
         let (behind, started) =
             tokio::join!(copy.manager().copy_behind(), copy.store().start_sync());

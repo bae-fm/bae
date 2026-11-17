@@ -302,7 +302,7 @@ impl TestDevice {
         self.open_again(None).await;
         self.store().start_sync().await.unwrap();
         newer(&*self).await;
-        self.wait_until("the newer writes are sent", || async {
+        self.wait_until("the device has sent the newer writes", || async {
             self.store().unsent_before_removal().await.unwrap().writes == 0
         })
         .await;

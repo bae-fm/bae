@@ -1,7 +1,7 @@
-//! Whether resetting a library from the cloud replaces what a failure met:
-//! decided where the class is known. A failed open offers *Reset from
-//! cloud…* by this answer when the library also has storage
-//! (`bae_app::OpenFailure`).
+//! Whether resetting a library from the cloud replaces what a failure met.
+//! bae-diagnostics decides this here, where it knows the failure's class. A
+//! failed open offers *Reset from cloud…* by this answer when the library
+//! also has storage (`bae_app::OpenFailure`).
 
 use super::UiErrorCategory;
 

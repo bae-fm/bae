@@ -4495,20 +4495,21 @@ its control says so in core's words for that transfer.
   writes nothing. coven sends a release file's row without waiting for its
   upload, so the upload holds no write and its record names no holding file.
 
-**Resetting a device.** Opening can fail because this device's copy of the
-library's data can't be used, such as a damaged database file or tables that
+**Resetting a device.** Opening can fail because bae can't use this device's
+copy of the library's data, such as a damaged database file or tables that
 don't match the app's, and sync can find that another installation replaced
 this one
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)),
 which coven reports as the last pass's failure. There, and only there (a copy
 behind another installation resets at once, below), bae
 offers Reset from cloud: load the library from storage again under a fresh
-device id. A failed open offers Reset from cloud only when core fails it as
-`ResetFromCloud`, which it does when the library has storage to load it
-from, and the app offers it beside the failure where it shows it (§5.6).
-Before it does, a warning says that edits on this device that haven't synced
-will be discarded. The person was told before choosing, so
-nothing is shown after; bae doesn't present coven's reset notice. When sync
+device id. A failed open offers Reset from cloud only when core fails the
+open as `ResetFromCloud`, which core does when the library has storage to
+load the library from. The app offers Reset from cloud beside the failure,
+where the app shows the failure (§5.6). Before bae resets, a warning says
+that bae will discard edits on this device that haven't synced. bae warned
+the person before they chose, so bae shows nothing after; bae doesn't
+present coven's reset notice. When sync
 finds another installation, the screen says why in the middle of the window
 and offers *Reset from cloud…*. Either way, *Reset from cloud…* opens an
 alert (a dialog on Android), titled "Reset from cloud?", which gives the

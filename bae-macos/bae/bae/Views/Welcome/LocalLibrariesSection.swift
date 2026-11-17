@@ -133,10 +133,10 @@ private struct UnreadableInstallationRow: View {
 }
 
 /// Why a library failed to open, joined to its row with no line between
-/// them (the row names the library): the title and Details, and when core
-/// failed the open as one a reset from the cloud loads the library again
-/// from (this Mac's copy of its data can't be used, and it has storage),
-/// what is wrong and Reset from cloud….
+/// them (the row names the library): the title and Details, and, when core
+/// says a reset from the cloud can load the library again (bae can't use
+/// this Mac's copy of its data, and the library has storage), what is wrong
+/// and Reset from cloud….
 private struct OpenFailureNotice: View {
     let failure: LoadError
     let onResetFromCloud: () -> Void

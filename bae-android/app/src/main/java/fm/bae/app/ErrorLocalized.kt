@@ -154,7 +154,7 @@ fun Context.displayError(error: BridgeException): DisplayError? =
     }
 
 /**
- * The failure a failed open carries in every way on, for a surface that only shows it. `BridgeOpenException` is
+ * The error inside a failed open, whichever case it is, for a surface that only shows it. `BridgeOpenException` is
  * uniffi's Kotlin name for the bridge `BridgeOpenError`.
  */
 val BridgeOpenException.failure: BridgeException

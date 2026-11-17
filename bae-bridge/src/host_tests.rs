@@ -342,9 +342,10 @@ fn diagnostic(category: crate::types::BridgeErrorCategory) -> BridgeError {
     BridgeError::Diagnostic { category, detail: "x".into() }
 }
 
-/// Each failed open crosses with its way on, carrying the failure it shows.
+/// Each failed open becomes the `BridgeOpenError` case that names what the
+/// app offers next, and carries the error it shows.
 #[test]
-fn a_failed_open_crosses_with_its_way_on() {
+fn a_failed_open_names_what_the_app_offers_next() {
     use crate::types::{BridgeErrorCategory as C, BridgeReplacedBy};
     let crossed = |failure| match open_failure_to_bridge(failure) {
         BridgeOpenError::ResetFromCloud { error } => ("reset", None, error),
@@ -388,10 +389,10 @@ fn a_failed_open_crosses_with_its_way_on() {
     ));
 }
 
-/// A library kept on this device only whose copy can't be read has nothing
-/// a reset could load, so its open fails with nothing to recover.
+/// When bae cannot read a library kept only on this device, a reset has
+/// nothing to load, so the open fails and offers no recovery.
 #[test]
-fn a_damaged_library_kept_on_this_device_only_fails_plainly() {
+fn a_damaged_library_kept_on_this_device_only_offers_no_recovery() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();

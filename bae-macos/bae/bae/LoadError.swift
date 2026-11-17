@@ -46,7 +46,7 @@ struct LoadError: Equatable {
         }
 
         /// What the person can do next. A failed open has none of its own:
-        /// its row offers the way out.
+        /// its row offers Retry or Reset from cloud.
         var advice: String? {
             switch self {
             case .libraryOpen:

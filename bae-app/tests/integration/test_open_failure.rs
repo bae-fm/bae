@@ -92,7 +92,7 @@ impl Home {
     }
 }
 
-/// This device's copy of a library kept in storage can't be read: a reset
+/// bae can't read this device's copy of a library kept in storage: a reset
 /// from the cloud loads the library again, so the open offers it.
 #[test]
 fn a_damaged_library_with_storage_offers_the_reset() {
@@ -104,10 +104,10 @@ fn a_damaged_library_with_storage_offers_the_reset() {
     assert!(matches!(failure, OpenFailure::ResetFromCloud(_)), "{failure:?}");
 }
 
-/// A library kept on this device only has nothing to load from, so its
-/// damaged copy fails plainly.
+/// A library kept on this device only has nothing to load from, so the open
+/// of its damaged copy fails without offering a reset.
 #[test]
-fn a_damaged_library_kept_on_this_device_only_fails_plainly() {
+fn a_damaged_library_kept_on_this_device_only_offers_no_reset() {
     let home = Home::new();
     let id = home.damaged_library(false);
 
@@ -120,9 +120,10 @@ fn a_damaged_library_kept_on_this_device_only_fails_plainly() {
     }));
 }
 
-/// A library that isn't there fails plainly: a reset can't load it.
+/// Opening a library that isn't there fails without offering a reset,
+/// because a reset can't load it.
 #[test]
-fn a_library_that_is_not_there_fails_plainly() {
+fn a_library_that_is_not_there_offers_no_reset() {
     let home = Home::new();
     let missing = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
 

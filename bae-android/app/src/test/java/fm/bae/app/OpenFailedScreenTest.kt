@@ -3,7 +3,7 @@ package fm.bae.app
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Where a failed open of a library lands: one screen for each way on core names. */
+/** These tests check which screen the app shows for each offer that core names after a failed open. */
 class OpenFailedScreenTest {
     @Test
     fun anUnfinishedRemovalLandsOnFinishingTheRemoval() {
@@ -28,9 +28,9 @@ class OpenFailedScreenTest {
         )
     }
 
-    /** Core fails a damaged copy of a library with no storage plainly: there is nothing to reset from. */
+    /** Core fails a damaged library that has no storage with nothing to offer: a reset has nothing to load. */
     @Test
-    fun aDamagedLibraryCoreFailsPlainlyOffersNoReset() {
+    fun aDamagedLibraryWithNoStorageOffersNoReset() {
         assertEquals(
             AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, damaged)),
             AppScreen.openFailed("library", OpenFailureOffer.NOTHING, damaged, open = null),

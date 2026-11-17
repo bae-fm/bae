@@ -171,9 +171,9 @@ fn an_open_that_failed_on_a_bug_shows_as_one() {
     }
 }
 
-/// A damaged database file is this device's copy of the library's data
-/// failing, which a reset from the cloud replaces: it opens as damaged, not
-/// as a device that sync found must be reset.
+/// When this device's database file is damaged, the open reports the
+/// library as damaged, which a reset from the cloud fixes. The open does not
+/// report that sync requires a reset of this device.
 #[test]
 fn a_damaged_database_file_opens_as_damaged() {
     let error =

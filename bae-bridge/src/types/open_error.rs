@@ -1,10 +1,11 @@
 use super::{BridgeError, BridgeReplacedBy};
 
-/// Why `init_app` could not open a library, each case one way on. Every
-/// case carries the `BridgeError` a surface shows for it.
+/// Why `init_app` could not open a library. Each case names the one thing
+/// the app offers next, and carries the `BridgeError` a surface shows for
+/// it.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum BridgeOpenError {
-    /// This device's copy of the library's data can't be used, and the
+    /// bae can't use this device's copy of the library's data, and the
     /// library has storage: the app offers Reset from cloud in place of
     /// Retry.
     #[error("{error}")]

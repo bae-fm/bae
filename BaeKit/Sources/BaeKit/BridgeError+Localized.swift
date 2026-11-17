@@ -93,9 +93,9 @@ extension BridgeError {
 }
 
 extension BridgeOpenError {
-    /// The failure every way on carries, for a surface that only shows it:
-    /// its line, its detail and whether a retry can get past it are this
-    /// error's.
+    /// The error that each case of `BridgeOpenError` carries. A surface that
+    /// only shows the failure takes its line, its detail and its retry
+    /// answer from this error.
     public var error: BridgeError {
         switch self {
         case .ResetFromCloud(let error), .ReplacementUnfinished(_, let error),

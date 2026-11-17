@@ -242,7 +242,7 @@ open class AppService: @unchecked Sendable, Observable {
         }
     #endif
 
-    /// Returns once, when core decides to reset this copy at once: sync
+    /// Returns once, when core decides to reset this copy immediately: sync
     /// found that another installation uses this device's id and this copy
     /// is the one behind. Fails as cancelled when the library closes first.
     public func copyReset() async throws -> BridgeCopyReset {

@@ -910,7 +910,10 @@ internal open class FakeAppHandle(
 
     override suspend fun retryNow(): BridgeSyncRetryOutcome = unfaked("retryNow")
 
-    /** A session waits for a copy reset from its start, so this copy is never behind: the wait ends only with it. */
+    /**
+     * A session waits for a copy reset from its start, and this copy is never behind: the wait ends only when the
+     * session cancels it.
+     */
     override suspend fun copyReset(): BridgeCopyReset = awaitCancellation()
 
     override suspend fun retryOutbox() {

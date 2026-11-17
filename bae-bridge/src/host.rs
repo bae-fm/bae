@@ -66,8 +66,8 @@ impl BridgeHost {
 
     /// Bootstrap the library `library_id` with this host's sink, its open's
     /// steps written into `opening`'s stream. A bootstrap failure ships
-    /// `app_start_failed` through it before the error returns with its way
-    /// on.
+    /// `app_start_failed` through it before the error returns as the
+    /// `BridgeOpenError` case that names what the app offers next.
     pub(crate) fn open_app(
         self: &Arc<Self>,
         library_id: String,
@@ -132,7 +132,8 @@ impl BridgeHost {
     }
 
     /// The handle an open of a registered library built, or its failure
-    /// shipped as `app_start_failed` and returned with its way on.
+    /// shipped as `app_start_failed` and returned as the `BridgeOpenError`
+    /// case that names what the app offers next.
     fn opened_registered(
         &self,
         bootstrapped: Result<AppHandle, OpenFailure>,
@@ -676,7 +677,8 @@ pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
 }
 
 /// Open the library `library_id`, writing the open's steps into `opening`'s
-/// stream. A failed open says its way on (`BridgeOpenError`).
+/// stream. A failed open returns the `BridgeOpenError` case that names what
+/// the app offers next.
 #[uniffi::export]
 pub fn init_app(
     library_id: String,
@@ -756,10 +758,10 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
     }
 }
 
-/// A failed open of a registered library with its way on, each carrying
-/// the failure as a bridge error: a reset or restore that stopped partway
-/// names the call that finishes it, and a removal that stopped partway says
-/// so.
+/// A failed open of a registered library as the `BridgeOpenError` case that
+/// names what the app offers next, each carrying the failure as a bridge
+/// error: a reset or restore that stopped partway names the call that
+/// finishes it, and a removal that stopped partway says so.
 fn open_failure_to_bridge(failure: OpenFailure) -> BridgeOpenError {
     match failure {
         OpenFailure::ResetFromCloud(error) => {

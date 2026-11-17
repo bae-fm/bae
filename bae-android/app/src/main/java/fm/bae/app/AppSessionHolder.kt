@@ -166,10 +166,10 @@ sealed interface AppScreen {
     }
 
     /**
-     * This device's copy can't be used as it stands: opening failed in its
-     * data, such as a damaged database, for a library with storage, or sync
-     * found another installation in this device's place. Resetting loads the
-     * library from storage again under a new device id. [error] is why the
+     * bae can't open this device's copy as it is, because its data is
+     * damaged and the library has storage, or because sync found another
+     * installation in this device's place. Resetting loads the library from
+     * storage again under a new device id. [error] is why the
      * open or the last reset failed; none after a reset was cancelled, or
      * when the Sync page offered the reset.
      */
@@ -231,11 +231,10 @@ sealed interface AppScreen {
 
     companion object {
         /**
-         * The screen the app shows after a failed open of [libraryId], one for each way on core names. When core
-         * says a reset from the cloud loads the library again, it is the reset offer, in place of Retry. When a
-         * removal stopped partway, it is the screen that finishes the removal. Otherwise it is [open], the library
-         * still open when the open was a switch, whose snackbar shows the failure, or else the failure as [shown].
-         * A reset or restore that stopped partway never reaches here: finishing it begins at once.
+         * The screen the app shows after a failed open of [libraryId], one for each [offer]. When core says a reset
+         * from the cloud loads the library again, it is the reset offer, in place of Retry. When a removal stopped
+         * partway, it is the screen that finishes the removal. Otherwise it is [open], the library still open when
+         * the open was a switch, whose snackbar shows the failure, or else the failure as [shown].
          */
         fun openFailed(
             libraryId: String,
@@ -475,8 +474,8 @@ object AppSessionHolder {
     }
 
     /**
-     * Show [failure], why opening [libraryId] failed, on the screen for the way on core names, or show the open
-     * library or onboarding when core says the failure has nothing to show.
+     * Show [failure], why opening [libraryId] failed, on the screen for [offer], or show the open library or
+     * onboarding when core says the failure has nothing to show.
      */
     private fun showFailedOpen(
         context: Context,
@@ -938,10 +937,10 @@ object AppSessionHolder {
     }
 
     /**
-     * Wait, in [sessionScope], for core to decide a copy-behind reset of [libraryId], which it does at most once for
-     * the open library [handle], and run it in the app's scope: the reset closes the session, which ends
-     * [sessionScope]. A library that closes first ends the wait with nothing to show; any other failure of the wait
-     * reaches [sessionScope]'s handler, which reports it as a bug.
+     * Wait, in [sessionScope], for core to decide that [libraryId]'s copy is behind and must reset, which core
+     * decides at most once for the open library [handle], and run the reset in the app's scope: the reset closes the
+     * session, which ends [sessionScope]. A library that closes first ends the wait with nothing to show; any other
+     * failure of the wait reaches [sessionScope]'s handler, which reports it as a bug.
      */
     private fun waitForCopyReset(
         sessionScope: CoroutineScope,
