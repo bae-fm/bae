@@ -170,19 +170,16 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         windows.push((name, window, seen, reader));
     }
 
-    // The scans' progress with each found count, beside how often the query
+    // The scanning folders with each found count, beside how often the query
     // had run when it returned it. The test writes this scan straight to the
     // tables, so it holds the root as running in place of a coordinator.
     tables.hold_root_running_for_test(&root).await.unwrap();
-    let mut progress = tables.subscribe_folder_scan_progress();
+    let mut progress = tables.subscribe_scanning_folders();
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let progress_reader = tokio::spawn(async move {
         while let Some(read) = progress.next_inline().await {
-            let read = read.expect("the scans' progress reads");
-            let Some(bae_import::FolderScanActivity { folders }) = &read.activity else {
-                panic!("the scan is running: {read:?}");
-            };
-            let [bae_import::ActiveFolderScan { found, .. }] = folders[..] else {
+            let folders = read.expect("the scanning folders read");
+            let [bae_import::ScanningFolder { found, .. }] = folders[..] else {
                 panic!("one scan is running: {folders:?}");
             };
             progress_tx.send_replace(Some((found, Counted::of(&progress.runs()))));

@@ -13,18 +13,16 @@ struct ImportCandidateSelectionTests {
         let size = NSSize(width: 180, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
             FolderScanProgressIndicator(
-                activity: BridgeFolderScanActivity(
-                    folders: [
-                        BridgeActiveFolderScan(
-                            folder: BridgeWatchedFolder(
-                                path: Data("/imports/incoming".utf8),
-                                pathText: "/imports/incoming",
-                                name: "Incoming"
-                            ),
-                            found: 179
-                        )
-                    ]
-                )
+                folders: [
+                    BridgeScanningFolder(
+                        folder: BridgeWatchedFolder(
+                            path: Data("/imports/incoming".utf8),
+                            pathText: "/imports/incoming",
+                            name: "Incoming"
+                        ),
+                        found: 179
+                    )
+                ]
             )
             .frame(width: size.width, height: size.height),
             size: size

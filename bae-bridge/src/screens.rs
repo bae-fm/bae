@@ -457,3 +457,15 @@ pulled_read! {
     converted by crate::types::BridgeFolderScans::from_core,
     built by folder_scans
 }
+
+#[cfg(desktop)]
+pulled_read! {
+    /// The folders being scanned, each with how many folders its scan has
+    /// stored.
+    ScanningFoldersSubscription:
+        LiveValues<Vec<bae_import::ScanningFolder>> => Vec<crate::types::BridgeScanningFolder>,
+    converted by |folders: Vec<bae_import::ScanningFolder>| {
+        folders.into_iter().map(crate::types::BridgeScanningFolder::from_core).collect::<Vec<_>>()
+    },
+    built by scanning_folders
+}

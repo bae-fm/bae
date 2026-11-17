@@ -36,9 +36,9 @@ fn unstored(
     )])
 }
 
-/// The found count of each folder that the progress lists as scanning.
-fn found_counts(progress: &crate::FolderScanProgress) -> Vec<u64> {
-    progress.activity.iter().flat_map(|activity| &activity.folders).map(|f| f.found).collect()
+/// The found count of each folder that the scanning folders list.
+fn found_counts(folders: &[crate::ScanningFolder]) -> Vec<u64> {
+    folders.iter().map(|folder| folder.found).collect()
 }
 
 /// The only watched folder's status.
@@ -53,9 +53,9 @@ async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanS
 const STOPPED: &str = "the scan stopped before bae stored its result";
 
 /// An open generation is scanning while the coordinator holds its folder as
-/// running, until the walk stores its outcome. Each folder the walk stores
-/// runs the progress again with one more folder found, and the walk's end
-/// replaces the scanning folder with the outcome.
+/// running, until the walk stores its outcome. The walk's stored folders do
+/// not wake the progress, whose next value is the outcome: the scanning
+/// folders' count has a read of its own.
 #[tokio::test]
 async fn progress_follows_the_walk_in_flight() {
     let (tables, root, _temp) = watching_music().await;
@@ -68,23 +68,9 @@ async fn progress_follows_the_walk_in_flight() {
     let initial = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(initial.statuses[0].status, crate::FolderScanStatus::Scanning);
     assert!(!initial.has_problem);
-    assert_eq!(
-        initial.activity,
-        Some(crate::FolderScanActivity {
-            folders: vec![crate::ActiveFolderScan {
-                folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
-                found: 1,
-            }],
-        })
-    );
+    assert!(initial.scanning);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("a stored folder wakes the progress")
-        .expect("the query stays open")
-        .unwrap();
-    assert_eq!(found_counts(&grown), [2]);
 
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     let complete = tokio::time::timeout(HANG_GUARD, live.next_inline())
@@ -93,7 +79,46 @@ async fn progress_follows_the_walk_in_flight() {
         .expect("the query stays open")
         .unwrap();
     assert_eq!(complete.statuses[0].status, crate::FolderScanStatus::Complete);
-    assert_eq!(complete.activity, None);
+    assert!(!complete.scanning);
+}
+
+/// The scanning folders list each folder that the coordinator holds as
+/// running and whose generation has stored no outcome, with the folders its
+/// walk has stored, live. Each folder the walk stores adds one to the count,
+/// and the walk's end takes the folder off the list.
+#[tokio::test]
+async fn scanning_folders_follow_the_walk_in_flight() {
+    let (tables, root, _temp) = watching_music().await;
+    let root = &root;
+    tables.hold_root_scans(running(root)).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
+
+    let mut live = tables.subscribe_scanning_folders();
+    let initial = live.next_inline().await.expect("the query stays open").unwrap();
+    assert_eq!(
+        initial,
+        [crate::ScanningFolder {
+            folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
+            found: 1,
+        }]
+    );
+
+    tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
+    let grown = tokio::time::timeout(HANG_GUARD, live.next_inline())
+        .await
+        .expect("a stored folder wakes the scanning folders")
+        .expect("the query stays open")
+        .unwrap();
+    assert_eq!(found_counts(&grown), [2]);
+
+    tables.finish_folder_scan(root, generation, None).await.unwrap();
+    let done = tokio::time::timeout(HANG_GUARD, live.next_inline())
+        .await
+        .expect("finishing the scan wakes the scanning folders")
+        .expect("the query stays open")
+        .unwrap();
+    assert!(done.is_empty(), "a finished scan is not listed");
 }
 
 /// A generation with no outcome that the coordinator does not hold as
@@ -110,7 +135,7 @@ async fn an_unfinished_scan_nothing_reads_failed() {
         crate::FolderScanStatus::Failed { error: STOPPED.to_string() }
     );
     assert!(progress.has_problem);
-    assert_eq!(progress.activity, None);
+    assert!(!progress.scanning);
 }
 
 /// A failure the scan could not store is the folder's status, over whatever
@@ -149,7 +174,7 @@ async fn a_stored_outcome_stands_while_the_root_is_being_read() {
         progress.statuses[0].status,
         crate::FolderScanStatus::Failed { error: "share disconnected".to_string() }
     );
-    assert_eq!(progress.activity, None);
+    assert!(!progress.scanning);
 }
 
 /// A folder that no scan has opened a generation for shows Not scanned
@@ -199,7 +224,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
         crate::FolderScanStatus::NotWatched { reason: "/music/a: too many open files".to_string() }
     );
     assert!(progress.has_problem);
-    assert_eq!(progress.activity, None);
+    assert!(!progress.scanning);
 }
 
 /// The alerts the folder scans list, as kind and detail.
@@ -382,7 +407,7 @@ async fn found_counts_count_only_the_generation_in_flight() {
 
     tables.hold_root_scans(running(root)).await.unwrap();
 
-    assert_eq!(found_counts(&tables.load_folder_scan_progress().await.unwrap()), [1]);
+    assert_eq!(found_counts(&tables.load_scanning_folders().await.unwrap()), [1]);
 }
 
 /// The stored scans list the watched folders in the order they are listed,
@@ -488,11 +513,12 @@ async fn stored_scans_list_a_folder_no_scan_has_begun() {
     );
 }
 
-/// Every scan write runs the progress again. The progress counts the
-/// running scan's candidates off an index and takes at most a few steps for
-/// each one. Counting them off the tables took nine steps for each candidate.
+/// Every scan write runs the scanning folders' read again. The read counts
+/// the running scan's candidates off an index and takes at most a few steps
+/// for each one. Counting them off the tables took nine steps for each
+/// candidate.
 #[tokio::test]
-async fn reading_the_progress_counts_the_found_folders_off_an_index() {
+async fn reading_the_scanning_folders_counts_off_an_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = &crate::tables::watched_path::host_root("/music");
@@ -515,8 +541,8 @@ async fn reading_the_progress_counts_the_found_folders_off_an_index() {
             stored += 1;
         }
         counter.take();
-        let progress = tables.load_folder_scan_progress().await.unwrap();
-        assert_eq!(found_counts(&progress), [size]);
+        let folders = tables.load_scanning_folders().await.unwrap();
+        assert_eq!(found_counts(&folders), [size]);
         found_steps.push(counter.take().app_read_steps);
     }
     assert!(

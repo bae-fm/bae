@@ -5,14 +5,15 @@
 //! for. Also the coordinator's writes of what it holds, and the app's record
 //! of the alerts it raised.
 //!
-//! The query also counts the folders each scan under way has stored, off the
-//! candidates' index, so each folder a scan stores runs this query again and
-//! never a read of the queue.
+//! The found count moves with every folder a scan walks, so it is not read
+//! here: the scanning folders have a read of their own,
+//! [`ImportTables::subscribe_scanning_folders`], and a folder a scan stores
+//! runs only that read again, never a read of the queue.
 
 use super::*;
 use crate::folder_scan_status::{
-    ActiveFolderScan, FolderScanActivity, FolderScanAlert, FolderScanAlertKind, FolderScanProgress,
-    FolderScanStatus, HeldRootScan, HeldRootScans, StoredRootScan, StoredScan, StoredScanOutcome,
+    FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus, HeldRootScan,
+    HeldRootScans, ScanningFolder, StoredRootScan, StoredScan, StoredScanOutcome,
     WatchedFolderScanStatus,
 };
 
@@ -26,18 +27,6 @@ const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, 
 const FOLDER_SCAN_FLAGS: &str = "SELECT \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status IN ('failed', 'unwatched')), \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status = 'scanning')";
-
-/// The folders being scanned, in the order the folders are listed, each
-/// with the folders its scan's current generation has stored, counted off
-/// the candidates' index.
-const SCANNING_FOLDERS: &str = "SELECT folder.watched_folder_path, \
-            (SELECT COUNT(*) FROM scan_candidate AS candidate \
-             WHERE candidate.watched_folder_path = roots.watched_folder_path \
-               AND candidate.generation = roots.generation \
-               AND candidate.source_kind = 'folder') \
-     FROM folder_scan_status AS folder \
-     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = folder.watched_folder_path \
-     WHERE folder.status = 'scanning' ORDER BY folder.position";
 
 /// Each folder's problem with no alert shown for it, in the order the folders
 /// are listed.
@@ -105,21 +94,7 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
         });
     }
     let (has_problem, scanning) =
-        sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get::<_, bool>(1)?)))?;
-    let activity = if scanning {
-        let mut folders = Vec::new();
-        for (path, found) in sql.query(SCANNING_FOLDERS, [], |row| {
-            Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?))
-        })? {
-            folders.push(ActiveFolderScan {
-                folder: crate::WatchedFolder::from_path(path),
-                found: to_u64(found, "a folder scan's found count")?,
-            });
-        }
-        Some(FolderScanActivity { folders })
-    } else {
-        None
-    };
+        sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get(1)?)))?;
     let mut alerts = Vec::new();
     for (watched_folder_path, kind, detail) in sql.query(OWED_FOLDER_SCAN_ALERTS, [], |row| {
         Ok((path_column::get(row, 0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
@@ -130,7 +105,7 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
             detail,
         });
     }
-    Ok(FolderScanProgress { statuses, has_problem, activity, alerts })
+    Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
 }
 
 /// Store `held` as the one row of `watched_folder_path`, leaving a row that
@@ -253,7 +228,47 @@ fn stored_outcome(
     })
 }
 
+/// The folders being scanned, in the order the folders are listed, each
+/// with the folders its scan's current generation has stored, counted off
+/// the candidates' index.
+const SCANNING_FOLDERS: &str = "SELECT folder.watched_folder_path, \
+            (SELECT COUNT(*) FROM scan_candidate AS candidate \
+             WHERE candidate.watched_folder_path = roots.watched_folder_path \
+               AND candidate.generation = roots.generation \
+               AND candidate.source_kind = 'folder') \
+     FROM folder_scan_status AS folder \
+     JOIN folder_scan_roots AS roots ON roots.watched_folder_path = folder.watched_folder_path \
+     WHERE folder.status = 'scanning' ORDER BY folder.position";
+
+fn load_scanning_folders_on(sql: &SqlReadContext<'_>) -> Result<Vec<ScanningFolder>, DbError> {
+    let mut folders = Vec::new();
+    for (path, found) in sql
+        .query(SCANNING_FOLDERS, [], |row| Ok((path_column::get(row, 0)?, row.get::<_, i64>(1)?)))?
+    {
+        folders.push(ScanningFolder {
+            folder: crate::WatchedFolder::from_path(path),
+            found: to_u64(found, "a folder scan's found count")?,
+        });
+    }
+    Ok(folders)
+}
+
 impl ImportTables {
+    /// The folders being scanned now, each with how many folders its scan
+    /// has stored.
+    #[cfg(test)]
+    pub(crate) async fn load_scanning_folders(&self) -> Result<Vec<ScanningFolder>, DbError> {
+        self.store.read(move |sql| load_scanning_folders_on(&sql)).await
+    }
+
+    /// The folders being scanned, each with how many folders its scan has
+    /// stored, live: a value for every write that changes one.
+    pub fn subscribe_scanning_folders(
+        &self,
+    ) -> coven::LiveQuery<Vec<ScanningFolder>, bae_store::DbError> {
+        self.store.subscribe(move |sql| load_scanning_folders_on(&sql))
+    }
+
     /// What each watched folder's scan has stored now.
     pub async fn load_stored_folder_scans(&self) -> Result<Vec<StoredRootScan>, DbError> {
         self.store.read(move |sql| load_stored_folder_scans_on(&sql)).await

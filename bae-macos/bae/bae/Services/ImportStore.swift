@@ -41,6 +41,12 @@ class ImportStore {
     /// changed, so `applyFolderScans` writes each delivery as it arrives.
     private(set) var folderScans: BridgeFolderScans?
 
+    /// The folders being scanned, each with how many folders its scan has
+    /// stored, from their own subscription: a scan moves its count with
+    /// every folder it walks, which moves nothing the folder scans show.
+    /// Empty until the first delivery.
+    private(set) var scanningFolders: [BridgeScanningFolder] = []
+
     /// The scan alerts this store raised whose write that marks them shown
     /// has not finished, each with the task that writes the mark. A delivery
     /// made before the write commits still lists the alert, and the store
@@ -71,6 +77,11 @@ class ImportStore {
     func applySummary(_ next: BridgeImportQueueSummary) {
         guard next != summary else { return }
         summary = next
+    }
+
+    /// Take the delivered scanning folders.
+    func applyScanningFolders(_ next: [BridgeScanningFolder]) {
+        scanningFolders = next
     }
 
     /// Take delivered folder scans, and raise each alert they list that this

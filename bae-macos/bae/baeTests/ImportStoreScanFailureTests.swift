@@ -14,7 +14,7 @@ struct ImportStoreScanFailureTests {
         BridgeFolderScans(
             statuses: [],
             hasProblem: true,
-            activity: nil,
+            scanning: false,
             alerts: alerts
         )
     }

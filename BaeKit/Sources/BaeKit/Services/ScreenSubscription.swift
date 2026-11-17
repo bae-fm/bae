@@ -176,6 +176,7 @@ extension StorageQueuesSubscription: PulledSubscription {}
     extension CatalogApplyStepSubscription: PulledSubscription {}
     extension ReleaseEditDraftSubscription: PulledSubscription {}
     extension FolderScansSubscription: PulledSubscription {}
+    extension ScanningFoldersSubscription: PulledSubscription {}
     extension SubsonicSubscription: PulledSubscription {}
     extension StorageInspectorSubscription: PulledSubscription {}
     extension StorageFileSubscription: PulledSubscription {}

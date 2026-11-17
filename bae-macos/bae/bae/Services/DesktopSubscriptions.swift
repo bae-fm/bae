@@ -173,6 +173,8 @@ final class DesktopSubscriptions {
     /// The import counts' pulls, which stop when this is dropped.
     private var importCounts: ScreenSubscription<ImportCountsSubscription>?
     private var folderScans: ScreenSubscription<FolderScansSubscription>?
+    private var scanningFolders:
+        ScreenSubscription<ScanningFoldersSubscription>?
     private var subsonic: ScreenSubscription<SubsonicSubscription>?
     /// The fast streams' feeds, which stop with these subscriptions.
     private var feeds: [LatestFeed] = []
@@ -290,6 +292,13 @@ final class DesktopSubscriptions {
             appHandle.subscribeFolderScans(),
             onValue: { [importStore] scans in
                 importStore.applyFolderScans(scans)
+            },
+            onError: { [uiStore] error in uiStore.showError(error) }
+        )
+        scanningFolders = ScreenSubscription(
+            appHandle.subscribeScanningFolders(),
+            onValue: { [importStore] folders in
+                importStore.applyScanningFolders(folders)
             },
             onError: { [uiStore] error in uiStore.showError(error) }
         )

@@ -354,7 +354,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
     let mut window = tables.subscribe_import_window(list, first(50));
     let mut count = tables.subscribe_import_count(list);
-    let mut scans = tables.subscribe_folder_scan_progress();
+    let mut scans = tables.subscribe_scanning_folders();
     settled(&mut window).await;
     count.next_inline().await.expect("the query stays open").unwrap();
     scans.next_inline().await.expect("the query stays open").unwrap();
@@ -362,11 +362,11 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
     for name in ["first", "second"] {
         tables.save_folder_scan_item(root, rescan, &scan_candidate(root, name)).await.unwrap();
     }
-    // The re-confirmed folders move the scan's progress, and nothing the
+    // The re-confirmed folders move the scan's found count, and nothing the
     // list's windows or count read.
     tokio::time::timeout(HANG_GUARD, scans.next_inline())
         .await
-        .expect("the re-confirmed folders move the scan progress")
+        .expect("the re-confirmed folders move the scanning folders' count")
         .expect("the query stays open")
         .unwrap();
     assert!(!window.is_marked_for_rerun());

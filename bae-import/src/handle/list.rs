@@ -52,6 +52,19 @@ impl ImportServiceHandle {
         )
     }
 
+    /// The folders being scanned, each with how many folders its scan has
+    /// stored: the first value at once, then a value after each write that
+    /// changes one. Closing the library ends the subscription.
+    pub fn subscribe_scanning_folders(
+        &self,
+    ) -> bae_store::live_query::LiveValues<Vec<crate::ScanningFolder>> {
+        bae_store::live_query::LiveValues::new(
+            self.services.tables.subscribe_scanning_folders(),
+            self.services.closing.child_token(),
+            self.bugs(),
+        )
+    }
+
     /// Record that the app raised the alert for `watched_folder_path`'s
     /// problem of `kind` with `detail`, so the folder scans list no alert
     /// for it until the folder's problem ends.

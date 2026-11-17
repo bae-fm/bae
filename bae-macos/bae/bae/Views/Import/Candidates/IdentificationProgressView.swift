@@ -142,22 +142,22 @@ struct ImportActivitySlot: View {
 }
 
 /// The filter row's place for the scan indicator, shown while a root is
-/// scanning. It reads the folder scans itself, so a scan's step redraws this
-/// alone and nothing around it.
+/// scanning. It reads the folder scans and the scanning folders itself, so a
+/// scan's step redraws this alone and nothing around it.
 struct FolderScanActivitySlot: View {
     let importStore: ImportStore
 
     var body: some View {
-        if let activity = importStore.folderScans?.activity {
-            FolderScanProgressIndicator(activity: activity)
+        if importStore.folderScans?.scanning == true {
+            FolderScanProgressIndicator(folders: importStore.scanningFolders)
         }
     }
 }
 
 /// The filter row's watched-folder scan indicator; clicking it lists each
-/// root's found count.
+/// folder being scanned with its found count.
 struct FolderScanProgressIndicator: View {
-    let activity: BridgeFolderScanActivity
+    let folders: [BridgeScanningFolder]
 
     @State
     private var detailsShown = false
@@ -178,7 +178,7 @@ struct FolderScanProgressIndicator: View {
         .help(localizedCoreString("ui.import.scan.activity"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ForEach(activity.folders, id: \.folder.path) { scan in
+                ForEach(folders, id: \.folder.path) { scan in
                     HStack(spacing: ThemeSpace.group) {
                         Text(verbatim: scan.folder.name)
                             .cutLine(.fileName)

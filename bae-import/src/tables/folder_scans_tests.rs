@@ -561,17 +561,12 @@ async fn a_grouping_is_found_when_combined_only() {
     assert!(rebuilt.iter().all(|changes| changes.found.is_empty()));
 }
 
-/// How many folders the scan under way of `root` has stored, as the
-/// progress lists it while the coordinator holds `root` as running.
-async fn found_counts(tables: &crate::tables::ImportTables, root: &std::path::Path) -> usize {
-    let progress = tables.load_folder_scan_progress().await.unwrap();
-    let activity = progress.activity.expect("a scan is under way");
-    let scan = activity
-        .folders
-        .iter()
-        .find(|scan| scan.watched_folder_path == root)
-        .expect("the scan of root is under way");
-    scan.found as usize
+/// How many folders the scan under way of the only root has stored, as the
+/// scanning folders list it while the coordinator holds the root as running.
+async fn found_counts(tables: &crate::tables::ImportTables) -> usize {
+    let [folder] = <[_; 1]>::try_from(tables.load_scanning_folders().await.unwrap())
+        .expect("one scan is under way");
+    folder.found as usize
 }
 
 /// The count of the folders a scan has stored follows every kind of write a
@@ -593,7 +588,7 @@ async fn the_found_count_matches_the_current_generations_folders() {
         .await
         .unwrap();
     let first = tables.begin_folder_scan(&music, crate::VolumeKind::Local).await.unwrap();
-    assert_eq!(found_counts(&tables, &music).await, 0);
+    assert_eq!(found_counts(&tables).await, 0);
 
     let members: Vec<_> = ["Volume A", "Volume B", "Volume C"]
         .into_iter()
@@ -601,12 +596,12 @@ async fn the_found_count_matches_the_current_generations_folders() {
         .collect();
     for (written, member) in members.iter().enumerate() {
         write(&db, &music, first, &ScanItem::Valid(member.clone())).await;
-        assert_eq!(found_counts(&tables, &music).await, written + 1);
+        assert_eq!(found_counts(&tables).await, written + 1);
     }
     let mut renamed = members[0].clone();
     renamed.name = "Volume A, renamed".into();
     write(&db, &music, first, &ScanItem::Valid(renamed.clone())).await;
-    assert_eq!(found_counts(&tables, &music).await, 3, "a row written over stays one");
+    assert_eq!(found_counts(&tables).await, 3, "a row written over stays one");
 
     tables.finish_folder_scan(&music, first, None).await.unwrap();
     tables
@@ -618,10 +613,10 @@ async fn the_found_count_matches_the_current_generations_folders() {
         .unwrap();
 
     let second = tables.begin_folder_scan(&music, crate::VolumeKind::Local).await.unwrap();
-    assert_eq!(found_counts(&tables, &music).await, 0, "a new generation starts with none");
+    assert_eq!(found_counts(&tables).await, 0, "a new generation starts with none");
     write(&db, &music, second, &ScanItem::Valid(members[2].clone())).await;
     write(&db, &music, second, &ScanItem::Valid(candidate(&music, "Volume D"))).await;
-    assert_eq!(found_counts(&tables, &music).await, 2, "a restamped row and a new one count");
+    assert_eq!(found_counts(&tables).await, 2, "a restamped row and a new one count");
 }
 
 /// A tentative candidate at `name` below `root`.

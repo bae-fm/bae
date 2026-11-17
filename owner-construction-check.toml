@@ -351,6 +351,7 @@ task_types = [
     "ReleaseFilesSubscription",
     "SavePresetSubscription",
     "RequestedProfileSubscription",
+    "ScanningFoldersSubscription",
     "SetupStatesSubscription",
     "StorageQueuesSubscription",
     "StorageSelectionSubscription",

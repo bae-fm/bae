@@ -9,8 +9,9 @@
 //! and a failure the scan could not store. The coordinator writes those rows
 //! in the step that changes them, and the import service empties them as the
 //! library opens, so a folder never shows as scanning with nothing scanning
-//! it. The same query counts the folders each scan under way has stored, so
-//! each folder a scan stores runs the query again.
+//! it. How many folders a scan has stored changes each time the scan stores
+//! one, so a live query of its own lists the folders being scanned with that
+//! count, and a stored folder runs only that query again.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -50,17 +51,18 @@ pub enum FolderScanStatus {
 /// Read apart from the list, by its own live query, and sent on its own
 /// subscription: a scan re-confirms every folder it walks by moving its row
 /// to the scan's generation, which moves the found count and nothing the list
-/// shows. Each of those writes runs only this query again, which counts the
-/// folders the scan has stored off the candidates' index.
+/// shows. This query does not read the found count: the scanning folders'
+/// own query reads it ([`ScanningFolder`]), so the writes that change it do
+/// not run this query again.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every watched root, in watched-folder order.
     pub statuses: Vec<WatchedFolderScanStatus>,
     /// Whether any root's last scan failed or left it not watched.
     pub has_problem: bool,
-    /// The roots being scanned, for the filter-bar activity control. Absent
-    /// while no root is scanning.
-    pub activity: Option<FolderScanActivity>,
+    /// Whether any root is being scanned, for the filter bar's scan
+    /// indicator.
+    pub scanning: bool,
     /// Each root's problem that the app has raised no alert for, in
     /// watched-folder order.
     pub alerts: Vec<FolderScanAlert>,
@@ -87,16 +89,10 @@ pub enum FolderScanAlertKind {
     NotWatched,
 }
 
-/// Live folder-scan activity for the list chrome: the roots being scanned,
-/// in watched-folder order.
+/// A root being scanned, with how many folders its scan has stored so far,
+/// in watched-folder order, as the scan indicator lists it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct FolderScanActivity {
-    pub folders: Vec<ActiveFolderScan>,
-}
-
-/// One root in [`FolderScanActivity`], in watched-folder order.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ActiveFolderScan {
+pub struct ScanningFolder {
     pub folder: crate::WatchedFolder,
     /// How many folders the scan has stored so far.
     pub found: u64,

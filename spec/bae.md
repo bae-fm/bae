@@ -938,13 +938,15 @@ current scan stored an outcome shows it. One whose scan stored none reads as
 scanning while a scan of all of it runs or is owed, or a removal holds it.
 A folder that no scan has opened a generation for shows Not scanned. The folder
 scans list every watched folder with its status and whether it is on a network
-volume, say whether any folder's last scan failed or left it not watched, and
-list the folders being scanned, so the list's menu draws them without joining
-anything; one live query reads them all. Until that query sends its first value,
-the menu's Folders section says *Reading…* and lists no folder. Each folder being scanned also
-carries how many folders its scan has stored, which the same query counts off
-the index of the scan's candidates, and the scan indicator's list of folders
-shows it. A pass whose failure the
+volume, and say whether any folder's last scan failed or left it not watched
+and whether any folder is being scanned, so the list's menu draws them without
+joining anything; one live query reads them all. Until that query sends its first value,
+the menu's Folders section says *Reading…* and lists no folder. How many folders a scan has
+stored moves with every folder it walks, so it is not part of that query: a
+live query of its own lists each folder being scanned with that count, which
+it counts off the index of the scan's candidates. The scan indicator's list of
+folders shows that query's rows, through a subscription like any other
+screen's, and a folder a scan stores runs only that query again. A pass whose failure the
 store won't take, a whole scan's or a changed folder's reading's, still shows as
 failed with its error: the coordinator writes that failure to `folder_scan_held` as the
 folder's status until the folder's next pass starts, with the volume the pass found the

@@ -470,19 +470,11 @@ impl crate::types::BridgeImportListItem {
     }
 }
 
-impl crate::types::BridgeActiveFolderScan {
-    fn from_core(scan: bae_import::ActiveFolderScan) -> Self {
-        let bae_import::ActiveFolderScan { folder, found } = scan;
+impl crate::types::BridgeScanningFolder {
+    pub(crate) fn from_core(scan: bae_import::ScanningFolder) -> Self {
+        let bae_import::ScanningFolder { folder, found } = scan;
         Self { folder: crate::types::BridgeWatchedFolder::from_core(folder), found }
     }
-}
-
-mirror_struct! {
-    crate::types::BridgeFolderScanActivity = bae_import::FolderScanActivity,
-    from_core: fn,
-    fields: {
-        folders: (each crate::types::BridgeWatchedFolder),
-    },
 }
 
 mirror_struct! {
@@ -503,7 +495,7 @@ mirror_struct! {
     fields: {
         statuses: (each crate::types::BridgeWatchedFolderScanStatus),
         has_problem,
-        activity: (opt crate::types::BridgeFolderScanActivity),
+        scanning,
         alerts: (each crate::types::BridgeFolderScanAlert),
     },
 }
