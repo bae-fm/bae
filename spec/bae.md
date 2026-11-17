@@ -1,5 +1,13 @@
 # bae
 
+**This document is a draft.** bae's design still changes often, and parts of
+this text are wrong. bae's coding rules (the rules its developers and agents
+follow) outrank this document: where it states a shape or a behavior that a
+rule forbids, the rule holds and the text here is a mistake. When you find this
+text contradicting a rule, the code or a change you build, ask bae's author, say
+which text looks wrong and why, and offer the edit. Edit this document only
+after the author agrees.
+
 bae is a music library and player for a household. It plays the household's
 own files, describes them with what MusicBrainz and Discogs say about them, and
 keeps one library on every device the household owns. This document explains
