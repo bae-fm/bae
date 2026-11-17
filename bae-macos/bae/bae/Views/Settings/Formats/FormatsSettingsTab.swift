@@ -210,7 +210,7 @@ private struct SavePresetSheet: View {
         // A stack, not a group: it is on screen before the read answers, so
         // its appearance starts the read.
         ZStack {
-            if let preset = read.preset {
+            if case .showing(let preset) = read.state {
                 SavePresetEditor(
                     preset: preset,
                     presets: presets,
@@ -231,21 +231,27 @@ private struct SavePresetSheet: View {
             }
         }
         .onDisappear { read.close() }
-        .onChange(of: read.ended) { _, ended in
-            if ended { onEnded() }
+        .onChange(of: read.state) { _, state in
+            if state == .ended { onEnded() }
         }
     }
+}
+
+/// What one save preset's live read has returned so far.
+private enum SavePresetReadState: Equatable {
+    /// The read has returned nothing yet.
+    case waiting
+    /// The read last returned this preset.
+    case showing(BridgeSavePreset)
+    /// The read returned that no preset has the id.
+    case ended
 }
 
 /// One save preset's live read, while its edit sheet shows.
 @MainActor
 @Observable
 private final class SavePresetRead {
-    /// The preset as the read last answered; nil before it answers and once
-    /// no preset has its id.
-    private(set) var preset: BridgeSavePreset?
-    /// Whether the read answered that no preset has its id.
-    private(set) var ended = false
+    private(set) var state = SavePresetReadState.waiting
     @ObservationIgnored
     private var subscription: AnyObject?
 
@@ -257,8 +263,7 @@ private final class SavePresetRead {
         subscription = ScreenSubscription(
             source,
             onValue: { [weak self] preset in
-                self?.preset = preset
-                self?.ended = preset == nil
+                self?.state = preset.map { .showing($0) } ?? .ended
             },
             onError: fail
         )
