@@ -99,38 +99,73 @@ impl CatalogApplySteps {
     /// A failed write of the row is a failed local write, and fails the
     /// apply with its error: a failed start before `work` runs, a failed
     /// delete in place of what `work` returned.
+    ///
+    /// `work` is awaited at one place only: each place a future is awaited
+    /// holds a copy of it in this future, and `work` is a catalog read that
+    /// every caller up to the import holds again.
     pub(crate) async fn during<T, E: From<DbError>>(
         &self,
         step: CatalogApplyStep,
         work: impl std::future::Future<Output = Result<T, E>>,
     ) -> Result<T, E> {
-        let shown = match &self.written {
-            StepsWritten::Unread => return work.await,
-            StepsWritten::Row(shown) => shown,
+        let started = self.start(step).await?;
+        let done = work.await;
+        started.end().await?;
+        done
+    }
+
+    /// Tell `step` where this apply's steps go, as its work starts.
+    async fn start(&self, step: CatalogApplyStep) -> Result<StartedStep<'_>, DbError> {
+        match &self.written {
+            StepsWritten::Unread => Ok(StartedStep::Unread),
+            StepsWritten::Row(shown) => {
+                // The guard exists before the write starts, so a drop during
+                // the write deletes the row after the write commits: coven
+                // commits a write whose caller is gone, and runs the
+                // library's writes in the order the callers asked for them.
+                let mut running = RunningStep { shown, ended: false };
+                if let Err(error) = shown.tables.start_catalog_apply_step(&shown.id, step).await {
+                    // The failed write rolled back, so the row holds no step.
+                    running.ended = true;
+                    return Err(error);
+                }
+                Ok(StartedStep::Row(running))
+            }
             #[cfg(any(test, feature = "test-utils"))]
             StepsWritten::Recorded(record) => {
                 record(Some(step));
-                let done = work.await;
-                record(None);
-                return done;
+                Ok(StartedStep::Recorded(record))
             }
-        };
-        // The guard exists before the write starts, so a drop during the
-        // write deletes the row after the write commits: coven commits a
-        // write whose caller is gone, and runs the library's writes in the
-        // order the callers asked for them.
-        let mut running = RunningStep { shown, ended: false };
-        if let Err(error) = shown.tables.start_catalog_apply_step(&shown.id, step).await {
-            // The failed write rolled back, so the row holds no step.
-            running.ended = true;
-            return Err(error.into());
         }
-        let done = work.await;
-        // Coven commits the delete even when the caller drops this while it
-        // waits, so the guard has nothing left to delete.
-        running.ended = true;
-        shown.tables.end_catalog_apply_step(&shown.id).await?;
-        done
+    }
+}
+
+/// A step [`CatalogApplySteps::start`] told where the apply's steps go,
+/// which its end tells there too.
+enum StartedStep<'a> {
+    Unread,
+    Row(RunningStep<'a>),
+    #[cfg(any(test, feature = "test-utils"))]
+    Recorded(&'a Arc<dyn Fn(Option<CatalogApplyStep>) + Send + Sync>),
+}
+
+impl StartedStep<'_> {
+    /// Tell that the step's work ended.
+    async fn end(self) -> Result<(), DbError> {
+        match self {
+            StartedStep::Unread => Ok(()),
+            StartedStep::Row(mut running) => {
+                // Coven commits the delete even when the caller drops this
+                // while it waits, so the guard has nothing left to delete.
+                running.ended = true;
+                running.shown.tables.end_catalog_apply_step(&running.shown.id).await
+            }
+            #[cfg(any(test, feature = "test-utils"))]
+            StartedStep::Recorded(record) => {
+                record(None);
+                Ok(())
+            }
+        }
     }
 }
 

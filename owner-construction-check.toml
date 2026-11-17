@@ -380,10 +380,12 @@ task_types = [
     "ReleaseEdit",
     "ReleaseEditSession",
     # One apply of a catalog release that a screen shows: where it writes the
-    # step it waits on, and the step's row while one read runs.
+    # step it waits on, and the step it started and the step's row while one
+    # read runs.
     "CatalogApplySteps",
     "StepsWritten",
     "ShownApply",
+    "StartedStep",
     "RunningStep",
     # One operation's view of the catalogs.
     "CatalogSession",
