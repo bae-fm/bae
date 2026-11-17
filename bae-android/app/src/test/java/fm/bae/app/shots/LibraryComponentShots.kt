@@ -91,7 +91,6 @@ class LibraryComponentShots : BoardShot() {
             Images {
                 AndroidAlbumHeader(
                     detail = harborDetail,
-                    selectedRelease = harborRelease,
                     cover = PreviewData.imageRef(),
                     galleryItems = emptyList(),
                     onShowGallery = {},
@@ -104,8 +103,7 @@ class LibraryComponentShots : BoardShot() {
         component("android.component.album-header.a-reissue", wide = true) {
             Images {
                 AndroidAlbumHeader(
-                    detail = harborDetail,
-                    selectedRelease = harborRelease.copy(distinctYear = 2001),
+                    detail = harborDetail.copy(shownRelease = harborRelease.copy(distinctYear = 2001)),
                     cover = PreviewData.imageRef(),
                     galleryItems = emptyList(),
                     onShowGallery = {},

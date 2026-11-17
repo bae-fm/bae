@@ -80,7 +80,6 @@ class ScreenComponentShots : BoardShot() {
                     Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {
                         AndroidAlbumHeader(
                             detail = plainDetail,
-                            selectedRelease = plainDetail.releases.single(),
                             cover = PreviewData.imageRef(),
                             galleryItems = emptyList(),
                             onShowGallery = {},

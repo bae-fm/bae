@@ -155,7 +155,6 @@ fun AlbumDetailScreen(
                 val release = loaded.shownRelease
                 AlbumDetailContent(
                     detail = loaded,
-                    selectedRelease = release,
                     cover = release.cover,
                     playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
                     callbacks =
@@ -297,7 +296,6 @@ private fun buildAlbumDetailCallbacks(
 @Composable
 internal fun AlbumDetailContent(
     detail: BridgeAlbumDetail,
-    selectedRelease: BridgeRelease,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
     callbacks: AlbumDetailCallbacks,
@@ -306,19 +304,20 @@ internal fun AlbumDetailContent(
 ) {
     val album = detail.album
     val context = LocalContext.current
+    val shown = detail.shownRelease
 
     var showGallery by remember { mutableStateOf(false) }
-    val galleryItems = selectedRelease.galleryItems
+    val galleryItems = shown.galleryItems
     if (showGallery && galleryItems.isNotEmpty()) {
         GalleryDialog(
-            releaseId = selectedRelease.id,
+            releaseId = shown.id,
             items = galleryItems,
             onDismiss = { showGallery = false },
         )
     }
 
     val positionColumnWidth =
-        rememberPositionColumnWidth(selectedRelease.tracks.map { it.positionText })
+        rememberPositionColumnWidth(shown.tracks.map { it.positionText })
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
@@ -326,7 +325,6 @@ internal fun AlbumDetailContent(
         block {
             AndroidAlbumHeader(
                 detail = detail,
-                selectedRelease = selectedRelease,
                 cover = cover,
                 galleryItems = galleryItems,
                 onShowGallery = { showGallery = true },
@@ -357,22 +355,21 @@ internal fun AlbumDetailContent(
             }
         }
 
-        if (selectedRelease.hasRecords) {
-            block { AlbumRecordLinks(selectedRelease.records, catalogName) }
+        if (shown.hasRecords) {
+            block { AlbumRecordLinks(shown.records, catalogName) }
         }
 
-        block { releaseDownloadControl(selectedRelease) }
+        block { releaseDownloadControl(shown) }
         block { AlbumActionButtons(callbacks) }
-        albumTrackGroups(selectedRelease, positionColumnWidth, playback, callbacks, context)
-        albumCredits(selectedRelease, context)
-        albumFiles(selectedRelease, context)
+        albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
+        albumCredits(shown, context)
+        albumFiles(shown, context)
     }
 }
 
 @Composable
 internal fun AndroidAlbumHeader(
     detail: BridgeAlbumDetail,
-    selectedRelease: BridgeRelease,
     cover: BridgeImageRef?,
     galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
     onShowGallery: () -> Unit,
@@ -409,8 +406,8 @@ internal fun AndroidAlbumHeader(
             // The pressing, then its labels, each on one line of its own.
             val factLines =
                 listOfNotNull(
-                    selectedRelease.pressingLineText(context),
-                    selectedRelease.labelsLineText(context),
+                    detail.shownRelease.pressingLineText(context),
+                    detail.shownRelease.labelsLineText(context),
                 ).filter { it.isNotEmpty() }
             if (factLines.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(ThemeSpace.inline))

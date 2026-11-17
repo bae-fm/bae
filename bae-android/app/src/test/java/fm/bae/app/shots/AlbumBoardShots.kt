@@ -128,7 +128,6 @@ internal fun AlbumPage(
             AndroidDetailScreen(onBack = {}, backLabel = "Library", nowPlayingBar = {}) {
                 AlbumDetailContent(
                     detail = detail,
-                    selectedRelease = detail.releases[0],
                     cover = null,
                     playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
                     callbacks =
