@@ -164,7 +164,8 @@ pub(crate) fn decoded<T: serde::de::DeserializeOwned>(
         .map_err(|error| DbError::unreadable_json(format!("a draft's stored {what}"), json, error))
 }
 
-/// The draft's label rows as typed, as the read's `labels` array holds them.
+/// The draft's label rows as the person typed them, as the read's `labels`
+/// array holds them.
 pub(crate) fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
     bae_store::read::json_column(row, "labels")
 }

@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS release_edit_work (
     FOREIGN KEY (session) REFERENCES release_edit_applied (session) ON DELETE CASCADE
 ) STRICT;
 
--- An applied work's credits, in the work's order.
+-- The credits of a work of the applied release, in the work's order.
 CREATE TABLE IF NOT EXISTS release_edit_work_credit (
     session               INTEGER NOT NULL,
     musicbrainz_work_id   TEXT NOT NULL,
@@ -257,8 +257,8 @@ CREATE TABLE IF NOT EXISTS release_edit_work_credit (
         REFERENCES release_edit_work (session, musicbrainz_work_id) ON DELETE CASCADE
 ) STRICT;
 
--- An applied work that is part of another, in the order the catalog relates
--- them.
+-- A work of the applied release that is part of another, in the order the
+-- catalog relates them.
 CREATE TABLE IF NOT EXISTS release_edit_work_part (
     session        INTEGER NOT NULL,
     position       INTEGER NOT NULL CHECK (position >= 0),
@@ -272,7 +272,8 @@ CREATE TABLE IF NOT EXISTS release_edit_work_part (
         REFERENCES release_edit_work (session, musicbrainz_work_id) ON DELETE CASCADE
 ) STRICT;
 
--- The works an applied track performs, in the order it performs them.
+-- The works the applied release lists for a form track, in the order the
+-- track performs them.
 CREATE TABLE IF NOT EXISTS release_edit_track_work (
     session             INTEGER NOT NULL,
     track_id            TEXT NOT NULL,

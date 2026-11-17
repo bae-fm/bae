@@ -211,7 +211,8 @@ impl BridgeReleaseEditTrackSide {
     }
 }
 
-/// Not a `mirror_struct`: the mirror macro takes no optional list.
+/// `mirror_struct` takes no optional list, so this conversion names each
+/// field by hand.
 impl BridgeReleaseEditDraft {
     pub(crate) fn from_core(draft: bae_import::ReleaseEditDraft) -> Self {
         let bae_import::ReleaseEditDraft {

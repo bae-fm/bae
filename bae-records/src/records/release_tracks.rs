@@ -9,8 +9,8 @@
 //! than one medium, and only a number otherwise.
 //! [`bae_types::mediums::track_position`] states the same rule over decoded
 //! rows. A statement places a release's tracks on the mediums its
-//! [`MediumsSource`] names: the release's own, or the ones a release
-//! editor's session applied.
+//! [`MediumsSource`] names: the release's own, or those of the catalog
+//! release the person applied in a release editor's session.
 
 use super::query::*;
 use super::read::*;
@@ -59,11 +59,13 @@ impl MediumsSource<'_> {
     }
 }
 
-/// The common table expression `medium`: the mediums `mediums` (a table or
-/// an SQL query in parentheses with the columns of `release_mediums`) holds
-/// of the releases `release_filter` (a condition over `m`, one of its rows)
-/// keeps, each with whether it is played side by side, how many sided sides
-/// come before it on its release, and how many mediums its release holds.
+/// The common table expression `medium`: the rows of `mediums` whose
+/// release `release_filter` keeps, each with whether it is played side by
+/// side, how many sided sides come before it on its release, and how many
+/// mediums its release holds.
+/// `mediums` is a table, or an SQL query in parentheses, with the columns of
+/// `release_mediums`. `release_filter` is a condition over `m`, one row of
+/// `mediums`.
 fn medium_cte(mediums: &str, release_filter: &str) -> String {
     let sided = sided_media_sql();
     format!(

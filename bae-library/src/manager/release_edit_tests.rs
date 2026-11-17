@@ -483,11 +483,12 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     );
 }
 
-/// Once one session saves a release, the library refuses the save of another
-/// session opened before that save, and writes nothing: the library keeps
-/// what the first saved, and the first session's save opens it again on what
-/// it saved, so the first session can save again. The library also refuses the save of a session opened before a
-/// field write from elsewhere, and a session opened after the save saves as
+/// Once one session saves a release, the library refuses the save of a
+/// session the test opened before that save, and writes nothing: the library
+/// keeps what the first session saved, and the save opens the first session
+/// again on the values it saved, so the first session can save again. The
+/// library also refuses the save of a session the test opened before a field
+/// write from elsewhere, and a session the test opens after the save saves as
 /// usual.
 #[tokio::test]
 async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {

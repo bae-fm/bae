@@ -175,8 +175,8 @@ pub struct ReleaseEditDraft {
     pub cover: Option<bae_records::ImageRef>,
     /// The summary of the release's audio.
     pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
-    /// The release's tracks laid out as the editor's table draws them, each
-    /// beside the form row that edits it; `None` when the release has no
+    /// The release's tracks in the sides and runs the editor's table draws,
+    /// each beside the form row that edits it; `None` when the release has no
     /// tracks.
     pub sides: Option<Vec<crate::ReleaseEditTrackSide>>,
     /// The files the release carries that no track plays from, in the

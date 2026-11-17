@@ -50,7 +50,8 @@ impl Records {
     /// check, as `still_as_opened` says, that the release is still as the
     /// session opened on it, then move the release and replace its records
     /// where `change` says (see `set_records_on`), then write `write`, then
-    /// write the session again on the release as saved with `reseed`. Before
+    /// write the session again on the release as this save wrote it, with
+    /// `reseed`. Before
     /// it writes anything, the save refuses a release that is not as the
     /// session opened on it as [`ReleaseEditRefusal::Stale`], and a closed
     /// session as [`ReleaseEditRefusal::Closed`]; the check runs in the

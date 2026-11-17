@@ -13,7 +13,7 @@ pub struct ReleaseEditContext {
     pub tracks: Vec<bae_records::DbReleaseEditTrack>,
 }
 
-/// The rows a release's edit seed is made of, as `sql` holds them: its
+/// The rows that make up a release's edit seed, as `sql` holds them: its
 /// detail with its album's title, year and artists, and its tracks' audio in
 /// release order. `None` when the release is gone.
 pub(crate) fn release_edit_rows_on(
