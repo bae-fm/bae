@@ -22,18 +22,16 @@ pub use now::lose_playback_level_for_test;
 #[cfg(any(test, feature = "test-utils"))]
 pub use now::now_playing;
 pub(crate) use now::remote_receiver_from_row;
-#[cfg(any(test, feature = "test-utils"))]
-pub use now::shaped_now_playing_on;
 pub use now::subscribe_now_playing;
 pub(super) use now::SCHEMA as NOW_SCHEMA;
 pub use now::{dismiss_playback_failure, playback_level, PlaybackNowRow};
 #[cfg(any(test, feature = "test-utils"))]
 pub use queue::fail_queue_writes_for_test;
 #[cfg(any(test, feature = "test-utils"))]
+pub use queue::fill_context_lane_on;
+#[cfg(any(test, feature = "test-utils"))]
 pub use queue::lose_up_next_for_test;
 pub(super) use queue::SCHEMA as QUEUE_SCHEMA;
-#[cfg(any(test, feature = "test-utils"))]
-pub use queue::{fill_context_lane_on, shaped_playback_on};
 pub use queue::{settle_playback_queue, ManualPlace, PlaybackQueueTables};
 pub use queue_fill::{ContextFill, ContextFilled, LeftOut, ReleaseStart, TracksStart};
 pub use queue_reads::queue_value;

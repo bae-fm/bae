@@ -853,24 +853,6 @@ pub fn fill_context_lane_on(
     Ok(())
 }
 
-#[cfg(any(test, feature = "test-utils"))]
-/// Puts the library's first `up_next` tracks in Up Next, each named by
-/// `track_id_sql` (an SQL expression over `i`), as a library in use would
-/// have. [`fill_context_lane_on`] fills the context lane.
-pub fn shaped_playback_on(
-    sql: &CovenWrite<'_>,
-    up_next: u64,
-    track_id_sql: &str,
-) -> Result<(), DbError> {
-    let rows = bae_store::test_fixtures::window_cost::numbered(0, up_next);
-    sql.execute_batch(&format!(
-        "{rows} INSERT INTO playback_manual (entry, position, track_id) \
-             SELECT 1000000000 + i, i, {track_id_sql} FROM k;
-         UPDATE playback_queue SET next_entry = 2000000000;"
-    ))?;
-    Ok(())
-}
-
 impl PlaybackQueueTables {
     /// Write the single device-local `playback_state` row (id = 'current'),
     /// replacing any existing one. Never synced.
