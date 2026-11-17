@@ -19,9 +19,11 @@ struct LibrarySessionOpenerTests {
     func refusedKeychainIsItsOwnOutcome() async {
         let opener = TestOpener(
             makeHandle: { _, _ in
-                throw BridgeError.Diagnostic(
-                    category: .keyringLocked,
-                    detail: "the OS keychain refused the read"
+                throw BridgeOpenError.Failed(
+                    error: .Diagnostic(
+                        category: .keyringLocked,
+                        detail: "the OS keychain refused the read"
+                    )
                 )
             },
             makeService: { _, _, _ in
@@ -49,9 +51,11 @@ struct LibrarySessionOpenerTests {
     func otherOpenFailuresStillFail() async {
         let opener = TestOpener(
             makeHandle: { _, _ in
-                throw BridgeError.Diagnostic(
-                    category: .keyring,
-                    detail: "the keyring is broken"
+                throw BridgeOpenError.Failed(
+                    error: .Diagnostic(
+                        category: .keyring,
+                        detail: "the keyring is broken"
+                    )
                 )
             },
             makeService: { _, _, _ in

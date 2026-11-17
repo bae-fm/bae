@@ -611,6 +611,7 @@ OpenCalls = "LibrarySessions"
     "bootstrap_on_fixture",
     "bootstrap_opening",
     "bootstrap_inner",
+    "open_library",
 ]
 # A test's library with the app's services started over it.
 "bae-app/src/test_services.rs" = [

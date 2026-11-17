@@ -14,6 +14,7 @@ mod test_import_live_query_reruns;
 mod test_import_pane;
 mod test_import_selection;
 mod test_live_reads;
+mod test_open_failure;
 mod test_open_progress;
 mod test_scan_cost;
 mod test_screen_cost;

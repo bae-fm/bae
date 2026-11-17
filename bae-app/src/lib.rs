@@ -153,6 +153,71 @@ impl BootstrapError {
     }
 }
 
+/// Why opening a registered library failed, as the person meets it.
+#[derive(Debug)]
+pub enum OpenFailure {
+    /// What failed is this device's copy of the library's data
+    /// ([`bae_diagnostics::UiErrorCategory::reset_from_cloud_replaces`]), and
+    /// the library has storage: a reset from the cloud loads the library
+    /// again.
+    ResetFromCloud(BootstrapError),
+    /// Every other failure, a damaged copy of a library with no storage
+    /// among them.
+    Failed(BootstrapError),
+}
+
+impl OpenFailure {
+    /// Why the open failed, whichever way on it has.
+    pub fn error(&self) -> &BootstrapError {
+        match self {
+            Self::ResetFromCloud(error) | Self::Failed(error) => error,
+        }
+    }
+
+    /// `error`, met opening the library in `store_dir`, with its way on: a
+    /// failure in this device's copy of the library's data offers the reset
+    /// when the library has storage, which this reads on `runtime`. When
+    /// that read fails, the open fails with the read's error, and the open's
+    /// own error is logged.
+    fn of(
+        error: BootstrapError,
+        store_dir: &coven::StoreDir,
+        runtime: &tokio::runtime::Runtime,
+    ) -> Self {
+        let in_this_copy = matches!(
+            error.ui_error(),
+            Ok(bae_diagnostics::UiError::Diagnostic { category, .. })
+                if category.reset_from_cloud_replaces()
+        );
+        if !in_this_copy {
+            return Self::Failed(error);
+        }
+        match runtime.block_on(coven::Coven::storage_config(store_dir)) {
+            Ok(Some(_)) => Self::ResetFromCloud(error),
+            Ok(None) => Self::Failed(error),
+            Err(read) => {
+                warn!(
+                    store = %store_dir.id(),
+                    %error,
+                    "the library did not open, and reading whether it has storage failed"
+                );
+                Self::Failed(BootstrapError::Config(format!(
+                    "read the library's storage location: {read}"
+                )))
+            }
+        }
+    }
+}
+
+/// A failure met where the open has no runtime to read the library's
+/// storage on: before its runtime starts, or once the open library is handed
+/// on. None of these is in the library's data, so none offers a reset.
+impl From<BootstrapError> for OpenFailure {
+    fn from(error: BootstrapError) -> Self {
+        Self::Failed(error)
+    }
+}
+
 fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
     use bae_util::task_failure::ReportedBug;
     // A bug in the open's work, or in the manager's first calls, reported as
@@ -202,10 +267,14 @@ fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
-/// `builder` supplies the installation's custody, OAuth presentation, and storage.
+/// `installation` addresses the library's store, and `builder` supplies the
+/// installation's custody, OAuth presentation, and storage.
 /// `on_open_progress` hears each step opening the store runs (rebuilding
 /// its indexes, then migrating it) with how much of the step is done, on the
 /// bootstrap's own thread; an open with neither step calls it never.
+///
+/// A failed open says whether a reset from the cloud loads the library again
+/// ([`OpenFailure`]).
 ///
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
@@ -225,15 +294,17 @@ pub fn bootstrap<T, F>(
     files: coven::FileBudget,
     ids: IdSourceRef,
 
+    installation: &coven::Coven,
     builder: coven::CovenBuilder,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
     compose: F,
-) -> Result<T, BootstrapError>
+) -> Result<T, OpenFailure>
 where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
     let store = registered_store(&library_id)?;
+    let store_dir = installation.store_dir(&store);
     bootstrap_opening(
         Opening::Stored,
         app_dir,
@@ -247,6 +318,7 @@ where
         ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
+        move |error, runtime| OpenFailure::of(error, &store_dir, runtime),
     )
 }
 
@@ -282,13 +354,15 @@ where
         ids,
         LibraryOpening::Open(handle),
         compose,
+        |error, _| error,
     )
 }
 
 /// [`bootstrap`] with the [`bae_library::LibraryFixture`] at `fixture`
 /// written into the library before any of its services starts, so each starts
 /// on the state the fixture names: what a debug UI test opens the app on.
-/// The store's open reports its steps to `on_open_progress`, as for
+/// The store's open reports its steps to `on_open_progress`, and a failed
+/// open says whether a reset from the cloud loads the library again, as for
 /// [`bootstrap`].
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub fn bootstrap_on_fixture<T, F>(
@@ -303,15 +377,17 @@ pub fn bootstrap_on_fixture<T, F>(
     files: coven::FileBudget,
     ids: IdSourceRef,
 
+    installation: &coven::Coven,
     builder: coven::CovenBuilder,
     on_open_progress: impl Fn(coven::Progress<coven::OpenStep>) + Send + 'static,
     compose: F,
-) -> Result<T, BootstrapError>
+) -> Result<T, OpenFailure>
 where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
     let store = registered_store(&library_id)?;
+    let store_dir = installation.store_dir(&store);
     bootstrap_opening(
         Opening::Fixture(fixture),
         app_dir,
@@ -325,6 +401,7 @@ where
         ids,
         LibraryOpening::Registered { builder, store, on_progress: Box::new(on_open_progress) },
         compose,
+        move |error, runtime| OpenFailure::of(error, &store_dir, runtime),
     )
 }
 
@@ -386,7 +463,10 @@ enum Opening {
     Fixture(std::path::PathBuf),
 }
 
-fn bootstrap_opening<T, F>(
+/// Bring the library `opening` names up. A failure met while the open's
+/// runtime runs is told to the caller by `told`, on that runtime; any other
+/// is told as itself.
+fn bootstrap_opening<T, F, E>(
     opening: Opening,
     app_dir: bae_app_dir::AppDir,
     library_id: String,
@@ -400,10 +480,12 @@ fn bootstrap_opening<T, F>(
 
     builder: LibraryOpening,
     compose: F,
-) -> Result<T, BootstrapError>
+    told: impl FnOnce(BootstrapError, &tokio::runtime::Runtime) -> E + Send + 'static,
+) -> Result<T, E>
 where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
+    E: From<BootstrapError> + Send + 'static,
 {
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
@@ -428,12 +510,13 @@ where
                 ids,
                 builder,
                 compose,
+                told,
             )
         })
-        .map_err(|failed| BootstrapError::Internal(failed.to_string()))?
+        .map_err(|failed| E::from(BootstrapError::Internal(failed.to_string())))?
 }
 
-fn bootstrap_inner<T, F>(
+fn bootstrap_inner<T, F, E>(
     opening: Opening,
     app_dir: bae_app_dir::AppDir,
     library_id: String,
@@ -447,15 +530,17 @@ fn bootstrap_inner<T, F>(
 
     builder: LibraryOpening,
     compose: F,
-) -> Result<T, BootstrapError>
+    told: impl FnOnce(BootstrapError, &tokio::runtime::Runtime) -> E,
+) -> Result<T, E>
 where
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
+    E: From<BootstrapError>,
 {
     let timing = BootstrapTiming::start(&library_id);
 
     let install_id = app_dir
         .install_id(ids.as_ref())
-        .map_err(|error| BootstrapError::Config(error.to_string()))?;
+        .map_err(|error| E::from(BootstrapError::Config(error.to_string())))?;
     diagnostics.set_device_id(install_id);
 
     let runtime = timing
@@ -468,12 +553,74 @@ where
                 .enable_all()
                 .build()
         })
-        .map_err(|e| BootstrapError::Internal(format!("Failed to create runtime: {e}")))?;
+        .map_err(|e| E::from(BootstrapError::Internal(format!("Failed to create runtime: {e}"))))?;
 
-    timing.stage(&library_id, "initialize audio codecs", bae_audio::init);
+    let opened = open_library(
+        opening,
+        &app_dir,
+        &library_id,
+        &timing,
+        &runtime,
+        position_update_interval_ms,
+        restore_playback,
+        playback_output,
+        &diagnostics,
+        clock,
+        files,
+        ids,
+        builder,
+    );
+    let (app_services, advance_active_pointer, store_id) = match opened {
+        Ok(opened) => opened,
+        Err(error) => return Err(told(error, &runtime)),
+    };
+
+    let owner =
+        timing.stage(&library_id, "compose frontend owner", || compose(app_services, runtime))?;
+
+    // The durable active-library pointer names the library the user last actually
+    // landed in, so launch ordering (discovery sorts active-first) and
+    // forget_library's pointer check both refer to a library that opens. It
+    // advances only over a fully-realized open: written after the frontend owner
+    // has started, and never for a locked library — cancelling the unlock screen
+    // must leave the previously-active library in charge. A successful unlock
+    // re-runs bootstrap unlocked and advances the pointer then.
+    if advance_active_pointer {
+        timing
+            .stage(&library_id, "save active-library pointer", || {
+                app_dir.save_active_library(store_id)
+            })
+            .map_err(|e| E::from(BootstrapError::Config(e.to_string())))?;
+    }
+
+    timing.complete(&library_id);
+    Ok(owner)
+}
+
+/// Open the library's store on `runtime` and start the library over it: its
+/// manager, sync and services. Returns the services, whether the open
+/// advances the active-library pointer (a library the keychain left locked
+/// doesn't), and the library's store. A step that fails once the library
+/// started closes it before this returns.
+fn open_library(
+    opening: Opening,
+    app_dir: &bae_app_dir::AppDir,
+    library_id: &str,
+    timing: &BootstrapTiming,
+    runtime: &tokio::runtime::Runtime,
+    position_update_interval_ms: u32,
+    restore_playback: bool,
+    playback_output: PlaybackOutput,
+    diagnostics: &Diagnostics,
+    clock: ClockRef,
+    files: coven::FileBudget,
+    ids: IdSourceRef,
+    builder: LibraryOpening,
+) -> Result<(AppServices, bool, coven::StoreId), BootstrapError> {
+    timing.stage(library_id, "initialize audio codecs", bae_audio::init);
 
     #[cfg(unix)]
-    timing.stage(&library_id, "raise open-file limit", || {
+    timing.stage(library_id, "raise open-file limit", || {
         bae_util::open_file_limit::raise_open_file_limit()
     });
 
@@ -489,8 +636,8 @@ where
     // The library's store, opened once; each part of the open library is
     // built from it here, once, and handed to what holds it.
     let store = timing
-        .stage(&library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock), files, &diagnostics))
+        .stage(library_id, "open the library's store", || {
+            runtime.block_on(open_store(builder, Arc::clone(&clock), files, diagnostics))
         })
         .map_err(classify_open_error)?;
     let preferences = bae_preferences::PreferencesRow::new(store.clone());
@@ -500,7 +647,7 @@ where
     let sync_status = bae_sync_status::SyncStatus::new(store.clone());
     #[cfg(desktop)]
     let remote_images = bae_catalogs::remote_image::RemoteImageCache::new(
-        &app_dir.registered_library(&library_id),
+        &app_dir.registered_library(library_id),
         http,
         diagnostics.clone(),
     );
@@ -520,7 +667,7 @@ where
     // tasks and the import service's.
     let closing = bae_library::CancellationToken::new();
     let library_manager = timing
-        .stage(&library_id, "open library manager", || {
+        .stage(library_id, "open library manager", || {
             runtime.block_on(bae_library::open_library_manager(
                 store.clone(),
                 preferences,
@@ -577,7 +724,7 @@ where
         // coven's status receiver may be subscribed before a provider connects, so the
         // attachment's first events cannot race the library/UI observers.
         timing
-            .stage(&library_id, "start library observation", || library_manager.start())
+            .stage(library_id, "start library observation", || library_manager.start())
             .map_err(|e| BootstrapError::Internal(e.to_string()))?;
 
         // Sync starts before the frontend owner exists, so no read that needs
@@ -589,7 +736,7 @@ where
         // awaited attachment path.
         if connects && !locked {
             timing
-                .stage(&library_id, "start sync", || {
+                .stage(library_id, "start sync", || {
                     runtime.block_on(library_manager.start_sync_at_startup())
                 })
                 .map_err(|e| BootstrapError::Internal(e.to_string()))?;
@@ -602,7 +749,7 @@ where
         match opening {
             Opening::Stored => {}
             #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
-            Opening::Fixture(path) => timing.stage(&library_id, "write the fixture", || {
+            Opening::Fixture(path) => timing.stage(library_id, "write the fixture", || {
                 let fixture = bae_library::LibraryFixture::read(&path)
                     .map_err(|error| BootstrapError::Internal(error.to_string()))?;
                 runtime
@@ -615,7 +762,7 @@ where
         // desktop and iOS, AAudio on Android) and, on desktop, the import
         // pipeline, under the one owner of the opened library.
         let app_services = timing
-            .stage(&library_id, "start library services", || {
+            .stage(library_id, "start library services", || {
                 runtime.block_on(start_library_services(
                     library_manager,
                     store,
@@ -650,7 +797,7 @@ where
         #[cfg(desktop)]
         if reads_watched_folders {
             timing
-                .stage(&library_id, "request watched-folder scan", || {
+                .stage(library_id, "request watched-folder scan", || {
                     runtime.block_on(app_services.import_scan_watched_folders())
                 })
                 .map_err(|error| BootstrapError::Database(error.to_string()))?;
@@ -668,27 +815,7 @@ where
         }
     };
     drop(opened);
-
-    let owner =
-        timing.stage(&library_id, "compose frontend owner", || compose(app_services, runtime))?;
-
-    // The durable active-library pointer names the library the user last actually
-    // landed in, so launch ordering (discovery sorts active-first) and
-    // forget_library's pointer check both refer to a library that opens. It
-    // advances only over a fully-realized open: written after the frontend owner
-    // has started, and never for a locked library — cancelling the unlock screen
-    // must leave the previously-active library in charge. A successful unlock
-    // re-runs bootstrap unlocked and advances the pointer then.
-    if advance_active_pointer {
-        timing
-            .stage(&library_id, "save active-library pointer", || {
-                app_dir.save_active_library(store_id)
-            })
-            .map_err(|e| BootstrapError::Config(e.to_string()))?;
-    }
-
-    timing.complete(&library_id);
-    Ok(owner)
+    Ok((app_services, advance_active_pointer, store_id))
 }
 
 #[cfg(test)]

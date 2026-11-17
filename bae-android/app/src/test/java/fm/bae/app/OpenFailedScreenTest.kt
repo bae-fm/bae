@@ -1,104 +1,57 @@
 package fm.bae.app
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeOpenException
 
-/** Where a failed open of a library lands. */
+/** Where a failed open of a library lands: one screen for each way on core names. */
 class OpenFailedScreenTest {
     @Test
     fun anUnfinishedRemovalLandsOnFinishingTheRemoval() {
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeletionUnfinished, "deletion unfinished")
+        val failure =
+            BridgeOpenException.DeletionUnfinished(
+                BridgeException.Diagnostic(BridgeErrorCategory.DeletionUnfinished, "deletion unfinished"),
+            )
 
         assertEquals(
             AppScreen.DeletionUnfinished("library", error = null),
-            AppScreen.openFailed("library", failure, DisplayError("Removing did not finish."), offersReset = false, open = null),
+            AppScreen.openFailed("library", failure, DisplayError("Removing did not finish."), open = null),
         )
     }
 
+    private val damaged = DisplayError("Something went wrong reading your library.", "damaged", offersRetry = false)
+
     @Test
-    fun aDamagedCopyOffersAReset() {
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.DeviceResetRequired, "damaged database")
+    fun aFailureAResetLoadsAgainOffersTheResetInPlaceOfRetry() {
+        val failure =
+            BridgeOpenException.ResetFromCloud(BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged"))
 
         assertEquals(
-            AppScreen.ResetOffered(
-                "library",
-                ScreenFailure(FailedStep.LIBRARY_OPEN, DisplayError("This device must be reset.", "damaged database")),
-            ),
-            AppScreen.openFailed(
-                "library",
-                failure,
-                DisplayError("This device must be reset.", "damaged database"),
-                offersReset = false,
-                open = null,
-            ),
+            AppScreen.ResetOffered("library", ScreenFailure(FailedStep.LIBRARY_OPEN, damaged)),
+            AppScreen.openFailed("library", failure, damaged, open = null),
+        )
+    }
+
+    /** Core fails a damaged copy of a library with no storage plainly: there is nothing to reset from. */
+    @Test
+    fun aDamagedLibraryCoreFailsPlainlyOffersNoReset() {
+        val failure = BridgeOpenException.Failed(BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged"))
+
+        assertEquals(
+            AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, damaged)),
+            AppScreen.openFailed("library", failure, damaged, open = null),
         )
     }
 
     @Test
     fun anyOtherFailureIsShownAsItIs() {
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
+        val failure = BridgeOpenException.Failed(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline"))
 
         assertEquals(
             AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, DisplayError("Offline.", "offline"))),
-            AppScreen.openFailed("library", failure, DisplayError("Offline.", "offline"), offersReset = false, open = null),
+            AppScreen.openFailed("library", failure, DisplayError("Offline.", "offline"), open = null),
         )
-    }
-
-    private val damaged =
-        DisplayError("Something went wrong with the database.", "damaged", offersRetry = false, resetFromCloudReplaces = true)
-
-    private fun library(storage: BridgeStorageLocation?) =
-        BridgeLibrary(
-            "library",
-            "Library",
-            "/libraries/library",
-            BridgeLibraryState.Openable(storage),
-            isActive = false,
-            hasOtherLibraries = false,
-            nextOpenableId = null,
-            previousOpenableId = null,
-        )
-
-    private val dropbox =
-        BridgeStorageLocation.Dropbox(
-            BridgeDropboxLocation.AppFolder,
-            accountLabel = "ana@example.com",
-            folderLabel = null,
-        )
-
-    @Test
-    fun aDamagedLibraryOffersAResetInPlaceOfRetry() {
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged")
-
-        assertEquals(
-            AppScreen.ResetOffered("library", ScreenFailure(FailedStep.LIBRARY_OPEN, damaged)),
-            AppScreen.openFailed("library", failure, damaged, library(dropbox).offersResetFromCloud(damaged), open = null),
-        )
-    }
-
-    @Test
-    fun aDamagedLibraryWithNoStorageOffersNoReset() {
-        val failure = BridgeException.Diagnostic(BridgeErrorCategory.DatabaseDamaged, "damaged")
-
-        assertFalse(library(storage = null).offersResetFromCloud(damaged))
-        assertEquals(
-            AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, damaged)),
-            AppScreen.openFailed("library", failure, damaged, library(storage = null).offersResetFromCloud(damaged), open = null),
-        )
-    }
-
-    @Test
-    fun onlyAFailureInTheLibrarysOwnDataOffersAReset() {
-        assertTrue(library(dropbox).offersResetFromCloud(damaged))
-        assertFalse(library(dropbox).offersResetFromCloud(DisplayError("Offline.", "offline")))
-        assertFalse(null.offersResetFromCloud(damaged))
     }
 }

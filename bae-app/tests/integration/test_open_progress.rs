@@ -32,6 +32,7 @@ fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &installation,
         bae_store::test_devices::test_builder(&installation),
         {
             let reported = reported.clone();

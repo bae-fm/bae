@@ -39,7 +39,6 @@ import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeDiagnostics
-import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
@@ -47,7 +46,7 @@ import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeLibraryOpening
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeOpenException
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeReplacedBy
 import uniffi.bae_bridge.BridgeScreen
@@ -168,10 +167,12 @@ sealed interface AppScreen {
     }
 
     /**
-     * Opening failed because this device's copy can't be used as it stands —
-     * a damaged database, or another copy of this device. Resetting loads the
+     * This device's copy can't be used as it stands: opening failed in its
+     * data, such as a damaged database, for a library with storage, or sync
+     * found another installation in this device's place. Resetting loads the
      * library from storage again under a new device id. [error] is why the
-     * open or the last reset failed; none after a reset was cancelled.
+     * open or the last reset failed; none after a reset was cancelled, or
+     * when the Sync page offered the reset.
      */
     data class ResetOffered(
         override val libraryId: String,
@@ -231,51 +232,36 @@ sealed interface AppScreen {
 
     companion object {
         /**
-         * The screen the app shows after a failed open of [libraryId]. When core says the
-         * device needs a reset, or [offersReset] is true, it is the reset offer,
-         * in place of Retry. When a removal stopped partway, it is the screen
-         * that finishes the removal. Otherwise it is [open], the library still
-         * open when the open was a switch, whose snackbar shows the failure, or
-         * else the failure as [shown]. A reset or restore that stopped partway
-         * gets no screen here: finishing it begins at once.
+         * The screen the app shows after a failed open of [libraryId], one for each way on core names. When core
+         * says a reset from the cloud loads the library again, it is the reset offer, in place of Retry. When a
+         * removal stopped partway, it is the screen that finishes the removal. Otherwise it is [open], the library
+         * still open when the open was a switch, whose snackbar shows the failure, or else the failure as [shown].
+         * A reset or restore that stopped partway never reaches here: finishing it begins at once.
          */
         fun openFailed(
             libraryId: String,
-            error: BridgeException,
+            error: BridgeOpenException,
             shown: DisplayError,
-            offersReset: Boolean,
             open: OpenLibrary?,
         ): AppScreen =
-            when ((error as? BridgeException.Diagnostic)?.category) {
-                is BridgeErrorCategory.DeviceResetRequired -> {
+            when (error) {
+                is BridgeOpenException.ResetFromCloud -> {
                     ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
                 }
 
-                is BridgeErrorCategory.DeletionUnfinished -> {
+                is BridgeOpenException.DeletionUnfinished -> {
                     DeletionUnfinished(libraryId, error = null)
                 }
 
-                else -> {
-                    if (offersReset) {
-                        ResetOffered(libraryId, ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
-                    } else {
-                        open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
-                    }
+                is BridgeOpenException.Failed -> {
+                    open?.let(::LibraryOpen) ?: Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+                }
+
+                is BridgeOpenException.ReplacementUnfinished -> {
+                    error("a replacement that stopped partway is finished at once, never shown as a failed open")
                 }
             }
     }
-}
-
-/**
- * Whether the app offers Reset from cloud after [failure], a failed open of this library: core says the
- * failure is in this device's copy of the library's data, and the library has storage to reset from.
- * A library kept on this device only has none, which coven refuses a reset for (`NoStorage`), and one
- * that can't open as it is has no storage the app knows of. [this] is null for a library the listing
- * doesn't hold.
- */
-internal fun BridgeLibrary?.offersResetFromCloud(failure: DisplayError): Boolean {
-    val state = this?.state as? BridgeLibraryState.Openable ?: return false
-    return failure.resetFromCloudReplaces && state.storage != null
 }
 
 /** A device reset ready to confirm, and the `Core` table key of the warning the person accepts first. */
@@ -302,10 +288,6 @@ object AppSessionHolder {
 
     /** Local libraries on this device, for the Settings switcher. */
     val libraries: StateFlow<LibraryListing> get() = discovered.libraries
-
-    /** The library [libraryId] as the last listing held it, or null when none did or no listing has run. */
-    private fun listedLibrary(libraryId: String): BridgeLibrary? =
-        (discovered.libraries.value as? LibraryListing.Listed)?.libraries?.firstOrNull { it.id == libraryId }
 
     /**
      * The currently open library, if any. Reused across re-opens of the same id.
@@ -454,25 +436,39 @@ object AppSessionHolder {
             // propagate so cooperative cancellation works and we don't report a
             // spurious Failed over the open that superseded us.
             throw e
-        } catch (e: BridgeException) {
+        } catch (e: BridgeOpenException.ReplacementUnfinished) {
+            logger.error("opening library $libraryId found its replacement unfinished", e)
+            finish(context, libraryId, e.by, onScreen)
+        } catch (e: BridgeOpenException) {
             logger.error("opening library $libraryId failed", e)
-            val unfinished = (e as? BridgeException.Diagnostic)?.category as? BridgeErrorCategory.ReplacementUnfinished
-            if (unfinished != null) {
-                finish(context, libraryId, unfinished.by, onScreen)
-                return
-            }
-            val shown = context.displayError(e)
-            onScreen(
-                if (shown == null) {
-                    openOrOnboarding()
-                } else {
-                    val offersReset = listedLibrary(libraryId).offersResetFromCloud(shown)
-                    AppScreen.openFailed(libraryId, e, shown, offersReset, current).also { screen ->
-                        if (screen is AppScreen.LibraryOpen) screen.session.messages.show(shown)
-                    }
-                },
-            )
+            showFailedOpen(context, libraryId, e, onScreen)
+        } catch (e: BridgeException) {
+            // The library opened, and reading its first values failed: the open failed with nothing to recover.
+            logger.error("opening library $libraryId failed", e)
+            showFailedOpen(context, libraryId, BridgeOpenException.Failed(e), onScreen)
         }
+    }
+
+    /**
+     * Show [failure], why opening [libraryId] failed, on the screen for the way on core names, or show the open
+     * library or onboarding when core says the failure has nothing to show.
+     */
+    private fun showFailedOpen(
+        context: Context,
+        libraryId: String,
+        failure: BridgeOpenException,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val shown = context.displayError(failure)
+        onScreen(
+            if (shown == null) {
+                openOrOnboarding()
+            } else {
+                AppScreen.openFailed(libraryId, failure, shown, current).also { screen ->
+                    if (screen is AppScreen.LibraryOpen) screen.session.messages.show(shown)
+                }
+            },
+        )
     }
 
     /**

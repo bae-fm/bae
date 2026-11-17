@@ -10,9 +10,6 @@ struct LoadError: Equatable {
     enum Step: Equatable {
         /// Opening a library.
         case libraryOpen
-        /// Opening a library found this Mac's copy unusable; the reset
-        /// screen it lands on offers the way out.
-        case resetOffered
         /// Reading which libraries are on this Mac.
         case libraryList
         /// Closing the open library to restore it over this Mac's copy.
@@ -31,8 +28,6 @@ struct LoadError: Equatable {
             switch self {
             case .libraryOpen:
                 String(localized: "Could not open")
-            case .resetOffered:
-                localizedCoreString("ui.load_error.reset_offered.title")
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.title")
             case .restoreClose:
@@ -48,11 +43,11 @@ struct LoadError: Equatable {
             }
         }
 
-        /// What the person can do next. A reset-offered failure has none of
-        /// its own: the reset screen it lands on is the way out.
+        /// What the person can do next. A failed open has none of its own:
+        /// its row offers the way out.
         var advice: String? {
             switch self {
-            case .libraryOpen, .resetOffered:
+            case .libraryOpen:
                 nil
             case .libraryList:
                 localizedCoreString("ui.load_error.library_list.advice")
@@ -77,11 +72,21 @@ struct LoadError: Equatable {
     let error: DisplayError
     /// The library the step ran for, where it ran for one.
     let libraryId: String?
+    /// Whether the failure offers Reset from cloud in place of Retry: core
+    /// failed the open as one a reset from the cloud loads the library
+    /// again from.
+    let offersReset: Bool
 
-    init(_ step: Step, _ error: DisplayError, libraryId: String? = nil) {
+    init(
+        _ step: Step,
+        _ error: DisplayError,
+        libraryId: String? = nil,
+        offersReset: Bool = false
+    ) {
         self.step = step
         self.error = error
         self.libraryId = libraryId
+        self.offersReset = offersReset
     }
 
     /// The failure as the Activity panel lists it.
@@ -98,6 +103,24 @@ struct LoadError: Equatable {
     init?(_ step: Step, _ error: any Error, libraryId: String? = nil) {
         guard let error = DisplayError(error) else { return nil }
         self.init(step, error, libraryId: libraryId)
+    }
+
+    /// The failed open of `libraryId`, which offers Reset from cloud when
+    /// core failed it as `BridgeOpenError.ResetFromCloud`. Fails when core
+    /// says the error has nothing to show: a cancellation.
+    init?(openOf libraryId: String, failedWith error: any Error) {
+        guard let shown = DisplayError(error) else { return nil }
+        let offersReset =
+            if case BridgeOpenError.ResetFromCloud = error { true }
+            else {
+                false
+            }
+        self.init(
+            .libraryOpen,
+            shown,
+            libraryId: libraryId,
+            offersReset: offersReset
+        )
     }
 }
 

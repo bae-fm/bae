@@ -3399,13 +3399,15 @@ failures show, and the row stays. A join whose request was sent stays pending in
 library's storage until its invite ends, and the person's saved restore code
 stays. A
 library that fails to open on a Mac shows the failure joined to its row, under
-its name: **Could not open**, with **Details**; when what failed is the
-library's data on this Mac, such as a damaged database file or tables that
-don't match the app's, it
+its name: **Could not open**, with **Details**; when core says Reset from
+cloud replaces what failed (the open fails as `ResetFromCloud`: the library's
+data on this Mac can't be used, such as a damaged database file or tables
+that don't match the app's, and the library has storage to load it from), it
 says "Something is wrong with this library’s data." and offers **Reset from
-cloud…**, the reset below, in place of *Retry*; a library kept on this Mac
-only, which has no storage to reset from (coven refuses with `NoStorage`),
-shows **Details** alone, and its row's menu still offers **Delete…**. A phone
+cloud…**, the reset below, in place of *Retry*. Core reads whether the
+library has storage when the open fails. A library kept on this Mac only has
+none, so its failure shows **Details** alone, and its row's menu still offers
+**Delete…**. A phone
 that fails to open a library the same way shows a notice in the middle of the
 screen, "The library did not open" over the same sentence, with **Details** and **Reset from
 cloud…** under them, which asks as a device reset does (§6.4). A
@@ -4501,9 +4503,11 @@ this one
 which coven reports as the last pass's failure. There, and only there (a copy
 behind another installation resets at once, below), bae
 offers Reset from cloud: load the library from storage again under a fresh
-device id. A failed open offers it only when the library has storage to load
-it from, beside the failure where the app shows it (§5.6). Before it does, a
-warning says that edits on this device that haven't synced will be discarded. The person was told before choosing, so
+device id. A failed open offers Reset from cloud only when core fails it as
+`ResetFromCloud`, which it does when the library has storage to load it
+from, and the app offers it beside the failure where it shows it (§5.6).
+Before it does, a warning says that edits on this device that haven't synced
+will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice. When sync
 finds another installation, the screen says why in the middle of the window
 and offers *Reset from cloud…*. Either way, *Reset from cloud…* opens an
@@ -6046,7 +6050,10 @@ release's or track's id as UTF-8, or a candidate's key.
   the app starts the library on it.
 - **`init_app`** opens a library and returns an **`AppHandle`**, which wraps
   `AppServices` and, on desktop, the MCP and Subsonic servers and the cast
-  controller.
+  controller. A failed open throws `BridgeOpenError`, one case for each way
+  on: `ResetFromCloud`, `ReplacementUnfinished` (with the call that finishes
+  it), `DeletionUnfinished`, or `Failed`. Each carries the `BridgeError` it
+  shows.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
   mid-call cancels the Rust work it started. A call that panics fails with an
   internal error and is reported as a bug; one that must finish after its
@@ -6993,7 +7000,7 @@ with one of these categories and a detail:
 |---|---|
 | `Database`, `Config`, `Internal` | reports it |
 | `DatabaseBusy` | asks again: the library's database was busy with other work, or what the call read changed under it |
-| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; resets the library from the cloud (§6.4) when it has storage |
+| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; a failed open with it on a library that has storage fails as `ResetFromCloud` and offers Reset from cloud (§6.4) |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device, after its warning (§6.4): sync found another installation using this device's id |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |

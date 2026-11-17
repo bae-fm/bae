@@ -337,3 +337,71 @@ fn discarding_an_installation_that_is_not_there_is_refused() {
         assert_eq!(*category, crate::BridgeErrorCategory::Config, "{error:?}");
     }
 }
+
+fn diagnostic(category: crate::types::BridgeErrorCategory) -> BridgeError {
+    BridgeError::Diagnostic { category, detail: "x".into() }
+}
+
+/// Each failed open crosses with its way on, carrying the failure it shows.
+#[test]
+fn a_failed_open_crosses_with_its_way_on() {
+    use crate::types::{BridgeErrorCategory as C, BridgeReplacedBy};
+    let crossed = |failure| match open_failure_to_bridge(failure) {
+        BridgeOpenError::ResetFromCloud { error } => ("reset", None, error),
+        BridgeOpenError::ReplacementUnfinished { by, error } => ("replacement", Some(by), error),
+        BridgeOpenError::DeletionUnfinished { error } => ("deletion", None, error),
+        BridgeOpenError::Failed { error } => ("failed", None, error),
+    };
+    assert_eq!(
+        crossed(OpenFailure::ResetFromCloud(BootstrapError::Damaged("x".into()))),
+        ("reset", None, diagnostic(C::DatabaseDamaged))
+    );
+    assert_eq!(
+        crossed(OpenFailure::Failed(BootstrapError::ReplacementUnfinished(
+            coven::ReplacedBy::Reset
+        )))
+        .0,
+        "replacement"
+    );
+    assert_eq!(
+        crossed(OpenFailure::Failed(BootstrapError::ReplacementUnfinished(
+            coven::ReplacedBy::Restore
+        )))
+        .1,
+        Some(BridgeReplacedBy::Restore)
+    );
+    assert_eq!(crossed(OpenFailure::Failed(BootstrapError::DeletionUnfinished)).0, "deletion");
+    assert_eq!(
+        crossed(OpenFailure::Failed(BootstrapError::Damaged("x".into()))),
+        ("failed", None, diagnostic(C::DatabaseDamaged))
+    );
+    assert!(matches!(
+        crossed(OpenFailure::Failed(BootstrapError::LibraryNotFound("library".into()))),
+        ("failed", None, BridgeError::NotFound { .. })
+    ));
+}
+
+/// A library kept on this device only whose copy can't be read has nothing
+/// a reset could load, so its open fails with nothing to recover.
+#[test]
+fn a_damaged_library_kept_on_this_device_only_fails_plainly() {
+    let root = tempfile::tempdir().unwrap();
+    let host = crate::handle::tests::test_host(root.path());
+    let caller = tokio::runtime::Runtime::new().unwrap();
+    let opened = crate::handle::tests::create_opened_library(&host, &caller, "Kept Here");
+    let id = opened.library_id();
+    opened.open(false).unwrap().close_library(None).unwrap();
+    bae_preferences::plant_unknown_replay_gain_mode_for_test(root.path());
+
+    let opening = crate::BridgeLibraryOpening::new(host.clone());
+    let failure = crate::init_app(id, false, host, opening).err().expect("the open fails");
+
+    assert!(
+        matches!(
+            &failure,
+            BridgeOpenError::Failed { error: BridgeError::Diagnostic { category, .. } }
+                if category.clone().into_core().reset_from_cloud_replaces()
+        ),
+        "{failure:?}"
+    );
+}

@@ -56,6 +56,7 @@ impl Home {
             std::sync::Arc::new(coven::SystemClock),
             coven::FileBudget::for_test(),
             std::sync::Arc::new(coven::SequentialIds::new()),
+            &self.installation,
             self.library_builder(),
             |_| (),
             TestApp::start,
@@ -110,6 +111,7 @@ fn bootstrap_that_fails_leaves_active_pointer() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &home.installation,
         home.library_builder(),
         |_| (),
         TestApp::start,
@@ -134,6 +136,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &home.installation,
         home.library_builder(),
         |_| (),
         |services, runtime| {
@@ -159,6 +162,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &home.installation,
         home.library_builder(),
         |_| (),
         |services, runtime| {
@@ -167,7 +171,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         },
     );
     assert!(
-        matches!(result, Err(BootstrapError::Internal(message)) if message.contains("frontend owner panicked"))
+        matches!(result, Err(bae_app::OpenFailure::Failed(BootstrapError::Internal(message))) if message.contains("frontend owner panicked"))
     );
 }
 
@@ -228,6 +232,7 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &home.installation,
         home.library_builder().storage_connector(storage),
         |_| (),
         TestApp::start,

@@ -368,16 +368,9 @@ extension AppDelegate {
                 from: error
             )
             switch next {
-            case .resetRequired:
-                screen = next
-                loadError = LoadError(.resetOffered, error)
             case .home:
                 screen = next
-                loadError = LoadError(
-                    .libraryOpen,
-                    error,
-                    libraryId: libraryId
-                )
+                loadError = LoadError(openOf: libraryId, failedWith: error)
             case .resetUnfinished(let unfinished):
                 // Finishing needs nothing from the person, and only it opens
                 // the library.

@@ -33,7 +33,7 @@ class RemovalIncompleteScreenTest {
 
     @Test
     fun aFailureRetryCannotPassOffersNoRetry() {
-        val damaged = DisplayError("Something went wrong with the database.", "damaged", offersRetry = false, resetFromCloudReplaces = true)
+        val damaged = DisplayError("Something went wrong with the database.", "damaged", offersRetry = false)
         compose.setContent {
             TestTheme { RemovalIncompleteScreen(error = damaged, onRetry = {}) }
         }

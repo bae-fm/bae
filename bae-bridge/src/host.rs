@@ -1,7 +1,7 @@
 //! Process registrations and the runtime used before a library is open.
 use crate::handle::AppHandle;
-use crate::{BridgeAppDir, BridgeDiagnostics, BridgeError, BridgeLibrary};
-use bae_app::{bootstrap, BootstrapError};
+use crate::{BridgeAppDir, BridgeDiagnostics, BridgeError, BridgeLibrary, BridgeOpenError};
+use bae_app::{bootstrap, BootstrapError, OpenFailure};
 use bae_diagnostics::{AppStartFailureKind, Diagnostics, DiagnosticsError, TelemetryEvent};
 use std::sync::{Arc, Mutex};
 
@@ -66,14 +66,15 @@ impl BridgeHost {
 
     /// Bootstrap the library `library_id` with this host's sink, its open's
     /// steps written into `opening`'s stream. A bootstrap failure ships
-    /// `app_start_failed` through it before the error returns.
+    /// `app_start_failed` through it before the error returns with its way
+    /// on.
     pub(crate) fn open_app(
         self: &Arc<Self>,
         library_id: String,
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
-    ) -> Result<Arc<AppHandle>, BridgeError> {
-        self.opened(bootstrap(
+    ) -> Result<Arc<AppHandle>, BridgeOpenError> {
+        self.opened_registered(bootstrap(
             self.app_dir.clone(),
             library_id,
             bae_playback::POSITION_REPORT_INTERVAL_MS,
@@ -83,6 +84,7 @@ impl BridgeHost {
             self.clock.clone(),
             self.files.clone(),
             self.ids.clone(),
+            &self.coven,
             self.library_builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
@@ -98,8 +100,8 @@ impl BridgeHost {
         library_id: String,
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
-    ) -> Result<Arc<AppHandle>, BridgeError> {
-        self.opened(bae_app::bootstrap_on_fixture(
+    ) -> Result<Arc<AppHandle>, BridgeOpenError> {
+        self.opened_registered(bae_app::bootstrap_on_fixture(
             fixture,
             self.app_dir.clone(),
             library_id,
@@ -110,23 +112,41 @@ impl BridgeHost {
             self.clock.clone(),
             self.files.clone(),
             self.ids.clone(),
+            &self.coven,
             self.library_builder(),
             opening.report(),
             start_handle(self.clone(), self.diagnostics.clone()),
         ))
     }
 
-    /// The handle a bootstrap built, or its failure shipped as
-    /// `app_start_failed` and returned.
+    /// The handle a bootstrap of a store already open built, or its failure
+    /// shipped as `app_start_failed` and returned.
     fn opened(
         &self,
         bootstrapped: Result<AppHandle, BootstrapError>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         bootstrapped.map(Arc::new).map_err(|error| {
-            self.diagnostics
-                .event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(&error) });
+            self.start_failed(&error);
             bootstrap_error_to_bridge(error)
         })
+    }
+
+    /// The handle an open of a registered library built, or its failure
+    /// shipped as `app_start_failed` and returned with its way on.
+    fn opened_registered(
+        &self,
+        bootstrapped: Result<AppHandle, OpenFailure>,
+    ) -> Result<Arc<AppHandle>, BridgeOpenError> {
+        bootstrapped.map(Arc::new).map_err(|failure| {
+            self.start_failed(failure.error());
+            open_failure_to_bridge(failure)
+        })
+    }
+
+    /// Ship `app_start_failed` for `error` through this host's sink.
+    fn start_failed(&self, error: &BootstrapError) {
+        self.diagnostics
+            .event(TelemetryEvent::AppStartFailed { kind: app_start_failure_kind(error) });
     }
 
     /// How this platform shares the speaker, which an opened library's
@@ -656,15 +676,15 @@ pub fn set_temporary_directory(directory: String) -> Result<(), BridgeError> {
 }
 
 /// Open the library `library_id`, writing the open's steps into `opening`'s
-/// stream.
+/// stream. A failed open says its way on (`BridgeOpenError`).
 #[uniffi::export]
 pub fn init_app(
     library_id: String,
     restore_playback: bool,
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
-) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(crate::from_app::store(&library_id)?);
+) -> Result<Arc<crate::AppHandle>, BridgeOpenError> {
+    host.wait_for_closing(registered_store(&library_id)?);
     host.open_app(library_id, restore_playback, &opening)
 }
 
@@ -676,9 +696,15 @@ pub fn init_app_on_fixture(
     fixture_path: String,
     host: Arc<BridgeHost>,
     opening: Arc<crate::BridgeLibraryOpening>,
-) -> Result<Arc<crate::AppHandle>, BridgeError> {
-    host.wait_for_closing(crate::from_app::store(&library_id)?);
+) -> Result<Arc<crate::AppHandle>, BridgeOpenError> {
+    host.wait_for_closing(registered_store(&library_id)?);
     host.open_app_on_fixture(fixture_path.into(), library_id, restore_playback, &opening)
+}
+
+/// The store a library id the app opens names; an id that names none fails
+/// the open with nothing to recover.
+fn registered_store(library_id: &str) -> Result<coven::StoreId, BridgeOpenError> {
+    crate::from_app::store(library_id).map_err(|error| BridgeOpenError::Failed { error })
 }
 
 /// This device's libraries as coven keeps them under `app_dir`, their
@@ -727,6 +753,30 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
             entity: crate::types::BridgeEntityKind::Library,
             id: id.to_string(),
         },
+    }
+}
+
+/// A failed open of a registered library with its way on, each carrying
+/// the failure as a bridge error: a reset or restore that stopped partway
+/// names the call that finishes it, and a removal that stopped partway says
+/// so.
+fn open_failure_to_bridge(failure: OpenFailure) -> BridgeOpenError {
+    match failure {
+        OpenFailure::ResetFromCloud(error) => {
+            BridgeOpenError::ResetFromCloud { error: bootstrap_error_to_bridge(error) }
+        }
+        OpenFailure::Failed(error @ BootstrapError::ReplacementUnfinished(by)) => {
+            BridgeOpenError::ReplacementUnfinished {
+                by: crate::types::BridgeReplacedBy::from_core(by),
+                error: bootstrap_error_to_bridge(error),
+            }
+        }
+        OpenFailure::Failed(error @ BootstrapError::DeletionUnfinished) => {
+            BridgeOpenError::DeletionUnfinished { error: bootstrap_error_to_bridge(error) }
+        }
+        OpenFailure::Failed(error) => {
+            BridgeOpenError::Failed { error: bootstrap_error_to_bridge(error) }
+        }
     }
 }
 

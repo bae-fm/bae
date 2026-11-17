@@ -28,7 +28,8 @@ extension ShotScene {
             loadError: LoadError(
                 .libraryOpen,
                 PreviewData.displayErrorWithDetail,
-                libraryId: PreviewData.homeMusic.id
+                libraryId: PreviewData.homeMusic.id,
+                offersReset: true
             )
         ),
         welcomeWindow(

@@ -120,6 +120,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
                 std::sync::Arc::new(coven::SystemClock),
                 coven::FileBudget::for_test(),
                 std::sync::Arc::new(coven::SequentialIds::new()),
+                &installation,
                 builder,
                 |_| (),
                 TestApp::start,

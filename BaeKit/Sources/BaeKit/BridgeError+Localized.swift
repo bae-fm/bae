@@ -90,13 +90,29 @@ extension BridgeError {
     public var retryRuledOut: Bool {
         !bridgeErrorRetryCanHelp(error: self)
     }
+}
 
-    /// Whether core says resetting the library from the cloud replaces what
-    /// failed: the failure is in this device's copy of the library's data.
-    /// Core's answer, not this app's.
-    public var resetFromCloudReplaces: Bool {
-        bridgeErrorResetFromCloudReplaces(error: self)
+extension BridgeOpenError {
+    /// The failure every way on carries, for a surface that only shows it:
+    /// its line, its detail and whether a retry can get past it are this
+    /// error's.
+    public var error: BridgeError {
+        switch self {
+        case .ResetFromCloud(let error), .ReplacementUnfinished(_, let error),
+            .DeletionUnfinished(let error), .Failed(let error):
+            error
+        }
     }
+
+    public var localizedLine: String? { error.localizedLine }
+    public var shownDetail: String? { error.shownDetail }
+    public var retryRuledOut: Bool { error.retryRuledOut }
+}
+
+/// A failed open's `localizedDescription` is the line of the failure it
+/// carries, as `BridgeError`'s is.
+extension BridgeOpenError: LocalizedError {
+    public var errorDescription: String? { localizedLine }
 }
 
 /// A bridge error's `localizedDescription` is core's keyed line in the current
@@ -146,17 +162,6 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .diagnostic(let error):
             return error.retryRuledOut
-        case .syncDisconnected, .onOtherDevice, .originalMissing,
-            .audioOutput:
-            return false
-        }
-    }
-
-    /// Only the diagnostic arm carries core's answer, its error's.
-    public var resetFromCloudReplaces: Bool {
-        switch self {
-        case .diagnostic(let error):
-            return error.resetFromCloudReplaces
         case .syncDisconnected, .onOtherDevice, .originalMissing,
             .audioOutput:
             return false

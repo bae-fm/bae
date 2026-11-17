@@ -79,13 +79,14 @@ internal fun DeviceResetDialog(
 }
 
 /**
- * Opening failed in a way only a device reset fixes; the reset is offered
- * after its warning. The screen says why: [error]'s own line, or with none,
- * after a reset was cancelled, the reset's line. A reset that failed is titled
- * by what failed instead, and Retry resets again without the warning the
- * person already accepted. Back leaves without resetting. Preparing the reset
- * can itself fail (it reads this device's state); that shows as a failed reset
- * does, with the same Retry.
+ * This device's copy can't be used, and only a device reset fixes it; the
+ * reset is offered after its warning. A failed open says the library did not
+ * open, that its data is wrong, and why behind Details. With no failure, as
+ * when a reset was cancelled or the Sync page offered it, the screen says the
+ * reset's line. A reset that failed is titled by what failed instead, and
+ * Retry resets again without the warning the person already accepted. Back
+ * leaves without resetting. Preparing the reset can itself fail (it reads this
+ * device's state); that shows as a failed reset does, with the same Retry.
  */
 @Composable
 internal fun ResetOfferedScreen(
@@ -126,9 +127,8 @@ internal fun ResetOfferedScreen(
             )
         }
 
-        // When the open fails because the library's data is wrong, the notice names the failed step, says the
-        // data is wrong and offers Reset from cloud.
-        shown != null && reason != null && reason.resetFromCloudReplaces -> {
+        // A failed open names the failed step, says the data is wrong and offers Reset from cloud.
+        shown != null && shown.step == FailedStep.LIBRARY_OPEN -> {
             Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
                 AndroidNotice(
                     title = context.coreString(shown.step.titleKey),
@@ -138,10 +138,6 @@ internal fun ResetOfferedScreen(
                     buttons = NoticeButtons.BELOW,
                 )
             }
-        }
-
-        reason != null -> {
-            AndroidNotice(reason, look = NoticeLook.CENTERED, action = offer)
         }
 
         else -> {

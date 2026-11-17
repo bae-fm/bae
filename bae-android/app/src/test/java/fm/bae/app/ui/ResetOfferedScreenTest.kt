@@ -55,7 +55,7 @@ class ResetOfferedScreenTest {
             }
         }
 
-        compose.onNodeWithText("This device cannot sync.").assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.coreString(FailedStep.LIBRARY_OPEN.titleKey)).assertIsDisplayed()
         compose.onNodeWithText(compose.activity.getString(R.string.reset_device)).assertIsDisplayed()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
@@ -100,14 +100,13 @@ class ResetOfferedScreenTest {
         compose.onNodeWithText("Couldn't prepare the reset.", substring = true).assertIsDisplayed()
     }
 
-    /** When the open fails because the library's data is wrong, the screen names the failed step, says the data is
-     *  wrong and offers the reset. */
+    /** A failed open the reset loads again names the failed step, says the data is wrong and offers the reset. */
     @Test
     fun aDamagedLibraryOffersTheResetNotRetry() {
         val why =
             ScreenFailure(
                 FailedStep.LIBRARY_OPEN,
-                DisplayError("Something went wrong with the database.", "damaged", offersRetry = false, resetFromCloudReplaces = true),
+                DisplayError("Something went wrong with the database.", "damaged", offersRetry = false),
             )
         compose.setContent {
             TestTheme {

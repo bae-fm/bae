@@ -6,10 +6,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.AppScreen
 import fm.bae.app.DisplayError
-import fm.bae.app.FailedStep
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.R
-import fm.bae.app.ScreenFailure
 import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
@@ -148,18 +146,14 @@ class WelcomeShots : BoardShot() {
             ScreenScene { InProgressScreen(AppScreen.Loading(AppScreen.LoadingWork.FINDING_LIBRARIES)) }
         }
 
-    /** Opening found this device's copy unusable: why, centred, with Reset from cloud…. */
+    /** Sync found another installation in this device's place: the reset's line, centred, with Reset from cloud…. */
     @Test
     fun androidWelcomeResetOffered() =
         shot("android.welcome.reset.offered") {
             ScreenScene {
                 ResetOfferedScreen(
                     libraryId = "home",
-                    error =
-                        ScreenFailure(
-                            FailedStep.LIBRARY_OPEN,
-                            DisplayError("This device cannot sync."),
-                        ),
+                    error = null,
                     lines = testRecoveryLines,
                     prepare = { error("a shot was tapped") },
                     errors = LocaleErrorDisplays(LocalContext.current),

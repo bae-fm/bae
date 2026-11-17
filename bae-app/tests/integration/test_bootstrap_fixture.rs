@@ -69,6 +69,7 @@ fn open(
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        installation,
         builder,
         |_| (),
         TestApp::start,
@@ -146,6 +147,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         std::sync::Arc::new(coven::SystemClock),
         coven::FileBudget::for_test(),
         std::sync::Arc::new(coven::SequentialIds::new()),
+        &installation,
         bae_store::test_devices::test_builder(&installation),
         |_| (),
         TestApp::start,
@@ -154,5 +156,6 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
     let Err(error) = failed else {
         panic!("an open on a missing fixture must fail");
     };
+    let error = error.error();
     assert!(error.to_string().contains("missing.json"), "the failure names the fixture: {error}");
 }

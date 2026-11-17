@@ -1,11 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// Offered when opening a library found a damaged database or another copy of
-/// this device, or from Settings when sync found one: why, as a centred
-/// notice, with the reset, whose warning an alert shows before it runs. A
-/// reset that failed says so, and Retry runs it again without the warning the
-/// person already accepted. Also offers finishing a reset that stopped
+/// Offered from Settings when sync found another installation in this
+/// device's place: why, as a centred notice, with the reset, whose warning an
+/// alert shows before it runs. A reset that failed says so, and Retry runs
+/// it again without the warning the person already accepted. Also offers finishing a reset that stopped
 /// partway, once finishing it failed. Cancel leaves either without resetting.
 struct DeviceResetView: View {
     /// Why the screen asks for a reset.
@@ -19,7 +18,7 @@ struct DeviceResetView: View {
     }
 
     let prompt: Prompt
-    /// Why the library didn't open, or why the last reset failed.
+    /// Why the last reset failed.
     let error: LoadError?
     let onReset: () -> Void
     let onCancel: () -> Void
@@ -43,9 +42,8 @@ struct DeviceResetView: View {
             }
     }
 
-    /// Why a reset is offered: the error opening the library found, or with
-    /// none, as from Settings, the reset's own line. A failed reset is titled
-    /// by what failed instead, its error behind Details.
+    /// Why a reset is offered: the reset's own line. A failed reset is
+    /// titled by what failed instead, its error behind Details.
     @ViewBuilder
     private var offeredNotice: some View {
         let cancel = ErrorAction(
@@ -54,7 +52,7 @@ struct DeviceResetView: View {
             perform: onCancel
         )
         let offer = ErrorAction("Reset from cloud…") { confirming = true }
-        if let error, error.step == .deviceReset {
+        if let error {
             Notice(
                 title: error.step.title,
                 advice: nil,
@@ -62,14 +60,6 @@ struct DeviceResetView: View {
                 look: .centered,
                 action: error.error.offersRetry
                     ? ErrorAction("Retry", perform: onReset) : nil,
-                secondary: cancel
-            )
-        }
-        else if let error {
-            Notice(
-                error: error.error,
-                look: .centered,
-                action: offer,
                 secondary: cancel
             )
         }

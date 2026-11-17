@@ -100,9 +100,12 @@ struct AppDelegateTests {
     func unfinishedReplacementLandsOnItsCall() {
         let restore = AppScreen.recovering(
             libraryId: "lib-01",
-            from: BridgeError.Diagnostic(
-                category: .replacementUnfinished(by: .restore),
-                detail: "restore_device"
+            from: BridgeOpenError.ReplacementUnfinished(
+                by: .restore,
+                error: .Diagnostic(
+                    category: .replacementUnfinished(by: .restore),
+                    detail: "restore_device"
+                )
             )
         )
         guard case .restoreUnfinished(let restoring) = restore else {
@@ -115,9 +118,12 @@ struct AppDelegateTests {
 
         let reset = AppScreen.recovering(
             libraryId: "lib-02",
-            from: BridgeError.Diagnostic(
-                category: .replacementUnfinished(by: .reset),
-                detail: "reset_device"
+            from: BridgeOpenError.ReplacementUnfinished(
+                by: .reset,
+                error: .Diagnostic(
+                    category: .replacementUnfinished(by: .reset),
+                    detail: "reset_device"
+                )
             )
         )
         guard case .resetUnfinished(let resetting) = reset else {
@@ -129,27 +135,26 @@ struct AppDelegateTests {
         #expect(resetting == "lib-02")
     }
 
+    /// A damaged copy offers its reset under the library's row, not on a
+    /// screen of its own.
     @Test("a failed open with no recovery here lands on none")
     func otherOpenFailuresHaveNoRecovery() {
-        let damaged = AppScreen.recovering(
-            libraryId: "lib-01",
-            from: BridgeError.Diagnostic(
-                category: .deviceResetRequired,
-                detail: "damaged database"
-            )
-        )
-        guard case .resetRequired = damaged else {
-            Issue.record(
-                "a damaged database lands on \(String(describing: damaged))"
-            )
-            return
-        }
         #expect(
             AppScreen.recovering(
                 libraryId: "lib-01",
-                from: BridgeError.Diagnostic(
-                    category: .network,
-                    detail: "offline"
+                from: BridgeOpenError.ResetFromCloud(
+                    error: .Diagnostic(
+                        category: .databaseDamaged,
+                        detail: "damaged database"
+                    )
+                )
+            ) == nil
+        )
+        #expect(
+            AppScreen.recovering(
+                libraryId: "lib-01",
+                from: BridgeOpenError.Failed(
+                    error: .Diagnostic(category: .network, detail: "offline")
                 )
             ) == nil
         )
@@ -160,9 +165,8 @@ struct AppDelegateTests {
     /// none is.
     @Test("a failed open with nothing to recover lands home")
     func failedOpenLandsHome() {
-        let offline = BridgeError.Diagnostic(
-            category: .network,
-            detail: "offline"
+        let offline = BridgeOpenError.Failed(
+            error: .Diagnostic(category: .network, detail: "offline")
         )
         guard
             case .home = AppScreen.afterFailedOpen(

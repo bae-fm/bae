@@ -9,6 +9,7 @@ import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.data.LibraryClosingSteps
 import fm.bae.app.data.LibraryOpenProgress
+import fm.bae.app.failure
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.fastvalues.LatestSource
 import kotlinx.coroutines.CancellationException
@@ -22,6 +23,7 @@ import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibraryStanding
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeOpenException
 import uniffi.bae_bridge.BridgeOpenProgress
 
 private val logger = BaeLogger("bae.WelcomeLibraries")
@@ -119,7 +121,10 @@ internal class WelcomeLibrariesCore(
      * sent. Asking opens it; the open's steps go to the callback.
      */
     val unsentBeforeRemoval: suspend (String, (LatestSource<BridgeOpenProgress>) -> Unit) -> Boolean,
-    /** Open the library and remove it, closing the handle it opened. */
+    /**
+     * Open the library and remove it, closing the handle it opened. An open that fails throws its
+     * `BridgeOpenException`, and a removal that fails its `BridgeException`.
+     */
     val removeOpened: suspend (String, RemovalSteps) -> BridgeLibraryRemoval,
     /** Remove a library that can't open, without opening it. */
     val removeUnopenable: suspend (String, RemovalSteps) -> BridgeLibraryRemoval,
@@ -294,6 +299,10 @@ internal class WelcomeLibraries(
                     removeNow(confirmed)
                 } catch (e: CancellationException) {
                     throw e
+                } catch (e: BridgeOpenException) {
+                    logger.error("opening ${library.id} to remove it failed", e)
+                    fail(library, e.failure, confirmed)
+                    return@launch
                 } catch (e: BridgeException) {
                     logger.error("removing ${library.id} failed", e)
                     fail(library, e, confirmed)

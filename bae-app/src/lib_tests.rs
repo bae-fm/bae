@@ -1,4 +1,4 @@
-use super::{classify_key_state_error, BootstrapError};
+use super::{classify_key_state_error, BootstrapError, OpenFailure};
 use bae_library::LibraryError;
 
 #[tokio::test]
@@ -106,6 +106,7 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
         |_services, _runtime| -> Result<(), BootstrapError> {
             unreachable!("the bootstrap fails before it composes an owner")
         },
+        |error, _| error,
     );
 
     assert!(
@@ -184,4 +185,72 @@ fn a_damaged_database_file_opens_as_damaged() {
     let bae_diagnostics::UiError::Diagnostic { category, .. } = failure.ui_error().unwrap();
     assert_eq!(category, bae_diagnostics::UiErrorCategory::DatabaseDamaged);
     assert!(category.reset_from_cloud_replaces());
+}
+
+/// The store dir of a closed library created on `runtime` under `home`,
+/// with storage set up when `stored`.
+fn closed_library(
+    runtime: &tokio::runtime::Runtime,
+    home: &std::path::Path,
+    stored: bool,
+) -> coven::StoreDir {
+    use coven::Storage;
+    let app_dir = bae_app_dir::AppDir::at(home).unwrap();
+    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let id = runtime.block_on(async {
+        let handle = bae_store::configure_store(
+            bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone()),
+            bae_library::SCHEMA,
+        )
+        .create_store("Library", "Test Device", &[], |_, _| Ok(()))
+        .await
+        .unwrap();
+        if stored {
+            handle
+                .setup_s3_storage(
+                    storage.config(),
+                    "key".into(),
+                    coven::SecretText::new("secret".into()),
+                    &|_| (),
+                )
+                .await
+                .unwrap();
+        }
+        let id = handle.store_id();
+        handle.close().await.unwrap();
+        id
+    });
+    installation.store_dir(&id)
+}
+
+/// A failed open offers a reset from the cloud only for a failure in this
+/// device's copy of the library's data, and only when the library has
+/// storage to load it from.
+#[test]
+fn only_a_failure_in_the_copy_of_a_stored_library_offers_the_reset() {
+    let runtime = bae_library::test_libraries::multi_thread_runtime();
+    let stored_home = tempfile::tempdir().unwrap();
+    let stored = closed_library(&runtime, stored_home.path(), true);
+    let local_home = tempfile::tempdir().unwrap();
+    let local = closed_library(&runtime, local_home.path(), false);
+    let in_the_copy =
+        || [BootstrapError::Database("x".into()), BootstrapError::Damaged("x".into())];
+
+    for error in in_the_copy() {
+        let failure = OpenFailure::of(error, &stored, &runtime);
+        assert!(matches!(failure, OpenFailure::ResetFromCloud(_)), "{failure:?}");
+    }
+    for error in in_the_copy() {
+        let failure = OpenFailure::of(error, &local, &runtime);
+        assert!(matches!(failure, OpenFailure::Failed(_)), "{failure:?}");
+    }
+    for error in [
+        BootstrapError::Config("x".into()),
+        BootstrapError::Internal("x".into()),
+        BootstrapError::KeyringUnavailable,
+    ] {
+        let failure = OpenFailure::of(error, &stored, &runtime);
+        assert!(matches!(failure, OpenFailure::Failed(_)), "{failure:?}");
+    }
 }

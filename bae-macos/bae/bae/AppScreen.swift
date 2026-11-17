@@ -10,8 +10,9 @@ enum AppScreen {
     /// show the welcome over an open library or ask for the library without
     /// one.
     case home
-    /// Opening found a damaged database or another copy of this device; the
-    /// person can reset the device for this library.
+    /// Sync found another installation in this device's place, and the
+    /// Sync page offered the reset: the person can reset the device for this
+    /// library.
     case resetRequired(libraryId: String)
     /// Another of the person's devices replaced their keys; the library is
     /// closed and the person restores it with their current restore code.
@@ -35,21 +36,12 @@ enum AppScreen {
     }
 
     /// The screen a failed open of `libraryId` lands on when its failure is
-    /// one the person recovers from here: resetting the device, or finishing
-    /// the reset or restore that stopped partway. `nil` for any other
-    /// failure.
+    /// one the person recovers from here: finishing the reset or restore
+    /// that stopped partway, as core names it. `nil` for any other failure.
     static func recovering(libraryId: String, from error: Error) -> Self? {
-        guard case BridgeError.Diagnostic(let category, _) = error else {
-            return nil
-        }
-        switch category {
-        case .deviceResetRequired:
-            return .resetRequired(libraryId: libraryId)
-        case .replacementUnfinished(let by):
-            return .finishing(libraryId: libraryId, by: by)
-        default:
-            return nil
-        }
+        guard case BridgeOpenError.ReplacementUnfinished(let by, _) = error
+        else { return nil }
+        return .finishing(libraryId: libraryId, by: by)
     }
 
     /// What the loading screen waits on, which it names while no step of it
