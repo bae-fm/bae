@@ -59,9 +59,10 @@ struct ReleaseEditorView: View {
                     search(searchSection)
                 }
             }
-            else {
+            else if let draft = session.draft {
                 ReleaseMetadataEditorContent(
                     session: session,
+                    draft: draft,
                     lead: { lead },
                     onEditCover: presentCoverPicker,
                     onViewAlbum: onViewAlbum,
@@ -117,8 +118,8 @@ struct ReleaseEditorView: View {
                     searchSection = nil
                     session.cancelChanges()
                 }
-                .opacity(session.draft.changed ? 1 : 0)
-                .allowsHitTesting(session.draft.changed)
+                .opacity(session.draft?.changed == true ? 1 : 0)
+                .allowsHitTesting(session.draft?.changed == true)
                 .disabled(session.isBusy)
                 Button("Save") {
                     session.save(onSuccess: onSaved)
@@ -198,7 +199,6 @@ struct ReleaseEditorView: View {
                             session.releaseId,
                             selection
                         )
-                        try await session.refreshCover()
                     },
                     onDone: { uiStore.dismissModal() }
                 )

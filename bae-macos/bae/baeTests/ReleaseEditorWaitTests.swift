@@ -45,18 +45,21 @@ struct ReleaseEditorWaitTests {
     private func heldSession() -> ReleaseMetadataEditSession {
         let draft = PreviewData.releaseEditDraft(trackCount: 2)
         let held = ReleaseEditSessionCommands(
-            draft: { draft },
-            setField: { _, _ in draft },
-            setLabels: { _ in draft },
-            setBarcodes: { _ in draft },
-            setPressingFact: { _ in draft },
-            setAlbumArtists: { _ in draft },
-            setTrack: { _ in draft },
+            setField: { _, _ in },
+            setLabels: { _ in },
+            setBarcodes: { _ in },
+            setPressingFact: { _ in },
+            setAlbumArtists: { _ in },
+            setTrack: { _ in },
             apply: { _, _ in try await Task.neverAnswers() },
-            setAlbum: { _ in draft },
+            setAlbum: { _ in },
+            cancel: {},
             save: { try await Task.neverAnswers() }
         )
-        let opened = OpenedReleaseEdit(draft: draft, session: held)
+        let opened = OpenedReleaseEdit(
+            drafts: PreviewReleaseEditSession(draft: draft).drafts(),
+            session: held
+        )
         return ReleaseMetadataEditSession(
             releaseId: "release-test",
             opened: opened,

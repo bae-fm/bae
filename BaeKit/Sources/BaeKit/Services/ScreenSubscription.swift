@@ -174,6 +174,7 @@ extension StorageQueuesSubscription: PulledSubscription {}
     extension ImportCountsSubscription: PulledSubscription {}
     extension CandidateRuntimeSubscription: PulledSubscription {}
     extension CatalogApplyStepSubscription: PulledSubscription {}
+    extension ReleaseEditDraftSubscription: PulledSubscription {}
     extension FolderScansSubscription: PulledSubscription {}
     extension SubsonicSubscription: PulledSubscription {}
     extension StorageInspectorSubscription: PulledSubscription {}

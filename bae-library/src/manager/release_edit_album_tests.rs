@@ -1,6 +1,8 @@
 //! The album a release edit session files its release under: named, picked and new.
 
-use super::tests::{album_pick, insert_editable_tracks, musicbrainz_link, seed_musicbrainz};
+use super::tests::{
+    album_pick, draft_after, insert_editable_tracks, musicbrainz_link, seed_musicbrainz,
+};
 use crate::manager::tests::*;
 use bae_records::DbAlbum;
 
@@ -42,27 +44,37 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(super::tests::opened(manager, &session).await.album, named(&own));
-    let applied = manager
-        .apply_release_edit_catalog(
+    let applied = draft_after(
+        manager,
+        &session,
+        manager.apply_release_edit_catalog(
             &session,
             &musicbrainz_link("named-new"),
             &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_eq!(applied.album, named(&grouped));
-    let applied = manager
-        .apply_release_edit_catalog(
+    let applied = draft_after(
+        manager,
+        &session,
+        manager.apply_release_edit_catalog(
             &session,
             &musicbrainz_link("unnamed-new"),
             &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_eq!(applied.album, DraftAlbum::New);
 
     assert_eq!(
-        manager.set_release_edit_album(&session, album_pick(&picked)).await.unwrap().album,
+        draft_after(
+            manager,
+            &session,
+            manager.set_release_edit_album(&session, album_pick(&picked))
+        )
+        .await
+        .album,
         picked_album
     );
     let refused = manager
@@ -75,21 +87,25 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         matches!(refused, Err(crate::LibraryError::AlbumMissing { .. })),
         "the session refuses an album the library does not hold: {refused:?}"
     );
-    let applied = manager
-        .apply_release_edit_catalog(
+    let applied = draft_after(
+        manager,
+        &session,
+        manager.apply_release_edit_catalog(
             &session,
             &musicbrainz_link("named-new"),
             &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
     assert_eq!(
-        manager
-            .set_release_edit_album(&session, bae_import::AlbumPick::Records)
-            .await
-            .unwrap()
-            .album,
+        draft_after(
+            manager,
+            &session,
+            manager.set_release_edit_album(&session, bae_import::AlbumPick::Records)
+        )
+        .await
+        .album,
         named(&grouped),
         "with no pick, the session files the release under the album its records name"
     );
@@ -113,7 +129,13 @@ async fn a_picked_new_album_files_the_release_under_a_fresh_album() {
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
-        manager.set_release_edit_album(&session, bae_import::AlbumPick::New).await.unwrap().album,
+        draft_after(
+            manager,
+            &session,
+            manager.set_release_edit_album(&session, bae_import::AlbumPick::New)
+        )
+        .await
+        .album,
         DraftAlbum::PickedNew
     );
     assert!(manager.set_release_edit_album(&session, bae_import::AlbumPick::Records).await.is_ok());

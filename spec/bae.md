@@ -2256,7 +2256,11 @@ pressing is, the album's artists, a track's title or artists — is written
 to the session as it is made, in the order made, as the import pane writes
 each to its draft (§3.6), and the editor shows the session as it returns:
 the form, how each credit in it stands to the library, whether anything
-changed, and why the form can't be saved, when it can't. Applying a catalog
+changed, and why the form can't be saved, when it can't. The draft follows
+the library while the editor is open: how each credit stands to the
+library, the album's title and credits, and the cover show what the library
+holds after any write that changes them, a merged artist or a renamed album
+included, with no edit. Applying a catalog
 release in the session reads it once, against the release's stored track
 lengths and its files, and replaces every value the release holds — the
 album fields, the pressing, each track's title, artists, medium, side and
@@ -2289,7 +2293,11 @@ editor says the release changed after it opened; *Cancel* opens it again as
 it is now. Only the cover, which is written at once, never makes a session
 out of date. The check and the rows are one write, so nothing lands between
 them. After a save, the editor works in a fresh
-session opened on what it saved.
+session opened on what it saved. A release deleted while its editor is open
+leaves the editor nothing to edit, so the editor closes: in the album
+detail the release's sheet goes with the release, and in the import pane
+the folder returns to Found with its draft (A.5,
+`import_candidate_edit`).
 
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
@@ -5694,7 +5702,8 @@ Reads come two ways:
   artist, a work, a search.
 - **Live subscriptions** deliver a value, then a new one each time the rows it
   read change. The album grid, the artist and composer lists, a composer's
-  page, a search, an editor's artist search, the import list, sync status,
+  page, a search, an editor's artist search, a release editor's draft, the
+  import list, sync status,
   uploads, downloads, the queue, the playlists and a playlist's page are all
   live. A read that fails is delivered as a value and the
   subscription goes on, but one that fails because the store closed, or

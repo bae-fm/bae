@@ -107,11 +107,7 @@ extension ShotScene {
                 releaseId: editedReleaseId,
                 displayName: "Northbound · CD · Harbor Records HR-1042 · 1992",
                 opened: library.opened(),
-                commands: ReleaseEditCommands(
-                    open: { _ in library.opened() },
-                    searchAlbums: { _ in [] },
-                    catalogApply: { nil }
-                ),
+                commands: library.commands(),
                 onSaved: { _ in },
                 onViewAlbum: { _ in },
                 onClose: {}

@@ -85,7 +85,19 @@ impl LibraryManager {
         })
     }
 
-    /// The session's draft as its editor shows it now.
+    /// The session's draft as its editor shows it, live: it reads again
+    /// after each write that changes what it read (each change of the
+    /// session, an artist merged in the library, the album renamed, a cover
+    /// picked), and reads `None` once the session's release is gone.
+    pub fn subscribe_release_edit_draft(
+        &self,
+        session: &ReleaseEdit,
+    ) -> bae_store::live_query::LiveValues<Option<bae_import::ReleaseEditDraft>> {
+        self.values_until_closed(session.tables.subscribe_release_edit_draft(session.session))
+    }
+
+    /// The session's draft as its editor shows it now, read once.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn release_edit_draft(
         &self,
         session: &ReleaseEdit,
@@ -97,30 +109,27 @@ impl LibraryManager {
             .ok_or(LibraryError::ReleaseEditClosed { release_id: session.release_id.clone() })
     }
 
-    /// Write one change of the form as `change` makes it, then return the
-    /// session's draft.
+    /// Write one change of the form as `change` makes it.
     async fn change_release_edit(
         &self,
         session: &ReleaseEdit,
         change: impl FnOnce(&mut bae_import::RawReleaseEdit) -> Result<(), ReleaseEditSessionRefusal>
             + Send
             + 'static,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         session
             .tables
             .change_release_edit_session(session.session, change)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))?;
-        self.release_edit_draft(session).await
+            .map_err(|error| release_edit_error(error, Some(session)))
     }
 
     /// Write one album-level field of the form as the person left it.
-    /// Returns the session's draft.
     pub async fn edit_release_edit_field(
         &self,
         session: &ReleaseEdit,
         edit: bae_import::DraftFieldEdit,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         self.change_release_edit(session, move |form| {
             form.set_field(edit);
             Ok(())
@@ -128,12 +137,12 @@ impl LibraryManager {
         .await
     }
 
-    /// Replace the form's ordered album credits. Returns the session's draft.
+    /// Replace the form's ordered album credits.
     pub async fn set_release_edit_album_artists(
         &self,
         session: &ReleaseEdit,
         assignments: Vec<bae_import::Credited>,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         self.change_release_edit(session, move |form| {
             form.set_album_artists(assignments);
             Ok(())
@@ -142,13 +151,12 @@ impl LibraryManager {
     }
 
     /// Write one track row's title and artists as the person left them, by
-    /// the row's id. Returns the session's draft. A row the form does not
-    /// hold is refused.
+    /// the row's id. A row the form does not hold is refused.
     pub async fn set_release_edit_track(
         &self,
         session: &ReleaseEdit,
         track: bae_import::RawTrackEdit,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         self.change_release_edit(session, move |form| {
             let id = track.id.clone();
             if form.set_track(track) {
@@ -165,15 +173,15 @@ impl LibraryManager {
     /// reads them, and write every value it gives and the records it names
     /// into the session until the save. The form becomes the reading's values
     /// and the tracks are laid out at the places it gives them; the cover is
-    /// the release's own, which an apply never changes. Returns the session's
-    /// draft. A release whose tracks the reading cannot lay out is refused
-    /// with both counts. Each fetch it waits on is told to `steps`.
+    /// the release's own, which an apply never changes. A release whose
+    /// tracks the reading cannot lay out is refused with both counts. Each
+    /// fetch it waits on is told to `steps`.
     pub async fn apply_release_edit_catalog(
         &self,
         session: &ReleaseEdit,
         link: &bae_identify::PressingLink,
         steps: &bae_import::CatalogApplySteps,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         let release_id = session.release_id();
         // Nothing names these releases, so they are read and never stored.
         let release = self.release_reads.applied_release(&link.record, steps).await?.release;
@@ -213,41 +221,33 @@ impl LibraryManager {
             .tables
             .apply_to_release_edit_session(session.session, applied)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))?;
-        self.release_edit_draft(session).await
+            .map_err(|error| release_edit_error(error, Some(session)))
     }
 
     /// Record `pick` as the album `session` files its release under: a
     /// library album or a new one over the one its records name, or (nothing)
-    /// the one its records name. Returns the session's draft, naming the
-    /// album it now files the release under. The method refuses an album the
-    /// library does not hold with `LibraryError::AlbumMissing`.
+    /// the one its records name. The method refuses an album the library
+    /// does not hold with `LibraryError::AlbumMissing`.
     pub async fn set_release_edit_album(
         &self,
         session: &ReleaseEdit,
         pick: bae_import::AlbumPick,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    ) -> Result<(), LibraryError> {
         session
             .tables
             .pick_release_edit_album(session.session, pick)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))?;
-        self.release_edit_draft(session).await
+            .map_err(|error| release_edit_error(error, Some(session)))
     }
 
     /// Open `session` again on the release as the library holds it now,
-    /// discarding everything it holds: what Cancel does. Returns the
-    /// session's draft.
-    pub async fn reopen_release_edit(
-        &self,
-        session: &ReleaseEdit,
-    ) -> Result<bae_import::ReleaseEditDraft, LibraryError> {
+    /// discarding everything it holds: what Cancel does.
+    pub async fn reopen_release_edit(&self, session: &ReleaseEdit) -> Result<(), LibraryError> {
         session
             .tables
             .reseed_release_edit_session(session.session)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))?;
-        self.release_edit_draft(session).await
+            .map_err(|error| release_edit_error(error, Some(session)))
     }
 
     /// Save `session`: in one write, the form as the person left it, every

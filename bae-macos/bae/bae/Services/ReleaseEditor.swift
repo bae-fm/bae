@@ -141,9 +141,8 @@ final class ReleaseEditor: Observable {
     ) async throws -> OpenedReleaseEdit {
         let session = try await handle.openReleaseEdit(releaseId: releaseId)
         return OpenedReleaseEdit(
-            draft: try await session.draft(),
+            drafts: PulledValues(session.draftSubscription()),
             session: ReleaseEditSessionCommands(
-                draft: { try await session.draft() },
                 setField: { try await session.setField(field: $0, value: $1) },
                 setLabels: { try await session.setLabels(labels: $0) },
                 setBarcodes: { try await session.setBarcodes(barcodes: $0) },
@@ -156,6 +155,7 @@ final class ReleaseEditor: Observable {
                 setTrack: { try await session.setTrack(track: $0) },
                 apply: { try await session.applyCatalog(link: $0, apply: $1) },
                 setAlbum: { try await session.setAlbum(pick: $0) },
+                cancel: { try await session.cancel() },
                 save: { try await session.save() }
             )
         )

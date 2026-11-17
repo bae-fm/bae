@@ -222,6 +222,19 @@ pulled_read! {
     built by catalog_apply_step
 }
 
+#[cfg(desktop)]
+pulled_read! {
+    /// A release editor's session's draft, as the editor shows it; `None`
+    /// once the session's release is gone.
+    ReleaseEditDraftSubscription:
+        LiveValues<Option<bae_import::ReleaseEditDraft>>
+            => Option<crate::types::BridgeReleaseEditDraft>,
+    converted by |draft: Option<bae_import::ReleaseEditDraft>| {
+        draft.map(crate::types::BridgeReleaseEditDraft::from_core)
+    },
+    built by release_edit_draft
+}
+
 #[cfg(feature = "cast")]
 pulled_read! {
     /// The receivers the cast picker lists, the cast-to receiver apart from

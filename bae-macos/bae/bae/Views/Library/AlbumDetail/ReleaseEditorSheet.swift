@@ -56,6 +56,11 @@ struct ReleaseEditorSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        // A release deleted while its editor is open leaves the editor
+        // nothing to edit.
+        .onChange(of: session.releaseGone) { _, gone in
+            if gone { onClose() }
+        }
         // However the sheet goes, its work stops; what it did not save goes
         // with its session.
         .onDisappear { session.cancelTasks() }

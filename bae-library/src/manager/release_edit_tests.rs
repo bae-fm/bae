@@ -241,14 +241,16 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
 
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&test, new_release_id, "discard-re-identify-mb-group-new", 2);
-    let applied = manager
-        .apply_release_edit_catalog(
+    let applied = draft_after(
+        manager,
+        &session,
+        manager.apply_release_edit_catalog(
             &session,
             &musicbrainz_link(new_release_id),
             &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
     drop(session);
 
@@ -397,7 +399,13 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     manager.records.insert_album(&picked).await.unwrap();
     let session = manager.open_release_edit(&release.id).await.unwrap();
     assert_eq!(
-        manager.set_release_edit_album(&session, album_pick(&picked)).await.unwrap().album,
+        draft_after(
+            manager,
+            &session,
+            manager.set_release_edit_album(&session, album_pick(&picked))
+        )
+        .await
+        .album,
         bae_import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
             line: bae_import::AlbumLine::TitleAlone { title: "Picked Album".to_string() },
@@ -446,7 +454,13 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     let third = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(
-        manager.set_release_edit_album(&pane, bae_import::AlbumPick::Records).await.unwrap().album,
+        draft_after(
+            manager,
+            &pane,
+            manager.set_release_edit_album(&pane, bae_import::AlbumPick::Records)
+        )
+        .await
+        .album,
         DraftAlbum::Named {
             album_id: own.id.clone(),
             line: bae_import::AlbumLine::TitleAlone { title: own.title.clone() },
@@ -581,22 +595,25 @@ async fn a_session_holds_each_change_until_its_save() {
 
     let mut row = opened.edit.tracks[1].clone();
     row.title = "Renamed Track".to_string();
-    let draft = manager.set_release_edit_track(&session, row.clone()).await.unwrap();
+    let draft =
+        draft_after(manager, &session, manager.set_release_edit_track(&session, row.clone())).await;
     assert_eq!(draft.edit.tracks[1].title, "Renamed Track");
     assert!(draft.changed);
     assert_eq!(library_titles(manager).await, stored, "the library holds no change yet");
     assert_eq!(manager.release_edit_draft(&session).await.unwrap().edit, draft.edit);
 
-    let blank = manager
-        .edit_release_edit_field(
+    let blank = draft_after(
+        manager,
+        &session,
+        manager.edit_release_edit_field(
             &session,
             bae_import::DraftFieldEdit::Text {
                 field: bae_import::CandidateEditField::AlbumTitle,
                 value: "  ".to_string(),
             },
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_eq!(blank.invalid, Some(bae_import::EditValidationError::EmptyAlbumTitle));
     assert!(manager.save_release_edit(&session).await.is_err(), "a blank title can't be saved");
     title_session(manager, &session, "Album Title").await;
@@ -769,20 +786,21 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
         source_group_id,
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
-    let session = manager.library.manager().open_release_edit(&release.id).await.unwrap();
-    let applied = manager
-        .library
-        .manager()
-        .apply_release_edit_catalog(
+    let library = manager.library.manager();
+    let session = library.open_release_edit(&release.id).await.unwrap();
+    let applied = draft_after(
+        library,
+        &session,
+        library.apply_release_edit_catalog(
             &session,
             &bae_identify::PressingLink {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
             &bae_import::CatalogApplySteps::unread(),
-        )
-        .await
-        .unwrap();
+        ),
+    )
+    .await;
     assert_eq!(
         applied.edit.tracks.into_iter().map(|track| track.id).collect::<Vec<_>>(),
         persisted_ids
@@ -920,6 +938,16 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
         seed.display.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })
     ));
+}
+
+/// `session`'s draft once `command`, a change to it, has written.
+pub(super) async fn draft_after(
+    manager: &LibraryManager,
+    session: &ReleaseEdit,
+    command: impl std::future::Future<Output = Result<(), LibraryError>>,
+) -> bae_import::ReleaseEditDraft {
+    command.await.unwrap();
+    manager.release_edit_draft(session).await.unwrap()
 }
 
 /// What `session` opened on, as its rows hold it.

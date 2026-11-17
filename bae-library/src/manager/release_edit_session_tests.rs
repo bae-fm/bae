@@ -1,7 +1,7 @@
 //! A release edit session's rows: what each change writes, what a save and
 //! Cancel write again, and when the rows go.
 
-use super::tests::insert_editable_tracks;
+use super::tests::{draft_after, insert_editable_tracks};
 use super::*;
 use crate::manager::tests::*;
 use bae_import::tables::ImportTables;
@@ -142,7 +142,7 @@ async fn cancel_reopens_the_session_on_the_release_as_it_is() {
         .unwrap();
     manager.save_release_edit(&other).await.unwrap();
 
-    let reopened = manager.reopen_release_edit(&session).await.unwrap();
+    let reopened = draft_after(manager, &session, manager.reopen_release_edit(&session)).await;
 
     assert_eq!(reopened.edit.album_title, "Written Elsewhere");
     assert!(!reopened.changed);
@@ -163,4 +163,126 @@ async fn a_change_to_a_closed_session_is_refused() {
     let refused = manager.edit_release_edit_field(&session, album_title("Too Late")).await;
 
     assert!(matches!(refused, Err(LibraryError::ReleaseEditClosed { .. })), "{refused:?}");
+}
+
+/// Pull `draft` until its value holds `wanted`.
+async fn draft_until(
+    draft: &bae_store::live_query::LiveValues<Option<bae_import::ReleaseEditDraft>>,
+    what: &str,
+    wanted: impl Fn(&Option<bae_import::ReleaseEditDraft>) -> bool,
+) {
+    tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            if wanted(&draft.next().await.expect("the draft reads")) {
+                return;
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("the live draft never showed {what}"));
+}
+
+#[tokio::test]
+async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = release_of_two_tracks(manager).await;
+    let session = manager.open_release_edit(&release_id).await.unwrap();
+    manager
+        .set_release_edit_album_artists(
+            &session,
+            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Newcomer"))],
+        )
+        .await
+        .unwrap();
+    let draft = manager.subscribe_release_edit_draft(&session);
+    let stands = |resolution: fn(&bae_records::CreditResolution) -> bool| {
+        move |draft: &Option<bae_import::ReleaseEditDraft>| {
+            draft.as_ref().is_some_and(|draft| {
+                draft.artist_resolutions.iter().any(|resolved| {
+                    resolved.credit.name == "Newcomer" && resolution(&resolved.resolution)
+                })
+            })
+        }
+    };
+    draft_until(
+        &draft,
+        "the credit as new",
+        stands(|resolution| matches!(resolution, bae_records::CreditResolution::New)),
+    )
+    .await;
+
+    manager
+        .records
+        .insert_artist(&bae_records::DbArtist {
+            id: bae_util::test_ids::test_uuid("4f0c6d2e-0b8a-4a57-9a0e-6f3c2b1d7e55"),
+            name: "Newcomer".to_string(),
+            sort_name: None,
+            discogs_artist_id: None,
+            musicbrainz_artist_id: None,
+            created_at: chrono::Utc::now(),
+        })
+        .await
+        .unwrap();
+
+    draft_until(
+        &draft,
+        "the credit as the library's artist",
+        stands(|resolution| matches!(resolution, bae_records::CreditResolution::Library { .. })),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn the_live_draft_shows_a_cover_picked_after_it_opened() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = release_of_two_tracks(manager).await;
+    let session = manager.open_release_edit(&release_id).await.unwrap();
+    let draft = manager.subscribe_release_edit_draft(&session);
+    draft_until(&draft, "no cover", |draft| draft.as_ref().is_some_and(|d| d.cover.is_none()))
+        .await;
+
+    store_test_cover(manager, &release_id, b"cover").await;
+
+    draft_until(&draft, "the cover", |draft| {
+        draft
+            .as_ref()
+            .is_some_and(|draft| draft.cover.as_ref().is_some_and(|cover| cover.id == release_id))
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn the_live_draft_names_the_renamed_album() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = release_of_two_tracks(manager).await;
+    let album_id = manager.records.find_album_id_for_release(&release_id).await.unwrap().unwrap();
+    let session = manager.open_release_edit(&release_id).await.unwrap();
+    let draft = manager.subscribe_release_edit_draft(&session);
+
+    manager.records.rename_album_for_test(&album_id, "Renamed Album").await.unwrap();
+
+    draft_until(&draft, "the album's new title", |draft| {
+        matches!(
+            draft.as_ref().map(|draft| &draft.album),
+            Some(bae_import::DraftAlbum::Named { title, .. }) if title == "Renamed Album"
+        )
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn the_live_draft_is_none_once_the_release_is_deleted() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = release_of_two_tracks(manager).await;
+    let session = manager.open_release_edit(&release_id).await.unwrap();
+    let draft = manager.subscribe_release_edit_draft(&session);
+    draft_until(&draft, "the draft", Option::is_some).await;
+
+    manager.delete_release(&release_id).await.unwrap();
+
+    draft_until(&draft, "no draft", Option::is_none).await;
 }

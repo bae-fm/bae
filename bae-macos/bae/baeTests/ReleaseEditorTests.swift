@@ -42,14 +42,19 @@ struct ReleaseEditorTests {
         }
 
         #expect(await library.open().edit.albumTitle == "Saved title")
-        #expect(!session.draft.changed)
+        try await Wait.until {
+            session.draft?.edit.albumTitle == "Saved title"
+                && session.draft?.changed == false
+        }
 
         await session.fieldWriter.setField(.albumTitle, "Unsaved title")
+        try await Wait.until { session.draft?.changed == true }
         session.cancelChanges()
         try await Wait.until { !session.isBusy }
-        #expect(!session.isBusy)
-        #expect(session.draft.edit.albumTitle == "Saved title")
-        #expect(!session.draft.changed)
+        try await Wait.until {
+            session.draft?.edit.albumTitle == "Saved title"
+                && session.draft?.changed == false
+        }
     }
 
     @MainActor
@@ -66,7 +71,7 @@ struct ReleaseEditorTests {
         let size = NSSize(width: 900, height: 500)
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
-                values: session.draft.edit,
+                values: draft.edit,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
@@ -187,6 +192,7 @@ struct ReleaseEditorTests {
             ScrollView {
                 ReleaseMetadataEditorContent(
                     session: session,
+                    draft: draft,
                     lead: { EmptyView() },
                     onViewAlbum: { _ in },
                     onPlayTrack: { _ in },
@@ -227,32 +233,31 @@ extension ReleaseEditorTests {
         await session.fieldWriter.setPressingFact(
             .area(area: .country(code: "JP"))
         )
-        #expect(session.draft.changed)
+        try await Wait.until { session.draft?.changed == true }
 
         session.cancelChanges()
         try await Wait.until { !session.isBusy }
-        #expect(!session.isBusy)
-        #expect(session.draft.edit.albumTitle == draft.edit.albumTitle)
-        #expect(session.draft.edit.pressing.facts == draft.edit.pressing.facts)
-        #expect(!session.draft.changed)
+        try await Wait.until { session.draft?.changed == false }
+        #expect(session.draft?.edit.albumTitle == draft.edit.albumTitle)
+        #expect(session.draft?.edit.pressing.facts == draft.edit.pressing.facts)
     }
 }
 
 extension ReleaseEditorTests {
-    /// The values core's session returns for each change, in the order
-    /// they reached it.
+    /// The titles core's session takes, in the order they reached it, each
+    /// written to the session the editor's subscription reads.
     private actor CoreSession {
         private(set) var titles: [String] = []
-        private var draft: BridgeReleaseEditDraft
+        let session: PreviewReleaseEditSession
         private(set) var firstChangeArrived = false
         private var heldFirstChange: CheckedContinuation<Void, Never>?
 
         init(draft: BridgeReleaseEditDraft) {
-            self.draft = draft
+            session = PreviewReleaseEditSession(draft: draft)
         }
 
         /// Take a title as core does: blank is not savable.
-        func setTitle(_ title: String) async -> BridgeReleaseEditDraft {
+        func setTitle(_ title: String) async {
             // The first change is held until the test lets it go, so a later
             // one would land first if the editor didn't wait for it.
             if !firstChangeArrived {
@@ -261,10 +266,10 @@ extension ReleaseEditorTests {
                 await withCheckedContinuation { heldFirstChange = $0 }
             }
             titles.append(title)
-            draft.edit.albumTitle = title
-            draft.changed = true
-            draft.invalid = title.isEmpty ? .emptyAlbumTitle : nil
-            return draft
+            await session.change {
+                $0.edit.albumTitle = title
+                $0.invalid = title.isEmpty ? .emptyAlbumTitle : nil
+            }
         }
 
         /// Let the first change take effect.
@@ -276,19 +281,18 @@ extension ReleaseEditorTests {
 
     @MainActor
     @Test(
-        "each change reaches core in the order made, and the editor shows the draft core returns"
+        "each change reaches core in the order made, and the editor shows the draft core answers"
     )
     func changesReachCoreInOrder() async throws {
         let draft = PreviewData.releaseEditDraft(trackCount: 1)
         let core = CoreSession(draft: draft)
         let library = PreviewReleaseLibrary(draft: draft)
-        let preview = library.opened().session
+        let preview = library.commands(of: core.session)
         let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
             opened: OpenedReleaseEdit(
-                draft: draft,
+                drafts: core.session.drafts(),
                 session: ReleaseEditSessionCommands(
-                    draft: preview.draft,
                     setField: { _, value in await core.setTitle(value) },
                     setLabels: preview.setLabels,
                     setBarcodes: preview.setBarcodes,
@@ -297,6 +301,7 @@ extension ReleaseEditorTests {
                     setTrack: preview.setTrack,
                     apply: preview.apply,
                     setAlbum: preview.setAlbum,
+                    cancel: preview.cancel,
                     save: preview.save
                 )
             ),
@@ -314,11 +319,11 @@ extension ReleaseEditorTests {
         await first.value
         await second.value
         #expect(await core.titles == ["", "Album Title"])
-        #expect(session.draft.edit.albumTitle == "Album Title")
+        try await Wait.until { session.draft?.edit.albumTitle == "Album Title" }
         #expect(session.validationMessage == nil)
 
         await session.fieldWriter.setField(.albumTitle, "")
-        #expect(session.draft.changed)
-        #expect(session.validationMessage != nil)
+        try await Wait.until { session.validationMessage != nil }
+        #expect(session.draft?.changed == true)
     }
 }

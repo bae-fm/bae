@@ -235,10 +235,7 @@ actor PreviewReleaseLibrary {
 
     /// A session opened before anything was saved.
     nonisolated func opened() -> OpenedReleaseEdit {
-        OpenedReleaseEdit(
-            draft: opening,
-            session: session(PreviewReleaseEditSession(draft: opening))
-        )
+        opened(PreviewReleaseEditSession(draft: opening))
     }
 
     func open() -> BridgeReleaseEditDraft {
@@ -251,27 +248,38 @@ actor PreviewReleaseLibrary {
         return "album-preview"
     }
 
+    /// Save `session`'s draft, then open the session again on what it saved.
+    func save(_ session: PreviewReleaseEditSession) async -> String {
+        let albumId = save(await session.draft)
+        await session.replace(with: open())
+        return albumId
+    }
+
     nonisolated func commands() -> ReleaseEditCommands {
         ReleaseEditCommands(
             open: { _ in
-                let draft = await self.open()
-                return OpenedReleaseEdit(
-                    draft: draft,
-                    session: self.session(
-                        PreviewReleaseEditSession(draft: draft)
-                    )
-                )
+                self.opened(PreviewReleaseEditSession(draft: await self.open()))
             },
             searchAlbums: { _ in [] },
             catalogApply: { nil }
         )
     }
 
-    private nonisolated func session(
-        _ session: PreviewReleaseEditSession
+    /// `session`, opened, with the subscription that answers its draft.
+    nonisolated func opened(_ session: PreviewReleaseEditSession)
+        -> OpenedReleaseEdit
+    {
+        OpenedReleaseEdit(
+            drafts: session.drafts(),
+            session: commands(of: session)
+        )
+    }
+
+    /// What `session` does with each command.
+    nonisolated func commands(
+        of session: PreviewReleaseEditSession
     ) -> ReleaseEditSessionCommands {
         ReleaseEditSessionCommands(
-            draft: { await session.draft },
             setField: { field, value in
                 await session.change { draft in
                     switch field {
@@ -327,24 +335,68 @@ actor PreviewReleaseLibrary {
                         }
                 }
             },
-            save: { await self.save(await session.draft) }
+            cancel: { await session.replace(with: await self.open()) },
+            save: { await self.save(session) }
         )
     }
 }
 
-/// One session's draft in a shot library, which each change edits.
+/// One session's draft in a shot library, which each change edits, and the
+/// drafts its subscription answers: the draft at once, then each draft a
+/// change leaves.
 actor PreviewReleaseEditSession {
     private(set) var draft: BridgeReleaseEditDraft
+    /// The draft the subscription has not answered yet, if any.
+    private var unanswered: BridgeReleaseEditDraft?
+    private var waiting: CheckedContinuation<BridgeReleaseEditDraft?, Never>?
 
     init(draft: BridgeReleaseEditDraft) {
         self.draft = draft
+        unanswered = draft
     }
 
-    func change(
-        _ edit: @Sendable (inout BridgeReleaseEditDraft) -> Void
-    ) -> BridgeReleaseEditDraft {
+    func change(_ edit: @Sendable (inout BridgeReleaseEditDraft) -> Void) {
         edit(&draft)
         draft.changed = true
-        return draft
+        answer(draft)
+    }
+
+    func replace(with draft: BridgeReleaseEditDraft) {
+        self.draft = draft
+        answer(draft)
+    }
+
+    /// The subscription's values.
+    nonisolated func drafts() -> PulledValues<BridgeReleaseEditDraft?> {
+        PulledValues(read: { await self.next() })
+    }
+
+    private func answer(_ draft: BridgeReleaseEditDraft) {
+        if let waiting {
+            self.waiting = nil
+            waiting.resume(returning: draft)
+        }
+        else {
+            unanswered = draft
+        }
+    }
+
+    /// The next draft: one not answered yet at once, else the next a change
+    /// leaves. A pull cancelled while it waits answers `nil`.
+    private func next() async -> BridgeReleaseEditDraft? {
+        if let unanswered {
+            self.unanswered = nil
+            return unanswered
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { waiting = $0 }
+        } onCancel: {
+            Task { await self.endWait() }
+        }
+    }
+
+    private func endWait() {
+        waiting?.resume(returning: nil)
+        waiting = nil
     }
 }

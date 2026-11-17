@@ -7,6 +7,8 @@ import SwiftUI
 /// plays from.
 struct ReleaseMetadataEditorContent<Lead: View>: View {
     let session: ReleaseMetadataEditSession
+    /// The session's draft as its subscription answered it last.
+    let draft: BridgeReleaseEditDraft
     /// What heads the draft card: the action row and the notices about it.
     @ViewBuilder
     var lead: () -> Lead
@@ -43,7 +45,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             ) {
                 lead()
                 ReleaseMetadataHeader(
-                    values: session.draft.edit,
+                    values: draft.edit,
                     writer: session.fieldWriter,
                     editingCommands: session.editingCommands,
                     artistSearch: library.artistSearch,
@@ -51,7 +53,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     audioFacts: { sourceAudio },
                     albumRow: {
                         DraftAlbumRow(
-                            album: session.draft.album,
+                            album: draft.album,
                             canEdit: true,
                             actions: session.albumActions(
                                 viewInLibrary: onViewAlbum
@@ -68,15 +70,15 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 MacImportImages(images: images, onOpen: onOpenImages)
             }
             trackTable
-            if !session.draft.display.files.isEmpty {
+            if !draft.display.files.isEmpty {
                 ReleaseFilesView(
-                    rows: session.draft.display.files.map { .file(file: $0) },
+                    rows: draft.display.files.map { .file(file: $0) },
                     onOpenDocument: onOpenDocument
                 )
             }
         }
         .disabled(session.isBusy)
-        .environment(\.artistResolutions, session.draft.artistResolutions)
+        .environment(\.artistResolutions, draft.artistResolutions)
     }
 
     private var cover: some View {
@@ -84,7 +86,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             onEditCover?()
         } label: {
             ImageView(
-                imageRef: session.draft.cover,
+                imageRef: draft.cover,
                 pointSize: ReleaseMetadataLayout.coverSize
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
@@ -97,7 +99,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
 
     @ViewBuilder
     private var sourceAudio: some View {
-        if let summary = session.draft.display.sourceAudio {
+        if let summary = draft.display.sourceAudio {
             ReleaseSourceAudioSummaryView(sourceAudio: summary)
         }
     }
@@ -106,7 +108,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
-                    if session.trackSides.isEmpty {
+                    if draft.trackSides.isEmpty {
                         headerRow
                         Text("No tracks")
                             .themeText(.body)
@@ -116,7 +118,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     }
                     else {
                         ForEach(
-                            Array(session.trackSides.enumerated()),
+                            Array(draft.trackSides.enumerated()),
                             id: \.element.id
                         ) { index, side in
                             sideRows(side, index: index)
