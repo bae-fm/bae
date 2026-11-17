@@ -23,10 +23,10 @@ extension LibraryView {
             )
         }
 
-    /// A canned composer library — a master list plus one composer's detail
-    /// (works, releases, recordings) — behind a real session, so the
-    /// composer detail's test renders the master list and detail pane
-    /// through the production `LibraryView` body. Images are absent, so
+    /// A canned composer library, with a master list and one composer's
+    /// detail (works, releases, recordings), and a `LibraryBrowseSession`
+    /// that reads it, so the composer detail's test renders the master list
+    /// and detail pane through the production `LibraryView` body. Images are absent, so
     /// every slot shows the placeholder treatment.
     @MainActor
     static func previewComposerBacking(

@@ -404,7 +404,8 @@ extension LibraryView {
 
     /// A library whose album read fails in a way the board offers Retry
     /// for, with a started `LibraryBrowseSession` that reads it, so the
-    /// albums pane shows the notice for a list that could not be read.
+    /// albums pane shows the notice for a list that the session could not
+    /// read.
     @MainActor
     static func previewUnreadableBacking(
         uiStore: UiStore
