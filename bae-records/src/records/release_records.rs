@@ -430,8 +430,8 @@ pub fn library_status_sql(checks: &str) -> String {
 /// The SQL of a condition that holds when the library holds the release
 /// `key` of `catalog` as a pressing: a release whose records name that
 /// catalog's release as the pressing it is, matched on
-/// `idx_release_records_catalog_key`. A release's records go with it, so a
-/// deleted release is not held.
+/// `idx_release_records_catalog_key`. Deleting a release deletes its records,
+/// so the library does not hold a deleted release.
 pub fn pressing_held_sql(catalog: &str, key: &str) -> String {
     format!(
         "EXISTS (SELECT 1 FROM release_records AS held \

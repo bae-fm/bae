@@ -78,9 +78,9 @@ pub(super) fn action_columns() -> String {
 }
 
 /// The commands among `actions` whose columns, from [`action_columns`], are
-/// set, in the order of `actions`. A row reads [`CandidateAction::ROW`],
-/// since the row's `can_Combine` says only whether the row can join a
-/// selection that combines.
+/// set, in the order of `actions`. A caller that reads one row passes
+/// [`CandidateAction::ROW`], because a row's `can_Combine` says only whether
+/// the row can join a selection that combines.
 pub(super) fn read_actions(
     row: &Row<'_>,
     actions: &[CandidateAction],

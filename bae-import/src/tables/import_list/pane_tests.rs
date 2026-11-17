@@ -497,8 +497,8 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 /// The import list shows a folder that failed validation under Skipped, with
 /// what its scan stored of it: the reason it failed, its tagged title and
 /// artist, and its cover image. The list selects it like any row, and the pane
-/// that shows its details reads the same row with its images and its other
-/// files, each read by its role. A scan that finds the folder again finds it
+/// that shows its details reads the same row, its images, and its other files,
+/// each with its role. A scan that finds the folder again finds it
 /// unchanged.
 #[tokio::test]
 async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {

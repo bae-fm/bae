@@ -378,10 +378,10 @@ impl ImportTables {
     }
 
     /// The folder that failed validation at the key the read is set to, as
-    /// the pane looking into it reads it, live; `None` for no key, or a key
-    /// naming no such folder, which clears a selection. Each of its statements
-    /// keeps only the rows of a folder stored as invalid, so a key of any
-    /// other kind reads no rows.
+    /// the pane that shows its details reads it, live; `None` for no key, or
+    /// a key naming no such folder, which clears a selection. Each statement
+    /// in `load_invalid_detail` keeps only rows whose folder the scan stored
+    /// as invalid, so the read returns no rows for a key of any other kind.
     pub(crate) fn subscribe_invalid_candidate(
         &self,
         initial: Option<crate::CandidateKey>,
