@@ -1825,7 +1825,6 @@ frozen = [
     { path = "bae-store/src/list_windows/range.rs", item = "read_range", shape = "sort", count = 1, finding = "reverses a backward window's rows, which the statement read in descending order (`reverse`)" },
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::failure_recorded", shape = "pick", count = 3, finding = "tests the pending rows for a removal, a key replacement or a failed pass with `any`" },
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::name_connection_cause", shape = "filter", count = 1, finding = "picks the pending rows about the connection to name their cause (`filter`)" },
-    { path = "bae-sync-status/src/sync_status/pending.rs", item = "pending_rows_on", shape = "query-per-row", count = 1, finding = "`pending_rows_on` runs `moved_original_on`, which runs SQL, once for each row (found by the check)" },
     { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
     { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, finding = "diffs the transfers it kept against the new ones by release, keeping the ones gone and the ones changed (`filter`)" },
     { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "join", count = 1, finding = "joins each gone release to how it ended by release id (`get`)" },

@@ -43,7 +43,8 @@ async fn a_waiting_upload_is_named_by_its_file_and_album() {
 /// An original changed since its import fails its release's move, even one
 /// that kept its size and modification time: the upload checks what it reads
 /// against the hashes the import's read recorded, so the pending list names
-/// the original as changed and no file switches to the cloud.
+/// the original as changed, by its file name and album, and no file switches
+/// to the cloud.
 #[tokio::test]
 async fn an_original_changed_since_its_import_fails_the_move() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
@@ -55,7 +56,7 @@ async fn an_original_changed_since_its_import_fails_the_move() {
     std::fs::File::options().write(true).open(&path).unwrap().set_modified(modified).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
 
-    pending_list_until(&mut values, |items| {
+    let listed = pending_list_until(&mut values, |items| {
         items.iter().any(|item| {
             matches!(
                 &item.wait.reason,
@@ -67,6 +68,17 @@ async fn an_original_changed_since_its_import_fails_the_move() {
         })
     })
     .await;
+    let changed = listed
+        .iter()
+        .find(|item| matches!(item.wait.reason, coven::PendingReason::Original { .. }))
+        .expect("the move's record");
+    assert_eq!(
+        changed.subject,
+        bae_sync_status::PendingSubjectName::ReleaseFile {
+            file_name: "a.flac".into(),
+            album_title: "Test Album".into(),
+        }
+    );
     assert!(release_files(manager.library.manager(), &release.id)
         .await
         .iter()

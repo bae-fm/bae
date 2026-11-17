@@ -1,7 +1,8 @@
 //! coven's pending records (coven §19.1) as the sync status lists them: each
 //! record from coven's `coven_pending` view, with the error behind it when
 //! coven keeps one, beside what the library holds for the row a file's
-//! record is about.
+//! record is about, or for the release file whose original a move's record
+//! names, all read in one statement.
 
 use super::file_row::{FileRowColumns, FILE_ROW_COLUMNS, FILE_ROW_JOINS};
 use super::*;
@@ -24,12 +25,21 @@ pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow
     let rows = sql.query(&pending_rows_query(), [], |row| {
         let mut record = row.get::<_, coven::PendingRecord>(0)?;
         record.cause = row.get(1)?;
-        Ok((record, FileRowColumns::read(row, 2)?))
+        let original = (
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, Option<String>>(3)?,
+            row.get::<_, Option<String>>(4)?,
+        );
+        Ok((record, original, FileRowColumns::read(row, 5)?))
     })?;
     rows.into_iter()
-        .map(|(record, columns)| {
-            let file_row = match &record.reason {
-                coven::PendingReason::Original { path, .. } => moved_original_on(sql, path)?,
+        .map(|(record, original, columns)| {
+            let file_row = match (&record.reason, original) {
+                (
+                    coven::PendingReason::Original { .. },
+                    (Some(release_id), Some(file_name), Some(album_title)),
+                ) => Some(FileRow::ReleaseFile { release_id, file_name, album_title }),
+                (coven::PendingReason::Original { .. }, _) => None,
                 _ => columns.file_row()?,
             };
             Ok(PendingRow { record, file_row })
@@ -37,39 +47,33 @@ pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow
         .collect()
 }
 
-/// Every pending record with the columns naming its file's row.
+/// Every pending record with the columns naming its moved original's release
+/// file, then the columns naming its file's row.
 pub(super) fn pending_rows_query() -> String {
     format!(
-        "SELECT file.record, file.cause, {FILE_ROW_COLUMNS} \
-         FROM coven_pending AS file {FILE_ROW_JOINS} \
+        "SELECT file.record, file.cause, {ORIGINAL_COLUMNS}, {FILE_ROW_COLUMNS} \
+         FROM coven_pending AS file {FILE_ROW_JOINS} {ORIGINAL_JOINS} \
          ORDER BY file.position"
     )
 }
 
-/// The release file whose original coven records on this device at `path`,
-/// as a move's record names it: what a move of a release's files is about.
-/// `None` when no release file here has it.
-fn moved_original_on(
-    sql: &SqlReadContext<'_>,
-    path: &std::path::Path,
-) -> Result<Option<FileRow>, DbError> {
-    let named = sql
-        .query_row(
-            "SELECT f.release_id, f.original_filename, album.title \
-             FROM coven_user_files AS u \
-             JOIN release_files AS f ON f.file = u.file \
-             JOIN releases AS r ON r.id = f.release_id \
-             JOIN albums AS album ON album.id = r.album_id \
-             WHERE u.path = ?1",
-            [coven::path_bytes(path)],
-            |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            },
-        )
-        .optional()?;
-    Ok(named.map(|(release_id, file_name, album_title)| FileRow::ReleaseFile {
-        release_id,
-        file_name,
-        album_title,
-    }))
-}
+/// The columns naming the release file whose original a record names in
+/// `coven_pending.original_path`: the file's release, its name and its
+/// album's title. A move's record names its original there, as the path's
+/// bytes that `coven_user_files.path` holds.
+const ORIGINAL_COLUMNS: &str =
+    "original_file.release_id, original_file.original_filename, original_album.title";
+
+/// The joins [`ORIGINAL_COLUMNS`] reads, each by an index. More than one
+/// coven file can record the same original path, so the subquery picks the
+/// release file with the smallest id, and each record stays one row.
+const ORIGINAL_JOINS: &str = "\
+     LEFT JOIN release_files AS original_file ON original_file.id = ( \
+         SELECT original_release_file.id \
+         FROM coven_user_files AS original_user_file \
+         JOIN release_files AS original_release_file \
+             ON original_release_file.file = original_user_file.file \
+         WHERE original_user_file.path = file.original_path \
+         ORDER BY original_release_file.id LIMIT 1) \
+     LEFT JOIN releases AS original_release ON original_release.id = original_file.release_id \
+     LEFT JOIN albums AS original_album ON original_album.id = original_release.album_id";

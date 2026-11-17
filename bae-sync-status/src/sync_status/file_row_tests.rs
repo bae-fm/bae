@@ -1,5 +1,5 @@
-//! The pending list names each file's row by index, whatever the size of the
-//! library.
+//! The pending list names each file's row, and each move's original, by
+//! index, whatever the size of the library.
 
 use crate::sync_status::pending::pending_rows_query;
 use bae_store::Store;
@@ -27,6 +27,10 @@ async fn the_pending_list_finds_each_row_by_index() {
         "named_cover",
         "cover_release",
         "cover_album",
+        "original_release_file",
+        "original_file",
+        "original_release",
+        "original_album",
     ] {
         let steps: Vec<&String> =
             plan.iter().filter(|step| step.split(' ').nth(1) == Some(alias)).collect();
@@ -35,4 +39,9 @@ async fn the_pending_list_finds_each_row_by_index() {
             "{alias} is not searched by index in {plan:?}"
         );
     }
+    // Inside a subquery, SQLite names the table of a view by the view's own
+    // alias and not by this query's. The test checks the lookup of an
+    // original's path by checking that no step scans a table but coven_pending.
+    let scans: Vec<&String> = plan.iter().filter(|step| step.starts_with("SCAN")).collect();
+    assert_eq!(scans, ["SCAN file USING INDEX _coven_pending_files"], "{plan:?}");
 }
