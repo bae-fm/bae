@@ -3,10 +3,10 @@ import SwiftUI
 
 @testable import bae
 
-// A canned `Library` + `LibraryBrowseSession` backing for the composer
-// detail's test, which drives the production `LibraryView` body through a
-// real session over a canned-page library, and the playlists read of a
-// library with none, which the shots' backings share.
+// This file gives the composer detail's test a canned `Library` and a
+// `LibraryBrowseSession` that reads it, so the test drives the production
+// `LibraryView` body. The file also holds the playlists read of a library
+// with no playlists, which the shots' backings share.
 extension LibraryView {
     /// The playlists read of a library with none: the library window reads
     /// them whenever it opens, as the app's does.

@@ -403,8 +403,8 @@ extension LibraryView {
         "SqliteFailure(DatabaseCorrupt)\ndatabase disk image is malformed"
 
     /// A library whose album read fails in a way the board offers Retry
-    /// for, behind a real session, so the albums pane shows the notice for a
-    /// list that could not be read.
+    /// for, with a started `LibraryBrowseSession` that reads it, so the
+    /// albums pane shows the notice for a list that could not be read.
     @MainActor
     static func previewUnreadableBacking(
         uiStore: UiStore

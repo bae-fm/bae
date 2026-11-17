@@ -28,10 +28,11 @@ final class PreviewQueueFeed<Value: Sendable>: @unchecked Sendable {
     }
 }
 
-/// A queue's context lane read as the list core serves: windows bounded by
-/// keys, a count, the position of a key and the key at a position. A row's
-/// key is its place in the lane, which a change renumbers densely as core's lane does, and every
-/// change reaches every open window and the count, as core's live reads do.
+/// This list serves a queue's context lane the way core serves it: windows
+/// bounded by keys, a count, the position of a key and the key at a
+/// position. A row's key is its place in the lane, which a change renumbers
+/// densely as core's lane does, and every change reaches every open window
+/// and the count, as core's live reads do.
 final class PreviewQueueList: @unchecked Sendable {
     private final class Window: @unchecked Sendable {
         let feed = PreviewQueueFeed<ListWindowDelivery<BridgeQueueEntry>>()

@@ -5,7 +5,7 @@ import SwiftUI
 
 // Fixtures for the library browse views: a composer's summary and detail,
 // a composer page of many works, and a `LibraryBrowseSession` builder.
-// Generic placeholder names only.
+// These fixtures use only generic placeholder names.
 extension PreviewData {
     // MARK: - Composers
 

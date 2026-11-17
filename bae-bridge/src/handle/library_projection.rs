@@ -523,7 +523,7 @@ impl BridgeWorkSummary {
         let bae_records::DbWork {
             id: work_id,
             title,
-            // The work's disambiguation and type aren't surfaced.
+            // No screen shows the work's disambiguation or type.
             disambiguation: _,
             work_type: _,
             // The source id the row was deduped on isn't surfaced.
