@@ -221,7 +221,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
         .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
             bae_import::ImportListItem::Candidate { row, live, .. } => {
-                Some((row.display_path.clone(), live.standing.clone()))
+                Some((row.folder_name.clone(), live.standing.clone()))
             }
             _ => None,
         })
@@ -297,7 +297,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
         .collect();
     let row = |path: &str| {
         rows.iter()
-            .find(|row| row.display_path == path)
+            .find(|row| row.folder_name == path)
             .unwrap_or_else(|| panic!("{path} is listed"))
     };
     assert!(

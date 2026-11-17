@@ -145,7 +145,7 @@ async fn a_release_no_identifier_names_is_found_by_its_title() {
     );
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        pane.draft().unwrap().metadata_author,
+        fixture.stored_for(&dir).await.expect("the candidate is stored").metadata_author,
         crate::MetadataAuthor::Identification,
         "identification wrote the draft from the lone row"
     );

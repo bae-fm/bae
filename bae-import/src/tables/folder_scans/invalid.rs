@@ -19,7 +19,6 @@ pub(crate) fn invalid_columns_sql(candidate: &str) -> (String, String) {
     (
         format!(
             "{candidate}.folder AS invalid_folder, \
-             coven_path_text({candidate}.relative_folder) AS invalid_display_path, \
              {candidate}.grouping_key IS NOT NULL AS invalid_separable, \
              {candidate}.invalid_reason AS invalid_reason, \
              {candidate}.invalid_shared_name AS invalid_shared_name, \
@@ -52,7 +51,6 @@ pub(crate) fn invalid_columns_sql(candidate: &str) -> (String, String) {
 #[derive(Clone, PartialEq)]
 pub(crate) struct InvalidColumns {
     folder: PathBuf,
-    display_path: String,
     separable: bool,
     reason: (String, Option<String>, Option<i64>),
     tags: Option<SkippedTags>,
@@ -74,7 +72,6 @@ impl InvalidColumns {
         };
         Ok(Some(Self {
             folder: path_column::get(row, "invalid_folder")?,
-            display_path: row.get("invalid_display_path")?,
             separable: row.get("invalid_separable")?,
             reason: (reason, row.get("invalid_shared_name")?, row.get("invalid_damaged_audio")?),
             tags: row
@@ -123,7 +120,6 @@ impl InvalidColumns {
             folder: self.folder,
             folder_name,
             watched_folder_path,
-            display_path: self.display_path,
             separable: self.separable,
             reason,
             tags: self.tags,

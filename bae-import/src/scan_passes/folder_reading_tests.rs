@@ -274,7 +274,7 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
                 headers.push((group.name.clone(), group.combinable));
             }
             crate::ImportListItem::Candidate { row, .. } => {
-                rows.push((row.display_path.clone(), row.action_basis.separable));
+                rows.push((row.folder_name.clone(), row.action_basis.separable));
             }
             _ => {}
         }
@@ -312,7 +312,7 @@ async fn one_grouped_album_under_an_artist_offers_no_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album/Disc 1", "Artist/Album/Disc 2"]).await;
     let (headers, rows) = offers(&test.db).await;
     assert_eq!(headers, vec![("Artist".to_string(), false)]);
-    assert_eq!(rows, vec![("Artist/Album".to_string(), true)]);
+    assert_eq!(rows, vec![("Album".to_string(), true)]);
 }
 
 /// Two albums under an artist's folder offer to combine from the header, and
@@ -322,10 +322,7 @@ async fn two_albums_under_an_artist_offer_to_combine() {
     let (test, _scan, _root) = scanned_root(&["Artist/Album A", "Artist/Album B"]).await;
     let (headers, rows) = offers(&test.db).await;
     assert_eq!(headers, vec![("Artist".to_string(), true)]);
-    assert_eq!(
-        rows,
-        vec![("Artist/Album A".to_string(), false), ("Artist/Album B".to_string(), false),]
-    );
+    assert_eq!(rows, vec![("Album A".to_string(), false), ("Album B".to_string(), false),]);
 }
 
 /// Disc folders read as one album separate from its row, and once kept apart
@@ -337,7 +334,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         let discs: Vec<&str> = discs.iter().map(String::as_str).collect();
         let (test, scan, root) = scanned_root(&discs).await;
         let (_, rows) = offers(&test.db).await;
-        assert_eq!(rows, vec![(album.to_string(), true)], "{album}");
+        assert_eq!(rows, vec![("Album".to_string(), true)], "{album}");
 
         change_folder_reading(
             &root,
@@ -351,7 +348,7 @@ async fn disc_folders_offer_to_separate_and_kept_apart_offer_to_combine() {
         assert_eq!(headers, vec![(header.to_string(), true)], "{album}");
         assert_eq!(
             rows,
-            vec![(format!("{album}/Disc 1"), false), (format!("{album}/Disc 2"), false),],
+            vec![("Disc 1".to_string(), false), ("Disc 2".to_string(), false),],
             "{album}"
         );
     }

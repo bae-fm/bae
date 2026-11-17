@@ -289,7 +289,6 @@ impl ImportCandidateDetailProjection {
                         metadata_draft_is_blank: draft_blank,
                         metadata_provenance,
                         release_link,
-                        metadata_author,
                         mapping,
                         cover,
                         lookup_choices,
@@ -453,9 +452,6 @@ pub struct CandidateDraftPane {
     pub metadata_provenance: Option<MetadataProvenance>,
     /// What the candidate is linked to in the catalogs, which Unlink clears.
     pub release_link: Option<ReleaseLink>,
-    /// Who wrote the draft: nobody, the tag prefill, identification's own
-    /// pick, or the person.
-    pub metadata_author: crate::MetadataAuthor,
     pub mapping: MappingTable,
     pub cover: Option<CoverChoice>,
     /// What this candidate's identification asks about: the signals its runs

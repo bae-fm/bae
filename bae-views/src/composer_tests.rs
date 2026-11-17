@@ -25,6 +25,7 @@ const COMPOSER_SOLO: &str = "4d93d615-4549-45d9-81d9-644f079d59bf";
 #[tokio::test]
 async fn composer_page_lists_a_part_under_its_parent_with_its_representative_release() {
     let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
+    write_cover(&test_records(&db), RELEASE_A, "cover bytes").await;
 
     let rows = crate::LibraryViews::new(db.clone())
         .get_composer_detail_rows(ARTIST_COMPOSER, 0, 10)
@@ -35,7 +36,7 @@ async fn composer_page_lists_a_part_under_its_parent_with_its_representative_rel
         .into_iter()
         .map(|row| match row.item {
             DbComposerDetailItem::Work { work, part } => {
-                (work.work.id, part, work.representative_release_id)
+                (work.work.id, part, work.representative_cover.map(|cover| cover.id))
             }
             other => panic!("the composer holds no credits: {other:?}"),
         })
@@ -52,6 +53,7 @@ async fn composer_page_lists_a_part_under_its_parent_with_its_representative_rel
 #[tokio::test]
 async fn work_detail_lists_child_works_with_their_representative_release() {
     let (db, _tmp) = composed_work_db(crate::TEST_SCHEMA).await;
+    write_cover(&test_records(&db), RELEASE_A, "cover bytes").await;
 
     let detail = crate::LibraryViews::new(db.clone())
         .find_work_detail(WORK_PARENT_A)
@@ -62,7 +64,10 @@ async fn work_detail_lists_child_works_with_their_representative_release() {
     assert_eq!(detail.child_works.len(), 1);
     assert_eq!(detail.child_work_count, 1);
     assert_eq!(detail.child_works[0].work.id, WORK_CHILD_A);
-    assert_eq!(detail.child_works[0].representative_release_id.as_deref(), Some(RELEASE_A));
+    assert_eq!(
+        detail.child_works[0].representative_cover.as_ref().map(|cover| cover.id.as_str()),
+        Some(RELEASE_A)
+    );
 }
 
 #[tokio::test]
@@ -192,7 +197,7 @@ fn listed_releases() -> RecordsFixture {
 
 /// The composer list by name: each composer's id and its work, linked release
 /// and unlinked credit counts.
-async fn listed_composers(db: &Store) -> Vec<(String, i64, i64, i64)> {
+async fn listed_composers(db: &Store) -> Vec<(String, i64, i64)> {
     let sort = [ComposerSortCriterion {
         field: ComposerSortField::Name,
         direction: SortDirection::Ascending,
@@ -202,14 +207,7 @@ async fn listed_composers(db: &Store) -> Vec<(String, i64, i64, i64)> {
         .await
         .unwrap()
         .into_iter()
-        .map(|composer| {
-            (
-                composer.artist.id,
-                composer.work_count,
-                composer.linked_release_count,
-                composer.unlinked_credit_count,
-            )
-        })
+        .map(|composer| (composer.artist.id, composer.work_count, composer.linked_release_count))
         .collect()
 }
 
@@ -233,7 +231,7 @@ fn composer_list_counts_a_merged_composer_under_its_survivor() {
             .await;
         assert_eq!(
             listed_composers(db).await,
-            vec![(LISTED_ABSORBED.to_string(), 1, 1, 0), (LISTED_SURVIVOR.to_string(), 1, 1, 0),]
+            vec![(LISTED_ABSORBED.to_string(), 1, 1), (LISTED_SURVIVOR.to_string(), 1, 1),]
         );
         devices.settle("both composers", async |_, db| listed_composers(db).await.len() == 2).await;
 
@@ -245,7 +243,7 @@ fn composer_list_counts_a_merged_composer_under_its_survivor() {
         .await;
         assert_eq!(
             listed_composers(db).await,
-            vec![(LISTED_SURVIVOR.to_string(), 2, 2, 0)],
+            vec![(LISTED_SURVIVOR.to_string(), 2, 2)],
             "the absorbed composer's work and release count under the survivor"
         );
         let survivor = crate::LibraryViews::new(db.clone())
@@ -301,7 +299,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         })
         .write(&records)
         .await;
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0, 2)]);
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0)]);
     let credited = crate::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_CREDITED)
         .await
@@ -337,7 +335,7 @@ async fn composer_list_counts_a_role_credit_until_a_work_links_it() {
         )
         .await
         .unwrap();
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 1, 0)]);
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 1, 1)]);
     crate::LibraryViews::new(db.clone())
         .find_composer_detail(LISTED_CREDITED)
         .await
@@ -414,7 +412,7 @@ async fn composer_list_counts_writing_role_credits_and_the_page_lists_every_role
 
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     credits(true).write(&test_records(&db)).await;
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0, 1)]);
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_CREDITED.to_string(), 0, 0)]);
     let shown = crate::LibraryViews::new(db.clone())
         .get_composer_detail_rows(LISTED_CREDITED, 0, 10)
         .await
@@ -779,14 +777,22 @@ async fn work_across_albums_db(library: RecordsFixture) -> (Store, tempfile::Tem
     (db, tmp)
 }
 
+/// The release whose cover the work's rows draw, once every release of
+/// [`work_across_albums`] has a cover.
 async fn representative_release(db: &Store) -> Option<String> {
+    let records = test_records(db);
+    for release in [RELEASE_BETA, RELEASE_ALPHA_PRIMARY, RELEASE_ALPHA_SECOND, RELEASE_ALPHA_THIRD]
+    {
+        write_cover(&records, release, release).await;
+    }
     crate::LibraryViews::new(db.clone())
         .find_work_detail(WORK_ACROSS_ALBUMS)
         .await
         .unwrap()
         .expect("the work is in the library")
         .work
-        .representative_release_id
+        .representative_cover
+        .map(|cover| cover.id)
 }
 
 /// A work's cover comes from its first album by title, compared without case
@@ -875,7 +881,7 @@ async fn composer_list_counts_the_writing_credits_of_a_work_only() {
         .write(&test_records(&db))
         .await;
 
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_SURVIVOR.to_string(), 1, 1, 0)]);
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_SURVIVOR.to_string(), 1, 1)]);
     let results =
         crate::LibraryViews::new(db.clone()).search_rows("Work Title One", 10).await.unwrap();
     assert_eq!(
@@ -906,7 +912,7 @@ async fn deleting_the_release_performing_a_composers_work_removes_the_composer()
 
     delete_release(&records, LISTED_RELEASE_ONE).await;
 
-    assert_eq!(listed_composers(&db).await, vec![(LISTED_ABSORBED.to_string(), 1, 1, 0)]);
+    assert_eq!(listed_composers(&db).await, vec![(LISTED_ABSORBED.to_string(), 1, 1)]);
     let views = crate::LibraryViews::new(db.clone());
     assert!(views.find_composer_detail(LISTED_SURVIVOR).await.unwrap().is_none());
     assert!(views.get_work_detail(LISTED_WORK_ONE).await.unwrap().is_none());

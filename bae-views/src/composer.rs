@@ -372,8 +372,7 @@ pub(crate) fn composer_listing_query(
                 composer.created_at AS artist_created_at,
                 {image} AS artist_image_version,
                 listing.work_count,
-                listing.linked_release_count,
-                listing.unlinked_credit_count{keys}
+                listing.linked_release_count{keys}
          FROM composer_listing listing
          JOIN artists composer ON composer.id = listing.artist_id
          ",
@@ -525,7 +524,6 @@ pub(crate) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSumma
             musicbrainz_work_id: row.get("work_musicbrainz_id")?,
             created_at: rfc3339_column(row, "work_created_at")?,
         },
-        representative_release_id,
         representative_cover,
         composer_names: row.get("composer_names")?,
         linked_release_count: row.get("linked_release_count")?,
@@ -539,7 +537,6 @@ pub(crate) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbCompo
         artist,
         work_count: row.get("work_count")?,
         linked_release_count: row.get("linked_release_count")?,
-        unlinked_credit_count: row.get("unlinked_credit_count")?,
     })
 }
 

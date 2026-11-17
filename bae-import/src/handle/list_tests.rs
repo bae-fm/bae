@@ -385,9 +385,9 @@ async fn a_pick_reads_back_as_the_same_answer() {
     );
 
     assert_eq!(
-        resumed.draft().unwrap().metadata_author,
+        fixture.stored_for(&dir).await.expect("the candidate stores a row").metadata_author,
         crate::MetadataAuthor::Identification,
-        "the pane's own value says identification wrote the pick"
+        "the stored row says identification wrote the pick"
     );
 
     // The row carries the same decision for the sidebar's resume trigger.
@@ -422,7 +422,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         Some(crate::MetadataProvenance::FileMetadata)
     );
     assert_eq!(
-        resumed.draft().unwrap().metadata_author,
+        fixture.stored_for(&dir).await.expect("the candidate stores a row").metadata_author,
         crate::MetadataAuthor::Person,
         "and the person is now the author of the draft"
     );

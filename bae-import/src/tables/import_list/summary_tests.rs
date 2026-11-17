@@ -27,7 +27,7 @@ fn releases(projection: &ImportListRead) -> Vec<String> {
         .iter()
         .flat_map(|window| &window.rows)
         .filter_map(|item| match item {
-            ImportListItem::Candidate { row, .. } => Some(row.display_path.clone()),
+            ImportListItem::Candidate { row, .. } => Some(display_path(row)),
             _ => None,
         })
         .collect()

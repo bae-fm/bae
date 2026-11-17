@@ -100,13 +100,13 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
 /// draft it leaves is theirs, not a draft nobody has touched.
 #[tokio::test(flavor = "multi_thread")]
 async fn clearing_the_draft_leaves_the_person_its_author() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_author, MetadataAuthor::Person);
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+    assert_eq!(stored_author(&handle, &hash).await, MetadataAuthor::Person);
 
     handle.clear_candidate_metadata(key.clone()).await.unwrap();
 
     let cleared = pane(&handle, &key).await;
-    assert_eq!(cleared.draft().unwrap().metadata_author, MetadataAuthor::Person);
+    assert_eq!(stored_author(&handle, &hash).await, MetadataAuthor::Person);
     assert_eq!(cleared.draft().unwrap().metadata_provenance, None);
     shut_down(handle).await;
 }

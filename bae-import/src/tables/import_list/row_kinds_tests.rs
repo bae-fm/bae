@@ -274,7 +274,7 @@ async fn an_imported_row_shows_its_upload_waiting_whatever_the_window_holds() {
             row.upload,
             Some(bae_records::UploadProgress { queued: 1, uploading: 0 }),
             "{}",
-            row.display_path
+            display_path(&row)
         );
     }
 }
@@ -287,7 +287,7 @@ async fn an_imported_row_shows_its_records_whatever_the_window_holds() {
         assert!(
             matches!(row.reading, crate::triage::TriageReading::Identified { .. }),
             "{} reads its release's records",
-            row.display_path
+            display_path(&row)
         );
     }
 }
@@ -307,24 +307,24 @@ async fn a_linked_row_names_the_records_its_whole_release_does() {
     let (read, _) = read_window(&lib, Kind::Linked, 3).await;
     for row in window_rows(&read) {
         let Some(crate::ReleaseLink::Pressing(link)) = &row.release_link else {
-            panic!("{} is linked to a pressing", row.display_path);
+            panic!("{} is linked to a pressing", display_path(&row));
         };
         let whole = tables.load_source_release(&link.record).await.unwrap().unwrap();
         let crate::triage::TriageReading::Identified { records } = &row.reading else {
-            panic!("{} reads as identified, got {:?}", row.display_path, row.reading);
+            panic!("{} reads as identified, got {:?}", display_path(&row), row.reading);
         };
         assert_eq!(
             records,
             &bae_catalogs::source_release::claimed_records(&[whole.records()]),
             "{}",
-            row.display_path
+            display_path(&row)
         );
         assert!(
             records
                 .iter()
                 .any(|record| record.catalog() == bae_catalogs::catalog::Catalog::AllMusic),
             "{} names the album its group was read to be: {records:?}",
-            row.display_path
+            display_path(&row)
         );
     }
 }

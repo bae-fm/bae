@@ -12,7 +12,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// Pending rows the queue holds, by display path, in path order.
+/// The folder names of the pending rows the queue holds, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     let items = handle
         .load_list(crate::ImportListView {
@@ -24,7 +24,7 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     items
         .iter()
         .filter_map(|item| match item {
-            crate::ImportListItem::Candidate { row, .. } => Some(row.display_path.clone()),
+            crate::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
         })
         .collect()
@@ -87,10 +87,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
     handle.refresh_watched_folder(root.clone()).await.unwrap();
-    assert_eq!(
-        pending(&handle).await,
-        vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
-    );
+    assert_eq!(pending(&handle).await, vec!["Live A".to_string(), "Live B".to_string()]);
     let keys: Vec<crate::CandidateKey> = ["Live A", "Live B"]
         .iter()
         .map(|live| crate::CandidateKey::folder(&root.join("Artist").join(live)))
@@ -115,10 +112,7 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     assert_eq!(pane(&handle, &key).await.part_count, 2);
 
     assert_eq!(handle.separate_candidate(&key).await.unwrap(), keys);
-    assert_eq!(
-        pending(&handle).await,
-        vec!["Artist/Live A".to_string(), "Artist/Live B".to_string()]
-    );
+    assert_eq!(pending(&handle).await, vec!["Live A".to_string(), "Live B".to_string()]);
     assert!(matches!(
         tables.load_grouping(&key).await.unwrap(),
         Some(crate::tables::GroupingFacts::Anchored {

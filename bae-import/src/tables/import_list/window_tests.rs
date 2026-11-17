@@ -953,7 +953,9 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
         draft.metadata_draft,
         crate::pane::blank_candidate_draft(&candidate.files).release_edit()
     );
-    assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
+    let stored = tables.load_import_candidate_states().await.unwrap();
+    let state = stored.get(&candidate.files.content_hash()).expect("the folder stores its state");
+    assert_eq!(state.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(
         draft.cover.as_ref().map(|cover| cover.selection().clone()),
         Some(folder_cover.selection())

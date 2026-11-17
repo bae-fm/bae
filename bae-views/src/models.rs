@@ -128,7 +128,6 @@ pub struct DbComposerSummary {
     pub image: Option<bae_records::ImageRef>,
     pub work_count: i64,
     pub linked_release_count: i64,
-    pub unlinked_credit_count: i64,
 }
 
 /// Raw artist-summary aggregate: the artist row plus the number of distinct
@@ -180,9 +179,9 @@ impl DbComposerSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbWorkSummary {
     pub work: DbWork,
-    pub representative_release_id: Option<String>,
-    /// That release's cover, at the version its row read; `None` when it has
-    /// none.
+    /// The cover of the release the work's rows take their cover from, at the
+    /// version its row read; `None` when that release has no cover or no
+    /// release performs the work.
     pub representative_cover: Option<bae_records::ImageRef>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,

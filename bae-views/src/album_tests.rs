@@ -399,11 +399,15 @@ async fn search_library_matches_composer_and_work_sort_names() {
     assert_eq!(composer_results.composers.len(), 1);
     assert_eq!(composer_results.composers[0].artist.id, ARTIST_COMPOSER);
 
+    write_cover(&test_records(&db), RELEASE_A, "cover bytes").await;
     let work_results =
         crate::LibraryViews::new(db.clone()).search_rows("Displayed Work", 10).await.unwrap();
     assert_eq!(work_results.works.len(), 1);
     assert_eq!(work_results.works[0].work.id, WORK_CHILD_A);
-    assert_eq!(work_results.works[0].representative_release_id.as_deref(), Some(RELEASE_A));
+    assert_eq!(
+        work_results.works[0].representative_cover.as_ref().map(|cover| cover.id.as_str()),
+        Some(RELEASE_A)
+    );
 }
 
 #[tokio::test]

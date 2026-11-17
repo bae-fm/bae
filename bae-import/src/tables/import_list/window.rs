@@ -204,7 +204,6 @@ fn header_item(header: HeaderRow) -> Result<ImportListItem, DbError> {
 struct ReleaseRows {
     watched_folder_path: PathBuf,
     key: CandidateKey,
-    display_path: String,
     /// What the row shows: an imported release's library album title and
     /// credits, else its draft's title and artists while it shows its draft,
     /// else nothing past its folder's name.
@@ -259,7 +258,7 @@ fn rows_statement(position: &str, columns: &str) -> String {
     let key = "CASE r.role WHEN 'leading' THEN w.group_folder ELSE w.key END";
     let header_columns = header_columns(key);
     format!(
-        "SELECT p.watched_folder_path, p.key, p.display_path, \
+        "SELECT p.watched_folder_path, p.key, \
                 p.has_summary, p.shown_title, p.shown_credits, {LISTED_COLUMNS}, \
                 c.name, c.content_hash, s.content_hash IS NOT NULL, \
                 origin.release_id, released.album_id, \
@@ -327,9 +326,9 @@ fn rows_statement(position: &str, columns: &str) -> String {
 /// One release's columns of a row of [`rows_statement`].
 fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
     use crate::tables::import_state::failure_rows::failure_reason_from_row;
-    let summary = match row.get::<_, Option<bool>>(3)? {
+    let summary = match row.get::<_, Option<bool>>(2)? {
         Some(true) => Some(TriageMetadataSummary {
-            album_title: row.get(4)?,
+            album_title: row.get(3)?,
             album_artists: crate::tables::stored_credits::line_column(row, "shown_credits")?
                 .unwrap_or_default(),
         }),
@@ -339,21 +338,20 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
     Ok(ReleaseRows {
         watched_folder_path: path_column::get(row, 0)?,
         key: row.get(1)?,
-        display_path: row.get(2)?,
         summary,
-        listed: ListedColumns::read(row, 6)?,
-        name: row.get(16)?,
-        imported: match row.get::<_, Option<String>>(19)? {
-            Some(release_id) => Some(ImportedRelease { release_id, album_id: row.get(20)? }),
+        listed: ListedColumns::read(row, 5)?,
+        name: row.get(15)?,
+        imported: match row.get::<_, Option<String>>(18)? {
+            Some(release_id) => Some(ImportedRelease { release_id, album_id: row.get(19)? }),
             None => None,
         },
         library_cover: row.get("library_cover")?,
-        block: (row.get(21)?, row.get(22)?, row.get(23)?),
+        block: (row.get(20)?, row.get(21)?, row.get(22)?),
         failure: match failed {
             true => Some(failure_reason_from_row(row)?),
             false => None,
         },
-        facts: RuntimeFactColumns::read(row, 26)?,
+        facts: RuntimeFactColumns::read(row, 25)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
         header_key: row
             .get::<_, Option<RelativeFolder>>("group_folder")?
@@ -422,7 +420,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     let ReleaseRows {
         watched_folder_path,
         key,
-        display_path,
         summary,
         listed,
         name,
@@ -482,7 +479,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         candidate_key: key,
         folder_name: name,
         watched_folder_path,
-        display_path,
         actionable: basis.actionable,
         placement: basis.placement,
         action_basis: basis,

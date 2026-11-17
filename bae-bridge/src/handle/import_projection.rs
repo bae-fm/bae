@@ -73,9 +73,6 @@ impl crate::types::BridgeInvalidCandidate {
             folder,
             folder_name,
             watched_folder_path,
-            // The screens show the folder's name, not its path below the
-            // watched folder.
-            display_path: _,
             separable,
             reason,
             tags,
@@ -208,9 +205,6 @@ impl crate::types::BridgeTriageRow {
             candidate_key,
             folder_name,
             watched_folder_path,
-            // The screens show the folder's name, not its path below the
-            // watched folder.
-            display_path: _,
             actionable,
             placement,
             // What the row's commands are decided from, which `live` already
@@ -683,8 +677,6 @@ impl crate::types::BridgeCandidateDraftPane {
             metadata_draft_is_blank,
             metadata_provenance,
             release_link,
-            // No screen shows who wrote the draft.
-            metadata_author: _,
             mapping,
             cover,
             // Changed through `edit_candidate_lookup_choices`; nothing on the

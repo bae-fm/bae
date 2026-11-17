@@ -964,20 +964,20 @@ async fn applying_a_release_with_two_barcodes_keeps_both() {
     );
 }
 
-/// Who wrote the draft travels on the pane's own value, so a surface reading
-/// the detail knows whether the pick in front of it is the person's or
-/// identification's without inferring it from anything else.
+/// A pick the person makes records them as the draft's author, in place of
+/// the scan's prefill.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_the_person_made_names_them_as_the_author() {
-    let StoredCandidate { handle, key, tmp: _tmp, .. } = stored_candidate().await;
+    let StoredCandidate { handle, key, candidate, tmp: _tmp, .. } = stored_candidate().await;
+    let hash = candidate.files.content_hash();
     assert_eq!(
-        pane(&handle, &key).await.draft().unwrap().metadata_author,
+        stored_author(&handle, &hash).await,
         MetadataAuthor::Prefill,
         "a candidate nobody has picked for carries the scan's draft"
     );
 
     handle.select_candidate_file_tags(key.clone()).await.unwrap();
 
-    assert_eq!(pane(&handle, &key).await.draft().unwrap().metadata_author, MetadataAuthor::Person);
+    assert_eq!(stored_author(&handle, &hash).await, MetadataAuthor::Person);
     shut_down(handle).await;
 }

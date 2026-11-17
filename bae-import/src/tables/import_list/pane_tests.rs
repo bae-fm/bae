@@ -575,7 +575,6 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
         folder: folder.clone(),
         folder_name: "Half Copied".to_string(),
         watched_folder_path: root.clone(),
-        display_path: "Half Copied".to_string(),
         separable: false,
         reason: crate::InvalidReason::DamagedAudio { count: 1 },
         tags: Some(SkippedTags {

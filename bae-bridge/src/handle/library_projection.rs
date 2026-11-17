@@ -451,9 +451,6 @@ impl BridgeComposerSummary {
             // Read as the count line above.
             work_count: _,
             linked_release_count,
-            // No screen shows how many credits name the composer without a
-            // work.
-            unlinked_credit_count: _,
         } = s;
         let bae_records::DbArtist {
             id: artist_id,
@@ -515,8 +512,6 @@ impl BridgeWorkSummary {
     pub(super) fn from_core(s: bae_views::DbWorkSummary) -> Self {
         let bae_views::DbWorkSummary {
             work,
-            // The screens show the release's cover, not its id.
-            representative_release_id: _,
             representative_cover,
             composer_names,
             linked_release_count,

@@ -587,6 +587,25 @@ pub(super) async fn pane(
     handle.load_candidate(key).await.unwrap().expect("the picked candidate reads back")
 }
 
+/// Who wrote the draft of the candidate whose files hash to `hash`, as its
+/// stored row records it.
+pub(super) async fn stored_author(
+    handle: &ImportServiceHandle,
+    hash: &str,
+) -> crate::MetadataAuthor {
+    handle
+        .services
+        .tables
+        .load_import_candidate_states()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|(stored, _)| stored == hash)
+        .expect("the candidate stores a row")
+        .1
+        .metadata_author
+}
+
 pub(crate) async fn shut_down(handle: ImportServiceHandle) {
     bae_util::test_blocking::on_blocking_pool(move || handle.stop_and_join()).await;
 }

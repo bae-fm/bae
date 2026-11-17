@@ -361,8 +361,8 @@ pub(crate) fn view(tab: TriageTab) -> ImportListView {
 }
 
 /// The items one read holds, one readable line each: a header by its
-/// group's name, a release or a folder that failed validation by its display
-/// path.
+/// group's name, a release or a folder that failed validation by its folder
+/// below its watched folder.
 pub(crate) fn sequence(projection: &ImportListRead) -> Vec<String> {
     projection.windows.iter().flat_map(|window| items_sequence(&window.rows)).collect()
 }
@@ -373,10 +373,31 @@ pub(crate) fn items_sequence(items: &[ImportListItem]) -> Vec<String> {
         .iter()
         .map(|item| match item {
             ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
-            ImportListItem::Candidate { row, .. } => format!("candidate {}", row.display_path),
-            ImportListItem::Invalid { row, .. } => format!("invalid {}", row.display_path),
+            ImportListItem::Candidate { row, .. } => format!("candidate {}", display_path(row)),
+            ImportListItem::Invalid { row, .. } => {
+                format!("invalid {}", shown_folder(&row.folder, &row.watched_folder_path))
+            }
         })
         .collect()
+}
+
+/// The folder of a release read from one folder, below its watched folder,
+/// as the list's statements show it. A grouping's row names no one folder,
+/// so these tests read only releases read from one folder.
+pub(crate) fn display_path(row: &crate::TriageRow) -> String {
+    let folder = coven::path_from_bytes(row.candidate_key.as_bytes().to_vec())
+        .unwrap_or_else(|_| panic!("{} is a folder's key", row.candidate_key));
+    shown_folder(&folder, &row.watched_folder_path)
+}
+
+/// `folder` below `watched_folder_path`, as the list's statements show it.
+pub(crate) fn shown_folder(
+    folder: &std::path::Path,
+    watched_folder_path: &std::path::Path,
+) -> String {
+    coven::path_text(folder.strip_prefix(watched_folder_path).unwrap_or_else(|_| {
+        panic!("{} is below {}", folder.display(), watched_folder_path.display())
+    }))
 }
 
 /// The release row one read holds at `display_path`.
@@ -389,7 +410,9 @@ pub(crate) fn row_at<'a>(
         .iter()
         .flat_map(|window| &window.rows)
         .find_map(|item| match item {
-            ImportListItem::Candidate { row, live, .. } if row.display_path == display_path => {
+            ImportListItem::Candidate { row, live, .. }
+                if self::display_path(row) == display_path =>
+            {
                 Some((row, live))
             }
             _ => None,

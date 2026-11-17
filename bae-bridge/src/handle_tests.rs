@@ -493,7 +493,6 @@ fn composer_detail_conversion_carries_the_composer_and_its_first_work() {
             image: None,
             work_count: 2,
             linked_release_count: 1,
-            unlinked_credit_count: 0,
         },
         default_work_id: Some("work-parent-a".to_string()),
     };
@@ -526,7 +525,6 @@ fn composer_detail_row_conversion_carries_its_heading_and_part() {
                 },
                 composer_names: Some("Composer Name A".to_string()),
                 linked_release_count: 1,
-                representative_release_id: Some("release-a".to_string()),
                 representative_cover: None,
             },
             part: true,
@@ -558,7 +556,6 @@ fn work_detail_conversion_preserves_work_release_rows() {
         },
         composer_names: Some("Composer Name A".to_string()),
         linked_release_count: 1,
-        representative_release_id: Some("release-a".to_string()),
         representative_cover: None,
     };
     let detail = WorkDetail {

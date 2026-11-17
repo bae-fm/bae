@@ -140,8 +140,6 @@ pub struct TriageRow {
     /// The watched folder this candidate was scanned from
     /// (`WatchedFolder::path`).
     pub watched_folder_path: std::path::PathBuf,
-    /// The folder below the watched folder, as `coven::path_text` shows it.
-    pub display_path: String,
     pub actionable: bool,
     pub placement: TriagePlacement,
     /// What the row's commands are decided from in the tables.
@@ -183,8 +181,6 @@ pub struct InvalidRow {
     pub folder_name: String,
     /// The watched folder the scan found it in (`WatchedFolder::path`).
     pub watched_folder_path: std::path::PathBuf,
-    /// The folder below the watched folder, as `coven::path_text` shows it.
-    pub display_path: String,
     /// Whether the row is several folders that a grouping reads as one
     /// release, which the row offers to separate.
     pub separable: bool,

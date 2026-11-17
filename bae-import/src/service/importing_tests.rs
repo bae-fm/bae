@@ -521,7 +521,9 @@ async fn deleting_an_imported_release_seeds_the_folder_blank_draft_and_cover() {
     let draft = pane.draft().expect("a folder nobody imported holds a draft");
     assert!(draft.metadata_draft.is_blank(), "{:?}", draft.metadata_draft);
     assert_eq!(draft.metadata_draft.tracks.len(), 3);
-    assert_eq!(draft.metadata_author, crate::MetadataAuthor::Nobody);
+    let stored = tables.load_import_candidate_states().await.unwrap();
+    let state = stored.get(&content_hash).expect("the folder stores its state");
+    assert_eq!(state.metadata_author, crate::MetadataAuthor::Nobody);
     assert_eq!(draft.metadata_provenance, None);
     assert_eq!(
         draft.cover.as_ref().map(|cover| cover.selection().clone()),
