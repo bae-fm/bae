@@ -3272,8 +3272,10 @@ history setting.
   or an artist image (§4.1). Other devices download it when it is first
   shown.
 - **The people list joins coven's members with `people`** in one query:
-  everyone in the library, in member-id order, each with their profile once
-  they made one, and the person using this device read the same way. A
+  everyone in the library, each with their profile once they made one, by
+  the profile's name in the device's language, and the people with no
+  profile yet after them in member-id order. The person using this device is
+  read the same way. A
   removed person's row stays, read-only, but they are no one in the list.
 
 ### 5.5 "Ana rated this"
@@ -6219,12 +6221,12 @@ release's or track's id as UTF-8, or a candidate's key.
   never pointed at nothing. The library's name, its people, this device's
   open invites, the requested profile and the admin changes are read while
   the settings screen showing them does. One read returns this device's person,
-  the other people in member-id order, and the counts of people and of active
-  devices that the Library row shows ("2 people · 3 devices"), all from the same
-  database state; a person's page is its own read keyed by that person's member
-  id, which answers none once they have left the library, and the app then
-  closes the person's page and shows the people page, on both apps, so neither
-  searches the list for a person; Rename Library starts from the name as it
+  the other people by name in the device's language, and the counts of people
+  and of active devices that the Library row shows ("2 people · 3 devices"),
+  all from the same database state; a person's page is its own read keyed by
+  that person's member id, which answers none once they have left the library,
+  and the app then closes the person's page and shows the people page, on both
+  apps, so neither searches the list for a person; Rename Library starts from the name as it
   stands when it opens. The macOS menu bar always shows Rename Library, enabled
   for an admin, so the Mac reads whether this device's person is one for as long
   as the library is open. Closing or removing the library cancels every one

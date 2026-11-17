@@ -7,6 +7,7 @@ use bae_library::test_libraries::{
 use bae_people::people::{HistorySharing, ProfileError};
 
 mod avatars;
+mod name_order;
 mod ratings;
 
 /// The diagnostics these tests' bootstrap calls report to: none.

@@ -5,6 +5,7 @@ use super::profile_request::{
 use super::*;
 use crate::membership::{member_columns, member_row};
 use crate::people::{Avatar, HistorySharing, PeopleView, Person, PersonProfile, ProfileError};
+use bae_records::records::name_sort::sort_key_sql;
 
 /// The columns [`profile_row`] reads of the `people` row `p` and the
 /// `coven_files` row `avatar` of its avatar ([`PROFILES`]): its own, then
@@ -517,15 +518,20 @@ const PRIVATE_CIRCLE_SQL: &str = "SELECT c.circle, \
           WHERE m.circle = c.circle) \
      FROM coven_circles AS c WHERE c.name = ?1";
 
-/// The library's current members in member-id order, `narrowing` narrowing
-/// them, each with their profile's columns and then their member's.
+/// The library's current members, `narrowing` narrowing them, each with
+/// their profile's columns and then their member's. The members with a
+/// profile come first, by its name in the device's language; the query reads
+/// `name_sort`, so coven reruns it when the device's language changes. The
+/// members with no profile yet follow, and member id orders the rest.
 fn people_sql(narrowing: &str) -> String {
     format!(
         "SELECT {profile}, {member} \
          FROM coven_members AS m LEFT JOIN ({PROFILES}) ON p.id = m.member \
-         WHERE NOT m.removed{narrowing} ORDER BY m.member",
+         WHERE NOT m.removed{narrowing} \
+         ORDER BY p.id IS NULL, {name_key}, m.member",
         profile = profile_columns(),
         member = member_columns!(),
+        name_key = sort_key_sql("p.name"),
     )
 }
 
