@@ -69,25 +69,6 @@ impl AvatarError {
     }
 }
 
-/// Giving up an image whose upload holds this device's writes failed: the
-/// cover's or artist image's write, or the avatar's.
-#[derive(Debug, thiserror::Error)]
-pub enum GiveUpImageError {
-    #[error(transparent)]
-    Image(#[from] crate::LibraryError),
-    #[error(transparent)]
-    Avatar(#[from] ProfileError),
-}
-
-impl GiveUpImageError {
-    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
-        match self {
-            Self::Image(error) => error.category(),
-            Self::Avatar(error) => error.category(),
-        }
-    }
-}
-
 #[cfg(test)]
 #[path = "people_tests.rs"]
 mod tests;

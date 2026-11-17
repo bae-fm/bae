@@ -52,8 +52,7 @@ extension ShotScene {
                             ),
                             action: .restoreFile,
                             actionKey: "core.pending.action.restore_file",
-                            sendsFiles: true,
-                            heldImage: nil
+                            sendsFiles: true
                         ),
                         BridgePendingRecord(
                             subject: BridgeMessage(
@@ -72,8 +71,7 @@ extension ShotScene {
                             ),
                             action: .retryOperation(id: 7),
                             actionKey: "core.pending.action.retry",
-                            sendsFiles: true,
-                            heldImage: nil
+                            sendsFiles: true
                         ),
                     ]
                 )

@@ -311,24 +311,3 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
         "the replacement that landed first stands"
     );
 }
-
-/// A cover whose upload can't finish holds this device's writes. Giving it
-/// up deletes the cover's row, which leaves its file with no reference;
-/// give_up_held_image refuses a second try as changed meanwhile, because the
-/// cover is already gone.
-#[tokio::test]
-async fn giving_up_a_held_cover_deletes_its_row() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let manager = manager.library.manager();
-    store_test_cover(manager, &release.id, b"the cover").await;
-    let held = bae_sync_status::HeldImage {
-        file: cover_file(manager, &release.id).await.id(),
-        kind: bae_sync_status::HeldImageKind::Cover,
-    };
-
-    manager.give_up_held_image(held).await.unwrap();
-    assert_eq!(manager.records.cover_version(&release.id).await.unwrap(), None);
-
-    let error = manager.give_up_held_image(held).await.expect_err("the cover is gone");
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ChangedMeanwhile);
-}

@@ -43,7 +43,6 @@ fn a_files_record_is_named_by_its_row() {
                 coven::PendingReason::NoStorage,
             ),
             row,
-            None,
         )
         .subject
     };
@@ -64,53 +63,4 @@ fn a_files_record_is_named_by_its_row() {
     );
     assert_eq!(named(Some(FileRow::DeletedReleaseFile)), PendingSubjectName::DeletedReleaseFile);
     assert_eq!(named(None), PendingSubjectName::File);
-}
-
-/// The upload of a cover, artist image or avatar holds this device's writes,
-/// and its item names the file whose row the person can give up; the upload
-/// of a release file, which trails, holds nothing, and no other record does.
-#[test]
-fn only_the_upload_of_a_bound_image_names_a_held_image() {
-    let file = coven::FileId(uuid::Uuid::from_u128(5));
-    let upload = coven::PendingSubject::Upload {
-        device: coven::DeviceId(2),
-        object: coven::ObjectId(uuid::Uuid::from_u128(9)),
-    };
-    let held = |subject: &coven::PendingSubject, row| {
-        PendingItem::named(
-            coven::PendingRecord::new(subject.clone(), coven::PendingReason::NoStorage),
-            row,
-            Some(file),
-        )
-        .held_image
-    };
-    assert_eq!(
-        held(&upload, Some(FileRow::Cover { album_title: "Album".into() })),
-        Some(HeldImage { file, kind: HeldImageKind::Cover })
-    );
-    assert_eq!(
-        held(&upload, Some(FileRow::ArtistImage)),
-        Some(HeldImage { file, kind: HeldImageKind::ArtistImage })
-    );
-    assert_eq!(
-        held(&upload, Some(FileRow::Avatar)),
-        Some(HeldImage { file, kind: HeldImageKind::Avatar })
-    );
-    assert_eq!(
-        held(
-            &upload,
-            Some(FileRow::ReleaseFile {
-                release_id: "release".into(),
-                file_name: "01 Track.flac".into(),
-                album_title: "Album".into(),
-            })
-        ),
-        None
-    );
-    assert_eq!(held(&upload, Some(FileRow::DeletedReleaseFile)), None);
-    assert_eq!(held(&upload, None), None);
-    assert_eq!(
-        held(&coven::PendingSubject::Move { id: coven::MoveId(3) }, Some(FileRow::Avatar)),
-        None
-    );
 }

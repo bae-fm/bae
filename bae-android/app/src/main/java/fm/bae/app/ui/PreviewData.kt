@@ -321,7 +321,6 @@ object PreviewData {
                             action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
                             actionKey = "core.pending.action.sign_in",
                             sendsFiles = false,
-                            heldImage = null,
                         ),
                     )
                 } else {

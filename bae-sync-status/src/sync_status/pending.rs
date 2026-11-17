@@ -16,8 +16,6 @@ pub struct PendingRow {
     /// move's, the release file whose original it names. `None` for any
     /// other record, or a file no row here names.
     pub file_row: Option<FileRow>,
-    /// The coven file the record is about, when it is about one.
-    pub file: Option<coven::FileId>,
 }
 
 /// Every pending record with the row its file is the file of, in the order
@@ -26,15 +24,15 @@ pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow
     let rows = sql.query(&pending_rows_query(), [], |row| {
         let mut record = row.get::<_, coven::PendingRecord>(0)?;
         record.cause = row.get(1)?;
-        Ok((record, row.get::<_, Option<coven::FileId>>(2)?, FileRowColumns::read(row, 3)?))
+        Ok((record, FileRowColumns::read(row, 2)?))
     })?;
     rows.into_iter()
-        .map(|(record, file, columns)| {
+        .map(|(record, columns)| {
             let file_row = match &record.reason {
                 coven::PendingReason::Original { path, .. } => moved_original_on(sql, path)?,
                 _ => columns.file_row()?,
             };
-            Ok(PendingRow { record, file_row, file })
+            Ok(PendingRow { record, file_row })
         })
         .collect()
 }
@@ -42,7 +40,7 @@ pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow
 /// Every pending record with the columns naming its file's row.
 pub(super) fn pending_rows_query() -> String {
     format!(
-        "SELECT file.record, file.cause, file.file, {FILE_ROW_COLUMNS} \
+        "SELECT file.record, file.cause, {FILE_ROW_COLUMNS} \
          FROM coven_pending AS file {FILE_ROW_JOINS} \
          ORDER BY file.position"
     )

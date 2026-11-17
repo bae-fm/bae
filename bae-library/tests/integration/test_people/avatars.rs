@@ -74,39 +74,6 @@ async fn a_profile_names_each_new_avatar_at_once() {
     library.manager().close().await.unwrap();
 }
 
-/// An avatar whose upload can't finish holds this device's writes. Giving
-/// it up clears the profile's reference to its file; give_up_held_image
-/// refuses a second try with an error in the ChangedMeanwhile category,
-/// because the avatar is already gone.
-#[tokio::test]
-async fn giving_up_a_held_avatar_clears_the_profile_reference() {
-    let directory = tempfile::tempdir().unwrap();
-    let (library, storage) = storage_library(
-        directory.path(),
-        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        bae_util::http::Http::for_test(),
-    )
-    .await;
-    connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Rowan").await;
-    let gate = std::sync::Arc::new(tokio::sync::Semaphore::new(0));
-    storage.gate_creations(gate.clone()).await;
-    library.manager().set_avatar(Some(solid_png(16, 16, [120, 40, 200]))).await.unwrap();
-    let avatar = library.people().profile(profile.id).await.unwrap().unwrap().avatar;
-    let held = bae_sync_status::HeldImage {
-        file: avatar.expect("the avatar").file,
-        kind: bae_sync_status::HeldImageKind::Avatar,
-    };
-
-    library.manager().give_up_held_image(held).await.unwrap();
-    assert_eq!(library.people().avatar(profile.id).await.unwrap(), None);
-
-    let error = library.manager().give_up_held_image(held).await.expect_err("the avatar is gone");
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::ChangedMeanwhile);
-    gate.add_permits(tokio::sync::Semaphore::MAX_PERMITS);
-    library.manager().close().await.unwrap();
-}
-
 /// A camera-sized photo is stored as a cover is: a JPEG downscaled to fit the
 /// stored edge, its aspect kept. Its pixels vary everywhere, so neither the
 /// PNG source nor the JPEG compresses it away.

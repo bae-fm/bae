@@ -710,7 +710,6 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
             action: bae_sync_status::PendingAction::RestoreFile,
         },
         record_subject: coven::PendingSubject::Connection,
-        held_image: None,
     });
     assert_eq!(
         record.subject,
@@ -733,7 +732,6 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
             action: bae_sync_status::PendingAction::Wait,
         },
         record_subject: coven::PendingSubject::Connection,
-        held_image: None,
     });
     assert_eq!(
         waiting.subject,

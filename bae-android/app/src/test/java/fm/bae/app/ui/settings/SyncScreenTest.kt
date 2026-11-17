@@ -112,7 +112,6 @@ class SyncScreenTest {
                 action = BridgePendingAction.Reconnect,
                 actionKey = "core.pending.action.reconnect",
                 sendsFiles = false,
-                heldImage = null,
             )
         compose.setContent { TestTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
 
@@ -238,7 +237,6 @@ class SyncScreenTest {
             action = BridgePendingAction.SignIn(BridgeCloudProvider.S3),
             actionKey = "core.pending.action.sign_in",
             sendsFiles = false,
-            heldImage = null,
         )
 
     private fun actions() =

@@ -4489,21 +4489,14 @@ its control says so in core's words for that transfer.
   restarts too. A cover, artist image or avatar goes on uploading: the write
   naming it waits for it (§4.1).
 - **A cover, artist image or avatar that can't upload** fails as a release
-  file's upload does, and is never given up: a failure coven retries by itself
-  waits and retries, and one only the person can clear, such as a full account
-  or refused credentials, waits for them, its pending record showing it.
-  Meanwhile the write naming the image, and every later write of this device,
-  waits to be sent. That image's pending record names the image as the file
-  holding sync, and core can give the image up: its row (the cover's, the
-  artist image's, or the profile's avatar reference) drops the file, which
-  leaves the file with no reference, so coven stops the upload and sends the
-  held writes together with the write that gave the image up, and no other
-  device sees the file
-  ([coven §17.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#174-bound-and-trailing-references)).
-  Giving up asks for the file the record named: when the row references another
-  file by then, or none, core refuses the give-up as changed meanwhile and
-  writes nothing. coven sends a release file's row without waiting for its
-  upload, so the upload holds no write and its record names no holding file.
+  file's upload does. bae never removes the image to let sync go on: a failure
+  coven retries by itself waits and retries, and one only the person can fix,
+  such as a full account or refused credentials, waits for them, its pending
+  record showing it. Meanwhile the write naming the image, and every later
+  write of this device, waits to be sent. That image's pending record names
+  the image as the file holding sync. coven sends a release file's row without
+  waiting for its upload, so the upload holds no write and its record names no
+  holding file.
 
 **Resetting a device.** Opening can fail because bae can't use this device's
 copy of the library's data, such as a damaged database file or tables that

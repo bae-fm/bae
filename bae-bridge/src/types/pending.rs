@@ -15,52 +15,8 @@ pub struct BridgePendingRecord {
     /// or a move. A phone sends no release files or covers, so a phone that
     /// receives such a record has a bug.
     pub sends_files: bool,
-    /// For the upload of a cover, artist image or avatar that is waiting: the
-    /// image. Until coven stores it, coven sends no later write of this
-    /// device. `give_up_held_image` removes the image's reference to its
-    /// file, and coven then sends those writes. None for every other record.
-    pub held_image: Option<BridgeHeldImage>,
 }
 
-/// A cover, artist image or avatar whose upload holds this device's writes.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeHeldImage {
-    /// The image's file, as `give_up_held_image` takes it back.
-    pub file: String,
-    pub kind: BridgeHeldImageKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeHeldImageKind {
-    Cover,
-    ArtistImage,
-    Avatar,
-}
-
-impl BridgeHeldImage {
-    pub(crate) fn from_core(held: bae_sync_status::HeldImage) -> Self {
-        use bae_sync_status::HeldImageKind as K;
-        let kind = match held.kind {
-            K::Cover => BridgeHeldImageKind::Cover,
-            K::ArtistImage => BridgeHeldImageKind::ArtistImage,
-            K::Avatar => BridgeHeldImageKind::Avatar,
-        };
-        Self { file: held.file.to_string(), kind }
-    }
-
-    /// The image as the app sent it back. When the text is not a file id, the
-    /// app made a mistake, and to_core returns a configuration error.
-    pub(crate) fn to_core(&self) -> Result<bae_sync_status::HeldImage, super::BridgeError> {
-        use bae_sync_status::HeldImageKind as K;
-        let file = coven::FileId(self.file.parse().map_err(super::BridgeError::config)?);
-        let kind = match self.kind {
-            BridgeHeldImageKind::Cover => K::Cover,
-            BridgeHeldImageKind::ArtistImage => K::ArtistImage,
-            BridgeHeldImageKind::Avatar => K::Avatar,
-        };
-        Ok(bae_sync_status::HeldImage { file, kind })
-    }
-}
 impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_sync_status::PendingItem) -> Self {
         let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
@@ -74,7 +30,6 @@ impl BridgePendingRecord {
             action_key: action.key().map(str::to_string),
             action,
             sends_files,
-            held_image: item.held_image.map(BridgeHeldImage::from_core),
         }
     }
 }

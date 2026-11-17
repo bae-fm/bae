@@ -377,32 +377,6 @@ impl People {
         Ok(())
     }
 
-    /// Give up the avatar whose file `file` the profile row references and
-    /// whose upload can't finish: the row drops the reference, which leaves
-    /// the file with none, so coven retires its upload and sends this
-    /// device's held writes (coven §17.4). Refused, with nothing written,
-    /// when no profile references `file`: the avatar changed meanwhile.
-    pub async fn give_up_avatar_file(&self, file: coven::FileId) -> Result<(), ProfileError> {
-        self.inner
-            .store
-            .call_sql(move |sql| {
-                let changed =
-                    sql.execute("UPDATE people SET avatar_id = NULL WHERE avatar_id = ?", [file])?;
-                Ok(changed)
-            })
-            .await
-            .map_err(ProfileError::from)
-            .and_then(
-                |changed| {
-                    if changed == 0 {
-                        Err(ProfileError::AvatarChanged(file))
-                    } else {
-                        Ok(())
-                    }
-                },
-            )
-    }
-
     /// The person's avatar, read through coven from wherever it has the
     /// file their row references. `None` when the row references none.
     pub async fn avatar(&self, person: coven::MemberId) -> Result<Option<Vec<u8>>, ProfileError> {

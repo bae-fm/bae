@@ -99,7 +99,6 @@ class SyncStatusStoreTest {
                 action = BridgePendingAction.Wait,
                 actionKey = null,
                 sendsFiles = sendsFiles,
-                heldImage = null,
             )
         val fine = record(sendsFiles = false)
         val bad = record(sendsFiles = true)

@@ -139,26 +139,6 @@ impl LibraryManager {
         Ok(self.records.cancel_failed_release_move(id).await?)
     }
 
-    /// Give up the cover, artist image or avatar `held` names, whose upload
-    /// can't finish and so holds every later write of this device: its row
-    /// drops the file, so coven retires the upload and sends the held writes
-    /// (coven §17.4, "Later writes"). When no row references the file any
-    /// more, the method writes nothing and returns an error.
-    pub async fn give_up_held_image(
-        &self,
-        held: bae_sync_status::HeldImage,
-    ) -> Result<(), crate::people::GiveUpImageError> {
-        use bae_sync_status::HeldImageKind as K;
-        match held.kind {
-            K::Cover | K::ArtistImage => self
-                .records
-                .give_up_image_file(held.file)
-                .await
-                .map_err(|error| LibraryError::from(error).into()),
-            K::Avatar => Ok(self.people.give_up_avatar_file(held.file).await?),
-        }
-    }
-
     /// Test-only observability: how many upload entries a release's files still have
     /// queued (zero means every cloud copy is confirmed durable).
     #[cfg(any(test, feature = "test-utils"))]
