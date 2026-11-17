@@ -4,12 +4,36 @@
 //! owner that holds them.
 
 use super::DraftTables;
-use crate::{ArtistAssignment, Credited, RawLabelEdit, TrackArtistAssignments};
+use crate::{ArtistAssignment, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
 use bae_records::ExistingArtist;
 use bae_store::DbError;
 use coven::CovenWrite;
 use rusqlite::{params, ToSql};
+
+/// The columns an owner's row holds the form's album-level fields in.
+pub(crate) const FORM_COLUMNS: &str =
+    "album_title, album_year, year, country, region, media, status, packaging, discogs_details";
+
+/// The values of [`FORM_COLUMNS`] for `form`, in their order.
+pub(crate) fn form_row_values(form: &RawReleaseEdit) -> Vec<rusqlite::types::Value> {
+    use rusqlite::types::Value;
+    let facts = bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts);
+    let optional = |value: Option<&str>| value.map_or(Value::Null, |v| Value::Text(v.to_string()));
+    vec![
+        Value::Text(form.album_title.clone()),
+        Value::Text(form.album_year.clone()),
+        Value::Text(form.pressing.year.clone()),
+        optional(facts.country),
+        optional(facts.region),
+        Value::Text(bae_records::records::pressing_columns::media_column(
+            &form.pressing.facts.media,
+        )),
+        optional(facts.status),
+        optional(facts.packaging),
+        Value::Text(facts.discogs_details),
+    ]
+}
 
 /// Insert the draft's label rows, as the form holds them, where the draft
 /// holds none.

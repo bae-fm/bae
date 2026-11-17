@@ -11,9 +11,9 @@ mod values;
 
 pub(crate) use form_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    insert_album_artist_assignments, insert_barcode_rows, insert_label_rows, insert_medium_rows,
-    insert_track_artist_assignments, labels_json_sql, mediums_json_sql, mediums_of,
-    read_label_rows, store_album_artist_assignments, StoredAssignment,
+    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_label_rows,
+    insert_medium_rows, insert_track_artist_assignments, labels_json_sql, mediums_json_sql,
+    mediums_of, read_label_rows, store_album_artist_assignments, StoredAssignment, FORM_COLUMNS,
 };
 pub(crate) use values::{
     insert_draft_values, insert_track_values, release_roles_json_sql, roles_of,

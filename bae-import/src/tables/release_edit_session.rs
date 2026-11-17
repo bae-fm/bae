@@ -14,11 +14,11 @@
 
 use super::draft_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
-    insert_medium_rows, insert_track_artist_assignments, insert_track_values, labels_json_sql,
-    mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql, roles_of,
-    store_album_artist_assignments, track_roles_json_sql, track_works_json_sql,
-    work_parts_json_sql, works_json_sql, works_of, DraftTables, StoredRole,
+    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_draft_values,
+    insert_label_rows, insert_medium_rows, insert_track_artist_assignments, insert_track_values,
+    labels_json_sql, mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql,
+    roles_of, store_album_artist_assignments, track_roles_json_sql, track_works_json_sql,
+    work_parts_json_sql, works_json_sql, works_of, DraftTables, StoredRole, FORM_COLUMNS,
 };
 use super::import_list::{credit_resolutions_on, CreditSource};
 use super::*;
@@ -114,29 +114,6 @@ pub struct StoredReleaseEdit {
 }
 
 // ── Writing a session ───────────────────────────────────────────────────
-
-/// The session row's form columns, in [`FORM_COLUMNS`] order.
-const FORM_COLUMNS: &str =
-    "album_title, album_year, year, country, region, media, status, packaging, discogs_details";
-
-fn form_row_values(form: &RawReleaseEdit) -> Vec<rusqlite::types::Value> {
-    use rusqlite::types::Value;
-    let facts = bae_records::records::pressing_columns::FactColumns::of(&form.pressing.facts);
-    let optional = |value: Option<&str>| value.map_or(Value::Null, |v| Value::Text(v.to_string()));
-    vec![
-        Value::Text(form.album_title.clone()),
-        Value::Text(form.album_year.clone()),
-        Value::Text(form.pressing.year.clone()),
-        optional(facts.country),
-        optional(facts.region),
-        Value::Text(bae_records::records::pressing_columns::media_column(
-            &form.pressing.facts.media,
-        )),
-        optional(facts.status),
-        optional(facts.packaging),
-        Value::Text(facts.discogs_details),
-    ]
-}
 
 /// `opened` as its column stores it.
 fn opened_json(opened: &ReleaseEditSeed) -> Result<String, DbError> {

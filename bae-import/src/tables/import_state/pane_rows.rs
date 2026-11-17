@@ -25,11 +25,11 @@ mod values;
 
 use crate::tables::draft_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
-    insert_medium_rows, insert_track_artist_assignments, insert_track_values, labels_json_sql,
-    mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql, roles_of,
-    track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql, works_of,
-    DraftTables, StoredAssignment, StoredRole,
+    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_draft_values,
+    insert_label_rows, insert_medium_rows, insert_track_artist_assignments, insert_track_values,
+    labels_json_sql, mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql,
+    roles_of, track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql,
+    works_of, DraftTables, StoredAssignment, StoredRole, FORM_COLUMNS,
 };
 
 pub(crate) use provenance::{
@@ -58,9 +58,6 @@ pub(crate) const CANDIDATE_DRAFT: DraftTables = DraftTables {
     work_part: "import_candidate_work_part",
     track_work: "import_candidate_track_work",
 };
-
-const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
-     country, region, media, status, packaging, discogs_details";
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
@@ -103,7 +100,8 @@ pub(super) fn insert_draft(
 ) -> Result<(), DbError> {
     sql.execute(
         &format!(
-            "INSERT INTO import_candidate_edit ({EDIT_COLUMNS}, author, draft_blank, draft_valid) \
+            "INSERT INTO import_candidate_edit \
+                 (content_hash, {FORM_COLUMNS}, author, draft_blank, draft_valid) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
@@ -115,8 +113,8 @@ pub(super) fn insert_draft(
     insert_draft_body(sql, content_hash, draft)
 }
 
-/// The draft row's columns, in [`EDIT_COLUMNS`] order and then its author
-/// and whether it is blank and would import.
+/// The draft row's columns: its key, the [`FORM_COLUMNS`] in their order,
+/// then its author and whether it is blank and would import.
 pub(super) fn edit_row_values(
     content_hash: &str,
     draft: &CandidateDraft,
@@ -124,26 +122,14 @@ pub(super) fn edit_row_values(
 ) -> Vec<rusqlite::types::Value> {
     use rusqlite::types::Value;
     let release_edit = draft.release_edit();
-    let facts = bae_records::records::pressing_columns::FactColumns::of(&draft.pressing.facts);
-    let text = |value: &str| Value::Text(value.to_string());
-    let optional = |value: Option<&str>| value.map_or(Value::Null, text);
-    vec![
-        text(content_hash),
-        text(&draft.album_title),
-        text(&draft.album_year),
-        text(&draft.pressing.year),
-        optional(facts.country),
-        optional(facts.region),
-        Value::Text(bae_records::records::pressing_columns::media_column(
-            &draft.pressing.facts.media,
-        )),
-        optional(facts.status),
-        optional(facts.packaging),
-        Value::Text(facts.discogs_details),
-        text(author_column(author)),
+    let mut values = vec![Value::Text(content_hash.to_string())];
+    values.extend(form_row_values(&release_edit));
+    values.extend([
+        Value::Text(author_column(author).to_string()),
         Value::Integer(release_edit.is_blank().into()),
         Value::Integer(release_edit.shape().is_ok().into()),
-    ]
+    ]);
+    values
 }
 
 /// The draft's mediums, tracks and the values hanging off them: the rows
@@ -337,7 +323,7 @@ pub(crate) fn load_drafts_on(
     );
     let rows = sql.query(
         &format!(
-            "SELECT {EDIT_COLUMNS}, {labels} AS labels, {barcodes} AS barcodes, \
+            "SELECT content_hash, {FORM_COLUMNS}, {labels} AS labels, {barcodes} AS barcodes, \
                     {album_assignments} AS album_assignments, {mediums} AS mediums, \
                     (SELECT json_group_array({track} ORDER BY track.position) \
                      FROM import_candidate_track AS track \

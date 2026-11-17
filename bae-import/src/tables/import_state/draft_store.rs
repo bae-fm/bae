@@ -10,7 +10,7 @@ use super::pane_rows::{
 };
 use super::*;
 use crate::tables::draft_rows::{
-    insert_barcode_rows, insert_label_rows, store_album_artist_assignments,
+    insert_barcode_rows, insert_label_rows, store_album_artist_assignments, FORM_COLUMNS,
 };
 use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
 
@@ -27,11 +27,12 @@ pub(super) fn store_draft(
         // The key goes last, after the columns it sets.
         row.rotate_left(1);
         sql.execute(
-            "UPDATE import_candidate_edit SET \
-                 (album_title, album_year, year, country, region, media, \
-                  status, packaging, discogs_details, author, draft_blank, draft_valid) = \
-                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             WHERE content_hash = ?",
+            &format!(
+                "UPDATE import_candidate_edit SET \
+                     ({FORM_COLUMNS}, author, draft_blank, draft_valid) = \
+                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 WHERE content_hash = ?"
+            ),
             rusqlite::params_from_iter(row),
         )?;
     }
