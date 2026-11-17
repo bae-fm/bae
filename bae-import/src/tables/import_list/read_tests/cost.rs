@@ -254,7 +254,9 @@ async fn measure_import_list_typed(db: &Store) {
 /// [`RUNS`] writes to each of two orders, reported under
 /// `import_list_first_selected`. The middle row is the first selected in
 /// ascending order and the end row in descending order, so `at` names that
-/// row and `offset` the place the write opened the view at.
+/// row and `offset` the place the write opened the view at. Another order
+/// alone opens nowhere, so before each timed write an untimed one searches
+/// for a text no row holds, and the timed write clears that search.
 async fn measure_import_list_first_selected(db: &Store) {
     use crate::{ImportListOrder::PathAscending, ImportListOrder::PathDescending, PendingFilter};
     let tables = crate::tables::ImportTables::new(db.clone());
@@ -284,18 +286,27 @@ async fn measure_import_list_first_selected(db: &Store) {
     for run in 0..2 * RUNS + 2 {
         let which = (run % 2 == 1) as usize;
         let order = [PathDescending, PathAscending][which];
+        tables
+            .set_import_list_view(
+                list,
+                found_view("no folder holds this text", PendingFilter::All, order),
+                selected.clone(),
+            )
+            .await
+            .unwrap();
         let started = Instant::now();
         let change = tables
             .set_import_list_view(list, found_view("", PendingFilter::All, order), selected.clone())
             .await
-            .unwrap();
+            .unwrap()
+            .expect("clearing the search narrows the list anew");
         let took = started.elapsed();
         if run >= 2 {
             runs[which].push(took);
         }
-        opened[which] = match change.map(|change| change.opening) {
-            Some(crate::ImportListOpening::At { position, .. }) => position,
-            Some(crate::ImportListOpening::Top) | None => 0,
+        opened[which] = match change.opening {
+            crate::ImportListOpening::At { position, .. } => position,
+            crate::ImportListOpening::Top => 0,
         };
     }
     for (which, order, at) in [(1, PathAscending, "middle"), (0, PathDescending, "end")] {

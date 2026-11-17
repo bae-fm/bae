@@ -110,7 +110,8 @@ async fn a_bulk_action_runs_over_the_keys_the_list_shows() {
 
 /// Changing the tab, filter or search answers with the selected rows the new
 /// view doesn't show, which leave the selection, a release whose import
-/// finished among them; another order answers none.
+/// finished among them. Another order answers nothing, so no selected row
+/// leaves.
 #[tokio::test]
 async fn a_view_change_answers_the_selected_rows_that_leave() {
     let lib = five_rows().await;
@@ -118,6 +119,16 @@ async fn a_view_change_answers_the_selected_rows_that_leave() {
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
     imported_release(&lib.db, &lib.candidate("A")).await;
     let selected = vec![lib.key("A"), lib.key("B"), lib.key("D")];
+    let reordered = lib
+        .tables()
+        .set_import_list_view(
+            list,
+            ordered(TriageTab::Pending, ImportListOrder::PathDescending),
+            selected.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(reordered.is_none(), "another order keeps every selected row, the imported one too");
     let left = |view| {
         let (tables, selected) = (lib.tables(), selected.clone());
         async move {
@@ -127,10 +138,6 @@ async fn a_view_change_answers_the_selected_rows_that_leave() {
             left
         }
     };
-    assert!(
-        left(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await.is_empty(),
-        "another order keeps every selected row, the imported one too"
-    );
     let mut hidden = vec![lib.key("A"), lib.key("B")];
     hidden.sort();
     assert_eq!(

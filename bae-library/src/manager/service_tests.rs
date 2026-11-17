@@ -191,6 +191,19 @@ async fn done_runs_the_releases_still_uploading_first() {
         tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
     assert_eq!(location.visible_position, 3);
     let selected = vec![key("A"), key("B")];
+    // Another order alone opens nowhere, so the list first shows a search no
+    // release matches, and clearing it opens the view.
+    tables
+        .set_import_list_view(
+            list,
+            bae_import::ImportListView {
+                filter_text: "no release holds this text".to_string(),
+                ..done(bae_import::ImportListOrder::OldestFirst)
+            },
+            selected.clone(),
+        )
+        .await
+        .unwrap();
     let opening = tables
         .set_import_list_view(
             list,
