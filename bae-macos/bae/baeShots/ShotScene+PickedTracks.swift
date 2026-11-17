@@ -51,6 +51,7 @@ extension ShotScene {
                                         listed: [],
                                         addTargets: [],
                                         total: 0,
+                                        addTargetCount: 0,
                                         canCreate: true
                                     ),
                                     onAdd: { _, _ in },
