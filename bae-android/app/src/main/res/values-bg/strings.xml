@@ -235,7 +235,7 @@
     <string name="pin">Закачи</string>
     <string name="unpin">Откачи</string>
     <string name="unpin_confirm_title">Откачване на това издание?</string>
-    <string name="unpin_confirm_body">bae ще премахне файловете му от този телефон сега. Изданието остава в облака и се възпроизвежда оттам, докато сте онлайн.</string>
+    <string name="unpin_confirm_body">bae ще премахне файловете му от този телефон сега. Изданието остава в облака и bae го възпроизвежда оттам, докато сте онлайн.</string>
     <string name="dont_show_again">Да не се показва отново</string>
     <string name="pinned">Закачено</string>
     <string name="pinning">Закачва се</string>

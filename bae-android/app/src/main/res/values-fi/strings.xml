@@ -238,7 +238,7 @@
     <string name="pin">Kiinnitä</string>
     <string name="unpin">Irrota</string>
     <string name="unpin_confirm_title">Irrotetaanko tämä julkaisu?</string>
-    <string name="unpin_confirm_body">bae poistaa sen tiedostot tästä puhelimesta nyt. Julkaisu pysyy pilvessä, ja sitä suoratoistetaan sieltä, kun olet verkossa.</string>
+    <string name="unpin_confirm_body">bae poistaa sen tiedostot tästä puhelimesta nyt. Julkaisu pysyy pilvessä, ja bae suoratoistaa sen sieltä, kun olet verkossa.</string>
     <string name="dont_show_again">Älä näytä tätä uudelleen</string>
     <string name="pinned">Kiinnitetty</string>
     <string name="pinning">Kiinnitetään</string>

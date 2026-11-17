@@ -240,7 +240,7 @@
     <string name="pin">Fijar</string>
     <string name="unpin">Desfijar</string>
     <string name="unpin_confirm_title">¿Desfijar esta edición?</string>
-    <string name="unpin_confirm_body">bae eliminará sus archivos de este teléfono ahora mismo. La edición sigue en la nube y se reproduce desde ahí mientras tengas conexión.</string>
+    <string name="unpin_confirm_body">bae eliminará sus archivos de este teléfono ahora mismo. La edición sigue en la nube y bae la reproduce desde ahí mientras tengas conexión.</string>
     <string name="dont_show_again">No volver a mostrar esto</string>
     <string name="pinned">Fijada</string>
     <string name="pinning">Fijando</string>

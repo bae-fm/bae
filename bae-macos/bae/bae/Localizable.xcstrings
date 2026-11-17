@@ -8616,7 +8616,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warte, bis sie beendet ist."
+            "value" : "Warte, bis die Synchronisierung beendet ist."
           }
         },
         "el" : {
@@ -126113,7 +126113,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gerät wird entfernt"
+            "value" : "bae entfernt das Gerät"
           }
         },
         "el" : {
@@ -156327,37 +156327,37 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "سيزيل bae ملفاته من هذا الـ Mac الآن. يبقى الإصدار في السحابة ويُشغَّل منها أثناء اتصالك بالإنترنت."
+            "value" : "سيزيل bae ملفاته من هذا الـ Mac الآن. يبقى الإصدار في السحابة، ويشغّله bae منها أثناء اتصالك بالإنترنت."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae ще премахне файловете му от този Mac сега. Изданието остава в облака и се възпроизвежда оттам, докато сте онлайн."
+            "value" : "bae ще премахне файловете му от този Mac сега. Изданието остава в облака и bae го възпроизвежда оттам, докато сте онлайн."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae hned odstraní jeho soubory z tohoto Macu. Vydání zůstane v cloudu a dokud jste online, přehrává se odtud."
+            "value" : "bae hned odstraní jeho soubory z tohoto Macu. Vydání zůstane v cloudu a dokud jste online, bae ho odtud přehrává."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae vil fjerne dens filer fra denne Mac nu. Udgivelsen bliver i skyen og afspilles derfra, mens du er online."
+            "value" : "bae vil fjerne dens filer fra denne Mac nu. Udgivelsen bliver i skyen, og bae afspiller den derfra, mens du er online."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae wird ihre Dateien jetzt von diesem Mac entfernen. Die Veröffentlichung bleibt in der Cloud und wird von dort abgespielt, solange du online bist."
+            "value" : "bae wird ihre Dateien jetzt von diesem Mac entfernen. Die Veröffentlichung bleibt in der Cloud, und bae spielt sie von dort ab, solange du online bist."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το bae θα αφαιρέσει τώρα τα αρχεία της από αυτό το Mac. Η κυκλοφορία παραμένει στο cloud και αναπαράγεται από εκεί όσο είστε online."
+            "value" : "Το bae θα αφαιρέσει τώρα τα αρχεία της από αυτό το Mac. Η κυκλοφορία παραμένει στο cloud και το bae την αναπαράγει από εκεί όσο είστε online."
           }
         },
         "en" : {
@@ -156369,127 +156369,127 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae eliminará sus archivos de este Mac ahora mismo. La edición sigue en la nube y se reproduce desde ahí mientras tengas conexión."
+            "value" : "bae eliminará sus archivos de este Mac ahora mismo. La edición sigue en la nube y bae la reproduce desde ahí mientras tengas conexión."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae poistaa sen tiedostot tästä Macista nyt. Julkaisu pysyy pilvessä, ja sitä toistetaan sieltä, kun olet verkossa."
+            "value" : "bae poistaa sen tiedostot tästä Macista nyt. Julkaisu pysyy pilvessä, ja bae toistaa sen sieltä, kun olet verkossa."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae supprimera ses fichiers de ce Mac dès maintenant. L’édition reste dans le cloud et est lue depuis celui-ci tant que vous êtes en ligne."
+            "value" : "bae supprimera ses fichiers de ce Mac dès maintenant. L’édition reste dans le cloud, et bae la lit depuis celui-ci tant que vous êtes en ligne."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae יסיר את הקבצים שלה מה‑Mac הזה עכשיו. המהדורה נשארת בענן ומתנגנת משם כל עוד יש חיבור לאינטרנט."
+            "value" : "bae יסיר את הקבצים שלה מה‑Mac הזה עכשיו. המהדורה נשארת בענן, ו‑bae מנגן אותה משם כל עוד יש חיבור לאינטרנט."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae će odmah ukloniti njegove datoteke s ovog Maca. Izdanje ostaje u oblaku i reproducira se odatle dok ste na mreži."
+            "value" : "bae će odmah ukloniti njegove datoteke s ovog Maca. Izdanje ostaje u oblaku, a bae ga reproducira odatle dok ste na mreži."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A bae most törli a fájljait erről a Macről. A kiadás a felhőben marad, és onnan játszható le, amíg online vagy."
+            "value" : "A bae most törli a fájljait erről a Macről. A kiadás a felhőben marad, és a bae onnan játssza le, amíg online vagy."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae rimuoverà subito i suoi file da questo Mac. La pubblicazione resta nel cloud e viene riprodotta da lì finché sei online."
+            "value" : "bae rimuoverà subito i suoi file da questo Mac. La pubblicazione resta nel cloud e bae la riproduce da lì finché sei online."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae は、このリリースのファイルを今すぐこの Mac から削除します。リリースはクラウドに残り、オンラインの間はそこから再生されます。"
+            "value" : "bae は、このリリースのファイルを今すぐこの Mac から削除します。リリースはクラウドに残り、オンラインの間は bae がそこから再生します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae가 지금 이 Mac에서 이 릴리스의 파일을 제거합니다. 릴리스는 클라우드에 남으며, 온라인일 때 클라우드에서 재생됩니다."
+            "value" : "bae가 지금 이 Mac에서 이 릴리스의 파일을 제거합니다. 릴리스는 클라우드에 남으며, 온라인일 때 bae가 클라우드에서 재생합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae vil fjerne filene fra denne Macen nå. Utgivelsen blir værende i skyen og spilles av derfra mens du er på nett."
+            "value" : "bae vil fjerne filene fra denne Macen nå. Utgivelsen blir værende i skyen, og bae spiller den av derfra mens du er på nett."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae zal de bestanden nu van deze Mac verwijderen. De release blijft in de cloud en wordt daar vandaan afgespeeld zolang je online bent."
+            "value" : "bae zal de bestanden nu van deze Mac verwijderen. De release blijft in de cloud, en bae speelt hem daarvandaan af zolang je online bent."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae usunie teraz jego pliki z tego Maca. Wydanie pozostanie w chmurze i będzie odtwarzane stamtąd, gdy jesteś online."
+            "value" : "bae usunie teraz jego pliki z tego Maca. Wydanie pozostanie w chmurze, a bae będzie je stamtąd odtwarzać, gdy jesteś online."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae vai remover os arquivos dele deste Mac agora. O lançamento continua na nuvem e é reproduzido de lá enquanto você estiver online."
+            "value" : "O bae vai remover os arquivos dele deste Mac agora. O lançamento continua na nuvem, e o bae o reproduz de lá enquanto você estiver online."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae vai remover os ficheiros da edição deste Mac agora. A edição continua na nuvem e é reproduzida a partir de lá enquanto estiver online."
+            "value" : "O bae vai remover os ficheiros da edição deste Mac agora. A edição continua na nuvem, e o bae reprodu-la a partir de lá enquanto estiver online."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae va elimina acum fișierele ei de pe acest Mac. Ediția rămâne în cloud și se redă de acolo cât timp ești online."
+            "value" : "bae va elimina acum fișierele ei de pe acest Mac. Ediția rămâne în cloud, iar bae o redă de acolo cât timp ești online."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae hneď odstráni jeho súbory z tohto Macu. Vydanie zostane v cloude a bude sa odtiaľ prehrávať, kým si online."
+            "value" : "bae hneď odstráni jeho súbory z tohto Macu. Vydanie zostane v cloude a bae ho odtiaľ bude prehrávať, kým si online."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae kommer att ta bort dess filer från den här Macen nu. Utgåvan ligger kvar i molnet och spelas upp därifrån medan du är online."
+            "value" : "bae kommer att ta bort dess filer från den här Macen nu. Utgåvan ligger kvar i molnet, och bae spelar upp den därifrån medan du är online."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae, dosyalarını şimdi bu Mac’ten kaldıracak. Yayın bulutta kalır ve çevrimiçi olduğunuzda oradan oynatılır."
+            "value" : "bae, dosyalarını şimdi bu Mac’ten kaldıracak. Yayın bulutta kalır ve çevrimiçi olduğunuzda bae onu oradan oynatır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae одразу видалить його файли з цього Mac. Реліз залишиться в хмарі й відтворюватиметься звідти, поки ви онлайн."
+            "value" : "bae одразу видалить його файли з цього Mac. Реліз залишиться в хмарі, і bae відтворюватиме його звідти, поки ви онлайн."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 将立即从这台 Mac 上移除它的文件。该版本会保留在云端，联网时从云端播放。"
+            "value" : "bae 将立即从这台 Mac 上移除它的文件。该版本会保留在云端，联网时 bae 会从云端播放它。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 將立即從這部 Mac 移除它的檔案。該發行會保留在雲端，連線時從雲端播放。"
+            "value" : "bae 將立即從這部 Mac 移除它的檔案。該發行會保留在雲端，連線時 bae 會從雲端播放它。"
           }
         }
       }
@@ -156500,37 +156500,37 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "سيزيل bae ملفاتها من هذا الـ Mac الآن. تبقى الإصدارات في السحابة وتُشغَّل منها أثناء اتصالك بالإنترنت."
+            "value" : "سيزيل bae ملفاتها من هذا الـ Mac الآن. تبقى الإصدارات في السحابة، ويشغّلها bae منها أثناء اتصالك بالإنترنت."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae ще премахне файловете им от този Mac сега. Изданията остават в облака и се възпроизвеждат оттам, докато сте онлайн."
+            "value" : "bae ще премахне файловете им от този Mac сега. Изданията остават в облака и bae ги възпроизвежда оттам, докато сте онлайн."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae hned odstraní jejich soubory z tohoto Macu. Vydání zůstanou v cloudu a dokud jste online, přehrávají se odtud."
+            "value" : "bae hned odstraní jejich soubory z tohoto Macu. Vydání zůstanou v cloudu a dokud jste online, bae je odtud přehrává."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae vil fjerne deres filer fra denne Mac nu. Udgivelserne bliver i skyen og afspilles derfra, mens du er online."
+            "value" : "bae vil fjerne deres filer fra denne Mac nu. Udgivelserne bliver i skyen, og bae afspiller dem derfra, mens du er online."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae wird ihre Dateien jetzt von diesem Mac entfernen. Die Veröffentlichungen bleiben in der Cloud und werden von dort abgespielt, solange du online bist."
+            "value" : "bae wird ihre Dateien jetzt von diesem Mac entfernen. Die Veröffentlichungen bleiben in der Cloud, und bae spielt sie von dort ab, solange du online bist."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το bae θα αφαιρέσει τώρα τα αρχεία τους από αυτό το Mac. Οι κυκλοφορίες παραμένουν στο cloud και αναπαράγονται από εκεί όσο είστε online."
+            "value" : "Το bae θα αφαιρέσει τώρα τα αρχεία τους από αυτό το Mac. Οι κυκλοφορίες παραμένουν στο cloud και το bae τις αναπαράγει από εκεί όσο είστε online."
           }
         },
         "en" : {
@@ -156542,127 +156542,127 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae eliminará sus archivos de este Mac ahora mismo. Las ediciones siguen en la nube y se reproducen desde ahí mientras tengas conexión."
+            "value" : "bae eliminará sus archivos de este Mac ahora mismo. Las ediciones siguen en la nube y bae las reproduce desde ahí mientras tengas conexión."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae poistaa niiden tiedostot tästä Macista nyt. Julkaisut pysyvät pilvessä, ja niitä toistetaan sieltä, kun olet verkossa."
+            "value" : "bae poistaa niiden tiedostot tästä Macista nyt. Julkaisut pysyvät pilvessä, ja bae toistaa ne sieltä, kun olet verkossa."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae supprimera leurs fichiers de ce Mac dès maintenant. Les éditions restent dans le cloud et sont lues depuis celui-ci tant que vous êtes en ligne."
+            "value" : "bae supprimera leurs fichiers de ce Mac dès maintenant. Les éditions restent dans le cloud, et bae les lit depuis celui-ci tant que vous êtes en ligne."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae יסיר את הקבצים שלהן מה‑Mac הזה עכשיו. המהדורות נשארות בענן ומתנגנות משם כל עוד יש חיבור לאינטרנט."
+            "value" : "bae יסיר את הקבצים שלהן מה‑Mac הזה עכשיו. המהדורות נשארות בענן, ו‑bae מנגן אותן משם כל עוד יש חיבור לאינטרנט."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae će odmah ukloniti njihove datoteke s ovog Maca. Izdanja ostaju u oblaku i reproduciraju se odatle dok ste na mreži."
+            "value" : "bae će odmah ukloniti njihove datoteke s ovog Maca. Izdanja ostaju u oblaku, a bae ih reproducira odatle dok ste na mreži."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A bae most törli a fájljaikat erről a Macről. A kiadások a felhőben maradnak, és onnan játszhatók le, amíg online vagy."
+            "value" : "A bae most törli a fájljaikat erről a Macről. A kiadások a felhőben maradnak, és a bae onnan játssza le őket, amíg online vagy."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae rimuoverà subito i loro file da questo Mac. Le pubblicazioni restano nel cloud e vengono riprodotte da lì finché sei online."
+            "value" : "bae rimuoverà subito i loro file da questo Mac. Le pubblicazioni restano nel cloud e bae le riproduce da lì finché sei online."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae は、これらのリリースのファイルを今すぐこの Mac から削除します。リリースはクラウドに残り、オンラインの間はそこから再生されます。"
+            "value" : "bae は、これらのリリースのファイルを今すぐこの Mac から削除します。リリースはクラウドに残り、オンラインの間は bae がそこから再生します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae가 지금 이 Mac에서 이 릴리스들의 파일을 제거합니다. 릴리스들은 클라우드에 남으며, 온라인일 때 클라우드에서 재생됩니다."
+            "value" : "bae가 지금 이 Mac에서 이 릴리스들의 파일을 제거합니다. 릴리스들은 클라우드에 남으며, 온라인일 때 bae가 클라우드에서 재생합니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae vil fjerne filene deres fra denne Macen nå. Utgivelsene blir værende i skyen og spilles av derfra mens du er på nett."
+            "value" : "bae vil fjerne filene deres fra denne Macen nå. Utgivelsene blir værende i skyen, og bae spiller dem av derfra mens du er på nett."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae zal hun bestanden nu van deze Mac verwijderen. De releases blijven in de cloud en worden daar vandaan afgespeeld zolang je online bent."
+            "value" : "bae zal hun bestanden nu van deze Mac verwijderen. De releases blijven in de cloud, en bae speelt ze daarvandaan af zolang je online bent."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae usunie teraz ich pliki z tego Maca. Wydania pozostaną w chmurze i będą odtwarzane stamtąd, gdy jesteś online."
+            "value" : "bae usunie teraz ich pliki z tego Maca. Wydania pozostaną w chmurze, a bae będzie je stamtąd odtwarzać, gdy jesteś online."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae vai remover os arquivos deles deste Mac agora. Os lançamentos continuam na nuvem e são reproduzidos de lá enquanto você estiver online."
+            "value" : "O bae vai remover os arquivos deles deste Mac agora. Os lançamentos continuam na nuvem, e o bae os reproduz de lá enquanto você estiver online."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O bae vai remover os ficheiros das edições deste Mac agora. As edições continuam na nuvem e são reproduzidas a partir de lá enquanto estiver online."
+            "value" : "O bae vai remover os ficheiros das edições deste Mac agora. As edições continuam na nuvem, e o bae reprodu-las a partir de lá enquanto estiver online."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae va elimina acum fișierele lor de pe acest Mac. Edițiile rămân în cloud și se redau de acolo cât timp ești online."
+            "value" : "bae va elimina acum fișierele lor de pe acest Mac. Edițiile rămân în cloud, iar bae le redă de acolo cât timp ești online."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae hneď odstráni ich súbory z tohto Macu. Vydania zostanú v cloude a budú sa odtiaľ prehrávať, kým si online."
+            "value" : "bae hneď odstráni ich súbory z tohto Macu. Vydania zostanú v cloude a bae ich odtiaľ bude prehrávať, kým si online."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae kommer att ta bort deras filer från den här Macen nu. Utgåvorna ligger kvar i molnet och spelas upp därifrån medan du är online."
+            "value" : "bae kommer att ta bort deras filer från den här Macen nu. Utgåvorna ligger kvar i molnet, och bae spelar upp dem därifrån medan du är online."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae, bunların dosyalarını şimdi bu Mac’ten kaldıracak. Yayınlar bulutta kalır ve çevrimiçi olduğunuzda oradan oynatılır."
+            "value" : "bae, bunların dosyalarını şimdi bu Mac’ten kaldıracak. Yayınlar bulutta kalır ve çevrimiçi olduğunuzda bae onları oradan oynatır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae одразу видалить їхні файли з цього Mac. Релізи залишаться в хмарі й відтворюватимуться звідти, поки ви онлайн."
+            "value" : "bae одразу видалить їхні файли з цього Mac. Релізи залишаться в хмарі, і bae відтворюватиме їх звідти, поки ви онлайн."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 将立即从这台 Mac 上移除它们的文件。这些版本会保留在云端，联网时从云端播放。"
+            "value" : "bae 将立即从这台 Mac 上移除它们的文件。这些版本会保留在云端，联网时 bae 会从云端播放它们。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bae 將立即從這部 Mac 移除它們的檔案。這些發行會保留在雲端，連線時從雲端播放。"
+            "value" : "bae 將立即從這部 Mac 移除它們的檔案。這些發行會保留在雲端，連線時 bae 會從雲端播放它們。"
           }
         }
       }

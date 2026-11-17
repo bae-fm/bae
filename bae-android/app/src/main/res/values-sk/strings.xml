@@ -250,7 +250,7 @@
     <string name="pin">Pripnúť</string>
     <string name="unpin">Odopnúť</string>
     <string name="unpin_confirm_title">Odopnúť toto vydanie?</string>
-    <string name="unpin_confirm_body">bae hneď odstráni jeho súbory z tohto telefónu. Vydanie zostane v cloude a bude sa odtiaľ streamovať, kým si online.</string>
+    <string name="unpin_confirm_body">bae hneď odstráni jeho súbory z tohto telefónu. Vydanie zostane v cloude a bae ho odtiaľ bude streamovať, kým si online.</string>
     <string name="dont_show_again">Už nezobrazovať</string>
     <string name="pinned">Pripnuté</string>
     <string name="pinning">Pripína sa</string>

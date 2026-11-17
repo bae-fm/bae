@@ -230,7 +230,7 @@
     <string name="pin">ピン留め</string>
     <string name="unpin">ピン留めを解除</string>
     <string name="unpin_confirm_title">このリリースのピン留めを解除しますか？</string>
-    <string name="unpin_confirm_body">bae は、このリリースのファイルを今すぐこのスマートフォンから削除します。リリースはクラウドに残り、オンラインの間はそこからストリーミング再生されます。</string>
+    <string name="unpin_confirm_body">bae は、このリリースのファイルを今すぐこのスマートフォンから削除します。リリースはクラウドに残り、オンラインの間は bae がそこからストリーミング再生します。</string>
     <string name="dont_show_again">今後このメッセージを表示しない</string>
     <string name="pinned">ピン留め済み</string>
     <string name="pinning">ピン留め中</string>

@@ -238,7 +238,7 @@
     <string name="pin">Rögzítés</string>
     <string name="unpin">Rögzítés feloldása</string>
     <string name="unpin_confirm_title">Feloldod ennek a kiadásnak a rögzítését?</string>
-    <string name="unpin_confirm_body">A bae most törli a fájljait erről a telefonról. A kiadás a felhőben marad, és onnan streamelhető, amíg online vagy.</string>
+    <string name="unpin_confirm_body">A bae most törli a fájljait erről a telefonról. A kiadás a felhőben marad, és a bae onnan streameli, amíg online vagy.</string>
     <string name="dont_show_again">Ne jelenjen meg újra</string>
     <string name="pinned">Rögzítve</string>
     <string name="pinning">Rögzítés</string>

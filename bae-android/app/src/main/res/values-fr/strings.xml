@@ -240,7 +240,7 @@
     <string name="pin">Épingler</string>
     <string name="unpin">Désépingler</string>
     <string name="unpin_confirm_title">Désépingler cette édition ?</string>
-    <string name="unpin_confirm_body">bae supprimera ses fichiers de ce téléphone dès maintenant. L’édition reste dans le cloud et est diffusée depuis celui-ci tant que vous êtes en ligne.</string>
+    <string name="unpin_confirm_body">bae supprimera ses fichiers de ce téléphone dès maintenant. L’édition reste dans le cloud, et bae la diffuse depuis celui-ci tant que vous êtes en ligne.</string>
     <string name="dont_show_again">Ne plus afficher ce message</string>
     <string name="pinned">Épinglé</string>
     <string name="pinning">Épinglage</string>

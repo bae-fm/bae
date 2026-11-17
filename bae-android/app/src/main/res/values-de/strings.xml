@@ -235,7 +235,7 @@
     <string name="pin">Anheften</string>
     <string name="unpin">Loslösen</string>
     <string name="unpin_confirm_title">Diese Veröffentlichung loslösen?</string>
-    <string name="unpin_confirm_body">bae wird ihre Dateien jetzt von diesem Smartphone entfernen. Die Veröffentlichung bleibt in der Cloud und wird von dort gestreamt, solange du online bist.</string>
+    <string name="unpin_confirm_body">bae wird ihre Dateien jetzt von diesem Smartphone entfernen. Die Veröffentlichung bleibt in der Cloud, und bae streamt sie von dort, solange du online bist.</string>
     <string name="dont_show_again">Nicht mehr anzeigen</string>
     <string name="pinned">Angeheftet</string>
     <string name="pinning">Wird angeheftet</string>
@@ -367,11 +367,11 @@
         <item quantity="one">Entferntes Gerät (%1$d)</item>
         <item quantity="other">Entfernte Geräte (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Gerät wird entfernt</string>
+    <string name="device_removed_title">bae entfernt das Gerät</string>
     <string name="device_cut_off_confirm">Ich habe dieses Gerät getrennt</string>
     <string name="device_cut_off_not_yet">Noch nicht</string>
     <string name="device_cut_off_running_title">Dieses Gerät synchronisiert noch mit der Cloud</string>
-    <string name="device_cut_off_running_body">Warte, bis sie beendet ist.</string>
+    <string name="device_cut_off_running_body">Warte, bis die Synchronisierung beendet ist.</string>
     <string name="device_cut_off_not_gone_title">Das Entfernen ist noch nicht auf diesem Gerät angekommen</string>
     <string name="device_cut_off_not_gone_body">Versuche es nach der nächsten Synchronisierung erneut.</string>
     <string name="members_invite">Einladen</string>

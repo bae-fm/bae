@@ -239,7 +239,7 @@
     <string name="pin">Fixar</string>
     <string name="unpin">Desafixar</string>
     <string name="unpin_confirm_title">Desafixar esta edição?</string>
-    <string name="unpin_confirm_body">O bae vai remover os ficheiros da edição deste telemóvel agora. A edição continua na nuvem e é transmitida a partir de lá enquanto estiver online.</string>
+    <string name="unpin_confirm_body">O bae vai remover os ficheiros da edição deste telemóvel agora. A edição continua na nuvem, e o bae transmite-a a partir de lá enquanto estiver online.</string>
     <string name="dont_show_again">Não mostrar novamente</string>
     <string name="pinned">Fixado</string>
     <string name="pinning">A fixar</string>

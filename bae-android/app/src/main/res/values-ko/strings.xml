@@ -230,7 +230,7 @@
     <string name="pin">고정</string>
     <string name="unpin">고정 해제</string>
     <string name="unpin_confirm_title">이 릴리스의 고정을 해제할까요?</string>
-    <string name="unpin_confirm_body">bae가 지금 이 휴대전화에서 이 릴리스의 파일을 제거합니다. 릴리스는 클라우드에 남으며, 온라인일 때 클라우드에서 스트리밍됩니다.</string>
+    <string name="unpin_confirm_body">bae가 지금 이 휴대전화에서 이 릴리스의 파일을 제거합니다. 릴리스는 클라우드에 남으며, 온라인일 때 bae가 클라우드에서 스트리밍합니다.</string>
     <string name="dont_show_again">다시 표시하지 않음</string>
     <string name="pinned">고정됨</string>
     <string name="pinning">고정 중</string>

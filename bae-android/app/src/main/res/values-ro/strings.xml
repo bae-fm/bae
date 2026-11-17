@@ -244,7 +244,7 @@
     <string name="pin">Fixează</string>
     <string name="unpin">Anulează fixarea</string>
     <string name="unpin_confirm_title">Anulezi fixarea pentru această ediție?</string>
-    <string name="unpin_confirm_body">bae va elimina acum fișierele ei de pe acest telefon. Ediția rămâne în cloud și se redă de acolo în flux cât timp ești online.</string>
+    <string name="unpin_confirm_body">bae va elimina acum fișierele ei de pe acest telefon. Ediția rămâne în cloud, iar bae o redă de acolo în flux cât timp ești online.</string>
     <string name="dont_show_again">Nu mai afișa acest mesaj</string>
     <string name="pinned">Fixat</string>
     <string name="pinning">Se fixează</string>
