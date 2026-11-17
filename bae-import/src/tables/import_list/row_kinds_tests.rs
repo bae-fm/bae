@@ -307,7 +307,7 @@ async fn a_linked_row_names_the_records_its_whole_release_does() {
     let (read, _) = read_window(&lib, Kind::Linked, 3).await;
     for row in window_rows(&read) {
         let Some(crate::ReleaseLink::Pressing(link)) = &row.release_link else {
-            panic!("{} is linked to a pressing", display_path(&row));
+            panic!("{} links to a pressing", display_path(&row));
         };
         let whole = tables.load_source_release(&link.record).await.unwrap().unwrap();
         let crate::triage::TriageReading::Identified { records } = &row.reading else {

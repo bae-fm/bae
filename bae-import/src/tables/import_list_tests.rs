@@ -381,9 +381,10 @@ pub(crate) fn items_sequence(items: &[ImportListItem]) -> Vec<String> {
         .collect()
 }
 
-/// The folder of a release read from one folder, below its watched folder,
-/// as the list's statements show it. A grouping's row names no one folder,
-/// so these tests read only releases read from one folder.
+/// The folder of a release that bae's scan read from one folder, below its
+/// watched folder, as the list's statements show it. A grouping's row names
+/// no one folder, so these tests read only releases that bae's scan read from
+/// one folder.
 pub(crate) fn display_path(row: &crate::TriageRow) -> String {
     let folder = coven::path_from_bytes(row.candidate_key.as_bytes().to_vec())
         .unwrap_or_else(|_| panic!("{} is a folder's key", row.candidate_key));
