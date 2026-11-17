@@ -128,6 +128,9 @@ struct TrackRowView: View {
     private var highlightOpacity: Double = 0
 
     var body: some View {
+        // The body reads the pick once, and the tap handler gets the value
+        // the row draws, so the handler never reads the picks it writes.
+        let picked = isPicked
         HStack(spacing: ThemeSpace.compact) {
             MacTrackRow(
                 track: track,
@@ -136,7 +139,7 @@ struct TrackRowView: View {
                 isCurrent: isCurrent,
                 isPlaying: isPlaying,
                 hover: isHovered,
-                picked: isPicked,
+                picked: picked,
                 highlight: highlightOpacity,
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
@@ -164,9 +167,9 @@ struct TrackRowView: View {
             onPlay()
         }
         .simultaneousGesture(
-            TapGesture().onEnded { handleTap() }
+            TapGesture().onEnded { handleTap(rowPicked: picked) }
         )
-        .accessibilityAddTraits(isPicked ? .isSelected : [])
+        .accessibilityAddTraits(picked ? .isSelected : [])
         .contentShape(Rectangle())
         .onHover { hovering in
             hoverWorkItem?.cancel()
@@ -194,13 +197,14 @@ struct TrackRowView: View {
     }
 
     /// Cmd picks or unpicks the row, shift picks the range from the last
-    /// pick, and a plain click clears the picks.
-    private func handleTap() {
+    /// pick, and a plain click clears the picks. `rowPicked` is whether the
+    /// row draws itself picked.
+    private func handleTap(rowPicked: Bool) {
         guard let picking else { return }
         let picked = uiStore.pickedTracks
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
-            picked.set(track.id, picked: !isPicked)
+            picked.set(track.id, picked: !rowPicked)
         }
         else if modifiers.contains(.shift) {
             picking.onExtend(track.id)
