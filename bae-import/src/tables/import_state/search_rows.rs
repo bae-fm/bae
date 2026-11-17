@@ -418,16 +418,12 @@ fn start_on(
             ],
         )?;
     }
-    let asked = sql
-        .query(
-            "SELECT catalog FROM import_candidate_search_source \
-             WHERE search_run = ? AND state = 'searching' ORDER BY position",
-            [run],
-            |row| row.get::<_, String>(0),
-        )?
-        .into_iter()
-        .map(|catalog| catalog_of(&catalog))
-        .collect::<Result<_, _>>()?;
+    // The parts just written searching are the catalogs to ask.
+    let asked = sources
+        .iter()
+        .filter(|source| source.state == SourceAvailability::On)
+        .map(|source| source.catalog)
+        .collect();
     Ok((SearchRun::of(run), asked))
 }
 
