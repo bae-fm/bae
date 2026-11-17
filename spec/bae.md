@@ -2023,10 +2023,12 @@ Ana clicks Import. bae:
    or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
    names every album holding the release, or another release of its album:
-   those holding the release first, then oldest first. One read answers it
-   for every release the pane offers, and follows the library while the pane
-   is open; an identify verdict or search result, in flight or stored, holds
-   no library status of its own.
+   those holding the release first, then oldest first. The pane's statement
+   reads the banner's albums for the release bae linked the candidate to, and
+   the statement that reads a list's cards reads, for each offered row,
+   whether the library holds its lead release, so the banner and the dimmed
+   rows change as the library gains and loses releases. bae stores no library
+   status with an identify verdict or a search result, in flight or stored.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
