@@ -531,3 +531,113 @@ async fn ungrouped_pressings_do_not_invent_album_matches() {
 }
 
 const TRACK_BETA: &str = "094f4448-f13c-4284-83ea-e362fb2f38aa"; // was "track-beta"
+
+/// Where `records_change` files a release: a library album, a new album
+/// under the group's id, or a new album under a fresh id.
+#[derive(Debug, PartialEq)]
+enum Filed {
+    Held(String),
+    NewUnder(String),
+    Fresh,
+}
+
+/// Where `records_change` files `release` under `records`, after checking
+/// that the records' target statement names the same album.
+async fn filed(
+    manager: &LibraryManager,
+    release: &DbRelease,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
+) -> Filed {
+    let named = manager
+        .records
+        .records_target_album(&release.id, &records)
+        .await
+        .unwrap()
+        .expect("the library holds the release")
+        .target_album_id;
+    let change = manager.records_change(&release.id, records).await.unwrap();
+    let filed = match change.new_album {
+        None => Filed::Held(change.target_album_id),
+        Some(album) if album.id == change.target_album_id && album.id != release.album_id => {
+            match bae_records::identity::album_id_for_records(&change.records) {
+                Some(group) if group == album.id => Filed::NewUnder(album.id),
+                _ => Filed::Fresh,
+            }
+        }
+        Some(album) => panic!("a new album {album:?} that is not the target"),
+    };
+    let expected_named = match &filed {
+        Filed::Held(album_id) => Some(album_id.clone()),
+        Filed::NewUnder(_) | Filed::Fresh => None,
+    };
+    assert_eq!(named, expected_named, "the statement names the album records_change files under");
+    filed
+}
+
+#[tokio::test]
+async fn the_records_target_statement_files_a_release_as_records_change_does() {
+    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let alone_album = create_test_album();
+    let alone = seed_grouped_releases(manager, &alone_album, &[("g1", "g1-alone")]).await.remove(0);
+    let named_album = create_test_album();
+    seed_grouped_releases(manager, &named_album, &[("g2", "g2-rel")]).await;
+    let shared_album = create_test_album();
+    let shared =
+        seed_grouped_releases(manager, &shared_album, &[("g3", "g3-a"), ("g3", "g3-b")]).await;
+    let held_group = DbAlbum {
+        id: bae_records::identity::album_id(Catalog::MusicBrainz, "g5"),
+        ..create_test_album()
+    };
+    manager.records.insert_album(&held_group).await.unwrap();
+    manager.records.insert_release(&create_test_release(&held_group.id)).await.unwrap();
+
+    assert_eq!(filed(manager, &alone, vec![]).await, Filed::Fresh);
+    assert_eq!(
+        filed(manager, &alone, vec![mb_identity("g2", "g2-other")]).await,
+        Filed::Held(named_album.id.clone()),
+        "the album the records name"
+    );
+    assert_eq!(
+        filed(manager, &alone, vec![mb_identity("g9", "g9-rel")]).await,
+        Filed::NewUnder(bae_records::identity::album_id(Catalog::MusicBrainz, "g9")),
+        "a release alone moves to its group's album"
+    );
+    assert_eq!(
+        filed(manager, &alone, vec![mb_identity("g5", "g5-rel")]).await,
+        Filed::Held(held_group.id.clone()),
+        "and to the group's album the library holds"
+    );
+    assert_eq!(
+        filed(
+            manager,
+            &alone,
+            vec![ReleaseRecord::new(&MetadataRef::new(Catalog::Discogs, "d-ungrouped"), None)]
+        )
+        .await,
+        Filed::Held(alone_album.id.clone()),
+        "records naming no group keep a release alone where it is"
+    );
+    assert_eq!(
+        filed(manager, &shared[0], vec![mb_identity("g3", "g3-c")]).await,
+        Filed::Held(shared_album.id.clone()),
+        "an album whose other releases agree keeps the release"
+    );
+    assert_eq!(
+        filed(manager, &shared[0], vec![discogs_identity("m-1", "d-1")]).await,
+        Filed::Held(shared_album.id.clone()),
+        "as does one whose other releases name another catalog"
+    );
+    assert_eq!(
+        filed(manager, &shared[0], vec![mb_identity("g8", "g8-rel")]).await,
+        Filed::NewUnder(bae_records::identity::album_id(Catalog::MusicBrainz, "g8")),
+        "an album whose other releases disagree sends it to its group's album"
+    );
+    assert_eq!(
+        filed(manager, &shared[0], vec![mb_identity("g5", "g5-other")]).await,
+        Filed::Held(held_group.id.clone()),
+        "which the library may hold"
+    );
+}

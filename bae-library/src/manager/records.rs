@@ -55,118 +55,37 @@ impl LibraryManager {
     }
 
     /// The write that gives a release `new_records`: the records, and the
-    /// album they file it under (policy in [`Self::set_records`]).
+    /// album they file it under (policy in [`Self::set_records`]), as
+    /// [`bae_records::records::release_records::records_target_album_sql`]
+    /// names it. A new album takes the id of the group the records name,
+    /// else a fresh one, and the current album's fields.
     pub(super) async fn records_change(
         &self,
         release_id: &str,
         new_records: Vec<bae_catalogs::records::ReleaseRecord>,
     ) -> Result<bae_records::RecordsChange, LibraryError> {
-        let current_album_id =
-            self.records.find_album_id_for_release(release_id).await?.ok_or_else(|| {
-                LibraryError::release_missing(release_id, super::ReleaseWork::Edit)
-            })?;
         let target =
-            self.resolve_records_target_album(release_id, &current_album_id, &new_records).await?;
+            self.records.records_target_album(release_id, &new_records).await?.ok_or_else(
+                || LibraryError::release_missing(release_id, super::ReleaseWork::Edit),
+            )?;
+        let (target_album_id, new_album) = match target.target_album_id {
+            Some(album_id) => (album_id, None),
+            None => {
+                let fresh = self.fresh_album_for_release(&target.current_album_id).await?;
+                let album = match bae_records::identity::album_id_for_records(&new_records) {
+                    Some(group_album_id) => DbAlbum { id: group_album_id, ..fresh },
+                    None => fresh,
+                };
+                (album.id.clone(), Some(album))
+            }
+        };
         Ok(bae_records::RecordsChange {
             release_id: release_id.to_string(),
             records: new_records,
-            current_album_id,
-            target_album_id: target.album_id,
-            new_album: target.new_album,
+            current_album_id: target.current_album_id,
+            target_album_id,
+            new_album,
         })
-    }
-
-    /// Pick the album a release lands in after a `set_records` (policy in
-    /// `set_records`). In order:
-    ///
-    /// 1. **The album the records name.** If another release in the library
-    ///    carries a record of one of `new_records`' pressings or albums, the
-    ///    album `Database::album_records_name` reads is the target, the applied
-    ///    record's before a partner's. It wins even when the current album
-    ///    would also fit.
-    /// 2. **The group's album** when the release is alone in its album.
-    /// 3. **Stay put** when the current album's other releases don't disagree
-    ///    with `new_records` on a shared catalog.
-    /// 4. **The group's album**, or a **fresh album** with no group, otherwise.
-    async fn resolve_records_target_album(
-        &self,
-        release_id: &str,
-        current_album_id: &str,
-        new_records: &[bae_catalogs::records::ReleaseRecord],
-    ) -> Result<RecordsTargetAlbum, LibraryError> {
-        // No catalog describes it — always a fresh album holding only this
-        // release.
-        if new_records.is_empty() {
-            let new_album = self.fresh_album_for_release(current_album_id).await?;
-            return Ok(RecordsTargetAlbum {
-                album_id: new_album.id.clone(),
-                new_album: Some(new_album),
-            });
-        }
-
-        // Any album already holding a release that matches the new records on at
-        // least one catalog. The lookup excludes `release_id`'s own rows, so it
-        // never matches against the records we are about to overwrite.
-        if let Some(candidate_album_id) =
-            self.records.album_records_name(new_records, &[release_id.to_string()]).await?
-        {
-            return Ok(RecordsTargetAlbum { album_id: candidate_album_id, new_album: None });
-        }
-
-        // No merge candidate. A release alone in its album moves to its group's
-        // own album: one release group is one album.
-        let beside =
-            self.records.album_beside_release(current_album_id, release_id, new_records).await?;
-        let group_album_id = bae_records::identity::album_id_for_records(new_records);
-        if !beside.holds_others {
-            return match group_album_id {
-                Some(group_album_id) if group_album_id != current_album_id => {
-                    self.group_album(current_album_id, group_album_id).await
-                }
-                _ => Ok(RecordsTargetAlbum {
-                    album_id: current_album_id.to_string(),
-                    new_album: None,
-                }),
-            };
-        }
-
-        // Stay put if the album's other releases don't disagree on a shared
-        // catalog: two releases can share an album as long as they don't
-        // disagree on a catalog they both name.
-        if !beside.disagrees {
-            return Ok(RecordsTargetAlbum {
-                album_id: current_album_id.to_string(),
-                new_album: None,
-            });
-        }
-
-        // Doesn't fit anywhere: the group's album, or a fresh one when no
-        // record names a group.
-        match group_album_id {
-            Some(group_album_id) => self.group_album(current_album_id, group_album_id).await,
-            None => {
-                let new_album = self.fresh_album_for_release(current_album_id).await?;
-                Ok(RecordsTargetAlbum {
-                    album_id: new_album.id.clone(),
-                    new_album: Some(new_album),
-                })
-            }
-        }
-    }
-
-    /// The group's album as the target: the row already here, or one written
-    /// under the group's id from the current album.
-    async fn group_album(
-        &self,
-        current_album_id: &str,
-        group_album_id: String,
-    ) -> Result<RecordsTargetAlbum, LibraryError> {
-        if self.records.album_exists(&group_album_id).await? {
-            return Ok(RecordsTargetAlbum { album_id: group_album_id, new_album: None });
-        }
-        let new_album =
-            DbAlbum { id: group_album_id, ..self.fresh_album_for_release(current_album_id).await? };
-        Ok(RecordsTargetAlbum { album_id: new_album.id.clone(), new_album: Some(new_album) })
     }
 
     /// A fresh album row mirroring `seed_album_id`'s metadata, for when

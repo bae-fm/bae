@@ -92,16 +92,6 @@ pub use sync::storage_setup_finishing;
 mod track;
 mod uploads;
 
-/// Outcome of `resolve_records_target_album` — where a release should
-/// land after a `set_records` call. `new_album` carries the album row
-/// to insert when the target is brand-new; otherwise the target is an
-/// existing album and `new_album` is `None`.
-#[cfg(desktop)]
-struct RecordsTargetAlbum {
-    album_id: String,
-    new_album: Option<DbAlbum>,
-}
-
 /// What asked for a release: an edit of it (its records, its metadata, its
 /// deletion), an export, a save, or a transfer of its files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

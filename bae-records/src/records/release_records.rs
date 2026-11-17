@@ -39,40 +39,17 @@ impl Records {
         self.store.read(move |sql| album_records_name_on(&sql, &records, &excluding)).await
     }
 
-    /// Where an album stands for a release whose records are about to be
-    /// `records`: whether it holds releases besides `release_id`, and whether
-    /// one of those names another album than `records` do on a catalog they
-    /// share. Read by the albums' releases index and each release's records.
-    pub async fn album_beside_release(
+    /// The album the release `release_id` lands in once its records are
+    /// `records`, beside the album it is in now, as
+    /// [`records_target_album_sql`] names them; `None` when the library holds
+    /// no such release.
+    pub async fn records_target_album(
         &self,
-        album_id: &str,
         release_id: &str,
         records: &[bae_catalogs::records::ReleaseRecord],
-    ) -> Result<AlbumBesideRelease, DbError> {
-        let album_refs = serde_json::Value::from(
-            records
-                .iter()
-                .filter_map(bae_catalogs::records::ReleaseRecord::album_ref)
-                .map(|album| serde_json::json!([album.catalog.as_str(), album.key]))
-                .collect::<Vec<_>>(),
-        )
-        .to_string();
-        let (album_id, release_id) = (album_id.to_string(), release_id.to_string());
-        self.store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    ALBUM_BESIDE_RELEASE,
-                    rusqlite::named_params! {
-                        ":album": album_id,
-                        ":release": release_id,
-                        ":album_refs": album_refs,
-                    },
-                    |row| {
-                        Ok(AlbumBesideRelease { holds_others: row.get(0)?, disagrees: row.get(1)? })
-                    },
-                )?)
-            })
-            .await
+    ) -> Result<Option<RecordsTargetAlbum>, DbError> {
+        let (release_id, records) = (release_id.to_string(), records.to_vec());
+        self.store.read(move |sql| records_target_album_on(&sql, &release_id, &records)).await
     }
 
     /// Whether the library holds the album `album_id`; an album is deleted
@@ -235,8 +212,58 @@ pub fn album_records_name_on(
     records: &[bae_catalogs::records::ReleaseRecord],
     excluding: &[String],
 ) -> Result<Option<String>, DbError> {
+    let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
+    Ok(sql
+        .query_row(
+            &album_records_name_sql(RECORDS_OF_JSON, ":excluding"),
+            rusqlite::named_params! { ":records": records_json(records), ":excluding": excluding },
+            |row| row.get(0),
+        )
+        .optional()?)
+}
+
+/// The album the release `release_id` lands in once its records are
+/// `records`, as [`records_target_album_sql`] names it, beside the album it
+/// is in now. `None` when the library holds no such release.
+pub fn records_target_album_on(
+    sql: &impl coven::SqlRead,
+    release_id: &str,
+    records: &[bae_catalogs::records::ReleaseRecord],
+) -> Result<Option<RecordsTargetAlbum>, DbError> {
+    Ok(sql
+        .query_row(
+            &records_target_album_sql(RECORDS_OF_JSON, ":release"),
+            rusqlite::named_params! { ":records": records_json(records), ":release": release_id },
+            |row| {
+                Ok(RecordsTargetAlbum {
+                    current_album_id: row.get("current_album_id")?,
+                    target_album_id: row.get("target_album_id")?,
+                })
+            },
+        )
+        .optional()?)
+}
+
+/// The album a release is in and the album its new records file it under,
+/// as [`records_target_album_sql`] names them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordsTargetAlbum {
+    pub current_album_id: String,
+    /// The library album the release lands in; `None` for a new album, which
+    /// takes the id of the group the records name
+    /// ([`crate::identity::album_id_for_records`]), else a fresh id.
+    pub target_album_id: Option<String>,
+}
+
+/// The records a JSON array of `:records` holds, as `(position, catalog,
+/// kind, key, album_key)`.
+const RECORDS_OF_JSON: &str = "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
+     FROM json_each(:records)";
+
+/// `records` as the JSON array [`RECORDS_OF_JSON`] reads.
+fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String {
     use bae_catalogs::records::ReleaseRecord;
-    let records = serde_json::Value::from(
+    serde_json::Value::from(
         records
             .iter()
             .map(|record| match record {
@@ -254,19 +281,69 @@ pub fn album_records_name_on(
             })
             .collect::<Vec<_>>(),
     )
-    .to_string();
-    let excluding = serde_json::Value::from(excluding.to_vec()).to_string();
-    Ok(sql
-        .query_row(
-            &album_records_name_sql(
-                "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
-                 FROM json_each(:records)",
-                ":excluding",
-            ),
-            rusqlite::named_params! { ":records": records, ":excluding": excluding },
-            |row| row.get(0),
-        )
-        .optional()?)
+    .to_string()
+}
+
+/// The statement that finds the album a release lands in once its records
+/// are the ones `records` selects (as [`album_records_name_sql`] reads them),
+/// for the release whose id the SQL expression `release` gives. It returns
+/// one row, holding the album the release is in now (`current_album_id`)
+/// and the library album it lands in (`target_album_id`), NULL for a new
+/// album; no row when the library holds no such release. In order:
+///
+/// 1. No records: a new album holding only the release.
+/// 2. The album the records name ([`album_records_name_sql`], leaving out the
+///    release's own records), even when the current album would also fit.
+/// 3. With the release alone in its album, the album of the group the
+///    records name ([`crate::identity::album_id_for_records`]), new when the
+///    library does not hold it; the current album when they name no group or
+///    the current album is the group's.
+/// 4. The current album when none of its other releases names another album
+///    than the records do on a catalog both name.
+/// 5. Else the group's album, new when the library does not hold it, or a new
+///    album when the records name no group.
+pub fn records_target_album_sql(records: &str, release: &str) -> String {
+    format!(
+        "WITH target_records (position, catalog, kind, key, album_key) AS ({records}), \
+         target_album_refs AS ( \
+             SELECT position, catalog, \
+                    CASE WHEN kind = 'album' THEN key ELSE album_key END AS album_key \
+             FROM target_records WHERE kind = 'album' OR album_key IS NOT NULL), \
+         current AS (SELECT album_id FROM releases WHERE id = {release}), \
+         group_album AS ( \
+             SELECT bae_album_id(catalog, album_key) AS id FROM target_album_refs \
+             WHERE catalog IN ('musicbrainz', 'discogs') \
+             ORDER BY CASE catalog WHEN 'musicbrainz' THEN 0 ELSE 1 END, position LIMIT 1), \
+         held_group_album AS ( \
+             SELECT a.id FROM group_album JOIN albums a ON a.id = group_album.id), \
+         named_album AS ({named}), \
+         beside AS ( \
+             SELECT EXISTS (SELECT 1 FROM releases r JOIN current ON r.album_id = current.album_id \
+                            WHERE r.id <> {release}) AS holds_others, \
+                    EXISTS (SELECT 1 FROM releases r JOIN current ON r.album_id = current.album_id \
+                            JOIN release_records rr ON rr.release_id = r.id \
+                            JOIN target_album_refs new ON rr.catalog = new.catalog \
+                            WHERE r.id <> {release} \
+                              AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
+                                  <> new.album_key) AS disagrees) \
+         SELECT current.album_id AS current_album_id, \
+                CASE \
+                    WHEN NOT EXISTS (SELECT 1 FROM target_records) THEN NULL \
+                    WHEN EXISTS (SELECT 1 FROM named_album) THEN (SELECT id FROM named_album) \
+                    WHEN NOT beside.holds_others THEN \
+                        CASE WHEN NOT EXISTS (SELECT 1 FROM group_album) \
+                                  OR (SELECT id FROM group_album) = current.album_id \
+                             THEN current.album_id \
+                             ELSE (SELECT id FROM held_group_album) END \
+                    WHEN NOT beside.disagrees THEN current.album_id \
+                    ELSE (SELECT id FROM held_group_album) \
+                END AS target_album_id \
+         FROM current CROSS JOIN beside",
+        named = album_records_name_sql(
+            "SELECT position, catalog, kind, key, album_key FROM target_records",
+            &format!("json_array({release})"),
+        ),
+    )
 }
 
 /// The statement that finds the library album to file a release under, from
@@ -327,27 +404,6 @@ pub fn album_records_name_sql(records: &str, excluding: &str) -> String {
          LIMIT 1"
     )
 }
-
-/// Where an album stands beside one of its releases, as
-/// [`Records::album_beside_release`] reads it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AlbumBesideRelease {
-    /// The album holds releases besides the one asked about.
-    pub holds_others: bool,
-    /// One of those names another album than the records asked about on a
-    /// catalog they share.
-    pub disagrees: bool,
-}
-
-const ALBUM_BESIDE_RELEASE: &str = "SELECT \
-        EXISTS (SELECT 1 FROM releases r WHERE r.album_id = :album AND r.id <> :release), \
-        EXISTS (SELECT 1 FROM releases r \
-                JOIN release_records rr ON rr.release_id = r.id \
-                JOIN json_each(:album_refs) AS new \
-                  ON rr.catalog = json_extract(new.value, '$[0]') \
-                WHERE r.album_id = :album AND r.id <> :release \
-                  AND (CASE WHEN rr.kind = 'album' THEN rr.key ELSE rr.album_key END) \
-                      <> json_extract(new.value, '$[1]'))";
 
 /// One statement answers every check: the caller passes the checks as one
 /// JSON array, and the statement that [`library_status_sql`] builds returns
