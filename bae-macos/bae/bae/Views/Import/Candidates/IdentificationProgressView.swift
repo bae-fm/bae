@@ -142,8 +142,8 @@ struct ImportActivitySlot: View {
 }
 
 /// The filter row's place for the scan indicator, shown while a root is
-/// scanning. It reads the folder scans and the scanning folders itself, so a
-/// scan's step redraws this alone and nothing around it.
+/// scanning. The slot reads the folder scans and the scanning folders itself,
+/// so a scan's step redraws the slot alone and nothing around it.
 struct FolderScanActivitySlot: View {
     let importStore: ImportStore
 
@@ -154,8 +154,8 @@ struct FolderScanActivitySlot: View {
     }
 }
 
-/// The filter row's watched-folder scan indicator; clicking it lists each
-/// folder being scanned with its found count.
+/// The filter row's watched-folder scan indicator. A click on it lists each
+/// folder bae is scanning, with its found count.
 struct FolderScanProgressIndicator: View {
     let folders: [BridgeScanningFolder]
 

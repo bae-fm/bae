@@ -467,8 +467,9 @@ impl LibraryManager {
         )
     }
 
-    /// Each Activity transfer line's bar, computed again as the bar rows'
-    /// live query reruns or a file or release's transfer moves.
+    /// A watch that computes each Activity transfer line's bar again whenever
+    /// the bar rows' live query reruns or a file's or release's transfer
+    /// moves.
     pub fn watch_activity_bars(&self) -> crate::ActivityBarsWatch {
         crate::ActivityBarsWatch::of(
             bae_store::live_results::LiveResults::new(

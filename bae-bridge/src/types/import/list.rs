@@ -179,7 +179,7 @@ pub struct BridgeFolderScans {
     pub statuses: Vec<BridgeWatchedFolderScanStatus>,
     /// Whether any root's last scan failed or left it not watched.
     pub has_problem: bool,
-    /// Whether any root is being scanned, for the filter bar's scan
+    /// Whether bae is scanning any root, for the filter bar's scan
     /// indicator.
     pub scanning: bool,
     /// Each root's problem that the app has raised no alert for, in
@@ -207,7 +207,7 @@ pub enum BridgeFolderScanAlertKind {
     NotWatched,
 }
 
-/// A root being scanned, with how many folders its scan has stored so far,
+/// A root bae is scanning, with how many folders its scan has stored so far,
 /// as the scan indicator lists it. Mirrors `bae_import::ScanningFolder`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeScanningFolder {

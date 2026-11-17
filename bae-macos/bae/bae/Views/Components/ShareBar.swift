@@ -2,8 +2,8 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// The system's small progress bar for a share of bytes. It reads its key's
-/// latest value once per display frame while the stream sends new values for
+/// The system's small progress bar for a share of bytes. The bar reads its
+/// key's latest value once per display frame while the stream sends new values for
 /// the key, with no SwiftUI update. Before the stream holds the key, the bar
 /// is empty.
 final class ShareBarNSView: NSProgressIndicator {

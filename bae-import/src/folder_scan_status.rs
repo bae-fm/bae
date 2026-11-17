@@ -10,8 +10,9 @@
 //! in the step that changes them, and the import service empties them as the
 //! library opens, so a folder never shows as scanning with nothing scanning
 //! it. How many folders a scan has stored changes each time the scan stores
-//! one, so a live query of its own lists the folders being scanned with that
-//! count, and a stored folder runs only that query again.
+//! one, so a live query of its own lists the folders bae is scanning with
+//! that count, and when a scan stores a folder, coven runs only that query
+//! again.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

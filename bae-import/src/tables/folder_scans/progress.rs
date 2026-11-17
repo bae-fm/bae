@@ -7,8 +7,8 @@
 //!
 //! The found count moves with every folder a scan walks, so it is not read
 //! here: the scanning folders have a read of their own,
-//! [`ImportTables::subscribe_scanning_folders`], and a folder a scan stores
-//! runs only that read again, never a read of the queue.
+//! [`ImportTables::subscribe_scanning_folders`], and when a scan stores a
+//! folder, coven runs only that read again, never a read of the queue.
 
 use super::*;
 use crate::folder_scan_status::{

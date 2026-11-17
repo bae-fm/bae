@@ -31,7 +31,7 @@ pub struct MovingShare<Key> {
 
 /// Each transfer line's bar, as one read finds it. Transferred bytes change
 /// none of these rows, so coven does not rerun the query for them; coven
-/// reruns it when a batch grows, a release's files are stored or pinned, a
+/// reruns it when a batch grows, bae stores or pins a release's files, a
 /// file starts or ends its upload, or a download starts or ends. A line whose
 /// batch holds no release has an empty bar.
 #[derive(Debug, Clone, PartialEq)]

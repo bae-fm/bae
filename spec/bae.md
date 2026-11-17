@@ -946,7 +946,7 @@ stored moves with every folder it walks, so it is not part of that query: a
 live query of its own lists each folder being scanned with that count, which
 it counts off the index of the scan's candidates. The scan indicator's list of
 folders shows that query's rows, through a subscription like any other
-screen's, and a folder a scan stores runs only that query again. A pass whose failure the
+screen's, and each folder a scan stores makes coven run only that query again. A pass whose failure the
 store won't take, a whole scan's or a changed folder's reading's, still shows as
 failed with its error: the coordinator writes that failure to `folder_scan_held` as the
 folder's status until the folder's next pass starts, with the volume the pass found the
@@ -1289,7 +1289,7 @@ many rows each group's header counts with COUNT queries over the placement's
 rows, which read the placement's indexes. No table stores the counts. The list's count, with the narrowed count it carries, is a live
 query of its own, apart from the windows: a scan's commit changes it without
 resending every window. The list's count also carries every tab's count,
-whatever the list is narrowed by, and the tab bar shows them from it. Coven
+whatever the person narrows the list by, and the tab bar shows them from it. Coven
 bounds a window's read by its range only where the statement compares a column
 with the window's keys; the list's items read a group's header through a
 correlated subquery of the placement, so a scan item or a fold reruns every
@@ -2618,10 +2618,10 @@ query reads or a file's bytes move, from the query's first read on, and
 writes them all to the stream, which holds the latest per release; a release
 the query no longer names leaves the stream. Core also sends each file's share, keyed by file, for the Storage
 manager's rings. Core measures how fast
-they go outside the database, from the same watch's bytes, file by file, as
+the transfers go outside the database, from the same watch's bytes, file by file, as
 each step of them goes, so a file sent in one request has a rate too: a rate
 for each release, its files being sent together, and for every file being sent
-together; no screen shows one file's rate, so none is sent. A
+together; no screen shows one file's rate, so core sends none. A
 file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
 the release offers no storage action but cancelling, which would race it
 otherwise. The query that reads a release's storage state decides each
@@ -6229,7 +6229,7 @@ release's or track's id as UTF-8, or a candidate's key.
   line's bar is its batch's share done plus the share of each file or release
   that bae is transferring (§6.4). The watcher computes the value again each
   time the query returns new rows or the in-memory value changes, starting
-  once the query has returned its first rows. It keeps no copy of what it last
+  once the query has returned its first rows. The watcher keeps no copy of what it last
   sent and nothing from an earlier read. A query's result alone never goes on
   a stream: it reaches the screen in the screen's live query. Every stream is built in the
   bridge's `screens` module. A `feed_*` call starts writing one

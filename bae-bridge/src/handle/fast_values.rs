@@ -40,8 +40,8 @@ impl AppHandle {
 
     /// Write the share of each Activity transfer line's batch bytes done
     /// into a stream by line: `uploads`, `pins` and `moving_to_this_device`.
-    /// A failed read empties the stream and is pulled as an error; the next
-    /// bars fill it again.
+    /// A failed read empties the stream, and the app's next pull gets the
+    /// error; the next bars fill the stream again.
     pub fn feed_activity_bars(&self) -> Arc<KeyedValueStream> {
         crate::screens::activity_bars(self.runtime.clone(), self.run_feed())
     }

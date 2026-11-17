@@ -98,7 +98,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
 /// Each delivery of the outbox's transfers writes both streams whole: every
 /// release's transfer into the releases' stream, and the total into the
 /// total's. A release the delivery doesn't name leaves its stream, and the
-/// total's stream holds nothing once no file is sent.
+/// total's stream holds nothing once the outbox sends no file.
 #[test]
 fn each_outbox_delivery_writes_both_streams_whole() {
     use bae_library::{OutboxTransfers, ReleaseUploadTransfer, UploadBar, UploadTransfer};

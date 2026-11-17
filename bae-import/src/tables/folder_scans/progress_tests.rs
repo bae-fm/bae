@@ -118,7 +118,7 @@ async fn scanning_folders_follow_the_walk_in_flight() {
         .expect("finishing the scan wakes the scanning folders")
         .expect("the query stays open")
         .unwrap();
-    assert!(done.is_empty(), "a finished scan is not listed");
+    assert!(done.is_empty(), "the scanning folders do not list a finished scan");
 }
 
 /// A generation with no outcome that the coordinator does not hold as

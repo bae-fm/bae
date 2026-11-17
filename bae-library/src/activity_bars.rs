@@ -22,10 +22,10 @@ pub struct ActivityBars {
 }
 
 impl ActivityBars {
-    /// The bars of `rows`, each adding to its share done, for each file or
-    /// release that bae is transferring, its share of the batch times how far
-    /// it has got. A file or release whose progress `sent` or `downloading`
-    /// does not hold has got nowhere yet.
+    /// The bars of `rows`. Each bar is its batch's share done plus, for each
+    /// file or release that bae is transferring, its share of the batch times
+    /// the fraction of it that bae has transferred. A file or release whose
+    /// progress `sent` or `downloading` does not hold adds nothing.
     pub(crate) fn of(
         rows: &ActivityBarRows,
         sent: &BTreeMap<coven::FileId, coven::TransferProgress>,
@@ -93,10 +93,10 @@ impl ActivityBarsWatch {
         }
     }
 
-    /// The bars once the query next reads or a transfer next moves, after
-    /// the query's first read, or the failure that kept the query from
-    /// reading; `None` once the query or a transfer watch has ended with its
-    /// store.
+    /// Waits until the query reads or a transfer moves, once the query has
+    /// read for the first time, and returns the bars, or the failure that
+    /// kept the query from reading. Returns `None` once the query or a
+    /// transfer watch stops because its store closed.
     pub async fn next(&mut self) -> Option<Result<ActivityBars, DbError>> {
         loop {
             tokio::select! {
