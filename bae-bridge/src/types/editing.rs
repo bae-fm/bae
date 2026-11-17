@@ -648,8 +648,9 @@ mirror_enum! {
 }
 
 /// A library release's edit session as its editor shows it now: the form
-/// with each change made in it, the release's cover as it is now, what the
-/// editor shows beside the form, the album a save files the release under,
+/// with each change made in it, the release's cover as it is now, the
+/// summary of its audio, its tracks laid out beside their form rows, the
+/// files no track plays from, the album a save files the release under,
 /// what the library holds for each artist credit the form carries, whether a
 /// save would write anything the session did not open on, and why the form
 /// can't be saved, when it can't. Mirrors `bae_import::ReleaseEditDraft`.
@@ -658,7 +659,14 @@ mirror_enum! {
 pub struct BridgeReleaseEditDraft {
     pub edit: BridgeRawReleaseEdit,
     pub cover: Option<BridgeImageRef>,
-    pub display: BridgeReleaseEditDisplayContext,
+    pub source_audio: Option<BridgeSourceAudioSummary>,
+    /// The release's tracks laid out as the table draws them, each beside
+    /// the form row that edits it; `None` when the release has no tracks.
+    pub sides: Option<Vec<BridgeReleaseEditTrackSide>>,
+    /// The files the release carries that no track plays from, in the
+    /// release's file order: what its Files section lists under the tracks.
+    /// `None` when it carries none.
+    pub files: Option<Vec<BridgeMappingFile>>,
     pub album: BridgeDraftAlbum,
     pub artist_resolutions: Vec<BridgeResolvedCredit>,
     pub changed: bool,
@@ -685,19 +693,28 @@ pub struct BridgeReleaseEditTrackContext {
     pub position_text: String,
 }
 
-/// Consecutive tracks of one side that the editor's table draws together.
+/// One row of the editor's track table: the form row that edits a track,
+/// and the library's facts about the track. Mirrors
+/// `bae_import::ReleaseEditTrackRow`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditTrackRow {
+    pub edit: BridgeRawTrackEdit,
+    pub context: BridgeReleaseEditTrackContext,
+}
+
+/// Consecutive rows of one side that the editor's table draws together.
 /// Mirrors `bae_import::ReleaseEditTrackRun`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
-    Track { track: BridgeReleaseEditTrackContext },
+    Track { row: BridgeReleaseEditTrackRow },
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
     /// is named once above them.
-    Sheet { source: BridgeReleaseEditTrackSource, tracks: Vec<BridgeReleaseEditTrackContext> },
+    Sheet { source: BridgeReleaseEditTrackSource, rows: Vec<BridgeReleaseEditTrackRow> },
 }
 
 /// One side of the release in the editor's track table and the runs of
-/// tracks on it. Mirrors `bae_import::ReleaseEditTrackSide`.
+/// rows on it. Mirrors `bae_import::ReleaseEditTrackSide`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,
@@ -705,18 +722,6 @@ pub struct BridgeReleaseEditTrackSide {
     /// has no heading.
     pub header_key: Option<String>,
     pub runs: Vec<BridgeReleaseEditTrackRun>,
-}
-
-/// Persisted release facts used to render the shared metadata editor.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditDisplayContext {
-    pub source_audio: Option<BridgeSourceAudioSummary>,
-    /// The release's tracks, laid out as the table draws them.
-    pub sides: Vec<BridgeReleaseEditTrackSide>,
-    /// The files the release carries that no track plays from, in the
-    /// release's file order: what its Files section lists under the tracks.
-    pub files: Vec<BridgeMappingFile>,
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors

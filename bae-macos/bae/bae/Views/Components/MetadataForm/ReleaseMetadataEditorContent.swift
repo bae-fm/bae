@@ -7,7 +7,7 @@ import SwiftUI
 /// plays from.
 struct ReleaseMetadataEditorContent<Lead: View>: View {
     let session: ReleaseMetadataEditSession
-    /// The session's draft as its subscription answered it last.
+    /// The session's draft as its subscription sent it last.
     let draft: BridgeReleaseEditDraft
     /// What heads the draft card: the action row and the notices about it.
     @ViewBuilder
@@ -70,9 +70,9 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 MacImportImages(images: images, onOpen: onOpenImages)
             }
             trackTable
-            if !draft.display.files.isEmpty {
+            if let files = draft.files {
                 ReleaseFilesView(
-                    rows: draft.display.files.map { .file(file: $0) },
+                    rows: files.map { .file(file: $0) },
                     onOpenDocument: onOpenDocument
                 )
             }
@@ -99,7 +99,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
 
     @ViewBuilder
     private var sourceAudio: some View {
-        if let summary = draft.display.sourceAudio {
+        if let summary = draft.sourceAudio {
             ReleaseSourceAudioSummaryView(sourceAudio: summary)
         }
     }
@@ -108,21 +108,20 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
-                    if draft.trackSides.isEmpty {
+                    if let sides = draft.sides {
+                        ForEach(Array(sides.enumerated()), id: \.offset) {
+                            index,
+                            side in
+                            sideRows(side, index: index)
+                        }
+                    }
+                    else {
                         headerRow
                         Text("No tracks")
                             .themeText(.body)
                             .foregroundStyle(.secondary)
                             .frame(width: tableWidth)
                             .padding(.vertical, ThemeSpace.edge)
-                    }
-                    else {
-                        ForEach(
-                            Array(draft.trackSides.enumerated()),
-                            id: \.element.id
-                        ) { index, side in
-                            sideRows(side, index: index)
-                        }
                     }
                 }
                 .frame(width: tableWidth, alignment: .leading)
@@ -139,27 +138,26 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     /// A source shared by several tracks gets a caption above them; a single
     /// track's source stays in its row.
     @ViewBuilder
-    private func sideRows(_ side: ReleaseMetadataTrackSide, index: Int)
+    private func sideRows(_ side: BridgeReleaseEditTrackSide, index: Int)
         -> some View
     {
         if index == 0 {
             headerRow
         }
-        if !side.headerText.isEmpty {
-            sideHeader(side.headerText, index: index)
+        let headerText = side.side.headerText(key: side.headerKey)
+        if !headerText.isEmpty {
+            sideHeader(headerText, index: index)
         }
-        ForEach(Array(side.groups.enumerated()), id: \.element.id) {
-            _,
-            group in
-            let captionSource = group.sharedSource
-            if let source = captionSource {
+        ForEach(Array(side.runs.enumerated()), id: \.offset) { _, run in
+            switch run {
+            case .track(let row):
+                trackRow(row, sourceIsInCaption: false)
+                    .id(row.edit.id)
+            case .sheet(let source, let rows):
                 sharedSourceCaption(source)
-            }
-            ForEach(group.tracks) { item in
-                trackRow(
-                    item,
-                    sourceIsInCaption: captionSource != nil
-                )
+                ForEach(rows, id: \.edit.id) { row in
+                    trackRow(row, sourceIsInCaption: true)
+                }
             }
         }
     }
@@ -202,18 +200,18 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     }
 
     private func trackRow(
-        _ item: ReleaseMetadataTrackItem,
+        _ row: BridgeReleaseEditTrackRow,
         sourceIsInCaption: Bool
     ) -> some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            sourceCell(item, sourceIsInCaption: sourceIsInCaption)
+            sourceCell(row.context, sourceIsInCaption: sourceIsInCaption)
             ReleaseMetadataTrackRow(
-                track: item.track,
-                length: item.context.durationClock,
+                track: row.edit,
+                length: row.context.durationClock,
                 listedLength: nil,
                 columns: columns,
                 editingCommands: session.editingCommands,
-                position: item.context.positionText,
+                position: row.context.positionText,
                 artistSearch: library.artistSearch,
                 onChange: { await session.updateTrack($0) }
             )
@@ -227,12 +225,12 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     }
 
     private func sourceCell(
-        _ item: ReleaseMetadataTrackItem,
+        _ context: BridgeReleaseEditTrackContext,
         sourceIsInCaption: Bool
     ) -> some View {
         HStack(spacing: ThemeSpace.related) {
             Button {
-                onPlayTrack?(item.context.trackId)
+                onPlayTrack?(context.trackId)
             } label: {
                 Image(systemName: "play.fill")
                     .themeIcon(.small)
@@ -242,7 +240,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
             if !sourceIsInCaption {
-                let name = item.context.source.name
+                let name = context.source.name
                 Text(verbatim: name)
                     .themeText(.mono)
                     .cutLine(.fileName)

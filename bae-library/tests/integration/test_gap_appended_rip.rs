@@ -85,8 +85,13 @@ async fn the_editor_s_rows_each_name_the_file_their_body_plays_from() {
         .await
         .expect("read the draft")
         .expect("the session is open");
-    let sources: Vec<&str> =
-        draft.display.tracks().map(|track| track.source.name.as_str()).collect();
+    let sources: Vec<&str> = draft
+        .sides
+        .iter()
+        .flatten()
+        .flat_map(|side| side.rows())
+        .map(|row| row.context.source.name.as_str())
+        .collect();
 
     assert_eq!(sources, FILES);
 }

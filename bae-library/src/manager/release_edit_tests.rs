@@ -910,13 +910,10 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     store_test_cover(manager, &release.id, b"cover").await;
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
-    let seed = opened(manager, &session).await;
+    let draft = draft_now(manager, &session).await;
 
-    assert_eq!(
-        draft_now(manager, &session).await.cover.map(|cover| cover.id),
-        Some(release.id.clone())
-    );
-    let sides = &seed.display.sides;
+    assert_eq!(draft.cover.map(|cover| cover.id), Some(release.id.clone()));
+    let sides = draft.sides.expect("the release has tracks");
     assert_eq!(
         sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
         [
@@ -924,19 +921,21 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
             &bae_types::mediums::TrackSide::Disc { disc: 2 },
         ]
     );
-    let bae_import::ReleaseEditTrackRun::Track(first_context) = &sides[0].runs[0] else {
+    let bae_import::ReleaseEditTrackRun::Track(first_row) = &sides[0].runs[0] else {
         panic!("a track on its own file is a run of its own");
     };
-    assert_eq!(first_context.track_id, first.id);
-    assert_eq!(first_context.source.layout, bae_records::source_audio::SourceAudioLayout::File);
+    assert_eq!(first_row.context.track_id, first.id);
+    assert_eq!(first_row.edit.id, first.id);
+    assert_eq!(first_row.context.source.layout, bae_records::source_audio::SourceAudioLayout::File);
     // A pregap stored in the file before is not the track's source.
-    let bae_import::ReleaseEditTrackRun::Track(second_context) = &sides[1].runs[0] else {
+    let bae_import::ReleaseEditTrackRun::Track(second_row) = &sides[1].runs[0] else {
         panic!("the one track of its disc is a run of its own");
     };
-    assert_eq!(second_context.track_id, second.id);
-    assert_eq!(second_context.source.name, "body.flac");
+    assert_eq!(second_row.context.track_id, second.id);
+    assert_eq!(second_row.edit.title, "Second Track");
+    assert_eq!(second_row.context.source.name, "body.flac");
     assert!(matches!(
-        seed.display.source_audio,
+        draft.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })
     ));
 }

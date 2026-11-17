@@ -157,32 +157,7 @@ struct ReleaseEditorTests {
         layout: BridgeSourceAudioLayout,
         shared: Bool
     ) async throws -> [CGRect] {
-        var draft = PreviewData.releaseEditDraft(trackCount: 2)
-        let contexts = draft.edit.tracks.enumerated()
-            .map { index, track in
-                PreviewData.releaseEditTrackContext(
-                    trackId: track.id,
-                    index: index,
-                    source: BridgeReleaseEditTrackSource(
-                        fileId: shared ? "disc.flac" : "track-\(index).flac",
-                        name: shared
-                            ? "Disc audio.flac"
-                            : "Disc 1/0\(index + 1) A source track with a long filename.flac",
-                        layout: layout
-                    )
-                )
-            }
-        // Core lays two tracks a sheet carves from one file out as one run,
-        // and every other track as a run of its own.
-        draft.display.sides = [
-            BridgeReleaseEditTrackSide(
-                side: .flat,
-                headerKey: nil,
-                runs: shared
-                    ? [.sheet(source: contexts[0].source, tracks: contexts)]
-                    : contexts.map { .track(track: $0) }
-            )
-        ]
+        let draft = twoTrackDraft(layout: layout, shared: shared)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             draft: draft
@@ -217,6 +192,45 @@ struct ReleaseEditorTests {
                 return field.convert(field.bounds, to: host)
             }
         }
+    }
+
+    /// A draft of two tracks, each on a file of its own, or both carved by a
+    /// sheet from one file when `shared` is true.
+    private func twoTrackDraft(
+        layout: BridgeSourceAudioLayout,
+        shared: Bool
+    ) -> BridgeReleaseEditDraft {
+        var draft = PreviewData.releaseEditDraft(trackCount: 2)
+        let rows = draft.edit.tracks.enumerated()
+            .map { index, track in
+                BridgeReleaseEditTrackRow(
+                    edit: track,
+                    context: PreviewData.releaseEditTrackContext(
+                        trackId: track.id,
+                        index: index,
+                        source: BridgeReleaseEditTrackSource(
+                            fileId: shared
+                                ? "disc.flac" : "track-\(index).flac",
+                            name: shared
+                                ? "Disc audio.flac"
+                                : "Disc 1/0\(index + 1) A source track with a long filename.flac",
+                            layout: layout
+                        )
+                    )
+                )
+            }
+        // Core lays two tracks a sheet carves from one file out as one run,
+        // and every other track as a run of its own.
+        draft.sides = [
+            BridgeReleaseEditTrackSide(
+                side: .flat,
+                headerKey: nil,
+                runs: shared
+                    ? [.sheet(source: rows[0].context.source, rows: rows)]
+                    : rows.map { .track(row: $0) }
+            )
+        ]
+        return draft
     }
 }
 

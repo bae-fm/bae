@@ -159,8 +159,14 @@ mirror_struct! {
 
 impl BridgeReleaseEditTrackContext {
     fn from_core(context: bae_import::ReleaseEditTrackContext) -> Self {
-        let bae_import::ReleaseEditTrackContext { track_id, source, duration_ms, position_text } =
-            context;
+        // The table's sides say which side a track is on.
+        let bae_import::ReleaseEditTrackContext {
+            track_id,
+            side: _,
+            source,
+            duration_ms,
+            position_text,
+        } = context;
         Self {
             track_id,
             source: BridgeReleaseEditTrackSource::from_core(source),
@@ -170,14 +176,23 @@ impl BridgeReleaseEditTrackContext {
     }
 }
 
+mirror_struct! {
+    BridgeReleaseEditTrackRow = bae_import::ReleaseEditTrackRow,
+    from_core: fn,
+    fields: {
+        edit: (BridgeRawTrackEdit),
+        context: (BridgeReleaseEditTrackContext),
+    },
+}
+
 mirror_enum! {
     BridgeReleaseEditTrackRun = bae_import::ReleaseEditTrackRun,
     from_core: fn,
     variants: {
-        Track(track: (BridgeReleaseEditTrackContext)),
+        Track(row: (BridgeReleaseEditTrackRow)),
         Sheet {
             source: (BridgeReleaseEditTrackSource),
-            tracks: (each BridgeReleaseEditTrackContext),
+            rows: (each BridgeReleaseEditTrackRow),
         },
     },
 }
@@ -196,26 +211,35 @@ impl BridgeReleaseEditTrackSide {
     }
 }
 
-mirror_struct! {
-    BridgeReleaseEditDisplayContext = bae_import::ReleaseEditDisplayContext,
-    from_core: fn,
-    fields: {
-        source_audio: (opt BridgeSourceAudioSummary),
-        sides: (each BridgeReleaseEditTrackSide),
-        files: (each BridgeMappingFile),
-    },
-}
-
-mirror_struct! {
-    BridgeReleaseEditDraft = bae_import::ReleaseEditDraft,
-    from_core: pub(crate) fn,
-    fields: {
-        edit: (BridgeRawReleaseEdit),
-        cover: (opt BridgeImageRef),
-        display: (BridgeReleaseEditDisplayContext),
-        album: (BridgeDraftAlbum),
-        artist_resolutions: (each BridgeResolvedCredit),
-        changed,
-        invalid: (opt BridgeValidationReason),
-    },
+/// Not a `mirror_struct`: the mirror macro takes no optional list.
+impl BridgeReleaseEditDraft {
+    pub(crate) fn from_core(draft: bae_import::ReleaseEditDraft) -> Self {
+        let bae_import::ReleaseEditDraft {
+            edit,
+            cover,
+            source_audio,
+            sides,
+            files,
+            album,
+            artist_resolutions,
+            changed,
+            invalid,
+        } = draft;
+        Self {
+            edit: BridgeRawReleaseEdit::from_core(edit),
+            cover: cover.map(BridgeImageRef::from_core),
+            source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
+            sides: sides.map(|sides| {
+                sides.into_iter().map(BridgeReleaseEditTrackSide::from_core).collect()
+            }),
+            files: files.map(|files| files.into_iter().map(BridgeMappingFile::from_core).collect()),
+            album: BridgeDraftAlbum::from_core(album),
+            artist_resolutions: artist_resolutions
+                .into_iter()
+                .map(BridgeResolvedCredit::from_core)
+                .collect(),
+            changed,
+            invalid: invalid.map(BridgeValidationReason::from_core),
+        }
+    }
 }

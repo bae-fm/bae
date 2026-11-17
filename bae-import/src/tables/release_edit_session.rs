@@ -26,12 +26,14 @@ use crate::{
     AlbumPick, DraftAlbum, LibraryDraft, LibraryTrack, RawReleaseEdit, RawTrackEdit,
     ReleaseEditDraft, ReleaseEditLoadError, ReleaseEditSeed, TrackArtistAssignments,
 };
+pub(crate) use draft::{release_edit_draft_rows_on, ReleaseEditDraftRows};
 use rusqlite::ToSql;
 use seed::seed_on;
 pub use seed::ReleaseEditContext;
 #[cfg(any(test, feature = "test-utils"))]
 use seed::{release_edit_rows_on, ReleaseEditRows};
 
+mod draft;
 mod seed;
 
 /// The release edit sessions' part of the library's schema.
@@ -416,14 +418,12 @@ fn session_release_on(sql: &impl coven::SqlRead, session: i64) -> Result<Option<
 
 // ── Reading a session ───────────────────────────────────────────────────
 
-/// The session `session` as its rows hold it; `None` once it is closed.
-pub(super) fn load_release_edit_session_on(
-    sql: &impl coven::SqlRead,
-    session: i64,
-) -> Result<Option<StoredReleaseEdit>, DbError> {
+/// A form track as a JSON object a [`StoredSessionTrack`] decodes, over the
+/// row `t` of `release_edit_track`: its title, its artists, its applied
+/// place, and its roles and works.
+fn form_track_json_sql() -> String {
     let tables = &RELEASE_EDIT_SESSION_DRAFT;
-    let owner = "s.session";
-    let track = format!(
+    format!(
         "json_object( \
              'track_id', t.track_id, 'title', t.title, 'kind', t.artist_assignment_kind, \
              'assignments', json({assignments}), \
@@ -439,7 +439,17 @@ pub(super) fn load_release_edit_session_on(
         ),
         roles = track_roles_json_sql(tables, "t.session", "t.track_id"),
         works = track_works_json_sql(tables, "t.session", "t.track_id"),
-    );
+    )
+}
+
+/// The session `session` as its rows hold it; `None` once it is closed.
+pub(super) fn load_release_edit_session_on(
+    sql: &impl coven::SqlRead,
+    session: i64,
+) -> Result<Option<StoredReleaseEdit>, DbError> {
+    let tables = &RELEASE_EDIT_SESSION_DRAFT;
+    let owner = "s.session";
+    let track = form_track_json_sql();
     let row = sql
         .query_row(
             &format!(
@@ -534,6 +544,23 @@ struct StoredSessionTrack {
     works: Vec<String>,
 }
 
+impl StoredSessionTrack {
+    /// The form row this track is.
+    fn form_row(&self) -> Result<RawTrackEdit, DbError> {
+        let assignments = || assignments_of(&self.assignments.to_string(), "track artists");
+        Ok(RawTrackEdit {
+            id: self.track_id.clone(),
+            title: self.title.clone(),
+            artist_assignments: match self.kind.as_str() {
+                "album_artists" => TrackArtistAssignments::AlbumArtists,
+                "explicit" => TrackArtistAssignments::Explicit(assignments()?),
+                other => return Err(DbError::unreadable("a session track's artist kind", other)),
+            },
+            file: None,
+        })
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct StoredPlace {
     medium: std::num::NonZeroU16,
@@ -546,21 +573,6 @@ impl SessionRow {
     fn session(self) -> Result<StoredReleaseEdit, DbError> {
         let opened: ReleaseEditSeed = decoded(&self.opened, "opened release")?;
         let tracks: Vec<StoredSessionTrack> = decoded(&self.tracks, "tracks")?;
-        let form_track = |track: &StoredSessionTrack| -> Result<RawTrackEdit, DbError> {
-            let assignments = || assignments_of(&track.assignments.to_string(), "track artists");
-            Ok(RawTrackEdit {
-                id: track.track_id.clone(),
-                title: track.title.clone(),
-                artist_assignments: match track.kind.as_str() {
-                    "album_artists" => TrackArtistAssignments::AlbumArtists,
-                    "explicit" => TrackArtistAssignments::Explicit(assignments()?),
-                    other => {
-                        return Err(DbError::unreadable("a session track's artist kind", other))
-                    }
-                },
-                file: None,
-            })
-        };
         let form = RawReleaseEdit {
             album_title: self.album_title,
             album_artist_assignments: assignments_of(&self.album_artists, "album artists")?,
@@ -571,7 +583,7 @@ impl SessionRow {
                 barcodes: self.barcodes,
                 facts: self.facts,
             },
-            tracks: tracks.iter().map(form_track).collect::<Result<_, _>>()?,
+            tracks: tracks.iter().map(StoredSessionTrack::form_row).collect::<Result<_, _>>()?,
         };
         let applied = if self.applied {
             let draft_tracks = tracks
@@ -629,172 +641,6 @@ impl SessionRow {
             (true, Some(album_id)) => AlbumPick::Album { album_id },
         };
         Ok(StoredReleaseEdit { release_id: self.release_id, opened, form, applied, album_pick })
-    }
-}
-
-/// The album a save of the session `session` files its release under, read
-/// in one statement: the one picked, else, with a catalog applied, the one
-/// its records name (a new one where they name none the library holds), else
-/// the album the release is in.
-fn release_edit_album_on(sql: &impl coven::SqlRead, session: i64) -> Result<DraftAlbum, DbError> {
-    let target = bae_records::records::release_records::records_target_album_sql(
-        "SELECT position, catalog, kind, key, album_key FROM release_edit_record \
-         WHERE session = :session",
-        "(SELECT release_id FROM release_edit_session WHERE session = :session)",
-    );
-    let (kind, album_id, title, credits): (String, Option<String>, Option<String>, String) = sql
-        .query_row(
-            &format!(
-                "WITH choice (kind, album_id) AS ( \
-                     SELECT CASE WHEN pick.album_id IS NULL THEN 'new' ELSE 'album' END, \
-                            pick.album_id \
-                     FROM release_edit_album_pick pick WHERE pick.session = :session \
-                     UNION ALL \
-                     SELECT CASE WHEN target.target_album_id IS NULL THEN 'none' ELSE 'named' END, \
-                            target.target_album_id \
-                     FROM ({target}) AS target \
-                     WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
-                                       WHERE session = :session) \
-                       AND EXISTS (SELECT 1 FROM release_edit_applied WHERE session = :session) \
-                     UNION ALL \
-                     SELECT 'named', s.album_id \
-                     FROM (SELECT r.album_id FROM release_edit_session s \
-                           JOIN releases r ON r.id = s.release_id \
-                           WHERE s.session = :session) AS s \
-                     WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
-                                       WHERE session = :session) \
-                       AND NOT EXISTS (SELECT 1 FROM release_edit_applied \
-                                       WHERE session = :session)) \
-                 SELECT choice.kind, a.id, a.title, {credits} \
-                 FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
-                credits = bae_records::records::query::album_credits_json_sql(),
-            ),
-            named_params! { ":session": session },
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?;
-    let album = |kind: &str| -> Result<(String, String, bae_types::credits::CreditLine), DbError> {
-        match (album_id.clone(), title.clone()) {
-            (Some(album_id), Some(title)) => {
-                Ok((album_id, title, bae_records::records::read::credit_line_of_json(&credits)?))
-            }
-            _ => Err(DbError::unreadable(
-                format!("the {kind} album of release edit session {session}"),
-                None::<String>,
-            )),
-        }
-    };
-    Ok(match kind.as_str() {
-        "none" => DraftAlbum::New,
-        "new" => DraftAlbum::PickedNew,
-        "named" => {
-            let (album_id, title, artist_line) = album("named")?;
-            DraftAlbum::Named { album_id, title, artist_line }
-        }
-        "album" => {
-            let (album_id, title, artist_line) = album("picked")?;
-            DraftAlbum::Picked { album_id, title, artist_line }
-        }
-        other => return Err(DbError::unreadable("the kind of a session's album", other)),
-    })
-}
-
-/// The version of the cover of the session's release, `None` for none.
-fn cover_version_on(sql: &impl coven::SqlRead, session: i64) -> Result<Option<String>, DbError> {
-    Ok(sql.query_row(
-        &format!(
-            "SELECT {} FROM release_edit_session s WHERE s.session = ?",
-            bae_records::records::files::cover_version_sql("s.release_id"),
-        ),
-        [session],
-        |row| row.get(0),
-    )?)
-}
-
-/// What a session's draft is read from: its rows, what the library holds
-/// for each credit its form carries, the album a save files it under, its
-/// release's cover, its release's tracks with their audio, placed on the
-/// mediums a catalog applied in the session gives them or else on the
-/// release's own, and the release's files.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ReleaseEditDraftRows {
-    session: StoredReleaseEdit,
-    artist_resolutions: Vec<bae_records::ResolvedCredit>,
-    album: DraftAlbum,
-    cover_version: Option<String>,
-    tracks: Vec<bae_records::DbReleaseEditTrack>,
-    files: bae_records::DbReleaseFiles,
-}
-
-/// The session's release, as an SQL expression over the parameter
-/// `:session`.
-const SESSION_RELEASE: &str =
-    "(SELECT release_id FROM release_edit_session WHERE session = :session)";
-
-/// The rows of the session `session`'s draft, one statement per part, each
-/// binding only the session's id; `None` once it is closed.
-pub(crate) fn release_edit_draft_rows_on(
-    sql: &impl coven::SqlRead,
-    session: i64,
-) -> Result<Option<ReleaseEditDraftRows>, DbError> {
-    let Some(stored) = load_release_edit_session_on(sql, session)? else {
-        return Ok(None);
-    };
-    let not_applied = "NOT EXISTS (SELECT 1 FROM release_edit_applied WHERE session = :session)";
-    let mediums = format!(
-        "(SELECT position AS id, {SESSION_RELEASE} AS release_id, position, medium, side_count \
-          FROM release_edit_medium WHERE session = :session \
-          UNION ALL \
-          SELECT id, release_id, position, medium, side_count FROM release_mediums \
-          WHERE release_id = {SESSION_RELEASE} AND {not_applied})"
-    );
-    let places = format!(
-        "(SELECT track_id AS id, medium AS medium_id, side, track_number \
-          FROM release_edit_track_place WHERE session = :session \
-          UNION ALL \
-          SELECT id, medium_id, side, track_number FROM tracks \
-          WHERE release_id = {SESSION_RELEASE} AND {not_applied})"
-    );
-    Ok(Some(ReleaseEditDraftRows {
-        session: stored,
-        artist_resolutions: credit_resolutions_on(sql, CreditSource::Session(&session))?,
-        album: release_edit_album_on(sql, session)?,
-        cover_version: cover_version_on(sql, session)?,
-        tracks: bae_records::records::release_edit_tracks_on(
-            sql,
-            SESSION_RELEASE,
-            bae_records::records::MediumsSource::Draft { mediums: &mediums, places: &places },
-            named_params! { ":session": session },
-        )?,
-        files: bae_records::records::release_files_on(
-            sql,
-            SESSION_RELEASE,
-            named_params! { ":session": session },
-        )?,
-    }))
-}
-
-impl ReleaseEditDraftRows {
-    /// The draft the editor shows: the form, the tracks laid out, whether a
-    /// save would write anything the session did not open on, and why the
-    /// editor can't save the form, when it can't.
-    pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {
-        let Self { session, artist_resolutions, album, cover_version, tracks, files } = self;
-        let StoredReleaseEdit { release_id, opened, form, applied, album_pick } = session;
-        let changed = form != opened.edit || applied.is_some() || album_pick != AlbumPick::Records;
-        let display =
-            crate::ReleaseEditDisplayContext::from_raw(&files, tracks).map_err(|error| {
-                DbError::unreadable(format!("the tracks of release {release_id}"), error)
-            })?;
-        let invalid = form.shape().err();
-        Ok(ReleaseEditDraft {
-            edit: form,
-            cover: bae_records::cover_ref(&release_id, cover_version),
-            display,
-            album,
-            artist_resolutions,
-            changed,
-            invalid,
-        })
     }
 }
 

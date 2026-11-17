@@ -498,13 +498,15 @@ mod conversion_roundtrip {
             let bridge = BridgeReleaseEditDraft::from_core(bae_import::ReleaseEditDraft {
                 edit: edit.clone(),
                 cover: None,
-                display: bae_import::ReleaseEditDisplayContext {
-                    source_audio: None,
-                    sides: vec![bae_import::ReleaseEditTrackSide {
-                        side: bae_types::mediums::TrackSide::Disc { disc: 2 },
-                        runs: vec![bae_import::ReleaseEditTrackRun::Track(
-                            bae_import::ReleaseEditTrackContext {
+                source_audio: None,
+                sides: Some(vec![bae_import::ReleaseEditTrackSide {
+                    side: bae_types::mediums::TrackSide::Disc { disc: 2 },
+                    runs: vec![bae_import::ReleaseEditTrackRun::Track(
+                        bae_import::ReleaseEditTrackRow {
+                            edit: edit.tracks[0].clone(),
+                            context: bae_import::ReleaseEditTrackContext {
                                 track_id: "track-id".to_string(),
+                                side: bae_types::mediums::TrackSide::Disc { disc: 2 },
                                 source: bae_import::ReleaseEditTrackSource {
                                     file_id: "file-id".to_string(),
                                     name: "source.flac".to_string(),
@@ -513,10 +515,10 @@ mod conversion_roundtrip {
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),
                             },
-                        )],
-                    }],
-                    files: Vec::new(),
-                },
+                        },
+                    )],
+                }]),
+                files: None,
                 album: bae_import::DraftAlbum::Named {
                     album_id: "album-id".to_string(),
                     line: bae_import::AlbumLine::TitleAndArtists {
@@ -543,14 +545,16 @@ mod conversion_roundtrip {
                     },
                 }
             );
-            let side = &bridge.display.sides[0];
+            let side = &bridge.sides.as_ref().expect("the release has tracks")[0];
             assert_eq!(side.header_key.as_deref(), Some("core.track.disc"));
-            let BridgeReleaseEditTrackRun::Track { track } = &side.runs[0] else {
+            let BridgeReleaseEditTrackRun::Track { row } = &side.runs[0] else {
                 panic!("the side's one run is its track");
             };
-            assert_eq!(track.track_id, "track-id");
-            assert_eq!(track.source.name, "source.flac");
-            let clock = track.duration_clock;
+            assert_eq!(row.edit.title, "Track Title");
+            assert_eq!(row.context.track_id, "track-id");
+            assert_eq!(row.context.source.name, "source.flac");
+            assert!(bridge.files.is_none());
+            let clock = row.context.duration_clock;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
         }
     }

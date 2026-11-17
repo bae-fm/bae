@@ -492,9 +492,9 @@ impl Records {
 /// ordinal and its number there, how many audio formats it stores, how many
 /// main segments they hold, and the first main segment's file id, with the
 /// name and stored audio layout of the release file of that id when the
-/// release holds one.
+/// release holds one. [`release_edit_track_of_row`] reads each row.
 #[cfg(desktop)]
-fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
+pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
     format!(
         "WITH {placed}, \
          main AS ( \
@@ -528,52 +528,53 @@ pub fn release_edit_tracks_on(
     source: MediumsSource<'_>,
     params: impl rusqlite::Params,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
-    Ok(sql.query(&release_edit_tracks_sql(release, source), params, |row| {
-        let main_file_id: Option<String> = row.get("main_file_id")?;
-        let found: bool = row.get("main_file_found")?;
-        let name: Option<String> = row.get("main_file_name")?;
-        let layout: Option<String> = row.get("main_file_layout")?;
-        let main_segment = main_file_id
-            .map(|file_id| {
-                let file = match (found, name) {
-                    (true, Some(name)) => Some(DbReleaseEditSourceFile {
-                        name,
-                        layout: layout
-                            .map(|layout| {
-                                super::read::source_audio_layout_value(
-                                    row,
-                                    "main_file_layout",
-                                    &layout,
-                                )
-                            })
-                            .transpose()?,
-                    }),
-                    (false, _) => None,
-                    (true, None) => {
-                        return Err(bae_store::read::column_conversion_error(
-                            row,
-                            "main_file_name",
-                            format!("release file {file_id} has no name"),
-                        ))
-                    }
-                };
-                Ok(DbReleaseEditSegment { file_id, file })
-            })
-            .transpose()?;
-        let position = super::release_tracks::track_position_of(
-            &row.get::<_, String>("side_kind")?,
-            row.get("side_ordinal")?,
-            row.get("place_number")?,
-        )
-        .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
-        Ok(DbReleaseEditTrack {
-            track: row_to_track(row)?,
-            position,
-            audio_format_count: row.get("audio_format_count")?,
-            main_segment_count: row.get("main_count")?,
-            main_segment,
+    Ok(sql.query(&release_edit_tracks_sql(release, source), params, release_edit_track_of_row)?)
+}
+
+/// One row of [`release_edit_tracks_sql`]: a track as the release editor
+/// reads its audio.
+#[cfg(desktop)]
+pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbReleaseEditTrack> {
+    let main_file_id: Option<String> = row.get("main_file_id")?;
+    let found: bool = row.get("main_file_found")?;
+    let name: Option<String> = row.get("main_file_name")?;
+    let layout: Option<String> = row.get("main_file_layout")?;
+    let main_segment = main_file_id
+        .map(|file_id| {
+            let file = match (found, name) {
+                (true, Some(name)) => Some(DbReleaseEditSourceFile {
+                    name,
+                    layout: layout
+                        .map(|layout| {
+                            super::read::source_audio_layout_value(row, "main_file_layout", &layout)
+                        })
+                        .transpose()?,
+                }),
+                (false, _) => None,
+                (true, None) => {
+                    return Err(bae_store::read::column_conversion_error(
+                        row,
+                        "main_file_name",
+                        format!("release file {file_id} has no name"),
+                    ))
+                }
+            };
+            Ok(DbReleaseEditSegment { file_id, file })
         })
-    })?)
+        .transpose()?;
+    let position = super::release_tracks::track_position_of(
+        &row.get::<_, String>("side_kind")?,
+        row.get("side_ordinal")?,
+        row.get("place_number")?,
+    )
+    .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
+    Ok(DbReleaseEditTrack {
+        track: row_to_track(row)?,
+        position,
+        audio_format_count: row.get("audio_format_count")?,
+        main_segment_count: row.get("main_count")?,
+        main_segment,
+    })
 }
 
 #[cfg(test)]

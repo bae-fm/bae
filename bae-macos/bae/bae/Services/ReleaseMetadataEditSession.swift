@@ -319,53 +319,6 @@ final class ReleaseMetadataEditSession {
     }
 }
 
-extension BridgeReleaseEditDraft {
-    /// The tracks as core lays the table out — a side per disc or record
-    /// side, and on it a run per file a sheet carves several tracks from —
-    /// each beside the form row it edits.
-    var trackSides: [ReleaseMetadataTrackSide] {
-        let formTracks = Dictionary(
-            uniqueKeysWithValues: edit.tracks.map { ($0.id, $0) }
-        )
-        func item(_ context: BridgeReleaseEditTrackContext)
-            -> ReleaseMetadataTrackItem
-        {
-            guard let track = formTracks[context.trackId] else {
-                preconditionFailure(
-                    "Release edit track \(context.trackId) has no form row"
-                )
-            }
-            return ReleaseMetadataTrackItem(track: track, context: context)
-        }
-        return display.sides.map { side in
-            let groups = side.runs.map { run in
-                switch run {
-                case .track(let track):
-                    ReleaseMetadataTrackGroup(
-                        id: track.trackId,
-                        sharedSource: nil,
-                        tracks: [item(track)]
-                    )
-                case .sheet(let source, let tracks):
-                    ReleaseMetadataTrackGroup(
-                        // Core never lays out a run without tracks.
-                        id: "source:\(source.fileId):\(tracks[0].trackId)",
-                        sharedSource: source,
-                        tracks: tracks.map(item)
-                    )
-                }
-            }
-            // Nor a side without runs.
-            return ReleaseMetadataTrackSide(
-                id: "side:\(groups[0].id)",
-                headerText: side.side.headerText(key: side.headerKey),
-                groups: groups
-            )
-        }
-    }
-
-}
-
 extension ReleaseMetadataEditSession {
     /// Why the form can't be saved, as core says; `nil` while it can.
     var validationMessage: String? {
@@ -382,31 +335,6 @@ extension ReleaseMetadataEditSession {
         guard case .applying(let apply) = operation else { return nil }
         return CatalogApplying(apply: apply)
     }
-}
-
-struct ReleaseMetadataTrackItem: Identifiable {
-    let track: BridgeRawTrackEdit
-    let context: BridgeReleaseEditTrackContext
-
-    var id: String { track.id }
-}
-
-/// A run of tracks the table draws together: one track naming its own
-/// source, or the tracks a sheet carves from the one file named above them.
-struct ReleaseMetadataTrackGroup: Identifiable {
-    let id: String
-    let sharedSource: BridgeReleaseEditTrackSource?
-    let tracks: [ReleaseMetadataTrackItem]
-}
-
-/// One side of the release — a disc of a multi-disc set, a side of a record —
-/// and the runs of tracks on it.
-struct ReleaseMetadataTrackSide: Identifiable {
-    let id: String
-    /// "Disc 2" / "Side B", or empty for a release with one flat side, which
-    /// has no header to draw.
-    let headerText: String
-    let groups: [ReleaseMetadataTrackGroup]
 }
 
 /// A catalog apply the release editor runs: the bridge's apply, whose row

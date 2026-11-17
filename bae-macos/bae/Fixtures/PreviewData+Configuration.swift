@@ -84,37 +84,36 @@ extension PreviewData {
         return BridgeReleaseEditDraft(
             edit: edit,
             cover: nil,
-            display: BridgeReleaseEditDisplayContext(
-                sourceAudio: .uniform(
-                    descriptor: BridgeSourceAudioDescriptor(
-                        layout: .file,
-                        format: format
-                    )
-                ),
-                sides: [
-                    BridgeReleaseEditTrackSide(
-                        side: .flat,
-                        headerKey: nil,
-                        runs: edit.tracks.enumerated()
-                            .map { index, track in
-                                .track(
-                                    track: releaseEditTrackContext(
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .file,
+                    format: format
+                )
+            ),
+            sides: [
+                BridgeReleaseEditTrackSide(
+                    side: .flat,
+                    headerKey: nil,
+                    runs: edit.tracks.enumerated()
+                        .map { index, track in
+                            .track(
+                                row: BridgeReleaseEditTrackRow(
+                                    edit: track,
+                                    context: releaseEditTrackContext(
                                         trackId: track.id,
                                         index: index,
-                                        source:
-                                            BridgeReleaseEditTrackSource(
-                                                fileId: "file-\(index + 1)",
-                                                name:
-                                                    "Track \(index + 1).flac",
-                                                layout: .file
-                                            )
+                                        source: BridgeReleaseEditTrackSource(
+                                            fileId: "file-\(index + 1)",
+                                            name: "Track \(index + 1).flac",
+                                            layout: .file
+                                        )
                                     )
                                 )
-                            }
-                    )
-                ],
-                files: libraryReleaseFiles
-            ),
+                            )
+                        }
+                )
+            ],
+            files: libraryReleaseFiles,
             album: .named(
                 albumId: "album-preview",
                 line: .titleAndArtists(

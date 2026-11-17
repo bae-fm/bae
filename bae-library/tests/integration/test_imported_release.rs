@@ -357,12 +357,12 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
     assert_eq!(
         imported
-            .display
             .sides
             .iter()
+            .flatten()
             .flat_map(|side| side
-                .tracks()
-                .map(|track| (side.side.clone(), track.position_text.as_str())))
+                .rows()
+                .map(|row| (side.side.clone(), row.context.position_text.as_str())))
             .collect::<Vec<_>>(),
         [(disc(1), "1"), (disc(1), "2"), (disc(2), "1"), (disc(2), "2")]
     );

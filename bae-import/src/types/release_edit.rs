@@ -173,7 +173,15 @@ pub struct ReleaseEditSeed {
 pub struct ReleaseEditDraft {
     pub edit: RawReleaseEdit,
     pub cover: Option<bae_records::ImageRef>,
-    pub display: crate::ReleaseEditDisplayContext,
+    /// The summary of the release's audio.
+    pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
+    /// The release's tracks laid out as the editor's table draws them, each
+    /// beside the form row that edits it; `None` when the release has no
+    /// tracks.
+    pub sides: Option<Vec<crate::ReleaseEditTrackSide>>,
+    /// The files the release carries that no track plays from, in the
+    /// release's file order; `None` when it carries none.
+    pub files: Option<Vec<crate::MappingFile>>,
     pub album: DraftAlbum,
     pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
     pub changed: bool,

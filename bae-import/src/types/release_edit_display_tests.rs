@@ -1,9 +1,15 @@
 use super::*;
 use bae_types::mediums::TrackPosition;
 
-fn context(id: &str, file: &str, layout: SourceAudioLayout) -> ReleaseEditTrackContext {
+fn context(
+    side: TrackSide,
+    id: &str,
+    file: &str,
+    layout: SourceAudioLayout,
+) -> ReleaseEditTrackContext {
     ReleaseEditTrackContext {
         track_id: id.to_string(),
+        side,
         source: ReleaseEditTrackSource {
             file_id: file.to_string(),
             name: format!("{file}.flac"),
@@ -18,6 +24,25 @@ fn side(letter: &str) -> TrackSide {
     TrackSide::Sided { side_letter: letter.to_string() }
 }
 
+/// The form row of the track `id`.
+fn form_row(id: &str) -> crate::RawTrackEdit {
+    crate::RawTrackEdit {
+        id: id.to_string(),
+        title: format!("Title {id}"),
+        artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
+        file: None,
+    }
+}
+
+/// `tracks` laid out, each beside a form row of its own.
+fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
+    ReleaseEditTrackSide::lay_out(
+        tracks
+            .into_iter()
+            .map(|context| ReleaseEditTrackRow { edit: form_row(&context.track_id), context }),
+    )
+}
+
 /// Each run as the track ids it holds, and the file a sheet run names.
 fn runs(side: &ReleaseEditTrackSide) -> Vec<(Option<&str>, Vec<&str>)> {
     side.runs
@@ -27,7 +52,7 @@ fn runs(side: &ReleaseEditTrackSide) -> Vec<(Option<&str>, Vec<&str>)> {
                 ReleaseEditTrackRun::Track(_) => None,
                 ReleaseEditTrackRun::Sheet { source, .. } => Some(source.file_id.as_str()),
             };
-            (source, run.tracks().iter().map(|track| track.track_id.as_str()).collect())
+            (source, run.rows().iter().map(|row| row.context.track_id.as_str()).collect())
         })
         .collect()
 }
@@ -35,16 +60,16 @@ fn runs(side: &ReleaseEditTrackSide) -> Vec<(Option<&str>, Vec<&str>)> {
 #[test]
 fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet_file() {
     use SourceAudioLayout::{Cue, File};
-    let sides = ReleaseEditTrackSide::lay_out([
-        (side("A"), context("a1", "image-a", Cue)),
-        (side("A"), context("a2", "image-a", Cue)),
-        (side("A"), context("a3", "image-a", Cue)),
-        (side("A"), context("a4", "loose", File)),
-        (side("B"), context("b1", "image-b", Cue)),
-        (side("B"), context("b2", "image-b", Cue)),
-        (side("B"), context("b3", "image-c", Cue)),
-        (side("B"), context("b4", "image-c", Cue)),
-        (side("B"), context("b5", "image-d", Cue)),
+    let sides = lay_out(vec![
+        context(side("A"), "a1", "image-a", Cue),
+        context(side("A"), "a2", "image-a", Cue),
+        context(side("A"), "a3", "image-a", Cue),
+        context(side("A"), "a4", "loose", File),
+        context(side("B"), "b1", "image-b", Cue),
+        context(side("B"), "b2", "image-b", Cue),
+        context(side("B"), "b3", "image-c", Cue),
+        context(side("B"), "b4", "image-c", Cue),
+        context(side("B"), "b5", "image-d", Cue),
     ]);
 
     assert_eq!(sides.iter().map(|side| &side.side).collect::<Vec<_>>(), [&side("A"), &side("B")]);
@@ -64,10 +89,10 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet_file() {
 #[test]
 fn a_sheet_run_ends_at_its_side() {
     use SourceAudioLayout::Cue;
-    let sides = ReleaseEditTrackSide::lay_out([
-        (side("A"), context("a1", "image", Cue)),
-        (side("A"), context("a2", "image", Cue)),
-        (side("B"), context("b1", "image", Cue)),
+    let sides = lay_out(vec![
+        context(side("A"), "a1", "image", Cue),
+        context(side("A"), "a2", "image", Cue),
+        context(side("B"), "b1", "image", Cue),
     ]);
 
     assert_eq!(runs(&sides[0]), [(Some("image"), vec!["a1", "a2"])]);
