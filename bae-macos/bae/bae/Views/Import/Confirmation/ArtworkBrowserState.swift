@@ -45,20 +45,11 @@ struct CoverGalleryContent: Equatable {
         var count: Int
     }
 
-    /// The cover the gallery focuses, its place among all the gallery's
-    /// covers, and the covers before and after it.
-    struct Focus: Equatable {
-        var cover: CoverItem
-        var position: Int
-        var previous: BridgeCoverKey?
-        var next: BridgeCoverKey?
-    }
-
     var current: CoverItem?
     var remote: Section?
     var files: Section?
     var total: Int
-    var focus: Focus?
+    var focus: BridgeGalleryFocus?
 
     static let empty = CoverGalleryContent(
         current: nil,
@@ -89,14 +80,7 @@ struct CoverGalleryContent: Equatable {
         remote = section(.remote)
         files = section(.releaseFiles)
         total = Int(gallery.total)
-        focus = gallery.focus.map {
-            Focus(
-                cover: CoverItem(gallery: $0.cover),
-                position: Int($0.position),
-                previous: $0.previous,
-                next: $0.next
-            )
-        }
+        focus = gallery.focus
     }
 
     private init(
@@ -104,7 +88,7 @@ struct CoverGalleryContent: Equatable {
         remote: Section?,
         files: Section?,
         total: Int,
-        focus: Focus?
+        focus: BridgeGalleryFocus?
     ) {
         self.current = current
         self.remote = remote

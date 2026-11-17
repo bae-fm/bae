@@ -126,7 +126,9 @@ struct CoverGalleryView: View {
                 .opacity(isSaving ? 1 : 0)
                 .accessibilityHidden(!isSaving)
                 Button("Use this cover") {
-                    if let focus = content.focus { onSelect(focus.cover) }
+                    if let focus = content.focus {
+                        onSelect(CoverItem(gallery: focus.cover))
+                    }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
@@ -177,7 +179,7 @@ struct CoverGalleryView: View {
                     LightboxView(
                         place: LightboxPlace(
                             items: content.items,
-                            current: focus.cover,
+                            current: CoverItem(gallery: focus.cover),
                             previous: focus.previous,
                             next: focus.next
                         ),
@@ -314,7 +316,7 @@ extension CoverGalleryView {
                 .overlay {
                     RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         .strokeBorder(
-                            content.focus?.cover.id == item.id
+                            content.focus?.cover.key == item.id
                                 ? Color.accentColor : .clear,
                             lineWidth: 2
                         )
@@ -329,7 +331,7 @@ extension CoverGalleryView {
         .help(item.label)
         .accessibilityLabel(item.label)
         .accessibilityAddTraits(
-            content.focus?.cover.id == item.id ? .isSelected : []
+            content.focus?.cover.key == item.id ? .isSelected : []
         )
         .disabled(isSaving)
         .simultaneousGesture(
@@ -372,12 +374,13 @@ extension CoverGalleryView {
     @ViewBuilder
     private var preview: some View {
         if let focus = content.focus {
+            let cover = CoverItem(gallery: focus.cover)
             VStack(spacing: ThemeSpace.compact) {
                 Button {
                     browser.layout = .lightbox
                 } label: {
                     ImageView(
-                        content: focus.cover.image,
+                        content: cover.image,
                         contentMode: .fit,
                         pointSize: 800
                     )
@@ -395,12 +398,12 @@ extension CoverGalleryView {
                 .focusEffectDisabled()
                 .focused($previewFocused)
                 .disabled(isSaving)
-                Text(verbatim: focus.cover.label)
+                Text(verbatim: cover.label)
                     .themeText(.heading)
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: focus.cover.sourceLabel)
+                Text(verbatim: cover.sourceLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                 HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
@@ -410,7 +413,7 @@ extension CoverGalleryView {
                         Image(systemName: "chevron.backward")
                     }
                     .accessibilityLabel(Text("Previous image"))
-                    Text("\(focus.position + 1) of \(content.total)")
+                    Text("\(Int(focus.position) + 1) of \(content.total)")
                         .monospacedDigit().foregroundStyle(.secondary)
                     Button {
                         self.focus(focus.next)
