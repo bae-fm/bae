@@ -24,14 +24,14 @@ fn album_title(title: &str) -> bae_import::DraftFieldEdit {
     }
 }
 
-/// Wait until the session `session` reads as closed.
+/// Wait until the live draft query for `session` returns no draft.
 async fn until_closed(manager: &LibraryManager, session: i64) {
     let mut draft = ImportTables::new(manager.store.clone()).subscribe_release_edit_draft(session);
     tokio::time::timeout(HANG_GUARD, async {
         while draft.next_inline().await.expect("the query stays open").unwrap().is_some() {}
     })
     .await
-    .expect("the session's rows go");
+    .expect("bae deletes the session's rows");
 }
 
 #[tokio::test]
