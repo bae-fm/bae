@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Which stream a `StreamLabel` follows, whatever its source.
 enum StreamLabelKind: CaseIterable {
-    case uploadRate, uploadBytes, pinRate, exportPercent
+    case uploadRate, pinRate, exportPercent
     case scanFoundCount, tabCount
 }
 
@@ -16,11 +16,6 @@ final class StreamLabelNSView: NSTextField {
     private lazy var downloads = FrameFollowing<BridgeDownloadTransferProgress>(
         view: self
     ) { [weak self] progress in self?.showRate(progress?.throughputBps) }
-    private lazy var releaseUploads = FrameFollowing<
-        BridgeReleaseUploadTransfer
-    >(view: self) { [weak self] transfer in
-        self?.stringValue = transfer?.bar.text ?? ""
-    }
     private lazy var percents = FrameFollowing<UInt8>(view: self) {
         [weak self] percent in
         self?.stringValue =
@@ -69,8 +64,6 @@ final class StreamLabelNSView: NSTextField {
         switch stream {
         case .uploadRate(let total):
             uploads.follow(total)
-        case .uploadBytes(let source):
-            releaseUploads.follow(source)
         case .pinRate(let source):
             downloads.follow(source)
         case .exportPercent(let source):
@@ -103,7 +96,6 @@ final class StreamLabelNSView: NSTextField {
     private func stop(_ kind: StreamLabelKind) {
         switch kind {
         case .uploadRate: uploads.stop()
-        case .uploadBytes: releaseUploads.stop()
         case .pinRate: downloads.stop()
         case .exportPercent: percents.stop()
         case .scanFoundCount: foundCounts.stop()
@@ -128,7 +120,7 @@ final class StreamLabelNSView: NSTextField {
     }
 }
 
-/// SwiftUI's place for a stream's rate, bytes or percent: it hands the label
+/// SwiftUI's place for a stream's rate, percent or count: it hands the label
 /// its stream, never a value, and sizes it for the widest text the stream
 /// can show.
 struct StreamLabel: NSViewRepresentable {
@@ -136,8 +128,6 @@ struct StreamLabel: NSViewRepresentable {
     enum Stream {
         /// How fast every file being sent goes together.
         case uploadRate(LatestSource<BridgeUploadTransfer>)
-        /// The bytes a release holds of its size while its files are sent.
-        case uploadBytes(LatestSource<BridgeReleaseUploadTransfer>)
         /// How fast the pin queue's running release downloads.
         case pinRate(LatestSource<BridgeDownloadTransferProgress>)
         /// How far the export queue's running release has been written.
@@ -151,7 +141,6 @@ struct StreamLabel: NSViewRepresentable {
         var kind: StreamLabelKind {
             switch self {
             case .uploadRate: .uploadRate
-            case .uploadBytes: .uploadBytes
             case .pinRate: .pinRate
             case .exportPercent: .exportPercent
             case .scanFoundCount: .scanFoundCount
@@ -185,12 +174,6 @@ struct StreamLabel: NSViewRepresentable {
             switch stream {
             case .uploadRate, .pinRate:
                 TransferThroughput.text(bytesPerSecond: 999_900_000)
-            case .uploadBytes:
-                BridgeUploadBar(
-                    bytesDone: 999_900_000_000,
-                    bytesTotal: 999_900_000_000
-                )
-                .text
             case .exportPercent:
                 (1.0).formatted(.percent)
             case .scanFoundCount:
