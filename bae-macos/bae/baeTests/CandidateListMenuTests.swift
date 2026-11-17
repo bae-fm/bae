@@ -81,8 +81,8 @@ struct CandidateListMenuTests {
 
     /// Before core sends the first folder scans, the Folders section says it
     /// is reading them, under Add a folder, and lists no folder.
-    @Test("the folders read as being read until core sends them")
-    func foldersReadAsBeingReadUntilCoreSendsThem() throws {
+    @Test("the Folders section shows Reading… until core sends the folders")
+    func foldersSectionShowsReadingUntilCoreSendsTheFolders() throws {
         let loaded = state(entries: [])
         let controller = CandidateListMenuController(
             state: CandidateListMenuState(

@@ -10,8 +10,8 @@ impl LibraryManager {
     /// Queue the uploaded releases of a selection to be moved to this device into
     /// `folder`, a folder the person picked, each in a folder of its own
     /// below it named for the release, in one write. The write skips a
-    /// release already waiting or downloading. It refuses one the library
-    /// does not hold or whose files are not in the cloud and queues the rest,
+    /// release already waiting or downloading. The write refuses a release
+    /// the library does not hold or whose files are not in the cloud and queues the rest,
     /// and the call returns the error for the first refused release. Coven
     /// downloads each release's files there, then one write switches them to
     /// this device only, each copy becoming the original it records, and

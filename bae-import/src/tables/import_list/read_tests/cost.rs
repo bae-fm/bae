@@ -299,7 +299,7 @@ async fn measure_import_list_first_selected(db: &Store) {
             .set_import_list_view(list, found_view("", PendingFilter::All, order), selected.clone())
             .await
             .unwrap()
-            .expect("clearing the search narrows the list anew");
+            .expect("the write that clears the search answers where the view opens");
         let took = started.elapsed();
         if run >= 2 {
             runs[which].push(took);

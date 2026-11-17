@@ -562,7 +562,7 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     assert_eq!(
         tables.import_candidate_position(list, &member).await.unwrap(),
         None,
-        "a folded member is not shown"
+        "the view does not show a member of a folded group"
     );
 }
 

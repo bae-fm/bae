@@ -302,8 +302,9 @@ extension ImportListSlot {
                 await list.reopen(at: key, position: Int(position))
                 open(at: Int(position))
             case nil:
-                // Another order opens nowhere: the table keeps its scroll,
-                // and the rows redraw in the new order under it.
+                // A change of order alone answers no opening: the table keeps
+                // its scroll position, and the rows redraw in the new order
+                // under it.
                 await list.reorder()
             }
             if view == next { answersView = true }
@@ -493,7 +494,7 @@ extension ImportListSlot {
     /// Where the candidate on top of `place` sits now in the list the view
     /// shows, as core places it under the view's filters and folds: `nil`
     /// when the place's row is not a candidate's, or the view does not show
-    /// the candidate. A failed read is reported, and answers `nil`.
+    /// the candidate. The slot reports a failed read and answers `nil`.
     func position(ofPlace place: ImportListPlace) async -> Int? {
         guard case .candidate(let candidateKey) = place.row, let handle
         else { return nil }

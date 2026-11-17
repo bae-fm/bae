@@ -220,7 +220,7 @@ pub(super) fn listed(
     Ok(Listed { total: total(items)?, narrowed })
 }
 
-/// Which view of a list a candidate's place is asked of.
+/// The view of a list in which `locate` finds a candidate's place.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Placing {
     /// The view that reveals it: its tab with the filters cleared and its

@@ -147,7 +147,7 @@ pub(super) fn download_refusals_error(
                 LibraryError::release_missing(&release_id, ReleaseWork::Transfer)
             }
             DownloadRefusal::NotInStorage => {
-                LibraryError::Storage("Release is not stored in the cloud".to_string())
+                LibraryError::Storage("The cloud does not hold this release's files".to_string())
             }
         };
         tracing::error!(%release_id, download, failure = %error, "release download refused");
