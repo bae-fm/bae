@@ -61,11 +61,11 @@ pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRo
     })
 }
 
-/// A line's bar: of its batch's whole size, the share done, then each key
-/// that `moving` names with its size's share. `batch_bytes` is a
-/// `batch_bytes` table of the batch's `total` and `done` bytes; `moving` is a
-/// `moving` table of each `key` and its `share` of the batch. `params` are
-/// both tables'.
+/// A line's bar: the share of its batch's bytes that is done, then each key
+/// that `moving` names with its share of the batch. `batch_bytes` is SQL
+/// for a `batch_bytes` table of the batch's `total` and `done` bytes, and
+/// `moving` is SQL for a `moving` table of each `key` and its `share` of the
+/// batch. `params` fill the placeholders of both.
 fn batch_bar_on<Key: rusqlite::types::FromSql>(
     sql: &coven::SqlReadContext<'_>,
     batch_bytes: &str,
