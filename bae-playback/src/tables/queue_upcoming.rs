@@ -21,8 +21,21 @@ pub fn upcoming_order(shuffled: bool) -> ListOrder {
 /// reads in. When no track is playing, the cursor is NULL and the condition
 /// matches no rows.
 pub(super) fn after_the_playing_track(shuffled: bool) -> String {
+    after_the_cursor(shuffled, "playback_queue")
+}
+
+/// [`after_the_playing_track`] for a statement that reads both orders at
+/// once: the condition matches rows only while the queue's order is the
+/// `shuffled` one, since the other order's part reads its cursor from no row.
+pub(super) fn after_the_playing_track_in_order(shuffled: bool) -> String {
+    after_the_cursor(shuffled, &format!("playback_queue WHERE shuffled = {}", u8::from(shuffled)))
+}
+
+/// The rows placed past the cursor of the `shuffled` order, which the
+/// statement reads from the single row that `queue` selects.
+fn after_the_cursor(shuffled: bool, queue: &str) -> String {
     format!(
-        "c.{place} > (SELECT {cursor} FROM playback_queue)",
+        "c.{place} > (SELECT {cursor} FROM {queue})",
         place = context_order_column(shuffled),
         cursor = if shuffled { "shuffled_cursor" } else { "ordered_cursor" },
     )

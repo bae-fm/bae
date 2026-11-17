@@ -432,18 +432,18 @@ async fn the_session_up_next_list_is_planned_on_the_indexes() {
     let (db, _tmp, _tracks) = release_db(3).await;
     let rows = plan(
         &db,
-        super::queue_reads::SESSION_UP_NEXT_ROWS,
+        &super::queue_reads::session_up_next_rows(),
         vec![rusqlite::types::Value::Integer(100)],
     )
     .await;
     for walk in [
         "SCAN playback_manual USING INDEX sqlite_autoindex_playback_manual_1",
-        "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
-        "SEARCH playback_context USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
+        "SEARCH c USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
+        "SEARCH c USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
     ] {
         assert!(rows.contains(walk), "{walk}: {rows}");
     }
-    assert!(!rows.contains("SCAN playback_context"), "{rows}");
+    assert!(!rows.contains("SCAN c"), "{rows}");
 }
 
 /// A context row is named by its entry, as an Up Next row is, and no entry

@@ -4,6 +4,8 @@
 //! module reads the context lane's upcoming tracks as a list for the queue
 //! screens.
 
+use super::queue::context_order_column;
+use super::queue_upcoming::after_the_playing_track_in_order;
 use super::track_display::{track_display_columns, track_queue_meta_from_row, TRACK_DISPLAY_JOINS};
 use super::*;
 use crate::{ContextSource, QueueItem};
@@ -22,10 +24,10 @@ pub async fn queue_value(store: &Store) -> Result<crate::ResolvedQueueSnapshot, 
 }
 
 /// Follow the tracks after the playing one as a system media session lists
-/// them: Up Next, then the context lane's upcoming tracks in the order it
-/// reads in, at most `limit` in all, in one statement. Each lane is read from
-/// its start through its order's index, so coven reruns it for a write among
-/// the rows it read.
+/// them: the Up Next tracks, then the context lane's tracks after the playing
+/// one in the lane's current order, at most `limit` in all. The statement
+/// reads each lane through the index of its order, so coven reruns it for a
+/// write among the rows it read.
 pub fn subscribe_session_up_next(
     store: &Store,
     limit: u64,
@@ -33,34 +35,42 @@ pub fn subscribe_session_up_next(
     store.subscribe(move |sql| session_up_next_on(&sql, limit))
 }
 
-/// The rows of the session's up-next list, at most `?1`: Up Next, then the
-/// lane's rows past its cursor in the order it reads in. Each part takes at
-/// most `?1` rows by walking its position index from where it starts, with
-/// one branch for each of the lane's orders, of which the queue's `shuffled`
-/// gives the other no cursor and so no rows. The parts are joined in order
-/// and cut to `?1`, then numbered for the track join to keep their order.
-pub(super) const SESSION_UP_NEXT_ROWS: &str = "\
-    SELECT entry, lane_track, ROW_NUMBER() OVER (ORDER BY lane, place) AS position \
-    FROM ( \
-        SELECT * FROM ( \
-            SELECT 'm' || entry AS entry, track_id AS lane_track, 0 AS lane, \
-                   position AS place \
-            FROM playback_manual ORDER BY position LIMIT ?1) \
-        UNION ALL \
-        SELECT * FROM ( \
-            SELECT 'c' || entry, track_id, 1, ordered FROM playback_context \
-            WHERE ordered > (SELECT ordered_cursor FROM playback_queue WHERE shuffled = 0) \
-            ORDER BY ordered LIMIT ?1) \
-        UNION ALL \
-        SELECT * FROM ( \
-            SELECT 'c' || entry, track_id, 1, shuffled FROM playback_context \
-            WHERE shuffled > (SELECT shuffled_cursor FROM playback_queue WHERE shuffled = 1) \
-            ORDER BY shuffled LIMIT ?1) \
-        ORDER BY lane, place LIMIT ?1)";
+/// The rows of the session's up-next list, at most `?1`: the Up Next rows,
+/// then the lane's rows after the playing track in the queue's current
+/// order. Each part reads at most `?1` rows through the index of its order,
+/// from where the part starts. The statement has one lane part for each
+/// order, and [`after_the_playing_track_in_order`] keeps the rows of only the
+/// queue's current one. The statement joins the parts in order, keeps the
+/// first `?1`, and numbers them so that the track join keeps their order.
+pub(super) fn session_up_next_rows() -> String {
+    let lane = |shuffled: bool| {
+        format!(
+            "SELECT * FROM ( \
+                 SELECT 'c' || c.entry, c.track_id, 1, c.{place} FROM playback_context c \
+                 WHERE {after} \
+                 ORDER BY c.{place} LIMIT ?1)",
+            place = context_order_column(shuffled),
+            after = after_the_playing_track_in_order(shuffled),
+        )
+    };
+    format!(
+        "SELECT entry, lane_track, ROW_NUMBER() OVER (ORDER BY lane, place) AS position \
+         FROM ( \
+             SELECT * FROM ( \
+                 SELECT 'm' || entry AS entry, track_id AS lane_track, 0 AS lane, \
+                        position AS place \
+                 FROM playback_manual ORDER BY position LIMIT ?1) \
+             UNION ALL {ordered} \
+             UNION ALL {shuffled} \
+             ORDER BY lane, place LIMIT ?1)",
+        ordered = lane(false),
+        shuffled = lane(true),
+    )
+}
 
 fn session_up_next_on(sql: &SqlReadContext<'_>, limit: u64) -> Result<Vec<QueueItem>, DbError> {
     Ok(sql.query(
-        &queue_items_sql(SESSION_UP_NEXT_ROWS),
+        &queue_items_sql(&session_up_next_rows()),
         [i64::try_from(limit).unwrap_or(i64::MAX)],
         queue_item_from_row,
     )?)
