@@ -520,6 +520,10 @@ async fn a_long_group_splits_its_tracks_across_two_columns() {
         .unwrap();
 
     assert_eq!(detail.track_groups.len(), 1);
-    assert_eq!(detail.track_groups[0].second_column_start, Some(5), "nine tracks put five first");
+    assert_eq!(
+        detail.track_groups[0].second_column_start,
+        Some(5),
+        "a side of nine tracks puts five of them in the first column"
+    );
     assert!(!detail.has_credits);
 }

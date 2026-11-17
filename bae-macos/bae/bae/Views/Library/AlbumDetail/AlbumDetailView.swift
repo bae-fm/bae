@@ -55,8 +55,8 @@ struct AlbumDetailView: View {
     private var exportError: DisplayError?
     @State
     private var exportTask: Task<Void, Never>?
-    /// The view's one album read, moved as `albumId` or the release chosen
-    /// on its page changes.
+    /// The view keeps one album detail reader and asks it to show `albumId`
+    /// and the release chosen on its page whenever either changes.
     @State
     private var detailReader:
         KeyedDetailReader<BridgeAlbumDetail, BridgeAlbumDetailRequest>?
