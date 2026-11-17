@@ -25,8 +25,8 @@ use super::*;
 use bae_catalogs::search::MetadataResult;
 use bae_catalogs::InternalFailure;
 use bae_identify::{
-    Findings, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict, NamedNote, RunOutcome,
-    TerminalVerdict,
+    Declined, Findings, FolderCheck, IdentifyFailure, IdentifyRunView, LookupView, MediumConflict,
+    NamedNote, RunOutcome, TerminalVerdict,
 };
 
 /// Whose verdict-shaped rows these are: a candidate's verdict, under its
@@ -202,14 +202,16 @@ pub(super) fn store_outcome(
         Outcome::Settled(TerminalVerdict::Error { failure }) => Some(failure.detail.as_str()),
         Outcome::Running { .. } | Outcome::Settled(_) => None,
     };
+    let (unattended_pick, declined) = decision_columns(outcome);
     let column = owner.column();
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_verdict \
                  (content_hash, identify_run, kind, track_count, error_detail, \
                   disc_id_step, barcode_step, catalog_step, isrc_step, search_step, \
-                  search_album, search_artist, medium_conflict, kept_own_draft) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                  search_album, search_artist, medium_conflict, unattended_pick, declined, \
+                  kept_own_draft) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT ({column}) DO UPDATE SET \
                  kind = excluded.kind, track_count = excluded.track_count, \
                  error_detail = excluded.error_detail, \
@@ -218,6 +220,7 @@ pub(super) fn store_outcome(
                  search_step = excluded.search_step, search_album = excluded.search_album, \
                  search_artist = excluded.search_artist, \
                  medium_conflict = excluded.medium_conflict, \
+                 unattended_pick = excluded.unattended_pick, declined = excluded.declined, \
                  kept_own_draft = excluded.kept_own_draft"
         ),
         params![
@@ -234,6 +237,8 @@ pub(super) fn store_outcome(
             steps.search_album,
             steps.search_artist,
             medium_conflict,
+            unattended_pick,
+            declined,
             kept_own_draft,
         ],
     )?;
@@ -268,6 +273,60 @@ pub(super) fn store_outcome(
         store_ledger(sql, owner, ledger, &positions, outcome.running())?;
     }
     Ok(())
+}
+
+/// What `outcome` decides about its releases, as its row stores it: for a
+/// found verdict, the release it picks unattended by the one rule
+/// ([`bae_identify::unattended_pick`]), or why it picks none. Every other
+/// outcome decides nothing.
+fn decision_columns<'a>(outcome: Outcome<'a>) -> (Option<&'a str>, Option<&'static str>) {
+    let Outcome::Settled(TerminalVerdict::Found { findings, track_count, .. }) = outcome else {
+        return (None, None);
+    };
+    match bae_identify::unattended_pick(
+        &findings.matches,
+        &findings.pressings,
+        findings.medium_conflict,
+        *track_count,
+    ) {
+        Ok(pick) => (Some(pick.records[0].release_id.as_str()), None),
+        Err(declined) => (None, Some(declined_column(&declined))),
+    }
+}
+
+/// `declined` as the verdict row's `declined` column stores it.
+fn declined_column(declined: &Declined) -> &'static str {
+    match declined {
+        Declined::NothingFound => "nothing_found",
+        Declined::Several => "several",
+        Declined::UnreadDocument => "unread_document",
+        Declined::FolderCheck(FolderCheck::SourceTracksUnknown) => "source_tracks_unknown",
+        Declined::FolderCheck(FolderCheck::MediumDisagrees { .. }) => "medium_disagrees",
+    }
+}
+
+/// Why a found verdict picks none of its releases, from its row's `declined`
+/// column and the medium conflict the row stores beside it.
+pub(super) fn declined_of(
+    declined: &str,
+    medium_conflict: Option<MediumConflict>,
+) -> Result<Declined, DbError> {
+    Ok(match declined {
+        "nothing_found" => Declined::NothingFound,
+        "several" => Declined::Several,
+        "unread_document" => Declined::UnreadDocument,
+        "source_tracks_unknown" => Declined::FolderCheck(FolderCheck::SourceTracksUnknown),
+        "medium_disagrees" => {
+            let folder = medium_conflict.ok_or_else(|| {
+                DbError::unreadable(
+                    "the medium conflict of a verdict declined for it",
+                    None::<String>,
+                )
+            })?;
+            Declined::FolderCheck(FolderCheck::MediumDisagrees { folder })
+        }
+        other => return Err(DbError::unreadable("import_candidate_verdict.declined", other)),
+    })
 }
 
 /// The releases of one outcome, written under the row that found them: the

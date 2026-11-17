@@ -320,8 +320,8 @@ pub enum LookupStep {
     Pressing,
 }
 
-/// What a found verdict decides about its releases, as the view
-/// `import_candidate_verdict_decision` works it out from the verdict's rows.
+/// What a found verdict decides about its releases, as the verdict's write
+/// stored it by [`super::unattended_pick`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FoundDecision {
     /// The verdict picks the release this names on its own, without asking

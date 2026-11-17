@@ -94,10 +94,10 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_verdict_changed
-AFTER UPDATE OF kind, track_count, medium_conflict, error_detail, kept_own_draft
+AFTER UPDATE OF kind, declined, error_detail, kept_own_draft
 ON import_candidate_verdict
-WHEN (OLD.kind, OLD.track_count, OLD.medium_conflict, OLD.error_detail, OLD.kept_own_draft)
-  IS NOT (NEW.kind, NEW.track_count, NEW.medium_conflict, NEW.error_detail, NEW.kept_own_draft)
+WHEN (OLD.kind, OLD.declined, OLD.error_detail, OLD.kept_own_draft)
+  IS NOT (NEW.kind, NEW.declined, NEW.error_detail, NEW.kept_own_draft)
 BEGIN
     INSERT INTO import_list_replace (key)
     SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;
@@ -116,8 +116,8 @@ BEGIN
 END;
 
 CREATE TRIGGER IF NOT EXISTS import_list_on_match_changed
-AFTER UPDATE OF pressing, listing, source_tracks_kind, source_tracks_count, document_failure ON import_candidate_match
-WHEN (OLD.pressing, OLD.listing, OLD.source_tracks_kind, OLD.source_tracks_count, OLD.document_failure) IS NOT (NEW.pressing, NEW.listing, NEW.source_tracks_kind, NEW.source_tracks_count, NEW.document_failure)
+AFTER UPDATE OF pressing, listing ON import_candidate_match
+WHEN (OLD.pressing, OLD.listing) IS NOT (NEW.pressing, NEW.listing)
 BEGIN
     INSERT INTO import_list_replace (key)
     SELECT path FROM scan_candidate WHERE content_hash = NEW.content_hash;

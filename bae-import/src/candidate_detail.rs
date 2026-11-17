@@ -209,7 +209,7 @@ impl ImportCandidateDetailProjection {
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(listed.actions, facts, listed.standing);
         // The check against the folder the stored verdict's found release
-        // failed, as the view `import_candidate_verdict_decision` computes it.
+        // failed, as the verdict's write stored it.
         let verdict_folder_check = match &stored_verdict {
             Some(IdentifyStateView::Found { decision, .. }) => decision.folder_check().cloned(),
             _ => None,

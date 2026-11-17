@@ -98,12 +98,7 @@ pub fn reference_cards_of(outcome: &RunOutcome, text: &CandidateText) -> Verdict
         );
         cards.decision = Some(match picked {
             Ok(pick) => super::FoundDecision::Picks(pick.records[0].release_id.clone()),
-            Err(crate::Declined::FolderCheck(check)) => super::FoundDecision::Declined(Some(check)),
-            Err(
-                crate::Declined::NothingFound
-                | crate::Declined::Several
-                | crate::Declined::UnreadDocument,
-            ) => super::FoundDecision::Declined(None),
+            Err(declined) => super::FoundDecision::Declined(declined.folder_check()),
         });
     }
     cards

@@ -371,10 +371,8 @@ FROM (
                    (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
                     WHERE m.content_hash = v.content_hash AND m.listing = 'offered') AS pressings,
                    -- Why a found verdict picks none of its releases
-                   -- unattended, read from the view
-                   -- `import_candidate_verdict_decision`.
-                   (SELECT decision.declined FROM import_candidate_verdict_decision AS decision
-                    WHERE decision.content_hash = v.content_hash) AS declined,
+                   -- unattended, as its write stored it.
+                   v.declined,
                    st.identification, st.import_step AS running_import, st.save_failure_error,
                    t.album_title AS tag_title, t.credits AS tag_credits,
                    e.album_title AS draft_title,

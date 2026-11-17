@@ -117,6 +117,17 @@ pub enum Declined {
     FolderCheck(FolderCheck),
 }
 
+impl Declined {
+    /// The check against the folder that failed, when that is why nothing
+    /// was picked.
+    pub fn folder_check(self) -> Option<FolderCheck> {
+        match self {
+            Self::FolderCheck(check) => Some(check),
+            Self::NothingFound | Self::Several | Self::UnreadDocument => None,
+        }
+    }
+}
+
 /// The one pressing a found verdict picks: its records, the one the draft is
 /// read from first.
 #[derive(Debug, Clone, Copy, PartialEq)]

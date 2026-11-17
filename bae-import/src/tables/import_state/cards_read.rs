@@ -344,10 +344,9 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
 /// joined as `verdict` (a candidate's verdict, or a run's): the cards of its
 /// offered and set-aside releases with what the folder's text agrees with
 /// about each row, how many rows the agreement check set aside, whether the
-/// offered rows are several pressings of one album, the check against the
-/// folder and the release the verdict decides on
-/// (`import_candidate_verdict_decision`), and the failures no cell of its
-/// ledger shows. [`verdict_cards_of`] reads the JSON object the subquery
+/// offered rows are several pressings of one album, what a found verdict's
+/// write stored as its decision (the release it picks, or why it picks
+/// none), and the failures no cell of its ledger shows. [`verdict_cards_of`] reads the JSON object the subquery
 /// returns.
 pub(super) fn verdict_cards_sql(verdict: &str) -> String {
     let owner = format!(
@@ -378,12 +377,7 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
             choice = choice_columns_sql(
                 "found",
                 &run_files_sql("found"),
-                Some(&format!(
-                    "(SELECT decision.unattended_pick \
-                      FROM import_candidate_verdict_decision AS decision \
-                      WHERE decision.content_hash IS {verdict}.content_hash \
-                        AND decision.identify_run IS {verdict}.identify_run)"
-                )),
+                Some(&format!("{verdict}.unattended_pick")),
             ),
         ),
         &format!(
@@ -398,13 +392,11 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
                           FROM import_candidate_match AS found \
                           WHERE {found} AND found.listing = 'offered') \
           SELECT json_object('cards', json(listed_cards.json), \
-            'decision', json((SELECT json_object('folder_check', decision.folder_check, \
-                                                 'unattended_pick', decision.unattended_pick) \
-                              FROM import_candidate_verdict_decision AS decision \
-                              WHERE decision.content_hash IS {verdict}.content_hash \
-                                AND decision.identify_run IS {verdict}.identify_run \
-                                AND (decision.declined IS NOT NULL \
-                                     OR decision.unattended_pick IS NOT NULL))), \
+            'decision', json(CASE WHEN {verdict}.kind = 'found' \
+                                  THEN json_object('unattended_pick', {verdict}.unattended_pick, \
+                                                   'declined', {verdict}.declined, \
+                                                   'medium_conflict', {verdict}.medium_conflict) \
+                                  END), \
             'failure_lines', {failure_lines}, \
             'narrowed_out_count', (SELECT COUNT(DISTINCT found.pressing) \
                                    FROM import_candidate_match AS found \
@@ -493,26 +485,26 @@ pub(super) struct StoredVerdictCards {
     failure_lines: Option<super::verdict_failure_rows::StoredFailureLines>,
 }
 
-/// A found verdict's row of `import_candidate_verdict_decision`: the release
-/// it picks, or the check against the folder it failed when that is why it
-/// picks none. Never both.
+/// What a found verdict's write stored as its decision: the release it picks,
+/// or why it picks none, with the medium conflict the reason may name.
 #[derive(serde::Deserialize)]
 struct StoredDecision {
-    /// 'cd_rip', 'not_cd_audio' or 'source_tracks_unknown'.
-    folder_check: Option<String>,
     unattended_pick: Option<String>,
+    declined: Option<String>,
+    medium_conflict: Option<String>,
 }
 
 impl StoredDecision {
     fn decision(self) -> Result<bae_identify::FoundDecision, DbError> {
-        match (self.unattended_pick, self.folder_check) {
+        match (self.unattended_pick, self.declined) {
             (Some(lead), None) => Ok(bae_identify::FoundDecision::Picks(lead)),
-            (None, check) => Ok(bae_identify::FoundDecision::Declined(
-                check.as_deref().map(folder_check_of).transpose()?,
-            )),
-            (Some(lead), Some(check)) => {
-                Err(DbError::unreadable("a verdict's decision", (lead, check)))
+            (None, Some(declined)) => {
+                let medium_conflict =
+                    super::verdict_rows::medium_conflict_of(self.medium_conflict)?;
+                let declined = super::verdict_rows::declined_of(&declined, medium_conflict)?;
+                Ok(bae_identify::FoundDecision::Declined(declined.folder_check()))
             }
+            (lead, declined) => Err(DbError::unreadable("a verdict's decision", (lead, declined))),
         }
     }
 }
@@ -605,17 +597,6 @@ pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
             .map(super::verdict_failure_rows::failure_lines_of)
             .transpose()?,
     })
-}
-
-/// The check against the folder a verdict row's decision names.
-fn folder_check_of(stored: &str) -> Result<bae_identify::FolderCheck, DbError> {
-    use bae_identify::{FolderCheck, MediumConflict};
-    match stored {
-        "source_tracks_unknown" => Ok(FolderCheck::SourceTracksUnknown),
-        "cd_rip" => Ok(FolderCheck::MediumDisagrees { folder: MediumConflict::CdRip }),
-        "not_cd_audio" => Ok(FolderCheck::MediumDisagrees { folder: MediumConflict::NotCdAudio }),
-        other => Err(DbError::unreadable("a verdict's folder check", other)),
-    }
 }
 
 /// One card as [`cards_sql`] answers it.

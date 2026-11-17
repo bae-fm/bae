@@ -44,6 +44,20 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- could be a CD, or a sample rate no CD holds where every row is a CD.
     -- Such a verdict is never Ready.
     medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
+    -- What a found verdict decides about its releases, which its write works
+    -- out by the rule of whether a run picks unattended
+    -- (`bae_identify::unattended_pick`): the release it picks, the lead of
+    -- its one pressing (`unattended_pick`, a release id), or why it picks
+    -- none (`declined`). 'medium_disagrees': the folder's own files rule out
+    -- every release found; 'nothing_found': no release found could be the
+    -- folder's; 'several': it found several pressings; 'unread_document': a
+    -- record of its one pressing could not be read in full;
+    -- 'source_tracks_unknown': its release lists no tracks to check against
+    -- the folder's. Both NULL for every kind but 'found'.
+    unattended_pick TEXT CHECK (unattended_pick <> ''),
+    declined        TEXT CHECK (declined IN (
+        'medium_disagrees', 'nothing_found', 'several', 'unread_document',
+        'source_tracks_unknown')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     FOREIGN KEY (identify_run) REFERENCES import_identify_run (identify_run) ON DELETE CASCADE,
     CHECK ((content_hash IS NULL) <> (identify_run IS NULL)),
@@ -59,6 +73,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     CHECK ((kind IN ('not_found', 'error')) = (track_count IS NULL)),
     CHECK ((kind = 'error') = (error_detail IS NOT NULL)),
     CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed')),
+    CHECK (kind = 'found' OR (unattended_pick IS NULL AND declined IS NULL)),
+    CHECK (kind <> 'found' OR ((unattended_pick IS NULL) <> (declined IS NULL))),
     CHECK ((disc_id_step IS NULL) = (barcode_step IS NULL)
            AND (disc_id_step IS NULL) = (catalog_step IS NULL)
            AND (disc_id_step IS NULL) = (isrc_step IS NULL)
@@ -92,49 +108,3 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict_failure (
     CHECK (failure_status IS NULL OR failure = 'provider'),
     CHECK ((content_hash IS NULL) <> (identify_run IS NULL))
 ) STRICT;
-
--- What a verdict row decides about its releases, computed from its stored
--- rows: why a found verdict picks none of its releases unattended (`declined`:
--- 'medium_disagrees', 'nothing_found', 'several', 'unread_document' or
--- 'source_tracks_unknown'; NULL when it picks one, and for every kind but
--- 'found'), the check against the folder that declined it where one did
--- (`folder_check`: the medium the folder's files rule out, or
--- 'source_tracks_unknown'), and the release it picks (`unattended_pick`).
--- The view picks the lead release, the offered one (listing 'offered') with
--- the lowest position, only when the folder's own files rule out none of the
--- offered releases, they make exactly one pressing (two catalogs' records of
--- it count once), bae read every record, and the lead's tracklist lists as
--- many tracks as the folder holds.
-CREATE VIEW IF NOT EXISTS import_candidate_verdict_decision AS
-SELECT content_hash, identify_run, declined,
-       CASE declined WHEN 'medium_disagrees' THEN medium_conflict
-                     WHEN 'source_tracks_unknown' THEN declined END AS folder_check,
-       CASE WHEN kind = 'found' AND declined IS NULL THEN lead_release END AS unattended_pick
-FROM (
-    SELECT v.content_hash, v.identify_run, v.kind, v.medium_conflict,
-           lead.release_id AS lead_release,
-           CASE WHEN v.kind <> 'found' THEN NULL
-                WHEN v.medium_conflict IS NOT NULL THEN 'medium_disagrees'
-                WHEN lead.position IS NULL THEN 'nothing_found'
-                WHEN (SELECT COUNT(DISTINCT m.pressing) FROM import_candidate_match AS m
-                      WHERE m.content_hash IS v.content_hash AND m.identify_run IS v.identify_run
-                        AND m.listing = 'offered') <> 1
-                    THEN 'several'
-                WHEN EXISTS (SELECT 1 FROM import_candidate_match AS m
-                             WHERE m.content_hash IS v.content_hash
-                               AND m.identify_run IS v.identify_run
-                               AND m.listing = 'offered' AND m.document_failure IS NOT NULL)
-                    THEN 'unread_document'
-                WHEN lead.source_tracks_kind = 'listed'
-                 AND lead.source_tracks_count = COALESCE(v.track_count, 0)
-                    THEN NULL
-                WHEN lead.source_tracks_kind IN ('listed', 'unreadable') THEN 'nothing_found'
-                ELSE 'source_tracks_unknown' END AS declined
-    FROM import_candidate_verdict AS v
-    LEFT JOIN import_candidate_match AS lead
-        ON lead.content_hash IS v.content_hash AND lead.identify_run IS v.identify_run
-       AND lead.position = (SELECT MIN(m.position) FROM import_candidate_match AS m
-                            WHERE m.content_hash IS v.content_hash
-                              AND m.identify_run IS v.identify_run
-                              AND m.listing = 'offered')
-);

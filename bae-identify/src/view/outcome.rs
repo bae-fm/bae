@@ -112,8 +112,8 @@ impl IdentifyStateView {
                     agreements: cards.agreements,
                     narrowed_out_count: cards.narrowed_out_count,
                     decision: cards.decision.expect(
-                        "a found verdict's rows hold its decision, which the view \
-                         import_candidate_verdict_decision gives every found verdict",
+                        "a found verdict's row holds its decision, which the verdict's \
+                         write stores for every found verdict",
                     ),
                     offers_shared_album: cards.shared_album.is_some(),
                 }

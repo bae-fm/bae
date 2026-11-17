@@ -337,13 +337,23 @@ pub(super) fn save_preparation_on(
                 prep.identification.is_some(),
                 "candidate {content_hash} opens on a result it stores none of"
             );
-            // This save wrote the verdict's rows above, in this transaction.
-            let check_failed: bool = sql.query_row(
-                "SELECT folder_check IS NOT NULL \
-                 FROM import_candidate_verdict_decision WHERE content_hash = ?",
+            // This save wrote the verdict's row above, in this transaction,
+            // with what it decides.
+            let (declined, medium_conflict): (Option<String>, Option<String>) = sql.query_row(
+                "SELECT declined, medium_conflict FROM import_candidate_verdict \
+                 WHERE content_hash = ?",
                 [content_hash],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get(1)?)),
             )?;
+            let check_failed = match declined {
+                Some(declined) => super::verdict_rows::declined_of(
+                    &declined,
+                    super::verdict_rows::medium_conflict_of(medium_conflict)?,
+                )?
+                .folder_check()
+                .is_some(),
+                None => false,
+            };
             if !check_failed {
                 super::session_rows::move_pane_on(
                     sql,

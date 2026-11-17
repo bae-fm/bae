@@ -510,7 +510,7 @@ impl Fixture {
 
     /// Whether the verdict stored for `dir` picks a release on its own, and
     /// the check against the folder it failed, as the candidate's pane reads
-    /// them from the view `import_candidate_verdict_decision`.
+    /// them from what the verdict's write stored.
     pub(crate) async fn judgement_for(&self, dir: &Path) -> (bool, Option<FolderCheck>) {
         let detail = self
             .context
