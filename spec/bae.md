@@ -2052,8 +2052,12 @@ separator. A release's gallery names its cover Cover and an image file by its
 filename. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. On the Mac, an album's cover, and the release editor's, opens
-that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. A draft read from the tags, typed in or cleared, or a
-candidate linked to an album or unlinked, is offered no catalog's covers. A catalog's cover is fetched with the draft, before the
+that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. Until the
+picker fetches the catalogs' covers (below), a draft read from the tags, typed
+in or cleared, or a candidate linked to an album or to nothing, has no
+catalog's covers to offer. The fetch finds the covers of the candidate's link:
+its claimed releases' covers for a pressing, the covers each catalog shows for
+the album for an album, and none for a candidate linked to nothing. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. A cover is a catalog's image, or
 one of the folder's images in a format bae can store, or the artwork its
 tags hold, as the scan read them: a draft naming a file the scan did not
