@@ -24,14 +24,10 @@ fn a_member_removes_only_their_own_other_devices() {
 #[test]
 fn a_members_access_is_an_account_a_key_or_not_yet_recorded() {
     let connection = rusqlite::Connection::open_in_memory().unwrap();
-    // The compressed base point: a signing key the row's conversion accepts.
-    let key = format!("x'58{}'", "66".repeat(31));
     let read = |account: Option<&str>, access_key_id: Option<&str>| {
         connection.query_row(
-            &format!(
-                "SELECT '00000000-0000-4000-8000-000000000001', 'admin', 1, {key}, {key}, \
-                 ?1, ?2, '[]', '[]', 0, 0, 1"
-            ),
+            "SELECT '00000000-0000-4000-8000-000000000001', 'admin', 1, \
+             ?1, ?2, '[]', '[]', 0, 0, 1",
             [account, access_key_id],
             |row| super::members::member_row(row, 0),
         )
@@ -53,14 +49,11 @@ fn a_members_access_is_an_account_a_key_or_not_yet_recorded() {
 #[test]
 fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
     let connection = rusqlite::Connection::open_in_memory().unwrap();
-    let key = format!("x'58{}'", "66".repeat(31));
     let read = |self_is_admin: bool| {
         connection
             .query_row(
-                &format!(
-                    "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, {key}, {key}, \
-                     NULL, NULL, '[[\"01\",\"Phone\",false]]', '[]', 1, 0, ?1"
-                ),
+                "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
+                 NULL, NULL, '[[\"01\",\"Phone\",false]]', '[]', 1, 0, ?1",
                 [self_is_admin],
                 |row| super::members::member_row(row, 0),
             )
