@@ -26,10 +26,9 @@ extension ShotScene {
             "mac.welcome.open-failed",
             libraries: PreviewData.boardLibraries,
             loadError: LoadError(
-                .libraryOpen,
+                .libraryOpen(offersReset: true),
                 PreviewData.displayErrorWithDetail,
-                libraryId: PreviewData.homeMusic.id,
-                offersReset: true
+                libraryId: PreviewData.homeMusic.id
             )
         ),
         welcomeWindow(

@@ -141,15 +141,24 @@ private struct OpenFailureNotice: View {
     let failure: LoadError
     let onResetFromCloud: () -> Void
 
+    private var offersReset: Bool {
+        if case .libraryOpen(offersReset: true) = failure.step {
+            true
+        }
+        else {
+            false
+        }
+    }
+
     var body: some View {
         Notice(
             title: failure.step.title,
-            advice: failure.offersReset
+            advice: offersReset
                 ? String(
                     localized: "Something is wrong with this library’s data."
                 ) : nil,
             error: failure.error,
-            action: failure.offersReset
+            action: offersReset
                 ? ErrorAction("Reset from cloud…", perform: onResetFromCloud)
                 : nil,
             buttons: .below

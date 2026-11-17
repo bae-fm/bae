@@ -19,8 +19,7 @@ struct OpenFailureOfferTests {
     @Test("a failed open core offers the reset for offers Reset from cloud")
     func resetFromCloud() throws {
         let failure = try openFailure(.ResetFromCloud(error: damaged))
-        #expect(failure.offersReset)
-        #expect(failure.step == .libraryOpen)
+        #expect(failure.step == .libraryOpen(offersReset: true))
         #expect(failure.libraryId == "library-1")
     }
 
@@ -28,7 +27,10 @@ struct OpenFailureOfferTests {
         "a damaged library core fails plainly, as one with no storage, offers no reset"
     )
     func failed() throws {
-        #expect(try !openFailure(.Failed(error: damaged)).offersReset)
+        #expect(
+            try openFailure(.Failed(error: damaged)).step
+                == .libraryOpen(offersReset: false)
+        )
     }
 
     @Test("a cancelled open shows nothing")

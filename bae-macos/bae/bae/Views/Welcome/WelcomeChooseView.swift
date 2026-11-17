@@ -142,7 +142,7 @@ struct WelcomeChooseView: View {
     private var openFailureInList: LoadError? {
         guard
             let loadError,
-            loadError.step == .libraryOpen,
+            case .libraryOpen = loadError.step,
             let libraryId = loadError.libraryId,
             discoveredLibraries.contains(where: { $0.id == libraryId })
         else { return nil }

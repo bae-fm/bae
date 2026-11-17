@@ -8,8 +8,10 @@ import SwiftUI
 /// screen, the Activity panel, or the reset screen.
 struct LoadError: Equatable {
     enum Step: Equatable {
-        /// Opening a library.
-        case libraryOpen
+        /// Opening a library. `offersReset` says whether the failure offers
+        /// Reset from cloud in place of Retry: core failed the open with an
+        /// error that a reset from the cloud fixes.
+        case libraryOpen(offersReset: Bool)
         /// Reading which libraries are on this Mac.
         case libraryList
         /// Closing the open library to restore it over this Mac's copy.
@@ -72,21 +74,11 @@ struct LoadError: Equatable {
     let error: DisplayError
     /// The library the step ran for, where it ran for one.
     let libraryId: String?
-    /// Whether the failure offers Reset from cloud in place of Retry: core
-    /// failed the open as one a reset from the cloud loads the library
-    /// again from.
-    let offersReset: Bool
 
-    init(
-        _ step: Step,
-        _ error: DisplayError,
-        libraryId: String? = nil,
-        offersReset: Bool = false
-    ) {
+    init(_ step: Step, _ error: DisplayError, libraryId: String? = nil) {
         self.step = step
         self.error = error
         self.libraryId = libraryId
-        self.offersReset = offersReset
     }
 
     /// The failure as the Activity panel lists it.
@@ -116,10 +108,9 @@ struct LoadError: Equatable {
                 false
             }
         self.init(
-            .libraryOpen,
+            .libraryOpen(offersReset: offersReset),
             shown,
-            libraryId: libraryId,
-            offersReset: offersReset
+            libraryId: libraryId
         )
     }
 }
