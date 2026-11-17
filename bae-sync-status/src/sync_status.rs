@@ -49,7 +49,7 @@ impl SyncStatus {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncStatusSnapshot {
     /// coven's sync state and when sync last finished, as coven computes
-    /// them from what it knows (`subscribe_sync_status`).
+    /// them from what it knows (`coven_sync_state`).
     pub coven: coven::SyncStatus,
     pub pending: Vec<PendingItem>,
     /// Why this device's last attempt to start sync failed, while that

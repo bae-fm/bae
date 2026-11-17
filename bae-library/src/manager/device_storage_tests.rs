@@ -3,34 +3,35 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::synced::{COVERS_NAMESPACE, RELEASE_FILES_NAMESPACE};
+use bae_records::synced::RELEASE_FILES_NAMESPACE;
 use bae_store::live_query::LiveSource;
 
-fn namespace(name: &str, budget: u64, cached: u64, pinned: u64) -> coven::NamespaceBytes {
-    coven::NamespaceBytes { namespace: name.to_string(), budget, cached, pinned }
-}
-
-fn measured(namespaces: Vec<coven::NamespaceBytes>) -> coven::LocalBytes {
-    coven::LocalBytes { namespaces, pinning: 0, library: 700, before_reset: None }
-}
-
-fn audio_namespace(cached: u64, pinned: u64) -> coven::NamespaceBytes {
-    namespace(RELEASE_FILES_NAMESPACE, CacheLimit::Gb20.bytes(), cached, pinned)
+/// What coven's tables say with nothing pinned, cached or kept from a
+/// reset: the audio budget at its default and the library's 700 bytes.
+fn measured() -> DeviceBytes {
+    DeviceBytes {
+        audio_budget: Some(CacheLimit::Gb20.bytes()),
+        pinned: 0,
+        cached: 0,
+        library: 700,
+        before_reset: None,
+    }
 }
 
 /// Pinned and Cache show while they hold bytes, Library always, in that
-/// order; a pin on the way counts as Pinned, and the catalog images as Cache.
+/// order; the catalog images count as Cache.
 #[test]
 fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
-    let nothing =
-        DeviceStorage::from_measurements(&measured(vec![audio_namespace(0, 0)]), 0).unwrap();
+    let nothing = DeviceStorage::from_measurements(&measured(), 0).unwrap();
     assert_eq!(nothing.parts, [StoragePart { kind: StorageKind::Library, bytes: 700 }]);
     assert_eq!((nothing.total, nothing.cache, nothing.can_clear_cache), (700, 0, false));
     assert_eq!(nothing.before_reset, None);
 
-    let mut local = measured(vec![audio_namespace(30, 4000), namespace(COVERS_NAMESPACE, 9, 5, 0)]);
-    local.pinning = 60;
-    let full = DeviceStorage::from_measurements(&local, 200).unwrap();
+    let full = DeviceStorage::from_measurements(
+        &DeviceBytes { pinned: 4060, cached: 35, ..measured() },
+        200,
+    )
+    .unwrap();
     assert_eq!(
         full.parts,
         [
@@ -46,9 +47,8 @@ fn a_part_with_no_bytes_is_left_out_but_the_library_never() {
 /// From before the reset shows while an archive is here, last.
 #[test]
 fn the_archives_a_reset_kept_show_last() {
-    let mut local = measured(vec![audio_namespace(0, 0)]);
-    local.before_reset = Some(5000);
-    let storage = DeviceStorage::from_measurements(&local, 0).unwrap();
+    let bytes = DeviceBytes { before_reset: Some(5000), ..measured() };
+    let storage = DeviceStorage::from_measurements(&bytes, 0).unwrap();
     assert_eq!(
         storage.parts,
         [
@@ -59,12 +59,14 @@ fn the_archives_a_reset_kept_show_last() {
     assert_eq!((storage.total, storage.before_reset), (5700, Some(5000)));
 }
 
-/// A budget no choice names is a failed read, never shown as a default.
+/// A budget no choice names is a failed read, never shown as a default, and
+/// so is an audio cache coven has no budget for.
 #[test]
 fn a_budget_no_choice_names_fails_the_read() {
-    let local = measured(vec![namespace(RELEASE_FILES_NAMESPACE, 12_345, 0, 0)]);
-    assert!(DeviceStorage::from_measurements(&local, 0).is_err());
-    assert!(DeviceStorage::from_measurements(&measured(vec![]), 0).is_err());
+    let odd = DeviceBytes { audio_budget: Some(12_345), ..measured() };
+    assert!(DeviceStorage::from_measurements(&odd, 0).is_err());
+    let none = DeviceBytes { audio_budget: None, ..measured() };
+    assert!(DeviceStorage::from_measurements(&none, 0).is_err());
 }
 
 /// The next value of `live` that `done` accepts.

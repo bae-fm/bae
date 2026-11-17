@@ -1,11 +1,12 @@
 //! coven's sync state beside a read of the library's tables, the one place
 //! the two are put together.
 //!
-//! coven computes the sync state from what it knows and follows it on its
-//! own (`subscribe_sync_status`): it reruns as a file starts or ends a
-//! transfer, which no write to a table the library reads would wake. The
-//! library's rows (the pending records it names, why a start failed, the
-//! queues' counts) are read in one read of their own.
+//! coven computes the sync state in its view `coven_sync_state`, and the
+//! store follows the view in a live query of its own: coven runs that query
+//! again as a file starts or ends a transfer, which no write to a table the
+//! library reads would wake. The library's rows (the pending records it
+//! names, why a start failed, the queues' counts) are read in one read of
+//! their own.
 //!
 //! The rows are never older than the state they are put with. A start of
 //! sync ends a failed start in the transaction that starts it (the

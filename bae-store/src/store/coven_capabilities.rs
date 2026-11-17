@@ -68,11 +68,12 @@ impl Store {
         Ok(self.reported(self.inner.handle.release_memory().await)?)
     }
 
-    /// coven's sync state now, then again after each change to it.
+    /// coven's sync state now, then again after each change to it: a live
+    /// query of coven's view `coven_sync_state`.
     pub fn subscribe_coven_sync_status(
         &self,
     ) -> coven::LiveQuery<coven::SyncStatus, coven::CovenError> {
-        self.inner.handle.subscribe_sync_status()
+        self.inner.handle.subscribe(|sql| Ok(coven::SyncStatus::read(sql)?))
     }
 
     /// coven's sync state followed beside the read `rows` of the library's
@@ -95,7 +96,7 @@ impl Store {
         };
         crate::WithSyncState::new(
             self.inner.handle.clone(),
-            self.inner.handle.subscribe_sync_status(),
+            self.subscribe_coven_sync_status(),
             changes,
             rows,
             make,
@@ -379,13 +380,6 @@ impl Store {
     /// archives resets kept.
     pub async fn local_bytes(&self) -> Result<coven::LocalBytes, DbError> {
         self.reported(self.inner.handle.local_bytes().await).map_err(DbError::from)
-    }
-
-    /// A measurement of what this device keeps for the store at once, then
-    /// a new one after each change to the cache's entries or a budget and
-    /// after each deletion of what resets kept.
-    pub fn subscribe_local_bytes(&self) -> coven::LocalBytesWatch {
-        self.inner.handle.subscribe_local_bytes()
     }
 
     /// Delete the installations resets kept on this device.

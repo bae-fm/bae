@@ -253,13 +253,12 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
 impl Schema {
     /// Open the library on `conn`, a fresh in-memory connection the caller
     /// opened, outside coven. The function registers the schema's functions
-    /// and collations and coven's `coven_path_text` (which coven registers on
-    /// every connection it opens), creates the tables coven lets the triggers
-    /// follow as coven creates them, and runs the schema's statements in
-    /// order. The function is a `test-utils` item, so every crate's tests open
-    /// a bare library through this one place.
+    /// and collations, has coven make every object the app's SQL reads and
+    /// register its own SQL functions there, with device 1 as this device,
+    /// and runs the schema's statements in order. The function is a
+    /// `test-utils` item, so every crate's tests open a bare library through
+    /// this one place.
     pub fn open_bare_library(self, conn: &rusqlite::Connection) {
-        register_bare_function(conn, &COVEN_PATH_TEXT);
         for function in self.functions() {
             register_bare_function(conn, function);
         }
@@ -267,20 +266,12 @@ impl Schema {
             conn.create_collation(collation.name, collation.compare)
                 .unwrap_or_else(|error| panic!("{} registers: {error}", collation.name));
         }
-        for statement in coven::followed_tables_sql().chain(self.sql()) {
+        coven::make_readable_objects(conn, coven::DeviceId(1))
+            .expect("coven makes its readable objects on the bare library");
+        for statement in self.sql() {
             conn.execute_batch(statement).expect("the bare library's schema applies");
         }
     }
-}
-
-/// `coven_path_text` as coven registers it: coven's own function.
-#[cfg(any(test, feature = "test-utils"))]
-static COVEN_PATH_TEXT: SchemaFunction =
-    SchemaFunction { name: "coven_path_text", arguments: 1, version: 0, compute: coven_path_text };
-
-#[cfg(any(test, feature = "test-utils"))]
-fn coven_path_text(arguments: &SqlArguments<'_>) -> rusqlite::Result<rusqlite::types::Value> {
-    coven::path_text_sql(arguments.get_raw(0))
 }
 
 /// `function` on `conn`, a bare connection.

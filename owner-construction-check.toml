@@ -167,7 +167,6 @@ external_types = [
     "IdSourceRef",
     "JoinHandle",
     "LiveQuery",
-    "LocalBytesWatch",
     "LruCache",
     "Mutex",
     "Notify",
@@ -1712,7 +1711,7 @@ rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries
 read_types = ["SqlRead", "SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
 live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "LiveResults", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
 request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
-value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "LocalBytesWatch", "KeyedValueStream"]
+value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "KeyedValueStream"]
 kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64"]
 plumbing = [
     "bae-store/src/live_query.rs",
@@ -1855,6 +1854,15 @@ frozen = [
     { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
 ]
 allowed = [
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image files in the cache's folder, which the cache's own lock guards; file sizes on disk, which no table holds, not rows" },
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::bytes", shape = "aggregate", count = 1, reason = "adds the sizes of the catalog image files in the cache's folder; file sizes on disk, which no table holds, not rows" },
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::measure", shape = "kept-state", count = 1, reason = "lists the catalog image files in the cache's folder, which the cache's own lock guards; files on disk, not rows" },
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "DiskImageCache::measure", shape = "aggregate", count = 1, reason = "sizes the list of the catalog image files it reads from the cache's folder; files on disk, not rows" },
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "RemoteImageWatch::changed", shape = "kept-state", count = 1, reason = "waits for the image cache's next write, eviction or clear; a change to files on disk, not rows" },
+    { path = "bae-catalogs/src/remote_image/cache.rs", item = "RemoteImageWatch::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image files in the cache's folder; file sizes on disk, which no table holds, not rows" },
+    { path = "bae-library/src/manager/device_storage.rs", item = "CatalogImages::changed", shape = "kept-state", count = 1, reason = "waits for the catalog image cache's next change on a desktop; a change to files on disk, not rows" },
+    { path = "bae-library/src/manager/device_storage.rs", item = "CatalogImages::bytes", shape = "kept-state", count = 1, reason = "measures the catalog image cache's files on a desktop; file sizes on disk, which no table holds, not rows" },
+    { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
     { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
     { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
