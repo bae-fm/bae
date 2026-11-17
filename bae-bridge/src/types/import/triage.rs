@@ -235,8 +235,8 @@ pub enum BridgeTriageImportStatus {
 /// `bae_import::WatchedFolder`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeWatchedFolder {
-    /// The watched folder's absolute path, as coven's bytes for it: what
-    /// every call naming the folder takes back.
+    /// The watched folder's absolute path, as coven's bytes for it. Every
+    /// call about this folder takes these bytes as its argument.
     pub path: Vec<u8>,
     /// The whole path, shown as text (`coven::path_text`).
     pub path_text: String,
