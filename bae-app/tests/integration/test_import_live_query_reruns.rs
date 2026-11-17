@@ -278,12 +278,13 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // nothing in between for a looser bound to allow.
     assert_eq!(pane_counted.runs, 0, "the scan's writes of other folders reran the candidate pane");
 
-    list.cancel().await.unwrap();
-    // The pane's and the progress's queries end with the store, so they go
-    // first.
+    // Each of these readers fails on a read that reports its query ended, as
+    // the count's does once the list closes and the pane's and the progress's
+    // do once the store closes, so they stop first.
     for reader in [pane_reader, progress_reader, count_reader] {
         reader.abort();
         assert!(reader.await.unwrap_err().is_cancelled());
     }
+    list.cancel().await.unwrap();
     services.close().await.unwrap();
 }
