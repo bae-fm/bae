@@ -94,7 +94,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         let card = Self.card(
             offers: ImportCandidateActionOffer.selection(
                 PreviewData.selectedImportTabPair(combinable: true)
-                .summary
+                    .summary
             )
         )
 
