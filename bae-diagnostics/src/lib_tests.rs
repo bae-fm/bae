@@ -428,7 +428,7 @@ fn a_bug_reaches_the_crash_reporter_the_platform_handed_in() {
 }
 
 /// A bug coven finds in work nobody waits for reaches the crash reporter
-/// the platform handed in, naming the work that panicked.
+/// the platform handed in, naming the work coven found it in.
 #[test]
 fn a_bug_coven_reports_reaches_the_crash_reporter() {
     let reporter = Arc::new(RecordingBugReporter::default());
@@ -443,7 +443,7 @@ fn a_bug_coven_reports_reaches_the_crash_reporter() {
         [(
             "upload a file".to_string(),
             format!(
-                "upload a file panicked: the queue broke its order (at {}:{found_on}:18)",
+                "upload a file found a bug: the queue broke its order (at {}:{found_on}:18)",
                 file!()
             )
         )]

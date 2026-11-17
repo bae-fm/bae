@@ -92,7 +92,7 @@ fn a_bug_found_without_a_panic_is_reported_where_it_lands() {
         [(
             "release reserved names".to_string(),
             format!(
-                "release reserved names panicked: a name no one reserved (at {}:{found_on}:17)",
+                "release reserved names found a bug: a name no one reserved (at {}:{found_on}:17)",
                 file!()
             )
         )]

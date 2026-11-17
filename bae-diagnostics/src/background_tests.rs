@@ -41,7 +41,7 @@ fn bug_reports_a_bug_found_without_a_panic() {
         vec![(
             "resize the cover".to_string(),
             format!(
-                "resize the cover panicked: a width the cover never had (at {}:{found_on}:17)",
+                "resize the cover found a bug: a width the cover never had (at {}:{found_on}:17)",
                 file!()
             )
         )]
