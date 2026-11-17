@@ -240,24 +240,32 @@ impl Coordinator {
         }
     }
 
+    /// Take `event`. A step whose scan state the store refused has told
+    /// whoever asked for it why; the coordinator reports the refusal, since
+    /// it is the step's caller.
     pub(super) async fn take(&mut self, event: CoordinatorEvent) {
+        if let Err(error) = self.take_step(event).await {
+            self.diagnostics
+                .report_failure("store the scan state the folder scan coordinator holds", &error);
+        }
+    }
+
+    async fn take_step(&mut self, event: CoordinatorEvent) -> Result<(), bae_store::DbError> {
         match event {
             CoordinatorEvent::Command(command) => self.take_command(command).await,
-            CoordinatorEvent::RemovalFinished(completion) => {
-                self.finish_removal(completion).await;
-            }
+            CoordinatorEvent::RemovalFinished(completion) => self.finish_removal(completion).await,
             CoordinatorEvent::ScanFinished(completion) => {
-                self.active_roots.finish_scan(completion).await;
+                self.active_roots.finish_scan(completion).await
             }
             CoordinatorEvent::WatchReport(report) => {
                 take_watch_report(report, &self.tables, &mut self.active_roots, &self.diagnostics)
-                    .await;
+                    .await
             }
             CoordinatorEvent::NetworkChecked { root, found } => {
                 self.checking.remove(&root);
                 let changes = match found {
                     NetworkCheck::Moved(changes) => changes,
-                    NetworkCheck::Unchanged | NetworkCheck::Unfinished => return,
+                    NetworkCheck::Unchanged | NetworkCheck::Unfinished => return Ok(()),
                 };
                 let change = match changes {
                     None => RootChange::WholeRoot,
@@ -273,13 +281,16 @@ impl Coordinator {
                     change,
                     RootScanCause::NetworkFolderMoved,
                 )
-                .await;
+                .await
             }
-            CoordinatorEvent::Tick => self.check_network_folders().await,
+            CoordinatorEvent::Tick => {
+                self.check_network_folders().await;
+                Ok(())
+            }
         }
     }
 
-    async fn take_command(&mut self, command: WatcherCommand) {
+    async fn take_command(&mut self, command: WatcherCommand) -> Result<(), bae_store::DbError> {
         let tables = &self.tables;
         let active_roots = &mut self.active_roots;
         match command {
@@ -290,37 +301,44 @@ impl Coordinator {
                         if completion.send(Err(error)).is_err() {
                             debug!("rescan caller dropped before the watched folders failed");
                         }
-                        return;
+                        return Ok(());
                     }
                 };
                 for root in roots {
-                    active_roots
+                    let asked = active_roots
                         .request_scan(
                             root,
                             RootScanCause::Asked("every watched folder was asked for"),
                             None,
                         )
                         .await;
+                    if let Err(error) = asked {
+                        if completion.send(Err(error)).is_err() {
+                            debug!("rescan caller dropped before a read was refused");
+                        }
+                        return Ok(());
+                    }
                 }
                 if completion.send(Ok(())).is_err() {
                     debug!("rescan caller dropped before the reads were asked for");
                 }
+                Ok(())
             }
             WatcherCommand::Rescan(path) => {
                 match tables.is_watched_import_folder(&path).await {
                     Ok(true) => {}
-                    Ok(false) => return,
+                    Ok(false) => return Ok(()),
                     Err(error) => {
                         self.diagnostics.report_failure(
                             &format!("check whether {} is watched before a rescan", path.display()),
                             &error,
                         );
-                        return;
+                        return Ok(());
                     }
                 }
                 active_roots
                     .request_scan(path, RootScanCause::Asked("a rescan was asked for"), None)
-                    .await;
+                    .await
             }
             WatcherCommand::Refresh { path, completion } => {
                 let refused = match tables.is_watched_import_folder(&path).await {
@@ -335,7 +353,7 @@ impl Coordinator {
                     if completion.send(Err(refused)).is_err() {
                         debug!("folder refresh caller dropped after removal");
                     }
-                    return;
+                    return Ok(());
                 }
                 active_roots
                     .request_scan(
@@ -343,25 +361,27 @@ impl Coordinator {
                         RootScanCause::Asked("the folder was refreshed"),
                         Some(completion),
                     )
-                    .await;
+                    .await
             }
             WatcherCommand::SetFolderReleaseDecision { target, completion } => {
                 let path = PathBuf::from(&target.0.watched_folder_path);
                 active_roots
                     .change_folder_reading(path, FolderReadingRequest::new(target, completion))
-                    .await;
+                    .await
             }
             WatcherCommand::Remove { roots, parent, completion } => {
-                active_roots.remove(roots, parent, completion).await;
+                active_roots.remove(roots, parent, completion).await
             }
             #[cfg(test)]
             WatcherCommand::WatchReport { report, taken } => {
-                take_watch_report(report, tables, active_roots, &self.diagnostics).await;
+                let taken_up =
+                    take_watch_report(report, tables, active_roots, &self.diagnostics).await;
                 #[expect(
                     clippy::let_underscore_must_use,
                     reason = "a test that stopped waiting needs no answer"
                 )]
                 let _ = taken.send(());
+                taken_up
             }
             WatcherCommand::Shutdown { .. } => {
                 unreachable!("the coordinator's loop stops for a shutdown before taking it up")
@@ -369,9 +389,14 @@ impl Coordinator {
         }
     }
 
-    async fn finish_removal(&mut self, completion: active_roots::RootRemovalCompletion) {
-        let Some(outcome) = self.active_roots.finish_removal(completion).await else {
-            return;
+    /// Announce what a finished removal did and answer its callers; the
+    /// result is whether the store took what the roots hold now.
+    async fn finish_removal(
+        &mut self,
+        completion: active_roots::RootRemovalCompletion,
+    ) -> Result<(), bae_store::DbError> {
+        let Some((outcome, held)) = self.active_roots.finish_removal(completion).await else {
+            return Ok(());
         };
         match outcome {
             RemovalOutcome::Removed { commit, removed, scan_waiters, callers } => {
@@ -405,6 +430,7 @@ impl Coordinator {
                 }
             }
         }
+        held
     }
 
     /// Start the check of every watched root whose last scan found it on a
@@ -510,7 +536,7 @@ async fn take_watch_report(
     tables: &crate::tables::ImportTables,
     active_roots: &mut ActiveRoots,
     diagnostics: &bae_diagnostics::Diagnostics,
-) {
+) -> Result<(), bae_store::DbError> {
     let events = match report {
         Ok(events) => events,
         Err(errors) => {
@@ -519,7 +545,7 @@ async fn take_watch_report(
                 Err(error) => {
                     diagnostics
                         .report_failure("list the watched folders for a watch error", &error);
-                    return;
+                    return Ok(());
                 }
             };
             let mut error_paths = Vec::new();
@@ -529,9 +555,9 @@ async fn take_watch_report(
             }
             let affected = roots_for_watch_error(&error_paths, &roots);
             for root in affected {
-                active_roots.request_scan(root, RootScanCause::WatchError, None).await;
+                active_roots.request_scan(root, RootScanCause::WatchError, None).await?;
             }
-            return;
+            return Ok(());
         }
     };
     // A watch that lost track names where to start: no path,
@@ -541,7 +567,7 @@ async fn take_watch_report(
         Ok(roots) => roots,
         Err(error) => {
             diagnostics.report_failure("list the watched folders for a watch report", &error);
-            return;
+            return Ok(());
         }
     };
     let mut whole: HashSet<PathBuf> = HashSet::new();
@@ -554,7 +580,7 @@ async fn take_watch_report(
         }
     }
     for root in &whole {
-        active_roots.request_scan(root.clone(), RootScanCause::EventsDropped, None).await;
+        active_roots.request_scan(root.clone(), RootScanCause::EventsDropped, None).await?;
     }
     let changed = changed_paths(&events);
     let affected = affected_roots(&changed, &roots);
@@ -580,8 +606,9 @@ async fn take_watch_report(
                 RootScanCause::FsChange(summary.clone())
             },
         )
-        .await;
+        .await?;
     }
+    Ok(())
 }
 
 /// Ask for what `change` says `root` needs read.
@@ -590,14 +617,14 @@ async fn request_change(
     root: PathBuf,
     change: RootChange,
     cause: RootScanCause,
-) {
+) -> Result<(), bae_store::DbError> {
     match change {
         RootChange::WholeRoot => active_roots.request_scan(root, cause, None).await,
         RootChange::Folders(folders) => {
             if folders.is_empty() {
                 debug!("a change under {} reaches nothing a scan reads: {cause}", root.display());
             }
-            active_roots.request_folders(root, folders, cause).await;
+            active_roots.request_folders(root, folders, cause).await
         }
     }
 }

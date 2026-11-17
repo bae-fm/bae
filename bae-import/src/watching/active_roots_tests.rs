@@ -544,3 +544,36 @@ async fn a_root_whose_whole_pass_is_owed_reads_as_running() {
     wait_for_held(&harness, &root, None).await;
     harness.shutdown().await;
 }
+
+/// When the store refuses to hold a root as running, the coordinator starts
+/// no pass over it and tells whoever asked for the pass why.
+#[tokio::test]
+async fn a_pass_the_store_will_not_hold_as_running_does_not_start() {
+    let harness = CoordinatorHarness::new().await;
+    crate::tables::ImportTables::fail_held_root_scan_writes_for_test(harness.library.path()).await;
+
+    let refreshed = request_refresh(&harness, "/music");
+    let answer = tokio::time::timeout(HANG_GUARD, refreshed).await.unwrap().unwrap();
+    assert!(answer.as_ref().is_err_and(|error| error.contains("the disk is full")), "{answer:?}");
+    harness.commands_handled().await;
+    assert!(harness.scans.scans.lock().unwrap().is_empty(), "the coordinator started a pass");
+    harness.shutdown().await;
+}
+
+/// When the store refuses what the coordinator holds of a root once its pass
+/// ends, whoever waited on the pass hears why instead of hearing it ended.
+#[tokio::test]
+async fn a_pass_end_the_store_will_not_hold_fails_its_waiters() {
+    use crate::folder_scan_status::HeldRootScan;
+    let harness = CoordinatorHarness::new().await;
+    let root = root_path("/music");
+    let refreshed = request_refresh(&harness, "/music");
+    harness.scans.wait_for_count(1).await;
+    wait_for_held(&harness, &root, Some(HeldRootScan::Running)).await;
+    crate::tables::ImportTables::fail_held_root_scan_writes_for_test(harness.library.path()).await;
+
+    harness.scans.complete(0);
+    let answer = tokio::time::timeout(HANG_GUARD, refreshed).await.unwrap().unwrap();
+    assert!(answer.as_ref().is_err_and(|error| error.contains("the disk is full")), "{answer:?}");
+    harness.shutdown().await;
+}

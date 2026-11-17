@@ -137,7 +137,7 @@ async fn a_stored_outcome_stands_while_the_root_is_being_read() {
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("share disconnected")).await.unwrap();
-    tables.hold_root_scan_running(&root).await.unwrap();
+    tables.hold_root_scans(running(&root)).await.unwrap();
 
     let progress = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(
@@ -275,7 +275,7 @@ async fn a_folder_that_recovers_is_owed_its_next_alert() {
         .mark_folder_scan_alert_shown(&root, Failed, "the disk is full".to_string())
         .await
         .unwrap();
-    tables.hold_root_scan_running(&root).await.unwrap();
+    tables.hold_root_scans(running(&root)).await.unwrap();
     tables
         .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Local))
         .await

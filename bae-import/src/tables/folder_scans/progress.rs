@@ -314,17 +314,29 @@ impl ImportTables {
         self.store.subscribe(move |sql| load_held_root_scans_on(&sql))
     }
 
-    /// Hold `watched_folder_path` as running, before a whole-root pass
-    /// starts on it: the pass opens its generation at once, and a reader must
-    /// find the root running by then.
-    pub(crate) async fn hold_root_scan_running(
-        &self,
-        watched_folder_path: &std::path::Path,
-    ) -> Result<(), DbError> {
-        let watched_folder_path = watched_folder_path.to_path_buf();
-        self.store
-            .call(move |sql| hold_root_scan_on(sql, &watched_folder_path, &HeldRootScan::Running))
-            .await
+    /// Plant damage for a test: every write to what the folder scan
+    /// coordinator holds, in the library under `directory`, fails, as a full
+    /// disk fails it.
+    #[cfg(test)]
+    pub(crate) async fn fail_held_root_scan_writes_for_test(directory: &std::path::Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_blocking::on_blocking_pool(move || {
+            for (name, event) in [
+                ("fail_held_inserts", "INSERT"),
+                ("fail_held_updates", "UPDATE"),
+                ("fail_held_deletes", "DELETE"),
+            ] {
+                bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                    &directory,
+                    "folder_scan_held",
+                    &format!(
+                        "CREATE TRIGGER {name} BEFORE {event} ON folder_scan_held \
+                         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END;"
+                    ),
+                );
+            }
+        })
+        .await;
     }
 
     /// Store `held` as everything the folder scan coordinator holds of the

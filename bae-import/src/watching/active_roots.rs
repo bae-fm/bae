@@ -5,6 +5,7 @@
 //! with that folder watched in their place.
 
 use super::*;
+use bae_store::DbError;
 use std::collections::BTreeSet;
 
 /// A caller waiting to hear that what it asked for is over.
@@ -227,39 +228,51 @@ impl ActiveRoots {
         }
     }
 
-    /// Write what the roots hold of each one's scan: running while a
-    /// whole-root pass reads it or is owed, or a removal holds it; otherwise
-    /// the last failure its scan could not store. Called once at the end of
-    /// each change, so no reader sees the step between two of its parts; a
-    /// root a whole-root pass is starting on is written as running before
-    /// the pass starts as well ([`Self::start_pass`]). A write that fails is
-    /// reported, and the roots' rows stay as the last write left them.
-    async fn publish(&mut self) {
+    /// What the roots hold of each one's scan: running while a whole-root
+    /// pass reads it or is owed, or a removal holds it; otherwise the last
+    /// failure its scan could not store.
+    fn held(&self) -> crate::folder_scan_status::HeldRootScans {
         use crate::folder_scan_status::HeldRootScan;
-        let mut now = crate::folder_scan_status::HeldRootScans::new();
+        let mut held = crate::folder_scan_status::HeldRootScans::new();
         for (path, activity) in &self.roots {
             let running = match activity {
                 RootActivity::Scanning(schedule) => schedule.whole_root || schedule.pending,
                 RootActivity::Removing(_) => true,
             };
             if running {
-                now.insert(path.clone(), HeldRootScan::Running);
+                held.insert(path.clone(), HeldRootScan::Running);
             }
         }
         for (path, failure) in &self.unstored_failures {
-            now.entry(path.clone())
+            held.entry(path.clone())
                 .or_insert_with(|| HeldRootScan::UnstoredFailure(failure.clone()));
         }
-        if self.written == now {
-            return;
+        held
+    }
+
+    /// Store `held` as what the roots hold of each one's scan, unless the
+    /// last write that succeeded stored the same. A step that starts or
+    /// queues work stores what it will hold before it changes anything, and
+    /// changes nothing when the store refuses; a step that records what
+    /// already happened stores it after, and tells whoever waits on it when
+    /// the store refuses.
+    async fn hold(
+        &mut self,
+        held: crate::folder_scan_status::HeldRootScans,
+    ) -> Result<(), DbError> {
+        if self.written == held {
+            return Ok(());
         }
-        match self.tables.hold_root_scans(now.clone()).await {
-            Ok(()) => self.written = now,
-            Err(error) => self.diagnostics.report_failure(
-                "store what the folder scan coordinator holds of each scan",
-                &error,
-            ),
-        }
+        self.tables.hold_root_scans(held.clone()).await?;
+        self.written = held;
+        Ok(())
+    }
+
+    /// Store what the roots hold now, after a step that records what
+    /// already happened.
+    async fn hold_current(&mut self) -> Result<(), DbError> {
+        let held = self.held();
+        self.hold(held).await
     }
 
     /// Whether a removal holds `path`.
@@ -267,13 +280,29 @@ impl ActiveRoots {
         matches!(self.roots.get(path), Some(RootActivity::Removing(_)))
     }
 
-    /// Ask for a pass over `path`, telling `waiter` when it is over.
+    /// Ask for a pass over `path`, telling `waiter` when it is over. When the
+    /// store refuses to hold the root as running, nothing is queued or
+    /// started, and `waiter` hears why.
     pub(super) async fn request_scan(
         &mut self,
         path: PathBuf,
         cause: RootScanCause,
         waiter: Option<RefreshCompletion>,
-    ) {
+    ) -> Result<(), DbError> {
+        let becomes_running = matches!(
+            self.roots.get(&path),
+            Some(RootActivity::Scanning(schedule)) if !schedule.whole_root && !schedule.pending
+        );
+        if becomes_running {
+            let mut held = self.held();
+            held.insert(path.clone(), crate::folder_scan_status::HeldRootScan::Running);
+            if let Err(error) = self.hold(held).await {
+                if let Some(waiter) = waiter {
+                    answer(waiter, Err(not_held(&path, &error)));
+                }
+                return Err(error);
+            }
+        }
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
                 info!("folder scan of {} queued behind the one running: {cause}", path.display());
@@ -291,16 +320,17 @@ impl ActiveRoots {
             }
             None => {
                 info!("folder scan of {} starting: {cause}", path.display());
-                self.start_pass(
-                    path,
-                    RootPass::WholeRoot,
-                    waiter.into_iter().collect(),
-                    Queued::default(),
-                )
-                .await;
+                return self
+                    .start_pass(
+                        path,
+                        RootPass::WholeRoot,
+                        waiter.into_iter().collect(),
+                        Queued::default(),
+                    )
+                    .await;
             }
         }
-        self.publish().await;
+        Ok(())
     }
 
     /// Read again the folders directly under `path` that changed on disk.
@@ -309,9 +339,9 @@ impl ActiveRoots {
         path: PathBuf,
         folders: BTreeSet<std::ffi::OsString>,
         cause: RootScanCause,
-    ) {
+    ) -> Result<(), DbError> {
         if folders.is_empty() {
-            return;
+            return Ok(());
         }
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
@@ -325,11 +355,12 @@ impl ActiveRoots {
             Some(RootActivity::Removing(_)) => {}
             None => {
                 info!("reading {folders:?} under {} again: {cause}", path.display());
-                self.start_pass(path, RootPass::Folders(folders), Vec::new(), Queued::default())
+                return self
+                    .start_pass(path, RootPass::Folders(folders), Vec::new(), Queued::default())
                     .await;
             }
         }
-        self.publish().await;
+        Ok(())
     }
 
     /// Store a person's answer for how one folder under `path` reads, as the
@@ -339,7 +370,7 @@ impl ActiveRoots {
         &mut self,
         path: PathBuf,
         request: FolderReadingRequest,
-    ) {
+    ) -> Result<(), DbError> {
         match self.roots.get_mut(&path) {
             Some(RootActivity::Scanning(schedule)) => {
                 if schedule.whole_root {
@@ -354,24 +385,29 @@ impl ActiveRoots {
                 request.answer(Err(self.why_held(id, &path)));
             }
             None => {
-                self.start_pass(path, RootPass::Decision(request), Vec::new(), Queued::default())
+                return self
+                    .start_pass(path, RootPass::Decision(request), Vec::new(), Queued::default())
                     .await;
             }
         }
-        self.publish().await;
+        Ok(())
     }
 
-    /// A pass reported itself over: answer its waiters and start what was
-    /// queued behind it.
-    pub(super) async fn finish_scan(&mut self, completion: RootScanCompletion) {
+    /// A pass reported itself over: start what was queued behind it, store
+    /// what the root holds now, and answer the pass's waiters. When the store
+    /// refuses, the waiters hear why instead of hearing the pass ended.
+    pub(super) async fn finish_scan(
+        &mut self,
+        completion: RootScanCompletion,
+    ) -> Result<(), DbError> {
         if !matches!(
             self.roots.get(&completion.path),
             Some(RootActivity::Scanning(schedule)) if schedule.id == completion.id
         ) {
-            return;
+            return Ok(());
         }
         let Some(RootActivity::Scanning(mut schedule)) = self.roots.remove(&completion.path) else {
-            return;
+            return Ok(());
         };
         // A pass that panicked was reported where it ran.
         schedule.scan.ended().await;
@@ -385,28 +421,34 @@ impl ActiveRoots {
             readings: std::mem::take(&mut schedule.readings),
             changed: std::mem::take(&mut schedule.changed),
         };
-        if let Some(reading) = queued.readings.pop_front() {
-            self.start_pass(completion.path, RootPass::Decision(reading), Vec::new(), queued).await;
+        let path = completion.path;
+        let next = if let Some(reading) = queued.readings.pop_front() {
+            self.start_pass(path.clone(), RootPass::Decision(reading), Vec::new(), queued).await
         } else if !queued.pending && !queued.changed.is_empty() {
             let folders = std::mem::take(&mut queued.changed);
-            self.start_pass(completion.path, RootPass::Folders(folders), Vec::new(), queued).await;
+            self.start_pass(path.clone(), RootPass::Folders(folders), Vec::new(), queued).await
         } else if queued.pending {
-            info!(
-                "folder scan of {} starting again: one was queued while it ran",
-                completion.path.display()
-            );
+            info!("folder scan of {} starting again: one was queued while it ran", path.display());
             let waiters = std::mem::take(&mut queued.followup_waiters);
-            self.start_pass(completion.path, RootPass::WholeRoot, waiters, Queued::default()).await;
-        }
-        // Published before the waiters hear the pass is over, so what they
-        // read next is where it left the root.
-        self.publish().await;
+            self.start_pass(path.clone(), RootPass::WholeRoot, waiters, Queued::default()).await
+        } else {
+            Ok(())
+        };
+        // The coordinator stores what the root holds before the waiters hear
+        // the pass is over, so what they read next is where the pass left
+        // the root.
+        let held = match next {
+            Ok(()) => self.hold_current().await,
+            Err(error) => Err(error),
+        };
         // The scan stores its own failure; a refresh caller only waits.
+        let result = held.as_ref().map(|_| ()).map_err(|error| not_held(&path, error));
         for waiter in current_waiters {
-            if waiter.send(Ok(())).is_err() {
+            if waiter.send(result.clone()).is_err() {
                 debug!("folder refresh caller dropped before completion");
             }
         }
+        held
     }
 
     /// Stop watching `roots`, watching `parent` — the folder holding exactly
@@ -417,7 +459,7 @@ impl ActiveRoots {
         roots: Vec<PathBuf>,
         parent: Option<PathBuf>,
         completion: RefreshCompletion,
-    ) {
+    ) -> Result<(), DbError> {
         let held = roots.iter().chain(parent.iter()).find_map(|path| match self.roots.get(path) {
             Some(RootActivity::Removing(id)) => Some((path, *id)),
             Some(RootActivity::Scanning(_)) | None => None,
@@ -430,13 +472,29 @@ impl ActiveRoots {
                 Some(removal) => answer(completion, Err(removal.busy(path))),
                 None => answer(completion, Err(missing_removal(id))),
             }
-            return;
+            return Ok(());
         }
         if let Some(parent) = &parent {
             if self.roots.contains_key(parent) {
                 answer(completion, Err(format!("{} is already watched", parent.display())));
-                return;
+                return Ok(());
             }
+        }
+        // The removal holds every root it names, and the parent, as running
+        // from its start, so the coordinator stores that before it cancels
+        // anything.
+        let mut running = self.held();
+        for path in roots.iter().chain(parent.iter()) {
+            running.insert(path.clone(), crate::folder_scan_status::HeldRootScan::Running);
+        }
+        if let Err(error) = self.hold(running).await {
+            let named: Vec<String> =
+                roots.iter().chain(parent.iter()).map(|path| path.display().to_string()).collect();
+            answer(
+                completion,
+                Err(format!("bae could not store the scan state of {}: {error}", named.join(", "))),
+            );
+            return Err(error);
         }
         // Each root's pass is cancelled and waited out, since it could
         // install a watch this is taking down; its waiters become the
@@ -507,22 +565,24 @@ impl ActiveRoots {
                 scan_waiters,
             },
         );
-        self.publish().await;
+        Ok(())
     }
 
     /// A removal reported itself over: start the parent's read when it
     /// landed, or read its roots again when it failed, and return what the
-    /// coordinator is to announce.
+    /// coordinator is to announce, with whether the store took what the
+    /// roots hold now.
     pub(super) async fn finish_removal(
         &mut self,
         completion: RootRemovalCompletion,
-    ) -> Option<RemovalOutcome> {
+    ) -> Option<(RemovalOutcome, Result<(), DbError>)> {
         let removal = self.removals.remove(&completion.id)?;
         for path in removal.paths() {
             self.roots.remove(path);
         }
         // A removal that panicked was reported where it ran.
         removal.task.ended().await;
+        let mut started_passes = Ok(());
         let outcome = match completion.result {
             RootRemovalResult::Removed { commit, removed } => {
                 // The roots it removed are watched no more, and nothing is
@@ -530,20 +590,26 @@ impl ActiveRoots {
                 for root in &removal.roots {
                     self.unstored_failures.remove(root);
                 }
-                let scan_waiters = match removal.parent {
+                let (scan_waiters, started) = match removal.parent {
                     // The parent's read covers every folder a waiter asked about.
                     Some(parent) => {
-                        self.start_pass(
-                            parent,
-                            RootPass::WholeRoot,
-                            removal.scan_waiters.into_iter().map(|(_, waiter)| waiter).collect(),
-                            Queued::default(),
-                        )
-                        .await;
-                        Vec::new()
+                        let started = self
+                            .start_pass(
+                                parent,
+                                RootPass::WholeRoot,
+                                removal
+                                    .scan_waiters
+                                    .into_iter()
+                                    .map(|(_, waiter)| waiter)
+                                    .collect(),
+                                Queued::default(),
+                            )
+                            .await;
+                        (Vec::new(), started)
                     }
-                    None => removal.scan_waiters,
+                    None => (removal.scan_waiters, Ok(())),
                 };
+                started_passes = started;
                 RemovalOutcome::Removed {
                     commit,
                     removed,
@@ -565,13 +631,21 @@ impl ActiveRoots {
                 }
                 for root in removal.roots {
                     let waiters = waiters.remove(&root).unwrap_or_default();
-                    self.start_pass(root, RootPass::WholeRoot, waiters, Queued::default()).await;
+                    let started = self
+                        .start_pass(root, RootPass::WholeRoot, waiters, Queued::default())
+                        .await;
+                    if started_passes.is_ok() {
+                        started_passes = started;
+                    }
                 }
                 RemovalOutcome::Failed { error, callers: removal.completions }
             }
         };
-        self.publish().await;
-        Some(outcome)
+        let held = match started_passes {
+            Ok(()) => self.hold_current().await,
+            Err(error) => Err(error),
+        };
+        Some((outcome, held))
     }
 
     /// Have `waiter`, who asked about `path`, answered when removal `id` ends.
@@ -621,7 +695,14 @@ impl ActiveRoots {
                 schedule.scan.ended().await;
             }
         }
-        self.publish().await;
+        // Nothing waits on the shutdown's outcome, so a refused write goes to
+        // diagnostics; the library empties the rows as it next opens.
+        if let Err(error) = self.hold_current().await {
+            self.diagnostics.report_failure(
+                "store that the folder scan coordinator holds no scan as it stops",
+                &error,
+            );
+        }
         for (_, removal) in self.removals.drain() {
             removal.task.ended().await;
             for waiter in removal
@@ -635,33 +716,42 @@ impl ActiveRoots {
         }
     }
 
-    /// Start a pass over `path`, with its waiters and what is queued behind it.
+    /// Start a pass over `path`, with its waiters and what is queued behind
+    /// it. The coordinator first stores what the root holds once the pass
+    /// starts: running for a whole-root pass or one owed behind it, since the
+    /// pass opens its generation at once with no outcome and a reader must
+    /// find the root running by then, and no failure, since the pass clears
+    /// the last one. When the store refuses, the pass does not start, and
+    /// everyone waiting on it or queued behind it hears why.
     async fn start_pass(
         &mut self,
         path: PathBuf,
         pass: RootPass,
         waiters: Vec<RefreshCompletion>,
         queued: Queued,
-    ) {
+    ) -> Result<(), DbError> {
+        let whole_root = matches!(pass, RootPass::WholeRoot);
+        let mut held = self.held();
+        held.remove(&path);
+        if whole_root || queued.pending {
+            held.insert(path.clone(), crate::folder_scan_status::HeldRootScan::Running);
+        }
+        if let Err(error) = self.hold(held).await {
+            let why = not_held(&path, &error);
+            if let RootPass::Decision(request) = pass {
+                request.answer(Err(why.clone()));
+            }
+            for waiter in waiters.into_iter().chain(queued.followup_waiters) {
+                answer(waiter, Err(why.clone()));
+            }
+            for reading in queued.readings {
+                reading.answer(Err(why.clone()));
+            }
+            return Err(error);
+        }
         self.next_scan_id += 1;
         let id = self.next_scan_id;
         self.unstored_failures.remove(&path);
-        let whole_root = matches!(pass, RootPass::WholeRoot);
-        if whole_root || queued.pending {
-            // Written before the pass starts: it opens its generation at
-            // once, with no outcome, and a reader must find the root running
-            // by then.
-            match self.tables.hold_root_scan_running(&path).await {
-                Ok(()) => {
-                    self.written
-                        .insert(path.clone(), crate::folder_scan_status::HeldRootScan::Running);
-                }
-                Err(error) => self.diagnostics.report_failure(
-                    &format!("hold {} as running before its pass", path.display()),
-                    &error,
-                ),
-            }
-        }
         let changed = if whole_root { BTreeSet::new() } else { queued.changed };
         let scan =
             (self.starter)(&self.runtime, id, path.clone(), pass, self.scan_completions.clone());
@@ -678,7 +768,14 @@ impl ActiveRoots {
                 changed,
             }),
         );
+        Ok(())
     }
+}
+
+/// Why a pass over `path` did not start or end as asked: the store refused
+/// what the coordinator holds of its scan.
+fn not_held(path: &Path, error: &DbError) -> String {
+    format!("bae could not store the scan state of {}: {error}", path.display())
 }
 
 /// What a finished removal leaves the coordinator, which holds the event

@@ -906,7 +906,10 @@ and nothing until that scan stores it. Whether a pass is reading the folder is
 the coordinator's that starts the passes: it writes that to the device-local
 table `folder_scan_held` in the step that changes it, and the library empties
 that table each time it opens, so a folder never reads as scanning with nothing
-scanning it. A folder whose
+scanning it. The coordinator stores what a step will hold before it starts or
+queues a pass or a removal, and when the store refuses, it starts and queues
+nothing and tells whoever asked why. When the store refuses what a pass's end
+leaves, whoever waited on the pass hears why instead of hearing it ended. A folder whose
 current scan stored an outcome shows it. One whose scan stored none reads as
 scanning while a scan of all of it runs or is owed, or a removal holds it.
 A folder that no scan has opened a generation for shows Not scanned. The folder
