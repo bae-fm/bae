@@ -360,24 +360,6 @@ extension PreviewData {
         live: triageLive([.revealFolder])
     )
 
-    /// The upload stream the uploading Done row reads: of its release's
-    /// 36.4 MB, 12.4 MB stored or sent.
-    @MainActor
-    static func doneRowOutboxStore() -> OutboxStore {
-        OutboxStore(
-            uploadsPaused: false,
-            releaseProgress: .releaseUploads(holding: [
-                "preview-release": BridgeReleaseUploadTransfer(
-                    bar: BridgeUploadBar(
-                        bytesDone: 12_400_000,
-                        bytesTotal: 36_400_000
-                    ),
-                    throughputBps: 3_200_000
-                )
-            ])
-        )
-    }
-
     static let triageRowFailed = triageRow(
         for: importTabFailedCandidate,
         placement: .failed,

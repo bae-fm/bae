@@ -322,22 +322,6 @@ extension MappingFixtures {
 extension MappingFixtures {
     // MARK: - The album fields alongside the table
 
-    static let albumSeed = BridgeReleaseUserEdit(
-        albumTitle: "Album Title",
-        albumArtistAssignments: [artistCredit("Artist Name")],
-        albumYear: 1987,
-        pressing: BridgePressingEdit(
-            year: 1996,
-            labels: [],
-            barcodes: [],
-            facts: PreviewData.pressingFacts(
-                country: nil,
-                media: PreviewData.media(.cd)
-            )
-        ),
-        tracks: []
-    )
-
     static let albumEdit = BridgeRawReleaseEdit(
         albumTitle: "Album Title",
         albumArtistAssignments: [artistCredit("Artist Name")],
@@ -365,18 +349,6 @@ extension MappingFixtures {
             facts: PreviewData.pressingFacts()
         ),
         tracks: []
-    )
-
-    /// The pressing the fixture release states — what claiming it exactly is a
-    /// claim about, and what an edit is read against.
-    static let exactPressing = BridgeRawPressingEdit(
-        year: "1996",
-        labels: [],
-        barcodes: [],
-        facts: PreviewData.pressingFacts(
-            country: nil,
-            media: PreviewData.media(.cd)
-        )
     )
 
     static let emptyFiles = BridgeCandidateFiles(

@@ -4,10 +4,6 @@ import Testing
 
 @testable import bae
 
-private func cloudUploadReceipt(_ releaseIds: [String]) -> BridgeUploadReceipt {
-    BridgeUploadReceipt(releaseIds: releaseIds)
-}
-
 @Suite("OutboxStore")
 @MainActor
 struct OutboxStorePauseTests {

@@ -17,25 +17,6 @@ private func emptyBridgeFiles() -> BridgeCandidateFiles {
     )
 }
 
-private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
-    BridgeCandidateFiles(
-        fileMetadataIdentity: fileMetadataIdentity,
-        files: [
-            BridgeCandidateFile(
-                file: BridgeFileInfo(
-                    name: "01.flac",
-                    size: 100,
-                    fileName: "01.flac",
-                    audioFormat: nil
-                ),
-                role: .audio
-            )
-        ],
-        coverFiles: [],
-        sourceAudio: nil
-    )
-}
-
 private func bridgeFolder(
     folderPath: Data,
     watchedFolderPath: Data,

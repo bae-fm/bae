@@ -24,26 +24,6 @@ extension PreviewData {
         .source(for: "preview-track")
     }
 
-    /// Where each shot queue entry is while it plays: a third of the
-    /// way through, whichever plays.
-    static func queuePositions() -> LatestStream<BridgeTrackPosition> {
-        .trackPositions(
-            holding: Dictionary(
-                queueEntries.map {
-                    (
-                        $0.trackId,
-                        BridgeTrackPosition(
-                            positionMs: 73_000,
-                            durationMs: 214_000,
-                            progress: 0.34
-                        )
-                    )
-                },
-                uniquingKeysWith: { first, _ in first }
-            )
-        )
-    }
-
     /// A shot clip at `positionMs` of `durationMs`, as its stream
     /// would hold it.
     static func previewPosition(

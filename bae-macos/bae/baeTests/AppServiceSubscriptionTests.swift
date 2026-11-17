@@ -781,10 +781,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         queue
     }
 
-    func deliverQueue(_ value: BridgeQueueSnapshot) {
-        queue.deliver(value)
-    }
-
     func deliverPlayback(_ value: BridgePlaybackValues) {
         playbackValues.deliver(value)
     }

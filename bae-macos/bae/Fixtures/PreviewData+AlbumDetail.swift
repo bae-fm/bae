@@ -3,11 +3,9 @@ import SwiftUI
 
 @testable import bae
 
-// Fixture support for `AlbumDetailView` and `AlbumExpansionContent`.
-// Answers the detail view's album read from the shot albums, injects
-// the services the view tree pulls from the environment, and factors the
-// `AlbumExpansionContent` no-op-callback boilerplate shared by its
-// shots into one builder.
+// Fixtures for the album detail's shots and tests: a shot album as its
+// detail read returns it, its primary release, one track, and a release in a
+// chosen storage state.
 
 extension PreviewData {
     /// One shot album as its detail read returns it. Fails loud when
@@ -18,105 +16,6 @@ extension PreviewData {
             fatalError("no preview album for id: \(albumId)")
         }
         return AlbumDetail(bridge: bridge)
-    }
-
-    /// Builds an `AlbumExpansionContent` over a shot album with no-op
-    /// callbacks — the shared body of `AlbumExpansionContent`'s shots.
-    @MainActor
-    static func albumExpansionContent(
-        detail: AlbumDetail,
-        currentTrackId: String? = nil,
-        isPlaying: Bool = false,
-    ) -> some View {
-        AlbumExpansionContent(
-            detail: detail,
-            onBrowseImages: {},
-            onSelectRelease: { _ in },
-            currentTrackId: currentTrackId,
-            // A fixture's playing track is on the release it shows.
-            currentReleaseId: currentTrackId.map { _ in
-                detail.shownRelease.id
-            },
-            isPlaying: isPlaying,
-            onClose: {},
-            onPlay: {},
-            onShuffle: {},
-            onPlayFromTrack: { _ in },
-            onTogglePlayPause: {},
-            onAddNext: { _ in },
-            onAddToQueue: { _ in },
-            onAddNextAlbum: {},
-            onAddAlbumToQueue: {},
-            onEdit: {},
-            onOpenStorage: {},
-            onExportRelease: {},
-            onSaveReleaseAs: {},
-            onSetPrimaryRelease: {},
-            onDeleteRelease: {},
-            onDeleteAlbum: {},
-            onExportTrack: { _ in },
-            onOpenWork: { _ in },
-            onRateAlbum: { _ in },
-            onRateTrack: { _, _ in },
-        )
-    }
-
-    /// The expanded album detail for one seeded fixture album, sized to its
-    /// natural width over the dark background — the shared body of
-    /// `AlbumExpansionContent`'s shots and the `album-detail` gallery
-    /// scene. Builds the content over the album's primary release.
-    @MainActor
-    static func albumExpansionScene(
-        albumId: String,
-        currentTrackId: String? = nil,
-        isPlaying: Bool = false
-    ) -> some View {
-        albumExpansionScene(
-            detail: albumDetail(albumId: albumId),
-            currentTrackId: currentTrackId,
-            isPlaying: isPlaying
-        )
-    }
-
-    /// The expanded album detail for one seeded fixture album whose
-    /// primary release reads as `primaryPlayability`, for the line a
-    /// release this Mac can't play shows under its facts.
-    @MainActor
-    static func albumExpansionScene(
-        albumId: String,
-        primaryPlayability: BridgeReleasePlayability
-    ) -> some View {
-        guard var bridge = albumDetails[albumId],
-            let primary = bridge.releases.firstIndex(where: {
-                $0.id == bridge.album.primaryReleaseId
-            })
-        else {
-            fatalError("no preview album for id: \(albumId)")
-        }
-        bridge.releases[primary].playability = primaryPlayability
-        return albumExpansionScene(
-            detail: AlbumDetail(bridge: bridge.showing(chosenReleaseId: nil)),
-            currentTrackId: nil,
-            isPlaying: false
-        )
-    }
-
-    @MainActor
-    private static func albumExpansionScene(
-        detail: AlbumDetail,
-        currentTrackId: String?,
-        isPlaying: Bool
-    ) -> some View {
-        albumExpansionContent(
-            detail: detail,
-            currentTrackId: currentTrackId,
-            isPlaying: isPlaying
-        )
-        .padding()
-        .frame(width: 1100)
-        .background(Theme.background)
-        .environment(UiStore())
-        .environment(ImageStore.stub())
     }
 
     /// The primary release's fat detail for a seeded shot album — tracks,
@@ -152,26 +51,10 @@ extension PreviewData {
         )
     }
 
-    /// A `ReleaseDetail` in a chosen storage state, for the storage band and
-    /// storage-sheet shots: the storage status line, the pin flag, and the
-    /// core-computed actions all vary by locality, so each state is its own
-    /// fixture rather than a mutation of one.
-    @MainActor
-    static func storageRelease(
-        storageState: BridgeReleaseStorageState,
-        storageActions: [BridgeReleaseStorageAction],
-        playability: BridgeReleasePlayability
-    ) -> ReleaseDetail {
-        ReleaseDetail(
-            bridge: storageBridgeRelease(
-                storageState: storageState,
-                storageActions: storageActions,
-                playability: playability
-            )
-        )
-    }
-
-    /// The release `storageRelease` shows, as the release's read gives it.
+    /// A release in a chosen storage state, as the release's read gives it,
+    /// for the storage band and storage-sheet shots: the storage status
+    /// line, the pin flag and the actions core computes all vary by
+    /// locality, so each state is its own fixture.
     static func storageBridgeRelease(
         storageState: BridgeReleaseStorageState,
         storageActions: [BridgeReleaseStorageAction],

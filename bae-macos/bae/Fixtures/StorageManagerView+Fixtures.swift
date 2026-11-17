@@ -55,9 +55,3 @@ struct StorageManagerPreviewFixture {
         outboxStore = PreviewData.outboxStore()
     }
 }
-
-/// The window most shots draw in.
-private enum PreviewWindow {
-    static let width: CGFloat = 940
-    static let height: CGFloat = 600
-}

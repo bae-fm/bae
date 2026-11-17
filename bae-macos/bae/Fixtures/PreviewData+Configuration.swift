@@ -6,26 +6,6 @@ import Foundation
 extension PreviewData {
     // MARK: - Config and edit-metadata fixtures
 
-    /// A shot CastStore mid-session, so the casting settings shot shows
-    /// the state that asks before the feature is turned off.
-    @MainActor
-    static func castStore() -> CastStore {
-        let store = CastStore()
-        store.applyStatus(
-            .on(
-                device: BridgeCastReceiver(
-                    id: "cast-living-room",
-                    name: "Living Room Speaker",
-                    kind: .cast,
-                    model: nil,
-                    address: "192.168.1.41",
-                    takesVolume: true
-                )
-            )
-        )
-        return store
-    }
-
     /// A raw release edit for metadata-editor shots: the album and
     /// pressing fields plus `trackCount` tracks. Blank track artists
     /// exercise the album-artist inheritance path.

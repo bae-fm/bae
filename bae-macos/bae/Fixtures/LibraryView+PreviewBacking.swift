@@ -3,11 +3,10 @@ import SwiftUI
 
 @testable import bae
 
-// Canned `Library` + `LibraryBrowseSession` backings for the `LibraryView`
-// shots (and the whole-window `MacMainWindowContainer` shot, which reuses
-// `previewGridBacking`). Each drives the production body through a real
-// session over a canned-page library, so shots exercise the actual
-// empty-state, grid, and composer-detail branches rather than stand-ins.
+// A canned `Library` + `LibraryBrowseSession` backing for the composer
+// detail's test, which drives the production `LibraryView` body through a
+// real session over a canned-page library, and the playlists read of a
+// library with none, which the shots' backings share.
 extension LibraryView {
     /// The playlists read of a library with none: the library window reads
     /// them whenever it opens, as the app's does.
@@ -24,81 +23,10 @@ extension LibraryView {
             )
         }
 
-    /// A `Library` whose album and composer counts and pages are all empty.
-    /// The real `loadInitial()` reads a count of no rows, so the shots below
-    /// draw the empty-state branches in `albumContent` and `composerContent`
-    /// rather than a hand-built stand-in.
-    static func emptyLibrary() -> Library {
-        Library(
-            albumList: { _, _ in .fixed([], answers: UnansweredCount()) },
-            composerList: { _ in .fixed([], answers: UnansweredCount()) },
-            artistList: { _ in .fixed([], answers: UnansweredCount()) },
-            playlists: noPlaylists
-        )
-    }
-
-    /// `emptyLibrary` behind a real session — the backing for the empty
-    /// shots and the whole-window empty scene (desktop story 3), so
-    /// they exercise the actual zero-count empty-state branches.
-    @MainActor
-    static func previewEmptyBacking(
-        uiStore: UiStore
-    ) -> (library: Library, session: LibraryBrowseSession) {
-        let library = emptyLibrary()
-        let session = LibraryBrowseSession(
-            library: library,
-            uiStore: uiStore
-        )
-        // The app starts its session as the library opens; nothing in the
-        // views does.
-        session.start()
-        return (library, session)
-    }
-
-    /// Enough synthesized albums for the grid to scroll well past the
-    /// header's tracking zone, served through a canned-page `Library`
-    /// behind a real session — the populated backing for whole-screen
-    /// shots. Scrolling drives the header collapse through the same
-    /// `HeaderCollapse` pipeline the app uses. Expanding an album shows
-    /// the detail placeholder (no release details are seeded).
-    @MainActor
-    static func previewGridBacking(
-        uiStore: UiStore
-    ) -> (library: Library, session: LibraryBrowseSession) {
-        let albums: [BridgeAlbum] = (0..<40)
-            .map { index in
-                BridgeAlbum(
-                    id: "grid-\(index)",
-                    title: "Album Title \(index + 1)",
-                    year: 1970 + Int32(index % 50),
-                    isCompilation: false,
-                    artistLine: .named("Artist Name \(index % 7 + 1)"),
-                    releaseIds: ["rel-grid-\(index)"],
-                    primaryReleaseId: "rel-grid-\(index)",
-                    cover: nil,
-                )
-            }
-        let library = Library(
-            albumList: { _, _ in
-                .fixed(albums, answers: UnansweredCount())
-            },
-            getAlbumIndex: { _, albumId, _ in
-                albums.firstIndex { $0.id == albumId }.map(UInt64.init)
-            },
-            playlists: noPlaylists
-        )
-        let session = LibraryBrowseSession(
-            library: library,
-            uiStore: uiStore
-        )
-        session.start()
-        return (library, session)
-    }
-
     /// A canned composer library — a master list plus one composer's detail
     /// (works, releases, recordings) — behind a real session, so the
-    /// composer detail shot renders the restyled master list and detail
-    /// pane through the production `LibraryView` body. Images are absent, so
+    /// composer detail's test renders the master list and detail pane
+    /// through the production `LibraryView` body. Images are absent, so
     /// every slot shows the placeholder treatment.
     @MainActor
     static func previewComposerBacking(
