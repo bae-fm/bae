@@ -102,16 +102,13 @@ private final class Recorder {
 }
 
 /// What core's runtime read says of a candidate the pane shows `shown` for,
-/// with nothing in flight.
+/// with no identification, import or search running for it.
 private func runtime(
     shown identifyState: BridgeIdentifyState
 ) -> BridgeCandidateRuntimeSnapshot {
     BridgeCandidateRuntimeSnapshot(
         identifyState: .state(state: identifyState),
-        identification: nil,
-        import: nil,
-        search: nil,
-        signals: nil
+        inFlight: nil
     )
 }
 

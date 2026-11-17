@@ -27,9 +27,8 @@ mod triage_tests {
                 search: None,
             }),
         });
-        assert!(idle.identification.is_none());
         assert!(matches!(
-            idle.import.map(|import| import.step),
+            idle.in_flight.and_then(|in_flight| in_flight.import).map(|import| import.step),
             Some(crate::types::BridgeImportStep::Running { .. })
         ));
     }
@@ -48,8 +47,9 @@ mod triage_tests {
                 search: None,
             }),
         });
-        assert!(matches!(queued.identification, Some(BridgeIdentificationInFlight::Queued)));
         assert!(matches!(queued.identify_state, BridgeShownIdentifyState::Queued));
+        let in_flight = queued.in_flight.expect("a queued candidate has work in flight");
+        assert!(in_flight.import.is_none() && in_flight.search.is_none());
     }
 }
 

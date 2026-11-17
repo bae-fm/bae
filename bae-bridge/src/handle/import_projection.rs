@@ -118,29 +118,27 @@ impl crate::types::BridgeInvalidCandidateDetail {
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(view: bae_import::CandidateRuntimeView) -> Self {
         let bae_import::CandidateRuntimeView { identify_state, in_flight: runtime } = view;
-        let identify_state = crate::types::BridgeShownIdentifyState::from_core(identify_state);
-        let Some(runtime) = runtime else {
-            return Self {
-                identify_state,
-                identification: None,
-                import: None,
-                search: None,
-                signals: None,
-            };
-        };
+        Self {
+            identify_state: crate::types::BridgeShownIdentifyState::from_core(identify_state),
+            in_flight: runtime.map(crate::types::BridgeCandidateInFlight::from_core),
+        }
+    }
+}
+
+impl crate::types::BridgeCandidateInFlight {
+    fn from_core(runtime: bae_import::CandidateRuntimeSnapshot) -> Self {
         // A failed write, and whether an Import was asked of the answer,
         // reach the UI through the row's live state.
-        let in_flight = runtime.identification_in_flight();
-        let signals = match &in_flight {
+        let signals = match runtime.identification_in_flight() {
             Some(bae_import::IdentificationInFlight::Run(published)) => {
-                published.signals.clone().map(crate::types::BridgeSignals::from_core)
+                published.signals.map(crate::types::BridgeSignals::from_core)
             }
             Some(bae_import::IdentificationInFlight::Queued) | None => None,
         };
+        // The pane reads what identification is doing from the shown
+        // identify state.
         let bae_import::CandidateRuntimeSnapshot { identification: _, import, search } = runtime;
-        crate::types::BridgeCandidateRuntimeSnapshot {
-            identify_state,
-            identification: in_flight.map(crate::types::BridgeIdentificationInFlight::from_core),
+        Self {
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
             signals,
@@ -162,17 +160,6 @@ impl crate::types::BridgeShownIdentifyState {
             bae_import::ShownIdentifyState::Idle => crate::types::BridgeIdentifyState::Idle,
         };
         Self::State { state }
-    }
-}
-
-impl crate::types::BridgeIdentificationInFlight {
-    fn from_core(identification: bae_import::IdentificationInFlight) -> Self {
-        match identification {
-            bae_import::IdentificationInFlight::Queued => Self::Queued,
-            bae_import::IdentificationInFlight::Run(state) => {
-                Self::Run { state: crate::types::BridgeIdentifyState::from_published(state) }
-            }
-        }
     }
 }
 

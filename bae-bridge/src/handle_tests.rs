@@ -436,13 +436,20 @@ fn a_run_s_signals_cross_with_its_runtime() {
         })
     };
 
-    let crossed = running(Some(signals)).signals.expect("the run's signals cross with its runtime");
+    let signals_of = |runtime: crate::types::BridgeCandidateRuntimeSnapshot| {
+        runtime.in_flight.expect("a candidate with a run has work in flight").signals
+    };
+    let crossed =
+        signals_of(running(Some(signals))).expect("the run's signals cross with its runtime");
     let crate::types::BridgeTextSignal::Settled { catalogs, free_text } = crossed.text else {
         panic!("a settled text signal crosses as settled, got {:?}", crossed.text);
     };
     assert_eq!(free_text, vec!["Album Title".to_string()]);
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
-    assert!(running(None).signals.is_none(), "a run extraction has not reported to carries none");
+    assert!(
+        signals_of(running(None)).is_none(),
+        "a run extraction has not reported to carries none"
+    );
 
     let queued =
         crate::types::BridgeCandidateRuntimeSnapshot::from_core(bae_import::CandidateRuntimeView {
@@ -455,7 +462,7 @@ fn a_run_s_signals_cross_with_its_runtime() {
                 search: None,
             }),
         });
-    assert!(queued.signals.is_none(), "a queued key has no run to have read any");
+    assert!(signals_of(queued).is_none(), "a queued key has no run to have read any");
 }
 
 #[test]
@@ -760,13 +767,20 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
 mod candidate_runtime {
     use super::*;
 
+    /// The import running for the candidate a runtime is of.
+    fn import_of(
+        runtime: &crate::types::BridgeCandidateRuntimeSnapshot,
+    ) -> Option<crate::types::BridgeImportInFlight> {
+        runtime.in_flight.as_ref().and_then(|in_flight| in_flight.import.clone())
+    }
+
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
         let handle = fresh_bridge_handle("candidate-runtime-claim");
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.handle().subscribe_candidate_runtime(key.clone());
         let idle = pull_until(handle.handle(), || watching.clone().next(), |_| true);
-        assert!(idle.import.is_none() && idle.identification.is_none(), "nothing runs yet");
+        assert!(idle.in_flight.is_none(), "nothing runs yet");
         assert!(matches!(
             idle.identify_state,
             crate::types::BridgeShownIdentifyState::State {
@@ -784,9 +798,9 @@ mod candidate_runtime {
         let claimed = pull_until(
             handle.handle(),
             || watching.clone().next(),
-            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| runtime.import.is_some(),
+            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| import_of(runtime).is_some(),
         );
-        let import = claimed.import.clone().expect("a claimed candidate has an import in flight");
+        let import = import_of(&claimed).expect("a claimed candidate has an import in flight");
         assert!(
             matches!(import.step, crate::types::BridgeImportStep::Preparing { .. }),
             "a claim is the queued step, got {:?}",
@@ -796,7 +810,7 @@ mod candidate_runtime {
         // A subscriber opening mid-import reads what is running.
         let joining = handle.handle().subscribe_candidate_runtime(key.clone());
         assert!(
-            pull_until(handle.handle(), || joining.clone().next(), |_| true).import.is_some(),
+            import_of(&pull_until(handle.handle(), || joining.clone().next(), |_| true)).is_some(),
             "a late subscriber reads the running import"
         );
 
@@ -811,7 +825,7 @@ mod candidate_runtime {
         pull_until(
             handle.handle(),
             || watching.clone().next(),
-            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| runtime.import.is_none(),
+            |runtime: &crate::types::BridgeCandidateRuntimeSnapshot| import_of(runtime).is_none(),
         );
 
         // Cancelling ends the pulls: a pull after it answers that it was

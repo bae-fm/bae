@@ -321,7 +321,7 @@ extension ImportSearchFlow {
                 IdentifyState(shown: $0.identifyState)
             },
             error: candidate.error,
-            search: input.runtime?.search,
+            search: input.runtime?.inFlight?.search,
             loadingPick: importStore.loadingPick(forKey: input.key),
             releaseSelectionFailure: importStore.releaseSelectionFailure(
                 forKey: input.key
@@ -334,7 +334,7 @@ extension ImportSearchFlow {
             // suggestion pools and its scanning indicator: it knows more than
             // the last stored answer does, and for a re-identify key — which
             // has no row at all — it is the only answer.
-            signals: input.runtime?.signals.map(Signals.init(bridge:))
+            signals: input.runtime?.inFlight?.signals.map(Signals.init(bridge:))
                 ?? candidate.settledSignals,
             needsYou: candidate.live?.standing?.needsYou,
         )

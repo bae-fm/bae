@@ -163,19 +163,27 @@ pub struct BridgeInvalidCandidateDetail {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
     /// The identify state the pane shows: what identification is doing for
-    /// the candidate while it does something, else the state its stored
-    /// verdict stands back up as.
+    /// the candidate while it does something, otherwise the identify state
+    /// that bae builds from the candidate's stored verdict.
     pub identify_state: BridgeShownIdentifyState,
-    /// What identification is doing for the candidate; `None` when nothing
-    /// is.
-    pub identification: Option<BridgeIdentificationInFlight>,
+    /// The work running for the candidate; `None` when no identification,
+    /// import or typed search runs for it.
+    pub in_flight: Option<BridgeCandidateInFlight>,
+}
+
+/// The work running for one candidate: an import, a typed search, and the
+/// signals a running identification last read. Any of them may be absent
+/// while another runs, or while the candidate only waits on the
+/// identification queue.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCandidateInFlight {
     pub import: Option<BridgeImportInFlight>,
     /// The typed search submitted for this candidate, as its sources answer.
     pub search: Option<BridgeCandidateSearch>,
-    /// The signals the run in flight, or the answer being written, last read:
-    /// the search form's autocomplete pools while a run reads the folder.
-    /// `None` while no run is, and the form reads the candidate's stored
-    /// signals.
+    /// The signals the run in flight, or the answer bae is writing, last
+    /// read: the search form's autocomplete pools while a run reads the
+    /// folder. `None` while no run reads it, and the form reads the
+    /// candidate's stored signals.
     pub signals: Option<BridgeSignals>,
 }
 
@@ -187,16 +195,6 @@ pub enum BridgeShownIdentifyState {
     /// The state the run in flight last published, the answer being written,
     /// or the stored verdict's; `Idle` when there is none.
     State { state: BridgeIdentifyState },
-}
-
-/// What identification is doing for a candidate right now.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeIdentificationInFlight {
-    /// On the identification queue, its run not started.
-    Queued,
-    /// The latest state a run published: in flight, or the answer being
-    /// written. Never `Idle`.
-    Run { state: BridgeIdentifyState },
 }
 
 /// The step a running import is at. How far through it is moves many times
