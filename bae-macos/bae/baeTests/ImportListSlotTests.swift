@@ -430,7 +430,10 @@ struct ImportListSlotViewChangeTests {
             uiStore: UiStore(),
             selection: ImportSelection(),
             makeHandle: { _ in
-                .stub(items: (0..<80).map(candidateItem), setView: { _ in nil })
+                .stub(
+                    items: (0..<80).map(candidateItem),
+                    setView: { _, _ in nil }
+                )
             }
         )
         var opened: [Int] = []
