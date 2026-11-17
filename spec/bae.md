@@ -1026,14 +1026,15 @@ different things about one file fails the scan.
 - **A CUE sheet that disagrees with the disk** — naming absent audio, failing
   to parse, or naming a codec bae can't play from one file — is left unbound,
   and the folder stays importable.
-- **A watched folder inside another.** Watching a folder that contains watched
-  folders takes them over: one write stops watching them and watches the new
-  folder. bae keys what it knows about a folder by the folder's path on disk,
-  so the person's groupings stay. Unwatching the folder that covers a grouping
-  deletes it. The write that watches a folder checks that no watched folder
-  holds it or lies in it. That write refuses a folder inside a watched one and
-  stores nothing, and the error names both folders. No two watched folders
-  ever overlap, so no read checks them for it.
+- **A watched folder inside another.** When the person watches a folder that
+  contains watched folders, bae stops watching those folders and watches the
+  new folder in their place, in one write. bae stores what it knows about a
+  folder under the folder's path on disk, so the person's groupings stay.
+  Unwatching the folder that covers a grouping deletes it. The write that
+  watches a folder checks that no watched folder holds it or lies in it. That
+  write refuses a folder inside a watched one and stores nothing, and the
+  error names both folders. No two watched folders ever overlap, so no read
+  checks them for it.
 - **A dismissed candidate** is skipped by path, so a later scan doesn't offer it
   again.
 

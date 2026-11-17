@@ -27,9 +27,10 @@ impl ImportServiceHandle {
         self.committed(async move { this.add_watched_folder_write(path).await }).await
     }
 
-    /// Store `path` as watched and ask for it to be read. A folder holding
-    /// watched folders takes them over. The write that would watch a folder
-    /// inside a watched one refuses it and stores nothing.
+    /// Store `path` as watched and ask the folder-watch coordinator to read
+    /// it. When `path` holds watched folders, bae watches `path` in their
+    /// place. The write that would watch a folder inside a watched one
+    /// refuses that folder and stores nothing.
     async fn add_watched_folder_write(
         &self,
         path: std::path::PathBuf,
