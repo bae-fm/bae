@@ -202,8 +202,8 @@ pub struct InvalidRow {
     pub watched_folder_path: std::path::PathBuf,
     /// The folder below the watched folder, as `coven::path_text` shows it.
     pub display_path: String,
-    /// Whether it is folders a grouping reads as one, which the row offers
-    /// to separate.
+    /// Whether the row is several folders that a grouping reads as one
+    /// release, which the row offers to separate.
     pub separable: bool,
     /// Why it failed validation, as its scan stored it.
     pub reason: crate::InvalidReason,
