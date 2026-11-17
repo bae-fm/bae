@@ -119,20 +119,15 @@ public final class LibrarySessionOpener<
 
     public func cancel() { slot.cancel() }
 
-    /// Whether `error` says the keychain is locked this second, which the
-    /// open asks again for after unlock. Opening a library by id fails with
-    /// it inside `BridgeOpenError.Failed`; opening what a create, restore or
-    /// reset returned fails with it as itself.
+    /// Whether `error` says the keychain is locked now, so the opener tries
+    /// again after the person unlocks the keychain. Core fails an open by id
+    /// as `BridgeOpenError.KeychainLocked`. Opening what a create, restore or
+    /// reset returned fails with a `BridgeError` whose category says so.
     private static func keychainLocked(_ error: Error) -> Bool {
-        let failure: BridgeError? =
-            switch error {
-            case BridgeOpenError.Failed(let failure): failure
-            case let failure as BridgeError: failure
-            default: nil
-            }
-        guard case .Diagnostic(.keyringLocked, _) = failure else {
-            return false
+        switch error {
+        case BridgeOpenError.KeychainLocked: true
+        case BridgeError.Diagnostic(.keyringLocked, _): true
+        default: false
         }
-        return true
     }
 }

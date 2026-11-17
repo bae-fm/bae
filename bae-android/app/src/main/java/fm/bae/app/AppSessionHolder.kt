@@ -461,8 +461,10 @@ object AppSessionHolder {
                     showFailedOpen(context, libraryId, e.error, OpenFailureOffer.FINISH_REMOVAL, onScreen)
                 }
 
-                is BridgeOpenException.Failed -> {
-                    showFailedOpen(context, libraryId, e.error, OpenFailureOffer.NOTHING, onScreen)
+                // installSession unlocks a locked store key as the library opens; a keychain that refused the
+                // key before then fails the open, which a Retry runs again.
+                is BridgeOpenException.KeychainLocked, is BridgeOpenException.Failed -> {
+                    showFailedOpen(context, libraryId, e.failure, OpenFailureOffer.NOTHING, onScreen)
                 }
             }
         } catch (e: BridgeException) {

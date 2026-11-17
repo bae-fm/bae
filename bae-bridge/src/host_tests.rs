@@ -350,6 +350,7 @@ fn a_failed_open_crosses_with_its_way_on() {
         BridgeOpenError::ResetFromCloud { error } => ("reset", None, error),
         BridgeOpenError::ReplacementUnfinished { by, error } => ("replacement", Some(by), error),
         BridgeOpenError::DeletionUnfinished { error } => ("deletion", None, error),
+        BridgeOpenError::KeychainLocked { error } => ("keychain", None, error),
         BridgeOpenError::Failed { error } => ("failed", None, error),
     };
     assert_eq!(
@@ -371,6 +372,12 @@ fn a_failed_open_crosses_with_its_way_on() {
         Some(BridgeReplacedBy::Restore)
     );
     assert_eq!(crossed(OpenFailure::Failed(BootstrapError::DeletionUnfinished)).0, "deletion");
+    let locked = crossed(OpenFailure::Failed(BootstrapError::KeyringUnavailable));
+    assert_eq!(locked.0, "keychain");
+    assert!(
+        matches!(locked.2, BridgeError::Diagnostic { category: C::KeyringLocked, .. }),
+        "{locked:?}"
+    );
     assert_eq!(
         crossed(OpenFailure::Failed(BootstrapError::Damaged("x".into()))),
         ("failed", None, diagnostic(C::DatabaseDamaged))

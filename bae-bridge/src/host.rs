@@ -774,6 +774,9 @@ fn open_failure_to_bridge(failure: OpenFailure) -> BridgeOpenError {
         OpenFailure::Failed(error @ BootstrapError::DeletionUnfinished) => {
             BridgeOpenError::DeletionUnfinished { error: bootstrap_error_to_bridge(error) }
         }
+        OpenFailure::Failed(error @ BootstrapError::KeyringUnavailable) => {
+            BridgeOpenError::KeychainLocked { error: bootstrap_error_to_bridge(error) }
+        }
         OpenFailure::Failed(error) => {
             BridgeOpenError::Failed { error: bootstrap_error_to_bridge(error) }
         }

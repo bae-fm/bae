@@ -16,8 +16,13 @@ pub enum BridgeOpenError {
     /// This device is removing the library; finishing the removal ends it.
     #[error("{error}")]
     DeletionUnfinished { error: BridgeError },
-    /// Any other failure, among them a library that isn't there, a
-    /// cancellation and a keychain locked this second.
+    /// The OS keychain refused the library's key for now, as it does while
+    /// the person's session is locked: the app opens the library again once
+    /// the person unlocks the keychain.
+    #[error("{error}")]
+    KeychainLocked { error: BridgeError },
+    /// Any other failure, among them a library that isn't there and a
+    /// cancellation.
     #[error("{error}")]
     Failed { error: BridgeError },
 }

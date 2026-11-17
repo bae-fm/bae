@@ -19,7 +19,7 @@ struct LibrarySessionOpenerTests {
     func refusedKeychainIsItsOwnOutcome() async {
         let opener = TestOpener(
             makeHandle: { _, _ in
-                throw BridgeOpenError.Failed(
+                throw BridgeOpenError.KeychainLocked(
                     error: .Diagnostic(
                         category: .keyringLocked,
                         detail: "the OS keychain refused the read"

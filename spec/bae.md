@@ -6054,10 +6054,12 @@ release's or track's id as UTF-8, or a candidate's key.
   the app starts the library on it.
 - **`init_app`** opens a library and returns an **`AppHandle`**, which wraps
   `AppServices` and, on desktop, the MCP and Subsonic servers and the cast
-  controller. A failed open throws `BridgeOpenError`, one case for each way
-  on: `ResetFromCloud`, `ReplacementUnfinished` (with the call that finishes
-  it), `DeletionUnfinished`, or `Failed`. Each carries the `BridgeError` it
-  shows.
+  controller. A failed open throws `BridgeOpenError`, one case for each
+  thing the app can do next: `ResetFromCloud`, `ReplacementUnfinished` (with
+  the call that finishes it), `DeletionUnfinished`, `KeychainLocked` (the OS
+  keychain refused the library's key for now, and the app opens the library
+  again once the person unlocks it), or `Failed`. Each carries the
+  `BridgeError` it shows.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
   mid-call cancels the Rust work it started. A call that panics fails with an
   internal error and is reported as a bug; one that must finish after its

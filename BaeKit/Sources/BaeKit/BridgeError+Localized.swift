@@ -99,7 +99,8 @@ extension BridgeOpenError {
     public var error: BridgeError {
         switch self {
         case .ResetFromCloud(let error), .ReplacementUnfinished(_, let error),
-            .DeletionUnfinished(let error), .Failed(let error):
+            .DeletionUnfinished(let error), .KeychainLocked(let error),
+            .Failed(let error):
             error
         }
     }

@@ -163,6 +163,7 @@ val BridgeOpenException.failure: BridgeException
             is BridgeOpenException.ResetFromCloud -> error
             is BridgeOpenException.ReplacementUnfinished -> error
             is BridgeOpenException.DeletionUnfinished -> error
+            is BridgeOpenException.KeychainLocked -> error
             is BridgeOpenException.Failed -> error
         }
 
