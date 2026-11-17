@@ -26,7 +26,7 @@ async fn library() -> (ImportTables, tempfile::TempDir) {
     (ImportTables::new(db), tmp)
 }
 
-/// What the run `key`'s runtime shows published, as stored, by its run.
+/// The run that `key`'s stored runtime holds, keyed by its run ID.
 async fn stored_runs(
     tables: &ImportTables,
     key: &CandidateKey,

@@ -10,9 +10,9 @@
 //! candidate's files' tags read, [`cover_choice`] checks a cover against what
 //! the scan stored and reads the one a stored selection names, and
 //! [`file_decisions`] settles
-//! the rows a file decision reshapes. [`progress`] reads where each watched
-//! folder's scan stands, and stores what the folder scan coordinator holds of
-//! it. Their tables are `folder_scans.sql` and `folder_scans/progress.sql`,
+//! the rows a file decision reshapes. [`progress`] reads each watched
+//! folder's scan status, and stores the running or failed state the folder
+//! scan coordinator keeps for each folder. Their tables are `folder_scans.sql` and `folder_scans/progress.sql`,
 //! which every device's library holds.
 
 /// The folder scans' part of the library's schema.

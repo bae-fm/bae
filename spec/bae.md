@@ -902,11 +902,11 @@ costs the same however much else the watched folder holds.
 
 **How a scan's state shows.** The folder's scan stores only how its current
 scan ended, complete, failed with the error, or not watched with the reason,
-and nothing until that scan stores it. Whether a pass is reading the folder is
-the coordinator's that starts the passes: it writes that to the device-local
-table `folder_scan_held` in the step that changes it, and the library empties
-that table each time it opens, so a folder never reads as scanning with nothing
-scanning it. The coordinator stores what a step will hold before it starts or
+and nothing until that scan stores it. The coordinator that starts the passes
+records whether a pass is reading the folder: it writes that to the
+device-local table `folder_scan_held` in the step that changes it, and the
+library empties that table each time it opens, so a folder never shows as
+scanning with nothing scanning it. The coordinator stores what a step will hold before it starts or
 queues a pass or a removal, and when the store refuses, it starts and queues
 nothing and tells whoever asked why. When the store refuses what a pass's end
 leaves, whoever waited on the pass hears why instead of hearing it ended. A folder whose
@@ -931,7 +931,7 @@ one; a full, failing or damaged disk, a store that failed as a whole (on an
 earlier bug too, which was reported as it happened), or the library closing
 is not. A scan that ended with nothing stored and nothing
 held, as one that panicked while storing its failure does, shows as failed,
-saying it stopped before its result could be stored. No event carries a
+saying it stopped before bae stored its result. No event carries a
 scan's state: the screen's query reads it from the stored outcome and
 `folder_scan_held` together.
 

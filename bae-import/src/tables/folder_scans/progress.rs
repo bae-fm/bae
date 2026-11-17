@@ -339,9 +339,10 @@ impl ImportTables {
         .await;
     }
 
-    /// Store `held` as everything the folder scan coordinator holds of the
-    /// roots' scans, in one write: a root it does not name holds nothing,
-    /// and a row that already says what `held` does is left unwritten.
+    /// Store `held` as the whole state the folder scan coordinator keeps for
+    /// the roots' scans, in one write: a root `held` does not name holds
+    /// nothing, and the write leaves a row that already says what `held`
+    /// does unwritten.
     pub(crate) async fn hold_root_scans(&self, held: HeldRootScans) -> Result<(), DbError> {
         self.store
             .call(move |sql| {
@@ -362,7 +363,7 @@ impl ImportTables {
     }
 
     /// Record that the app raised the alert for `watched_folder_path`'s
-    /// problem of `kind` with `detail`, so the folder's progress owes no
+    /// problem of `kind` with `detail`, so the folder's progress lists no
     /// alert for it. A folder no longer watched records nothing.
     pub async fn mark_folder_scan_alert_shown(
         &self,
@@ -386,9 +387,10 @@ impl ImportTables {
             .await
     }
 
-    /// Remove what the folder scan coordinator held of every root's scan and
-    /// every alert the app raised: what the library opens with, since
-    /// nothing they describe outlives the process that wrote it.
+    /// Remove the state the folder scan coordinator kept for every root's
+    /// scan and every alert the app raised. The import service calls this
+    /// as the library opens, because those rows describe only the process
+    /// that wrote them.
     pub(crate) async fn clear_held_folder_scans(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {

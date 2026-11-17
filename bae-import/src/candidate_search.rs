@@ -50,8 +50,8 @@ pub enum SourceSearch {
     Off,
     /// The source needs a credential this library does not hold, so it was
     /// never asked. Saying so is not the same as saying it found nothing, and
-    /// not the same as [`Self::Off`]: one is fixed by supplying the
-    /// credential, the other by switching the source back on.
+    /// not the same as [`Self::Off`]: the person fixes one by supplying the
+    /// credential and the other by switching the source back on.
     NotConfigured,
     Searching,
     /// The source answered with `found` releases, which reach a surface on
@@ -69,8 +69,8 @@ pub enum SourceSearch {
 pub enum SearchStatus {
     /// A source is still looking.
     Searching,
-    /// No source is looking and none failed, and the search did not find
-    /// nothing: a source named a release, or no source was asked.
+    /// No source is looking and none failed, and either a source named a
+    /// release or bae asked no source.
     Found,
     /// No source is looking and none failed, a source answered, and no
     /// source named a release. A source that was not asked is not an empty

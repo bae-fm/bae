@@ -382,10 +382,9 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
     })
 }
 
-/// A release's item: a folder that failed validation as its scan read it, or
-/// a candidate as its placement and the keyed rows beside it say.
-/// How the row of a release this device imported reads: as what the library
-/// release's records identify it as, with those records.
+/// Chooses what the row of a release this device imported shows from what
+/// the library release's records identify: a pressing or an album with those
+/// records, or a prefilled row when they identify neither.
 fn library_reading(
     kind: Option<&str>,
     records: Vec<ReleaseRecord>,
@@ -398,6 +397,8 @@ fn library_reading(
     }
 }
 
+/// A release's item: a folder that failed validation as its scan read it, or
+/// a candidate as its placement and the keyed rows beside it say.
 fn release_item(release: ReleaseRows, item: Item) -> Result<ImportListItem, DbError> {
     match item {
         Item::Invalid => invalid_item(release),

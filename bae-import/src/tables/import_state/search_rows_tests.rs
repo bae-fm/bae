@@ -208,7 +208,7 @@ async fn a_started_search_asks_only_the_catalogs_the_library_asks() {
     assert!(asked.is_empty());
 }
 
-/// The search's read decides where it stands: searching while a part is,
+/// The search's read decides its status: searching while a part is,
 /// failed when a part failed whatever the others found, no matches when a
 /// part answered and no part returned a release, and found otherwise. A part
 /// that was not asked is not an empty answer.
@@ -230,7 +230,11 @@ async fn the_read_decides_where_the_search_stands() {
     );
     assert_eq!(status().await, SearchStatus::Searching, "Discogs is still looking");
     assert!(land(&tables, run, LookupCatalog::Discogs, timed_out()).await);
-    assert_eq!(status().await, SearchStatus::Failed, "a failure heads the search beside a find");
+    assert_eq!(
+        status().await,
+        SearchStatus::Failed,
+        "the search is failed when one catalog failed, even though the other found a release"
+    );
 
     let run = started_search(&tables, key).await;
     assert!(
@@ -264,7 +268,7 @@ async fn the_read_decides_where_the_search_stands() {
     assert_eq!(
         status().await,
         SearchStatus::Found,
-        "no source answered, so nothing answered with nothing"
+        "the search asked no catalog, so no catalog returned an empty answer"
     );
 }
 

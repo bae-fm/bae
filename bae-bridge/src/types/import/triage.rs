@@ -192,8 +192,9 @@ pub struct BridgeCandidateInFlight {
 pub enum BridgeShownIdentifyState {
     /// On the identification queue, its run not started.
     Queued,
-    /// The state the run in flight last published, the answer being written,
-    /// or the stored verdict's; `Idle` when there is none.
+    /// The state that the run in flight last published, the state while bae
+    /// writes the run's answer, or the state that bae builds from the stored
+    /// verdict; `Idle` when there is none.
     State { state: BridgeIdentifyState },
 }
 

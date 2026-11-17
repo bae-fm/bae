@@ -51,7 +51,7 @@ async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanS
 
 /// What the stopped pass's folder shows when its generation stored no
 /// outcome and nothing reads it.
-const STOPPED: &str = "the scan stopped before its result could be stored";
+const STOPPED: &str = "the scan stopped before bae stored its result";
 
 /// An open generation is scanning while the coordinator holds its folder as
 /// running, until the walk stores its outcome. The walk's stored folders do
@@ -92,8 +92,8 @@ async fn progress_follows_the_walk_in_flight() {
 }
 
 /// A generation with no outcome that the coordinator does not hold as
-/// running ended without storing one, and says so: it never reads as
-/// scanning.
+/// running ended without storing one: its folder's status is Failed with the
+/// stopped error, never Scanning.
 #[tokio::test]
 async fn an_unfinished_scan_nothing_reads_failed() {
     let (tables, root, _temp) = watching_music().await;
@@ -178,9 +178,9 @@ async fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
     assert!(progress.has_problem);
 }
 
-/// A tree read in full whose directories could not all be watched is its own
-/// status, with the reason: it is neither complete nor a failed scan, and it
-/// is not scanning.
+/// A tree that the scan read in full but bae could not watch every directory
+/// of has its own status, with the reason: it is neither complete nor a
+/// failed scan, and it is not scanning.
 #[tokio::test]
 async fn a_tree_read_but_not_watched_is_its_own_status() {
     let (tables, root, _temp) = watching_music().await;
@@ -199,8 +199,8 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     assert_eq!(progress.activity, None);
 }
 
-/// The alerts the folder scans owe, as kind and detail.
-async fn owed_alerts(
+/// The alerts the folder scans list, as kind and detail.
+async fn listed_alerts(
     tables: &crate::tables::ImportTables,
 ) -> Vec<(crate::FolderScanAlertKind, String)> {
     tables
@@ -213,9 +213,9 @@ async fn owed_alerts(
         .collect()
 }
 
-/// A folder's problem is owed an alert until the app marks it shown. The same
-/// problem stays shown; a different one is owed again, and so is a problem
-/// with the same detail of another kind.
+/// The progress lists an alert for a folder's problem until the app marks it
+/// shown. The same problem stays shown; the progress lists a different one
+/// again, and also a problem with the same detail of another kind.
 #[tokio::test]
 async fn a_problem_is_owed_an_alert_until_it_is_marked_shown() {
     use crate::FolderScanAlertKind::{Failed, NotWatched};
@@ -234,29 +234,30 @@ async fn a_problem_is_owed_an_alert_until_it_is_marked_shown() {
     );
 
     tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
-    assert_eq!(owed_alerts(&tables).await, []);
+    assert_eq!(listed_alerts(&tables).await, []);
 
     tables
         .hold_root_scans(unstored(&root, "no such column", crate::VolumeKind::Local))
         .await
         .unwrap();
-    assert_eq!(owed_alerts(&tables).await, [(Failed, "no such column".to_string())]);
+    assert_eq!(listed_alerts(&tables).await, [(Failed, "no such column".to_string())]);
     tables.mark_folder_scan_alert_shown(&root, Failed, "no such column".to_string()).await.unwrap();
-    assert_eq!(owed_alerts(&tables).await, []);
+    assert_eq!(listed_alerts(&tables).await, []);
 
     tables.hold_root_scans(unstored(&root, "offline", crate::VolumeKind::Local)).await.unwrap();
     tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
     tables.hold_root_scans(crate::folder_scan_status::HeldRootScans::new()).await.unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan_unwatched(&root, generation, "offline").await.unwrap();
-    assert_eq!(owed_alerts(&tables).await, [(NotWatched, "offline".to_string())]);
+    assert_eq!(listed_alerts(&tables).await, [(NotWatched, "offline".to_string())]);
 }
 
-/// A folder whose problem ended owes the alert for its next problem again,
-/// even one with the same detail: a new scan of it ends the stored one, and
-/// its next pass ends a failure the coordinator held.
+/// The progress lists an alert again for the next problem of a folder whose
+/// problem ended, even one with the same detail: a new scan of the folder
+/// ends the stored problem, and its next pass ends a failure the coordinator
+/// held.
 #[tokio::test]
-async fn a_folder_that_recovers_is_owed_its_next_alert() {
+async fn a_folder_that_recovers_gets_an_alert_for_its_next_problem() {
     use crate::FolderScanAlertKind::Failed;
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -265,7 +266,7 @@ async fn a_folder_that_recovers_is_owed_its_next_alert() {
 
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    assert_eq!(owed_alerts(&tables).await, [(Failed, "offline".to_string())]);
+    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
 
     tables
         .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Local))
@@ -280,11 +281,11 @@ async fn a_folder_that_recovers_is_owed_its_next_alert() {
         .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Local))
         .await
         .unwrap();
-    assert_eq!(owed_alerts(&tables).await, [(Failed, "the disk is full".to_string())]);
+    assert_eq!(listed_alerts(&tables).await, [(Failed, "the disk is full".to_string())]);
 }
 
 /// A folder no longer watched records no alert, and the library opens with
-/// nothing held and every problem owed its alert again.
+/// nothing held and an alert listed again for every problem.
 #[tokio::test]
 async fn opening_the_library_clears_what_the_coordinator_held_and_the_alerts_shown() {
     use crate::FolderScanAlertKind::Failed;
@@ -299,7 +300,7 @@ async fn opening_the_library_clears_what_the_coordinator_held_and_the_alerts_sho
     tables.clear_held_folder_scans().await.unwrap();
 
     assert_eq!(tables.load_held_root_scans().await.unwrap(), Default::default());
-    assert_eq!(owed_alerts(&tables).await, [(Failed, "offline".to_string())]);
+    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
 }
 
 /// Whether a watched folder is on a network volume is what its scan recorded
@@ -426,8 +427,8 @@ async fn stored_scans_list_the_folders_in_their_order() {
     );
 }
 
-/// The progress lists the folders in the order they are listed, read in that
-/// order from their positions' index.
+/// The progress lists the folders in the order the person added them, which
+/// the query reads from their positions' index.
 #[tokio::test]
 async fn progress_lists_the_folders_in_their_order_from_the_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;

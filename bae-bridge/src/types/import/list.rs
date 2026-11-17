@@ -186,8 +186,8 @@ pub struct BridgeFolderScanAlert {
 pub enum BridgeFolderScanAlertKind {
     /// The folder's scan failed.
     Failed,
-    /// The folder was read in full, and a directory in it could not be
-    /// watched.
+    /// The scan read the whole folder, and bae could not watch a directory
+    /// in it.
     NotWatched,
 }
 

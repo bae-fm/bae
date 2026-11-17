@@ -229,8 +229,8 @@ impl ActiveRoots {
     }
 
     /// What the roots hold of each one's scan: running while a whole-root
-    /// pass reads it or is owed, or a removal holds it; otherwise the last
-    /// failure its scan could not store.
+    /// pass reads it or waits to run, or a removal holds it; otherwise the
+    /// last failure its scan could not store.
     fn held(&self) -> crate::folder_scan_status::HeldRootScans {
         use crate::folder_scan_status::HeldRootScan;
         let mut held = crate::folder_scan_status::HeldRootScans::new();
@@ -718,7 +718,7 @@ impl ActiveRoots {
 
     /// Start a pass over `path`, with its waiters and what is queued behind
     /// it. The coordinator first stores what the root holds once the pass
-    /// starts: running for a whole-root pass or one owed behind it, since the
+    /// starts: running for a whole-root pass or one queued behind it, since the
     /// pass opens its generation at once with no outcome and a reader must
     /// find the root running by then, and no failure, since the pass clears
     /// the last one. When the store refuses, the pass does not start, and

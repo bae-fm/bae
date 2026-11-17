@@ -196,9 +196,9 @@ pulled_read! {
     CandidateRuntimeSubscription:
         LiveValues<bae_import::CandidateRuntimeView>
             => crate::types::BridgeCandidateRuntimeSnapshot,
-    // A closure rather than the function's path: the ownership check
-    // follows a closure the read passes to its live query into what it
-    // calls, and checks the conversion as read code.
+    // The read passes a closure, not the function's path, because the
+    // ownership check follows the closure into the functions it calls and
+    // checks the conversion as read code.
     converted by |view: bae_import::CandidateRuntimeView| {
         crate::types::BridgeCandidateRuntimeSnapshot::from_core(view)
     },

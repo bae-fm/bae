@@ -1,5 +1,5 @@
-//! Each key's [`CandidateRuntimeSnapshot`]: where the standings table says it
-//! stands (the step its import is at among it), with the state of the run
+//! Each key's [`CandidateRuntimeSnapshot`]: the import step the standings
+//! table records for the key, with the state of the run
 //! its runtime shows (the run the table names, or a library release's
 //! re-identify run), and its typed search, each read from its own table. And
 //! each key's [`CandidateRuntimeView`]: the snapshot with the identify state
@@ -31,8 +31,9 @@ pub(crate) fn compose(
 }
 
 /// `key`'s view from its stored runtime: the identify state its pane shows,
-/// which is what identification is doing for it while it does something,
-/// else its stored verdict's, with what is in flight for it.
+/// with the work running for the key. The pane shows the queue's wait or the
+/// run's state while identification works on the key, otherwise the state
+/// that bae builds from the key's stored verdict.
 pub(crate) fn compose_view(
     key: &CandidateKey,
     stored: &StoredRuntime,

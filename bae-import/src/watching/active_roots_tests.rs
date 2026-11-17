@@ -490,10 +490,10 @@ async fn wait_for_held(
     .expect("the coordinator writes what it holds of the root");
 }
 
-/// A root reads as running while its whole-root pass runs. A failure that
-/// pass could not store is held as the root's once it ends, written before
-/// whoever waited on the pass hears it ended, and the root's next pass clears
-/// it.
+/// A root shows as running while its whole-root pass runs. The coordinator
+/// holds a failure that pass could not store as the root's once the pass
+/// ends, and writes it before whoever waited on the pass hears it ended. The
+/// root's next pass clears it.
 #[tokio::test]
 async fn a_pass_failure_the_store_refused_is_held_until_the_next_pass() {
     use crate::folder_scan_status::HeldRootScan;

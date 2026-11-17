@@ -367,7 +367,7 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// Record that the app raised `alert`, so the folder scans owe no
+        /// Record that the app raised `alert`, so the folder scans list no
         /// alert for its folder's problem until that problem ends.
         fn mark_folder_scan_alert_shown(alert: crate::types::BridgeFolderScanAlert) -> () {
             let crate::types::BridgeFolderScanAlert { watched_folder_path, kind, detail, .. } =

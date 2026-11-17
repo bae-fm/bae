@@ -48,7 +48,7 @@ pub(crate) struct StoredRuntime {
 /// A key's stored verdict as its pane shows it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredVerdict {
-    /// The identify state the verdict stands back up as.
+    /// The identify state that bae builds from the stored verdict.
     pub view: bae_identify::IdentifyStateView,
     /// The sample rate the key's stored signals say rules out a CD.
     pub not_cd_rate: Option<u32>,

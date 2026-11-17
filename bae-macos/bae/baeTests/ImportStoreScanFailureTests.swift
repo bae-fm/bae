@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Watched folder scan alerts")
 struct ImportStoreScanFailureTests {
-    /// Folder scans owing `alerts`, with no folder listed and no scan
+    /// Folder scans that list `alerts`, with no folder listed and no scan
     /// running.
     private static func scans(
         _ alerts: [BridgeFolderScanAlert]
@@ -40,12 +40,13 @@ struct ImportStoreScanFailureTests {
 
     private struct MarkRefused: Error {}
 
-    /// Each alert the folder scans owe is raised and marked shown, the
-    /// launch case included: the app's startup scan fails before any of
-    /// this is subscribed, and its alert is in the first delivery.
+    /// The store raises each alert the folder scans list and asks core to
+    /// mark it shown, including at launch: the app's startup scan fails
+    /// before the store subscribes, so its alert arrives in the first
+    /// delivery.
     @MainActor
-    @Test("an owed alert is raised and marked shown")
-    func anOwedAlertIsRaisedAndMarkedShown() async {
+    @Test("the store raises a listed alert and marks it shown")
+    func theStoreRaisesAListedAlertAndMarksItShown() async {
         let store = ImportStore()
         var raised: [BridgeFolderScanAlert] = []
         store.onScanFailure = { raised.append($0) }
@@ -61,11 +62,11 @@ struct ImportStoreScanFailureTests {
         #expect(Set(marks.marked) == [failed, notWatched])
     }
 
-    /// A delivery made before an alert's mark returns still owes the alert,
-    /// and does not raise it again.
+    /// A delivery made before an alert's mark finishes still lists the
+    /// alert, and the store does not raise it again.
     @MainActor
-    @Test("an alert is raised once while its mark is written")
-    func anAlertIsRaisedOnceWhileItsMarkIsWritten() async {
+    @Test("the store raises an alert once while core writes its mark")
+    func theStoreRaisesAnAlertOnceWhileCoreWritesItsMark() async {
         let store = ImportStore()
         var raised: [BridgeFolderScanAlert] = []
         store.onScanFailure = { raised.append($0) }
@@ -83,11 +84,11 @@ struct ImportStoreScanFailureTests {
         #expect(raised == [failed])
     }
 
-    /// A mark core refused leaves the alert owed, so the next delivery that
-    /// owes it raises it again.
+    /// A mark core refused leaves the alert in the list, so the store raises
+    /// it again on the next delivery that lists it.
     @MainActor
-    @Test("an alert whose mark failed is raised again")
-    func anAlertWhoseMarkFailedIsRaisedAgain() async {
+    @Test("the store raises an alert again when its mark fails")
+    func theStoreRaisesAnAlertAgainWhenItsMarkFails() async {
         let store = ImportStore()
         var raised: [BridgeFolderScanAlert] = []
         store.onScanFailure = { raised.append($0) }

@@ -307,9 +307,9 @@ async fn an_import_percent_moves_the_percents_not_the_runtime() {
     runtime_until(&mut query, Option::is_none).await;
 }
 
-/// The pane shows what identification is doing for a key while it does
-/// something, and otherwise the state the key's stored verdict stands back up
-/// as: Idle with no verdict, the verdict once one is stored, Queued and the
+/// The pane shows what identification is doing for a key while it works on
+/// the key, and otherwise the state that bae builds from the key's stored
+/// verdict: Idle with no verdict, the verdict once one is stored, Queued and the
 /// run's state while one is admitted and runs, and the verdict again after.
 #[tokio::test]
 async fn the_shown_identify_state_is_the_run_s_while_one_runs_else_the_verdict_s() {
@@ -349,7 +349,7 @@ async fn the_shown_identify_state_is_the_run_s_while_one_runs_else_the_verdict_s
             .await;
     assert!(stored.in_flight.is_none(), "nothing is identifying it");
     let ShownIdentifyState::Stored(verdict) = stored.identify_state else {
-        unreachable!("the value was picked for its stored verdict")
+        unreachable!("view_until returned this value for its stored verdict")
     };
     assert!(
         matches!(verdict.view, bae_identify::IdentifyStateView::ManualOnly { track_count: 9, .. }),

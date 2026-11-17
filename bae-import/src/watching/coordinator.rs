@@ -50,8 +50,9 @@ pub(crate) enum WatcherCommand {
 
 /// The folder-watch coordinator, run on the calling thread until it is told
 /// to stop. The store is the one authority on what is watched, so events from
-/// a watch left on a removed folder match nothing. It writes what it holds
-/// of each root's scan that no scan stores to the folder scan tables.
+/// a watch left on a removed folder match nothing. The coordinator writes the
+/// state it keeps for each root's scan that no scan stores to the folder scan
+/// tables.
 pub(crate) fn run_watcher(
     cmd_rx: &mut mpsc::UnboundedReceiver<WatcherCommand>,
     fs_rx: mpsc::UnboundedReceiver<WatchReport>,

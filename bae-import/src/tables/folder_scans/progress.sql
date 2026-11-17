@@ -1,17 +1,18 @@
--- Where each watched folder's scan stands, as the import list's chrome shows
--- it: the outcome its scan stored, or what the folder scan coordinator holds
--- of it that no scan stores, and which problems the app has raised an alert
--- for. Nothing in the two tables here outlives the process that wrote it, so
--- the import service empties them as the library opens.
+-- Each watched folder's scan status, as the import list's chrome shows it:
+-- the outcome its scan stored, or the state the folder scan coordinator keeps
+-- for it that no scan stores, and which problems the app has raised an alert
+-- for. The two tables here describe only the process that wrote them, so the
+-- import service empties them as the library opens.
 
--- What the folder scan coordinator holds of a folder's scan, written in the
--- step that changes it. 'running' while a whole-folder pass reads the folder,
--- is owed once the pass running ends, or a removal holds the folder. 'failed'
--- when the folder's last pass failed and its scan could not store the
--- failure, with that failure and the volume the pass found the folder on; the
--- folder's next pass deletes it. A removal holds the folder it watches in
--- place of the ones it removes before that folder is watched, so a row's
--- folder need not be watched yet.
+-- The state the folder scan coordinator keeps for a folder's scan, which the
+-- coordinator writes in the step that changes it. The state is 'running'
+-- while a whole-folder pass reads the folder, while the coordinator will
+-- start one once the running pass ends, or while a removal holds the folder.
+-- The state is 'failed' when the folder's last pass failed and its scan could
+-- not store the failure, with that failure and the volume the pass found the
+-- folder on; the folder's next pass deletes the row. A removal holds the
+-- folder it watches in place of the ones it removes before the coordinator
+-- watches that folder, so a row's folder need not be watched yet.
 CREATE TABLE IF NOT EXISTS folder_scan_held (
     watched_folder_path BLOB PRIMARY KEY,
     state               TEXT NOT NULL CHECK (state IN ('running', 'failed')),
@@ -85,7 +86,7 @@ SELECT
         WHEN roots.watched_folder_path IS NULL THEN NULL
         WHEN roots.status IS NOT NULL THEN roots.detail
         WHEN held.state = 'running' THEN NULL
-        ELSE 'the scan stopped before its result could be stored'
+        ELSE 'the scan stopped before bae stored its result'
     END AS detail,
     (CASE WHEN held.state = 'failed' THEN held.volume ELSE roots.volume END) IS 'network'
         AS on_network_volume

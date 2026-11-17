@@ -1,16 +1,16 @@
-//! Where each watched folder's scan stands: scanning, complete, failed, or
+//! Each watched folder's scan status: scanning, complete, failed, or
 //! read but not watched; whether the folder is on a network volume; the
 //! folders being scanned, for the list's chrome; and the problems whose alert
 //! the app has not raised yet.
 //!
-//! One live query reads it all (`folder_scans/progress.sql`). It puts each
-//! folder's stored scan beside what the folder scan coordinator holds of it
-//! that no scan stores: whether a pass is reading it, and a failure the scan
-//! could not store. The coordinator writes those rows in the step that
-//! changes them, and the import service empties them as the library opens,
-//! so a folder never reads as scanning with nothing scanning it. How many
-//! folders a scan has found moves with every folder the scan walks, and has a
-//! read of its own.
+//! One live query reads it all (`folder_scans/progress.sql`). The query puts
+//! each folder's stored scan beside the state the folder scan coordinator
+//! keeps for the folder that no scan stores: whether a pass is reading it,
+//! and a failure the scan could not store. The coordinator writes those rows
+//! in the step that changes them, and the import service empties them as the
+//! library opens, so a folder never shows as scanning with nothing scanning
+//! it. The count of folders a scan has found changes each time the scan
+//! stores a folder, and a live query of its own reads it.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -51,14 +51,14 @@ pub enum FolderScanStatus {
 /// How many folders each scan under way has stored, by its root.
 pub type ScanFoundCounts = BTreeMap<PathBuf, u64>;
 
-/// Where each watched folder's scan stands, for the chrome around the list.
+/// Each watched folder's scan status, for the chrome around the list.
 ///
 /// Read apart from the list, by its own live query, and sent on its own
 /// subscription: a scan re-confirms every folder it walks by moving its row
 /// to the scan's generation, which moves the found count and nothing the list
-/// shows. The found count is not read here: it has its own query and stream,
-/// so the writes that move it neither rerun this read nor reach the screen
-/// with it.
+/// shows. This query does not read the found count: the count has its own
+/// query and stream, so the writes that change it neither rerun this query
+/// nor reach the screen with it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FolderScanProgress {
     /// Every watched root, in watched-folder order.
@@ -76,7 +76,7 @@ pub struct FolderScanProgress {
 /// A watched folder's problem that the app has raised no alert for. The app
 /// raises one and marks it shown
 /// ([`crate::ImportServiceHandle::mark_folder_scan_alert_shown`]), and the
-/// folder's next problem is owed an alert again.
+/// app raises an alert again for the folder's next problem.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderScanAlert {
     pub watched_folder_path: PathBuf,
@@ -90,8 +90,8 @@ pub struct FolderScanAlert {
 pub enum FolderScanAlertKind {
     /// The folder's scan failed.
     Failed,
-    /// The folder was read in full, and a directory in it could not be
-    /// watched.
+    /// The scan read the whole folder, and bae could not watch a directory
+    /// in it.
     NotWatched,
 }
 
@@ -135,19 +135,21 @@ pub enum StoredScanOutcome {
     Failed {
         error: String,
     },
-    /// The tree was read in full and a directory in it could not be watched.
+    /// The scan read the whole tree, and bae could not watch a directory in
+    /// it.
     NotWatched {
         reason: String,
     },
 }
 
-/// What the folder scan coordinator holds of one root's scan that no scan
-/// stores. It writes each root's to `folder_scan_held` in the step that
-/// changes it.
+/// The state the folder scan coordinator keeps for one root's scan that no
+/// scan stores. The coordinator writes each root's held state to
+/// `folder_scan_held` in the step that changes it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum HeldRootScan {
-    /// A whole-root pass is reading the root or is owed once the pass
-    /// running ends, or a removal holds the root: its scan is not over.
+    /// A whole-root pass is reading the root, the coordinator will start one
+    /// once the running pass ends, or a removal holds the root: its scan is
+    /// not over.
     Running,
     /// The root's last pass failed, and its scan could not store the
     /// failure. Cleared when the root's next pass starts.

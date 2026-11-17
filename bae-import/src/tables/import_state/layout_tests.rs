@@ -308,9 +308,10 @@ async fn search_cards_statement_orders_rows_by_pressing_year() {
     assert_cards_are_the_rules_cards(&tables, run, &search).await;
 }
 
-/// Two albums of one catalog on one card — two MusicBrainz groups a Discogs
-/// master's two releases pair with — split the card into a section for each
-/// album, headed by it, and no row of a section is of the other's album.
+/// Two albums of one catalog on one card split the card into a section for
+/// each album, headed by it, and no row of a section is of the other's album.
+/// The two albums here are two MusicBrainz groups that a Discogs master's two
+/// releases pair with.
 #[tokio::test]
 async fn search_cards_statement_splits_a_card_holding_two_albums_of_one_catalog() {
     let (tables, key, _tmp) = scanned().await;

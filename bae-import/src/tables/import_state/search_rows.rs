@@ -1,10 +1,10 @@
 //! A person's typed search for a candidate (`import_candidate_search`): the
 //! query as columns, each catalog's part of it
 //! (`import_candidate_search_source`), and the releases each part returned,
-//! as match rows the search owns ([`MatchOwner::Search`]). The cards a
-//! surface draws are folded from them as they are read, never stored. The
-//! read also counts each part's releases and decides where the search stands
-//! as a whole ([`status_column`]).
+//! as match rows the search owns ([`MatchOwner::Search`]). The read builds
+//! the cards a surface draws from these rows, and bae never stores them. The
+//! read also counts each part's releases and decides the search's status as
+//! a whole ([`status_column`]).
 //!
 //! Each change is one write that decides from the rows it changes. A
 //! catalog's answer lands only on a part that is still searching, of the
@@ -492,7 +492,7 @@ impl ImportTables {
     /// with a part for each of `sources`: a folder candidate's of the files
     /// the scan holds it with now, a library release's of none. Answers the
     /// run its parts' answers land on and the catalogs to ask, in their
-    /// order. Refused for a folder key the scan holds no candidate at.
+    /// order. Refuses a folder key the scan holds no candidate at.
     pub(crate) async fn start_candidate_search(
         &self,
         key: &CandidateKey,

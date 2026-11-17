@@ -38,10 +38,10 @@ impl ImportServiceHandle {
         Ok(read?.read.rows)
     }
 
-    /// Where each watched folder's scan stands: the first value at once, then
-    /// a value after each write that changes it, by what a scan stored, by
-    /// what the folder scan coordinator holds of the scans, or by an alert
-    /// marked shown. Closing the library ends it.
+    /// Each watched folder's scan status: the first value at once, then a
+    /// value after each write that changes it, whether a scan stored it, the
+    /// folder scan coordinator wrote what it keeps for the scans, or the app
+    /// marked an alert shown. Closing the library ends the subscription.
     pub fn subscribe_folder_scans(
         &self,
     ) -> bae_store::live_query::LiveValues<crate::FolderScanProgress> {
@@ -53,8 +53,8 @@ impl ImportServiceHandle {
     }
 
     /// Record that the app raised the alert for `watched_folder_path`'s
-    /// problem of `kind` with `detail`, so the folder scans owe no alert for
-    /// it until the folder's problem ends.
+    /// problem of `kind` with `detail`, so the folder scans list no alert
+    /// for it until the folder's problem ends.
     pub async fn mark_folder_scan_alert_shown(
         &self,
         watched_folder_path: &std::path::Path,
