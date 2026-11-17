@@ -64,8 +64,8 @@ async fn download_queue_skips_already_pinned() {
 }
 
 /// A pin request queues, in the order asked, each release it can, in one
-/// write: a repeat and one already queued need nothing, and an unknown id is
-/// refused while the rest queue.
+/// write: the write skips a repeat and one already queued, and `enqueue_pins`
+/// refuses an unknown id and queues the rest.
 #[tokio::test]
 async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -83,7 +83,7 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
 
     assert!(
         matches!(&refused, LibraryError::ReleaseMissing { release_id, .. } if *release_id == unknown),
-        "the unknown release is refused: {refused}"
+        "enqueue_pins refuses the unknown release: {refused}"
     );
 
     assert_eq!(
@@ -97,8 +97,8 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     );
 }
 
-/// A Local release has nothing to pin — it is already fully on disk — so
-/// `enqueue_pins` refuses it rather than queueing a download that would fail.
+/// A Local release has nothing to pin, because it is already fully on disk,
+/// so `enqueue_pins` refuses it rather than queueing a download that would fail.
 #[tokio::test]
 async fn download_queue_refuses_a_local_release() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -116,7 +116,10 @@ async fn download_queue_refuses_a_local_release() {
     assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::OnOneDevice);
 
     let refused = manager.enqueue_pins(vec![release.id.clone()]).await.unwrap_err();
-    assert!(matches!(refused, LibraryError::Storage(_)), "a local release is refused: {refused}");
+    assert!(
+        matches!(refused, LibraryError::Storage(_)),
+        "enqueue_pins refuses a local release: {refused}"
+    );
     assert!(
         download_queue_now(manager).await.rows.is_empty(),
         "a local release is not enqueued for pinning"

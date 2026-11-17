@@ -138,8 +138,9 @@ struct ImportCandidateTablePlaceTests {
 
             slot.setFilterText("release")
 
-            // The sidebar replaces the table while the narrowed list's count
-            // is out, so the wait looks for a table without recording a miss.
+            // Until core sends the narrowed list's count, the sidebar shows
+            // in place of the table, so the wait looks for the table without
+            // failing the test while the table is absent.
             try await Wait.until {
                 slot.answersView
                     && SnapshotTestSupport.descendants(of: content)

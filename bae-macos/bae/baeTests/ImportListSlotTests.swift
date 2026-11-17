@@ -380,10 +380,10 @@ struct ImportListSlotViewChangeTests {
         try await Wait.until { slot.answersView }
     }
 
-    /// The write that sets a view answers where it opens; the slot reads the
-    /// windows again from there, sends the row as an opening and takes it as
-    /// the person's place.
-    @Test("a view change opens its windows at the row the write answers")
+    /// The write that sets a view returns the row where it opens; the slot
+    /// reads the windows again from there, sends the row as an opening and
+    /// takes it as the person's place.
+    @Test("a view change opens its windows at the row the write returns")
     func aViewChangeOpensAtItsOpening() async throws {
         let slot = ImportListSlot(
             importStore: ImportStore(),
@@ -420,10 +420,10 @@ struct ImportListSlotViewChangeTests {
         listening.cancel()
     }
 
-    /// Core answers no opening for another order: the slot sends none, and
-    /// the person's place stays the same while the rows redraw in the new
-    /// order.
-    @Test("a view change that core answers with no opening opens nothing")
+    /// For another order, core returns no opening row: the slot sends none,
+    /// and the person's place stays the same while the table draws the rows
+    /// in the new order.
+    @Test("a view change for which core returns no opening opens nothing")
     func aViewChangeWithNoOpeningOpensNothing() async throws {
         let slot = ImportListSlot(
             importStore: ImportStore(),

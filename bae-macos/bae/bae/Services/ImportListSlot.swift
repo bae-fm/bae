@@ -9,12 +9,12 @@ import Observation
 /// The view — which tab, which filter text, which order — and the groups
 /// folded shut decide which items sit in which windows, so they are core's
 /// list's rather than applied to a window after it arrives. A view change is
-/// a write. One that narrows the list anew answers where the new view opens;
-/// once it has, the slot drops the list's windows and count and reads them
-/// again from that place, so every value they deliver was read after the
-/// write. Until the first of them lands
-/// the rows the list holds are the previous view's, which the sidebar does
-/// not show as this one's. Which groups are folded is core's alone; each
+/// a write. When the new view has another tab, filter or search, the write
+/// returns where the new view opens; the slot then drops the list's windows
+/// and count and reads them again from that place, so core reads every value
+/// they deliver after the write. Until the first window's rows arrive, the
+/// rows the list holds are the previous view's, which the sidebar does not
+/// show as this one's. Which groups are folded is core's alone; each
 /// header says whether it is open.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every

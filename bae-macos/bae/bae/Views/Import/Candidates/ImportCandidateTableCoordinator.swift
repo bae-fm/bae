@@ -47,8 +47,9 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// Core's answer for where the pending place's row is now.
     private var placeTask: Task<Void, Never>?
     /// Core's answer for where the place's row sits after the rows moved.
-    /// The table records no place while it waits, since the rows moved under
-    /// a table that has not scrolled, until the person scrolls.
+    /// The table records no place while it waits, because the rows moved
+    /// under a table that has not scrolled. A scroll by the person ends the
+    /// wait.
     private var keepTask: Task<Void, Never>?
     /// The rows last told to the table as header rows, whose height is a
     /// header's.

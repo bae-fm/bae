@@ -659,10 +659,10 @@ where
 {
     /// Queue to pin, in the order given, each of `release_ids` that is
     /// uploaded and not wholly pinned on this device, in one write that
-    /// decides which: one waiting, downloading or pinned needs nothing, one
-    /// whose download failed is queued again in its place, and one the
-    /// library no longer holds or whose files are not in the cloud is
-    /// refused, with why.
+    /// decides which: the write skips one waiting, downloading or pinned,
+    /// queues one whose download failed again in its place, and refuses one
+    /// the library no longer holds or whose files are not in the cloud and
+    /// returns the reason.
     pub async fn enqueue_pinnable(
         &self,
         release_ids: Vec<String>,
@@ -675,10 +675,10 @@ where
 
     /// Queue to move to this device into `target_dir`, in the order given, each of
     /// `release_ids` that is stored in the cloud, in one write that decides
-    /// which: one waiting or downloading needs nothing, one whose download
-    /// failed becomes this move-to-this-device in its place, and one the
-    /// library no longer holds or whose files are not in the cloud is
-    /// refused, with why.
+    /// which: the write skips one waiting or downloading, turns one whose
+    /// download failed into this move-to-this-device in its place, and
+    /// refuses one the library no longer holds or whose files are not in the
+    /// cloud and returns the reason.
     #[cfg(desktop)]
     pub async fn enqueue_moves_to_this_device(
         &self,

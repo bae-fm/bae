@@ -2753,9 +2753,9 @@ unpins at once. The MCP tool's unpin never asks.
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, or pinned, needs
 nothing, as the releases' storage rows say, and one whose pin failed is queued
-again in its place, as retrying queues it. A release deleted meanwhile, or one
-whose files are not in the cloud, is refused: the rest queue, and the person
-sees the refusal. If the write fails, nothing is queued; the person sees the
+again in its place, as retrying queues it. Core refuses a release deleted
+meanwhile, or one whose files are not in the cloud, and queues the rest, and the
+person sees the refusal. If the write fails, nothing is queued; the person sees the
 error and the failure is reported as a bug.
 
 ### 4.4 Making a release local again
@@ -2771,8 +2771,8 @@ release's source folder, so two releases that both hold `01.flac` do not
 collide; a release with no source folder name fails its entry. One request
 queues the whole selection in the download queue (§4.3), in one write: a
 release already waiting or downloading needs nothing, a failed pin's entry
-becomes this move-to-this-device in its place, and a release that is local or
-deleted meanwhile is refused, while the rest queue and the person sees the
+becomes this move-to-this-device in its place, and the write refuses a release
+that is local or deleted meanwhile, while the rest queue and the person sees the
 refusal. The
 queue makes them local one release at a time, in the order asked, and its
 pause, cancel, retry and restarts are the pins': pausing stops the download

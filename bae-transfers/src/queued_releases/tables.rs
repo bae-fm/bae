@@ -408,7 +408,7 @@ pub enum DownloadRefusal {
 /// What one write queueing a selection for download did.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DownloadsQueued {
-    /// Whether any release went in or was queued again.
+    /// Whether the write added any release or queued one again.
     pub added: bool,
     /// Each release the write could not queue, in the selection's order,
     /// with why. Queueing it changed nothing.
@@ -441,10 +441,11 @@ fn download_refusals_on(
 
 /// Queue to pin, in the order given, each of `release_ids` that is
 /// uploaded and not wholly pinned on this device, as its storage row says,
-/// in one write that decides which. One waiting or downloading, or already
-/// pinned, needs nothing; one whose download failed is queued again in its
-/// place, as a retry queues it. One the library no longer holds and one
-/// whose files are not in the cloud are refused, with why.
+/// in one write that decides which. The write skips one waiting or
+/// downloading, or already pinned, and queues one whose download failed
+/// again in its place, as a retry does. The write refuses one the library no
+/// longer holds and one whose files are not in the cloud, and returns the
+/// reason for each.
 pub(crate) fn enqueue_pinnable_releases_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
@@ -639,9 +640,10 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
 
 /// Queue to move to this device into `target_dir`, in the order given, each of
 /// `release_ids` that is stored in the cloud, in one write that decides which.
-/// One waiting or downloading needs nothing; one whose download failed becomes
-/// this move-to-this-device in its place. One the library no longer holds and
-/// one whose files are not in the cloud are refused, with why.
+/// The write skips one waiting or downloading and turns one whose download
+/// failed into this move-to-this-device in its place. The write refuses one
+/// the library no longer holds and one whose files are not in the cloud, and
+/// returns the reason for each.
 #[cfg(desktop)]
 pub(crate) fn enqueue_moves_to_this_device_on(
     sql: &CovenWrite<'_>,

@@ -10,9 +10,9 @@ struct ImportListPlace: Equatable {
     enum Row: Equatable {
         /// A candidate's row, which core can say where it sits now.
         case candidate(candidateKey: Data)
-        /// A group header's row, a broken folder's, or a row whose page had
-        /// not landed: core can't say where it sits now, so the place is
-        /// its position.
+        /// A group header's row, a broken folder's, or a row whose page the
+        /// list had not loaded: core can't say where it sits now, so the
+        /// place is its position.
         case atPosition
     }
 

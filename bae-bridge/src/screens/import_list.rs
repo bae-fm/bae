@@ -145,14 +145,14 @@ impl ImportSelectionSubscription {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl ImportList {
-    /// Show `view`. `selected` holds the keys the app keeps selected. On
-    /// another tab, filter or search, the answer says where the new view
-    /// opens, at the first selected row the view shows, by key and position,
-    /// or at its top, and lists the selected keys the new view doesn't show,
-    /// which leave the selection. Another order, and the view the list
-    /// already shows, answer nothing. The app drops the windows it holds,
-    /// opens new ones from the place the answer names, and scrolls the table
-    /// there.
+    /// Show `view`. `selected` holds the keys the app keeps selected. When
+    /// the new view has another tab, filter or search, `set_view` returns
+    /// where it opens, at the first selected row the view shows, by key and
+    /// position, or at its top, and the selected keys the new view doesn't
+    /// show, which leave the selection. For another sort order, or for the
+    /// view the list already shows, `set_view` returns nothing. The app drops
+    /// the windows it holds, opens new ones from the returned place, and
+    /// scrolls the table there.
     pub async fn set_view(
         self: std::sync::Arc<Self>,
         view: crate::types::BridgeImportListView,

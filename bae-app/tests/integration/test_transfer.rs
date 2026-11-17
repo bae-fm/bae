@@ -203,8 +203,8 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 
-/// A pin request refuses a Local release, to the caller: there is no cloud
-/// file to fetch into the pinned cache, so nothing is queued.
+/// `enqueue_pins` returns an error for a Local release and queues nothing,
+/// because the release has no cloud file to fetch into the pinned cache.
 #[tokio::test]
 async fn test_pin_rejects_local_release() {
     bae_util::test_logs::install();

@@ -9,12 +9,13 @@ use bae_util::timestamp::StoredTimestamp as _;
 impl LibraryManager {
     /// Queue the uploaded releases of a selection to be moved to this device into
     /// `folder`, a folder the person picked, each in a folder of its own
-    /// below it named for the release, in one write. One already waiting or
-    /// downloading needs nothing. One the library does not hold or whose
-    /// files are not in the cloud is refused: the rest queue, and the first
-    /// refused release is the error returned. Coven downloads each release's files there,
-    /// then one write switches them to this device only, each copy becoming
-    /// the original it records, and takes the release out of the queue. A
+    /// below it named for the release, in one write. The write skips a
+    /// release already waiting or downloading. It refuses one the library
+    /// does not hold or whose files are not in the cloud and queues the rest,
+    /// and the call returns the error for the first refused release. Coven
+    /// downloads each release's files there, then one write switches them to
+    /// this device only, each copy becoming the original it records, and
+    /// takes the release out of the queue. A
     /// failure or a cancel before that write removes every copy and folder the
     /// call made, and the release stays in the cloud. Wakes the parked
     /// worker.

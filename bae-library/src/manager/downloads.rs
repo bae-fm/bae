@@ -12,12 +12,13 @@ use bae_transfers::{DownloadRequest, DownloadTransfer};
 use bae_util::timestamp::StoredTimestamp as _;
 
 impl LibraryManager {
-    /// Enqueue releases to pin for offline, in one write. One already
-    /// waiting, downloading or pinned needs nothing, and one whose download
-    /// failed is queued again in its place. One the library no longer holds
-    /// (deleted meanwhile) or whose files are not in the cloud is refused:
-    /// the rest queue, and the first refused release is the error returned.
-    /// A write that fails queues nothing and is reported as a bug: the
+    /// Enqueue releases to pin for offline, in one write. The write skips a
+    /// release already waiting, downloading or pinned, and queues one whose
+    /// download failed again in its place. The write refuses a release the
+    /// library no longer holds (deleted meanwhile) or whose files are not in
+    /// the cloud and queues the rest, and `enqueue_pins` returns an error for
+    /// the first refused release. When the write fails, it queues nothing,
+    /// and `enqueue_pins` reports the failure to diagnostics as a bug: the
     /// library's own rows failed to read. The entry names the release by id
     /// only; the Downloads pane reads its title, file count, and size from
     /// the library as it shows the row. Wakes the parked worker.
