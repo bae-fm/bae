@@ -81,7 +81,7 @@ class ScreenComponentShots : BoardShot() {
                         AndroidAlbumHeader(
                             detail = plainDetail,
                             cover = PreviewData.imageRef(),
-                            galleryItems = emptyList(),
+                            galleryItemCount = 0u,
                             onShowGallery = {},
                         )
                     }

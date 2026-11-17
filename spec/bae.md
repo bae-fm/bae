@@ -2103,7 +2103,10 @@ that serves it (the Cover Art Archive, Discogs), the album's front image as the
 album's, a gallery entry's number and what it shows (front, back, booklet and
 the archive's other types) and the archive's comment, joined by the language's
 separator. A release's gallery names its cover Cover and an image file by its
-filename. Saving the cover picked, in the import's picker or a library
+filename. Core counts a release's gallery items. On Android the album page's
+cover opens the gallery only when that count is above zero, and the gallery
+shows its page counter, with that count as its total, only when the count is
+above one. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. On the Mac, an album's cover, and the release editor's, opens
 that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. Until the

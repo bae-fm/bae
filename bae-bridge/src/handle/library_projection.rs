@@ -136,6 +136,7 @@ impl BridgeRelease {
             image_files,
             cover_files,
             gallery_items,
+            gallery_item_count,
             playability,
             download_status,
             move_to_this_device,
@@ -191,6 +192,7 @@ impl BridgeRelease {
             cover_files: cover_files.into_iter().map(BridgeFile::from_core).collect(),
             source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items.into_iter().map(BridgeGalleryItem::from_core).collect(),
+            gallery_item_count,
             playability: crate::types::BridgeReleasePlayability::from_core(playability),
             move_to_this_device: move_to_this_device
                 .map(crate::types::BridgeMoveToThisDeviceStatus::from_core),

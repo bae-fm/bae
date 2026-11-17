@@ -82,12 +82,14 @@ private val logger = BaeLogger(TAG)
 
 /**
  * Full-screen viewer over a release's gallery items: swipe between them, pinch
- * to zoom, swipe down to dismiss.
+ * to zoom, swipe down to dismiss. [count] is how many items the release's read
+ * counts, and the page counter shows it.
  */
 @Composable
 fun GalleryDialog(
     releaseId: String,
     items: List<BridgeGalleryItem>,
+    count: UInt,
     onDismiss: () -> Unit,
 ) {
     Dialog(
@@ -140,7 +142,7 @@ fun GalleryDialog(
                         GalleryPage(releaseId = releaseId, item = items[page])
                     }
                     GalleryCloseButton(onDismiss = onDismiss)
-                    GalleryCaption(items = items, pagerState = pagerState)
+                    GalleryCaption(items = items, count = count, pagerState = pagerState)
                 }
             }
         }
@@ -222,6 +224,7 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
 @Composable
 private fun BoxScope.GalleryCaption(
     items: List<BridgeGalleryItem>,
+    count: UInt,
     pagerState: PagerState,
 ) {
     val currentPage = pagerState.currentPage
@@ -239,13 +242,13 @@ private fun BoxScope.GalleryCaption(
             style = ThemeText.body.style,
             color = BaeTheme.colors.onFill,
         )
-        if (items.size > 1) {
+        if (count > 1u) {
             Text(
                 text =
                     stringResource(
                         R.string.gallery_page_counter,
                         LocalContext.current.countText(currentPage + 1),
-                        LocalContext.current.countText(items.size),
+                        LocalContext.current.countText(count),
                     ),
                 style = ThemeText.body.style,
                 color = BaeTheme.colors.onFillSecondary,

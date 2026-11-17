@@ -685,6 +685,7 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
     assert_eq!(cover_ids, eligible);
     assert_eq!(image_ids, all_images);
     assert_eq!(gallery_ids, all_images);
+    assert_eq!(detail.gallery_item_count, 6, "the release counts its six gallery items");
 }
 
 #[tokio::test]

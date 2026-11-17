@@ -464,6 +464,9 @@ pub struct BridgeRelease {
     /// `fetch_release_image`, which takes the item's `source` and
     /// dispatches the read. Consumers render this as-is.
     pub gallery_items: Vec<BridgeGalleryItem>,
+    /// How many items `gallery_items` holds. The album page opens the gallery
+    /// and words its page counter from this count.
+    pub gallery_item_count: u32,
     /// Whether this device can play the release now, and why not.
     pub playability: BridgeReleasePlayability,
     /// Where the release stands in being moved to this device, which core decides from

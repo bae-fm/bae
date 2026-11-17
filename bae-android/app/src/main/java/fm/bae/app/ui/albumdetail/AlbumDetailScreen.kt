@@ -307,11 +307,11 @@ internal fun AlbumDetailContent(
     val shown = detail.shownRelease
 
     var showGallery by remember { mutableStateOf(false) }
-    val galleryItems = shown.galleryItems
-    if (showGallery && galleryItems.isNotEmpty()) {
+    if (showGallery && shown.galleryItemCount > 0u) {
         GalleryDialog(
             releaseId = shown.id,
-            items = galleryItems,
+            items = shown.galleryItems,
+            count = shown.galleryItemCount,
             onDismiss = { showGallery = false },
         )
     }
@@ -326,7 +326,7 @@ internal fun AlbumDetailContent(
             AndroidAlbumHeader(
                 detail = detail,
                 cover = cover,
-                galleryItems = galleryItems,
+                galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
             )
         }
@@ -371,7 +371,7 @@ internal fun AlbumDetailContent(
 internal fun AndroidAlbumHeader(
     detail: BridgeAlbumDetail,
     cover: BridgeImageRef?,
-    galleryItems: List<uniffi.bae_bridge.BridgeGalleryItem>,
+    galleryItemCount: UInt,
     onShowGallery: () -> Unit,
 ) {
     val album = detail.album
@@ -385,7 +385,7 @@ internal fun AndroidAlbumHeader(
             modifier =
                 Modifier
                     .size(140.dp)
-                    .clickable(enabled = galleryItems.isNotEmpty(), onClick = onShowGallery),
+                    .clickable(enabled = galleryItemCount > 0u, onClick = onShowGallery),
             contentDescription = album.title,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.edge))

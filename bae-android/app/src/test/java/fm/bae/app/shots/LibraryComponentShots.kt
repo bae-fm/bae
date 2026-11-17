@@ -92,7 +92,7 @@ class LibraryComponentShots : BoardShot() {
                 AndroidAlbumHeader(
                     detail = harborDetail,
                     cover = PreviewData.imageRef(),
-                    galleryItems = emptyList(),
+                    galleryItemCount = 0u,
                     onShowGallery = {},
                 )
             }
@@ -105,7 +105,7 @@ class LibraryComponentShots : BoardShot() {
                 AndroidAlbumHeader(
                     detail = harborDetail.copy(shownRelease = harborRelease.copy(distinctYear = 2001)),
                     cover = PreviewData.imageRef(),
-                    galleryItems = emptyList(),
+                    galleryItemCount = 0u,
                     onShowGallery = {},
                 )
             }

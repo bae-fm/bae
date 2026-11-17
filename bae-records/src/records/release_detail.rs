@@ -191,8 +191,8 @@ fn performs_works_sql(release: &str) -> String {
 /// The release `release` (an SQL expression naming its id)'s files, and among
 /// them the images, the images bae can make a cover from, and the files no
 /// track plays from, each in the release's file order, with the number of
-/// files, their total size and the summary of their audio, as one JSON object
-/// for [`release_files_column`].
+/// files, the number of images, the files' total size and the summary of
+/// their audio, as one JSON object for [`release_files_column`].
 fn release_files_json_sql(release: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
@@ -205,12 +205,14 @@ fn release_files_json_sql(release: &str) -> String {
              FILTER (WHERE {condition})"
         )
     };
+    let image = "listed.content_type GLOB 'image/*'";
     format!(
         "(SELECT json_object( \
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
               'has_others', COALESCE(SUM(listed.source_audio_layout IS NULL), 0) > 0, \
-              'count', COUNT(*), 'total_size', COALESCE(SUM(listed.size), 0), \
+              'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
+              'total_size', COALESCE(SUM(listed.size), 0), \
               'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
                        coven.size AS size, {file_json} AS file_json \
@@ -218,7 +220,7 @@ fn release_files_json_sql(release: &str) -> String {
                 JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
         files = list("1"),
-        images = list("listed.content_type GLOB 'image/*'"),
+        images = list(image),
         covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
         others = list("listed.source_audio_layout IS NULL"),
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
@@ -248,6 +250,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         others: Vec<FileColumns>,
         has_others: i64,
         count: i64,
+        image_count: u32,
         total_size: u64,
         #[serde(deserialize_with = "crate::source_audio::SourceAudioSummary::deserialize_stored")]
         source_audio: Option<crate::source_audio::SourceAudioSummary>,
@@ -270,6 +273,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         others: files(stored.others)?,
         has_others: stored.has_others != 0,
         count: stored.count,
+        image_count: stored.image_count,
         total_size: stored.total_size,
         source_audio: stored.source_audio,
     })

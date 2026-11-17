@@ -201,6 +201,8 @@ pub struct DbReleaseFiles {
     /// Whether any file is one no track plays from.
     pub has_others: bool,
     pub count: i64,
+    /// How many files are images: the files `images` lists.
+    pub image_count: u32,
     pub total_size: u64,
     /// What the release's audio is, summarized over the audio files its
     /// tracklist plays (`source_audio_summary_sql`); `None` when it has none.

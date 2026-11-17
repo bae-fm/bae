@@ -220,6 +220,7 @@ extension PreviewData {
             imageFiles: [previewReleaseCoverFile],
             coverFiles: [previewReleaseCoverFile],
             galleryItems: [],
+            galleryItemCount: 0,
             playability: playability,
             moveToThisDevice: nil,
             downloadStatus: nil,

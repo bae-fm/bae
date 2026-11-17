@@ -761,6 +761,7 @@ extension PreviewData {
             imageFiles: [imageFile],
             coverFiles: [imageFile],
             galleryItems: [],
+            galleryItemCount: 0,
             playability: .playable,
             moveToThisDevice: nil,
             downloadStatus: nil,

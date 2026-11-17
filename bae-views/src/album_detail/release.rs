@@ -153,6 +153,9 @@ pub struct ReleaseDetail {
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
+    /// How many items `gallery_items` holds. A screen decides from this
+    /// count whether the gallery opens and what total its page counter shows.
+    pub gallery_item_count: u32,
     /// Whether this device can play the release now, and why not.
     pub playability: ReleasePlayability,
     /// The download control's state for the release, from its entry in the
@@ -209,6 +212,9 @@ impl ReleaseDetail {
         let total_size = raw.files.total_size;
         let total_duration_ms = raw.total_duration_ms;
 
+        // The gallery holds the cover slot when the release has a cover, then
+        // one item for each image the release's files statement counts.
+        let gallery_item_count = raw.files.image_count + u32::from(ctx.cover.is_some());
         let mut gallery = Vec::new();
         // One resolve of the `covers` row feeds both the gallery's "Cover" slot and
         // the summary's `cover`. The lightbox fetches the bytes by image id and
@@ -284,6 +290,7 @@ impl ReleaseDetail {
             source_audio,
             image_files,
             cover_files,
+            gallery_item_count,
             gallery_items: gallery,
             playability,
             records: raw.records,

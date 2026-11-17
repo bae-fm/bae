@@ -18,6 +18,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
             others: Vec::new(),
             has_others: false,
             count: 0,
+            image_count: 0,
             total_size: 0,
             source_audio: None,
         },

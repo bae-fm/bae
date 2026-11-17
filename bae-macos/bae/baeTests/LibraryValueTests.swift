@@ -71,6 +71,7 @@ func makeBridgeRelease(
         imageFiles: [],
         coverFiles: [],
         galleryItems: [],
+        galleryItemCount: 0,
         playability: .playable,
         moveToThisDevice: nil,
         downloadStatus: nil,
