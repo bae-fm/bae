@@ -491,22 +491,15 @@ extension ImportListSlot {
 
 extension ImportListSlot {
     /// Where the candidate on top of `place` sits now in the list the view
-    /// shows, as core places it: `nil` when the place's row is not a
-    /// candidate's, or core places it where this view does not show it — on
-    /// another tab, or where the view's filters would put it elsewhere. A
-    /// failed read is reported, and answers `nil`.
+    /// shows, as core places it under the view's filters and folds: `nil`
+    /// when the place's row is not a candidate's, or the view does not show
+    /// the candidate. A failed read is reported, and answers `nil`.
     func position(ofPlace place: ImportListPlace) async -> Int? {
-        guard case .candidate(let stableKey, let candidateKey) = place.row,
-            let handle
+        guard case .candidate(let candidateKey) = place.row, let handle
         else { return nil }
         do {
-            guard let location = try await handle.locateCandidate(candidateKey),
-                let list
-            else { return nil }
-            let position = Int(location.visiblePosition)
-            let placed = await list.holds(stableKey, at: position)
-            guard !Task.isCancelled, placed else { return nil }
-            return position
+            return try await handle.candidatePosition(candidateKey)
+                .map(Int.init)
         }
         catch {
             uiStore.showError(error)

@@ -9,7 +9,7 @@ struct ImportListPlace: Equatable {
     /// The row on top, as far as the list had loaded it.
     enum Row: Equatable {
         /// A candidate's row, which core can say where it sits now.
-        case candidate(stableKey: String, candidateKey: Data)
+        case candidate(candidateKey: Data)
         /// A group header's row, a broken folder's, or a row whose page had
         /// not landed: core can't say where it sits now, so the place is
         /// its position.

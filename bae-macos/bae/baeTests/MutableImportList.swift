@@ -131,7 +131,8 @@ final class MutableImportList: @unchecked Sendable {
             setView: { _, _ in
                 BridgeImportListViewChange(opening: .top, left: [])
             },
-            locateCandidate: { [self] key in locate(key) }
+            locateCandidate: { [self] key in locate(key) },
+            candidatePosition: { [self] key in locate(key)?.visiblePosition }
         )
     }
 

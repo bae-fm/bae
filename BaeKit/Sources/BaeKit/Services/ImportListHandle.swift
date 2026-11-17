@@ -63,6 +63,7 @@ import Foundation
         private let foldAll: @Sendable (Bool, [Data]) async throws -> [Data]
         private let locate:
             @Sendable (Data) async throws -> BridgeImportCandidateListLocation?
+        private let position: @Sendable (Data) async throws -> UInt64?
         private let firstIdentifying: @Sendable () async throws -> Data?
         private let closeList: @Sendable () async throws -> Void
 
@@ -87,6 +88,8 @@ import Foundation
             locateCandidate:
                 @escaping @Sendable (Data) async throws
                 -> BridgeImportCandidateListLocation?,
+            candidatePosition:
+                @escaping @Sendable (Data) async throws -> UInt64?,
             firstIdentifyingCandidate:
                 @escaping @Sendable () async throws -> Data?,
             close: @escaping @Sendable () async throws -> Void = {}
@@ -99,6 +102,7 @@ import Foundation
             fold = setGroupFolded
             foldAll = setAllGroupsFolded
             locate = locateCandidate
+            position = candidatePosition
             firstIdentifying = firstIdentifyingCandidate
             closeList = close
         }
@@ -129,6 +133,9 @@ import Foundation
                 },
                 locateCandidate: {
                     try await list.locateCandidate(candidateKey: $0)
+                },
+                candidatePosition: {
+                    try await list.candidatePosition(candidateKey: $0)
                 },
                 firstIdentifyingCandidate: {
                     try await list.firstIdentifyingCandidate()
@@ -178,6 +185,14 @@ import Foundation
             -> BridgeImportCandidateListLocation?
         {
             try await locate(candidateKey)
+        }
+
+        /// Where the list shows the candidate under its view now, its filters
+        /// and folds as they are. `nil` when the view does not show it.
+        public func candidatePosition(_ candidateKey: Data) async throws
+            -> UInt64?
+        {
+            try await position(candidateKey)
         }
 
         /// Close the list: every read opened from it ends, and its folds go.

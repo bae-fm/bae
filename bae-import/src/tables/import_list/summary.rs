@@ -220,13 +220,24 @@ pub(super) fn listed(
     Ok(Listed { total: total(items)?, narrowed })
 }
 
-/// Where the candidate at `key` sits in `list` once revealed: `None` for a
-/// candidate the list lists nowhere, and `None` around it all once the list
+/// Which view of a list a candidate's place is asked of.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum Placing {
+    /// The view that reveals it: its tab with the filters cleared and its
+    /// group folded open.
+    Revealed,
+    /// The view the list shows now, its filters and folds as they are.
+    AsShown,
+}
+
+/// Where the candidate at `key` sits in `list` under `placing`: `None` for a
+/// candidate that view does not show, and `None` around it all once the list
 /// is closed.
 pub(super) fn locate(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
     key: &CandidateKey,
+    placing: Placing,
 ) -> Result<Option<Option<ImportCandidateListLocation>>, DbError> {
     let Some(row) = super::list_row(sql, list)? else {
         return Ok(None);
@@ -253,9 +264,11 @@ pub(super) fn locate(
         watched_folder_path: root,
         relative_folder: folder,
     });
-    let position =
-        Items::new(list, tab, row.view.order, Shown::Revealing { opened: group.as_ref() })
-            .position_of(sql, key)?;
+    let (tab, shown) = match placing {
+        Placing::Revealed => (tab, Shown::Revealing { opened: group.as_ref() }),
+        Placing::AsShown => (row.view.tab, Shown::View),
+    };
+    let position = Items::new(list, tab, row.view.order, shown).position_of(sql, key)?;
     Ok(Some(position.map(|(position, order_key)| ImportCandidateListLocation {
         stable_key: crate::list::candidate_stable_key(key),
         tab,
@@ -324,8 +337,23 @@ impl ImportTables {
     ) -> Result<Option<crate::ImportCandidateListLocation>, ImportListError> {
         let candidate_key = candidate_key.clone();
         self.store
-            .read(move |sql| locate(&sql, list, &candidate_key))
+            .read(move |sql| locate(&sql, list, &candidate_key, Placing::Revealed))
             .await?
+            .ok_or(ImportListError::Closed(list))
+    }
+
+    /// Where the candidate at `candidate_key` sits in what the list shows
+    /// under its view now; `None` when the view does not show it.
+    pub async fn import_candidate_position(
+        &self,
+        list: ImportListId,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<Option<u64>, ImportListError> {
+        let candidate_key = candidate_key.clone();
+        self.store
+            .read(move |sql| locate(&sql, list, &candidate_key, Placing::AsShown))
+            .await?
+            .map(|location| location.map(|location| location.visible_position))
             .ok_or(ImportListError::Closed(list))
     }
 

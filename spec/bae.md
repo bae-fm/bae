@@ -1240,7 +1240,8 @@ and not how many there are; the table keeps its own scroll and draws the rows in
 order until the first window in the new order answers. Nothing keeps the place on the list: selecting rows
 since moves no place, and the list otherwise keeps the person's place as rows
 come and go: when the rows change, core says where the release on top sits now
-and the table puts it back on top, unless the person scrolls before core
+in the view as it stands, its filters and folds included, and the table puts it
+back on top, unless the person scrolls before core
 answers. A header or a broken folder on top keeps its position. The write finds the first selected row among the keys the screen
 passes alone, and counts the rows before it by the same index seeks bae uses to read a
 window that starts at a row, as a count over index ranges and not a numbering of

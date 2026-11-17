@@ -262,6 +262,21 @@ impl ImportList {
             .await
     }
 
+    /// Where the candidate sits in what the list shows under its view now,
+    /// its filters and folds as they are; absent when the view does not
+    /// show it.
+    pub async fn candidate_position(
+        self: std::sync::Arc<Self>,
+        candidate_key: Vec<u8>,
+    ) -> Result<Option<u64>, BridgeError> {
+        let runtime = self.runtime.clone();
+        runtime
+            .run("ImportList.candidate_position", move || async move {
+                self.inner.candidate_position(&candidate_key.into()).await.map_err(list_error)
+            })
+            .await
+    }
+
     /// The first candidate still being identified, in the list's order.
     pub async fn first_identifying_candidate(
         self: std::sync::Arc<Self>,

@@ -532,6 +532,41 @@ async fn locating_a_candidate_ignores_the_pending_filter() {
     assert_eq!(location.tab, TriageTab::Pending);
 }
 
+/// A candidate's position in the view counts only the rows the view shows: a
+/// folded group shows its header alone, and a candidate the filter hides has
+/// no position.
+#[tokio::test]
+async fn a_candidate_position_counts_what_the_view_shows() {
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    lib.run(
+        lib.scan("Earlier/Release 1")
+            + lib.scan("Earlier/Release 2")
+            + lib.scan("Target/Release 1"),
+    )
+    .await;
+    let list = lib.open(view(TriageTab::Pending)).await;
+    let target = lib.key("Target/Release 1");
+    let open = tables.import_candidate_position(list, &target).await.unwrap();
+    let earlier = crate::FolderReleaseDecisionKey {
+        watched_folder_path: lib.root.clone(),
+        relative_folder: crate::RelativeFolder::test("Earlier"),
+    };
+    tables.set_import_list_group_folded(list, earlier, true).await.unwrap();
+    let folded = tables.import_candidate_position(list, &target).await.unwrap();
+    assert_eq!(
+        (open, folded),
+        (Some(4), Some(2)),
+        "two members of the folded group above it leave the view"
+    );
+    let member = lib.key("Earlier/Release 1");
+    assert_eq!(
+        tables.import_candidate_position(list, &member).await.unwrap(),
+        None,
+        "a folded member is not shown"
+    );
+}
+
 /// The tab counts are a live read of their own: a candidate placed on Found
 /// moves Found's count, and skipping it moves the count to Skipped, without
 /// any list open.

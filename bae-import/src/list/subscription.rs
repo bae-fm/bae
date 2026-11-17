@@ -160,6 +160,16 @@ impl LiveImportList {
         Ok(self.tables.locate_import_candidate(self.list, candidate_key).await?)
     }
 
+    /// Where the candidate at `candidate_key` sits in what the list shows
+    /// under its view now, its filters and folds as they are; `None` when
+    /// the view does not show it.
+    pub async fn candidate_position(
+        &self,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<Option<u64>, ImportListFailure> {
+        Ok(self.tables.import_candidate_position(self.list, candidate_key).await?)
+    }
+
     /// The first candidate the identification count is still waiting on —
     /// one queued, running or having its answer written — in the list's
     /// order. `None` when nothing is being identified, or nothing that is has

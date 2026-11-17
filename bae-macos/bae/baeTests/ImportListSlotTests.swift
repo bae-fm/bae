@@ -28,6 +28,8 @@ extension ImportListHandle {
         locateCandidate:
             @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
+        candidatePosition:
+            @escaping @Sendable (Data) async throws -> UInt64? = { _ in nil },
         firstIdentifyingCandidate:
             @escaping @Sendable () async throws -> Data? = { nil }
     ) -> ImportListHandle {
@@ -41,6 +43,7 @@ extension ImportListHandle {
             setGroupFolded: setGroupFolded,
             setAllGroupsFolded: setAllGroupsFolded,
             locateCandidate: locateCandidate,
+            candidatePosition: candidatePosition,
             firstIdentifyingCandidate: firstIdentifyingCandidate
         )
     }

@@ -373,6 +373,9 @@
                     setGroupFolded: { _, _, _ in [] },
                     setAllGroupsFolded: { _, _ in [] },
                     locateCandidate: { locate($0, in: items, on: tab) },
+                    candidatePosition: {
+                        locate($0, in: items, on: tab)?.visiblePosition
+                    },
                     firstIdentifyingCandidate: { nil }
                 )
             }

@@ -595,10 +595,7 @@ extension ImportCandidateTableCoordinator {
         guard let stableKey = list.idAt(row),
             let candidate = list.row(of: stableKey)?.triageRow
         else { return .atPosition }
-        return .candidate(
-            stableKey: stableKey,
-            candidateKey: candidate.candidateKey
-        )
+        return .candidate(candidateKey: candidate.candidateKey)
     }
 
     /// Put `row` at the top of the table, scrolled `offset` into it.
