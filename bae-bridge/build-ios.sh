@@ -121,8 +121,8 @@ run_host_cargo build -p bae-uniffi-bindgen
 BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
 # Without --no-format the generator runs `swift format <file>`, which prints
 # the formatted file to stdout and leaves the file on disk as it was. The
-# generator discards that output, so formatting changed nothing. On the macOS
-# bindings it took 13 seconds.
+# generator discards that output, so formatting changes nothing and only costs
+# time.
 "$BINDGEN" generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \

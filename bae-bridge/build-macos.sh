@@ -174,8 +174,8 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
 
     # Without --no-format the generator runs `swift format <file>`, which
     # prints the formatted file to stdout and leaves the file on disk as it
-    # was. The generator discards that output, so formatting took 13 seconds
-    # and changed nothing.
+    # was. The generator discards that output, so formatting changes nothing
+    # and only costs time.
     "$BINDGEN" generate \
         --library "$DYLIB" \
         --language swift \
