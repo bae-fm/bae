@@ -20,13 +20,6 @@ pub struct BatchBar<Key> {
     pub moving: Vec<MovingShare<Key>>,
 }
 
-impl<Key> Default for BatchBar<Key> {
-    /// The bar of a batch with nothing done and nothing transferring.
-    fn default() -> Self {
-        Self { done: 0.0, moving: Vec::new() }
-    }
-}
-
 /// A file or release that bae is transferring now, and its share of its
 /// batch's bytes.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +34,7 @@ pub struct MovingShare<Key> {
 /// reruns it when a batch grows, a release's files are stored or pinned, a
 /// file starts or ends its upload, or a download starts or ends. A line whose
 /// batch holds no release has an empty bar.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ActivityBarRows {
     /// The Uploading line's bar, with each file this process is sending now.
     pub uploads: BatchBar<coven::FileId>,

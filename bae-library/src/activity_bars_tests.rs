@@ -6,6 +6,16 @@ fn file(n: u128) -> coven::FileId {
     coven::FileId(uuid::Uuid::from_u128(n))
 }
 
+/// A line's bar with nothing done and nothing transferring.
+fn empty<Key>() -> BatchBar<Key> {
+    BatchBar { done: 0.0, moving: Vec::new() }
+}
+
+/// Rows of three lines with nothing done and nothing transferring.
+fn no_rows() -> ActivityBarRows {
+    ActivityBarRows { uploads: empty(), pins: empty(), moving_to_this_device: empty() }
+}
+
 /// Rows whose Pinning line has `done` of its batch done and `moving`
 /// downloading, each release with its share of the batch.
 fn pin_rows(done: f64, moving: &[(&str, f64)]) -> ActivityBarRows {
@@ -20,7 +30,7 @@ fn pin_rows(done: f64, moving: &[(&str, f64)]) -> ActivityBarRows {
                 })
                 .collect(),
         },
-        ..ActivityBarRows::default()
+        ..no_rows()
     }
 }
 
@@ -82,7 +92,7 @@ fn an_upload_bar_adds_each_file_being_sent() {
             done: 0.5,
             moving: vec![MovingShare { key: a, share: 0.25 }, MovingShare { key: b, share: 0.25 }],
         },
-        ..ActivityBarRows::default()
+        ..no_rows()
     };
     let sent =
         BTreeMap::from([(a, coven::TransferProgress { bytes_transferred: 50, bytes_total: 100 })]);

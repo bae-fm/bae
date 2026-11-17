@@ -4,6 +4,11 @@ use crate::sync_activity::tests::{
 };
 use bae_records::test_fixtures::storage_listing::{RELEASE_EARLY, RELEASE_LATE};
 
+/// The bar of a batch with nothing done and nothing transferring.
+fn empty_bar<Key>() -> BatchBar<Key> {
+    BatchBar { done: 0.0, moving: Vec::new() }
+}
+
 /// The bars as one read of `store` finds them.
 async fn bars_now(store: &bae_store::Store) -> ActivityBarRows {
     store.read(|sql| activity_bars_on(&sql)).await.unwrap()
@@ -26,7 +31,7 @@ fn the_upload_bar_is_the_share_of_its_batch_stored() {
     run_on_library_with_storage(async |store, originals| {
         let records = bae_records::test_fixtures::test_records(store);
         write_releases_with_files(store, originals).await;
-        assert_eq!(bars_now(store).await.uploads, BatchBar::default(), "nothing is queued");
+        assert_eq!(bars_now(store).await.uploads, empty_bar(), "nothing is queued");
 
         queue_upload(store, RELEASE_EARLY).await;
         queue_upload(store, RELEASE_LATE).await;
@@ -40,7 +45,7 @@ fn the_upload_bar_is_the_share_of_its_batch_stored() {
         assert_eq!(bars_now(store).await.uploads, BatchBar { done: 3.0 / 8.0, moving: Vec::new() });
 
         records.cancel_release_uploads(vec![RELEASE_LATE.into()]).await.unwrap();
-        assert_eq!(bars_now(store).await.uploads, BatchBar::default(), "the batch is over");
+        assert_eq!(bars_now(store).await.uploads, empty_bar(), "the batch is over");
     });
 }
 
