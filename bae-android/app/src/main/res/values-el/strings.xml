@@ -163,7 +163,6 @@
     <string name="copy_code">Αντιγραφή κωδικού</string>
     <string name="copy">Αντιγραφή</string>
     <string name="hide">Απόκρυψη</string>
-    <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
     <string name="library_remove_confirm_title">Αφαίρεση της βιβλιοθήκης %1$s από αυτή τη συσκευή;</string>
     <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη παραμένει στο cloud και στις άλλες συσκευές σας.</string>
     <string name="settings_remove">Αφαίρεση</string>

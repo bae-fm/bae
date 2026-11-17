@@ -168,7 +168,6 @@
     <string name="copy_code">Copiază codul</string>
     <string name="copy">Copiază</string>
     <string name="hide">Ascunde</string>
-    <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
     <string name="library_remove_confirm_title">Elimini %1$s de pe acest dispozitiv?</string>
     <string name="settings_remove_library_confirm_body">Biblioteca rămâne în cloud și pe celelalte dispozitive ale tale.</string>
     <string name="settings_remove">Elimină</string>

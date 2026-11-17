@@ -167,7 +167,6 @@
     <string name="copy_code">Копіювати код</string>
     <string name="copy">Копіювати</string>
     <string name="hide">Сховати</string>
-    <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
     <string name="library_remove_confirm_title">Вилучити %1$s з цього пристрою?</string>
     <string name="settings_remove_library_confirm_body">Бібліотека залишиться у хмарі та на інших ваших пристроях.</string>
     <string name="settings_remove">Видалити</string>

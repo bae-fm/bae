@@ -163,7 +163,6 @@
     <string name="copy_code">Kopier koden</string>
     <string name="copy">Kopier</string>
     <string name="hide">Skjul</string>
-    <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
     <string name="library_remove_confirm_title">Fjerne %1$s fra denne enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket blir værende i skyen og på de andre enhetene dine.</string>
     <string name="settings_remove">Fjern</string>

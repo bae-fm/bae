@@ -175,7 +175,6 @@
     <string name="copy_code">نسخ الرمز</string>
     <string name="copy">نسخ</string>
     <string name="hide">إخفاء</string>
-    <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
     <string name="library_remove_confirm_title">إزالة %1$s من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">تبقى المكتبة في السحابة وعلى أجهزتك الأخرى.</string>
     <string name="settings_remove">إزالة</string>

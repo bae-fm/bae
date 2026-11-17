@@ -163,7 +163,6 @@
     <string name="copy_code">Kód másolása</string>
     <string name="copy">Másolás</string>
     <string name="hide">Elrejtés</string>
-    <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
     <string name="library_remove_confirm_title">Eltávolítod a(z) %1$s könyvtárat erről az eszközről?</string>
     <string name="settings_remove_library_confirm_body">A könyvtár megmarad a felhőben és a többi eszközödön.</string>
     <string name="settings_remove">Eltávolítás</string>

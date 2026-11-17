@@ -163,7 +163,6 @@
     <string name="copy_code">Kopioi koodi</string>
     <string name="copy">Kopioi</string>
     <string name="hide">Piilota</string>
-    <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
     <string name="library_remove_confirm_title">Poistetaanko %1$s tältä laitteelta?</string>
     <string name="settings_remove_library_confirm_body">Kirjasto säilyy pilvessä ja muilla laitteillasi.</string>
     <string name="settings_remove">Poista</string>

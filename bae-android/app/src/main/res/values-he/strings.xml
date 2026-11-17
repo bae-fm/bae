@@ -163,7 +163,6 @@
     <string name="copy_code">העתק קוד</string>
     <string name="copy">העתקה</string>
     <string name="hide">הסתרה</string>
-    <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
     <string name="library_remove_confirm_title">להסיר את %1$s מהמכשיר הזה?</string>
     <string name="settings_remove_library_confirm_body">הספרייה תישאר בענן ובמכשירים האחרים שלך.</string>
     <string name="settings_remove">הסר</string>

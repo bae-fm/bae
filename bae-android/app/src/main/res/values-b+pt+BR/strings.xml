@@ -163,7 +163,6 @@
     <string name="copy_code">Copiar código</string>
     <string name="copy">Copiar</string>
     <string name="hide">Ocultar</string>
-    <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
     <string name="library_remove_confirm_title">Remover %1$s deste dispositivo?</string>
     <string name="settings_remove_library_confirm_body">A biblioteca continua na nuvem e nos seus outros dispositivos.</string>
     <string name="settings_remove">Remover</string>

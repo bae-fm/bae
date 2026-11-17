@@ -155,7 +155,6 @@
     <string name="copy_code">コードをコピー</string>
     <string name="copy">コピー</string>
     <string name="hide">非表示</string>
-    <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
     <string name="library_remove_confirm_title">%1$sをこのデバイスから削除しますか？</string>
     <string name="settings_remove_library_confirm_body">ライブラリはクラウドとほかのデバイスに残ります。</string>
     <string name="settings_remove">削除</string>

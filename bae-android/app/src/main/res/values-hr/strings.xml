@@ -163,7 +163,6 @@
     <string name="copy_code">Kopiraj kod</string>
     <string name="copy">Kopiraj</string>
     <string name="hide">Sakrij</string>
-    <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
     <string name="library_remove_confirm_title">Ukloniti %1$s s ovog uređaja?</string>
     <string name="settings_remove_library_confirm_body">Fonoteka ostaje u oblaku i na vašim drugim uređajima.</string>
     <string name="settings_remove">Ukloni</string>

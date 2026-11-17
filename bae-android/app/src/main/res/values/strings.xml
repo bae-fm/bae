@@ -193,7 +193,6 @@
     <string name="copy_code">Copy code</string>
     <string name="copy">Copy</string>
     <string name="hide">Hide</string>
-    <string name="settings_remove_library">Remove this library from this device</string>
     <string name="library_remove_confirm_title">Remove %1$s from this device?</string>
     <string name="settings_remove_library_confirm_body">The library will remain in the cloud and on your other devices.</string>
     <string name="settings_remove">Remove</string>

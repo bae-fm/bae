@@ -163,7 +163,6 @@
     <string name="copy_code">Kopiera koden</string>
     <string name="copy">Kopiera</string>
     <string name="hide">Dölj</string>
-    <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
     <string name="library_remove_confirm_title">Ta bort %1$s från den här enheten?</string>
     <string name="settings_remove_library_confirm_body">Biblioteket finns kvar i molnet och på dina andra enheter.</string>
     <string name="settings_remove">Ta bort</string>

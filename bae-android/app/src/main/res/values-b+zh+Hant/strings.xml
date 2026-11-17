@@ -155,7 +155,6 @@
     <string name="copy_code">複製代碼</string>
     <string name="copy">複製</string>
     <string name="hide">隱藏</string>
-    <string name="settings_remove_library">從此裝置移除此資料庫</string>
     <string name="library_remove_confirm_title">要從此裝置移除%1$s嗎？</string>
     <string name="settings_remove_library_confirm_body">資料庫會保留在雲端和你的其他裝置上。</string>
     <string name="settings_remove">移除</string>

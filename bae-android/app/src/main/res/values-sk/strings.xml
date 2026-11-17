@@ -173,7 +173,6 @@
     <string name="copy_code">Kopírovať kód</string>
     <string name="copy">Kopírovať</string>
     <string name="hide">Skryť</string>
-    <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
     <string name="library_remove_confirm_title">Odstrániť %1$s z tohto zariadenia?</string>
     <string name="settings_remove_library_confirm_body">Knižnica zostane v cloude a na tvojich ďalších zariadeniach.</string>
     <string name="settings_remove">Odstrániť</string>

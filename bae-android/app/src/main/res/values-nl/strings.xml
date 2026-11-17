@@ -159,7 +159,6 @@
     <string name="copy_code">Code kopiëren</string>
     <string name="copy">Kopiëren</string>
     <string name="hide">Verbergen</string>
-    <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
     <string name="library_remove_confirm_title">%1$s van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">De bibliotheek blijft in de cloud en op je andere apparaten.</string>
     <string name="settings_remove">Verwijderen</string>

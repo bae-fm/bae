@@ -159,7 +159,6 @@
     <string name="copy_code">Kodu kopyala</string>
     <string name="copy">Kopyala</string>
     <string name="hide">Gizle</string>
-    <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
     <string name="library_remove_confirm_title">%1$s bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Kitaplık bulutta ve diğer cihazlarınızda kalır.</string>
     <string name="settings_remove">Kaldır</string>

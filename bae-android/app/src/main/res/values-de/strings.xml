@@ -159,7 +159,6 @@
     <string name="copy_code">Code kopieren</string>
     <string name="copy">Kopieren</string>
     <string name="hide">Ausblenden</string>
-    <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
     <string name="library_remove_confirm_title">%1$s von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Die Bibliothek bleibt in der Cloud und auf deinen anderen Geräten erhalten.</string>
     <string name="settings_remove">Entfernen</string>

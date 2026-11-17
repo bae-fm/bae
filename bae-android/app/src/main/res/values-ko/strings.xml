@@ -155,7 +155,6 @@
     <string name="copy_code">코드 복사</string>
     <string name="copy">복사</string>
     <string name="hide">가리기</string>
-    <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
     <string name="library_remove_confirm_title">이 기기에서 %1$s을(를) 제거할까요?</string>
     <string name="settings_remove_library_confirm_body">라이브러리는 클라우드와 다른 기기에 그대로 남습니다.</string>
     <string name="settings_remove">제거</string>
