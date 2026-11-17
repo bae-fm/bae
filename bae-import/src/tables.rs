@@ -10,6 +10,7 @@ mod catalog_group_url;
 mod cover_gallery;
 mod cover_labels;
 mod downscaled_copies;
+mod draft_rows;
 mod folder_scans;
 mod import_list;
 mod import_origin;

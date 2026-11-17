@@ -12,32 +12,28 @@
 //!
 //! A release editor's session holds the same values in tables of its own
 //! (`tables::release_edit_session`), so the statements that write and read
-//! labels, barcodes, artist assignments, mediums, roles and works take the
-//! [`DraftTables`] they write.
+//! labels, barcodes, artist assignments, mediums, roles and works are in
+//! `tables::draft_rows`, and [`CANDIDATE_DRAFT`] names the candidate's
+//! tables for them.
 
 pub(super) const SQL: &str = include_str!("pane_rows.sql");
 pub(super) const VALUES_SQL: &str = values::SQL;
 pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
 
-mod form_rows;
 mod provenance;
 mod values;
 
-use form_rows::StoredAssignment;
-pub(crate) use form_rows::{
+use crate::tables::draft_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    insert_album_artist_assignments, insert_barcode_rows, insert_label_rows, insert_medium_rows,
-    insert_track_artist_assignments, labels_json_sql, mediums_json_sql, mediums_of,
-    read_label_rows, store_album_artist_assignments, DraftTables, CANDIDATE_DRAFT,
+    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
+    insert_medium_rows, insert_track_artist_assignments, insert_track_values, labels_json_sql,
+    mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql, roles_of,
+    track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql, works_of,
+    DraftTables, StoredAssignment, StoredRole,
 };
 
 pub(crate) use provenance::{
     insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
-};
-pub(crate) use values::{
-    insert_draft_values, insert_track_values, release_roles_json_sql, roles_of,
-    track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql, works_of,
-    StoredRole,
 };
 
 use super::*;
@@ -45,9 +41,23 @@ use crate::{
     AudioFile, CandidateDraft, CandidateTrack, CoverSelection, MetadataAuthor, RawLabelEdit,
     RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
-use bae_catalogs::credits::ArtistCredit;
 use rusqlite::ToSql;
-use std::str::FromStr;
+
+/// The tables of a candidate's draft.
+pub(crate) const CANDIDATE_DRAFT: DraftTables = DraftTables {
+    key: "content_hash",
+    label: "import_candidate_edit_label",
+    barcode: "import_candidate_edit_barcode",
+    album_artist: "import_candidate_album_artist_assignment",
+    track_artist: "import_candidate_track_artist_assignment",
+    medium: "import_candidate_medium",
+    track_role: "import_candidate_track_role",
+    release_role: "import_candidate_release_role",
+    work: "import_candidate_work",
+    work_credit: "import_candidate_work_credit",
+    work_part: "import_candidate_work_part",
+    track_work: "import_candidate_track_work",
+};
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
      country, region, media, status, packaging, discogs_details";
@@ -452,7 +462,7 @@ pub(crate) struct StoredTrack {
     sheet_id: Option<String>,
     slice_index: Option<i64>,
     assignments: Vec<StoredAssignment>,
-    roles: Vec<values::StoredRole>,
+    roles: Vec<StoredRole>,
     works: Vec<String>,
 }
 

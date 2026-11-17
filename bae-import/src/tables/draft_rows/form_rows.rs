@@ -1,49 +1,15 @@
 //! The form's values a draft holds beside its own row (its label and
 //! barcode rows, its album and track artist assignments) and its mediums, as
-//! the statements that write and read them in the tables of the owner that
-//! holds them: a candidate's draft ([`CANDIDATE_DRAFT`]) or a release
-//! editor's session.
+//! the statements that write and read them in the [`DraftTables`] of the
+//! owner that holds them.
 
-use super::*;
+use super::DraftTables;
 use crate::{ArtistAssignment, Credited, RawLabelEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
-use rusqlite::ToSql;
-
-/// The tables that hold one owner's draft values, and the column that keys
-/// them: a candidate's draft by its content hash, or a release editor's
-/// session by its id. Each table has the columns of the candidate's table of
-/// the same values.
-pub(crate) struct DraftTables {
-    /// The column every table keys its owner by.
-    pub(crate) key: &'static str,
-    pub(crate) label: &'static str,
-    pub(crate) barcode: &'static str,
-    pub(crate) album_artist: &'static str,
-    pub(crate) track_artist: &'static str,
-    pub(crate) medium: &'static str,
-    pub(crate) track_role: &'static str,
-    pub(crate) release_role: &'static str,
-    pub(crate) work: &'static str,
-    pub(crate) work_credit: &'static str,
-    pub(crate) work_part: &'static str,
-    pub(crate) track_work: &'static str,
-}
-
-/// The tables of a candidate's draft.
-pub(crate) const CANDIDATE_DRAFT: DraftTables = DraftTables {
-    key: "content_hash",
-    label: "import_candidate_edit_label",
-    barcode: "import_candidate_edit_barcode",
-    album_artist: "import_candidate_album_artist_assignment",
-    track_artist: "import_candidate_track_artist_assignment",
-    medium: "import_candidate_medium",
-    track_role: "import_candidate_track_role",
-    release_role: "import_candidate_release_role",
-    work: "import_candidate_work",
-    work_credit: "import_candidate_work_credit",
-    work_part: "import_candidate_work_part",
-    track_work: "import_candidate_track_work",
-};
+use bae_records::ExistingArtist;
+use bae_store::DbError;
+use coven::CovenWrite;
+use rusqlite::{params, ToSql};
 
 /// Insert the draft's label rows, as the form holds them, where the draft
 /// holds none.
@@ -255,7 +221,7 @@ fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
 /// library and its credit name, if it names one still there, as
 /// [`assignments_json_sql`] holds it.
 #[derive(serde::Deserialize)]
-pub(super) struct StoredAssignment {
+pub(crate) struct StoredAssignment {
     kind: String,
     artist_id: Option<String>,
     name: Option<String>,
@@ -300,7 +266,7 @@ impl StoredAssignment {
     /// The draft's credit. When the library no longer holds the credit name
     /// the person picked for an artist, the credit has no credit name and
     /// shows the artist's own name.
-    pub(super) fn credited(self) -> Result<Credited, DbError> {
+    pub(crate) fn credited(self) -> Result<Credited, DbError> {
         let artist = match self.kind.as_str() {
             "picked" => ArtistAssignment::Picked {
                 artist: ExistingArtist {

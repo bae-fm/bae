@@ -6,10 +6,12 @@
 //! way from one draft to the next.
 
 use super::pane_rows::{
-    edit_row_values, insert_barcode_rows, insert_draft_body, insert_label_rows, insert_track_rows,
-    store_album_artist_assignments, store_track_row, CANDIDATE_DRAFT,
+    edit_row_values, insert_draft_body, insert_track_rows, store_track_row, CANDIDATE_DRAFT,
 };
 use super::*;
+use crate::tables::draft_rows::{
+    insert_barcode_rows, insert_label_rows, store_album_artist_assignments,
+};
 use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
 
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
