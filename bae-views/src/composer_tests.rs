@@ -968,20 +968,20 @@ async fn a_works_children_are_its_parts_then_its_releases_in_windows_named_by_of
 
     let page = views.work_child_page_window(PAGED_WORK, 0, 3).await.unwrap().expect("a page");
     let mut live = views.subscribe_work_child_window(PAGED_WORK, page);
-    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(children_of(read), [FIRST_PART, SECOND_PART, ALPHA_RELEASE]);
     let last = views.work_child_page_window(PAGED_WORK, 3, 3).await.unwrap().expect("a page");
     let mut last_live = views.subscribe_work_child_window(PAGED_WORK, last);
-    let read = last_live.next().await.expect("the query stays open").result.unwrap();
+    let read = last_live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(children_of(read), [BETA_RELEASE]);
     assert_eq!(views.work_child_page_window(PAGED_WORK, 4, 3).await.unwrap(), None);
     let mut count = views.subscribe_work_child_count(PAGED_WORK);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 4);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 4);
     let third = views.work_child_key_at(PAGED_WORK, 2).await.unwrap().expect("a third child");
     let mut position = views.subscribe_work_child_position(PAGED_WORK, third);
-    assert_eq!(position.next().await.expect("the query stays open").result.unwrap(), 2);
+    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 2);
 
     test_records(&db).rename_album_for_test(BETA_ALBUM, "Aardvark Album").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next()).await.unwrap().unwrap().result;
+    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
     assert_eq!(children_of(read.unwrap()), [FIRST_PART, SECOND_PART, BETA_RELEASE]);
 }

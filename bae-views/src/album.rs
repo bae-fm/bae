@@ -884,5 +884,9 @@ fn album_track_rows_on(
 mod track_list_tests;
 
 #[cfg(test)]
+#[path = "album/search_page_tests.rs"]
+mod search_page_tests;
+
+#[cfg(test)]
 #[path = "album_tests.rs"]
 mod tests;

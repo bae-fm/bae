@@ -53,19 +53,19 @@ async fn an_albums_tracks_are_its_main_releases_in_windows_named_by_offset() {
 
     let first_page = views.album_track_page_window(ALBUM, 0, 2).await.unwrap().expect("a page");
     let mut live = views.subscribe_album_track_window(ALBUM, first_page);
-    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(tracks_of(read), [track(FIRST, "First"), track(SECOND, "Second")]);
 
     let last_page = views.album_track_page_window(ALBUM, 2, 2).await.unwrap().expect("a page");
     assert!(matches!(&last_page, ListWindow::Forward { until: None, .. }));
     let mut live = views.subscribe_album_track_window(ALBUM, last_page);
-    let read = live.next().await.expect("the query stays open").result.unwrap();
+    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(tracks_of(read), [track(THIRD, "Third")]);
 
     assert_eq!(views.album_track_page_window(ALBUM, 3, 2).await.unwrap(), None);
     let second = views.album_track_key_at(ALBUM, 1).await.unwrap().expect("a second track");
     let mut position = views.subscribe_album_track_position(ALBUM, second);
-    assert_eq!(position.next().await.expect("the query stays open").result.unwrap(), 1);
+    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 1);
 }
 
 /// A window of the album's tracks follows a rename of a track inside it, and
@@ -76,18 +76,19 @@ async fn a_window_follows_a_renamed_track_and_the_count_follows_the_main_release
     let (views, db, _tmp) = paged_album().await;
     let page = views.album_track_page_window(ALBUM, 0, 3).await.unwrap().expect("a page");
     let mut live = views.subscribe_album_track_window(ALBUM, page);
-    live.next().await.expect("the query stays open").result.unwrap();
+    live.next_inline().await.expect("the query stays open").result.unwrap();
 
     test_records(&db).rename_track_for_test(SECOND, "Second Renamed").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next()).await.unwrap().unwrap().result;
+    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
     assert_eq!(
         tracks_of(read.unwrap()),
         [track(FIRST, "First"), track(SECOND, "Second Renamed"), track(THIRD, "Third")]
     );
 
     let mut count = views.subscribe_album_track_count(ALBUM);
-    assert_eq!(count.next().await.expect("the query stays open").unwrap(), 3);
+    assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 3);
     delete_release(&test_records(&db), MAIN_RELEASE).await;
-    let counted = tokio::time::timeout(HANG_GUARD, count.next()).await.unwrap().unwrap().unwrap();
+    let counted =
+        tokio::time::timeout(HANG_GUARD, count.next_inline()).await.unwrap().unwrap().unwrap();
     assert_eq!(counted, 1);
 }
