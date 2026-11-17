@@ -68,22 +68,11 @@ pub enum BridgeCoverKey {
     File { file_id: String },
 }
 
-impl BridgeCoverKey {
-    pub(crate) fn from_core(key: bae_import::CoverKey) -> Self {
-        match key {
-            bae_import::CoverKey::Saved => Self::Saved,
-            bae_import::CoverKey::Remote(url) => Self::Remote { url },
-            bae_import::CoverKey::File(file_id) => Self::File { file_id },
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_import::CoverKey {
-        match self {
-            Self::Saved => bae_import::CoverKey::Saved,
-            Self::Remote { url } => bae_import::CoverKey::Remote(url),
-            Self::File { file_id } => bae_import::CoverKey::File(file_id),
-        }
-    }
+mirror_enum! {
+    BridgeCoverKey = bae_import::CoverKey,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Saved, Remote(url), File(file_id) },
 }
 
 /// One cover the picker shows: its key, what saving it selects (none for the
@@ -181,24 +170,11 @@ pub enum BridgeCoverGalleryOwner {
     Candidate { candidate_key: Vec<u8> },
 }
 
-impl BridgeCoverGalleryOwner {
-    pub(crate) fn from_core(owner: bae_import::CoverGalleryOwner) -> Self {
-        match owner {
-            bae_import::CoverGalleryOwner::Release(release_id) => Self::Release { release_id },
-            bae_import::CoverGalleryOwner::Candidate(key) => {
-                Self::Candidate { candidate_key: key.into() }
-            }
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_import::CoverGalleryOwner {
-        match self {
-            Self::Release { release_id } => bae_import::CoverGalleryOwner::Release(release_id),
-            Self::Candidate { candidate_key } => {
-                bae_import::CoverGalleryOwner::Candidate(candidate_key.into())
-            }
-        }
-    }
+mirror_enum! {
+    BridgeCoverGalleryOwner = bae_import::CoverGalleryOwner,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Release(release_id), Candidate(candidate_key: (into)) },
 }
 
 /// Whose picker to read, the source it shows, and the cover the person
