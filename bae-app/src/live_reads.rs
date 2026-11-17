@@ -47,7 +47,7 @@ pub type LiveStorageSelection =
     LiveRead<std::collections::BTreeSet<String>, bae_views::StorageSelection>;
 
 /// A live read of the covers a library release's or a candidate's picker
-/// shows. Whose covers and the source change in place through
+/// shows. The release or candidate and the source change in place through
 /// [`LiveRead::set`]; `None` reads nothing.
 #[cfg(desktop)]
 pub type LiveCoverGallery =

@@ -225,8 +225,9 @@ extension ImportView {
 
     private func presentCoverPicker(for candidate: Candidate) {
         let key = candidate.key
-        // One for as long as the sheet is up: the modal's view is built
-        // again with each update of the window.
+        // Make one lightbox load for the whole time the sheet is open,
+        // because SwiftUI builds the modal's view again each time the window
+        // updates.
         let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
             CoverPickerFrame {

@@ -336,7 +336,7 @@ extension LibraryArtworkBrowserTests {
         let url =
             switch cover.coverChoice.image {
             case .remote(let image): image.url
-            default: preconditionFailure("a catalog's cover draws its image")
+            default: preconditionFailure("a catalog's cover has a remote image")
             }
         return BridgeGalleryCover(
             key: .remote(url: url),

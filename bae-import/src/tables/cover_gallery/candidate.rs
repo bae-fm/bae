@@ -1,7 +1,7 @@
 //! A candidate's cover picker, read in one statement over the import's
 //! tables: the covers its link's catalogs offered when this device last
-//! fetched them for that link, or, before such a fetch, the covers the
-//! pressing its draft was read from offered; and the folder's images a cover
+//! fetched them for that link, or, before such a fetch, the covers offered by
+//! the pressing that bae read the draft from; and the folder's images a cover
 //! can be. Its tables are `candidate.sql`; fetching writes them, and a
 //! refetch replaces them.
 
@@ -27,9 +27,9 @@ fn link_sql(hash: &str) -> String {
 
 /// The gallery of the candidate the statement binds as `:key`, under the
 /// filter it binds as `:filter`. The fetched covers show only while the
-/// candidate's link is the one they were fetched for; before such a fetch,
-/// the covers its draft's pressing offered show, while its state is the one
-/// its scanned files hold. Folder images show under all or the release's
+/// candidate's link is the link this device fetched them for; before such a
+/// fetch, the covers its draft's pressing offered show, while its state is
+/// the one its scanned files hold. Folder images show under all or the release's
 /// files. The candidate's own cover is the one its draft chose.
 pub(super) fn candidate_gallery_sql() -> String {
     format!(

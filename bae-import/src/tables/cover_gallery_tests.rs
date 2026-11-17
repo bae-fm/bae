@@ -353,8 +353,8 @@ async fn a_release_focuses_its_saved_cover_unless_asked() {
     );
 }
 
-/// The cover asked for is focused where the walk holds it: after the saved
-/// cover and the catalog covers before it.
+/// The picker focuses the cover asked for at its place in the walk: after
+/// the saved cover and the catalog covers before it.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_cover_asked_for_is_focused_where_it_sits() {
     let (tables, _db, _temp, _files) = seeded().await;
@@ -377,7 +377,7 @@ async fn the_cover_asked_for_is_focused_where_it_sits() {
     assert_eq!(focus_of(&file).1, 4);
 }
 
-/// A cover the source hides is not focused: the picker focuses its first
+/// The picker never focuses a cover the source hides. It focuses its first
 /// cover instead, and a lone cover has none before or after it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_hidden_cover_leaves_the_focus_on_the_first() {

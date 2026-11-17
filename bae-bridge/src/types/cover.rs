@@ -22,10 +22,11 @@ mirror_enum! {
 pub enum BridgeCoverFetch {
     /// No fetch has stored an answer yet.
     NotFetched,
-    /// It names no catalog release, so there is nothing to offer.
+    /// The release or candidate names no catalog release, so there is
+    /// nothing to offer.
     Unlinked,
-    /// It names a catalog release, and the last fetch stored the covers its
-    /// catalogs offered, which can be none.
+    /// The release or candidate names a catalog release, and the last fetch
+    /// stored the covers its catalogs offered, which can be none.
     Linked,
 }
 
@@ -178,7 +179,7 @@ impl BridgeGalleryCover {
 pub enum BridgeCoverGalleryOwner {
     /// A library release.
     Release { release_id: String },
-    /// The release the scan stores at this key, before it is imported.
+    /// The release the scan stores at this key, before bae imports it.
     Candidate { candidate_key: Vec<u8> },
 }
 

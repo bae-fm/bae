@@ -2065,9 +2065,10 @@ its claimed releases' covers for a pressing, the covers each catalog shows for
 the album for an album, and none for a candidate linked to nothing. A catalog's cover is fetched with the draft, before the
 import runs, so the import never asks a catalog for it. A cover is a catalog's image, or
 one of the folder's images in a format bae can store, or the artwork its
-tags hold, as the scan read them: a draft naming a file the scan did not
-store as an image, an image in another format, or artwork the tags do not
-hold, is refused when it is saved, and the cover stays as it was. Dropping one
+tags hold, as the scan read them. When the person saves a draft naming a
+file the scan did not store as an image, an image in another format, or
+artwork the tags do not hold, core refuses the draft, and the cover stays as
+it was. Dropping one
 of the folder's images on the pane's cover sends its file to core, which makes
 it the cover or refuses it by the same rule. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
@@ -2093,10 +2094,10 @@ Refresh, fetch the catalogs' covers and store them, replacing what the last
 fetch stored on this device (§A.8); that write, a change to the release's
 files or saved cover, or the candidate's folder, draft or link, from this or
 another device, and the person's choice of another source or another cover
-each reach the open picker as a new value. A candidate's fetch is stored with the link it
-was fetched for, and its picker shows the fetch only while the candidate
-keeps that link; until then it offers what the pressing its draft was read
-from offers (above). A fetch that fails stores nothing, so the covers stored
+each reach the open picker as a new value. bae stores a candidate's fetch with the link it
+fetched for, and its picker shows the fetch only while the candidate
+keeps that link; otherwise it offers what the pressing that bae read the
+draft from offers (above). A fetch that fails stores nothing, so the covers stored
 stay on screen, and for a release or candidate that names no catalog release,
 the fetch stores that it has no catalog covers.
 

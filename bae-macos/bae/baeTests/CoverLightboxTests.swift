@@ -225,8 +225,8 @@ struct CoverLightboxTests {
 }
 
 extension CoverLightboxTests {
-    /// The gallery core reads with the `remote` and `files` covers, under
-    /// all sources.
+    /// Build the cover gallery that core returns, with a remote section
+    /// holding `remote` and a release files section holding `files`.
     private func gallery(
         remote: [CoverItem],
         files: [CoverItem]

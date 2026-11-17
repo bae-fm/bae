@@ -48,18 +48,18 @@ impl ImportServiceHandle {
     }
 
     /// Fetch what the catalogs of the candidate's link offer its picker and
-    /// store it in place of the last fetch's, beside the link it was fetched
-    /// for. A fetch that fails stores nothing, so the picker keeps showing
-    /// the covers it had.
+    /// store it in place of the last fetch's, beside the link the handle
+    /// fetched them for. A fetch that fails stores nothing, so the picker
+    /// keeps showing the covers it had.
     pub async fn refresh_candidate_covers(
         &self,
         key: &crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
         let candidate = self.require_release_candidate(key).await?;
         let hash = candidate.files.content_hash();
-        // The link is read before the covers are fetched for it, so a link
-        // that changes during the fetch leaves the stored covers under the
-        // old link, where the picker of the new one does not show them.
+        // The handle reads the link before it fetches the covers for it, so a
+        // link that changes during the fetch leaves the stored covers under
+        // the old link, where the picker of the new one does not show them.
         let link = self.services.tables.candidate_cover_link(&hash).await?;
         let covers = self.candidate_covers(key, &hash).await?;
         self.services.tables.replace_candidate_covers(&hash, link, covers).await?;
@@ -88,8 +88,9 @@ impl ImportServiceHandle {
         self.services.tables.subscribe_cover_gallery(initial)
     }
 
-    /// The covers the catalogs the candidate links to offer, or `None` when
-    /// it links to none. A linked candidate can be offered no cover.
+    /// The covers that the catalogs of the candidate's link offer, or `None`
+    /// when the candidate links to none. The catalogs can offer a linked
+    /// candidate no cover.
     async fn candidate_covers(
         &self,
         key: &crate::CandidateKey,
@@ -123,8 +124,9 @@ impl ImportServiceHandle {
         Ok(Some(self.services.catalogs.musicbrainz().pick_gallery_covers(primary, partners).await?))
     }
 
-    /// The covers the catalogs the release's records name offer, or `None`
-    /// when it has no records. A linked release can be offered no cover.
+    /// The covers that the catalogs named in the release's records offer, or
+    /// `None` when the release has no records. The catalogs can offer a
+    /// linked release no cover.
     async fn release_covers(
         &self,
         release_id: &str,

@@ -69,11 +69,11 @@ struct CoverPickerEmptyStateTests {
         }
     }
 
-    /// A lookup nothing is linked to has nothing to refresh; one that found
-    /// nothing, or failed, can be asked again. Which files show beside the
+    /// A lookup nothing is linked to has nothing to refresh; the person can
+    /// refresh a lookup that found nothing or failed. Which files show beside the
     /// offer to find the release is core's read
     /// (`a_candidates_picker_counts_what_each_source_shows`).
-    @Test("Only a linked lookup can be refreshed")
+    @Test("The person can refresh only a linked lookup")
     func refreshOnlyALinkedLookup() {
         #expect(!RemoteCoverItems.unlinked.canRefresh)
         #expect(RemoteCoverItems.linked([]).canRefresh)

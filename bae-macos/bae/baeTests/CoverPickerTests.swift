@@ -180,8 +180,8 @@ struct CoverPickerTests {
         )
     }
 
-    /// Each tile names its source. How the sections look is the
-    /// `cover-picker-wide` shot's.
+    /// Each tile names its source. The `cover-picker-wide` shot checks how
+    /// the sections look.
     @MainActor
     @Test("Import cover picker labels external sources and release files")
     func sourceSections() throws {

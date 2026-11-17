@@ -48,15 +48,17 @@ impl CoverFilter {
 pub enum CoverFetch {
     /// No fetch has stored an answer yet.
     NotFetched,
-    /// It names no catalog release, so there is nothing to offer.
+    /// The release or candidate names no catalog release, so there is
+    /// nothing to offer.
     Unlinked,
-    /// It names a catalog release, and the last fetch stored the covers its
-    /// catalogs offered, which can be none.
+    /// The release or candidate names a catalog release, and the last fetch
+    /// stored the covers its catalogs offered, which can be none.
     Linked,
 }
 
 impl CoverFetch {
-    /// The fetch a stored `linked` column says was made, or none.
+    /// What the last fetch found, as its stored `linked` column records it,
+    /// or that no fetch has stored an answer.
     fn of_column(linked: Option<bool>) -> Self {
         match linked {
             None => Self::NotFetched,
@@ -131,7 +133,7 @@ pub struct GalleryFocus {
 
 /// A cover picker: a library release's saved cover, the sections the filter
 /// shows, the number of covers in all of them, and the cover it focuses,
-/// which none is while it shows no cover.
+/// or none while it shows no cover.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGallery {
     pub current: Option<GalleryCover>,
@@ -184,7 +186,7 @@ WITH items (rank, pos, kind, key, preferred, item) AS (
 pub enum CoverGalleryOwner {
     /// A library release, by its id.
     Release(String),
-    /// The release the scan stores at this key, before it is imported.
+    /// The release the scan stores at this key, before bae imports it.
     Candidate(crate::CandidateKey),
 }
 

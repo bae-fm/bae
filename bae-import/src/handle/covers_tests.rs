@@ -221,8 +221,8 @@ async fn a_candidates_picker_counts_what_each_source_shows() {
     assert_eq!((sections(&discogs), discogs.total), (vec![(Remote, 0, vec![])], 0));
 }
 
-/// A fetch's covers stand in for what the pressing offered while the
-/// candidate keeps the link they were fetched for; once the link changes,
+/// While the candidate keeps the link bae fetched the covers for, the picker
+/// offers those covers in place of the pressing's own; once the link changes,
 /// the picker shows no fetch until the next one.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_fetch_shows_while_the_link_it_was_fetched_for_stands() {

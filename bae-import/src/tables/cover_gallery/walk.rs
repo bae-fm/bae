@@ -64,7 +64,8 @@ pub(super) enum ItemJson {
     Saved { version: String },
     /// A cover a fetch stored.
     Remote { cover: RemoteCover },
-    /// A cover the pressing a candidate's draft was read from offers.
+    /// A cover that the pressing offers, where the pressing is the one bae
+    /// read the candidate's draft from.
     Offered { cover: OfferedCover },
     /// An image file of the library release.
     ReleaseFile { id: String, name: String },

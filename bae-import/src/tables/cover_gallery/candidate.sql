@@ -6,7 +6,8 @@
 -- as `candidate_cover_entry` rows, in the order offered, each the stored
 -- `RemoteCover` as JSON with its catalog beside it for the picker's source
 -- filter. The picker shows a fetch's covers only while the candidate's link
--- is the one the fetch read them for. Device-local: any device can fetch. A
+-- is the one the fetch read them for. These tables stay on this device and
+-- coven does not sync them, so any device can fetch covers on its own. A
 -- later fetch replaces the candidate's rows whole; deleting the candidate's
 -- state deletes its rows.
 CREATE TABLE IF NOT EXISTS candidate_cover_fetch (

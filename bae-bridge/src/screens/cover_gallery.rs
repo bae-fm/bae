@@ -31,8 +31,8 @@ pulled_read! {
 
 #[uniffi::export]
 impl CoverGallerySubscription {
-    /// Read the picker of `owner` under `filter`, focused on the cover
-    /// `focus` names while it shows it, from now on.
+    /// Read the picker of `owner` under `filter` from now on, focused on the
+    /// cover `focus` names while the picker shows that cover.
     pub fn set_request(
         &self,
         owner: BridgeCoverGalleryOwner,

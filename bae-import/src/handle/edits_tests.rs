@@ -609,9 +609,9 @@ async fn a_cover_the_scan_did_not_store_is_refused() {
     assert_eq!(after, before);
 }
 
-/// A folder image in a format no cover can be, such as a bitmap, is refused
-/// as a cover, so a drop of any of the folder's images reaches core and core
-/// decides.
+/// Core refuses a folder image in a format no cover can be, such as a
+/// bitmap, so the app can send core a drop of any folder image and let core
+/// decide.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_image_in_a_format_no_cover_can_be_is_refused() {
     use crate::folder_scanner::{CandidateFile, FileRole, ScannedFile};

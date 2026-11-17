@@ -16,8 +16,8 @@ final class CoverGalleryState {
             show()
         }
     }
-    /// The cover the person focused last; none until they focus one, when
-    /// the query focuses the owner's own cover.
+    /// The cover the person focused last. Until they focus one, this is nil
+    /// and the query focuses the owner's own cover.
     var focusedCover: BridgeCoverKey? {
         didSet {
             guard focusedCover != oldValue else { return }
