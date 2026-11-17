@@ -38,7 +38,7 @@ fn the_upload_bar_is_the_share_of_its_batch_stored() {
         assert_eq!(
             bars_now(store).await.uploads,
             BatchBar { done: 0.0, moving: Vec::new() },
-            "nothing is stored or being sent"
+            "bae has stored nothing and is sending nothing"
         );
 
         upload_all_but_the_late_file(store, originals).await;

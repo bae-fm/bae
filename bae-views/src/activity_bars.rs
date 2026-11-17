@@ -13,8 +13,8 @@ use bae_store::DbError;
 /// own share, under the key its transfer's progress uses.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchBar<Key> {
-    /// The share of the batch's bytes done, from 0 to 1. A batch of no bytes
-    /// has done none of them.
+    /// The share of the batch's bytes done, from 0 to 1. The share of a batch
+    /// with no bytes is 0.
     pub done: f64,
     /// Each file or release that bae is uploading or downloading now.
     pub moving: Vec<MovingShare<Key>>,
