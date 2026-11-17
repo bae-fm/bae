@@ -84,7 +84,12 @@ async fn answers_alike(
     let read_hash = hash.clone();
     let stated = db
         .read(move |sql| {
-            credit_resolutions_on(&sql, crate::tables::import_state::OneCandidate::Hash(&read_hash))
+            credit_resolutions_on(
+                &sql,
+                CreditSource::Candidate(crate::tables::import_state::OneCandidate::Hash(
+                    &read_hash,
+                )),
+            )
         })
         .await
         .unwrap();

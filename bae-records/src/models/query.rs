@@ -44,22 +44,22 @@ pub struct DbReleaseDetail {
 }
 
 /// A track as the release editor reads its audio: the track, its place on the
-/// release, how many audio formats it stores, and its formats' segments in
-/// segment order, each with the file it names.
+/// release, how many audio formats it stores, how many main segments they
+/// hold, and the first of those, the track's body, with the file it names.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditTrack {
     pub track: DbTrack,
     pub position: bae_types::mediums::TrackPosition,
     pub audio_format_count: i64,
-    pub segments: Vec<DbReleaseEditSegment>,
+    pub main_segment_count: i64,
+    pub main_segment: Option<DbReleaseEditSegment>,
 }
 
-/// One segment of a track's audio as the release editor reads it: whether it
-/// is the track's body or its pregap, the file it names, and that file's name
-/// and stored audio layout; `file` is `None` when no release file has that id.
+/// A track's main segment as the release editor reads it: the file it names,
+/// and that file's name and stored audio layout; `file` is `None` when no
+/// release file has that id.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditSegment {
-    pub role: DbAudioSegmentRole,
     pub file_id: String,
     pub file: Option<DbReleaseEditSourceFile>,
 }

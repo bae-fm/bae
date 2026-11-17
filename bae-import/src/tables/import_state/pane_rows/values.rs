@@ -11,21 +11,29 @@ use super::*;
 use bae_catalogs::credits::CreditedRole;
 use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
 use bae_types::credit_role::CreditedAs;
+use rusqlite::ToSql;
 
-/// Write the values `draft` holds beside its rows besides its tracks': the
-/// works and the roles on the release. The draft row is already written.
-pub(super) fn insert_draft_values(
+/// Write the values of a draft beside its rows besides its tracks': its
+/// works and the roles on its release, in `tables` under `key`. The owner's
+/// row is already written.
+pub(crate) fn insert_draft_values(
     sql: &CovenWrite<'_>,
-    content_hash: &str,
-    draft: &CandidateDraft,
+    tables: &DraftTables,
+    key: &dyn ToSql,
+    works: &WorkGraph,
+    release_roles: &[CreditedRole],
 ) -> Result<(), DbError> {
-    for (position, work) in draft.works.works.iter().enumerate() {
+    let k = tables.key;
+    for (position, work) in works.works.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_work \
-             (content_hash, musicbrainz_work_id, position, title, disambiguation, work_type) \
-             VALUES (?, ?, ?, ?, ?, ?)",
+            &format!(
+                "INSERT INTO {table} \
+                 ({k}, musicbrainz_work_id, position, title, disambiguation, work_type) \
+                 VALUES (?, ?, ?, ?, ?, ?)",
+                table = tables.work,
+            ),
             params![
-                content_hash,
+                key,
                 work.musicbrainz_work_id,
                 position as i64,
                 work.title,
@@ -36,13 +44,16 @@ pub(super) fn insert_draft_values(
         for (position, credit) in work.credits.iter().enumerate() {
             let role = credit.role.columns();
             sql.execute(
-                "INSERT INTO import_candidate_work_credit \
-                 (content_hash, musicbrainz_work_id, position, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
-                  qualifiers) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                &format!(
+                    "INSERT INTO {table} \
+                     ({k}, musicbrainz_work_id, position, name, sort_name, \
+                      musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
+                      qualifiers) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    table = tables.work_credit,
+                ),
                 params![
-                    content_hash,
+                    key,
                     work.musicbrainz_work_id,
                     position as i64,
                     credit.artist.name,
@@ -57,22 +68,28 @@ pub(super) fn insert_draft_values(
             )?;
         }
     }
-    for (position, part) in draft.works.parts.iter().enumerate() {
+    for (position, part) in works.parts.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_work_part \
-             (content_hash, position, parent_work_id, child_work_id) VALUES (?, ?, ?, ?)",
-            params![content_hash, position as i64, part.parent, part.child],
+            &format!(
+                "INSERT INTO {table} ({k}, position, parent_work_id, child_work_id) \
+                 VALUES (?, ?, ?, ?)",
+                table = tables.work_part,
+            ),
+            params![key, position as i64, part.parent, part.child],
         )?;
     }
-    for (position, role) in draft.release_roles.iter().enumerate() {
+    for (position, role) in release_roles.iter().enumerate() {
         let columns = role.role.columns();
         sql.execute(
-            "INSERT INTO import_candidate_release_role \
-             (content_hash, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            &format!(
+                "INSERT INTO {table} \
+                 ({k}, position, name, sort_name, musicbrainz_artist_id, \
+                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                table = tables.release_role,
+            ),
             params![
-                content_hash,
+                key,
                 position as i64,
                 role.artist.name,
                 role.artist.sort_name,
@@ -89,24 +106,31 @@ pub(super) fn insert_draft_values(
     Ok(())
 }
 
-/// Write the values hanging off one draft track: the roles the source
-/// credits on it and the works it performs. The track row is already
-/// written, and the works are.
-pub(super) fn insert_track_values(
+/// Write the values hanging off the draft track `track_id`: the roles the
+/// source credits on it and the works it performs, in `tables` under `key`.
+/// The track row is already written, and the works are.
+pub(crate) fn insert_track_values(
     sql: &CovenWrite<'_>,
-    content_hash: &str,
-    track: &CandidateTrack,
+    tables: &DraftTables,
+    key: &dyn ToSql,
+    track_id: &str,
+    roles: &[CreditedRole],
+    works: &[String],
 ) -> Result<(), DbError> {
-    for (position, role) in track.roles.iter().enumerate() {
+    let k = tables.key;
+    for (position, role) in roles.iter().enumerate() {
         let columns = role.role.columns();
         sql.execute(
-            "INSERT INTO import_candidate_track_role \
-             (content_hash, track_id, position, name, sort_name, musicbrainz_artist_id, \
-              discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            &format!(
+                "INSERT INTO {table} \
+                 ({k}, track_id, position, name, sort_name, musicbrainz_artist_id, \
+                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                table = tables.track_role,
+            ),
             params![
-                content_hash,
-                track.edit.id,
+                key,
+                track_id,
                 position as i64,
                 role.artist.name,
                 role.artist.sort_name,
@@ -120,73 +144,104 @@ pub(super) fn insert_track_values(
             ],
         )?;
     }
-    for (position, work) in track.works.iter().enumerate() {
+    for (position, work) in works.iter().enumerate() {
         sql.execute(
-            "INSERT INTO import_candidate_track_work \
-             (content_hash, track_id, position, musicbrainz_work_id) VALUES (?, ?, ?, ?)",
-            params![content_hash, track.edit.id, position as i64, work],
+            &format!(
+                "INSERT INTO {table} ({k}, track_id, position, musicbrainz_work_id) \
+                 VALUES (?, ?, ?, ?)",
+                table = tables.track_work,
+            ),
+            params![key, track_id, position as i64, work],
         )?;
     }
     Ok(())
 }
 
-/// The works the draft `edit` holds, each with its credits, as a JSON array
-/// in the draft's order; decoded by [`works_of`].
-pub(super) const WORKS_JSON: &str = "(SELECT json_group_array(json_object( \
-         'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
-         'disambiguation', work.disambiguation, 'work_type', work.work_type, \
-         'credits', json((SELECT json_group_array(json_object( \
-                 'name', credit.name, 'sort_name', credit.sort_name, \
-                 'musicbrainz_artist_id', credit.musicbrainz_artist_id, \
-                 'discogs_artist_id', credit.discogs_artist_id, \
-                 'credited_as', credit.credited_as, 'role', credit.role, \
-                 'role_words', credit.role_words, 'qualifiers', credit.qualifiers) \
-                 ORDER BY credit.position) \
-             FROM import_candidate_work_credit AS credit \
-             WHERE credit.content_hash = work.content_hash \
-               AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
-         ORDER BY work.position) \
-     FROM import_candidate_work AS work WHERE work.content_hash = edit.content_hash)";
+/// The works of the owner `owner` (an SQL expression for its key), each with
+/// its credits, as a JSON array in the draft's order; decoded by
+/// [`works_of`].
+pub(crate) fn works_json_sql(tables: &DraftTables, owner: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+             'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
+             'disambiguation', work.disambiguation, 'work_type', work.work_type, \
+             'credits', json((SELECT json_group_array(json_object( \
+                     'name', credit.name, 'sort_name', credit.sort_name, \
+                     'musicbrainz_artist_id', credit.musicbrainz_artist_id, \
+                     'discogs_artist_id', credit.discogs_artist_id, \
+                     'credited_as', credit.credited_as, 'role', credit.role, \
+                     'role_words', credit.role_words, 'qualifiers', credit.qualifiers) \
+                     ORDER BY credit.position) \
+                 FROM {credit_table} AS credit \
+                 WHERE credit.{key} = work.{key} \
+                   AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
+             ORDER BY work.position) \
+         FROM {work_table} AS work WHERE work.{key} = {owner})",
+        credit_table = tables.work_credit,
+        work_table = tables.work,
+        key = tables.key,
+    )
+}
 
-/// Which of the draft `edit`'s works is part of which, as a JSON array in
+/// Which of the owner `owner`'s works is part of which, as a JSON array in
 /// the order the source relates them.
-pub(super) const WORK_PARTS_JSON: &str = "(SELECT json_group_array(json_object( \
-         'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
-     FROM import_candidate_work_part AS part WHERE part.content_hash = edit.content_hash)";
+pub(crate) fn work_parts_json_sql(tables: &DraftTables, owner: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+             'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
+         FROM {table} AS part WHERE part.{key} = {owner})",
+        table = tables.work_part,
+        key = tables.key,
+    )
+}
 
-/// The roles the source credits on the draft `edit`'s release, as a JSON
+/// The columns of one role as a JSON object, which [`StoredRole`] reads.
+const ROLE_JSON: &str = "json_object( \
+     'name', role.name, 'sort_name', role.sort_name, \
+     'musicbrainz_artist_id', role.musicbrainz_artist_id, \
+     'discogs_artist_id', role.discogs_artist_id, \
+     'credited_as', role.credited_as, 'source', role.source, \
+     'role', role.role, 'role_words', role.role_words, \
+     'qualifiers', role.qualifiers)";
+
+/// The roles the source credits on the owner `owner`'s release, as a JSON
 /// array in its order; decoded by [`roles_of`].
-pub(super) const RELEASE_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
-         'name', role.name, 'sort_name', role.sort_name, \
-         'musicbrainz_artist_id', role.musicbrainz_artist_id, \
-         'discogs_artist_id', role.discogs_artist_id, \
-         'credited_as', role.credited_as, 'source', role.source, \
-         'role', role.role, 'role_words', role.role_words, \
-         'qualifiers', role.qualifiers) ORDER BY role.position) \
-     FROM import_candidate_release_role AS role WHERE role.content_hash = edit.content_hash)";
+pub(crate) fn release_roles_json_sql(tables: &DraftTables, owner: &str) -> String {
+    format!(
+        "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
+         FROM {table} AS role WHERE role.{key} = {owner})",
+        table = tables.release_role,
+        key = tables.key,
+    )
+}
 
-/// The roles the source credits on the draft track `track`, as a JSON array
-/// in its order; decoded by [`roles_of`].
-pub(super) const TRACK_ROLES_JSON: &str = "(SELECT json_group_array(json_object( \
-         'name', role.name, 'sort_name', role.sort_name, \
-         'musicbrainz_artist_id', role.musicbrainz_artist_id, \
-         'discogs_artist_id', role.discogs_artist_id, \
-         'credited_as', role.credited_as, 'source', role.source, \
-         'role', role.role, 'role_words', role.role_words, \
-         'qualifiers', role.qualifiers) ORDER BY role.position) \
-     FROM import_candidate_track_role AS role \
-     WHERE role.content_hash = track.content_hash AND role.track_id = track.track_id)";
+/// The roles the source credits on the owner `owner`'s track `track` (SQL
+/// expressions for their keys), as a JSON array in its order; decoded by
+/// [`roles_of`].
+pub(crate) fn track_roles_json_sql(tables: &DraftTables, owner: &str, track: &str) -> String {
+    format!(
+        "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
+         FROM {table} AS role WHERE role.{key} = {owner} AND role.track_id = {track})",
+        table = tables.track_role,
+        key = tables.key,
+    )
+}
 
-/// The works the draft track `track` performs, as a JSON array of their ids
-/// in its order.
-pub(super) const TRACK_WORKS_JSON: &str = "(SELECT json_group_array( \
-         performed.musicbrainz_work_id ORDER BY performed.position) \
-     FROM import_candidate_track_work AS performed \
-     WHERE performed.content_hash = track.content_hash AND performed.track_id = track.track_id)";
+/// The works the owner `owner`'s track `track` performs, as a JSON array of
+/// their ids in its order.
+pub(crate) fn track_works_json_sql(tables: &DraftTables, owner: &str, track: &str) -> String {
+    format!(
+        "(SELECT json_group_array(performed.musicbrainz_work_id ORDER BY performed.position) \
+         FROM {table} AS performed \
+         WHERE performed.{key} = {owner} AND performed.track_id = {track})",
+        table = tables.track_work,
+        key = tables.key,
+    )
+}
 
-/// One stored work as [`WORKS_JSON`] holds it.
+/// One stored work as [`works_json_sql`] holds it.
 #[derive(serde::Deserialize)]
-pub(super) struct StoredWork {
+pub(crate) struct StoredWork {
     musicbrainz_work_id: String,
     title: String,
     disambiguation: Option<String>,
@@ -194,9 +249,9 @@ pub(super) struct StoredWork {
     credits: Vec<StoredWorkCredit>,
 }
 
-/// One stored work credit as [`WORKS_JSON`] holds it.
+/// One stored work credit as [`works_json_sql`] holds it.
 #[derive(serde::Deserialize)]
-pub(super) struct StoredWorkCredit {
+pub(crate) struct StoredWorkCredit {
     name: String,
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
@@ -207,15 +262,15 @@ pub(super) struct StoredWorkCredit {
     qualifiers: String,
 }
 
-/// One stored part as [`WORK_PARTS_JSON`] holds it.
+/// One stored part as [`work_parts_json_sql`] holds it.
 #[derive(serde::Deserialize)]
-pub(super) struct StoredPart {
+pub(crate) struct StoredPart {
     parent: String,
     child: String,
 }
 
-/// The work graph [`WORKS_JSON`] and [`WORK_PARTS_JSON`] hold.
-pub(super) fn works_of(
+/// The work graph [`works_json_sql`] and [`work_parts_json_sql`] hold.
+pub(crate) fn works_of(
     works: Vec<StoredWork>,
     parts: Vec<StoredPart>,
 ) -> Result<WorkGraph, DbError> {
@@ -261,10 +316,10 @@ pub(super) fn works_of(
     })
 }
 
-/// One stored role as [`RELEASE_ROLES_JSON`] and [`TRACK_ROLES_JSON`] hold
+/// One stored role as [`release_roles_json_sql`] and [`track_roles_json_sql`] hold
 /// it, its source not yet read.
 #[derive(serde::Deserialize)]
-pub(super) struct StoredRole {
+pub(crate) struct StoredRole {
     name: String,
     sort_name: Option<String>,
     musicbrainz_artist_id: Option<String>,
@@ -277,7 +332,7 @@ pub(super) struct StoredRole {
 }
 
 /// The credited roles a roles column holds.
-pub(super) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbError> {
+pub(crate) fn roles_of(roles: Vec<StoredRole>) -> Result<Vec<CreditedRole>, DbError> {
     roles
         .into_iter()
         .map(|stored| {

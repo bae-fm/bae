@@ -679,6 +679,8 @@ fn open_library(
                 sync_status.clone(),
                 #[cfg(desktop)]
                 release_reads,
+                #[cfg(desktop)]
+                import_tables.clone(),
                 closing.clone(),
                 app_dir.clone(),
                 Arc::clone(&clock),

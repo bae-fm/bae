@@ -90,7 +90,7 @@ pub enum TrackPosition {
 /// What the UI renders as the "Side A" / "Disc 2" header; `Flat` means no header.
 /// Separate from [`TrackPosition`] because a header carries no per-track number —
 /// every track on a side shares one `TrackSide`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TrackSide {
     Sided { side_letter: String },
     Disc { disc: u32 },

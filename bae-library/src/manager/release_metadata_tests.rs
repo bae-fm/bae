@@ -32,9 +32,10 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .insert_release_records(&release.id, std::slice::from_ref(&identity))
         .await
         .unwrap();
-    let super::release_edit::ReleaseEditContext {
+    let tables = bae_import::tables::ImportTables::new(manager.store.clone());
+    let bae_import::tables::ReleaseEditContext {
         detail: stored_before, tracks: audio_before, ..
-    } = manager
+    } = tables
         .find_release_edit_context(&release.id)
         .await
         .unwrap()
@@ -75,9 +76,9 @@ async fn release_metadata_edit_preserves_records_and_audio() {
         .await
         .unwrap();
 
-    let super::release_edit::ReleaseEditContext {
+    let bae_import::tables::ReleaseEditContext {
         detail: stored_after, tracks: audio_after, ..
-    } = manager
+    } = tables
         .find_release_edit_context(&release.id)
         .await
         .unwrap()
@@ -85,7 +86,9 @@ async fn release_metadata_edit_preserves_records_and_audio() {
     let segments = |tracks: &[bae_records::DbReleaseEditTrack]| {
         tracks
             .iter()
-            .map(|track| (track.audio_format_count, track.segments.clone()))
+            .map(|track| {
+                (track.audio_format_count, track.main_segment_count, track.main_segment.clone())
+            })
             .collect::<Vec<_>>()
     };
     assert_eq!(segments(&audio_after), segments(&audio_before));

@@ -89,6 +89,8 @@ use emptied::Emptiable;
 mod release_credits;
 mod release_deletion;
 mod release_detail;
+#[cfg(desktop)]
+pub use release_detail::release_files_on;
 pub use release_detail::{
     release_detail_rows_on, release_details_on, DbReleaseDetailRows, OtherDeviceError, ReleaseSet,
     NO_STARS,
@@ -97,7 +99,7 @@ mod release_file;
 mod release_locality;
 mod release_tracks;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
-pub use release_tracks::track_places_on;
+pub use release_tracks::{track_places_on, MediumsSource};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]

@@ -46,6 +46,7 @@ impl LibraryManager {
         runtime_handle: tokio::runtime::Handle,
         #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
         #[cfg(desktop)] release_reads: bae_import::ReleaseReads,
+        #[cfg(desktop)] import_tables: bae_import::tables::ImportTables,
         downloads: bae_transfers::Downloads,
         #[cfg(desktop)] outputs: bae_transfers::Outputs,
         closing: tokio_util::sync::CancellationToken,
@@ -63,6 +64,8 @@ impl LibraryManager {
         let manager = LibraryManager {
             #[cfg(desktop)]
             release_reads,
+            #[cfg(desktop)]
+            import_tables,
             store,
             preferences,
             records,

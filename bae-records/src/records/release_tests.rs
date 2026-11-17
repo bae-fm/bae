@@ -334,9 +334,9 @@ async fn a_label_save_replaces_the_list() {
     }
 }
 
-/// The release editor reads each segment's role: a track whose pregap is
-/// stored at the tail of the file before reads its pregap's file and its
-/// body's, each with the role it plays.
+/// The release editor reads the file a track's body plays from: a track
+/// whose pregap is stored at the tail of the file before reads its body's
+/// file, not its pregap's.
 #[cfg(desktop)]
 #[tokio::test]
 async fn the_editor_reads_which_file_holds_a_track_s_body() {
@@ -403,20 +403,20 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
         .await
         .unwrap();
 
-    let tracks =
-        db.read(|sql| crate::records::release_edit_tracks_on(&sql, RELEASE)).await.unwrap();
+    let tracks = db
+        .read(|sql| {
+            crate::records::release_edit_tracks_on(
+                &sql,
+                "?1",
+                crate::records::MediumsSource::Release,
+                [RELEASE],
+            )
+        })
+        .await
+        .unwrap();
 
     let track = tracks.iter().find(|track| track.track.id == TRACK_A).expect("track A");
-    let segments: Vec<_> = track
-        .segments
-        .iter()
-        .map(|segment| (segment.role.clone(), segment.file.as_ref().map(|file| file.name.as_str())))
-        .collect();
-    assert_eq!(
-        segments,
-        [
-            (DbAudioSegmentRole::AudioPregap, Some("01 Track Title A.flac")),
-            (DbAudioSegmentRole::Main, Some("02 Track Title B.flac")),
-        ]
-    );
+    assert_eq!(track.main_segment_count, 1);
+    let body = track.main_segment.as_ref().expect("the track's body");
+    assert_eq!(body.file.as_ref().map(|file| file.name.as_str()), Some("02 Track Title B.flac"));
 }

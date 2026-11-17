@@ -107,9 +107,11 @@ impl ImportingLibrary {
         self.import.load_candidate(key).await.unwrap().expect("the candidate reads back")
     }
 
-    /// The release editor's copy of `release_id`, as it opens.
-    async fn release_edit(&self, release_id: &str) -> bae_import::ReleaseEditSeed {
-        self.library.manager().open_release_edit(release_id).await.unwrap().opened().clone()
+    /// The release editor's draft of `release_id`, as it opens.
+    async fn release_edit(&self, release_id: &str) -> bae_import::ReleaseEditDraft {
+        let manager = self.library.manager();
+        let session = manager.open_release_edit(release_id).await.unwrap();
+        manager.release_edit_draft(&session).await.unwrap()
     }
 
     /// Stop the import service, which joins its threads, off the runtime.

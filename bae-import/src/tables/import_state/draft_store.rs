@@ -7,12 +7,10 @@
 
 use super::pane_rows::{
     edit_row_values, insert_barcode_rows, insert_draft_body, insert_label_rows, insert_track_rows,
-    store_album_artist_assignment, store_track_row,
+    store_album_artist_assignments, store_track_row, CANDIDATE_DRAFT,
 };
 use super::*;
-use crate::{
-    AudioFile, CandidateDraft, CandidateTrack, Credited, MetadataAuthor, TrackArtistAssignments,
-};
+use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
 
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
 /// wrote.
@@ -40,18 +38,19 @@ pub(super) fn store_draft(
             "DELETE FROM import_candidate_edit_label WHERE content_hash = ?",
             params![content_hash],
         )?;
-        insert_label_rows(sql, content_hash, &draft.pressing.labels)?;
+        insert_label_rows(sql, &CANDIDATE_DRAFT, &content_hash, &draft.pressing.labels)?;
     }
     if stored.pressing.barcodes != draft.pressing.barcodes {
         sql.execute(
             "DELETE FROM import_candidate_edit_barcode WHERE content_hash = ?",
             params![content_hash],
         )?;
-        insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
+        insert_barcode_rows(sql, &CANDIDATE_DRAFT, &content_hash, &draft.pressing.barcodes)?;
     }
     store_album_artist_assignments(
         sql,
-        content_hash,
+        &CANDIDATE_DRAFT,
+        &content_hash,
         &stored.album_artist_assignments,
         &draft.album_artist_assignments,
     )?;
@@ -135,29 +134,6 @@ fn delete_track_rows(
         sql.execute(
             &format!("DELETE FROM {table} WHERE content_hash = ? AND track_id = ?"),
             params![content_hash, track_id],
-        )?;
-    }
-    Ok(())
-}
-
-/// Each album artist that differs from the one stored at its position, in
-/// place, and the stored ones past the last.
-fn store_album_artist_assignments(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    stored: &[Credited],
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        if stored.get(position) != Some(assignment) {
-            store_album_artist_assignment(sql, content_hash, position, assignment)?;
-        }
-    }
-    if stored.len() > assignments.len() {
-        sql.execute(
-            "DELETE FROM import_candidate_album_artist_assignment \
-             WHERE content_hash = ? AND position >= ?",
-            params![content_hash, assignments.len() as i64],
         )?;
     }
     Ok(())

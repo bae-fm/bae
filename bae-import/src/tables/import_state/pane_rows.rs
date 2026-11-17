@@ -9,24 +9,44 @@
 //! `preparation_rows`'s to say.
 //! Its tables are `pane_rows.sql`, and `values.sql` and `provenance.sql` for
 //! the draft's values and provenance, which every device's library holds.
+//!
+//! A release editor's session holds the same values in tables of its own
+//! (`tables::release_edit_session`), so the statements that write and read
+//! labels, barcodes, artist assignments, mediums, roles and works take the
+//! [`DraftTables`] they write.
 
 pub(super) const SQL: &str = include_str!("pane_rows.sql");
 pub(super) const VALUES_SQL: &str = values::SQL;
 pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
 
+mod form_rows;
 mod provenance;
 mod values;
+
+use form_rows::StoredAssignment;
+pub(crate) use form_rows::{
+    assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
+    insert_album_artist_assignments, insert_barcode_rows, insert_label_rows, insert_medium_rows,
+    insert_track_artist_assignments, labels_json_sql, mediums_json_sql, mediums_of,
+    read_label_rows, store_album_artist_assignments, DraftTables, CANDIDATE_DRAFT,
+};
 
 pub(crate) use provenance::{
     insert_provenance, read_provenance, store_provenance, StoredProvenance, PROVENANCE_COLUMNS,
 };
+pub(crate) use values::{
+    insert_draft_values, insert_track_values, release_roles_json_sql, roles_of,
+    track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql, works_of,
+    StoredRole,
+};
 
 use super::*;
 use crate::{
-    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, Credited,
-    MetadataAuthor, RawLabelEdit, RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
+    AudioFile, CandidateDraft, CandidateTrack, CoverSelection, MetadataAuthor, RawLabelEdit,
+    RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 use bae_catalogs::credits::ArtistCredit;
+use rusqlite::ToSql;
 use std::str::FromStr;
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, \
@@ -78,9 +98,10 @@ pub(super) fn insert_draft(
         ),
         rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
     )?;
-    insert_label_rows(sql, content_hash, &draft.pressing.labels)?;
-    insert_barcode_rows(sql, content_hash, &draft.pressing.barcodes)?;
-    insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
+    let key: &dyn ToSql = &content_hash;
+    insert_label_rows(sql, &CANDIDATE_DRAFT, key, &draft.pressing.labels)?;
+    insert_barcode_rows(sql, &CANDIDATE_DRAFT, key, &draft.pressing.barcodes)?;
+    insert_album_artist_assignments(sql, &CANDIDATE_DRAFT, key, &draft.album_artist_assignments)?;
     insert_draft_body(sql, content_hash, draft)
 }
 
@@ -115,46 +136,6 @@ pub(super) fn edit_row_values(
     ]
 }
 
-/// The draft's label rows, as the form holds them, where none are stored.
-pub(super) fn insert_label_rows(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    labels: &[RawLabelEdit],
-) -> Result<(), DbError> {
-    for (position, label) in labels.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_edit_label \
-                 (content_hash, position, name, catalog_number, \
-                  musicbrainz_label_id, discogs_label_id) VALUES (?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                position as i64,
-                label.name,
-                label.catalog_number,
-                label.musicbrainz_label_id,
-                label.discogs_label_id
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-/// The draft's barcode rows, as the form holds them, where none are stored.
-pub(super) fn insert_barcode_rows(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    barcodes: &[String],
-) -> Result<(), DbError> {
-    for (position, barcode) in barcodes.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_edit_barcode (content_hash, position, barcode) \
-             VALUES (?, ?, ?)",
-            params![content_hash, position as i64, barcode],
-        )?;
-    }
-    Ok(())
-}
-
 /// The draft's mediums, tracks and the values hanging off them: the rows
 /// below the draft row besides its album artists.
 pub(super) fn insert_draft_body(
@@ -162,20 +143,10 @@ pub(super) fn insert_draft_body(
     content_hash: &str,
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
-    for (index, medium) in draft.mediums.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO import_candidate_medium (content_hash, position, medium, side_count) \
-             VALUES (?, ?, ?, ?)",
-            params![
-                content_hash,
-                bae_types::mediums::medium_position(index),
-                medium.carrier.map(bae_types::pressing::Medium::key),
-                medium.sides,
-            ],
-        )?;
-    }
+    let key: &dyn ToSql = &content_hash;
+    insert_medium_rows(sql, &CANDIDATE_DRAFT, key, &draft.mediums)?;
     // The works first: a track names the works it performs.
-    values::insert_draft_values(sql, content_hash, draft)?;
+    insert_draft_values(sql, &CANDIDATE_DRAFT, key, &draft.works, &draft.release_roles)?;
     for (position, track) in draft.tracks.iter().enumerate() {
         insert_track(sql, content_hash, position, track)?;
     }
@@ -244,17 +215,11 @@ pub(super) fn insert_track_rows(
     content_hash: &str,
     track: &CandidateTrack,
 ) -> Result<(), DbError> {
+    let key: &dyn ToSql = &content_hash;
     if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
-        insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
+        insert_track_artist_assignments(sql, &CANDIDATE_DRAFT, key, &track.edit.id, assignments)?;
     }
-    values::insert_track_values(sql, content_hash, track)
-}
-
-fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
-    match assignments {
-        TrackArtistAssignments::AlbumArtists => "album_artists",
-        TrackArtistAssignments::Explicit(_) => "explicit",
-    }
+    insert_track_values(sql, &CANDIDATE_DRAFT, key, &track.edit.id, &track.roles, &track.works)
 }
 
 fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {
@@ -357,37 +322,25 @@ pub(crate) fn load_drafts_on(
     let filter = only.filter("edit.content_hash");
     let clause = &filter.clause;
     let album_assignments = assignments_json_sql(
-        "import_candidate_album_artist_assignment",
+        CANDIDATE_DRAFT.album_artist,
         "assignment.content_hash = edit.content_hash",
     );
     let rows = sql.query(
         &format!(
-            "SELECT {EDIT_COLUMNS}, \
-                    (SELECT json_group_array(json_object( \
-                         'name', label.name, 'catalog_number', label.catalog_number, \
-                         'musicbrainz_label_id', label.musicbrainz_label_id, \
-                         'discogs_label_id', label.discogs_label_id) \
-                         ORDER BY label.position) \
-                     FROM import_candidate_edit_label AS label \
-                     WHERE label.content_hash = edit.content_hash) AS labels, \
-                    (SELECT json_group_array(barcode.barcode ORDER BY barcode.position) \
-                     FROM import_candidate_edit_barcode AS barcode \
-                     WHERE barcode.content_hash = edit.content_hash) AS barcodes, \
-                    {album_assignments} AS album_assignments, \
-                    (SELECT json_group_array(json_object( \
-                         'carrier', medium.medium, 'sides', medium.side_count) \
-                         ORDER BY medium.position) \
-                     FROM import_candidate_medium AS medium \
-                     WHERE medium.content_hash = edit.content_hash) AS mediums, \
+            "SELECT {EDIT_COLUMNS}, {labels} AS labels, {barcodes} AS barcodes, \
+                    {album_assignments} AS album_assignments, {mediums} AS mediums, \
                     (SELECT json_group_array({track} ORDER BY track.position) \
                      FROM import_candidate_track AS track \
                      WHERE track.content_hash = edit.content_hash) AS tracks, \
                     {release_roles} AS release_roles, {works} AS works, {parts} AS parts \
              FROM import_candidate_edit AS edit {clause}",
+            labels = labels_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            barcodes = barcodes_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            mediums = mediums_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
             track = track_json_sql(),
-            release_roles = values::RELEASE_ROLES_JSON,
-            works = values::WORKS_JSON,
-            parts = values::WORK_PARTS_JSON,
+            release_roles = release_roles_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            works = works_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            parts = work_parts_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
         ),
         filter.params().as_slice(),
         |row| {
@@ -431,18 +384,12 @@ pub(crate) fn track_json_sql() -> String {
              'assignments', json({assignments}), \
              'roles', json({roles}), 'works', json({works}))",
         assignments = assignments_json_sql(
-            "import_candidate_track_artist_assignment",
+            CANDIDATE_DRAFT.track_artist,
             "assignment.content_hash = track.content_hash AND assignment.track_id = track.track_id",
         ),
-        roles = values::TRACK_ROLES_JSON,
-        works = values::TRACK_WORKS_JSON,
+        roles = track_roles_json_sql(&CANDIDATE_DRAFT, "track.content_hash", "track.track_id"),
+        works = track_works_json_sql(&CANDIDATE_DRAFT, "track.content_hash", "track.track_id"),
     )
-}
-
-/// A stored JSON column of `what`, decoded.
-fn decoded<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<T, DbError> {
-    serde_json::from_str(json)
-        .map_err(|error| DbError::unreadable_json(format!("a draft's stored {what}"), json, error))
 }
 
 /// One `import_candidate_edit` row as SQLite hands it over, its lists still
@@ -465,25 +412,8 @@ struct StoredDraftRow {
 
 impl StoredDraftRow {
     fn draft(&self) -> Result<CandidateDraft, DbError> {
-        let album_artist_assignments =
-            decoded::<Vec<StoredAssignment>>(&self.album_assignments, "album artists")?
-                .into_iter()
-                .map(StoredAssignment::credited)
-                .collect::<Result<_, _>>()?;
-        let mediums = decoded::<Vec<StoredMedium>>(&self.mediums, "mediums")?
-            .into_iter()
-            .map(|medium| {
-                let carrier = medium
-                    .carrier
-                    .map(|key| {
-                        bae_types::pressing::Medium::from_key(&key).ok_or_else(|| {
-                            DbError::unreadable("import_candidate_medium.medium", &key)
-                        })
-                    })
-                    .transpose()?;
-                Ok(bae_types::mediums::ReleaseMedium { carrier, sides: medium.sides })
-            })
-            .collect::<Result<_, DbError>>()?;
+        let album_artist_assignments = assignments_of(&self.album_assignments, "album artists")?;
+        let mediums = mediums_of(&self.mediums)?;
         let tracks = decoded::<Vec<StoredTrack>>(&self.tracks, "tracks")?
             .into_iter()
             .map(StoredTrack::track)
@@ -500,25 +430,10 @@ impl StoredDraftRow {
             },
             mediums,
             tracks,
-            release_roles: values::roles_of(decoded(&self.release_roles, "release roles")?)?,
-            works: values::works_of(
-                decoded(&self.works, "works")?,
-                decoded(&self.parts, "work parts")?,
-            )?,
+            release_roles: roles_of(decoded(&self.release_roles, "release roles")?)?,
+            works: works_of(decoded(&self.works, "works")?, decoded(&self.parts, "work parts")?)?,
         })
     }
-}
-
-/// The draft's label rows as typed, as the read's `labels` array holds them.
-fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
-    bae_store::read::json_column(row, "labels")
-}
-
-/// One `import_candidate_medium` row as the draft's read holds it.
-#[derive(serde::Deserialize)]
-struct StoredMedium {
-    carrier: Option<String>,
-    sides: std::num::NonZeroU8,
 }
 
 /// One `import_candidate_track` row as the draft's read holds it, with its
@@ -586,231 +501,10 @@ impl StoredTrack {
                 number: self.track_number,
             },
             stated_length_ms,
-            roles: values::roles_of(self.roles)?,
+            roles: roles_of(self.roles)?,
             works: self.works,
         })
     }
-}
-
-struct AssignmentColumns<'a> {
-    kind: &'static str,
-    artist_id: Option<&'a str>,
-    name: Option<&'a str>,
-    sort_name: Option<&'a str>,
-    musicbrainz_id: Option<&'a str>,
-    discogs_id: Option<&'a str>,
-    credit_key: Option<&'a str>,
-    credited_as: Option<&'a str>,
-    join_phrase: Option<&'a str>,
-}
-
-fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
-    let join_phrase = credited.join.as_deref();
-    match &credited.artist {
-        ArtistAssignment::Picked { artist, credit_name } => AssignmentColumns {
-            kind: "picked",
-            artist_id: Some(&artist.artist_id),
-            name: None,
-            sort_name: None,
-            musicbrainz_id: None,
-            discogs_id: None,
-            credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
-            credited_as: None,
-            join_phrase,
-        },
-        ArtistAssignment::Credit { credit } => AssignmentColumns {
-            kind: "credit",
-            artist_id: None,
-            name: Some(credit.name.as_str()),
-            sort_name: credit.sort_name.as_deref(),
-            musicbrainz_id: credit.musicbrainz_artist_id.as_deref(),
-            discogs_id: credit.discogs_artist_id.as_deref(),
-            credit_key: None,
-            credited_as: credit.credited_as.as_deref(),
-            join_phrase,
-        },
-    }
-}
-
-/// One stored assignment row, the picked artist's fields read from the
-/// library and its credit name, if it names one still there, as
-/// [`assignments_json_sql`] holds it.
-#[derive(serde::Deserialize)]
-struct StoredAssignment {
-    kind: String,
-    artist_id: Option<String>,
-    name: Option<String>,
-    sort_name: Option<String>,
-    musicbrainz_artist_id: Option<String>,
-    discogs_artist_id: Option<String>,
-    credit_key: Option<String>,
-    credit_name: Option<String>,
-    credited_as: Option<String>,
-    join_phrase: Option<String>,
-}
-
-/// The assignments `table`, aliased `assignment`, holds where `belongs`
-/// holds, as a JSON array in their order: each joined to its picked artist
-/// and that artist's credit name.
-fn assignments_json_sql(table: &str, belongs: &str) -> String {
-    format!(
-        "(SELECT json_group_array(json_object( \
-             'kind', assignment.assignment_kind, 'artist_id', assignment.artist_id, \
-             'name', CASE assignment.assignment_kind WHEN 'picked' THEN picked.name \
-                 WHEN 'credit' THEN assignment.name END, \
-             'sort_name', CASE assignment.assignment_kind WHEN 'picked' THEN picked.sort_name \
-                 WHEN 'credit' THEN assignment.sort_name END, \
-             'musicbrainz_artist_id', CASE assignment.assignment_kind \
-                 WHEN 'picked' THEN picked.musicbrainz_artist_id \
-                 WHEN 'credit' THEN assignment.musicbrainz_artist_id END, \
-             'discogs_artist_id', CASE assignment.assignment_kind \
-                 WHEN 'picked' THEN picked.discogs_artist_id \
-                 WHEN 'credit' THEN assignment.discogs_artist_id END, \
-             'credit_key', picked_credit.name_key, 'credit_name', picked_credit.name, \
-             'credited_as', assignment.credited_as, 'join_phrase', assignment.join_phrase) \
-             ORDER BY assignment.position) \
-         FROM {table} AS assignment \
-         LEFT JOIN artists picked ON picked.id = assignment.artist_id \
-         {credit_name} \
-         WHERE {belongs})",
-        credit_name = bae_records::records::read::credit_name_join("assignment", "picked_credit"),
-    )
-}
-
-impl StoredAssignment {
-    /// The draft's credit. A picked artist's credit name that was removed
-    /// since prints the artist's own name.
-    fn credited(self) -> Result<Credited, DbError> {
-        let artist = match self.kind.as_str() {
-            "picked" => ArtistAssignment::Picked {
-                artist: ExistingArtist {
-                    artist_id: self.artist_id.ok_or_else(|| {
-                        DbError::unreadable(
-                            "the artist_id of a picked artist assignment",
-                            None::<String>,
-                        )
-                    })?,
-                    // The assignment goes with its artist, so the artist
-                    // it names is in the library.
-                    name: self.name.ok_or_else(|| {
-                        DbError::unreadable(
-                            "the name of a picked assignment's artist",
-                            None::<String>,
-                        )
-                    })?,
-                    sort_name: self.sort_name,
-                    musicbrainz_artist_id: self.musicbrainz_artist_id,
-                    discogs_artist_id: self.discogs_artist_id,
-                },
-                credit_name: match (self.credit_key, self.credit_name) {
-                    (Some(key), Some(name)) => Some(bae_records::credits::CreditName { key, name }),
-                    (None, None) => None,
-                    (key, name) => {
-                        return Err(DbError::unreadable(
-                            "a stored artist assignment's credit name and key",
-                            (key, name),
-                        ))
-                    }
-                },
-            },
-            "credit" => ArtistAssignment::Credit {
-                credit: ArtistCredit {
-                    name: self.name.ok_or_else(|| {
-                        DbError::unreadable(
-                            "the name of an artist credit assignment",
-                            None::<String>,
-                        )
-                    })?,
-                    sort_name: self.sort_name,
-                    musicbrainz_artist_id: self.musicbrainz_artist_id,
-                    discogs_artist_id: self.discogs_artist_id,
-                    credited_as: self.credited_as,
-                },
-            },
-            other => return Err(DbError::unreadable("a stored artist assignment's kind", other)),
-        };
-        Ok(Credited { artist, join: self.join_phrase })
-    }
-}
-
-fn insert_album_artist_assignments(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        store_album_artist_assignment(sql, content_hash, position, assignment)?;
-    }
-    Ok(())
-}
-
-/// Make the album artist at `position` `assignment`, in place when one is
-/// there.
-pub(super) fn store_album_artist_assignment(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    position: usize,
-    assignment: &Credited,
-) -> Result<(), DbError> {
-    let columns = assignment_columns(assignment);
-    sql.execute(
-        "INSERT INTO import_candidate_album_artist_assignment \
-         (content_hash, position, assignment_kind, artist_id, name, sort_name, \
-          musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-         ON CONFLICT (content_hash, position) DO UPDATE SET \
-             assignment_kind = excluded.assignment_kind, artist_id = excluded.artist_id, \
-             name = excluded.name, sort_name = excluded.sort_name, \
-             musicbrainz_artist_id = excluded.musicbrainz_artist_id, \
-             discogs_artist_id = excluded.discogs_artist_id, credit_key = excluded.credit_key, \
-             credited_as = excluded.credited_as, join_phrase = excluded.join_phrase",
-        params![
-            content_hash,
-            position as i64,
-            columns.kind,
-            columns.artist_id,
-            columns.name,
-            columns.sort_name,
-            columns.musicbrainz_id,
-            columns.discogs_id,
-            columns.credit_key,
-            columns.credited_as,
-            columns.join_phrase
-        ],
-    )?;
-    Ok(())
-}
-
-fn insert_track_artist_assignments(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    track_id: &str,
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        let columns = assignment_columns(assignment);
-        sql.execute(
-            "INSERT INTO import_candidate_track_artist_assignment \
-             (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                track_id,
-                position as i64,
-                columns.kind,
-                columns.artist_id,
-                columns.name,
-                columns.sort_name,
-                columns.musicbrainz_id,
-                columns.discogs_id,
-                columns.credit_key,
-                columns.credited_as,
-                columns.join_phrase
-            ],
-        )?;
-    }
-    Ok(())
 }
 
 /// Seed a candidate's draft from the folder's file tags, authored by the

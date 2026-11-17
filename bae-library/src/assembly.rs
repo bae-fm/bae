@@ -2,7 +2,8 @@
 //! store. The app's bootstrap and every test that opens a library call this,
 //! so tests open a library through the app's wiring. The caller opens the
 //! store and builds what the manager shares with the library's services —
-//! the import's release reads and the closing token — and passes them by name.
+//! the import's release reads and tables and the closing token — and passes
+//! them by name.
 
 use crate::{CancellationToken, LibraryManager};
 use bae_diagnostics::Diagnostics;
@@ -20,6 +21,7 @@ pub async fn open_library_manager(
     membership: bae_people::Membership,
     sync_status: SyncStatus,
     #[cfg(desktop)] release_reads: bae_import::ReleaseReads,
+    #[cfg(desktop)] import_tables: bae_import::tables::ImportTables,
     closing: CancellationToken,
     app_dir: bae_app_dir::AppDir,
     clock: ClockRef,
@@ -47,6 +49,8 @@ pub async fn open_library_manager(
         remote_images,
         #[cfg(desktop)]
         release_reads,
+        #[cfg(desktop)]
+        import_tables,
         downloads,
         #[cfg(desktop)]
         outputs,

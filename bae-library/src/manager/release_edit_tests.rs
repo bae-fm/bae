@@ -237,7 +237,7 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     insert_release(manager, &release).await;
     insert_editable_tracks(manager, &release.id, 2).await;
     let session = manager.open_release_edit(&release.id).await.unwrap();
-    let before = session.opened().clone();
+    let before = opened(manager, &session).await;
 
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&test, new_release_id, "discard-re-identify-mb-group-new", 2);
@@ -252,7 +252,8 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
     drop(session);
 
-    assert_eq!(manager.open_release_edit(&release.id).await.unwrap().opened(), &before);
+    let reopened = manager.open_release_edit(&release.id).await.unwrap();
+    assert_eq!(opened(manager, &reopened).await, before);
     assert!(manager.records.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
@@ -452,7 +453,7 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
         },
         "the other editor's pick and apply are not this one's"
     );
-    assert_eq!(third.opened(), pane.opened());
+    assert_eq!(opened(manager, &third).await, opened(manager, &pane).await);
     manager.save_release_edit(&sheet).await.unwrap();
 
     assert_eq!(
@@ -469,9 +470,10 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
 }
 
 /// Once one session saves a release, another session opened before that save
-/// is refused, writing nothing: the library keeps what the first saved. So
-/// does one opened before a field write from elsewhere, and a session opened
-/// after the save saves as usual.
+/// is refused, writing nothing: the library keeps what the first saved, and
+/// the first, opened again on what it saved, saves again. So is one opened
+/// before a field write from elsewhere, and a session opened after the save
+/// saves as usual.
 #[tokio::test]
 async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -499,18 +501,17 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
         let release_id = release.id.clone();
         let manager = manager.clone();
         async move {
-            manager.open_release_edit(&release_id).await.unwrap().opened().edit.album_title.clone()
+            let session = manager.open_release_edit(&release_id).await.unwrap();
+            opened(&manager, &session).await.edit.album_title
         }
     };
     assert_eq!(held(manager).await, "Saved First");
     title_session(manager, &first, "Saved Again").await;
-    assert!(
-        manager.save_release_edit(&first).await.is_err(),
-        "a saved session opened on what the library held before its save"
-    );
+    manager.save_release_edit(&first).await.expect("a save opens its session on what it saved");
+    assert_eq!(held(manager).await, "Saved Again");
 
     let opened_before_write = manager.open_release_edit(&release.id).await.unwrap();
-    let mut written = opened_before_write.opened().edit.clone();
+    let mut written = opened(manager, &opened_before_write).await.edit;
     written.album_title = "Written Elsewhere".to_string();
     written.album_artist_assignments =
         vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))];
@@ -738,7 +739,8 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     )
     .await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap().opened().clone();
+    let session = manager.open_release_edit(&release.id).await.unwrap();
+    let seed = opened(manager, &session).await;
 
     assert_eq!(seed.edit.tracks[0].id, track.id);
 }
@@ -888,9 +890,13 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     .await;
     store_test_cover(manager, &release.id, b"cover").await;
 
-    let seed = manager.open_release_edit(&release.id).await.unwrap().opened().clone();
+    let session = manager.open_release_edit(&release.id).await.unwrap();
+    let seed = opened(manager, &session).await;
 
-    assert_eq!(seed.cover.as_ref().map(|cover| cover.id.as_str()), Some(release.id.as_str()));
+    assert_eq!(
+        manager.release_edit_draft(&session).await.unwrap().cover.map(|cover| cover.id),
+        Some(release.id.clone())
+    );
     let sides = &seed.display.sides;
     assert_eq!(
         sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
@@ -914,6 +920,19 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
         seed.display.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })
     ));
+}
+
+/// What `session` opened on, as its rows hold it.
+pub(super) async fn opened(
+    manager: &LibraryManager,
+    session: &ReleaseEdit,
+) -> bae_import::ReleaseEditSeed {
+    bae_import::tables::ImportTables::new(manager.store.clone())
+        .load_release_edit_session(session.session())
+        .await
+        .unwrap()
+        .expect("the session is open")
+        .opened
 }
 
 /// Picking `album` as the album a session files its release under.

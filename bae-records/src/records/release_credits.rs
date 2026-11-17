@@ -173,7 +173,11 @@ pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
                     'role', role, 'role_words', role_words, 'qualifiers', qualifiers, \
                     'artists', json(artists), 'tracks', json(tracks)) ORDER BY first_ord) \
          FROM rows)",
-        placed = super::release_tracks::placed_tracks_ctes(release_expr, ""),
+        placed = super::release_tracks::placed_tracks_ctes(
+            release_expr,
+            super::release_tracks::MediumsSource::Release,
+            "",
+        ),
         release = release.select(),
         track = track.select(),
         work = work.select(),

@@ -106,6 +106,7 @@ impl TestLibrary {
             membership.clone(),
             sync_status.clone(),
             release_reads,
+            import_tables.clone(),
             closing.clone(),
             app_dir,
             clock.clone(),

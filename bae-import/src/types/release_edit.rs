@@ -96,7 +96,7 @@ pub struct TrackUserEdit {
 
 /// The library album a draft files under when it is written: an import's, or
 /// a library release's edit session's.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DraftAlbum {
     /// A new album, because the person picked no album and the draft's
     /// records name none the library holds.
@@ -149,14 +149,15 @@ pub enum AlbumPick {
     Album { album_id: String },
 }
 
-/// A library release as an edit session opens on it: the raw form, the
-/// cover, what the editor shows beside the form, and the album the release
-/// is in.
+/// A library release's values as an edit session opens on them: the raw
+/// form, what the editor shows beside the form, and the album the release is
+/// in. The cover is not among them: the cover picker writes it at once,
+/// outside any session, so it never makes a session's values stale. A save
+/// refuses a release whose values are no longer these.
 #[cfg(desktop)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
-    pub cover: Option<bae_records::ImageRef>,
     pub display: crate::ReleaseEditDisplayContext,
     pub album: DraftAlbum,
 }
@@ -177,15 +178,4 @@ pub struct ReleaseEditDraft {
     pub artist_resolutions: Vec<bae_records::ResolvedCredit>,
     pub changed: bool,
     pub invalid: Option<EditValidationError>,
-}
-
-#[cfg(desktop)]
-impl ReleaseEditSeed {
-    /// Whether this seed holds every value `opened` held — the form, the
-    /// tracks and the album — whatever its cover: the cover is written at
-    /// once outside any session, so it never makes a session's values stale.
-    pub fn holds_the_values_of(&self, opened: &Self) -> bool {
-        let Self { edit, cover: _, display, album } = self;
-        *edit == opened.edit && *display == opened.display && *album == opened.album
-    }
 }

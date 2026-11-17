@@ -15,6 +15,7 @@ mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
 mod layout_text;
+mod release_edit_session;
 mod release_group_cover;
 mod release_groupings;
 mod release_sheet_decisions;
@@ -36,6 +37,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     import_list::SCHEMA,
     cover_gallery::SCHEMA,
     catalog_apply_steps::SCHEMA,
+    release_edit_session::SCHEMA,
 ];
 
 pub use cover_gallery::{
@@ -61,6 +63,11 @@ pub use import_state::{
     CandidateStateRefusal, DbCandidateIdentifyResult, DbCandidatePaneRows, DbImportCandidateState,
     ImportCommitError, ImportCommitRefusal, NewImportCandidateVerdict, PreparationRefusal,
     VerdictPick,
+};
+pub(crate) use release_edit_session::RELEASE_EDIT_SESSION_DRAFT;
+pub use release_edit_session::{
+    release_edit_still_as_opened_on, reseed_release_edit_session_on, AppliedCatalog,
+    ReleaseEditContext, ReleaseEditSessionError, ReleaseEditSessionRefusal, StoredReleaseEdit,
 };
 pub(crate) use release_groupings::GroupingFacts;
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};

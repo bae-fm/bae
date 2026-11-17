@@ -172,6 +172,11 @@ pub enum LibraryError {
     /// session opened on it, and wrote nothing.
     #[error("Release '{release_id}' changed since its edit session opened")]
     ReleaseEditStale { release_id: String },
+    /// A command reached an edit session of `release_id` whose rows are
+    /// gone: its editor closed it, or the release was deleted. Nothing was
+    /// written.
+    #[error("The edit session of release '{release_id}' is closed")]
+    ReleaseEditClosed { release_id: String },
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -435,6 +440,7 @@ impl LibraryError {
                 ReleaseWork::Transfer => C::Internal,
             },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
+            LibraryError::ReleaseEditClosed { .. } => C::ChangedMeanwhile,
             LibraryError::FilenamePattern(_) => C::FilenamePatternInvalid,
             LibraryError::FolderPattern(_) => C::FolderPatternInvalid,
             LibraryError::Export(_) => C::Export,
@@ -805,6 +811,9 @@ pub struct LibraryManager {
     /// too.
     #[cfg(desktop)]
     release_reads: bae_import::ReleaseReads,
+    /// The import's tables, which hold each release editor's session.
+    #[cfg(desktop)]
+    import_tables: bae_import::tables::ImportTables,
     /// Where a test holds each run of a pin's query of which of its
     /// release's files are kept.
     #[cfg(test)]

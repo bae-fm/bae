@@ -1602,6 +1602,34 @@ homes = [
 tables = ["import_catalog_apply_step"]
 
 [[database.domains]]
+name = "release edit sessions"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/release_edit_session.rs",
+    "bae-import/src/tables/release_edit_session.sql",
+    "bae-import/src/tables/release_edit_session/",
+]
+tables = [
+    "release_edit_session",
+    "release_edit_label",
+    "release_edit_barcode",
+    "release_edit_album_artist",
+    "release_edit_track",
+    "release_edit_track_artist",
+    "release_edit_album_pick",
+    "release_edit_applied",
+    "release_edit_medium",
+    "release_edit_track_place",
+    "release_edit_track_role",
+    "release_edit_release_role",
+    "release_edit_work",
+    "release_edit_work_credit",
+    "release_edit_work_part",
+    "release_edit_track_work",
+    "release_edit_record",
+]
+
+[[database.domains]]
 name = "import origin"
 owner = "ImportTables"
 homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import_origin.sql"]

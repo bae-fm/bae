@@ -898,3 +898,27 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);
     }
 }
+
+#[test]
+fn a_mapping_file_s_audition_target_survives_its_json() {
+    for preview_target in [
+        None,
+        Some(bae_track_audio::PreviewTarget::whole_file("disc/01.flac".into())),
+        Some(bae_track_audio::PreviewTarget::sample_range(
+            "disc/02.flac".into(),
+            4_410,
+            Some(88_200),
+        )),
+    ] {
+        let file = MappingFile {
+            file_id: "disc/01.flac".to_string(),
+            name: "01.flac".to_string(),
+            size: 1_024,
+            preview_target,
+            audio_format: None,
+            role: MappingRole::Audio,
+        };
+        let json = serde_json::to_string(&file).unwrap();
+        assert_eq!(serde_json::from_str::<MappingFile>(&json).unwrap(), file);
+    }
+}

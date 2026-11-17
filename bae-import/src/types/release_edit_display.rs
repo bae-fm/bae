@@ -7,7 +7,7 @@ use bae_types::mediums::TrackSide;
 
 /// The file a persisted track's body plays from: its main segment's file. A
 /// pregap stored in the file before is not the track's source.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditTrackSource {
     pub file_id: String,
     pub name: String,
@@ -16,7 +16,7 @@ pub struct ReleaseEditTrackSource {
 
 /// Display-only facts that accompany one persisted metadata row in the shared
 /// editor. `track_id` is the database row identity, not a positional join.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditTrackContext {
     pub track_id: String,
     pub source: ReleaseEditTrackSource,
@@ -38,14 +38,14 @@ impl ReleaseEditTrackContext {
 /// of a multi-disc set, a side of a record, or the one flat side — and the
 /// runs of tracks on it, in table order. The same shape the import mapping
 /// table draws, so a release reads the same before and after it is imported.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditTrackSide {
     pub side: TrackSide,
     pub runs: Vec<ReleaseEditTrackRun>,
 }
 
 /// Consecutive tracks of one side that the table draws together.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ReleaseEditTrackRun {
     /// A track whose row names its own source.
     Track(ReleaseEditTrackContext),
@@ -58,14 +58,6 @@ impl ReleaseEditTrackRun {
     pub fn tracks(&self) -> &[ReleaseEditTrackContext] {
         match self {
             Self::Track(track) => std::slice::from_ref(track),
-            Self::Sheet { tracks, .. } => tracks,
-        }
-    }
-
-    #[cfg(desktop)]
-    fn into_tracks(self) -> Vec<ReleaseEditTrackContext> {
-        match self {
-            Self::Track(track) => vec![track],
             Self::Sheet { tracks, .. } => tracks,
         }
     }
@@ -123,7 +115,7 @@ impl ReleaseEditTrackSide {
 /// Release-backed context needed by the shared metadata editor in addition to
 /// its writable raw form.
 #[cfg(desktop)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditDisplayContext {
     pub source_audio: Option<SourceAudioSummary>,
     /// The release's tracks, laid out as the table draws them.
@@ -138,29 +130,6 @@ impl ReleaseEditDisplayContext {
     /// Every track, in release order.
     pub fn tracks(&self) -> impl Iterator<Item = &ReleaseEditTrackContext> {
         self.sides.iter().flat_map(ReleaseEditTrackSide::tracks)
-    }
-
-    /// The same tracks at the places `positions` gives them, in release
-    /// order, laid out again: what an applied catalog reads them as.
-    pub fn placed(
-        self,
-        positions: impl IntoIterator<Item = bae_types::mediums::TrackPosition>,
-    ) -> Self {
-        let tracks = self
-            .sides
-            .into_iter()
-            .flat_map(|side| side.runs)
-            .flat_map(ReleaseEditTrackRun::into_tracks);
-        Self {
-            source_audio: self.source_audio,
-            files: self.files,
-            sides: ReleaseEditTrackSide::lay_out(tracks.zip(positions).map(|(track, position)| {
-                (
-                    position.side(),
-                    ReleaseEditTrackContext { position_text: position.text(), ..track },
-                )
-            })),
-        }
     }
 }
 
@@ -182,13 +151,13 @@ pub enum ReleaseEditLoadError {
 
 #[cfg(desktop)]
 impl ReleaseEditDisplayContext {
-    /// The editor's display of the release `raw`, from its tracks' audio as
-    /// `tracks` reads it in release order.
+    /// The editor's display of a release with the files `files`, from its
+    /// tracks' audio as `tracks` reads it in release order.
     pub fn from_raw(
-        raw: &bae_records::DbReleaseDetail,
+        files: &bae_records::DbReleaseFiles,
         tracks: Vec<bae_records::DbReleaseEditTrack>,
     ) -> Result<Self, ReleaseEditLoadError> {
-        let mut contexts = Vec::with_capacity(tracks.len());
+        let mut contexts = Vec::new();
         for entry in tracks {
             let track_id = entry.track.id.clone();
             match entry.audio_format_count {
@@ -196,16 +165,12 @@ impl ReleaseEditDisplayContext {
                 1 => {}
                 _ => return Err(ReleaseEditLoadError::MultipleAudioFormats { track_id }),
             }
-            let mut mains = entry
-                .segments
-                .into_iter()
-                .filter(|segment| segment.role == bae_records::DbAudioSegmentRole::Main);
-            let main = match (mains.next(), mains.next()) {
-                (Some(main), None) => main,
-                (None, _) => return Err(ReleaseEditLoadError::MissingMainSegment { track_id }),
-                (Some(_), Some(_)) => {
-                    return Err(ReleaseEditLoadError::MultipleMainSegments { track_id })
+            let main = match (entry.main_segment_count, entry.main_segment) {
+                (1, Some(main)) => main,
+                (0, _) | (_, None) => {
+                    return Err(ReleaseEditLoadError::MissingMainSegment { track_id })
                 }
+                _ => return Err(ReleaseEditLoadError::MultipleMainSegments { track_id }),
             };
             let file = main.file.ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
                 track_id: track_id.clone(),
@@ -228,9 +193,9 @@ impl ReleaseEditDisplayContext {
         }
 
         Ok(Self {
-            source_audio: raw.files.source_audio.clone(),
+            source_audio: files.source_audio.clone(),
             sides: ReleaseEditTrackSide::lay_out(contexts),
-            files: raw.files.others.iter().map(carried_file).collect(),
+            files: files.others.iter().map(carried_file).collect(),
         })
     }
 }

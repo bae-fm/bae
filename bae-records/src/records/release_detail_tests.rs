@@ -171,7 +171,14 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     #[cfg(desktop)]
     {
         let edited = db
-            .read(move |sql| super::release::release_edit_tracks_on(&sql, release))
+            .read(move |sql| {
+                super::release::release_edit_tracks_on(
+                    &sql,
+                    "?1",
+                    MediumsSource::Release,
+                    [release],
+                )
+            })
             .await
             .unwrap();
         let edited: Vec<_> =

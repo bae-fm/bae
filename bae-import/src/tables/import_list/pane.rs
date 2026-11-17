@@ -157,8 +157,10 @@ fn draft_rows_on(
     let mapping = super::mapping_rows::load_mapping_rows_on(sql, key)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions =
-        super::credit_resolutions::credit_resolutions_on(sql, OneCandidate::Scanned(key))?;
+    let artist_resolutions = super::credit_resolutions::credit_resolutions_on(
+        sql,
+        super::credit_resolutions::CreditSource::Candidate(OneCandidate::Scanned(key)),
+    )?;
     // Every catalog record of what the candidate is linked to, merged in one
     // statement over the stored releases: the linked pressing's releases
     // describe it, an album names its own.

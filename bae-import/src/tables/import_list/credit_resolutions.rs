@@ -1,5 +1,5 @@
-//! What the library holds for each artist credit of a candidate's draft, read
-//! in one statement over the draft's credits.
+//! What the library holds for each artist credit of a candidate's draft or
+//! of a release editor's session, read in one statement over its credits.
 //!
 //! The statement states the rule an import commits by (`bae_records`'
 //! `artist_resolution` and `catalog_match`) as a read of the credits alone, in
@@ -15,8 +15,9 @@
 use super::*;
 use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
 
-/// The resolution of every distinct credit of the draft `:hash`, in the order
-/// the draft lists them: its album's credits, then each explicit track's.
+/// The resolution of every distinct credit that the source's statement
+/// ([`CreditSource::raw`]) selects, in the order the draft lists them: its
+/// album's credits, then each explicit track's.
 ///
 /// SQLite copies a WITH name's whole definition at every place that names it,
 /// and a statement holding more than `SQLITE_LIMIT_EXPR_DEPTH` (1000) cursors
@@ -26,20 +27,7 @@ use bae_records::{CreditResolution, ExistingArtist, ResolvedCredit};
 /// puts the four tries of a credit's ids in columns of one row.
 const CREDIT_RESOLUTIONS: &str = "
 WITH
-raw AS (
-    SELECT 0 AS part, 0 AS track_position, a.position AS position, a.credited_as, a.name,
-           a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg
-    FROM import_candidate_album_artist_assignment AS a
-    WHERE a.content_hash = :hash AND a.assignment_kind = 'credit'
-    UNION ALL
-    SELECT 1, t.position, a.position, a.credited_as, a.name, a.sort_name,
-           a.musicbrainz_artist_id, a.discogs_artist_id
-    FROM import_candidate_track_artist_assignment AS a
-    JOIN import_candidate_track AS t
-        ON t.content_hash = a.content_hash AND t.track_id = a.track_id
-    WHERE a.content_hash = :hash AND a.assignment_kind = 'credit'
-      AND t.artist_assignment_kind = 'explicit'
-),
+raw AS ({raw}),
 credit AS (
     SELECT ROW_NUMBER() OVER (ORDER BY first_seen) AS idx, credited_as, name, sort_name, mb, dg,
            bae_artist_name_key(name) AS name_key
@@ -185,10 +173,61 @@ FROM (SELECT z.*,
       FROM placed AS z) AS p
 ORDER BY p.idx";
 
-/// The statement with the ids it names: the Various Artists entries of both
-/// catalogs, how a try's ids agree with the ids an artist holds, and each
-/// try's columns pivoted into the credit's row.
-fn statement() -> String {
+/// Whose credits a resolution statement reads: a candidate's draft, or a
+/// release editor's session by its id.
+#[derive(Clone, Copy)]
+pub(crate) enum CreditSource<'a> {
+    Candidate(crate::tables::import_state::OneCandidate<'a>),
+    Session(&'a i64),
+}
+
+impl CreditSource<'_> {
+    /// The statement selecting each credit of the source's album artists and
+    /// explicit tracks' artists as `(part, track_position, position,
+    /// credited_as, name, sort_name, mb, dg)`: the album's in part 0, each
+    /// track's in part 1.
+    fn raw(self) -> String {
+        let (tables, track, owner) = match self {
+            Self::Candidate(candidate) => (
+                &crate::tables::import_state::CANDIDATE_DRAFT,
+                "import_candidate_track",
+                candidate.hash_sql(),
+            ),
+            Self::Session(_) => {
+                (&crate::tables::RELEASE_EDIT_SESSION_DRAFT, "release_edit_track", ":session")
+            }
+        };
+        format!(
+            "SELECT 0 AS part, 0 AS track_position, a.position AS position, a.credited_as, \
+                    a.name, a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
+             FROM {album_artist} AS a \
+             WHERE a.{key} = {owner} AND a.assignment_kind = 'credit' \
+             UNION ALL \
+             SELECT 1, t.position, a.position, a.credited_as, a.name, a.sort_name, \
+                    a.musicbrainz_artist_id, a.discogs_artist_id \
+             FROM {track_artist} AS a \
+             JOIN {track} AS t ON t.{key} = a.{key} AND t.track_id = a.track_id \
+             WHERE a.{key} = {owner} AND a.assignment_kind = 'credit' \
+               AND t.artist_assignment_kind = 'explicit'",
+            album_artist = tables.album_artist,
+            track_artist = tables.track_artist,
+            key = tables.key,
+        )
+    }
+
+    /// What [`Self::raw`] binds, as a statement's parameters.
+    fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
+        match self {
+            Self::Candidate(candidate) => candidate.params(),
+            Self::Session(session) => vec![(":session", *session as &dyn rusqlite::ToSql)],
+        }
+    }
+}
+
+/// The statement over `source`'s credits with the ids it names: the Various
+/// Artists entries of both catalogs, how a try's ids agree with the ids an
+/// artist holds, and each try's columns pivoted into the credit's row.
+fn statement(source: CreditSource<'_>) -> String {
     // Whether no catalog id the try's credit carries differs from the one the
     // holder's columns (`dg`, `mb` prefixed by `side`) have, once filled.
     let agree = |side: &str| {
@@ -232,6 +271,7 @@ fn statement() -> String {
         )
     };
     CREDIT_RESOLUTIONS
+        .replace("{raw}", &source.raw())
         .replace("{VA_DISCOGS}", bae_records::VARIOUS_ARTISTS.discogs)
         .replace("{VA_MUSICBRAINZ}", bae_records::VARIOUS_ARTISTS.musicbrainz)
         .replace("{agree_m}", &agree("m"))
@@ -248,14 +288,13 @@ fn statement() -> String {
         )
 }
 
-/// What the library holds for each distinct artist credit of the draft of
-/// `candidate`, in the order the draft lists them.
-pub(super) fn credit_resolutions_on(
-    sql: &SqlReadContext<'_>,
-    candidate: crate::tables::import_state::OneCandidate<'_>,
+/// What the library holds for each distinct artist credit of `source`, in
+/// the order its draft lists them.
+pub(crate) fn credit_resolutions_on(
+    sql: &impl coven::SqlRead,
+    source: CreditSource<'_>,
 ) -> Result<Vec<ResolvedCredit>, DbError> {
-    let statement = statement().replace(":hash", candidate.hash_sql());
-    Ok(sql.query(&statement, candidate.params().as_slice(), |row| {
+    Ok(sql.query(&statement(source), source.params().as_slice(), |row| {
         let unreadable = |error: String| {
             rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, error.into())
         };

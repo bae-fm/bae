@@ -122,7 +122,7 @@ pub enum MappingSource {
 ///
 /// Narrower than the role the scan proposes: a folder's track sheet is not a
 /// row here — it heads a group of rows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MappingRole {
     /// Playable audio.
     Audio,
@@ -145,7 +145,7 @@ pub enum MappingRole {
 
 /// A file of the folder, as the mapping table's left half shows it, or a
 /// file of a library release, as its editor lists it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MappingFile {
     /// The id the file is read by: in a folder, its relative path, which the
     /// sheet bindings take; in the library, its release file's id.
@@ -156,9 +156,47 @@ pub struct MappingFile {
     pub name: String,
     pub size: u64,
     /// The whole-file audition target when this file currently supplies audio.
+    #[serde(with = "stored_preview_target")]
     pub preview_target: Option<bae_track_audio::PreviewTarget>,
     pub audio_format: Option<bae_types::audio_format::AudioFormat>,
     pub role: MappingRole,
+}
+
+/// A file's audition target as JSON: the file's path and the samples the
+/// target spans. A target records no byte landings, so these columns hold
+/// all of it.
+mod stored_preview_target {
+    use bae_track_audio::PreviewTarget;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize)]
+    struct Stored {
+        path: std::path::PathBuf,
+        start_sample: u64,
+        end_sample: Option<u64>,
+    }
+
+    pub(super) fn serialize<S: serde::Serializer>(
+        target: &Option<PreviewTarget>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        target
+            .as_ref()
+            .map(|target| Stored {
+                path: target.path().to_path_buf(),
+                start_sample: target.span().start_sample,
+                end_sample: target.span().end_sample,
+            })
+            .serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<PreviewTarget>, D::Error> {
+        Ok(Option::<Stored>::deserialize(deserializer)?.map(|stored| {
+            PreviewTarget::sample_range(stored.path, stored.start_sample, stored.end_sample)
+        }))
+    }
 }
 
 /// One entry of a track sheet, as the mapping table's left half shows it.

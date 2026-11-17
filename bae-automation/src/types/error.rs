@@ -70,6 +70,7 @@ impl From<LibraryError> for AutomationError {
             // An import step's failure crosses as any import error does.
             LibraryError::Import(error) => Self::from(*error),
             error @ (LibraryError::ReleaseMissing { .. }
+            | LibraryError::ReleaseEditClosed { .. }
             | LibraryError::AlbumMissing { .. }
             | LibraryError::FileMissing { .. }
             | LibraryError::EditRowMissing(_)) => Self::NotFound(error.to_string()),

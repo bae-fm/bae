@@ -82,7 +82,7 @@ mod lookup_choice_rows;
 mod lookup_failure_columns;
 mod match_record;
 mod match_rows;
-mod pane_rows;
+pub(super) mod pane_rows;
 mod preparation_rows;
 mod release_link_rows;
 mod rows;
@@ -108,6 +108,7 @@ pub(crate) use import_commit::{
 };
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 pub use pane_rows::DbCandidatePaneRows;
+pub(super) use pane_rows::CANDIDATE_DRAFT;
 pub(super) use pane_rows::{load_pane_rows_on, track_json_sql, StoredTrack};
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;

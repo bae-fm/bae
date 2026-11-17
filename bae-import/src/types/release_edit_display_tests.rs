@@ -74,103 +74,40 @@ fn a_sheet_run_ends_at_its_side() {
     assert_eq!(runs(&sides[1]), [(None, vec!["b1"])]);
 }
 
-#[test]
-fn placed_tracks_are_laid_out_again_at_their_new_places() {
-    use SourceAudioLayout::File;
-    let display = ReleaseEditDisplayContext {
-        source_audio: None,
-        sides: ReleaseEditTrackSide::lay_out(
-            ["t1", "t2", "t3"].map(|id| (TrackSide::Flat, context(id, id, File))),
-        ),
+/// No files beside the tracks' audio.
+fn no_files() -> bae_records::DbReleaseFiles {
+    bae_records::DbReleaseFiles {
         files: Vec::new(),
-    };
-
-    let placed = display.placed([
-        TrackPosition::Disc { disc: 1, number: 1 },
-        TrackPosition::Disc { disc: 1, number: 2 },
-        TrackPosition::Disc { disc: 2, number: 1 },
-    ]);
-
-    assert_eq!(
-        placed.sides.iter().map(|side| &side.side).collect::<Vec<_>>(),
-        [&TrackSide::Disc { disc: 1 }, &TrackSide::Disc { disc: 2 }]
-    );
-    assert_eq!(
-        placed
-            .tracks()
-            .map(|track| (track.track_id.as_str(), track.position_text.as_str()))
-            .collect::<Vec<_>>(),
-        [("t1", "1"), ("t2", "2"), ("t3", "1")]
-    );
+        images: Vec::new(),
+        covers: Vec::new(),
+        others: Vec::new(),
+        has_others: false,
+        count: 0,
+        image_count: 0,
+        total_size: 0,
+        source_audio: None,
+    }
 }
 
-/// One track's release with its audio as the editor reads it, the track's
-/// segments in order.
+/// One track whose audio holds `main_segment_count` main segments, the
+/// first over `main`.
 fn one_track(
-    segments: Vec<bae_records::DbReleaseEditSegment>,
-) -> (bae_records::DbReleaseDetail, Vec<bae_records::DbReleaseEditTrack>) {
+    main_segment_count: i64,
+    main: Option<bae_records::DbReleaseEditSegment>,
+) -> Vec<bae_records::DbReleaseEditTrack> {
     let release = bae_records::DbRelease::new_test("album-id", "release-id");
-    let track = bae_records::DbTrack::new_test(&release.id, "track-id", "Track Title", 1);
-    let raw = bae_records::DbReleaseDetail {
-        release,
-        total_duration_ms: track.duration_ms,
-        track_groups: vec![bae_records::DbTrackGroup {
-            side: TrackSide::Flat,
-            tracks: vec![bae_records::DbTrackWithArtists {
-                id: track.id.clone(),
-                title: track.title.clone(),
-                duration_ms: track.duration_ms,
-                position: TrackPosition::Flat { number: 1 },
-                artists: Vec::new(),
-                shown_artists: Vec::new(),
-                works: Vec::new(),
-                my_stars: None,
-            }],
-            total_duration_ms: track.duration_ms,
-            shows_time: false,
-            second_column_start: None,
-        }],
-        credits: Vec::new(),
-        has_credits: false,
-        performs_works: false,
-        files: bae_records::DbReleaseFiles {
-            files: Vec::new(),
-            images: Vec::new(),
-            covers: Vec::new(),
-            others: Vec::new(),
-            has_others: false,
-            count: 0,
-            image_count: 0,
-            total_size: 0,
-            source_audio: None,
-        },
-        records: Vec::new(),
-        has_records: false,
-        elsewhere: None,
-        pinned: false,
-        remote: false,
-        upload: None,
-        cover_version: None,
-        release_number: 1,
-    };
-    (
-        raw,
-        vec![bae_records::DbReleaseEditTrack {
-            track,
-            position: TrackPosition::Flat { number: 1 },
-            audio_format_count: 1,
-            segments,
-        }],
-    )
+    vec![bae_records::DbReleaseEditTrack {
+        track: bae_records::DbTrack::new_test(&release.id, "track-id", "Track Title", 1),
+        position: TrackPosition::Flat { number: 1 },
+        audio_format_count: 1,
+        main_segment_count,
+        main_segment: main,
+    }]
 }
 
-/// A segment of `role` over the stored file `file_id`.
-fn segment(
-    role: bae_records::DbAudioSegmentRole,
-    file_id: &str,
-) -> bae_records::DbReleaseEditSegment {
+/// A main segment over the stored file `file_id`.
+fn segment(file_id: &str) -> bae_records::DbReleaseEditSegment {
     bae_records::DbReleaseEditSegment {
-        role,
         file_id: file_id.to_string(),
         file: Some(bae_records::DbReleaseEditSourceFile {
             name: format!("{file_id}.flac"),
@@ -179,46 +116,25 @@ fn segment(
     }
 }
 
-/// A track whose pregap is stored at the tail of the file before names only
-/// the file its body plays from.
-#[test]
-fn a_track_s_source_is_its_body_s_file_not_its_pregap_s() {
-    use bae_records::DbAudioSegmentRole::{AudioPregap, Main};
-    let (raw, tracks) =
-        one_track(vec![segment(AudioPregap, "first-file"), segment(Main, "second-file")]);
-
-    let display = ReleaseEditDisplayContext::from_raw(&raw, tracks).unwrap();
-
-    let sources: Vec<_> = display.tracks().map(|track| track.source.name.as_str()).collect();
-    assert_eq!(sources, ["second-file.flac"]);
-}
-
 #[test]
 fn a_track_without_one_body_is_an_editor_load_error() {
-    use bae_records::DbAudioSegmentRole::{AudioPregap, Main};
-    let (raw, tracks) = one_track(vec![segment(AudioPregap, "file")]);
     assert!(matches!(
-        ReleaseEditDisplayContext::from_raw(&raw, tracks),
+        ReleaseEditDisplayContext::from_raw(&no_files(), one_track(0, None)),
         Err(ReleaseEditLoadError::MissingMainSegment { track_id }) if track_id == "track-id"
     ));
-
-    let (raw, tracks) = one_track(vec![segment(Main, "file"), segment(Main, "other-file")]);
     assert!(matches!(
-        ReleaseEditDisplayContext::from_raw(&raw, tracks),
+        ReleaseEditDisplayContext::from_raw(&no_files(), one_track(2, Some(segment("file")))),
         Err(ReleaseEditLoadError::MultipleMainSegments { track_id }) if track_id == "track-id"
     ));
 }
 
 #[test]
 fn missing_segment_file_is_an_editor_load_error() {
-    let (raw, tracks) = one_track(vec![bae_records::DbReleaseEditSegment {
-        role: bae_records::DbAudioSegmentRole::Main,
-        file_id: "missing-file-id".to_string(),
-        file: None,
-    }]);
+    let missing =
+        bae_records::DbReleaseEditSegment { file_id: "missing-file-id".to_string(), file: None };
 
     assert!(matches!(
-        ReleaseEditDisplayContext::from_raw(&raw, tracks),
+        ReleaseEditDisplayContext::from_raw(&no_files(), one_track(1, Some(missing))),
         Err(ReleaseEditLoadError::MissingSourceFile { file_id, .. })
             if file_id == "missing-file-id"
     ));
@@ -269,19 +185,20 @@ fn stored_file(
 fn the_files_no_track_plays_from_are_listed_with_their_roles() {
     use crate::MappingRole;
     use bae_records::ReleaseFileRole::{Artwork, Audio, DamagedImage, Document, Other, TrackSheet};
-    let (mut raw, tracks) =
-        one_track(vec![segment(bae_records::DbAudioSegmentRole::Main, "id-disc.flac")]);
-    raw.files.others = vec![
+    let mut files = no_files();
+    files.others = vec![
         stored_file("back.png", DamagedImage, None),
         stored_file("cover.jpg", Artwork, None),
         stored_file("disc.cue", TrackSheet, None),
         stored_file("notes.nfo", Other, None),
         stored_file("rip.log", Document(bae_records::DocumentKind::RipLog), None),
     ];
-    raw.files.files = raw.files.others.clone();
-    raw.files.files.push(stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)));
+    files.files = files.others.clone();
+    files.files.push(stored_file("disc.flac", Audio, Some(SourceAudioLayout::Cue)));
 
-    let display = ReleaseEditDisplayContext::from_raw(&raw, tracks).unwrap();
+    let display =
+        ReleaseEditDisplayContext::from_raw(&files, one_track(1, Some(segment("id-disc.flac"))))
+            .unwrap();
 
     assert_eq!(
         display

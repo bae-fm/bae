@@ -487,66 +487,62 @@ impl Records {
     }
 }
 
-/// Each of a release's tracks in release order, with its side's kind and
-/// ordinal and its number there, how many audio formats it stores and its
-/// formats' segments in segment order as a JSON array, each with its role and
-/// the name and stored audio layout of the release file it names.
+/// Each track of the release `release` (an SQL expression naming its id) in
+/// release order, placed on the mediums `source` names: its side's kind and
+/// ordinal and its number there, how many audio formats it stores, how many
+/// main segments they hold, and the first main segment's file id, with the
+/// name and stored audio layout of the release file of that id when the
+/// release holds one.
 #[cfg(desktop)]
-fn release_edit_tracks_sql() -> String {
+fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
     format!(
-        "WITH {placed} \
+        "WITH {placed}, \
+         main AS ( \
+            SELECT af.track_id, s.file_id, \
+                   ROW_NUMBER() OVER (PARTITION BY af.track_id ORDER BY s.segment_index) AS n, \
+                   COUNT(*) OVER (PARTITION BY af.track_id) AS main_count \
+            FROM audio_formats af \
+            JOIN audio_format_segments s ON s.audio_format_id = af.id \
+            JOIN tracks t ON t.id = af.track_id \
+            WHERE t.release_id = {release} AND s.role = 'main') \
      SELECT t.*, p.side_kind, p.side_ordinal, p.number AS place_number, \
         (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
-        (SELECT json_group_array(json_object( \
-                    'role', s.role, \
-                    'file_id', s.file_id, \
-                    'found', json(CASE WHEN f.id IS NULL THEN 'false' ELSE 'true' END), \
-                    'name', f.original_filename, 'layout', f.source_audio_layout) \
-                ORDER BY s.segment_index) \
-         FROM audio_formats af \
-         JOIN audio_format_segments s ON s.audio_format_id = af.id \
-         LEFT JOIN release_files f ON f.id = s.file_id \
-         WHERE af.track_id = t.id) AS segments_json \
-     FROM tracks t JOIN placed p ON p.id = t.id WHERE t.release_id = ?1 ORDER BY t.position",
-        placed = super::release_tracks::placed_tracks_ctes("?1", ""),
+        COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
+        f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
+        f.source_audio_layout AS main_file_layout \
+     FROM tracks t JOIN placed p ON p.id = t.id \
+     LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
+     LEFT JOIN release_files f ON f.id = main.file_id \
+     WHERE t.release_id = {release} ORDER BY t.position",
+        placed = super::release_tracks::placed_tracks_ctes(release, source, ""),
     )
 }
 
+/// The tracks of the release `release` (an SQL expression over `params`
+/// naming its id) as the release editor reads their audio, in release order,
+/// each placed on the mediums `source` names.
 #[cfg(desktop)]
 pub fn release_edit_tracks_on(
     sql: &impl coven::SqlRead,
-    release_id: &str,
+    release: &str,
+    source: MediumsSource<'_>,
+    params: impl rusqlite::Params,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
-    #[derive(serde::Deserialize)]
-    struct Segment {
-        role: String,
-        file_id: String,
-        found: bool,
-        name: Option<String>,
-        layout: Option<String>,
-    }
-    Ok(sql.query(&release_edit_tracks_sql(), params![release_id], |row| {
-        let segments: Vec<Segment> = bae_store::read::json_column(row, "segments_json")?;
-        let segments = segments
-            .into_iter()
-            .map(|segment| {
-                let role =
-                    crate::DbAudioSegmentRole::from_db_value(&segment.role).ok_or_else(|| {
-                        bae_store::read::column_conversion_error(
-                            row,
-                            "segments_json",
-                            format!("unknown segment role {:?}", segment.role),
-                        )
-                    })?;
-                let file = match (segment.found, segment.name) {
+    Ok(sql.query(&release_edit_tracks_sql(release, source), params, |row| {
+        let main_file_id: Option<String> = row.get("main_file_id")?;
+        let found: bool = row.get("main_file_found")?;
+        let name: Option<String> = row.get("main_file_name")?;
+        let layout: Option<String> = row.get("main_file_layout")?;
+        let main_segment = main_file_id
+            .map(|file_id| {
+                let file = match (found, name) {
                     (true, Some(name)) => Some(DbReleaseEditSourceFile {
                         name,
-                        layout: segment
-                            .layout
+                        layout: layout
                             .map(|layout| {
                                 super::read::source_audio_layout_value(
                                     row,
-                                    "segments_json",
+                                    "main_file_layout",
                                     &layout,
                                 )
                             })
@@ -556,14 +552,14 @@ pub fn release_edit_tracks_on(
                     (true, None) => {
                         return Err(bae_store::read::column_conversion_error(
                             row,
-                            "segments_json",
-                            format!("release file {} has no name", segment.file_id),
+                            "main_file_name",
+                            format!("release file {file_id} has no name"),
                         ))
                     }
                 };
-                Ok(DbReleaseEditSegment { role, file_id: segment.file_id, file })
+                Ok(DbReleaseEditSegment { file_id, file })
             })
-            .collect::<rusqlite::Result<Vec<_>>>()?;
+            .transpose()?;
         let position = super::release_tracks::track_position_of(
             &row.get::<_, String>("side_kind")?,
             row.get("side_ordinal")?,
@@ -574,7 +570,8 @@ pub fn release_edit_tracks_on(
             track: row_to_track(row)?,
             position,
             audio_format_count: row.get("audio_format_count")?,
-            segments,
+            main_segment_count: row.get("main_count")?,
+            main_segment,
         })
     })?)
 }

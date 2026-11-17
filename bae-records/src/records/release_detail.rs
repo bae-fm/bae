@@ -240,6 +240,21 @@ fn release_files_json_sql(release: &str) -> String {
     )
 }
 
+/// The files of the release `release` (an SQL expression over `params`
+/// naming its id), as its detail reads them.
+#[cfg(desktop)]
+pub fn release_files_on(
+    sql: &impl coven::SqlRead,
+    release: &str,
+    params: impl rusqlite::Params,
+) -> Result<DbReleaseFiles, DbError> {
+    Ok(sql.query_row(
+        &format!("SELECT {} AS files", release_files_json_sql(release)),
+        params,
+        |row| release_files_column(row, "files"),
+    )?)
+}
+
 /// The release's files as [`release_files_json_sql`] read them into `column`.
 fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbReleaseFiles> {
     #[derive(serde::Deserialize)]

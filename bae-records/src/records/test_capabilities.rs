@@ -294,7 +294,8 @@ impl Records {
             None,
             ReleaseEditWrite::Applied { rows, picked },
             AlbumFields::Written,
-            |_| Ok(true),
+            |_| Ok(Ok(())),
+            |_| Ok(()),
         )
         .await
     }

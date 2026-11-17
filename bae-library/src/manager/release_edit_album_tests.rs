@@ -41,7 +41,7 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
     };
 
     let session = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(session.opened().album, named(&own));
+    assert_eq!(super::tests::opened(manager, &session).await.album, named(&own));
     let applied = manager
         .apply_release_edit_catalog(
             &session,

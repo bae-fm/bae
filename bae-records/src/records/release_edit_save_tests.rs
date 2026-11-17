@@ -30,7 +30,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_session_opened() {
                 sql.query_row("SELECT title FROM albums WHERE id = ?", [ALBUM_A], |row| {
                     row.get(0)
                 })?;
-            Ok(title == expected)
+            Ok(if title == expected { Ok(()) } else { Err(ReleaseEditRefusal::Stale) })
         }
     };
     let save = |check| async {
@@ -59,6 +59,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_session_opened() {
                 ReleaseEditWrite::Applied { rows, picked: Vec::new() },
                 AlbumFields::Written,
                 check,
+                |_| Ok(()),
             )
             .await
     };

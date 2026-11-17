@@ -32,6 +32,10 @@ pub enum ReleaseEditRefusal {
     /// own write found it.
     #[error("the release changed after the session opened")]
     Stale,
+    /// The session's rows are gone: its editor closed it, or its release
+    /// was deleted.
+    #[error("the session is closed")]
+    Closed,
     #[error(transparent)]
     Identity(#[from] IdentityRefusal),
 }
@@ -42,21 +46,25 @@ pub type ReleaseEditSaveError = WriteError<ReleaseEditRefusal>;
 
 #[cfg(desktop)]
 impl Records {
-    /// Save an edit session: in one transaction — all of it, or none — first
+    /// Save an edit session: in one transaction, all of it or none, first
     /// check, as `still_as_opened` says, that the release is still as the
     /// session opened on it, then move the release and replace its records
-    /// where `change` says (see `set_records_on`), then write `write`. A
-    /// release that is not is refused as [`ReleaseEditRefusal::Stale`] before
-    /// anything is written; the check runs in the write, so no other write
-    /// lands between it and the rows.
+    /// where `change` says (see `set_records_on`), then write `write`, then
+    /// write the session again on the release as saved with `reseed`. A
+    /// release that is not as the session opened on it is refused as
+    /// [`ReleaseEditRefusal::Stale`] before anything is written, and a closed
+    /// session as [`ReleaseEditRefusal::Closed`]; the check runs in the
+    /// write, so no other write lands between it and the rows, and none
+    /// lands between the rows and the session's new values.
     pub async fn save_release_edit_atomic(
         &self,
         change: Option<RecordsChange>,
         write: ReleaseEditWrite,
         album_fields: AlbumFields,
-        still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<bool, DbError>
+        still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
+        reseed: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<(), DbError> + Send + 'static,
     ) -> Result<(), ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
         let pressing = PressingParts::new(
@@ -78,9 +86,7 @@ impl Records {
         };
         self.store
             .write(move |sql| {
-                if !still_as_opened(&sql)? {
-                    return Err(WriteError::Refused(ReleaseEditRefusal::Stale));
-                }
+                still_as_opened(&sql)?.map_err(WriteError::Refused)?;
                 let emptiable = Emptiable::of_releases(&sql, &[release_id.as_str()])?
                     .including_album(&sql, &album_id)?;
                 if let Some(change) = &change {
@@ -106,7 +112,7 @@ impl Records {
                 }
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
                 emptiable.remove_emptied(&sql)?;
-                Ok(())
+                Ok(reseed(&sql)?)
             })
             .await
     }

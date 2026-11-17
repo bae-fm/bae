@@ -22,6 +22,7 @@
 
 mod actions;
 mod credit_resolutions;
+pub(crate) use credit_resolutions::{credit_resolutions_on, CreditSource};
 mod folder_images;
 mod follows_candidates;
 mod follows_groupings;
