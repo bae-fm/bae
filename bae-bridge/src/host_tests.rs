@@ -48,6 +48,10 @@ fn bootstrap_error_maps_to_failure_kind() {
         AppStartFailureKind::Database
     );
     assert_eq!(
+        app_start_failure_kind(&BootstrapError::Damaged("x".to_string())),
+        AppStartFailureKind::Database
+    );
+    assert_eq!(
         app_start_failure_kind(&BootstrapError::Internal("x".to_string())),
         AppStartFailureKind::Internal
     );

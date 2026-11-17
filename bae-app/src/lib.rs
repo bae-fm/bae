@@ -65,8 +65,10 @@ pub enum BootstrapError {
     Config(String),
     #[error("{0}")]
     Database(String),
+    /// This device's copy of the library's data can't be used: its database
+    /// file is damaged.
     #[error("{0}")]
-    DeviceResetRequired(String),
+    Damaged(String),
     /// A reset or a restore of this device's copy stopped after the new copy
     /// took the old one's place. Only running the named call again finishes
     /// it; until then the library doesn't open.
@@ -122,7 +124,7 @@ impl BootstrapError {
             Self::LibraryNotFound(id) => return Err(id),
             Self::Config(_) => C::Config,
             Self::Database(_) => C::Database,
-            Self::DeviceResetRequired(_) => C::DeviceResetRequired,
+            Self::Damaged(_) => C::DatabaseDamaged,
             // The class names the one call that finishes the replacement, so
             // the host offers that call and never the other.
             Self::ReplacementUnfinished(by) => C::ReplacementUnfinished(*by),
@@ -170,7 +172,7 @@ fn classify_open_error(error: bae_store::DbError) -> BootstrapError {
             }
         },
         error @ coven::CovenError::Database(coven::DbError::DamagedDatabase) => {
-            BootstrapError::DeviceResetRequired(error.to_string())
+            BootstrapError::Damaged(error.to_string())
         }
         coven::CovenError::Lock(coven::StoreLockError::ReplacementUnfinished { by, .. }) => {
             BootstrapError::ReplacementUnfinished(by)

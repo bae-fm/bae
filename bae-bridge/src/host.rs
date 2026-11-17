@@ -703,9 +703,7 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
     match error {
         BootstrapError::LibraryNotFound(_) => AppStartFailureKind::LibraryNotFound,
         BootstrapError::Config(_) => AppStartFailureKind::Config,
-        BootstrapError::Database(_) | BootstrapError::DeviceResetRequired(_) => {
-            AppStartFailureKind::Database
-        }
+        BootstrapError::Database(_) | BootstrapError::Damaged(_) => AppStartFailureKind::Database,
         BootstrapError::Internal(_) => AppStartFailureKind::Internal,
         BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
         BootstrapError::KeychainEntitlementMissing(_) => {

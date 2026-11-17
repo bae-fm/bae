@@ -3400,7 +3400,8 @@ library's storage until its invite ends, and the person's saved restore code
 stays. A
 library that fails to open on a Mac shows the failure joined to its row, under
 its name: **Could not open**, with **Details**; when what failed is the
-library's data on this Mac, such as tables that don't match the app's, it
+library's data on this Mac, such as a damaged database file or tables that
+don't match the app's, it
 says "Something is wrong with this library’s data." and offers **Reset from
 cloud…**, the reset below, in place of *Retry*; a library kept on this Mac
 only, which has no storage to reset from (coven refuses with `NoStorage`),
@@ -4492,18 +4493,22 @@ its control says so in core's words for that transfer.
   writes nothing. coven sends a release file's row without waiting for its
   upload, so the upload holds no write and its record names no holding file.
 
-**Resetting a device.** Opening can fail because the database is damaged, and
-sync can find that another installation replaced this one
+**Resetting a device.** Opening can fail because this device's copy of the
+library's data can't be used, such as a damaged database file or tables that
+don't match the app's, and sync can find that another installation replaced
+this one
 ([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)),
 which coven reports as the last pass's failure. There, and only there (a copy
 behind another installation resets at once, below), bae
 offers Reset from cloud: load the library from storage again under a fresh
-device id. Before it does, a warning says that edits on this device
-that haven't synced will be discarded. The person was told before choosing, so
-nothing is shown after; bae doesn't present coven's reset notice. The screen
-says why in the middle of the window and offers *Reset from cloud…*, whose
-alert (a dialog on Android), titled "Reset from cloud?", gives the warning,
-with *Reset* and *Cancel*. Leaving the
+device id. A failed open offers it only when the library has storage to load
+it from, beside the failure where the app shows it (§5.6). Before it does, a
+warning says that edits on this device that haven't synced will be discarded. The person was told before choosing, so
+nothing is shown after; bae doesn't present coven's reset notice. When sync
+finds another installation, the screen says why in the middle of the window
+and offers *Reset from cloud…*. Either way, *Reset from cloud…* opens an
+alert (a dialog on Android), titled "Reset from cloud?", which gives the
+warning, with *Reset* and *Cancel*. Leaving the
 screen without resetting, by *Cancel* on a Mac or Back on Android, returns to
 the open library, to the Mac's library list, or on a phone with no library
 open, to onboarding. A reset that fails returns to that screen saying
@@ -6990,7 +6995,7 @@ with one of these categories and a detail:
 | `DatabaseBusy` | asks again: the library's database was busy with other work, or what the call read changed under it |
 | `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; resets the library from the cloud (§6.4) when it has storage |
 | `SyncUpdateRequired` | updates the app |
-| `DeviceResetRequired` | resets the device, after its warning (§6.4) |
+| `DeviceResetRequired` | resets the device, after its warning (§6.4): sync found another installation using this device's id |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
 | `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate or the library's artists changed before its write, and importing again works on what now stands |
 | `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |

@@ -169,3 +169,19 @@ fn an_open_that_failed_on_a_bug_shows_as_one() {
         ));
     }
 }
+
+/// A damaged database file is this device's copy of the library's data
+/// failing, which a reset from the cloud replaces: it opens as damaged, not
+/// as a device that sync found must be reset.
+#[test]
+fn a_damaged_database_file_opens_as_damaged() {
+    let error =
+        bae_store::DbError::from(coven::CovenError::Database(coven::DbError::DamagedDatabase));
+
+    let failure = super::classify_open_error(error);
+
+    assert!(matches!(failure, BootstrapError::Damaged(_)), "{failure:?}");
+    let bae_diagnostics::UiError::Diagnostic { category, .. } = failure.ui_error().unwrap();
+    assert_eq!(category, bae_diagnostics::UiErrorCategory::DatabaseDamaged);
+    assert!(category.reset_from_cloud_replaces());
+}
