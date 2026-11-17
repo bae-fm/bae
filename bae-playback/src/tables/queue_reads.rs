@@ -155,8 +155,9 @@ fn queue_value_on(sql: &SqlReadContext<'_>) -> Result<crate::ResolvedQueueSnapsh
     )?;
     // The playing track is the one at the lane's cursor, in shuffled order
     // when shuffle is on and in list order otherwise; with no cursor, no
-    // track comes before or after it. `follows` says whether anything plays
-    // after the playing track: Up Next, or the context lane past its cursor.
+    // track comes before or after it. `follows` is true when a track plays
+    // after the playing track: a track in Up Next, or a track in the context
+    // lane past its cursor.
     // `has_next` is true when `follows` is true or repeat is on, and
     // `is_empty` is true when `follows` is false.
     let place = "CASE q.shuffled WHEN 1 THEN c.shuffled ELSE c.ordered END";
