@@ -62,7 +62,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStoragePart
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeSubsonicNetwork
-import uniffi.bae_bridge.BridgeTopPlayable
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeWorkReleaseSummary
@@ -256,10 +255,8 @@ object BridgeFixtures {
         BridgeComposerSummary(
             artistId = artistId,
             name = name,
-            sortName = null,
             countLine = BridgeCountLabel(key = "core.library.work_count", count = 1uL),
             linkedReleaseCount = 1L,
-            unlinkedCreditCount = 0L,
             image = null,
         )
 
@@ -270,11 +267,8 @@ object BridgeFixtures {
         BridgeWorkSummary(
             workId = workId,
             title = title,
-            disambiguation = null,
-            workType = null,
             composerNames = "Composer Name",
             linkedReleaseCount = 1L,
-            representativeReleaseId = "rel-1",
             representativeCover = null,
         )
 
@@ -312,7 +306,6 @@ object BridgeFixtures {
         tracks: List<BridgeTrackSearchResult> = emptyList(),
         composers: List<BridgeComposerSummary> = emptyList(),
         works: List<BridgeWorkSummary> = emptyList(),
-        topPlayable: BridgeTopPlayable? = null,
     ): BridgeSearchResults =
         BridgeSearchResults(
             albums = albums,
@@ -320,7 +313,6 @@ object BridgeFixtures {
             tracks = tracks,
             composers = composers,
             works = works,
-            topPlayable = topPlayable,
             found =
                 albums.isNotEmpty() || artists.isNotEmpty() || tracks.isNotEmpty() ||
                     composers.isNotEmpty() || works.isNotEmpty(),

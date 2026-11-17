@@ -152,15 +152,11 @@ struct SearchResultsTests {
                     BridgeWorkSummary(
                         workId: "work-child-a",
                         title: "Work Title A",
-                        disambiguation: nil,
-                        workType: "part",
                         composerNames: "Composer Name A",
                         linkedReleaseCount: 1,
-                        representativeReleaseId: "release-a",
                         representativeCover: nil
                     )
                 ],
-                topPlayable: nil,
                 found: true,
                 sectionCounts: BridgeSearchSectionCounts(
                     albums: 0,

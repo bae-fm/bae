@@ -13,13 +13,11 @@ extension PreviewData {
     static let composerSummary = BridgeComposerSummary(
         artistId: "composer-0",
         name: "Composer Name",
-        sortName: nil,
         countLine: BridgeCountLabel(
             key: "core.library.work_count",
             count: 6
         ),
         linkedReleaseCount: 4,
-        unlinkedCreditCount: 2,
         image: nil,
     )
 
@@ -30,13 +28,11 @@ extension PreviewData {
             return BridgeComposerSummary(
                 artistId: "composer-\(index)",
                 name: "Composer Name \(index + 1)",
-                sortName: nil,
                 countLine: BridgeCountLabel(
                     key: "core.library.work_count",
                     count: UInt64(2 + index % 6)
                 ),
                 linkedReleaseCount: linkedReleaseCount,
-                unlinkedCreditCount: 0,
                 image: nil,
             )
         }
@@ -132,11 +128,8 @@ extension PreviewData {
                         work: BridgeWorkSummary(
                             workId: "work-\(index)",
                             title: "Work Title \(index + 1)",
-                            disambiguation: nil,
-                            workType: nil,
                             composerNames: "Composer Name",
                             linkedReleaseCount: 1,
-                            representativeReleaseId: nil,
                             representativeCover: BridgeImageRef(
                                 id: "cover-\(index)",
                                 version: "1",
@@ -160,11 +153,8 @@ extension PreviewData {
             BridgeWorkSummary(
                 workId: "work-\(index)",
                 title: "Work Title \(index + 1)",
-                disambiguation: nil,
-                workType: nil,
                 composerNames: "Composer Name",
                 linkedReleaseCount: Int64(1 + index),
-                representativeReleaseId: nil,
                 representativeCover: nil,
             )
         }

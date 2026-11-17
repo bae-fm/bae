@@ -127,7 +127,6 @@ private final class SearchProbe: @unchecked Sendable {
                         tracks: [],
                         composers: [],
                         works: [],
-                        topPlayable: nil,
                         found: false,
                         sectionCounts: BridgeSearchSectionCounts(
                             albums: 0,

@@ -256,10 +256,8 @@ object PreviewData {
         BridgeComposerSummary(
             artistId = artistId,
             name = name,
-            sortName = null,
             countLine = BridgeCountLabel(key = "core.library.work_count", count = 3uL),
             linkedReleaseCount = 5L,
-            unlinkedCreditCount = 0L,
             image = null,
         )
 
@@ -270,11 +268,8 @@ object PreviewData {
         BridgeWorkSummary(
             workId = workId,
             title = title,
-            disambiguation = null,
-            workType = null,
             composerNames = "Composer Name",
             linkedReleaseCount = 2L,
-            representativeReleaseId = "rel-1",
             representativeCover = null,
         )
 
@@ -291,7 +286,6 @@ object PreviewData {
             tracks = tracks,
             composers = composers,
             works = works,
-            topPlayable = null,
             found = true,
             sectionCounts =
                 BridgeSearchSectionCounts(

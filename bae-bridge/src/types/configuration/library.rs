@@ -7,10 +7,6 @@ pub struct BridgeSearchResults {
     pub tracks: Vec<BridgeTrackSearchResult>,
     pub composers: Vec<BridgeComposerSummary>,
     pub works: Vec<BridgeWorkSummary>,
-    /// The track a spoken "play" of the search plays: the first track found,
-    /// else the first track of the first album found; `None` when the search
-    /// finds neither.
-    pub top_playable: Option<BridgeTopPlayable>,
     /// Whether the search found anything of any kind, which the empty state
     /// reads.
     pub found: bool,
@@ -87,11 +83,9 @@ pub struct BridgeTrackSearchResult {
 pub struct BridgeComposerSummary {
     pub artist_id: String,
     pub name: String,
-    pub sort_name: Option<String>,
     /// The line under its name: how many works it is credited on.
     pub count_line: BridgeCountLabel,
     pub linked_release_count: i64,
-    pub unlinked_credit_count: i64,
     pub image: Option<BridgeImageRef>,
 }
 
@@ -99,11 +93,8 @@ pub struct BridgeComposerSummary {
 pub struct BridgeWorkSummary {
     pub work_id: String,
     pub title: String,
-    pub disambiguation: Option<String>,
-    pub work_type: Option<String>,
     pub composer_names: Option<String>,
     pub linked_release_count: i64,
-    pub representative_release_id: Option<String>,
     pub representative_cover: Option<BridgeImageRef>,
 }
 

@@ -126,6 +126,7 @@ internal open class FakeAppHandle(
     private val albumTracks: Map<String, List<BridgeBrowseTrack>> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
+    private val searchTopPlayable: (query: String) -> BridgeTopPlayable? = { null },
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
     var deliverSearchResultsImmediately: Boolean = true,
 ) : PlaylistFakeAppHandle() {
@@ -391,7 +392,7 @@ internal open class FakeAppHandle(
             }
         }
 
-    override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = searchResults(query).topPlayable
+    override suspend fun readSearchTopPlayable(query: String): BridgeTopPlayable? = searchTopPlayable(query)
 
     override suspend fun readAlbumDetail(albumId: String): BridgeAlbumDetail? = albumDetails[albumId]
 

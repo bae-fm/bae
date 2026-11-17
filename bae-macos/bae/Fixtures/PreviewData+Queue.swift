@@ -603,13 +603,11 @@ extension PreviewData {
                 BridgeComposerSummary(
                     artistId: "artist-composer-a",
                     name: "Composer Name A",
-                    sortName: "Composer Name A",
                     countLine: BridgeCountLabel(
                         key: "core.library.work_count",
                         count: 2
                     ),
                     linkedReleaseCount: 3,
-                    unlinkedCreditCount: 0,
                     image: nil
                 )
             ],
@@ -617,15 +615,11 @@ extension PreviewData {
                 BridgeWorkSummary(
                     workId: "work-a",
                     title: "Work Title A",
-                    disambiguation: nil,
-                    workType: "work",
                     composerNames: "Composer Name A",
                     linkedReleaseCount: 2,
-                    representativeReleaseId: "release-a",
                     representativeCover: nil
                 )
             ],
-            topPlayable: nil,
             found: true,
             sectionCounts: BridgeSearchSectionCounts(
                 albums: 3,

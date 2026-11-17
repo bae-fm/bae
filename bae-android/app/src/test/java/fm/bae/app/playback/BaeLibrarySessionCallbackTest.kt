@@ -150,9 +150,7 @@ class BaeLibrarySessionCallbackTest {
     @Test
     fun aSpokenQueryResolvesToTheTopTrack() {
         val handle =
-            FakeAppHandle(searchResults = {
-                BridgeFixtures.searchResults(topPlayable = BridgeTopPlayable(releaseId = "rel-1", trackId = "trk-1"))
-            })
+            FakeAppHandle(searchTopPlayable = { BridgeTopPlayable(releaseId = "rel-1", trackId = "trk-1") })
         val tree = tree(handle)
         val callback = BaeLibrarySessionCallback(tree, grants(), CoroutineScope(Dispatchers.Unconfined)) { "not found: $it" }
 

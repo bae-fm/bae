@@ -260,19 +260,29 @@ impl BridgeTrackSearchResult {
     }
 }
 
-mirror_struct! {
-    BridgeSearchResults = bae_views::album_detail::SearchResults,
-    from_core: pub(crate) fn,
-    fields: {
-        albums: (each BridgeAlbumSearchResult),
-        artists: (each BridgeArtistSummary),
-        tracks: (each BridgeTrackSearchResult),
-        composers: (each BridgeComposerSummary),
-        works: (each BridgeWorkSummary),
-        top_playable: (opt crate::types::BridgeTopPlayable),
-        found,
-        section_counts: (crate::types::BridgeSearchSectionCounts),
-    },
+impl BridgeSearchResults {
+    pub(crate) fn from_core(results: bae_views::album_detail::SearchResults) -> Self {
+        let bae_views::album_detail::SearchResults {
+            albums,
+            artists,
+            tracks,
+            composers,
+            works,
+            // A spoken play reads the top playable on its own call.
+            top_playable: _,
+            found,
+            section_counts,
+        } = results;
+        Self {
+            albums: albums.into_iter().map(BridgeAlbumSearchResult::from_core).collect(),
+            artists: artists.into_iter().map(BridgeArtistSummary::from_core).collect(),
+            tracks: tracks.into_iter().map(BridgeTrackSearchResult::from_core).collect(),
+            composers: composers.into_iter().map(BridgeComposerSummary::from_core).collect(),
+            works: works.into_iter().map(BridgeWorkSummary::from_core).collect(),
+            found,
+            section_counts: crate::types::BridgeSearchSectionCounts::from_core(section_counts),
+        }
+    }
 }
 
 mirror_struct! {
@@ -440,13 +450,16 @@ impl BridgeComposerSummary {
             // Read as the count line above.
             work_count: _,
             linked_release_count,
-            unlinked_credit_count,
+            // No screen shows how many credits name the composer without a
+            // work.
+            unlinked_credit_count: _,
         } = s;
         let bae_records::DbArtist {
             id: artist_id,
             name,
-            sort_name,
-            // Per-source dedup ids and the row timestamp don't cross to the UI.
+            // The sort name, per-source dedup ids and the row timestamp don't
+            // cross to the UI.
+            sort_name: _,
             discogs_artist_id: _,
             musicbrainz_artist_id: _,
             created_at: _,
@@ -454,10 +467,8 @@ impl BridgeComposerSummary {
         BridgeComposerSummary {
             artist_id,
             name,
-            sort_name,
             count_line,
             linked_release_count,
-            unlinked_credit_count,
             image: image.map(crate::types::BridgeImageRef::from_core),
         }
     }
@@ -503,7 +514,8 @@ impl BridgeWorkSummary {
     pub(super) fn from_core(s: bae_views::DbWorkSummary) -> Self {
         let bae_views::DbWorkSummary {
             work,
-            representative_release_id,
+            // The screens show the release's cover, not its id.
+            representative_release_id: _,
             representative_cover,
             composer_names,
             linked_release_count,
@@ -511,8 +523,9 @@ impl BridgeWorkSummary {
         let bae_records::DbWork {
             id: work_id,
             title,
-            disambiguation,
-            work_type,
+            // The work's disambiguation and type aren't surfaced.
+            disambiguation: _,
+            work_type: _,
             // The source id the row was deduped on isn't surfaced.
             musicbrainz_work_id: _,
             // Row timestamp isn't surfaced.
@@ -521,11 +534,8 @@ impl BridgeWorkSummary {
         BridgeWorkSummary {
             work_id,
             title,
-            disambiguation,
-            work_type,
             composer_names,
             linked_release_count,
-            representative_release_id,
             representative_cover: representative_cover.map(crate::types::BridgeImageRef::from_core),
         }
     }

@@ -542,7 +542,6 @@ fn composer_detail_row_conversion_carries_its_heading_and_part() {
     };
     assert!(part);
     assert_eq!(work.work_id, "work-child-a");
-    assert_eq!(work.representative_release_id.as_deref(), Some("release-a"));
 }
 
 #[test]

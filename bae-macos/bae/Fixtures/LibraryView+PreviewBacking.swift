@@ -110,11 +110,8 @@ extension LibraryView {
                 BridgeWorkSummary(
                     workId: "work-\(index)",
                     title: "Work Title \(index + 1)",
-                    disambiguation: nil,
-                    workType: nil,
                     composerNames: "Composer Name 1",
                     linkedReleaseCount: Int64(1 + index),
-                    representativeReleaseId: nil,
                     representativeCover: nil,
                 )
             }
@@ -160,13 +157,11 @@ extension LibraryView {
                 BridgeComposerSummary(
                     artistId: "composer-\(index)",
                     name: "Composer Name \(index + 1)",
-                    sortName: nil,
                     countLine: BridgeCountLabel(
                         key: "core.library.work_count",
                         count: UInt64(2 + index % 6)
                     ),
                     linkedReleaseCount: Int64(3 + index % 4),
-                    unlinkedCreditCount: 0,
                     image: nil,
                 )
             }
