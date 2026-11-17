@@ -16,9 +16,9 @@ impl ImportServiceHandle {
         self.watcher.send(command).map_err(|ended| ended.end.into())
     }
 
-    /// Watch a folder, in whatever spelling the caller had. A folder already
-    /// watched, or inside one, reads that watched folder again, so choosing it
-    /// always visibly does something.
+    /// Watch a folder, in whatever spelling the caller had. bae reads a folder
+    /// it already watches again, and refuses a folder inside a watched one
+    /// with an error that names both folders.
     pub async fn add_watched_folder(
         &self,
         path: std::path::PathBuf,
@@ -27,7 +27,8 @@ impl ImportServiceHandle {
         self.committed(async move { this.add_watched_folder_write(path).await }).await
     }
 
-    /// Store `path` as watched and ask for it to be read. A folder holding
+    /// Store `path` as watched and ask for it to be read. bae refuses a folder
+    /// inside a watched one before it writes anything, and a folder holding
     /// watched folders takes them over.
     async fn add_watched_folder_write(
         &self,
@@ -35,12 +36,10 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::ImportError> {
         let path = crate::tables::watched_path::canonical_absolute_root(&path)?;
         let shown = coven::path_text(&path);
-        if let Some(covering) = self.services.tables.watched_import_folder_above(&path).await? {
-            info!(
-                "{shown} is inside the watched folder {}; re-reading it",
-                coven::path_text(&covering)
+        if let Some(watched) = self.services.tables.watched_import_folder_above(&path).await? {
+            return Err(
+                crate::tables::WatchedFolderRefusal::Overlap { folder: path, watched }.into()
             );
-            return self.send_watcher_command(WatcherCommand::Rescan(covering));
         }
         let inner: Vec<std::path::PathBuf> =
             self.services.tables.watched_import_folders_below(&path).await?;

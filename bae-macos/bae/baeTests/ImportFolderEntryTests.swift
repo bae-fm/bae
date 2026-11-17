@@ -49,6 +49,27 @@ struct ImportFolderEntryTests {
         #expect(uiStore.lastError != nil)
     }
 
+    @Test("an add that overlaps a watched folder shows both folders")
+    func anOverlapShowsBothFolders() async throws {
+        let detail =
+            "watched folders cannot overlap: /Music/Album conflicts with /Music"
+        let refusal = BridgeError.Diagnostic(
+            category: .watchedFolderOverlap,
+            detail: detail
+        )
+        let uiStore = UiStore()
+        let entry = ImportFolderEntry(
+            importer: Importer(addWatchedFolder: { _ in throw refusal }),
+            uiStore: uiStore
+        )
+
+        await entry.take(try folder())?.value
+
+        let shown = try #require(uiStore.lastError)
+        #expect(shown.line.contains(try #require(refusal.localizedLine)))
+        #expect(shown.detail == detail)
+    }
+
     @Test("a file is refused before anything is added")
     func aFileIsRefused() throws {
         let file = try folder().appendingPathComponent("01 Track.flac")

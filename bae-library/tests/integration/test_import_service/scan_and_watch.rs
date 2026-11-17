@@ -338,35 +338,32 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
-/// Adding a folder inside a watched one reads the watched one again rather
-/// than watching an overlapping root.
+/// Adding a folder inside a watched one is refused before bae writes
+/// anything, and the error names both folders: the person sees which folder
+/// already watches it.
 #[tokio::test]
-async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
+async fn adding_a_folder_inside_a_watched_one_is_refused_naming_both() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     let root = f.temp_path().join("Collection");
     let album = root.join("Artist - Album");
     fs::create_dir_all(&album).unwrap();
     generate_album_files(&album, &["01 Track.flac"]);
-    let root_key = root.to_path_buf();
+    f.handle.add_watched_folder(root.clone()).await.unwrap();
+    wait_for_reads(&f, "the folder is read", &[&root]).await;
 
-    // Every whole read of the root ends with `Finished`, in order: the second
-    // is the read adding the folder inside it asked for.
-    let mut scan_rx = f.handle.every_scan_event_for_test();
-    f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
-    wait_for_scan_event(&mut scan_rx, "the first scan of the added root", |event| {
-        matches!(event, ScanEvent::Finished)
-    })
-    .await;
-
-    f.handle.add_watched_folder(album.to_path_buf()).await.unwrap();
-    wait_for_scan_event(&mut scan_rx, "the covering root is scanned again", |event| {
-        matches!(event, ScanEvent::Finished)
-    })
-    .await;
+    let error = f.handle.add_watched_folder(album.clone()).await.unwrap_err();
+    assert!(
+        matches!(
+            &error,
+            bae_import::ImportError::WatchedFolders(
+                bae_import::tables::WatchedFolderRefusal::Overlap { folder, watched }
+            ) if *folder == album && *watched == root
+        ),
+        "{error}"
+    );
     let watched = f.handle.watched_folders().await.unwrap();
-    assert_eq!(watched.len(), 1);
-    assert_eq!(watched[0].path, root_key);
+    assert_eq!(watched.into_iter().map(|folder| folder.path).collect::<Vec<_>>(), [root]);
 }
 
 /// An album folder with one track at `relative` under the fixture's folder.
