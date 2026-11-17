@@ -24,7 +24,6 @@ import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeDeviceRemoval
 import uniffi.bae_bridge.BridgeDownloadCounts
-import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeHeldImage
@@ -62,7 +61,6 @@ import uniffi.bae_bridge.BridgeSavePresetWrite
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeSearchResults
 import uniffi.bae_bridge.BridgeSetupCancellation
-import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortValue
@@ -95,8 +93,6 @@ import uniffi.bae_bridge.PeopleSubscription
 import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
-import uniffi.bae_bridge.PlaylistDetailSubscription
-import uniffi.bae_bridge.PlaylistsSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.RequestedProfileSubscription
@@ -131,7 +127,7 @@ internal open class FakeAppHandle(
     private val searchResults: (query: String) -> BridgeSearchResults = { BridgeFixtures.searchResults() },
     private val initialSearchError: (query: String) -> uniffi.bae_bridge.BridgeException? = { null },
     var deliverSearchResultsImmediately: Boolean = true,
-) : EditionFakeAppHandle() {
+) : PlaylistFakeAppHandle() {
     private val composerList = FakeComposerList()
 
     var pauseCount = 0
@@ -560,11 +556,6 @@ internal open class FakeAppHandle(
 
     override suspend fun tracksInReleaseOrder(trackIds: List<String>): List<String> = unfaked("tracksInReleaseOrder")
 
-    override suspend fun appendPlaylistEntries(
-        playlist: String,
-        trackIds: List<String>,
-    ): Unit = unfaked("appendPlaylistEntries")
-
     override suspend fun resolveToTrackIds(ids: List<String>): List<String> = unfaked("resolveToTrackIds")
 
     override suspend fun retryDownload(releaseId: String) {
@@ -860,60 +851,16 @@ internal open class FakeAppHandle(
 
     override fun followAddDevice(pairing: String): AddDeviceStatusSubscription = unfaked("followAddDevice")
 
-    override suspend fun appendPlaylistEntry(
-        playlist: String,
-        track: String,
-    ): String = unfaked("appendPlaylistEntry")
-
     override suspend fun avatar(person: String): ByteArray? = unfaked("avatar")
-
-    override suspend fun createPlaylist(
-        name: String,
-        sharing: BridgeSharing,
-        trackIds: List<String>,
-    ): String = unfaked("createPlaylist")
 
     override suspend fun createProfile(name: String) {
         unfaked("createProfile")
     }
 
-    override suspend fun editPlaylist(
-        id: String,
-        name: String,
-        sharing: BridgeSharing,
-    ) {
-        unfaked("editPlaylist")
-    }
-
-    override suspend fun deletePlaylist(id: String) {
-        unfaked("deletePlaylist")
-    }
-
     override suspend fun libraryName(): String = unfaked("libraryName")
-
-    override suspend fun playPlaylist(
-        playlistId: String,
-        startPositionId: String?,
-        shuffle: Boolean,
-    ): BridgePlayOutcome = unfaked("playPlaylist")
-
-    override suspend fun removePlaylistEntry(
-        playlist: String,
-        position: String,
-    ) {
-        unfaked("removePlaylistEntry")
-    }
 
     override suspend fun renameProfile(name: String) {
         unfaked("renameProfile")
-    }
-
-    override suspend fun movePlaylistEntry(
-        playlist: String,
-        position: String,
-        place: BridgeEntryPlace,
-    ) {
-        unfaked("movePlaylistEntry")
     }
 
     override suspend fun setAvatar(bytes: ByteArray?) {
@@ -932,10 +879,6 @@ internal open class FakeAppHandle(
     }
 
     override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
-
-    override fun subscribePlaylistDetail(): PlaylistDetailSubscription = unfaked("subscribePlaylistDetail")
-
-    override fun subscribePlaylists(): PlaylistsSubscription = FakePlaylistsSubscription()
 
     /** The profile this device's person asked for, which a test delivers to. */
     val requestedProfile = FakeRequestedProfileSubscription()
