@@ -217,7 +217,7 @@ async fn listed_alerts(
 /// shown. The same problem stays shown; the progress lists a different one
 /// again, and also a problem with the same detail of another kind.
 #[tokio::test]
-async fn a_problem_is_owed_an_alert_until_it_is_marked_shown() {
+async fn the_progress_lists_a_problem_s_alert_until_the_app_marks_it_shown() {
     use crate::FolderScanAlertKind::{Failed, NotWatched};
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
@@ -282,6 +282,38 @@ async fn a_folder_that_recovers_gets_an_alert_for_its_next_problem() {
         .await
         .unwrap();
     assert_eq!(listed_alerts(&tables).await, [(Failed, "the disk is full".to_string())]);
+}
+
+/// A completed scan ends the folder's problem, so the next failed or
+/// unwatched scan lists its alert again, even with the detail the app
+/// already showed.
+#[tokio::test]
+async fn a_completed_scan_ends_the_problem_so_the_next_one_alerts_again() {
+    use crate::FolderScanAlertKind::{Failed, NotWatched};
+    let (tables, root, _temp) = watching_music().await;
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
+    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
+
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+    assert_eq!(listed_alerts(&tables).await, [], "a completed scan has no problem");
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
+    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
+
+    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan_unwatched(&root, generation, "limit reached").await.unwrap();
+    tables
+        .mark_folder_scan_alert_shown(&root, NotWatched, "limit reached".to_string())
+        .await
+        .unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan(&root, generation, None).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    tables.finish_folder_scan_unwatched(&root, generation, "limit reached").await.unwrap();
+    assert_eq!(listed_alerts(&tables).await, [(NotWatched, "limit reached".to_string())]);
 }
 
 /// A folder no longer watched records no alert, and the library opens with
