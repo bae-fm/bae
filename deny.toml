@@ -30,10 +30,11 @@ ignore = [
     # which uniffi_bindgen uses to template the generated bindings. Compile-time
     # only; no runtime exposure. No upgrade path until askama drops it.
     "RUSTSEC-2026-0374",
-    # chrono: unmaintained date and time crate. oauth2 (through coven-storage),
+    # chrono is an unmaintained date and time crate. oauth2 (through coven-storage),
     # rmcp (through bae-mcp) and tracing-etw (through bae-bridge) each depend on
     # it unconditionally, and their newest releases (oauth2 5.0.0, rmcp 3.10.0,
-    # tracing-etw 0.3.0) still do. No upgrade path until they drop it.
+    # tracing-etw 0.3.0) still do, so no update of them removes chrono from
+    # bae's dependencies.
     "RUSTSEC-2026-0543",
 ]
 
