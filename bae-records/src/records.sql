@@ -731,8 +731,6 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_audio_formats_track_id ON audio_formats (track_id);
-
 -- The consecutive spans of a file a track's audio is read from: its pregap,
 -- then its main body.
 CREATE TABLE IF NOT EXISTS audio_format_segments (
