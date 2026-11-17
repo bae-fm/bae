@@ -703,8 +703,9 @@ pub fn init_app_on_fixture(
     host.open_app_on_fixture(fixture_path.into(), library_id, restore_playback, &opening)
 }
 
-/// The store that `library_id` names. When the id names no store, this
-/// returns `BridgeOpenError::Failed`, which offers the app no recovery.
+/// The store that `library_id` names. When the id names no store,
+/// `registered_store` returns `BridgeOpenError::Failed`, which offers the app
+/// no recovery.
 fn registered_store(library_id: &str) -> Result<coven::StoreId, BridgeOpenError> {
     crate::from_app::store(library_id).map_err(|error| BridgeOpenError::Failed { error })
 }
