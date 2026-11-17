@@ -73,7 +73,6 @@ impl BridgeEntryPlace {
 pub struct BridgePersonProfile {
     pub id: String,
     pub name: String,
-    pub private_circle: String,
     pub history_sharing: BridgeHistorySharing,
     /// The version of the person's avatar, which an app caches the image
     /// `AppHandle::avatar` reads under; it moves whenever the avatar's bytes
@@ -83,12 +82,17 @@ pub struct BridgePersonProfile {
 }
 impl BridgePersonProfile {
     pub(crate) fn from_core(value: bae_people::people::PersonProfile) -> Self {
-        let bae_people::people::PersonProfile { id, name, private_circle, history_sharing, avatar } =
-            value;
+        let bae_people::people::PersonProfile {
+            id,
+            name,
+            // Core shares history with the circle; no screen names it.
+            private_circle: _,
+            history_sharing,
+            avatar,
+        } = value;
         Self {
             id: id.0.to_string(),
             name,
-            private_circle: private_circle.0.to_string(),
             history_sharing: BridgeHistorySharing::from_core(history_sharing),
             avatar_version: avatar.map(|avatar| avatar.version),
         }

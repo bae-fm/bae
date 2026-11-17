@@ -38,7 +38,6 @@ import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
-import uniffi.bae_bridge.BridgeMemberPublicKeys
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePauseBoundary
@@ -68,9 +67,6 @@ import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
 import uniffi.bae_bridge.BridgeWorkSummary
-
-/** A member's signing and sealing public keys are each 32 bytes. */
-private const val PUBLIC_KEY_BYTES = 32
 
 /**
  * `Bridge*` fixtures for the screenshot scenes and the tests, in the main source
@@ -457,7 +453,6 @@ object PreviewData {
     ): BridgeMember =
         BridgeMember(
             id = id,
-            keys = BridgeMemberPublicKeys(signing = ByteArray(PUBLIC_KEY_BYTES), sealing = ByteArray(PUBLIC_KEY_BYTES)),
             role = role,
             access = BridgeMemberAccess.S3AccessKey(accessKeyId = "AKIAPREVIEWKEY"),
             isSelf = isSelf,
@@ -482,7 +477,6 @@ object PreviewData {
                 BridgePersonProfile(
                     id = member.id,
                     name = "Person Name",
-                    privateCircle = "circle-1",
                     historySharing = BridgeHistorySharing.PRIVATE,
                     avatarVersion = null,
                 ),

@@ -19,12 +19,10 @@ impl BridgeJoinRequest {
 pub struct BridgeJoinRequestInfo {
     pub invite: String,
     pub member: String,
-    pub keys: BridgeMemberPublicKeys,
     pub device_name: String,
     /// The name the person typed when they joined, which the request
     /// carries; the approval's title.
     pub name: String,
-    pub provider_account_email: Option<String>,
     /// The six digits the requester's device shows, as coven writes them
     /// (`041 778`).
     pub confirmation: String,
@@ -35,10 +33,8 @@ impl BridgeJoinRequest {
         BridgeJoinRequestInfo {
             invite: self.request.invite.0.to_string(),
             member: self.request.member.0.to_string(),
-            keys: BridgeMemberPublicKeys::from_core(self.request.keys),
             device_name: self.request.device_name.clone(),
             name: self.name.clone(),
-            provider_account_email: self.request.provider_account_email.clone(),
             confirmation: self.request.confirmation.to_string(),
         }
     }

@@ -26,19 +26,6 @@ pub enum BridgeFormerDeviceState {
 mirror_enum! { BridgeFormerDeviceState = bae_store::FormerDeviceState,
     from_core: pub(crate) fn, variants: { Removed, Replaced },
 }
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeMemberPublicKeys {
-    pub signing: Vec<u8>,
-    pub sealing: Vec<u8>,
-}
-impl BridgeMemberPublicKeys {
-    pub(crate) fn from_core(keys: coven::MemberPublicKeys) -> Self {
-        Self {
-            signing: keys.signing.as_bytes().to_vec(),
-            sealing: keys.sealing.as_bytes().to_vec(),
-        }
-    }
-}
 /// A device that can still sync.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeActiveDevice {
@@ -86,7 +73,6 @@ impl BridgeMemberAccess {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMember {
     pub id: String,
-    pub keys: BridgeMemberPublicKeys,
     pub role: BridgeMemberRole,
     /// None for the library's creator until Set up storage records theirs.
     pub access: Option<BridgeMemberAccess>,
@@ -104,7 +90,6 @@ impl BridgeMember {
     fn from_core(value: bae_people::membership::MembershipMember) -> Self {
         let bae_people::membership::MembershipMember {
             id,
-            keys,
             role,
             access,
             is_self,
@@ -116,7 +101,6 @@ impl BridgeMember {
         } = value;
         Self {
             id: id.0.to_string(),
-            keys: BridgeMemberPublicKeys::from_core(keys),
             role: BridgeMemberRole::from_core(role),
             access: access.map(BridgeMemberAccess::from_core),
             is_self,

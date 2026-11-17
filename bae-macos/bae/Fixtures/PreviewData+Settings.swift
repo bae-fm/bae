@@ -76,16 +76,11 @@ extension PreviewData {
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
                 name: "Ana",
-                privateCircle: "circle-a",
                 historySharing: .private,
                 avatarVersion: nil
             ),
             membership: BridgeMember(
                 id: "4a1f2c3d-0000-4000-8000-000000000001",
-                keys: BridgeMemberPublicKeys(
-                    signing: Data(),
-                    sealing: Data()
-                ),
                 role: .admin,
                 access: .providerAccount(email: "person-a@example.com"),
                 isSelf: true,
@@ -128,16 +123,11 @@ extension PreviewData {
             profile: BridgePersonProfile(
                 id: "4a1f2c3d-0000-4000-8000-000000000002",
                 name: "Ben",
-                privateCircle: "circle-b",
                 historySharing: .household,
                 avatarVersion: nil
             ),
             membership: BridgeMember(
                 id: "4a1f2c3d-0000-4000-8000-000000000002",
-                keys: BridgeMemberPublicKeys(
-                    signing: Data(),
-                    sealing: Data()
-                ),
                 role: .member,
                 access: .providerAccount(email: "person-b@example.com"),
                 isSelf: false,

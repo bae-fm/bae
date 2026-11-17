@@ -1,6 +1,5 @@
 #[cfg(any(test, feature = "oauth-providers"))]
 use super::BridgeError;
-use super::BridgeStoreKeyState;
 
 /// Provider location without credentials, as recorded by coven.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -184,14 +183,12 @@ mirror_enum! {
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeStorageSetup {
     pub location: BridgeStorageLocation,
-    pub key_state: BridgeStoreKeyState,
     pub restore_code: String,
 }
 impl BridgeStorageSetup {
     pub(crate) fn from_core(value: coven::StorageSetup) -> Self {
         Self {
             location: BridgeStorageLocation::from_core(value.connection.storage),
-            key_state: value.connection.key_state.into(),
             restore_code: value.restore_code.as_str().to_string(),
         }
     }

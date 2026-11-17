@@ -58,7 +58,6 @@ pub struct FormerDevice {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MembershipMember {
     pub id: coven::MemberId,
-    pub keys: coven::MemberPublicKeys,
     pub role: coven::MemberRole,
     /// How they reach storage: on S3 the id of their key, which the person
     /// deletes in the provider's console when they remove the member. None

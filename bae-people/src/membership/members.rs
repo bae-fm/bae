@@ -33,7 +33,7 @@ macro_rules! self_is_admin {
 macro_rules! member_columns {
     () => {
         concat!(
-            "m.member, m.role, m.is_self, m.signing, m.sealing, m.account, m.access_key_id, \
+            "m.member, m.role, m.is_self, m.account, m.access_key_id, \
          (SELECT json_group_array(json_array(hex(d.device), d.name, \
                      json(CASE WHEN d.is_self THEN 'true' ELSE 'false' END)) \
                      ORDER BY d.device) \
@@ -72,7 +72,7 @@ const SELF_IS_ADMIN: &str = concat!("SELECT ", self_is_admin!());
 /// Whether the member using this device is an admin, as the row whose
 /// [`member_columns`] start at column `first` holds it.
 fn self_is_admin_column(row: &Row<'_>, first: usize) -> rusqlite::Result<bool> {
-    row.get(first + 11)
+    row.get(first + 9)
 }
 
 /// The member whose [`member_columns`] start at column `first`.
@@ -90,14 +90,9 @@ pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Member
             ))
         }
     };
-    let keys = coven::MemberPublicKeys {
-        signing: coven::SigningKey::from_bytes(row.get(first + 3)?)
-            .map_err(|error| column_conversion_error(row, first + 3, error))?,
-        sealing: coven::SealingKey::from_bytes(row.get(first + 4)?),
-    };
     let access = match (
-        row.get::<_, Option<String>>(first + 5)?,
-        row.get::<_, Option<String>>(first + 6)?,
+        row.get::<_, Option<String>>(first + 3)?,
+        row.get::<_, Option<String>>(first + 4)?,
     ) {
         (Some(account), None) => Some(coven::MemberAccess::ProviderAccount(account)),
         (None, Some(access_key_id)) => Some(coven::MemberAccess::S3AccessKey { access_key_id }),
@@ -106,27 +101,26 @@ pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Member
         (Some(_), Some(_)) => {
             return Err(column_conversion_error(
                 row,
-                first + 5,
+                first + 3,
                 "a member's access holds both an account and an S3 key id",
             ))
         }
     };
-    let active: Vec<(String, String, bool)> = json_column(row, first + 7)?;
-    let former: Vec<(String, String, String)> = json_column(row, first + 8)?;
+    let active: Vec<(String, String, bool)> = json_column(row, first + 5)?;
+    let former: Vec<(String, String, String)> = json_column(row, first + 6)?;
     Ok(MembershipMember {
         id: row.get(first)?,
-        keys,
         role,
         access,
         is_self,
         can_remove: MembershipMember::removable(self_is_admin, is_self),
-        active_device_count: row.get(first + 9)?,
-        former_device_count: row.get(first + 10)?,
+        active_device_count: row.get(first + 7)?,
+        former_device_count: row.get(first + 8)?,
         active_devices: active
             .into_iter()
             .map(|(id, name, device_is_self)| {
                 Ok(ActiveDevice {
-                    id: device_id(row, first + 7, &id)?,
+                    id: device_id(row, first + 5, &id)?,
                     name,
                     is_self: device_is_self,
                     can_remove: ActiveDevice::removable(self_is_admin, is_self, device_is_self),
@@ -139,12 +133,12 @@ pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Member
             .into_iter()
             .map(|(id, name, state)| {
                 Ok(FormerDevice {
-                    id: device_id(row, first + 8, &id)?,
+                    id: device_id(row, first + 6, &id)?,
                     name,
                     state: FormerDeviceState::of_state(&state).ok_or_else(|| {
                         column_conversion_error(
                             row,
-                            first + 8,
+                            first + 6,
                             format!("{state} is not a device state"),
                         )
                     })?,
