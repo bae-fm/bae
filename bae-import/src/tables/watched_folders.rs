@@ -175,22 +175,31 @@ fn overlapping_watched_folder_on(
     if let Some(above) = watched_folder_among_on(sql, folder.ancestors().skip(1))? {
         return Ok(Some(above));
     }
-    Ok(watched_folders_below_on(sql, folder)?.into_iter().next())
+    Ok(sql
+        .query_row(&format!("{BELOW} LIMIT 1"), below_params(folder), |row| {
+            path_column::get(row, 0)
+        })
+        .optional()?)
 }
 
-/// The watched folders inside `folder`, not `folder` itself, in their order:
-/// those whose key lies in the range of paths below it.
+/// The watched folders inside a folder, not the folder itself, in their
+/// order: those whose key lies in the range of paths below it, given
+/// [`below_params`].
+const BELOW: &str = "SELECT path FROM watched_import_folders \
+                     WHERE path >= ?1 AND path < ?2 AND path <> ?3 ORDER BY position";
+
+/// The parameters [`BELOW`] reads the watched folders inside `folder` with.
+fn below_params(folder: &Path) -> [Vec<u8>; 3] {
+    let (first, past) = crate::tables::watched_path::paths_below(folder);
+    [first, past, coven::path_bytes(folder)]
+}
+
+/// The watched folders inside `folder`, not `folder` itself, in their order.
 fn watched_folders_below_on(
     sql: &impl coven::SqlRead,
     folder: &Path,
 ) -> Result<Vec<PathBuf>, DbError> {
-    let (first, past) = crate::tables::watched_path::paths_below(folder);
-    Ok(sql.query(
-        "SELECT path FROM watched_import_folders \
-         WHERE path >= ? AND path < ? AND path <> ? ORDER BY position",
-        params![first, past, coven::path_bytes(folder)],
-        |row| path_column::get(row, 0),
-    )?)
+    Ok(sql.query(BELOW, below_params(folder), |row| path_column::get(row, 0))?)
 }
 
 /// Refuse `folder` when it holds, or lies in, a watched folder. The error
