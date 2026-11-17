@@ -67,10 +67,8 @@ impl LibraryManager {
     /// its own; a session on the same release elsewhere is untouched.
     pub async fn open_release_edit(&self, release_id: &str) -> Result<ReleaseEdit, LibraryError> {
         let tables = self.import_tables.clone();
-        let session = tables
-            .open_release_edit_session(release_id)
-            .await
-            .map_err(|error| release_edit_error(error, None))?;
+        let session =
+            tables.open_release_edit_session(release_id).await.map_err(release_edit_open_error)?;
         Ok(ReleaseEdit {
             release_id: release_id.to_string(),
             session,
@@ -103,7 +101,7 @@ impl LibraryManager {
             .tables
             .change_release_edit_session(session.session, change)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))
+            .map_err(|error| release_edit_error(error, session))
     }
 
     /// Write one album-level field of the form as the person left it.
@@ -203,7 +201,7 @@ impl LibraryManager {
             .tables
             .apply_to_release_edit_session(session.session, applied)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))
+            .map_err(|error| release_edit_error(error, session))
     }
 
     /// Record `pick` as the album `session` files its release under: a
@@ -219,7 +217,7 @@ impl LibraryManager {
             .tables
             .pick_release_edit_album(session.session, pick)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))
+            .map_err(|error| release_edit_error(error, session))
     }
 
     /// Open `session` again on the release as the library holds it now,
@@ -229,7 +227,7 @@ impl LibraryManager {
             .tables
             .reseed_release_edit_session(session.session)
             .await
-            .map_err(|error| release_edit_error(error, Some(session)))
+            .map_err(|error| release_edit_error(error, session))
     }
 
     /// Save `session`: in one write, the form as the person left it, every
@@ -366,19 +364,26 @@ impl LibraryManager {
     }
 }
 
-/// A session write's refusal as the library words it.
-fn release_edit_error(
-    error: bae_import::tables::ReleaseEditSessionError,
-    session: Option<&ReleaseEdit>,
-) -> LibraryError {
-    use ReleaseEditSessionRefusal as R;
+/// An open's refusal as the library words it.
+fn release_edit_open_error(error: bae_import::tables::ReleaseEditOpenError) -> LibraryError {
+    use bae_import::tables::ReleaseEditSeedRefusal as R;
     LibraryError::of_write(error, &|refusal| match refusal {
-        R::Closed(_) => LibraryError::ReleaseEditClosed {
-            release_id: session.map(|session| session.release_id.clone()).unwrap_or_default(),
-        },
         R::ReleaseMissing(release_id) => {
             LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
         }
+        R::Unreadable(error) => LibraryError::from(error),
+    })
+}
+
+/// A write's refusal on the open session `session`, as the library words
+/// it.
+fn release_edit_error(
+    error: bae_import::tables::ReleaseEditSessionError,
+    session: &ReleaseEdit,
+) -> LibraryError {
+    use ReleaseEditSessionRefusal as R;
+    LibraryError::of_write(error, &|refusal| match refusal {
+        R::Closed(_) => LibraryError::ReleaseEditClosed { release_id: session.release_id.clone() },
         R::RowMissing(id) => LibraryError::EditRowMissing(id),
         R::AlbumMissing(album_id) => LibraryError::AlbumMissing { album_id },
         R::Unreadable(error) => LibraryError::from(error),

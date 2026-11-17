@@ -116,9 +116,9 @@ pub(crate) fn release_edit_seed(
 pub(super) fn seed_on(
     sql: &CovenWrite<'_>,
     release_id: &str,
-) -> Result<Result<ReleaseEditSeed, ReleaseEditSessionRefusal>, DbError> {
+) -> Result<Result<ReleaseEditSeed, ReleaseEditSeedRefusal>, DbError> {
     Ok(match release_edit_rows_on(sql, release_id)? {
-        None => Err(ReleaseEditSessionRefusal::ReleaseMissing(release_id.to_string())),
-        Some(rows) => release_edit_seed(rows.processed()).map_err(ReleaseEditSessionRefusal::from),
+        None => Err(ReleaseEditSeedRefusal::ReleaseMissing(release_id.to_string())),
+        Some(rows) => release_edit_seed(rows.processed()).map_err(ReleaseEditSeedRefusal::from),
     })
 }

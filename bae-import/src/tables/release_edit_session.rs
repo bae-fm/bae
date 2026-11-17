@@ -54,17 +54,29 @@ pub(crate) const RELEASE_EDIT_SESSION_DRAFT: DraftTables = DraftTables {
     track_work: "release_edit_track_work",
 };
 
-/// Why bae refused a write to a release editor's session. bae wrote none of
-/// it.
+/// Why bae can't read the seed of a release, so a session can't open on it.
+/// bae wrote nothing.
+#[derive(Debug, thiserror::Error)]
+pub enum ReleaseEditSeedRefusal {
+    /// The library holds no release of this id.
+    #[error("release {0} is not in the library")]
+    ReleaseMissing(String),
+    /// The library holds the release in a shape the editor can't read.
+    #[error(transparent)]
+    Unreadable(#[from] ReleaseEditLoadError),
+}
+
+/// Why opening a session on a release did not commit.
+pub type ReleaseEditOpenError = WriteError<ReleaseEditSeedRefusal>;
+
+/// Why bae refused a write to an open release editor's session. bae wrote
+/// none of it.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseEditSessionRefusal {
     /// The session's rows are gone: its editor closed it, or someone deleted
     /// its release.
     #[error("release edit session {0} is closed")]
     Closed(i64),
-    /// The library holds no release of this id.
-    #[error("release {0} is not in the library")]
-    ReleaseMissing(String),
     /// The form holds no track row of this id.
     #[error("the form holds no track row {0}")]
     RowMissing(String),
@@ -368,9 +380,16 @@ pub fn reseed_release_edit_session_on(
     let Some(release_id) = session_release_on(sql, session)? else {
         return Ok(Err(ReleaseEditSessionRefusal::Closed(session)));
     };
+    // Deleting a release deletes its sessions, so a session whose row is
+    // still here has its release.
     let seed = match seed_on(sql, &release_id)? {
         Ok(seed) => seed,
-        Err(refusal) => return Ok(Err(refusal)),
+        Err(ReleaseEditSeedRefusal::ReleaseMissing(_)) => {
+            return Ok(Err(ReleaseEditSessionRefusal::Closed(session)))
+        }
+        Err(ReleaseEditSeedRefusal::Unreadable(error)) => {
+            return Ok(Err(ReleaseEditSessionRefusal::Unreadable(error)))
+        }
     };
     reseed_on(sql, session, &seed)?;
     Ok(Ok(()))
@@ -399,7 +418,7 @@ pub fn release_edit_still_as_opened_on(
     }
     match seed_on(sql, &held.release_id)? {
         Ok(now) => Ok(if now == held.opened { Ok(()) } else { Err(R::Stale) }),
-        Err(ReleaseEditSessionRefusal::ReleaseMissing(_)) => Ok(Err(R::Closed)),
+        Err(ReleaseEditSeedRefusal::ReleaseMissing(_)) => Ok(Err(R::Closed)),
         Err(refusal) => Err(DbError::unreadable(
             format!("release {} as an editor reads it", held.release_id),
             refusal,
@@ -808,7 +827,7 @@ impl ImportTables {
     pub async fn open_release_edit_session(
         &self,
         release_id: &str,
-    ) -> Result<i64, ReleaseEditSessionError> {
+    ) -> Result<i64, ReleaseEditOpenError> {
         let release_id = release_id.to_string();
         self.store
             .write(move |sql| {

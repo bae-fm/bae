@@ -67,7 +67,8 @@ pub use import_state::{
 pub(crate) use release_edit_session::RELEASE_EDIT_SESSION_DRAFT;
 pub use release_edit_session::{
     release_edit_still_as_opened_on, reseed_release_edit_session_on, AppliedCatalog,
-    ReleaseEditContext, ReleaseEditSessionError, ReleaseEditSessionRefusal, StoredReleaseEdit,
+    ReleaseEditContext, ReleaseEditOpenError, ReleaseEditSeedRefusal, ReleaseEditSessionError,
+    ReleaseEditSessionRefusal, StoredReleaseEdit,
 };
 pub(crate) use release_groupings::GroupingFacts;
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};
