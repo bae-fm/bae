@@ -44,22 +44,23 @@ impl CandidateAction {
         CandidateAction::RevealFolder,
     ];
 
-    /// Every action one row offers alone, in the same order. Combine makes
-    /// several rows one release, so only a selection of several rows offers
-    /// it.
-    pub const ROW: [CandidateAction; 11] = [
-        CandidateAction::Import,
-        CandidateAction::CancelImport,
-        CandidateAction::Identify,
-        CandidateAction::CancelIdentification,
-        CandidateAction::RetryIdentification,
-        CandidateAction::ResetToFileMetadata,
-        CandidateAction::ClearMetadata,
-        CandidateAction::Separate,
-        CandidateAction::Skip,
-        CandidateAction::Restore,
-        CandidateAction::RevealFolder,
-    ];
+    /// Every action one row offers by itself, in [`Self::ALL`]'s order:
+    /// every action but Combine. Combine makes several rows one release, so
+    /// only a selection of several rows offers it.
+    pub const ROW: [CandidateAction; Self::ALL.len() - 1] = {
+        let mut row = [CandidateAction::Import; Self::ALL.len() - 1];
+        let mut from = 0;
+        let mut to = 0;
+        while from < Self::ALL.len() {
+            if !matches!(Self::ALL[from], CandidateAction::Combine) {
+                row[to] = Self::ALL[from];
+                to += 1;
+            }
+            from += 1;
+        }
+        assert!(to == row.len(), "ALL holds Combine exactly once");
+        row
+    };
 }
 
 /// What the tables say a candidate's commands are decided from: whether it can
