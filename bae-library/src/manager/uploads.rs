@@ -3,27 +3,16 @@
 
 use super::*;
 use bae_diagnostics::{LocalId, TelemetryEvent};
-use bae_transfers::storage_moves::MoveRefusal;
 use tracing::{error, info};
 
-/// What a release's refusal to move to the cloud tells the person.
-fn move_refusal_error(release_id: &str, refusal: MoveRefusal) -> LibraryError {
-    match refusal {
-        MoveRefusal::Missing => LibraryError::release_missing(release_id, ReleaseWork::Transfer),
-        MoveRefusal::NoFiles => LibraryError::Storage("Release has no files".to_string()),
-        MoveRefusal::NotMovable => LibraryError::Storage(
-            "Release is not on this device alone, or is moving to the cloud already".to_string(),
-        ),
-    }
-}
-
 impl LibraryManager {
-    /// Move Local releases to Cloud, every one of the selection in one write,
-    /// each as one move of its own: no release shows a transition on the way,
-    /// and none waits to be reached. Empty and duplicate selections are
-    /// invalid commands; a release that cannot move is returned beside the
-    /// durable receipt for the releases that did. Once a move finishes, coven
-    /// no longer reads the user's original; the source file itself remains
+    /// Move Local releases to Cloud, each release of the selection in a write
+    /// of its own, as one move of its own: no release shows a transition on
+    /// the way. Empty and duplicate selections are invalid commands. A
+    /// release that cannot move changes nothing and is returned, with why,
+    /// beside the durable receipt for the releases that did; when coven
+    /// refused it, why is coven's reason. Once a move finishes, coven no
+    /// longer reads the user's original; the source file itself remains
     /// untouched.
     pub async fn upload_releases(
         &self,
@@ -42,49 +31,28 @@ impl LibraryManager {
             }
         }
 
-        let moved = match self.move_releases(release_ids).await {
-            Ok(moved) => moved,
-            // Without storage nothing moved, and every release of the
-            // selection is told so.
-            Err(error @ LibraryError::Sync(coven::SyncError::NoStorage)) => {
-                let failures = release_ids
-                    .iter()
-                    .map(|release_id| {
-                        error!(%release_id, failure = %error, "release move to the cloud refused");
-                        self.record_telemetry(TelemetryEvent::StorageTransferFailed {
-                            action: ReleaseStorageAction::Upload,
-                            release_id: LocalId(release_id.clone()),
-                        });
-                        (release_id.clone(), LibraryError::Sync(coven::SyncError::NoStorage))
-                    })
-                    .collect();
-                return Ok(UploadReleasesOutcome::Partial {
-                    receipt: None,
-                    failure: UploadBatchFailure::from_errors(failures),
-                });
-            }
-            Err(error) => return Err(error),
-        };
-
         let mut failures = Vec::new();
-        for (release_id, refusal) in moved.refused {
-            let error = move_refusal_error(&release_id, refusal);
-            error!(%release_id, failure = %error, "release move to the cloud refused");
-            self.record_telemetry(TelemetryEvent::StorageTransferFailed {
-                action: ReleaseStorageAction::Upload,
-                release_id: LocalId(release_id.clone()),
-            });
-            failures.push((release_id, error));
-        }
-        let mut admitted_release_ids = Vec::with_capacity(moved.moved.len());
-        for (release_id, file_count) in moved.moved {
-            info!(%release_id, "release move to the cloud queued");
-            self.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-                action: ReleaseStorageAction::Upload,
-                release_id: LocalId(release_id.clone()),
-                file_count,
-            });
-            admitted_release_ids.push(release_id);
+        let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
+        for (release_id, moved) in self.move_releases(release_ids).await? {
+            match moved {
+                Ok(file_count) => {
+                    info!(%release_id, "release move to the cloud queued");
+                    self.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+                        action: ReleaseStorageAction::Upload,
+                        release_id: LocalId(release_id.clone()),
+                        file_count,
+                    });
+                    admitted_release_ids.push(release_id);
+                }
+                Err(error) => {
+                    error!(%release_id, failure = %error, "release move to the cloud refused");
+                    self.record_telemetry(TelemetryEvent::StorageTransferFailed {
+                        action: ReleaseStorageAction::Upload,
+                        release_id: LocalId(release_id.clone()),
+                    });
+                    failures.push((release_id, error));
+                }
+            }
         }
 
         let receipt = (!admitted_release_ids.is_empty())
@@ -100,23 +68,32 @@ impl LibraryManager {
         })
     }
 
-    /// The write that moves `release_ids`, run to its end on a task of its
-    /// own, so a dismissed view leaves no move half made.
+    /// Move each release of `release_ids` to the cloud in a write of its own,
+    /// in the selection's order, and return each release with how many files
+    /// it moved or why it did not move. The writes run to their end on a task
+    /// of their own, so a dismissed view leaves no release of the selection
+    /// unmoved. Once the library starts closing, the releases not yet moved
+    /// fail as closed.
     async fn move_releases(
         &self,
         release_ids: &[String],
-    ) -> Result<bae_transfers::storage_moves::MovedToCloud, LibraryError> {
+    ) -> Result<Vec<(String, Result<u32, LibraryError>)>, LibraryError> {
+        const OPERATION: &str = "move releases to the cloud";
         let store = self.store.clone();
         let release_ids = release_ids.to_vec();
-        self.run_file_operation("move releases to the cloud", move |_closing| async move {
-            bae_transfers::storage_moves::move_releases_to_cloud(&store, release_ids).await.map_err(
-                |error| match error {
-                    bae_store::WriteError::Refused(
-                        bae_transfers::StorageMoveRefusal::NoStorage,
-                    ) => coven::SyncError::NoStorage.into(),
-                    error => error.into(),
-                },
-            )
+        self.run_file_operation(OPERATION, move |closing| async move {
+            let mut moves = Vec::with_capacity(release_ids.len());
+            for release_id in release_ids {
+                let moved = if closing.is_cancelled() {
+                    Err(LibraryError::Closed(OPERATION))
+                } else {
+                    bae_transfers::storage_moves::move_release_to_cloud(&store, release_id.clone())
+                        .await
+                        .map_err(LibraryError::from)
+                };
+                moves.push((release_id, moved));
+            }
+            Ok(moves)
         })
         .await
     }
@@ -125,11 +102,8 @@ impl LibraryManager {
     /// test that sets one up.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn upload_release(&self, release_id: &str) -> Result<(), LibraryError> {
-        let moved = self.move_releases(std::slice::from_ref(&release_id.to_string())).await?;
-        match moved.refused.into_iter().next() {
-            Some((release_id, refusal)) => Err(move_refusal_error(&release_id, refusal)),
-            None => Ok(()),
-        }
+        let moves = self.move_releases(std::slice::from_ref(&release_id.to_string())).await?;
+        moves.into_iter().try_for_each(|(_, moved)| moved.map(|_| ()))
     }
 
     /// End a release's failed move to the cloud, `id`, as its pending

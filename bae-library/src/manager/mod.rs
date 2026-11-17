@@ -206,8 +206,9 @@ pub enum LibraryError {
     /// planned, or the store failed.
     #[error(transparent)]
     Deletion(bae_records::DeletionError),
-    /// A write moving releases to the cloud did not commit: no storage is set
-    /// up, or the store failed.
+    /// A write moving a release's files to the cloud did not commit: no
+    /// storage is set up, the release is gone or holds no files, coven
+    /// refused to move one of its files, or the store failed.
     #[error(transparent)]
     StorageMove(bae_transfers::StorageMoveError),
     /// A dismissal of a storage setup that ended undone did not commit: the
@@ -556,13 +557,17 @@ impl From<bae_records::DeletionError> for LibraryError {
     }
 }
 
-/// The class a surface words a refused move of releases' files in: a move
-/// needs storage, which is for the person to set up.
+/// The class a surface words a refused move of a release's files in. A move
+/// needs storage, which is for the person to set up. No other refusal has a
+/// line of its own, so each shows the internal one, and the error's detail
+/// says why the release did not move.
 fn storage_move_refusal_category(
     refusal: &bae_transfers::StorageMoveRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
+    use bae_transfers::StorageMoveRefusal as R;
     match refusal {
-        bae_transfers::StorageMoveRefusal::NoStorage => bae_diagnostics::UiErrorCategory::Config,
+        R::NoStorage => bae_diagnostics::UiErrorCategory::Config,
+        R::Missing | R::NoFiles | R::Coven(_) => bae_diagnostics::UiErrorCategory::Internal,
     }
 }
 

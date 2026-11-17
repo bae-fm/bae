@@ -364,7 +364,8 @@ forward! { async this => {
         Ok(this.services.unpin_releases(&release_ids).await?)
     }
 
-    /// Move the releases to the cloud.
+    /// Move the releases to the cloud, each release in its own write. The
+    /// outcome names each release that did not move, with why.
     fn upload_releases(release_ids: Vec<String>) -> BridgeUploadReleasesOutcome {
         this.services
             .upload_releases(&release_ids)

@@ -705,12 +705,12 @@ async fn an_upload_queues_each_release_before_returning() {
     }
 }
 
-/// Moving a selection queues every movable release in one write, each under
-/// a move of its own, and names the one that can't move: it is in storage
+/// Moving a selection queues each release in a write of its own, under a
+/// move of its own, and names the one that can't move: it is moving
 /// already. No release shows a transition in between, because no row of one is
 /// written.
 #[tokio::test]
-async fn moving_a_selection_queues_every_movable_release_in_one_write() {
+async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
