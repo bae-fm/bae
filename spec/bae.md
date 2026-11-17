@@ -3272,13 +3272,13 @@ history setting.
   or an artist image (§4.1). Other devices download it when it is first
   shown.
 - **The people list joins coven's members with `people`** in one query:
-  everyone in the library, each with their profile once they made one, by
-  the profile's name in the device's language. The people with no profile yet
-  come after them, in the order bae made their member ids: bae's UUIDv7 id
-  source makes a member's id when the founder creates the library or an
-  inviter creates the invite. The query reads the person using this device
-  the same way. A removed person's row stays, read-only, and the list does
-  not show them.
+  everyone in the library, each with their profile once they made one,
+  sorted by the profile's name in the device's language. The people with no
+  profile yet come after them, in the order bae made their member ids: bae's
+  UUIDv7 id source makes a member's id when the founder creates the library
+  or an inviter creates the invite. The query reads the person using this
+  device the same way. A removed person's row stays, read-only, and the list
+  does not show them.
 
 ### 5.5 "Ana rated this"
 
