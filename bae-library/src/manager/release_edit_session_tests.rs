@@ -221,7 +221,7 @@ async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
             sort_name: None,
             discogs_artist_id: None,
             musicbrainz_artist_id: None,
-            created_at: chrono::Utc::now(),
+            created_at: time::UtcDateTime::now(),
         })
         .await
         .unwrap();
