@@ -63,8 +63,8 @@ internal const val UNKNOWN_CHILD_COUNT = Int.MAX_VALUE
 
 /**
  * A live count that a controller's interest holds open: the albums a search lists, or a browse parent's
- * children. The tree waits for the read's first count ([awaitFirst]). Each count reaches [onCount], which says
- * whether it is the first, only while [isCurrent] says the tree still holds this read.
+ * children. The tree waits for the read's first count ([awaitFirst]). Each count reaches [onCount], with whether
+ * it is the first, only while [isCurrent] says the tree still holds this read.
  */
 internal class LiveCount(
     private val scope: CoroutineScope,

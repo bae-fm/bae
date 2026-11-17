@@ -147,10 +147,10 @@ fn search_album_from() -> String {
     )
 }
 
-/// The albums of the first `cap` that hold the search `pattern` which `seek`
-/// reads in `order`, at most `limit` from `offset`, each with its key. The
-/// statement reads each album's main release, cover and credit line for the
-/// albums the seek returns alone.
+/// The albums `seek` reads in `order`, each with its key: at most `limit` of
+/// them from `offset`. The seek reads among the first `cap` albums that hold
+/// the search `pattern`. The statement reads each album's main release, cover
+/// and credit line only for the albums the seek returns.
 pub(super) fn search_album_rows_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,

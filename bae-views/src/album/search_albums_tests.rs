@@ -52,7 +52,7 @@ async fn key_of(views: &LibraryViews, position: u64) -> OrderKey {
 /// A page at an offset is the window from its first album to the album
 /// after its last, and holds the search's albums in title order. The last
 /// page's window has no upper bound, and the page past the last album has no
-/// window. No query lists no page.
+/// window. With no query, the search lists no page.
 #[tokio::test]
 async fn a_search_page_is_the_window_bounded_by_its_albums_keys() {
     let (views, _db, _tmp) = searched_library().await;

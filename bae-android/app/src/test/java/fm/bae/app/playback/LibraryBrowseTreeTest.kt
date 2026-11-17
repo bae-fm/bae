@@ -434,7 +434,10 @@ class LibraryBrowseTreeTest {
             assertEquals(1, notifications)
         }
 
-    /** A search page is the window of the controller's search that holds the page asked for, and none past the end. */
+    /**
+     * A search page is the window of the controller's search that holds the page asked for. A request for a page past
+     * the end returns no albums.
+     */
     @Test
     fun aSearchPageIsTheWindowOfThePageAsked() =
         runBlocking {
@@ -462,7 +465,7 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** A request for the results of a phrase the controller is not searching for is refused, not read. */
+    /** The tree refuses a request for the results of a phrase the controller is not searching for, and reads nothing. */
     @Test
     fun aSearchPageOfAnotherPhraseIsRefused() =
         runBlocking {
