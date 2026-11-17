@@ -429,9 +429,11 @@ async fn select_all_takes_every_release_the_list_shows() {
     assert_eq!(all, expected);
 }
 
-/// A run of rows is read along the list's order, both ends included,
-/// whichever end comes first, headers between them no row; one end the list
-/// does not show gives the other alone, and neither gives nothing.
+/// `import_list_keys_between` reads the rows between two rows in the list's
+/// order, both ends included, whichever end comes first, and leaves out the
+/// headers between them. When the list doesn't show one end, the method
+/// returns the other end alone; when it shows neither, the method returns no
+/// keys. On a closed list the method fails.
 #[tokio::test]
 async fn the_keys_between_two_rows_are_the_run_between_them() {
     let lib = Library::new().await;
@@ -469,4 +471,19 @@ async fn the_keys_between_two_rows_are_the_run_between_them() {
         .await
         .unwrap();
     assert!(on_done.is_empty(), "a tab the list doesn't show reads nothing");
+
+    tables.close_import_list(list).await.unwrap();
+    let closed = tables
+        .import_list_keys_between(
+            list,
+            TriageTab::Pending,
+            ImportListOrder::PathAscending,
+            lib.key("A"),
+            lib.key("C"),
+        )
+        .await;
+    assert!(
+        matches!(closed, Err(crate::tables::ImportListError::Closed(id)) if id == list),
+        "{closed:?}"
+    );
 }

@@ -226,11 +226,12 @@ impl ImportTables {
             .ok_or(ImportListError::Closed(list))
     }
 
-    /// The releases the list `list` shows on `tab` in `order`, the tab and
-    /// order the surface shows it in, from the release `from` to the release
-    /// `to`, both included, in that order: what a Shift gesture selects. The
-    /// one it shows when it shows only one of the two, and none when it shows
-    /// neither, or when the list shows another tab or is closed.
+    /// The releases the list `list` shows from the release `from` to the
+    /// release `to`, both included, in the list's order: what Shift-clicking
+    /// a row selects. The surface passes the tab and order it shows the list
+    /// in as `tab` and `order`. When the list shows only one of `from` and
+    /// `to`, the method returns that release alone. When the list shows
+    /// neither, or shows another tab, the method returns no keys.
     pub async fn import_list_keys_between(
         &self,
         list: ImportListId,
@@ -238,12 +239,16 @@ impl ImportTables {
         order: crate::ImportListOrder,
         from: CandidateKey,
         to: CandidateKey,
-    ) -> Result<Vec<CandidateKey>, DbError> {
+    ) -> Result<Vec<CandidateKey>, ImportListError> {
         self.store
             .read(move |sql| {
-                Items::new(list, tab, order, Shown::View).keys_between(&sql, &from, &to)
+                if list_row(&sql, list)?.is_none() {
+                    return Ok(None);
+                }
+                Ok(Some(Items::new(list, tab, order, Shown::View).keys_between(&sql, &from, &to)?))
             })
-            .await
+            .await?
+            .ok_or(ImportListError::Closed(list))
     }
 }
 
