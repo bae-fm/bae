@@ -40,7 +40,7 @@ pub mod storage_inspector;
 mod sync_activity;
 mod uploads;
 
-pub use activity_bars::{ActivityBarRows, BatchBar, MovingShare};
+pub use activity_bars::{activity_bars_on, ActivityBarRows, BatchBar, MovingShare};
 pub use browse::*;
 #[cfg(desktop)]
 pub use release_files::{

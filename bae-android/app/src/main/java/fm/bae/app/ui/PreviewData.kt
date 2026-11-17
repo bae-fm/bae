@@ -8,7 +8,6 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
-import uniffi.bae_bridge.BridgeBatchBar
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
@@ -256,14 +255,12 @@ object PreviewData {
                     batch = BridgeTransferBatch(done = 1u, total = 2u),
                     wait = null,
                     paused = false,
-                    bar = BridgeBatchBar(done = 0.43, moving = emptyList()),
                 ),
             pins =
                 BridgeDownloadQueueActivity(
                     batch = BridgeTransferBatch(done = 1u, total = 3u),
                     wait = null,
                     paused = false,
-                    bar = BridgeBatchBar(done = 0.3, moving = emptyList()),
                 ),
             movingToThisDevice = null,
         )

@@ -73,28 +73,28 @@ class LatestFeedTest {
         }
 
     @Test
-    fun aFedFileShareReadsItsFilesShareAndNoOtherKey() =
+    fun aFedActivityBarReadsItsLinesBatchShareAndNoOtherKey() =
         runTest(main) {
-            val stream = LatestStream.fileShares()
+            val stream = LatestStream.activityBars()
             val feed =
                 stream.fed(feedScope(), { error -> throw AssertionError("no read failed", error) }) {
-                    HeldShares(mapOf("file-a" to 0.43))
+                    HeldShares(mapOf("uploads" to 0.43))
                 }
 
-            assertEquals(0.43, stream.latest("file-a")!!, 0.0)
-            assertNull("a file bae is not sending has no share", stream.latest("file-b"))
+            assertEquals(0.43, stream.latest("uploads")!!, 0.0)
+            assertNull("a key the stream does not hold has no bar", stream.latest("pins"))
             feed.cancel()
         }
 
     private fun feedScope() = CoroutineScope(SupervisorJob() + main)
 
-    /** A stream holding a file share under each of [shares]' files; nothing changes after the test feeds it. */
+    /** A stream holding a batch share under each of [shares]' lines; nothing changes after the test feeds it. */
     private class HeldShares(
         private val shares: Map<String, Double>,
     ) : KeyedValueStream(NoHandle) {
         override suspend fun next(): List<ByteArray> = awaitCancellation()
 
-        override fun latest(key: ByteArray): BridgeFastValue? = shares[key.decodeToString()]?.let { BridgeFastValue.FileShare(it) }
+        override fun latest(key: ByteArray): BridgeFastValue? = shares[key.decodeToString()]?.let { BridgeFastValue.BatchShare(it) }
 
         override fun moving(key: ByteArray): Boolean = false
 

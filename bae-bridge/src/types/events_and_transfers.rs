@@ -134,6 +134,9 @@ pub enum BridgeFastValue {
     /// The share of a file in flight its object has moved, from 0 to 1;
     /// keyed by file.
     FileShare { fraction: f64 },
+    /// The share of a transfer line's batch bytes done, from 0 to 1; keyed
+    /// by the Activity line: `uploads`, `pins` or `moving_to_this_device`.
+    BatchShare { fraction: f64 },
     /// A pinning release's bytes and rate; keyed by release.
     Download { progress: BridgeDownloadTransferProgress },
     /// How far a release being moved to this device has downloaded into the

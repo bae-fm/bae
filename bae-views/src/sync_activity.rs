@@ -9,10 +9,9 @@ use bae_sync_status::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
 /// What sync is doing now: the work that needs the person and the transfer
-/// lines, each counting the releases of its batch, with its bar's bytes done
-/// and each file bae is sending or release it is downloading. The bytes each
-/// of them has moved are not part of it: they change with each part a
-/// provider confirms or a download receives, and travel with the transfers.
+/// lines, each counting the releases of its batch. Each line's bar is not
+/// part of it: the bar changes with each part a provider confirms or a
+/// download receives, and travels on the Activity bars' stream.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivity {
     /// The sync failure the status line shows, such as being offline,
@@ -58,13 +57,11 @@ impl TransferBatch {
 /// had any, a release done once every file is stored and none is queued. A
 /// cover, artist picture or avatar belongs to no release and counts in no
 /// line.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueActivity {
     pub batch: TransferBatch,
     /// What holds the upload queue back, shown in place of the count.
     pub wait: Option<bae_records::UploadQueueWait>,
-    /// The line's bar: its batch's bytes stored, and each file being sent.
-    pub bar: BatchBar<coven::FileId>,
 }
 
 /// The Pinning or the Moving to this device line: the releases queued as that kind
@@ -72,14 +69,12 @@ pub struct UploadQueueActivity {
 /// it is in the queue and every file is pinned; a move-to-this-device once no
 /// move-to-this-device entry of it is in the queue and it is no longer stored in the
 /// cloud.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadQueueActivity {
     pub batch: TransferBatch,
     /// What holds the download queue back, shown in place of the count. Pins
     /// and moves-to-this-device share the queue, so both lines show the same hold.
     pub wait: Option<QueueWait>,
-    /// The line's bar: its batch's bytes done, and the release downloading.
-    pub bar: BatchBar<String>,
 }
 
 impl UploadQueueActivity {
@@ -117,37 +112,27 @@ pub struct DownloadQueueCounts {
 }
 
 impl SyncActivity {
-    /// Assemble the activity from the sync status, what the upload and
-    /// download queues hold, and each line's bar.
+    /// Assemble the activity from the sync status and what the upload and
+    /// download queues hold.
     pub fn new(
         status: &SyncStatusSnapshot,
         uploads: &UploadQueueCounts,
         downloads: &DownloadQueueCounts,
-        bars: ActivityBarRows,
     ) -> Self {
-        let ActivityBarRows { uploads: upload_bar, pins, moving_to_this_device } = bars;
-        let download_line = |batch: TransferBatch, bar| {
-            batch.holding().map(|batch| DownloadQueueActivity {
-                batch,
-                wait: downloads.queue.wait,
-                bar,
-            })
+        let download_line = |batch: TransferBatch| {
+            batch.holding().map(|batch| DownloadQueueActivity { batch, wait: downloads.queue.wait })
         };
         Self {
             failure: status.shown_failure(),
             attention: status.pending.clone(),
             syncing: status.syncing(),
             moving: uploads.sending > 0 || downloads.queue.total.active > 0,
-            uploads: uploads.batch.holding().map(|batch| UploadQueueActivity {
-                batch,
-                wait: uploads.wait.clone(),
-                bar: upload_bar,
-            }),
-            pins: download_line(downloads.pins, pins),
-            moving_to_this_device: download_line(
-                downloads.moving_to_this_device,
-                moving_to_this_device,
-            ),
+            uploads: uploads
+                .batch
+                .holding()
+                .map(|batch| UploadQueueActivity { batch, wait: uploads.wait.clone() }),
+            pins: download_line(downloads.pins),
+            moving_to_this_device: download_line(downloads.moving_to_this_device),
         }
     }
 
@@ -176,13 +161,12 @@ impl SyncActivity {
 pub(crate) mod tests;
 
 /// What the activity reads of the library's tables in one go, beside
-/// coven's sync state: what the upload and download queues hold, each
-/// line's bar and the sync status's rows.
+/// coven's sync state: what the upload and download queues hold and the sync
+/// status's rows.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivityRows {
     uploads: UploadQueueCounts,
     downloads: DownloadQueueCounts,
-    bars: ActivityBarRows,
     status: SyncStatusRows,
 }
 
@@ -193,15 +177,14 @@ fn sync_activity_rows_on(
 ) -> Result<SyncActivityRows, bae_store::DbError> {
     let uploads = upload_queue_counts_on(&sql)?;
     let downloads = download_queue_counts_on(&sql)?;
-    let bars = crate::activity_bars::activity_bars_on(&sql)?;
     let status = bae_sync_status::sync_status_rows_on(sql)?;
-    Ok(SyncActivityRows { uploads, downloads, bars, status })
+    Ok(SyncActivityRows { uploads, downloads, status })
 }
 
 /// The activity from coven's sync state and the rows read beside it.
 fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivity {
-    let SyncActivityRows { uploads, downloads, bars, status } = rows;
-    SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads, bars)
+    let SyncActivityRows { uploads, downloads, status } = rows;
+    SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads)
 }
 
 /// The SQL creating the Uploading line's batch and its number, and the

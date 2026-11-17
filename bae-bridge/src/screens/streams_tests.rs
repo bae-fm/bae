@@ -147,6 +147,25 @@ fn each_outbox_delivery_writes_both_streams_whole() {
     assert_eq!(total_values.latest(b""), None);
 }
 
+/// Each delivery of the Activity bars writes every line's bar under the
+/// line's name.
+#[test]
+fn the_activity_bars_hold_each_line_under_its_name() {
+    let values = StreamValues::new();
+    let writer = StreamWriter::new(values.clone());
+    writer.reset(activity_bars_held(bae_library::ActivityBars {
+        uploads: 0.25,
+        pins: 0.625,
+        moving_to_this_device: 0.0,
+    }));
+    assert_eq!(values.latest(b"pins"), Some(BridgeFastValue::BatchShare { fraction: 0.625 }));
+    assert_eq!(values.latest(b"uploads"), Some(BridgeFastValue::BatchShare { fraction: 0.25 }));
+    assert_eq!(
+        values.latest(b"moving_to_this_device"),
+        Some(BridgeFastValue::BatchShare { fraction: 0.0 })
+    );
+}
+
 /// A track is at rest in its stream once it is held in one stretch from its
 /// start to its end, and not before.
 #[test]

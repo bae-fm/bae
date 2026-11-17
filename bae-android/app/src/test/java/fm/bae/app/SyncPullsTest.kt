@@ -14,7 +14,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeBatchBar
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeSyncShown
@@ -68,15 +67,7 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(null, store.activity.value)
 
-        val uploading =
-            activity(
-                BridgeUploadQueueActivity(
-                    BridgeTransferBatch(done = 0u, total = 2u),
-                    wait = null,
-                    paused = false,
-                    bar = BridgeBatchBar(done = 0.0, moving = emptyList()),
-                ),
-            )
+        val uploading = activity(BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 2u), wait = null, paused = false))
         handle.syncActivity.deliver(uploading)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(uploading, store.activity.value)

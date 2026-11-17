@@ -126,7 +126,6 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
     let line = |batch| bae_views::DownloadQueueActivity {
         batch,
         wait: Some(bae_transfers::QueueWait::Paused),
-        bar: bae_views::BatchBar { done: 0.0, moving: Vec::new() },
     };
     assert_eq!(
         (activity.pins, activity.moving_to_this_device),
@@ -229,9 +228,8 @@ async fn release_size(manager: &LibraryManager, release: &str) -> u64 {
 }
 
 /// The Pinning line's bar is the share of its batch's bytes pinned: none
-/// while its releases wait; while a release downloads, the bar shows that
-/// release's share as moving; the first release's size once bae pins it; and
-/// no line once bae pins the batch's last release and the batch is over.
+/// while its releases wait, then the first release's share of the batch once
+/// bae pins it.
 #[tokio::test]
 async fn the_pin_bar_fills_with_each_release_pinned() {
     let (test, _temp_dir) = setup_test_manager().await;
@@ -239,29 +237,24 @@ async fn the_pin_bar_fills_with_each_release_pinned() {
     let releases = pinnable_releases(&test, 2).await;
     let first = release_size(manager, &releases[0]).await as f64;
     let total = first + release_size(manager, &releases[1]).await as f64;
-    let pin_bar = async || activity_now(manager).await.pins.map(|pins| pins.bar);
+    let mut bars = manager.watch_activity_bars();
 
     queue_pins(manager, &releases).await;
-    assert_eq!(pin_bar().await, Some(bae_views::BatchBar { done: 0.0, moving: Vec::new() }));
-    let entry = started_pin_entry(manager, &releases[0]).await;
-    assert_eq!(
-        pin_bar().await,
-        Some(bae_views::BatchBar {
-            done: 0.0,
-            moving: vec![bae_views::MovingShare {
-                key: releases[0].clone(),
-                start: 0.0,
-                share: first / total,
-            }],
-        }),
-        "the bar shows the downloading release's share as moving"
-    );
-    manager.pin_release_files_with_progress(&releases[0], entry, |_| {}).await.unwrap();
-    manager.set_downloads_paused(true).await.unwrap();
-    assert_eq!(
-        pin_bar().await,
-        Some(bae_views::BatchBar { done: first / total, moving: Vec::new() })
-    );
-    pin(manager, &releases[1]).await;
-    assert_eq!(pin_bar().await, None);
+    pin_bar_until(&mut bars, 0.0).await;
+    pin(manager, &releases[0]).await;
+    pin_bar_until(&mut bars, first / total).await;
+}
+
+/// Watch the Pinning line's bar until it is `want`.
+async fn pin_bar_until(bars: &mut crate::ActivityBarsWatch, want: f64) {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        loop {
+            let told = bars.next().await.expect("the watch stays open").unwrap();
+            if told.pins == want {
+                return;
+            }
+        }
+    })
+    .await
+    .expect("the Pinning line's bar reaches the share it waits for");
 }

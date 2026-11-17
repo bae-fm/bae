@@ -3,16 +3,32 @@ package fm.bae.app.ui.sync
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.util.TypedValue
+import android.view.View
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.animation.LinearInterpolator
+import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.fastvalues.FrameFollowing
+import fm.bae.fastvalues.LatestSource
+
+/** How tall a bar's track is. */
+private const val BAR_HEIGHT_DP = 4f
+
+/** The range that the bar reports to a screen reader. */
+private const val PERCENT = 100f
 
 /** The gap between the filled part and the rest of the track, and the stop dot's size: Material 3's own. */
 private const val GAP_DP = 4f
@@ -34,6 +50,37 @@ internal fun MovingBar(
     )
 }
 
+/**
+ * A transfer line's bar: the share of its batch's bytes done that [share] holds, filled in the
+ * accent over a track of the accent's tint, or a moving bar while there is no share to show, as the
+ * line for syncing has none. Screen readers name it [description], the line's words. The bar reads
+ * [share]'s latest value each display frame while core sends new values for it, so arriving bytes
+ * recompose nothing.
+ */
+@Composable
+internal fun ShareBar(
+    share: LatestSource<Double>?,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    if (share == null) {
+        MovingBar(description = description, modifier = modifier)
+        return
+    }
+    val accent = MaterialTheme.colorScheme.primary
+    val track = accent.copy(alpha = ThemeOpacity.tintStrong)
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { context -> ShareBarView(context) },
+        update = { view ->
+            view.contentDescription = description
+            view.applyColors(accent = accent.toArgb(), track = track.toArgb())
+            view.follow(share)
+        },
+        onRelease = { view -> view.stopFollowing() },
+    )
+}
+
 /** How long the moving bar's piece takes to cross the track. */
 private const val MOVING_MILLIS = 1500L
 
@@ -44,16 +91,19 @@ private const val MOVING_REST_PHASE = 0.3f
 private const val MOVING_SHARE = 0.4f
 
 /**
- * Material 3's linear progress bar drawn from the fraction that callers pass to [showFraction]: four tall, rounded,
- * the filled part, a gap, the rest of the track and a dot at its end that marks where the bar stops.
- * [showMoving] swaps the fraction for a piece that crosses the track again and again, for a step that
- * counts nothing.
+ * Material 3's linear progress bar: 4 dp tall with rounded ends, the filled part, a gap, the rest of
+ * the track and a dot at its end that marks where the bar stops. The bar shows the fraction that
+ * callers pass to [showFraction], or follows a stream's value after [follow]. [showMoving] swaps the
+ * fraction for a piece that crosses the track again and again, for a step that counts nothing.
  */
 internal class ShareBarView(
     context: Context,
-) : TrackBarView(context) {
+) : View(context) {
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val track = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bounds = RectF()
+    private val following = FrameFollowing<Double>(this) { share -> showFraction((share ?: 0.0).toFloat()) }
     private var fraction = 0f
-    override val shareDone: Float get() = fraction
 
     /** Where the moving piece is; before it first moves it sits part way, so a still frame shows it. */
     private var phase = MOVING_REST_PHASE
@@ -68,7 +118,39 @@ internal class ShareBarView(
             }
         }
 
-    /** Shows [share] of the track filled, without following a stream. */
+    init {
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
+
+    /** Reports the bar to a screen reader as a progress bar of a percent. */
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.className = ProgressBar::class.java.name
+        info.rangeInfo =
+            AccessibilityNodeInfo.RangeInfo.obtain(
+                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
+                0f,
+                PERCENT,
+                fraction * PERCENT,
+            )
+    }
+
+    fun applyColors(
+        accent: Int,
+        track: Int,
+    ) {
+        if (fill.color == accent && this.track.color == track) return
+        fill.color = accent
+        this.track.color = track
+        invalidate()
+    }
+
+    /** Shows the latest value [share] holds, read each display frame while core sends new ones. */
+    fun follow(share: LatestSource<Double>) = following.follow(share)
+
+    fun stopFollowing() = following.stop()
+
+    /** Shows [share] of the track filled. */
     fun showFraction(share: Float) {
         crossing.cancel()
         fraction = share
@@ -84,6 +166,19 @@ internal class ShareBarView(
     override fun onDetachedFromWindow() {
         crossing.cancel()
         super.onDetachedFromWindow()
+    }
+
+    override fun onMeasure(
+        widthMeasureSpec: Int,
+        heightMeasureSpec: Int,
+    ) = setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), barHeight().toInt())
+
+    /** The track's height, in pixels. */
+    private fun barHeight(): Float = dp(BAR_HEIGHT_DP)
+
+    private fun dp(value: Float): Float {
+        val metrics = resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 
     override fun onDraw(canvas: Canvas) {

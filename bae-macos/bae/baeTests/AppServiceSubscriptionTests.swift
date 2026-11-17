@@ -188,8 +188,7 @@ struct SyncActivitySubscriptionTests {
                 BridgeUploadQueueActivity(
                     batch: BridgeTransferBatch(done: 0, total: $0),
                     wait: nil,
-                    paused: false,
-                    bar: BridgeBatchBar(done: 0, moving: [])
+                    paused: false
                 )
             },
             pins: nil,
@@ -640,6 +639,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     }
 
     override func feedDownloadTransfers() -> KeyedValueStream {
+        NoopKeyedValueStream()
+    }
+
+    override func feedActivityBars() -> KeyedValueStream {
         NoopKeyedValueStream()
     }
 

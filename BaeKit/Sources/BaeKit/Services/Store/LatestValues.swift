@@ -304,6 +304,30 @@ extension LatestStream where Value == Double {
         }
     }
 
+    /// The share of each Activity line's batch bytes done, by the line's key
+    /// (`ActivityLine`); a shot's stream holds `values` and nothing feeds it.
+    public static func activityBars(holding values: [String: Value] = [:])
+        -> LatestStream
+    {
+        LatestStream(holding: keyed(values)) {
+            if case .batchShare(let fraction) = $0 {
+                fraction
+            }
+            else {
+                nil
+            }
+        }
+    }
+
+    /// Fill with the Activity lines' batches, telling `onError` each failed
+    /// read.
+    public func feedBars(
+        from appHandle: AppHandle,
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> LatestFeed {
+        fed(onFailedRead: onError) { appHandle.feedActivityBars() }
+    }
+
     /// Fill with the files being sent.
     public func feedUploads(from appHandle: AppHandle) -> LatestFeed {
         fed { appHandle.feedUploadFileShares() }
@@ -312,6 +336,14 @@ extension LatestStream where Value == Double {
     /// Fill with the files being downloaded to keep whole.
     public func feedPins(from appHandle: AppHandle) -> LatestFeed {
         fed { appHandle.feedPinFileShares() }
+    }
+}
+
+extension SyncActivityStore {
+    /// Fill the transfer lines' bars, showing a failed read as the panel's
+    /// failure to read sync's state.
+    public nonisolated func feedBars(from appHandle: AppHandle) -> LatestFeed {
+        bars.feedBars(from: appHandle) { [self] error in fail(error) }
     }
 }
 

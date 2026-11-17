@@ -467,6 +467,19 @@ impl LibraryManager {
         )
     }
 
+    /// Each Activity transfer line's bar, computed again as the bar rows'
+    /// live query reruns or a file or release's transfer moves.
+    pub fn watch_activity_bars(&self) -> crate::ActivityBarsWatch {
+        crate::ActivityBarsWatch::of(
+            bae_store::live_results::LiveResults::new(
+                self.store.subscribe(|sql| bae_views::activity_bars_on(&sql)),
+                self.bugs(),
+            ),
+            self.store.subscribe_upload_transfers(),
+            self.downloads.watch_transfers(),
+        )
+    }
+
     /// How far each file being sent has got, by file, told as each one
     /// moves.
     pub fn watch_upload_file_transfers(&self) -> crate::FileTransfersWatch {

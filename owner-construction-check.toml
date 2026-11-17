@@ -372,6 +372,8 @@ task_types = [
     "RemoteImageWatch",
     # One subscriber's watch on the outbox's transfers.
     "OutboxTransfersWatch",
+    # One subscriber's watch on the Activity transfer lines' bars.
+    "ActivityBarsWatch",
     # One editor's session on one release, and the bridge's object the app
     # holds over it.
     "ReleaseEdit",
@@ -1854,6 +1856,9 @@ allowed = [
     { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
     { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "length-branch", count = 1, reason = "checks a key's term count against the part's order; the value is the key's term count, not a row" },
+    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::next", shape = "kept-state", count = 1, reason = "keeps the bar rows' query's latest result beside the transfer progress, to add the two each time either changes; the latest rows of one input, not a copy of what it sent" },
+    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::of", shape = "group", count = 2, reason = "starts the empty maps of upload and download progress that the transfer watches fill; the watches' progress, not rows" },
+    { path = "bae-library/src/activity_bars.rs", item = "bar", shape = "aggregate", count = 1, reason = "adds each moving file's or release's share times how far its transfer has got; the fractions are in-memory transfer progress, which SQL cannot read" },
     { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::of", shape = "group", count = 1, reason = "starts the empty map of how far each file being sent has got, which coven's upload watch fills; the watch's progress, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::between", shape = "length-branch", count = 1, reason = "tests whether a term is the order's last, by position in its fixed list of terms; the values are terms, not rows" },
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::first_difference", shape = "pick", count = 1, reason = "finds the first term two keys differ on; the values are sort values the screen sends back, not rows" },
@@ -1918,6 +1923,8 @@ allowed = [
     { path = "bae-store/src/list_windows/range.rs", item = "ListOrder::range_seeks", shape = "sort", count = 2, reason = "orders the seeks a range runs (`reverse`); the values are the statements a window runs, not rows" },
     { path = "bae-transfers/src/queued_releases/tables.rs", item = "queue_row", shape = "aggregate", count = 1, reason = "counts a row type's constant column list (`COLUMNS.len()`) to find where its columns start; not rows" },
     { path = "bae-transfers/src/release_queue.rs", item = "transfer_summary", shape = "filter", count = 1, reason = "drops the zero counts from a transfer's fixed list of count kinds; not rows" },
+    { path = "bae-transfers/src/release_transfers.rs", item = "ReleaseTransfersWatch::next", shape = "length-branch", count = 1, reason = "tests whether a transfer watch's update changed any release; the value stream's own fast values, not rows" },
+    { path = "bae-transfers/src/release_transfers.rs", item = "release_changes", shape = "filter", count = 2, reason = "diffs the download transfers it last told against the new ones by release; the in-memory transfer progress, not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "cutoff", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
     { path = "bae-types/src/barcode.rs", item = "is_placeholder", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },

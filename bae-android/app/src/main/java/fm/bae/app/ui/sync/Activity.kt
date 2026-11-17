@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.ActivityLine
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
@@ -51,8 +52,7 @@ import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.NoticeTextInset
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.fastvalues.LatestStream
-import uniffi.bae_bridge.BridgeDownloadTransferProgress
+import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncActivity
 
@@ -67,7 +67,6 @@ import uniffi.bae_bridge.BridgeSyncActivity
 @Composable
 internal fun ActivityButton(
     store: SyncActivityStore,
-    downloads: LatestStream<BridgeDownloadTransferProgress>,
     app: List<AppProblem>,
     dismissed: Set<ActivityProblemId>,
     onDismissProblem: (ActivityProblemId) -> Unit,
@@ -98,7 +97,7 @@ internal fun ActivityButton(
             activity = activity,
             words = activityWords(LocalContext.current, activity),
             error = error,
-            bars = ActivityBarStreams(uploads = store.fileShares, pins = downloads),
+            bar = store::bar,
             onDismiss = { listShown = false },
             onDismissProblem = onDismissProblem,
             onOpenDetails = {
@@ -153,7 +152,7 @@ private fun ActivitySheet(
     activity: BridgeSyncActivity?,
     words: ActivityWords,
     error: DisplayError?,
-    bars: ActivityBarStreams,
+    bar: (ActivityLine) -> LatestSource<Double>,
     onDismiss: () -> Unit,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
@@ -168,7 +167,7 @@ private fun ActivitySheet(
             activity = activity,
             words = words,
             error = error,
-            bars = bars,
+            bar = bar,
             onDismissProblem = onDismissProblem,
             onOpenDetails = onOpenDetails,
             onOpenSettings = onOpenSettings,
@@ -189,7 +188,7 @@ internal fun AndroidActivity(
     activity: BridgeSyncActivity?,
     words: ActivityWords,
     error: DisplayError?,
-    bars: ActivityBarStreams,
+    bar: (ActivityLine) -> LatestSource<Double>,
     onDismissProblem: (ActivityProblemId) -> Unit,
     onOpenDetails: (ErrorDetails) -> Unit,
     onOpenSettings: () -> Unit,
@@ -219,7 +218,7 @@ internal fun AndroidActivity(
                 )
             }
         }
-        activity?.let { transferRows(it, words, bars, onOpenDownloads, onSetDownloadsPaused) }
+        activity?.let { transferRows(it, words, bar, onOpenDownloads, onSetDownloadsPaused) }
         val transfers = activity != null && (activity.syncing || activity.uploads != null || activity.pins != null)
         if (!problems.needsAttention && !transfers) {
             item { SecondaryLine(context.coreString("core.activity.idle")) }

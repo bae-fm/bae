@@ -173,20 +173,15 @@ extension BridgeSyncActivity {
 /// A pass running, then the Uploading, Pinning and Moving to This Mac lines, each
 /// while its batch holds a release, counting its releases done or showing
 /// what holds its queue back in the count's place, with a bar of its batch's
-/// bytes: the bytes done from the line's row, and the share done of each file
-/// or release that bae is transferring now, which the bar reads from that
-/// transfer's stream. Each queue's line ends in the
-/// button that pauses it.
+/// bytes. Each queue's line ends in the button that pauses it.
 private struct TransferRows: View {
     let activity: BridgeSyncActivity
-    @Environment(OutboxStore.self)
-    private var outboxStore
-    @Environment(DownloadStore.self)
-    private var downloadStore
+    @Environment(SyncActivityStore.self)
+    private var store
 
     var body: some View {
         if activity.syncing {
-            TransferLine<EmptyView>(
+            TransferLine(
                 title: localizedCoreString("core.activity.syncing"),
                 count: nil,
                 queue: nil,
@@ -198,10 +193,7 @@ private struct TransferRows: View {
                 title: localizedCoreString("core.activity.uploading"),
                 count: uploads.wait?.text ?? uploads.batch.text,
                 queue: .init(.uploads, paused: uploads.paused),
-                bar: BatchBar(
-                    bar: uploads.bar,
-                    stream: outboxStore.fileShares
-                ) { $0 }
+                bar: store.bar(.uploads)
             )
         }
         if let pins = activity.pins {
@@ -209,10 +201,7 @@ private struct TransferRows: View {
                 title: localizedCoreString("core.activity.pinning"),
                 count: pins.wait?.text ?? pins.batch.text,
                 queue: .init(.downloads, paused: pins.paused),
-                bar: BatchBar(
-                    bar: pins.bar,
-                    stream: downloadStore.releaseProgress
-                ) { $0.fraction }
+                bar: store.bar(.pins)
             )
         }
         if let movingToThisDevice = activity.movingToThisDevice {
@@ -223,10 +212,7 @@ private struct TransferRows: View {
                 count: movingToThisDevice.wait?.text
                     ?? movingToThisDevice.batch.text,
                 queue: .init(.downloads, paused: movingToThisDevice.paused),
-                bar: BatchBar(
-                    bar: movingToThisDevice.bar,
-                    stream: downloadStore.moveToThisDeviceTransfers
-                ) { $0.fraction }
+                bar: store.bar(.movingToThisDevice)
             )
         }
     }
@@ -236,7 +222,7 @@ private struct TransferRows: View {
 /// done or what holds its queue back, then the button that pauses its queue,
 /// and under them a bar of its batch's bytes; a line with no bar of bytes
 /// shows the moving bar.
-private struct TransferLine<Bar: View>: View {
+private struct TransferLine: View {
     /// A queue a line pauses, and whether it is paused now.
     struct Queue {
         let kind: StorageQueueKind
@@ -251,7 +237,7 @@ private struct TransferLine<Bar: View>: View {
     let title: String
     let count: String?
     let queue: Queue?
-    let bar: Bar?
+    let bar: LatestSource<Double>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -277,7 +263,8 @@ private struct TransferLine<Bar: View>: View {
                 }
             }
             if let bar {
-                bar.accessibilityLabel(title)
+                ShareBar(share: bar)
+                    .accessibilityLabel(title)
             }
             else {
                 ProgressView()

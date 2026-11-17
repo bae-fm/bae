@@ -73,62 +73,15 @@ mirror_struct! {
     fields: { done, total },
 }
 
-/// A transfer line's bar: the share of its batch's bytes done, then each
-/// file or release bae is transferring now. The view fills each one's
-/// segment to the fraction its transfer's stream holds under its key.
-/// Mirrors `bae_views::BatchBar`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeBatchBar {
-    /// The share of the batch's bytes done, from 0 to 1.
-    pub done: f64,
-    /// Each file or release bae is transferring now, in the order the bar
-    /// draws them.
-    pub moving: Vec<BridgeMovingShare>,
-}
-
-/// A file or release on a transfer line's bar. Mirrors
-/// `bae_views::MovingShare`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct BridgeMovingShare {
-    /// The key its transfer's stream holds its fraction under: a file's id
-    /// for an upload, a release's for a download.
-    pub key: String,
-    /// Where its segment starts, from 0 to 1.
-    pub start: f64,
-    /// Its share of the batch's bytes, which its segment spans once it is
-    /// done.
-    pub share: f64,
-}
-
-impl BridgeBatchBar {
-    fn from_core<Key: ToString>(bar: bae_views::BatchBar<Key>) -> Self {
-        Self {
-            done: bar.done,
-            moving: bar
-                .moving
-                .into_iter()
-                .map(|moving| BridgeMovingShare {
-                    key: moving.key.to_string(),
-                    start: moving.start,
-                    share: moving.share,
-                })
-                .collect(),
-        }
-    }
-}
-
 /// The Uploading line: the releases with files queued to upload since none
 /// had any. Mirrors `bae_views::UploadQueueActivity`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadQueueActivity {
     pub batch: BridgeTransferBatch,
     /// What holds the upload queue back, shown in place of the count.
     pub wait: Option<super::BridgeUploadQueueWait>,
     /// The person paused the upload queue: the line ends in Resume, not Pause.
     pub paused: bool,
-    /// The line's bar. Each moving share's key is the file id that the
-    /// upload file shares stream uses.
-    pub bar: BridgeBatchBar,
 }
 
 impl BridgeUploadQueueActivity {
@@ -137,7 +90,6 @@ impl BridgeUploadQueueActivity {
             batch: BridgeTransferBatch::from_core(uploads.batch),
             paused: uploads.paused(),
             wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
-            bar: BridgeBatchBar::from_core(uploads.bar),
         }
     }
 }
@@ -145,7 +97,7 @@ impl BridgeUploadQueueActivity {
 /// The Pinning or the Moving to This Mac line: the releases queued as that kind
 /// since none of it waited or downloaded. Mirrors
 /// `bae_views::DownloadQueueActivity`.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeDownloadQueueActivity {
     pub batch: BridgeTransferBatch,
     /// What holds the download queue back, shown in place of the count.
@@ -153,9 +105,6 @@ pub struct BridgeDownloadQueueActivity {
     /// The person paused the download queue: the line ends in Resume, not
     /// Pause.
     pub paused: bool,
-    /// The line's bar. Its moving share's key is the release id that the
-    /// line's download stream uses.
-    pub bar: BridgeBatchBar,
 }
 
 impl BridgeDownloadQueueActivity {
@@ -164,7 +113,6 @@ impl BridgeDownloadQueueActivity {
             batch: BridgeTransferBatch::from_core(downloads.batch),
             paused: downloads.paused(),
             wait: downloads.wait.map(super::BridgeQueueWait::from_core),
-            bar: BridgeBatchBar::from_core(downloads.bar),
         }
     }
 }

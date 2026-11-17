@@ -2615,7 +2615,7 @@ it. Core measures every release's bar and the total again each time the
 query reads or a file's bytes move, from the query's first read on, and
 writes them all to the stream, which holds the latest per release; a release
 the query no longer names leaves the stream. Core also sends each file's share, keyed by file, for the Storage
-manager's rings and the Activity panel's Uploading bar. Core measures how fast
+manager's rings. Core measures how fast
 they go outside the database, from the same watch's bytes, file by file, as
 each step of them goes, so a file sent in one request has a rate too: a rate
 for each release, its files being sent together, and for every file being sent
@@ -4170,14 +4170,16 @@ keeps a copy on this one. Every count is in releases, a release done once all
 its files are, and every bar is filled by the bytes of the batch done (for
 uploads, the bytes the providers confirmed), each release counting its size: a
 done release all of it, an upload its stored files and its files' shares on the
-way, the pin or move-to-this-device downloading its share. The
-line's row in the activity's read gives the share of the batch's bytes done
-and each file being sent, or the release downloading, with where its segment
-starts and its share of the batch's bytes; the bar draws the bytes done, and
-fills each segment to the fraction that file's or release's transfer stream
-holds, so the panel adds nothing up. A file or release whose transfer ends
-leaves its stream, and its bytes count in the row's bytes done once the read
-that stores them arrives. A release
+way, the pin or move-to-this-device downloading its share. A live query
+of the tables gives each line's share of its batch's bytes done, and each
+file bae is sending, or release it is downloading, with its share of the
+batch. A watcher in core adds to the share done each of those shares times
+how far its transfer has got, and computes each line's bar again whenever the
+query returns new rows or a transfer moves. The watcher keeps no copy of the
+bars it sent and no record of finished transfers: a finished file or release
+counts in the share done once the query returns rows that show it stored.
+The stream of the Activity bars carries each line's bar under the line's
+name, and the panel draws it. A release
 removed from the library counts none of its bytes. A bar moves while a release's
 files transfer and its count waits. A batch is everything the queue has held
 since it was last empty, so a count only grows, and it starts over once the
@@ -6174,9 +6176,9 @@ release's or track's id as UTF-8, or a candidate's key.
 - **What a read is.** Everything a screen shows comes from SQL, except values
   that change many times a second (keyed latest-value streams, §10.2) and state
   that lives only on screen (hover, focus, an open popover or menu, a drag in
-  progress), which the view holds. A fast value may add a live query's values
-  to an in-memory value that changes fast, but a plain query result never goes
-  on a fast stream (§10.2). A read that must follow changes (a screen, or a bridge,
+  progress), which the view holds. Core may compute a fast value by adding a
+  live query's values to an in-memory value that changes fast, but a plain
+  query result never goes on a fast stream (§10.2). A read that must follow changes (a screen, or a bridge,
   automation or MCP subscriber) is one SQL query subscribed as a coven live
   query, and everything a screen shows beside its rows (counts, totals, groups
   and section headers, "N of M", sums, facets) comes from SQL, in the same
@@ -6218,13 +6220,16 @@ release's or track's id as UTF-8, or a candidate's key.
   only in a `KeyedValueStream`, keyed by release, file, track, candidate or
   Activity line,
   never in a callback, a
-  record field or a subscription value. A fast value is one core holds in
-  memory, or one core computes from such a value and the values of a live
-  query, as a release's upload bar adds its files' bytes on the way to its
-  stored bytes (§4.2). Core computes such a value again each time either side
-  changes, starting once both have a value, and keeps nothing from an earlier
-  read. A query's result alone never goes on a stream: it reaches the screen
-  in the screen's live query. Every stream is built in the
+  record field or a subscription value. A fast value is a value that core
+  holds in memory, or that a watcher in core computes from such a value and
+  a live query's latest rows: a release's upload bar is its stored bytes plus
+  the bytes of its files that bae has sent so far (§4.2), and an Activity
+  line's bar is its batch's share done plus the share of each file or release
+  that bae is transferring (§6.4). The watcher computes the value again each
+  time the query returns new rows or the in-memory value changes, starting
+  once the query has returned its first rows. It keeps no copy of what it last
+  sent and nothing from an earlier read. A query's result alone never goes on
+  a stream: it reaches the screen in the screen's live query. Every stream is built in the
   bridge's `screens` module. A `feed_*` call starts writing one
   on the bridge's side and returns it; cancelling or dropping it, or closing
   the library, stops it, and it then holds nothing, whatever still runs that

@@ -1,24 +1,22 @@
-//! Each Activity transfer line's bar as the library's tables give it: the
-//! share of the line's batch whose bytes are done, and each file or release
-//! that is uploading or downloading now with its share of the batch. How far
-//! a transferring file or release has got changes with every byte: core sends
-//! it on its transfer's stream under the key the bar names, and the view
-//! fills each share to it.
+//! The rows each Activity transfer line's bar is made from: the share of the
+//! line's batch whose bytes are done, and each file or release that bae is
+//! uploading or downloading now with its share of the batch. How far a file
+//! or release has got changes with every byte and is in no table: a watcher
+//! in bae-library adds it to these rows and sends each line's bar.
 
 use crate::sync_activity::DownloadLine;
 use bae_records::records::queued_uploads::RELEASE_BYTES_STORED;
 use bae_store::DbError;
 
-/// A transfer line's bar: the share of its batch's bytes done, then each
-/// file or release transferring now with its own share, under the key its
-/// transfer's stream uses.
+/// A transfer line's bar as the tables give it: the share of its batch's
+/// bytes done, and each file or release that bae is transferring now with its
+/// own share, under the key its transfer's progress uses.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchBar<Key> {
     /// The share of the batch's bytes done, from 0 to 1. A batch of no bytes
     /// has done none of them.
     pub done: f64,
-    /// Each file or release that is uploading or downloading now, in the
-    /// order the bar draws them after the bytes done.
+    /// Each file or release that bae is uploading or downloading now.
     pub moving: Vec<MovingShare<Key>>,
 }
 
@@ -29,16 +27,12 @@ impl<Key> Default for BatchBar<Key> {
     }
 }
 
-/// A file or release that is transferring now: where its segment of the bar
-/// starts, and its share of its batch's bytes, which its segment spans once
-/// it is done.
+/// A file or release that bae is transferring now, and its share of its
+/// batch's bytes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MovingShare<Key> {
     pub key: Key,
-    /// Where its segment starts, from 0 to 1: after the bytes done and the
-    /// shares of those drawn before it.
-    pub start: f64,
-    /// Its size over the batch's, from 0 to 1.
+    /// Its size divided by the batch's size, from 0 to 1.
     pub share: f64,
 }
 
@@ -49,21 +43,17 @@ pub struct MovingShare<Key> {
 /// batch holds no release has an empty bar.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ActivityBarRows {
-    /// The Uploading line's bar, with one segment for each file this process
-    /// is sending now.
+    /// The Uploading line's bar, with each file this process is sending now.
     pub uploads: BatchBar<coven::FileId>,
-    /// The Pinning line's bar, with a segment for the release downloading
-    /// now.
+    /// The Pinning line's bar, with the release downloading now.
     pub pins: BatchBar<String>,
-    /// The Moving to this device line's bar, with a segment for the release
-    /// downloading now.
+    /// The Moving to this device line's bar, with the release downloading
+    /// now.
     pub moving_to_this_device: BatchBar<String>,
 }
 
-/// Every transfer line's bar.
-pub(crate) fn activity_bars_on(
-    sql: &coven::SqlReadContext<'_>,
-) -> Result<ActivityBarRows, DbError> {
+/// Every transfer line's bar as the tables give it.
+pub fn activity_bars_on(sql: &coven::SqlReadContext<'_>) -> Result<ActivityBarRows, DbError> {
     let pins = &DownloadLine::PINS;
     let moving_to_this_device = &DownloadLine::MOVING_TO_THIS_DEVICE;
     Ok(ActivityBarRows {
@@ -79,10 +69,10 @@ pub(crate) fn activity_bars_on(
 }
 
 /// A line's bar: of its batch's whole size, the share done, then each key
-/// that `moving` names with its size's share, in the order of its release and
-/// key. `batch_bytes` is a `batch_bytes` table of the batch's `total` and
-/// `done` bytes; `moving` is a `moving` table of each `key`, its
-/// `release_id` and its `share` of the batch. `params` are both tables'.
+/// that `moving` names with its size's share. `batch_bytes` is a
+/// `batch_bytes` table of the batch's `total` and `done` bytes; `moving` is a
+/// `moving` table of each `key` and its `share` of the batch. `params` are
+/// both tables'.
 fn batch_bar_on<Key: rusqlite::types::FromSql>(
     sql: &coven::SqlReadContext<'_>,
     batch_bytes: &str,
@@ -100,20 +90,10 @@ fn batch_bar_on<Key: rusqlite::types::FromSql>(
     let moving = sql.query(
         &format!(
             "WITH {batch_bytes}, {moving} \
-             SELECT key, share, CAST(batch_bytes.done AS REAL) / batch_bytes.total \
-                 + COALESCE(SUM(share) OVER (ORDER BY release_id, key \
-                     ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0.0) AS start \
-             FROM moving JOIN batch_bytes \
-             ORDER BY release_id, key"
+             SELECT key, share FROM moving ORDER BY key"
         ),
         params,
-        |row| {
-            Ok(MovingShare {
-                key: row.get("key")?,
-                start: row.get("start")?,
-                share: row.get("share")?,
-            })
-        },
+        |row| Ok(MovingShare { key: row.get("key")?, share: row.get("share")? }),
     )?;
     Ok(BatchBar { done, moving })
 }
@@ -134,7 +114,6 @@ fn upload_batch_bytes() -> String {
 /// sending now, keyed by file, with its size's share of the batch. A cover's
 /// or a picture's file belongs to no release of the batch.
 const UPLOAD_MOVING: &str = "moving AS (SELECT sending.file AS key, \
-         f.release_id AS release_id, \
          CAST(coven.size AS REAL) / batch_bytes.total AS share \
      FROM coven_sending AS sending \
      JOIN release_files AS f ON f.file = sending.file \
@@ -158,7 +137,6 @@ fn download_batch_bytes(line: &DownloadLine) -> String {
 /// A download line's moving release: the release downloading as the line's
 /// kind (`?1`) now, keyed by release, with its size's share of the batch.
 const DOWNLOAD_MOVING: &str = "moving AS (SELECT batch.release_id AS key, \
-         batch.release_id AS release_id, \
          CAST(storage.total_size AS REAL) / batch_bytes.total AS share \
      FROM download_batch AS batch \
      JOIN release_storage AS storage ON storage.release_id = batch.release_id \
