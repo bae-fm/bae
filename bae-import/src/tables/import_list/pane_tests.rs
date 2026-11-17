@@ -631,9 +631,9 @@ async fn a_skipped_folder_is_listed_and_read_as_what_its_scan_read() {
     assert!(!again.changed(), "the folder read the same is stored unchanged");
 }
 
-/// The pane looking into a folder that failed validation reads nothing for a
-/// folder that passed it: its statements keep only a folder stored as
-/// invalid.
+/// The pane that shows a folder that failed validation reads nothing for a
+/// folder that passed it: the read's statements match only a folder the scan
+/// stored as invalid.
 #[tokio::test]
 async fn the_skipped_pane_reads_nothing_for_a_valid_folder() {
     let (db, _tmp, root) = watched_root().await;

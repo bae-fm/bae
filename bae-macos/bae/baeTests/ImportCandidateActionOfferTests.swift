@@ -8,8 +8,8 @@ import Testing
 @Suite("The import row's action offers")
 struct ImportCandidateActionOfferTests {
     /// Each offer core sends for the row is one offer for that row, in the
-    /// order core sends them, with the number and whether it can run as core
-    /// says.
+    /// order core sends them, with the number of rows it applies to and
+    /// whether it can run, as core sends them.
     @Test("a row's menu offers what core offers for the row")
     func aRowsMenuOffersWhatCoreOffers() {
         let key = Data([1, 2, 3])

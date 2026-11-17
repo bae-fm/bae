@@ -198,7 +198,7 @@ pub struct InvalidRow {
     pub folder: std::path::PathBuf,
     /// The folder's name as `coven::path_text` shows it.
     pub folder_name: String,
-    /// The watched folder it was scanned from (`WatchedFolder::path`).
+    /// The watched folder the scan found it in (`WatchedFolder::path`).
     pub watched_folder_path: std::path::PathBuf,
     /// The folder below the watched folder, as `coven::path_text` shows it.
     pub display_path: String,
