@@ -7,7 +7,6 @@ import uniffi.bae_bridge.BridgeSourceAudioDescriptor
 import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioLayout
 import uniffi.bae_bridge.BridgeSourceAudioSummary
-import uniffi.bae_bridge.bridgeAudioChannelsKey
 import java.text.NumberFormat
 
 private const val HZ_PER_KHZ = 1000.0
@@ -24,8 +23,6 @@ private const val HZ_PER_KHZ = 1000.0
  * parts and the lossy/lossless split (`bitsPerSample == null`); this is the UI's
  * locale rendering. Mirrors macOS `BridgeAudioFormat.text`.
  */
-fun BridgeAudioFormat.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
-
 internal fun BridgeAudioFormat.text(
     context: Context,
     audioChannelsKey: (Long) -> String?,
@@ -79,8 +76,6 @@ private fun channelsText(
     }
 }
 
-fun BridgeSourceAudioDescriptor.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
-
 internal fun BridgeSourceAudioDescriptor.text(
     context: Context,
     audioChannelsKey: (Long) -> String?,
@@ -92,8 +87,6 @@ internal fun BridgeSourceAudioDescriptor.text(
     parts.add(format.text(context, audioChannelsKey))
     return parts.joinToString(context.coreString("core.audio.list_separator"))
 }
-
-fun BridgeSourceAudioSummary.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
 
 internal fun BridgeSourceAudioSummary.text(
     context: Context,

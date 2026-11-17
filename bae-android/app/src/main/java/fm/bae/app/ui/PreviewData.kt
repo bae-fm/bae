@@ -8,12 +8,7 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
-import uniffi.bae_bridge.BridgeAlbumSearchResult
-import uniffi.bae_bridge.BridgeArtistDetail
-import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeComposerSummary
-import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -54,15 +49,12 @@ import uniffi.bae_bridge.BridgeReleaseArea
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
-import uniffi.bae_bridge.BridgeSearchResults
-import uniffi.bae_bridge.BridgeSearchSectionCounts
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
-import uniffi.bae_bridge.BridgeTrackSearchResult
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
@@ -206,57 +198,6 @@ object PreviewData {
             rating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
         )
 
-    fun albumSearchResult(
-        id: String = "alb-1",
-        title: String = "Album Title",
-    ): BridgeAlbumSearchResult =
-        BridgeAlbumSearchResult(
-            id = id,
-            title = title,
-            year = 2020,
-            artistLine = creditLineNamed("Artist Name"),
-            cover = imageRef(),
-        )
-
-    fun trackSearchResult(
-        id: String = "trk-1",
-        releaseId: String = "rel-1",
-        albumId: String = "alb-1",
-    ): BridgeTrackSearchResult =
-        BridgeTrackSearchResult(
-            id = id,
-            title = "Track Title",
-            durationClock = trackDurationClock,
-            releaseId = releaseId,
-            albumId = albumId,
-            albumTitle = "Album Title",
-            artistLine = creditLineNamed("Artist Name"),
-            cover = imageRef(),
-        )
-
-    fun artistSummary(
-        artistId: String = "artist-1",
-        name: String = "Artist Name",
-    ): BridgeArtistSummary =
-        BridgeArtistSummary(
-            artistId = artistId,
-            name = name,
-            countLine = BridgeCountLabel(key = "core.library.album_count", count = 4uL),
-            image = null,
-        )
-
-    fun composerSummary(
-        artistId: String = "artist-1",
-        name: String = "Composer Name",
-    ): BridgeComposerSummary =
-        BridgeComposerSummary(
-            artistId = artistId,
-            name = name,
-            countLine = BridgeCountLabel(key = "core.library.work_count", count = 3uL),
-            linkedReleaseCount = 5L,
-            image = null,
-        )
-
     fun workSummary(
         workId: String = "work-1",
         title: String = "Work Title",
@@ -267,30 +208,6 @@ object PreviewData {
             composerNames = "Composer Name",
             linkedReleaseCount = 2L,
             representativeCover = null,
-        )
-
-    fun searchResults(
-        albums: List<BridgeAlbumSearchResult> = listOf(albumSearchResult()),
-        artists: List<BridgeArtistSummary> = listOf(artistSummary()),
-        tracks: List<BridgeTrackSearchResult> = listOf(trackSearchResult()),
-        composers: List<BridgeComposerSummary> = listOf(composerSummary()),
-        works: List<BridgeWorkSummary> = listOf(workSummary()),
-    ): BridgeSearchResults =
-        BridgeSearchResults(
-            albums = albums,
-            artists = artists,
-            tracks = tracks,
-            composers = composers,
-            works = works,
-            found = true,
-            sectionCounts =
-                BridgeSearchSectionCounts(
-                    albums = albums.size.toULong(),
-                    artists = artists.size.toULong(),
-                    tracks = tracks.size.toULong(),
-                    composers = composers.size.toULong(),
-                    works = works.size.toULong(),
-                ),
         )
 
     fun downloadOp(
@@ -433,18 +350,6 @@ object PreviewData {
         label: BridgeGalleryLabel = BridgeGalleryLabel.Cover,
         source: BridgeGallerySource = BridgeGallerySource.Cover(imageRef()),
     ): BridgeGalleryItem = BridgeGalleryItem(id = id, label = label, source = source)
-
-    fun artistDetail(
-        artist: BridgeArtistSummary = artistSummary(),
-        albums: List<BridgeAlbum> = listOf(album()),
-    ): BridgeArtistDetail =
-        BridgeArtistDetail(
-            artist = artist,
-            creditNames = emptyList(),
-            albums = albums,
-            creditNameCount = 0u,
-            albumCount = albums.size.toULong(),
-        )
 
     fun member(
         id: String = "00000000-0000-4000-8000-000000000001",

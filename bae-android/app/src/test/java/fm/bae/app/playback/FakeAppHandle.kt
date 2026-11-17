@@ -118,9 +118,7 @@ internal fun unfaked(method: String): Nothing = throw AssertionError("the test r
 internal open class FakeAppHandle(
     val albumList: FakeAlbumList = FakeAlbumList(),
     private val albumDetails: Map<String, BridgeAlbumDetail> = emptyMap(),
-    private val composerDetails: Map<String, BridgeComposerDetail> = emptyMap(),
     private val composerDetailRows: Map<String, List<BridgeComposerDetailRow>> = emptyMap(),
-    private val workDetails: Map<String, BridgeWorkDetail> = emptyMap(),
     private val workChildren: Map<String, List<BridgeWorkChild>> = emptyMap(),
     private val albumTracks: Map<String, List<BridgeBrowseTrack>> = emptyMap(),
     private val releaseDetails: Map<String, BridgeRelease> = emptyMap(),
@@ -209,16 +207,6 @@ internal open class FakeAppHandle(
     override fun triggerSync() {}
 
     override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = null
-
-    /** Deliver [value] on a search, as the answer to its newest request unless [revision] names
-     *  an earlier one. */
-    fun emitSearchResults(
-        subscription: Int,
-        value: BridgeSearchResults,
-        revision: ULong? = null,
-    ) {
-        searchSubscriptions[subscription].emit(Result.success(value), revision)
-    }
 
     override fun subscribeAlbumSections(sortCriteria: List<BridgeSortCriterion>): AlbumSectionsSubscription =
         unfaked("subscribeAlbumSections")
@@ -315,10 +303,9 @@ internal open class FakeAppHandle(
     override fun subscribeAlbumDetail(): AlbumDetailSubscription =
         FakeAlbumDetailSubscription(FakeDetailRead { albumDetails[it.albumId] }).also(albumDetailSubscriptions::add)
 
-    override fun subscribeComposerDetail(): ComposerDetailSubscription =
-        FakeComposerDetailSubscription(FakeDetailRead { composerDetails[it] })
+    override fun subscribeComposerDetail(): ComposerDetailSubscription = FakeComposerDetailSubscription(FakeDetailRead { null })
 
-    override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { workDetails[it] })
+    override fun subscribeWorkDetail(): WorkDetailSubscription = FakeWorkDetailSubscription(FakeDetailRead { null })
 
     override fun subscribeReleaseDetail(): ReleaseDetailSubscription = FakeReleaseDetailSubscription(FakeDetailRead { releaseDetails[it] })
 
@@ -395,16 +382,9 @@ internal open class FakeAppHandle(
 
     override suspend fun readAlbumDetail(albumId: String): BridgeAlbumDetail? = albumDetails[albumId]
 
-    override suspend fun readComposerDetail(artistId: String): BridgeComposerDetail? = composerDetails[artistId]
+    override suspend fun readComposerDetail(artistId: String): BridgeComposerDetail? = null
 
-    override suspend fun readWorkDetail(workId: String): BridgeWorkDetail? = workDetails[workId]
-
-    fun failSearchResults(
-        subscription: Int,
-        error: uniffi.bae_bridge.BridgeException,
-    ) {
-        searchSubscriptions[subscription].emit(Result.failure(error))
-    }
+    override suspend fun readWorkDetail(workId: String): BridgeWorkDetail? = null
 
     override suspend fun playRelease(
         releaseId: String,

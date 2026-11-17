@@ -305,25 +305,3 @@ private fun CodeBox(
         }
     }
 }
-
-/** A restore code in groups of four, and its masked groups, for the shots; never a library's. */
-private val PREVIEW_CODE =
-    BridgeRestoreCodeShare(
-        code =
-            "CVR1 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567 " +
-                "ABCD EFGH IJKL MNOP QRST",
-        maskedGroups = listOf("CVR1", "ABCD") + List(19) { "••••" } + "QRST",
-        qrText = "CVR1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRST",
-    )
-
-/** The section on a Dropbox library with a fixture code, masked or shown, for the screenshot gallery. */
-@Composable
-internal fun RestoreCodeScene(shown: Boolean) {
-    RestoreCodeSectionContent(
-        needsS3Key = false,
-        state = if (shown) RestoreCodeState.Shown(PREVIEW_CODE) else RestoreCodeState.Masked(PREVIEW_CODE),
-        onShow = {},
-        onHide = {},
-        onPrint = {},
-    )
-}

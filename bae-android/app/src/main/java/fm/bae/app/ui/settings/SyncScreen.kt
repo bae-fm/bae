@@ -58,7 +58,6 @@ import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncFix
-import uniffi.bae_bridge.BridgeSyncShown
 
 private val logger = BaeLogger("bae.SyncScreen")
 
@@ -520,14 +519,3 @@ private fun openStoreListing(context: Context): DisplayError? =
         logger.warning("no app store can open bae's listing", e)
         DisplayError(context.getString(R.string.pending_update_no_store))
     }
-
-/** The top of the Sync page in the state `shown` says, in the app chrome. */
-@Composable
-internal fun SyncStatusScene(shown: BridgeSyncShown) {
-    Column(
-        modifier = Modifier.padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        SyncStatusBlock(line = SyncLine.Read(shown), onFix = {})
-    }
-}

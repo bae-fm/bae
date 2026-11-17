@@ -263,11 +263,8 @@ internal class FakeLibrarySearchSubscription(
         closed = true
     }
 
-    fun emit(
-        value: Result<BridgeSearchResults>,
-        revision: ULong? = null,
-    ) {
-        events.trySend(value.map { BridgeLibrarySearchSnapshot(query, it, revision ?: this.revision) })
+    private fun emit(value: Result<BridgeSearchResults>) {
+        events.trySend(value.map { BridgeLibrarySearchSnapshot(query, it, revision) })
     }
 }
 

@@ -17,10 +17,7 @@ import uniffi.bae_bridge.BridgeCreditLine
 import uniffi.bae_bridge.BridgeDeviceStorage
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadCounts
-import uniffi.bae_bridge.BridgeDownloadKind
-import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
-import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeImportDestination
@@ -37,7 +34,6 @@ import uniffi.bae_bridge.BridgePlaylistOwner
 import uniffi.bae_bridge.BridgePlaylistSummary
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueueWait
-import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
@@ -324,23 +320,6 @@ object BridgeFixtures {
                     composers = composers.size.toULong(),
                     works = works.size.toULong(),
                 ),
-        )
-
-    fun downloadOp(
-        releaseId: String,
-        state: BridgeDownloadState,
-        title: String = "Album Title",
-        fileCount: ULong = 10UL,
-        totalSize: ULong = 1_000UL,
-    ): BridgeDownloadOp =
-        BridgeDownloadOp(
-            releaseId = releaseId,
-            kind = BridgeDownloadKind.PIN,
-            fileCount = fileCount,
-            totalSize = totalSize,
-            release = BridgeQueuedRelease(title = title),
-            createdAt = 0,
-            state = state,
         )
 
     fun downloadCounts(

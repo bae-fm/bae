@@ -25,7 +25,6 @@ import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeListWindow
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistListing
-import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeSortValue
 import uniffi.bae_bridge.BridgeWorkChild
@@ -128,15 +127,6 @@ class Library(
      */
     internal fun albumDetail(): DetailRead<BridgeAlbumDetailRequest, BridgeAlbumDetail> =
         handle.subscribeAlbumDetail().let { read ->
-            BridgeDetailRead(
-                set = read::setId,
-                pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
-                free = read::close,
-            )
-        }
-
-    internal fun releaseDetail(): DetailRead<String, BridgeRelease> =
-        handle.subscribeReleaseDetail().let { read ->
             BridgeDetailRead(
                 set = read::setId,
                 pulls = pulled(read::next, read::cancel).map { DetailDelivery(it.id, it.value) },
