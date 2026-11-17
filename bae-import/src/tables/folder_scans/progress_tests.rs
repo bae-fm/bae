@@ -44,7 +44,7 @@ fn found_counts(folders: &[crate::ScanningFolder]) -> Vec<u64> {
 /// The only watched folder's status.
 async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanStatus {
     let progress = tables.load_folder_scan_progress().await.unwrap();
-    let [status] = <[_; 1]>::try_from(progress.statuses).expect("one root is watched");
+    let [status] = <[_; 1]>::try_from(progress.statuses).expect("the library watches one root");
     status.status
 }
 
@@ -513,10 +513,8 @@ async fn stored_scans_list_a_folder_no_scan_has_begun() {
     );
 }
 
-/// Every scan write runs the scanning folders' read again. The read counts
-/// the running scan's candidates off an index and takes at most a few steps
-/// for each one. Counting them off the tables took nine steps for each
-/// candidate.
+/// The scanning folders' read of a running scan with 1,000 candidates takes
+/// at most four steps for each candidate.
 #[tokio::test]
 async fn reading_the_scanning_folders_counts_off_an_index() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
