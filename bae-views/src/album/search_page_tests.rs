@@ -1,6 +1,7 @@
-//! The albums a search lists as a media browser pages through them: each
-//! page read once at its offset, and their count a live query, over
-//! libraries written through the records domain's own writes.
+//! These tests check the albums a search lists as a media browser pages
+//! through them. The browser reads each page once at its offset, and a live
+//! query counts the albums. Each test writes its library through the records
+//! domain's own writes.
 
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
