@@ -2684,9 +2684,10 @@ file list, the file whose original is missing or changed, or whose download
 failed. No rate shows beside a row, nor how many entries wait ahead of it or
 what holds the queue back: a row's storage is its state and at most the one
 change on its way. A move fails when a file's original changed before its upload
-(coven keeps the move's pending record, which names that original, until the
-person cancels the move, and the release's row takes both the failure and the
-file it names from that record); the release stays on this
+(coven marks the move failed in `coven_moves` and keeps its pending record,
+which names that original, until the person cancels the move; the release's
+row takes the failure from `coven_moves` and the file from that record); the
+release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
 the move.
 
