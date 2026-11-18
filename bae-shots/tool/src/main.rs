@@ -30,9 +30,13 @@ struct Cli {
 enum Action {
     /// Check the canvas runtime copy against its record and the canvas's.
     Runtime,
-    /// Write the record the last `run` made (shots/record.toml) to
-    /// design/shots.toml, for whoever commits it.
-    Record,
+    /// Write a results record to design/shots.toml, for whoever commits it.
+    /// With no --from, the record the last `run` made (shots/record.toml).
+    Record {
+        /// A results file, such as the record.toml of a `check`'s --out folder.
+        #[arg(long)]
+        from: Option<PathBuf>,
+    },
     /// Take the shots into shots/, a folder for each platform, and check them. Only pairs new or
     /// changed against origin/main's record fail the run; the rest are listed.
     Run(Selection),
@@ -41,7 +45,8 @@ enum Action {
         /// The directory holding every platform's PNGs and element lists.
         #[arg(long)]
         shots: PathBuf,
-        /// The directory the rendered boards are written to.
+        /// The directory the report and the results record (record.toml) are
+        /// written to, with the rendered boards.
         #[arg(long)]
         out: PathBuf,
         /// A git ref whose record the pairs are marked new or changed against.
@@ -215,15 +220,15 @@ fn run(action: Action) -> Result<bool, String> {
                 shots_for: &|_| shots.clone(),
                 out: &out,
                 base: base.as_deref(),
-                results: None,
+                results: Some(&out.join(record::RESULTS)),
                 gate: verify::Gate::EveryPair,
             })?;
             let header = header(sha, base, &outcome);
             finish(&outcome, &header, &out)
         }
-        Action::Record => {
-            record::Record::promote(&root.join("shots").join(record::RESULTS), &root)
-                .map_err(|e| e.to_string())?;
+        Action::Record { from } => {
+            let from = from.unwrap_or_else(|| root.join("shots").join(record::RESULTS));
+            record::Record::promote(&from, &root).map_err(|e| e.to_string())?;
             eprintln!("bae-shots: wrote {}", record::FILE);
             Ok(true)
         }
