@@ -213,7 +213,10 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
 
     let change = list
         .set_view(
-            ImportListView { filter_text: "Album 1".to_string(), ..ImportListView::default() },
+            ImportListView {
+                search: bae_import::SearchText::of("Album 1"),
+                ..ImportListView::default()
+            },
             selected.clone(),
         )
         .await

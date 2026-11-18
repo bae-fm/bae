@@ -285,7 +285,7 @@ async fn edits_keep_the_row_selected_under_identified() {
 #[tokio::test(flavor = "multi_thread")]
 async fn edits_keep_the_row_selected_under_a_search_for_its_artist() {
     edits_under(ImportListView {
-        filter_text: "Artist Name".to_string(),
+        search: crate::SearchText::of("Artist Name"),
         ..ImportListView::default()
     })
     .await;

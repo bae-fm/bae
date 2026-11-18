@@ -418,15 +418,18 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    crate::types::BridgeImportListView = bae_import::ImportListView,
-    into_core: pub(crate) fn,
-    fields: {
-        tab: (crate::types::BridgeTriageTab),
-        filter_text,
-        pending_filter: (crate::types::BridgePendingFilter),
-        order: (crate::types::BridgeImportListOrder),
-    },
+impl crate::types::BridgeImportListView {
+    /// The view the app names: the text typed into its search field
+    /// searches the rows for that text, and an empty field for nothing.
+    pub(crate) fn into_core(self) -> bae_import::ImportListView {
+        let Self { tab, filter_text, pending_filter, order } = self;
+        bae_import::ImportListView {
+            tab: tab.into_core(),
+            search: bae_import::SearchText::of(filter_text),
+            pending_filter: pending_filter.into_core(),
+            order: order.into_core(),
+        }
+    }
 }
 
 impl crate::types::BridgeImportListRequest {

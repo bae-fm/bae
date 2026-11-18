@@ -29,7 +29,7 @@ async fn measure_view(
     for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
         let list = ImportListRequest::of(ImportListView {
             tab: crate::TriageTab::Pending,
-            filter_text: filter_text.clone(),
+            search: crate::SearchText::of(filter_text.clone()),
             pending_filter,
             order,
         });
@@ -161,7 +161,7 @@ pub(super) fn found_view(
 ) -> crate::ImportListView {
     crate::ImportListView {
         tab: crate::TriageTab::Pending,
-        filter_text: filter_text.to_string(),
+        search: crate::SearchText::of(filter_text),
         pending_filter,
         order,
     }

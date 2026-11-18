@@ -1599,7 +1599,6 @@ frozen = [
     { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
 ]
 allowed = [
-    { path = "bae-import/src/list.rs", item = "ImportListRequest::filters_text", shape = "length-branch", count = 1, reason = "tests whether the person typed search text; text the view owns, not rows" },
     { path = "bae-import/src/list.rs", item = "ImportListRequest::keeps_all", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
     { path = "bae-import/src/tables/import_list/judged.rs", item = "Fragments::folds_sql", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
     { path = "bae-import/src/list/test_read.rs", item = "FollowedImportList", shape = "kept-state", count = 1, reason = "a test helper that follows one list: it keeps the request and window it follows with, as a screen does" },

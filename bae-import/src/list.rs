@@ -40,7 +40,9 @@ pub use super::triage::TriageTab;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListView {
     pub tab: TriageTab,
-    pub filter_text: String,
+    /// The text the person searches the rows for, `None` while they search
+    /// for nothing.
+    pub search: Option<SearchText>,
     /// Which of Found's rows the list shows. Done and Skipped rows are past
     /// identification, so it leaves them alone.
     pub pending_filter: PendingFilter,
@@ -51,10 +53,28 @@ impl Default for ImportListView {
     fn default() -> Self {
         Self {
             tab: TriageTab::Pending,
-            filter_text: String::new(),
+            search: None,
             pending_filter: PendingFilter::All,
             order: ImportListOrder::NewestFirst,
         }
+    }
+}
+
+/// Text the person searches the list's rows for. It is never empty: a list
+/// the person searches for no text holds no `SearchText`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SearchText(String);
+
+impl SearchText {
+    /// The search for `text`, or `None` when the person typed no text.
+    pub fn of(text: impl Into<String>) -> Option<Self> {
+        let text = text.into();
+        (!text.is_empty()).then_some(Self(text))
+    }
+
+    /// The text as the person typed it.
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -96,7 +116,7 @@ impl ImportListRequest {
     /// Whether the text filter narrows the tab, which only a read of every
     /// row's text can count.
     pub(crate) fn filters_text(&self) -> bool {
-        !self.view.filter_text.is_empty()
+        self.view.search.is_some()
     }
 
     /// Found's filter entry while it narrows the list: `None` on another tab,

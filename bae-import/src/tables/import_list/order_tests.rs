@@ -365,7 +365,8 @@ async fn name_orders_ignore_dates_and_case_ties_do_not_split_groups() {
 async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     let lib = Library::new().await;
     lib.run(lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
-    let filtered = ImportListView { filter_text: "Old".into(), ..view(TriageTab::Pending) };
+    let filtered =
+        ImportListView { search: crate::SearchText::of("Old"), ..view(TriageTab::Pending) };
     let list = lib.open(filtered).await;
     assert_eq!(
         sequence(&lib.read(&list).await),
@@ -440,7 +441,7 @@ async fn a_jump_past_the_end_starts_at_the_last_item() {
 impl Library {
     /// The items a list on `tab` shows with `needle` typed into its filter.
     async fn found_by(&self, tab: TriageTab, needle: &str) -> Vec<String> {
-        self.items(ImportListView { filter_text: needle.to_string(), ..view(tab) }).await
+        self.items(ImportListView { search: crate::SearchText::of(needle), ..view(tab) }).await
     }
 }
 
@@ -661,7 +662,7 @@ async fn a_search_reads_the_rows_its_index_finds() {
     lib.run(lib.scan("Box/Wanted") + lib.scan("Loose")).await;
     for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
         let list =
-            lib.open(ImportListView { filter_text: "wanted".to_string(), ..view(tab) }).await;
+            lib.open(ImportListView { search: crate::SearchText::of("wanted"), ..view(tab) }).await;
         let plan = tables.import_list_search_plan(list).await.unwrap();
         assert!(
             plan.iter().any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),

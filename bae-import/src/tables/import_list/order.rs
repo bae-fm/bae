@@ -470,10 +470,11 @@ impl Items {
         let tab = tab_column(self.tab());
         let filter = pending_filter_column(self.request.view.pending_filter);
         let folded = self.request.folded_json();
+        let text = self.request.view.search.as_ref().map(crate::SearchText::as_str);
         let mut named: Vec<(&str, &dyn ToSql)> = vec![
             (":tab", &tab),
             (":filter", &filter),
-            (":filter_text", &self.request.view.filter_text),
+            (":filter_text", &text),
             (":folded", &folded),
         ];
         named.extend_from_slice(extra);

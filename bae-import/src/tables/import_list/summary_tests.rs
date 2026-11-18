@@ -49,7 +49,7 @@ async fn a_list_counts_what_it_lists() {
     ] {
         for text in ["", "1"] {
             let view = ImportListView {
-                filter_text: text.to_string(),
+                search: crate::SearchText::of(text),
                 ..under(TriageTab::Pending, filter)
             };
             let kept = releases(&lib.shown(view.clone()).await);
@@ -133,7 +133,10 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let lib = Library::new().await;
     lib.run(lib.scan("Group/Wanted") + lib.scan("Group/Other") + lib.scan("Loose")).await;
     let narrowed = lib
-        .shown(ImportListView { filter_text: "wanted".to_string(), ..view(TriageTab::Pending) })
+        .shown(ImportListView {
+            search: crate::SearchText::of("wanted"),
+            ..view(TriageTab::Pending)
+        })
         .await;
     assert_eq!(narrowed.count.narrowed, Some(crate::NarrowedCount { shown: 1, total: 3 }));
     assert_eq!(narrowed.count.rows, 2, "the header and its matching member");
@@ -334,7 +337,7 @@ async fn each_entry_counts_the_rows_it_holds() {
     }
     for other in [
         ImportListView {
-            filter_text: "several".to_string(),
+            search: crate::SearchText::of("several"),
             ..under(TriageTab::Pending, PendingFilter::NeedsYou)
         },
         view(TriageTab::Done),
@@ -383,7 +386,7 @@ async fn the_pending_filter_leaves_done_and_skipped_alone() {
 async fn the_text_filter_composes_with_the_pending_filter() {
     let lib = every_kind().await;
     let texted = |filter: PendingFilter, text: &str| ImportListView {
-        filter_text: text.to_string(),
+        search: crate::SearchText::of(text),
         ..under(TriageTab::Pending, filter)
     };
     let needs_you = lib.shown(texted(PendingFilter::NeedsYou, "album")).await;
@@ -403,7 +406,7 @@ async fn the_text_filter_composes_with_the_pending_filter() {
     );
     assert_eq!(
         lib.shown(ImportListView {
-            filter_text: "set aside".to_string(),
+            search: crate::SearchText::of("set aside"),
             ..view(TriageTab::Skipped)
         })
         .await
@@ -430,7 +433,7 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
     };
     assert_eq!(first(view(TriageTab::Pending)).await, Some(lib.key("Release 2")));
     let filtered =
-        ImportListView { filter_text: "Release 1".to_string(), ..view(TriageTab::Pending) };
+        ImportListView { search: crate::SearchText::of("Release 1"), ..view(TriageTab::Pending) };
     assert_eq!(first(filtered).await, Some(lib.key("Release 2")));
     assert_eq!(first(view(TriageTab::Done)).await, Some(lib.key("Release 2")));
     lib.run(lib.identifying("Release 1", "queued")).await;

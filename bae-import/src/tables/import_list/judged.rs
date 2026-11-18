@@ -55,7 +55,7 @@ impl ImportListRequest {
     /// pattern, the test `import_list_search` finds the matching rows by;
     /// `None` while the list searches for nothing.
     fn text_sql(&self, p: &str) -> Option<String> {
-        self.filters_text().then(|| {
+        self.view.search.as_ref().map(|_text| {
             format!(
                 "({p}.filter_title GLOB bae_search_pattern(:filter_text) \
                   OR {p}.filter_artists GLOB bae_search_pattern(:filter_text))"

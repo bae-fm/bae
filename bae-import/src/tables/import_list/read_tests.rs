@@ -222,7 +222,7 @@ async fn searching_list(names: &[&str]) -> (Library, ImportListRequest) {
     lib.run(scanned_with_states(&lib, names)).await;
     let list = lib
         .open(crate::ImportListView {
-            filter_text: "wanted".to_string(),
+            search: crate::SearchText::of("wanted"),
             ..ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)
         })
         .await;
@@ -417,7 +417,7 @@ async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
     grow_grouped_import_list(&db, tmp.path(), 0, 300).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
-        filter_text: String::new(),
+        search: None,
         pending_filter: PendingFilter::All,
         // The folders a later scan adds sort first.
         order: ImportListOrder::PathDescending,
@@ -444,7 +444,7 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
     grow_import_list(&db, tmp.path(), 0, 2_000).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
-        filter_text: "Album 1".to_string(),
+        search: crate::SearchText::of("Album 1"),
         pending_filter: PendingFilter::All,
         order: ImportListOrder::PathAscending,
     });
@@ -483,7 +483,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     grow_grouped_import_list(&db, tmp.path(), 0, 100).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
-        filter_text: "Album 1".to_string(),
+        search: crate::SearchText::of("Album 1"),
         pending_filter: PendingFilter::All,
         order: ImportListOrder::PathAscending,
     });
