@@ -164,10 +164,11 @@ private fun InviteDialogsShown(
                 // Once the invite ends, its live query returns no invite, so the screen closes the dialog.
                 LaunchedEffect(read) { dialogs.shownInvite = null }
             } else if (storage == null) {
-                // A library with an invite always has a location: a reported bug, and the dialog doesn't open empty.
+                // A library with an invite always has a location: a bug, told to the person by the snackbar, and the
+                // dialog doesn't open empty.
                 val bugs = LocalBugReports.current
                 LaunchedEffect(read) {
-                    bugs.reportShownInPlace("show an invite", LibraryWithoutStorage())
+                    bugs.report("show an invite", LibraryWithoutStorage())
                     dialogs.shownInvite = null
                 }
             } else {

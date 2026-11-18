@@ -19,6 +19,8 @@ struct InviteCodeSheet: View {
     private var syncStatus
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(UiStore.self)
+    private var uiStore
 
     @State
     private var task: Task<Void, Never>?
@@ -65,6 +67,11 @@ struct InviteCodeSheet: View {
             logger.error("\(detail)")
             CoreBugReporter()
                 .report(operation: "show an invite", detail: detail)
+            uiStore.showError(
+                DisplayError(
+                    line: localizedCoreString("core.error.category.internal")
+                )
+            )
             onDismiss()
         }
         .onAppear { store.showInvite(inviteId) }
