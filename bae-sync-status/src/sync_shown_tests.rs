@@ -1,7 +1,6 @@
 use crate::sync_shown::{SyncCauseLine, SyncFix, SyncShown, SyncStatusWord, SyncTone};
 use crate::sync_status::tests::*;
 use crate::sync_status::{StorageSetupState, SyncStatusSnapshot};
-use crate::{FileRow, PendingItem, PendingRow};
 use bae_diagnostics::UiError;
 
 /// A moment sync last finished, for the tests of when it shows.
@@ -46,7 +45,7 @@ pub(crate) fn location_on(provider: coven::CloudProvider) -> coven::StorageConfi
 }
 
 /// The top block for `state` in a library on `provider`, sync having last
-/// finished at [`finished`], with nothing pending and no failed start.
+/// finished at [`finished`], with no failed start.
 fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShown {
     shown_on_location(location_on(provider), state)
 }
@@ -55,12 +54,10 @@ fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShow
 fn shown_on_location(location: coven::StorageConfig, state: coven::SyncState) -> SyncShown {
     SyncStatusSnapshot {
         coven: coven::SyncStatus { state, last_synced: Some(finished()) },
-        pending: Vec::new(),
         error: None,
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(location),
-        attention_count: 0,
         cause_file: None,
     }
     .shown()
@@ -312,8 +309,8 @@ fn sync_failed_says_why_and_offers_retry_now() {
     );
 }
 
-/// A failed sync whose pending record is a file upload, with the row on this
-/// device that references the file.
+/// A failed sync whose pending record is a file upload, with the name of the
+/// release file on this device that references the file.
 fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
     let subject = coven::PendingSubject::Upload {
         device: coven::DeviceId(1),
@@ -322,22 +319,13 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
     let record = coven::PendingRecord::new(subject, reason);
     SyncStatusSnapshot {
         coven: coven::SyncStatus {
-            state: named_by(record.clone(), coven::SyncState::Failed),
+            state: named_by(record, coven::SyncState::Failed),
             last_synced: None,
         },
-        pending: vec![PendingItem::listed(PendingRow {
-            record,
-            file_row: Some(FileRow::ReleaseFile {
-                release_id: "release".into(),
-                file_name: "Cover.jpg".into(),
-                album_title: "Album".into(),
-            }),
-        })],
         error: None,
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(location_on(coven::CloudProvider::Dropbox)),
-        attention_count: 1,
         cause_file: Some("Cover.jpg".into()),
     }
 }
@@ -397,7 +385,7 @@ fn last_synced_shows_under_a_problem_state_only() {
 #[test]
 fn a_failed_start_shows_why_and_offers_reconnect() {
     let error = UiError::internal("the store key is missing");
-    let status = |effect| read(synced(), Vec::new(), effect, Some(error.clone())).shown();
+    let status = |effect| read(synced(), effect, Some(error.clone())).shown();
     let stopped = status(coven::RetryEffect::NotSyncing);
     assert_eq!(stopped.status, SyncStatusWord::SyncFailed);
     assert_eq!(stopped.tone, SyncTone::Danger);

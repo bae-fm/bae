@@ -437,9 +437,9 @@ async fn download_bytes_send_no_new_sync_activity() {
     pending.abort();
 }
 
-/// A pin the download queue couldn't finish waits on the pending list,
-/// offering Retry, which pins the release again: the pin lands and the
-/// record goes.
+/// A pin the download queue couldn't finish leaves a pending record whose
+/// action is to pin the release again, which lands the pin, and the record
+/// goes.
 #[tokio::test]
 async fn a_failed_pins_retry_pins_the_release_again() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -450,7 +450,6 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     for file in release_files(manager, &release_id).await {
         manager.evict_file_for_test(file.file).await.unwrap();
     }
-    let mut values = manager.subscribe_sync_status();
     manager.start().unwrap();
     home.set_faults(coven::Faults {
         fail_next: 1_000,
@@ -461,8 +460,12 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     .await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     let retry = bae_sync_status::PendingAction::RetryDownload { release_id: release_id.clone() };
-    pending_list_until(&mut values, |items| items.iter().any(|item| item.wait.action == retry))
-        .await;
+    let retries = |records: &[coven::PendingRecord]| {
+        records
+            .iter()
+            .any(|record| bae_sync_status::pending_action(record, Some(&release_id)) == retry)
+    };
+    pending_records_until(manager, retries).await;
 
     download_queue_until(manager, |queue| {
         queue.rows.iter().any(|row| {
@@ -474,8 +477,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     home.set_faults(coven::Faults::none()).await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
     wait_for_kept_release(manager, &release_id).await;
-    pending_list_until(&mut values, |items| !items.iter().any(|item| item.wait.action == retry))
-        .await;
+    pending_records_until(manager, |records| !retries(records)).await;
     assert!(
         views(test.library.manager())
             .find_release_detail(&release_id)

@@ -478,12 +478,10 @@ impl BridgeSyncStatusSnapshot {
         let shown = BridgeSyncShown::from_core(snapshot.shown());
         let bae_sync_status::SyncStatusSnapshot {
             coven: _,
-            pending: _,
             error: _,
             retry_effect: _,
             storage_setup,
             location: _,
-            attention_count: _,
             cause_file: _,
         } = snapshot;
         let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);

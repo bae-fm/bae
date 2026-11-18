@@ -1,4 +1,4 @@
-//! The status query reads a library with nothing recorded as one row.
+//! The status query reads the sync status in one row.
 
 use super::*;
 use bae_store::test_fixtures::temp_db;
@@ -9,8 +9,7 @@ async fn a_library_with_nothing_recorded_reads_as_not_synced() {
     let status = db.read(|sql| sync_status_on(&sql)).await.unwrap();
     assert_eq!(status.coven.state, coven::SyncState::NotSynced);
     assert_eq!(status.coven.last_synced, None);
-    assert!(status.pending.is_empty());
-    assert_eq!(status.attention_count, 0);
+    assert_eq!(status.cause_file, None);
     assert_eq!(status.error, None);
     assert_eq!(status.storage_setup, None);
     assert_eq!(status.retry_effect, coven::RetryEffect::NotSyncing);
@@ -36,14 +35,7 @@ fn connected_library() -> rusqlite::Connection {
 
 /// The status the statement gives `connection`.
 fn status_of(connection: &rusqlite::Connection) -> SyncStatusSnapshot {
-    let rows = connection
-        .prepare(&status_query())
-        .unwrap()
-        .query_map([], read_row)
-        .unwrap()
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .unwrap();
-    snapshot_of(rows).unwrap()
+    snapshot_of(connection.query_row(&status_query(), [], StatusColumns::read).unwrap()).unwrap()
 }
 
 /// A pass that failed on coven's own operation reads as a failed state,

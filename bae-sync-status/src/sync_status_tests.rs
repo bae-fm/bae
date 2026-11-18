@@ -1,28 +1,19 @@
 use super::*;
 use crate::sync_shown::SyncStatusWord;
-use crate::PendingRow;
 
 /// How coven's sync state names a cause: the state it shows.
 pub(crate) type Names = fn(coven::SyncCause) -> coven::SyncState;
 
-/// The status from coven's sync state and the rows read beside it: the
-/// records, coven's answer to what a retry would do, and why the last start
-/// failed.
+/// The status from coven's sync state and the rows read beside it: coven's
+/// answer to what a retry would do, and why the last start failed.
 pub(crate) fn read(
     state: coven::SyncState,
-    records: Vec<coven::PendingRecord>,
     retry_effect: coven::RetryEffect,
     error: Option<UiError>,
 ) -> SyncStatusSnapshot {
-    let pending: Vec<PendingItem> = records
-        .into_iter()
-        .map(|record| PendingItem::listed(PendingRow { record, file_row: None }))
-        .collect();
     SyncStatusSnapshot {
         coven: coven::SyncStatus { state, last_synced: None },
-        attention_count: u32::try_from(pending.len()).unwrap(),
         cause_file: None,
-        pending,
         error,
         retry_effect,
         storage_setup: None,
@@ -30,19 +21,17 @@ pub(crate) fn read(
     }
 }
 
-/// coven's sync state, the pending records read beside it, and coven's
-/// answer to what a retry would do now.
+/// coven's sync state and coven's answer to what a retry would do now.
 pub(crate) fn snapshot(
     state: coven::SyncState,
-    records: Vec<coven::PendingRecord>,
     retry_effect: coven::RetryEffect,
 ) -> SyncStatusSnapshot {
-    read(state, records, retry_effect, None)
+    read(state, retry_effect, None)
 }
 
-/// coven's sync state with nothing pending, while sync runs.
+/// coven's sync state, while sync runs.
 pub(crate) fn alone(state: coven::SyncState) -> SyncStatusSnapshot {
-    snapshot(state, Vec::new(), coven::RetryEffect::Pass)
+    snapshot(state, coven::RetryEffect::Pass)
 }
 
 /// A pass moving, or a file moving.
@@ -96,27 +85,6 @@ pub(crate) fn offline() -> coven::SyncState {
 /// `named`.
 pub(crate) fn failed_status(failure: coven::StatusFailure, named: Names) -> coven::SyncState {
     ended(coven::LastPass::Failed { failure, error: "the pass failed".into() }, named)
-}
-
-/// A failed start the status keeps beside coven's row survives the
-/// pending records read with it.
-#[test]
-fn reading_pending_items_does_not_clear_a_start_failure() {
-    let status = read(
-        disconnected(),
-        vec![record(coven::PendingReason::NoStorage)],
-        coven::RetryEffect::Pass,
-        Some(UiError::internal("connection failed")),
-    );
-    assert!(status.error.is_some());
-}
-
-#[test]
-fn pending_files_remain_waiting_after_the_sequence_is_synced() {
-    let status =
-        snapshot(synced(), vec![record(coven::PendingReason::NoStorage)], coven::RetryEffect::Pass);
-    assert_eq!(status.pending.len(), 1);
-    assert_eq!(status.shown().status, SyncStatusWord::Synced);
 }
 
 #[test]
@@ -223,7 +191,7 @@ fn only_a_moving_pass_is_syncing() {
         coven::SyncState::Failed,
     )));
     assert!(!syncing(failed_status(coven::StatusFailure::Other, coven::SyncState::Failed)));
-    assert!(!snapshot(synced(), Vec::new(), coven::RetryEffect::NotSyncing).syncing());
+    assert!(!snapshot(synced(), coven::RetryEffect::NotSyncing).syncing());
     assert!(!syncing(disconnected()));
 }
 
@@ -242,7 +210,7 @@ fn a_moving_pass_shows_no_earlier_failure() {
 #[test]
 fn only_a_failed_start_with_storage_set_up_offers_reconnect() {
     let start_failed = || Some(UiError::internal("the store key is missing"));
-    let offered = |state, effect, error| read(state, Vec::new(), effect, error).reconnect_offered();
+    let offered = |state, effect, error| read(state, effect, error).reconnect_offered();
     let stopped = coven::RetryEffect::NotSyncing;
     assert!(offered(synced(), stopped, start_failed()));
     assert!(offered(offline(), stopped, start_failed()));
@@ -467,12 +435,6 @@ fn a_new_sync_failure_is_logged_once() {
     assert_eq!(*category, bae_diagnostics::UiErrorCategory::Network);
     assert_eq!(detail, UNREACHABLE_S3);
     assert_eq!(failed.failure_to_log(Some(&failed)), None);
-    let listed = snapshot(
-        offline(),
-        vec![connection_record(coven::StorageFailure::Network)],
-        coven::RetryEffect::Pass,
-    );
-    assert_eq!(listed.failure_to_log(Some(&failed)), None);
     assert_eq!(syncing.failure_to_log(Some(&failed)), None);
     assert!(failed.failure_to_log(None).is_some());
 }
@@ -553,19 +515,6 @@ fn a_blocked_slot_is_not_logged_again() {
     ));
     assert_eq!(blocked.failure_to_log(Some(&alone(moving()))), None);
     assert!(blocked.failure().is_some());
-}
-
-/// coven keeps the error behind every record but the connection's; naming
-/// the connection's from the status leaves the others' as coven kept them.
-#[test]
-fn a_record_keeps_the_error_coven_keeps_for_it() {
-    let mut record = coven::PendingRecord::new(
-        coven::PendingSubject::Audience(coven::Audience::Store),
-        coven::PendingReason::Failed(coven::LocalFailure::DiskOther),
-    );
-    record.cause = Some("disk full".into());
-    let status = snapshot(offline(), vec![record], coven::RetryEffect::Pass);
-    assert_eq!(status.pending[0].wait.cause.as_deref(), Some("disk full"));
 }
 
 /// A device an admin removed, with nothing left unsent.

@@ -595,11 +595,9 @@ fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
     let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("sync cycle: pull Store commits")),
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        attention_count: 0,
         cause_file: None,
     };
 
@@ -627,11 +625,9 @@ fn a_healthy_sync_status_crosses_as_synced() {
             state: coven::SyncState::Synced,
             last_synced: Some(std::time::UNIX_EPOCH),
         },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(dropbox_location()),
-        attention_count: 0,
         cause_file: None,
     };
 
@@ -651,11 +647,9 @@ fn a_storage_setup_crosses_undone_or_running() {
     let snapshot = |storage_setup| bae_sync_status::SyncStatusSnapshot {
         error: None,
         coven: coven::SyncStatus { state: coven::SyncState::NotSynced, last_synced: None },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: Some(storage_setup),
         location: None,
-        attention_count: 0,
         cause_file: None,
     };
     let undone = bae_sync_status::StorageSetupState::Undone {
@@ -692,11 +686,9 @@ fn a_failed_start_crosses_offering_reconnect() {
     let snapshot = bae_sync_status::SyncStatusSnapshot {
         error: Some(bae_diagnostics::UiError::internal("the store key is missing")),
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
         storage_setup: None,
         location: Some(s3_location()),
-        attention_count: 0,
         cause_file: None,
     };
 
@@ -720,11 +712,9 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
             })),
             last_synced: Some(std::time::UNIX_EPOCH),
         },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        attention_count: 0,
         cause_file: None,
     };
 

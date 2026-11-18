@@ -685,7 +685,7 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
     let without = BridgePendingRecord::from_core(item.clone());
     assert_eq!(without.reason.detail, None);
 
-    item.wait.cause = Some(
+    item.cause = Some(
         "S3: Network: S3 request failed: dispatch failure: io error: connection refused".into(),
     );
     let with = BridgePendingRecord::from_core(item);
@@ -697,45 +697,20 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
     );
 }
 
-/// A record crosses with its labels as catalog keys: a release file's subject
-/// with its file name and album title as the message's arguments.
+/// A record crosses with its subject and reason as catalog keys.
 #[test]
 fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
-    let record = BridgePendingRecord::from_core(bae_sync_status::PendingItem {
-        subject: bae_sync_status::PendingSubjectName::ReleaseFile {
-            file_name: "01 Track Title.flac".into(),
-            album_title: "Album Title".into(),
-        },
-        wait: bae_sync_status::PendingWait {
-            reason: coven::PendingReason::Paused,
-            cause: None,
-            action: bae_sync_status::PendingAction::RestoreFile,
-        },
-    });
+    let record = BridgePendingRecord::from_core(bae_sync_status::PendingItem::before_open(
+        coven::PendingRecord::new(
+            coven::PendingSubject::Audience(coven::Audience::Store),
+            coven::PendingReason::Paused,
+        ),
+    ));
     assert_eq!(
         record.subject,
-        BridgeMessage {
-            key: "core.pending.subject.release_file".into(),
-            args: vec![
-                BridgeMessageArg { name: "file".into(), value: "01 Track Title.flac".into() },
-                BridgeMessageArg { name: "album".into(), value: "Album Title".into() },
-            ],
-        }
+        BridgeMessage { key: "core.pending.subject.library_data".into(), args: Vec::new() }
     );
     assert_eq!(record.reason.key, "core.pending.reason.paused");
-
-    let waiting = BridgePendingRecord::from_core(bae_sync_status::PendingItem {
-        subject: bae_sync_status::PendingSubjectName::Snapshot,
-        wait: bae_sync_status::PendingWait {
-            reason: coven::PendingReason::Paused,
-            cause: None,
-            action: bae_sync_status::PendingAction::Wait,
-        },
-    });
-    assert_eq!(
-        waiting.subject,
-        BridgeMessage { key: "core.pending.subject.snapshot".into(), args: Vec::new() }
-    );
 }
 
 /// A preview target crosses with its file's name, which the preview shows.

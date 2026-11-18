@@ -1,23 +1,19 @@
 //! The sync status as the status line and the activity list show it:
-//! coven's sync state beside the library's read of its pending records,
-//! what a retry would do and why the last start failed, and the actions
-//! each pending record offers.
+//! coven's sync state, the file its failure is about, what a retry would do
+//! and why the last start failed, and the action each pending record offers
+//! where another surface shows the record.
 
-use crate::pending_item::PendingItem;
 use bae_diagnostics::UiError;
 use bae_store::{DbError, Store};
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 
+mod cause_file;
 mod copy_reset_notice;
-mod file_row;
-mod pending;
 mod start_failure;
 mod status_query;
 mod storage_setup;
 pub use copy_reset_notice::CopyResetNotice;
-pub use file_row::FileRow;
-pub use pending::PendingRow;
 pub use start_failure::StartFailureRecordError;
 pub use status_query::sync_status_on;
 pub use storage_setup::{SetupDismissError, StorageSetupState};
@@ -45,15 +41,13 @@ impl SyncStatus {
     }
 }
 
-/// Sync activity and the things coven is waiting on that need attention:
-/// coven's sync state beside what the library holds, read in one statement
-/// ([`sync_status_on`]).
+/// Sync activity and what stops it: coven's sync state beside what the
+/// library holds, read in one statement ([`sync_status_on`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncStatusSnapshot {
     /// coven's sync state and when sync last finished, as coven computes
     /// them from what it knows (`coven_sync_state`).
     pub coven: coven::SyncStatus,
-    pub pending: Vec<PendingItem>,
     /// Why this device's last attempt to start sync failed, while that
     /// stands.
     pub error: Option<bae_diagnostics::UiError>,
@@ -66,8 +60,6 @@ pub struct SyncStatusSnapshot {
     /// The location recorded on this device, with its account and folder
     /// labels, while one is.
     pub location: Option<coven::StorageConfig>,
-    /// How many pending records `pending` lists.
-    pub attention_count: u32,
     /// The name of the release file on this device that the pending record
     /// naming the failed state is about, when there is one.
     pub cause_file: Option<String>,
@@ -202,17 +194,15 @@ fn pending_failure(record: &coven::PendingRecord) -> UiError {
 impl SyncStatusSnapshot {
     /// The status of a library that isn't open, from coven's read of its
     /// closed store: sync doesn't run, and what an open library reads from
-    /// its tables, the pending records, a failed start and a storage setup,
-    /// is not read.
+    /// its tables, the file a failure is about, a failed start and a storage
+    /// setup, is not read.
     pub fn closed(coven: coven::SyncStatus, location: Option<coven::StorageConfig>) -> Self {
         Self {
             coven,
-            pending: Vec::new(),
             error: None,
             retry_effect: coven::RetryEffect::NotSyncing,
             storage_setup: None,
             location,
-            attention_count: 0,
             cause_file: None,
         }
     }

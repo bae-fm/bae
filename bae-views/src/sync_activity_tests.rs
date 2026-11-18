@@ -25,12 +25,10 @@ fn idle_downloads() -> DownloadQueueCounts {
 fn status() -> SyncStatusSnapshot {
     SyncStatusSnapshot {
         coven: coven::SyncStatus { state: coven::SyncState::Synced, last_synced: None },
-        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         error: None,
         location: None,
-        attention_count: 0,
         cause_file: None,
     }
 }

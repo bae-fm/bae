@@ -276,10 +276,10 @@ async fn truncated_source_fails_its_move_without_sending() {
     mgr.manager().upload_release(&release_id).await.unwrap();
     assert_eq!(mgr.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
-    let pending = mgr.manager().sync_status().await.unwrap().pending;
+    let pending = db.pending().await.unwrap();
     assert!(
-        pending.iter().any(|item| matches!(
-            &item.wait.reason,
+        pending.iter().any(|record| matches!(
+            &record.reason,
             coven::PendingReason::Original {
                 failure: coven::FileSourceFailure::Changed,
                 path,

@@ -2,23 +2,11 @@
 //! recognizes it, with why it waits and what they can do about it.
 
 use crate::sync_status::{pending_action, PendingAction};
-use crate::{FileRow, PendingRow};
 
-/// What a pending record is about. A file is named by the row on this device
-/// whose file it is; every other subject by what it is.
+/// What a pending record is about, by what it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingSubjectName {
-    /// A release file, by its name and its release's album.
-    ReleaseFile { file_name: String, album_title: String },
-    /// A release's cover, by its release's album.
-    Cover { album_title: String },
-    /// An artist's image.
-    ArtistImage,
-    /// A person's profile picture.
-    Avatar,
-    /// A release file or cover no row of the library names any more.
-    DeletedReleaseFile,
-    /// A file no row on this device names.
+    /// A file.
     File,
     /// Edits made on this device, waiting to be sent.
     LocalChanges,
@@ -67,40 +55,31 @@ impl PendingWait {
     }
 }
 
-/// One thing coven is waiting on, as the pending list shows it.
+/// One thing coven is waiting on while a library is restored or joined,
+/// before any library is open.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PendingItem {
     pub subject: PendingSubjectName,
-    pub wait: PendingWait,
+    /// The record's first unmet condition, kept as coven typed it.
+    pub reason: coven::PendingReason,
+    /// The text of the error behind `reason`, with every cause below it,
+    /// when the run that met it kept it.
+    pub cause: Option<String>,
 }
 
 impl PendingItem {
-    /// A record named before any library is open, as while restoring or
-    /// joining: every subject but a file names itself, and a file is named
-    /// only by its row, which no library holds yet.
+    /// A record named before any library is open: every subject but a file
+    /// names itself, and a file is a file, since no library holds the row
+    /// it is the file of yet.
     pub fn before_open(record: coven::PendingRecord) -> Self {
-        Self::named(record, None)
-    }
-
-    /// A record as the library lists it: a file's named by its row.
-    pub fn listed(row: PendingRow) -> Self {
-        Self::named(row.record, row.file_row)
-    }
-
-    fn named(record: coven::PendingRecord, file_row: Option<FileRow>) -> Self {
         use coven::PendingSubject as S;
-        let release_id = match &file_row {
-            Some(FileRow::ReleaseFile { release_id, .. }) => Some(release_id.as_str()),
-            _ => None,
-        };
-        let wait = PendingWait::of(&record, release_id);
         let subject = match record.subject {
             S::Write(_) => PendingSubjectName::LocalChanges,
             S::Slot(_) => PendingSubjectName::LibraryChanges,
             S::KeyCopy { .. } => PendingSubjectName::KeyCopy,
             S::Snapshot(_) => PendingSubjectName::Snapshot,
             S::Upload { .. } | S::Download { .. } | S::Keep { .. } | S::Move { .. } => {
-                file_row.map_or(PendingSubjectName::File, PendingSubjectName::from)
+                PendingSubjectName::File
             }
             S::Operation { kind, .. } => PendingSubjectName::Operation(kind),
             S::Retention { .. } => PendingSubjectName::Retention,
@@ -108,22 +87,7 @@ impl PendingItem {
             S::Audience(coven::Audience::Circle(_)) => PendingSubjectName::CircleData,
             S::Connection => PendingSubjectName::Connection,
         };
-        Self { subject, wait }
-    }
-}
-
-/// A file named by the row it is the file of.
-impl From<FileRow> for PendingSubjectName {
-    fn from(row: FileRow) -> Self {
-        match row {
-            FileRow::ReleaseFile { release_id: _, file_name, album_title } => {
-                Self::ReleaseFile { file_name, album_title }
-            }
-            FileRow::Cover { album_title } => Self::Cover { album_title },
-            FileRow::DeletedReleaseFile => Self::DeletedReleaseFile,
-            FileRow::ArtistImage => Self::ArtistImage,
-            FileRow::Avatar => Self::Avatar,
-        }
+        Self { subject, reason: record.reason, cause: record.cause }
     }
 }
 

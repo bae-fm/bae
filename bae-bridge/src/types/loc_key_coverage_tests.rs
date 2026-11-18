@@ -689,11 +689,6 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::Pairing,
     ];
     [
-        S::ReleaseFile { file_name: "01 Track.flac".into(), album_title: "Album Title".into() },
-        S::Cover { album_title: "Album Title".into() },
-        S::ArtistImage,
-        S::Avatar,
-        S::DeletedReleaseFile,
         S::File,
         S::LocalChanges,
         S::LibraryChanges,

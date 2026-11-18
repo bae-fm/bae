@@ -639,17 +639,21 @@ pub(super) async fn wait_for_settled_uploads(manager: &LibraryManager, release_i
     crate::followed::query_matching(&mut pending, |has_pending| !has_pending).await;
 }
 
-// The pending list the sync status shows: coven's pending records named by
-// the rows they are about, each with the error behind it while this process
-// holds one.
-
-/// Follow the pending list as the running library does, and wait for the
-/// first list `matches` accepts.
-pub(super) async fn pending_list_until(
-    values: &mut impl bae_store::live_query::LiveSource<bae_sync_status::SyncStatusSnapshot>,
-    matches: impl Fn(&[bae_sync_status::PendingItem]) -> bool,
-) -> Vec<bae_sync_status::PendingItem> {
-    crate::followed::value_matching(values, |status| matches(&status.pending)).await.pending
+/// Follow coven's pending records as the running library holds them, in the
+/// order they arose, each with the error behind it while this process holds
+/// one, and wait for the first list `matches` accepts.
+pub(super) async fn pending_records_until(
+    manager: &LibraryManager,
+    matches: impl Fn(&[coven::PendingRecord]) -> bool,
+) -> Vec<coven::PendingRecord> {
+    let mut records = manager.store.results(manager.store.subscribe(|sql| {
+        Ok(sql.query("SELECT record, cause FROM coven_pending ORDER BY position", [], |row| {
+            let mut record: coven::PendingRecord = row.get(0)?;
+            record.cause = row.get(1)?;
+            Ok(record)
+        })?)
+    }));
+    crate::followed::value_matching(&mut records, |listed| matches(listed)).await
 }
 
 /// The first inspector the read gives for the release `release_id` that

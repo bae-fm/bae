@@ -1,5 +1,5 @@
 //! Sync: storage setup and its failures, starting, reconnecting and retrying,
-//! the pending list, the upload pause, and signing in to a provider.
+//! the upload pause, and signing in to a provider.
 
 use super::*;
 use crate::manager::tests::*;
@@ -12,43 +12,13 @@ mod copy_behind;
 #[path = "sync_tests/storage_setup.rs"]
 mod storage_setup;
 
-/// The text of the error behind `item`, with every cause below it.
-fn cause_text(item: &bae_sync_status::PendingItem) -> Option<String> {
-    item.wait.cause.clone()
-}
-
-/// A file this device is uploading is named on the pending list by its file
-/// name and its album, not by coven's ids.
-#[tokio::test]
-async fn a_waiting_upload_is_named_by_its_file_and_album() {
-    let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
-    let mut values = manager.library.manager().subscribe_sync_status();
-    manager.library.manager().start().unwrap();
-    // The upload can't read a source that moved, so it waits on the file.
-    std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
-    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-
-    pending_list_until(&mut values, |items| {
-        items.iter().any(|item| {
-            item.subject
-                == bae_sync_status::PendingSubjectName::ReleaseFile {
-                    file_name: "a.flac".into(),
-                    album_title: "Test Album".into(),
-                }
-        })
-    })
-    .await;
-}
-
 /// An original changed since its import fails its release's move, even one
 /// that kept its size and modification time: the upload checks what it reads
-/// against the hashes the import's read recorded, so the pending list names
-/// the original as changed, by its file name and album, and no file switches
-/// to the cloud.
+/// against the hashes the import's read recorded, so coven records the
+/// original as changed, and no file switches to the cloud.
 #[tokio::test]
 async fn an_original_changed_since_its_import_fails_the_move() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
-    let mut values = manager.library.manager().subscribe_sync_status();
     manager.library.manager().start().unwrap();
     let path = temp.path().join("changed/a.flac");
     let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
@@ -56,10 +26,10 @@ async fn an_original_changed_since_its_import_fails_the_move() {
     std::fs::File::options().write(true).open(&path).unwrap().set_modified(modified).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
 
-    let listed = pending_list_until(&mut values, |items| {
-        items.iter().any(|item| {
+    pending_records_until(manager.library.manager(), |records| {
+        records.iter().any(|record| {
             matches!(
-                &item.wait.reason,
+                &record.reason,
                 coven::PendingReason::Original {
                     failure: coven::FileSourceFailure::Changed,
                     path: failed,
@@ -68,145 +38,10 @@ async fn an_original_changed_since_its_import_fails_the_move() {
         })
     })
     .await;
-    let changed = listed
-        .iter()
-        .find(|item| matches!(item.wait.reason, coven::PendingReason::Original { .. }))
-        .expect("the move's record");
-    assert_eq!(
-        changed.subject,
-        bae_sync_status::PendingSubjectName::ReleaseFile {
-            file_name: "a.flac".into(),
-            album_title: "Test Album".into(),
-        }
-    );
     assert!(release_files(manager.library.manager(), &release.id)
         .await
         .iter()
         .all(|file| !file.stored));
-}
-
-/// A retry that fails for the same reason keeps its record as it was, and the
-/// list still shows the error the retry met, not the first attempt's.
-#[tokio::test]
-async fn a_retry_that_fails_again_shows_its_own_error() {
-    let (manager, _temp, _release, _file_id) = queued_upload_fixture("retried").await;
-    let mut values = manager.library.manager().subscribe_sync_status();
-    manager.library.manager().start().unwrap();
-    let refuse = |status: u16| coven::Faults {
-        refuse_file_uploads: 1,
-        failure: coven::StorageFailure::Network,
-        response: Some(status),
-        ..coven::Faults::none()
-    };
-
-    manager.storage.set_faults(refuse(500)).await;
-    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-    let first = pending_list_until(&mut values, |items| {
-        items.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
-    })
-    .await;
-
-    manager.storage.set_faults(refuse(503)).await;
-    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-    let again = pending_list_until(&mut values, |items| {
-        items.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("503")))
-    })
-    .await;
-    assert_eq!(
-        first.iter().map(|item| (&item.subject, &item.wait.reason)).collect::<Vec<_>>(),
-        again.iter().map(|item| (&item.subject, &item.wait.reason)).collect::<Vec<_>>(),
-        "the record stays as it was"
-    );
-}
-
-/// The pending list keeps the order its records arose in, whatever coven's
-/// ids for them: a move whose original went missing first stays first after
-/// a later one's does, though the later record sorts first.
-#[tokio::test]
-async fn the_pending_list_keeps_the_order_its_records_arose_in() {
-    let (manager, temp, first, _file_id) = queued_upload_fixture("first").await;
-    let mut values = manager.library.manager().subscribe_sync_status();
-    manager.library.manager().start().unwrap();
-    // The move whose original at `path` is missing, from its record.
-    let missing_move = |path: std::path::PathBuf| {
-        let manager = manager.library.manager().clone();
-        async move {
-            manager
-                .store
-                .pending()
-                .await
-                .unwrap()
-                .into_iter()
-                .find_map(|record| match (record.subject, record.reason) {
-                    (
-                        coven::PendingSubject::Move { id },
-                        coven::PendingReason::Original { path: missing, .. },
-                    ) if missing == path => Some(id),
-                    _ => None,
-                })
-                .expect("the move's record names its missing original")
-        }
-    };
-    // A move's record as coven stores it begins with its subject, so two
-    // records of one reason sort as their subjects' stored text does.
-    let stored =
-        |id: coven::MoveId| serde_json::to_vec(&coven::PendingSubject::Move { id }).unwrap();
-    let first_path = temp.path().join("first/a.flac");
-    std::fs::remove_file(&first_path).unwrap();
-    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-    let first_move = missing_move(first_path).await;
-
-    // This device numbers its moves in the order it makes them, each write
-    // staging files for the cloud one. Covers staged now are moves of their
-    // own, until the next move's stored subject sorts before the first's, so
-    // an order by record would put the second failure first.
-    let mut next = first_move.0 + 1;
-    while stored(coven::MoveId(next)) >= stored(first_move) {
-        store_test_cover(manager.library.manager(), &first.id, format!("cover {next}").as_bytes())
-            .await;
-        next += 1;
-    }
-    let second = insert_release_with_queued_uploads(
-        manager.library.manager(),
-        &temp.path().join("second"),
-        "Album Title Second",
-        &[("b.flac", b"second-bytes")],
-    )
-    .await;
-    let second_path = temp.path().join("second/b.flac");
-    std::fs::remove_file(&second_path).unwrap();
-    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
-    assert!(
-        stored(missing_move(second_path).await) < stored(first_move),
-        "the second failure's record sorts first"
-    );
-
-    let album = |title: &str| bae_sync_status::PendingSubjectName::ReleaseFile {
-        file_name: if title == "Test Album" { "a.flac" } else { "b.flac" }.into(),
-        album_title: title.into(),
-    };
-    let listed = pending_list_until(&mut values, |items| {
-        items
-            .iter()
-            .filter(|item| {
-                matches!(item.subject, bae_sync_status::PendingSubjectName::ReleaseFile { .. })
-            })
-            .count()
-            == 2
-    })
-    .await;
-    assert_eq!(
-        listed
-            .iter()
-            .map(|item| item.subject.clone())
-            .filter(|subject| matches!(
-                subject,
-                bae_sync_status::PendingSubjectName::ReleaseFile { .. }
-            ))
-            .collect::<Vec<_>>(),
-        vec![album("Test Album"), album("Album Title Second")],
-        "{second:?} failed after the first"
-    );
 }
 
 #[tokio::test]
@@ -503,14 +338,11 @@ async fn fail_a_pass(
     let mut values = manager.library.manager().subscribe_sync_status();
     manager.storage.set_faults(faults).await;
     manager.library.manager().store.sync_now();
-    let failed = crate::followed::value_matching(&mut values, |value| {
-        value
-            .pending
-            .iter()
-            .any(|item| item.subject == bae_sync_status::PendingSubjectName::Connection)
-            && shown(value)
+    pending_records_until(manager.library.manager(), |records| {
+        records.iter().any(|record| record.subject == coven::PendingSubject::Connection)
     })
     .await;
+    let failed = crate::followed::value_matching(&mut values, shown).await;
     manager.storage.set_faults(coven::Faults::none()).await;
     failed
 }
@@ -713,8 +545,10 @@ async fn retrying_a_refused_upload_uploads_it() {
         .await;
     manager.library.manager().store.set_uploads_paused(false).await.unwrap();
 
-    status_until(&manager, |value| {
-        value.pending.iter().any(|item| cause_text(item).is_some_and(|text| text.contains("500")))
+    pending_records_until(manager.library.manager(), |records| {
+        records
+            .iter()
+            .any(|record| record.cause.as_deref().is_some_and(|text| text.contains("500")))
     })
     .await;
     let answer = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
@@ -727,7 +561,7 @@ async fn retrying_a_refused_upload_uploads_it() {
         rows.files.iter().all(|file| file.upload.is_none())
     })
     .await;
-    status_until(&manager, |value| value.pending.is_empty()).await;
+    pending_records_until(manager.library.manager(), <[_]>::is_empty).await;
     manager.library.manager().close().await.unwrap();
 }
 

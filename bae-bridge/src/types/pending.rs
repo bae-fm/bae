@@ -1,11 +1,10 @@
-use super::{BridgeCloudProvider, BridgeMessage, BridgeMessageArg};
+use super::{BridgeCloudProvider, BridgeMessage};
 
 /// One thing coven is waiting on while a library is restored or joined:
 /// what it is about, and why.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingRecord {
-    /// What the record is about: a file by its name and album, anything else
-    /// by what it is.
+    /// What the record is about, by what it is.
     pub subject: BridgeMessage,
     pub reason: BridgePendingReason,
 }
@@ -14,7 +13,7 @@ impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_sync_status::PendingItem) -> Self {
         Self {
             subject: subject_message(item.subject),
-            reason: BridgePendingReason::from_core(item.wait.reason, item.wait.cause),
+            reason: BridgePendingReason::from_core(item.reason, item.cause),
         }
     }
 }
@@ -185,31 +184,11 @@ impl PendingReasonKind {
     }
 }
 
-/// The subject as a catalog message. A release file's message takes its
-/// `file` name and `album` title and a cover's its `album` title, in the
-/// order the source message names them.
+/// The subject as a catalog message.
 pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> BridgeMessage {
     use bae_sync_status::PendingSubjectName as S;
     use coven::OperationKind as O;
     let key = match subject {
-        S::ReleaseFile { file_name, album_title } => {
-            return BridgeMessage {
-                key: "core.pending.subject.release_file".to_string(),
-                args: vec![
-                    BridgeMessageArg::new("file", file_name),
-                    BridgeMessageArg::new("album", album_title),
-                ],
-            }
-        }
-        S::Cover { album_title } => {
-            return BridgeMessage {
-                key: "core.pending.subject.cover".to_string(),
-                args: vec![BridgeMessageArg::new("album", album_title)],
-            }
-        }
-        S::ArtistImage => "core.pending.subject.artist_image",
-        S::Avatar => "core.pending.subject.avatar",
-        S::DeletedReleaseFile => "core.pending.subject.deleted_release_file",
         S::File => "core.pending.subject.file",
         S::LocalChanges => "core.pending.subject.local_changes",
         S::LibraryChanges => "core.pending.subject.library_changes",

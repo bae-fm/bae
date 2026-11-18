@@ -12612,170 +12612,8 @@ da = "Nulstil fra skyen…"
 nb = "Tilbakestill fra skyen…"
 fi = "Nollaa pilvestä…"
 
-[messages."core.pending.subject.release_file"]
-comment = "Pending sync list: a file of a release this device is uploading ({file} is its file name, {album} the album title)."
-args = { file = "Str", album = "Str" }
-value = "{file} from {album}"
-
-[messages."core.pending.subject.release_file".translations]
-es = "{file} de {album}"
-fr = "{file} de {album}"
-de = "{file} aus {album}"
-pt-BR = "{file} de {album}"
-ja = "{album}の{file}"
-ko = "{album}의 {file}"
-zh-Hans = "{album} 中的 {file}"
-ar = "{file} من {album}"
-he = "{file} מתוך {album}"
-uk = "{file} з {album}"
-bg = "{file} от {album}"
-pl = "{file} z {album}"
-cs = "{file} z {album}"
-hr = "{file} iz {album}"
-zh-Hant = "{album} 中的 {file}"
-it = "{file} da {album}"
-tr = "{album} albümünden {file}"
-nl = "{file} uit {album}"
-sk = "{file} z {album}"
-hu = "{file} – {album}"
-ro = "{file} din {album}"
-el = "{file} από {album}"
-pt-PT = "{file} de {album}"
-sv = "{file} från {album}"
-da = "{file} fra {album}"
-nb = "{file} fra {album}"
-fi = "{file} albumista {album}"
-[messages."core.pending.subject.cover"]
-comment = "Pending sync list: an album's cover this device is uploading ({album} is the album title)."
-args = { album = "Str" }
-value = "The cover of {album}"
-
-[messages."core.pending.subject.cover".translations]
-es = "La portada de {album}"
-fr = "La pochette de {album}"
-de = "Das Cover von {album}"
-pt-BR = "A capa de {album}"
-ja = "{album}のカバー"
-ko = "{album}의 커버"
-zh-Hans = "{album} 的封面"
-ar = "غلاف {album}"
-he = "העטיפה של {album}"
-uk = "Обкладинка {album}"
-bg = "Обложката на {album}"
-pl = "Okładka {album}"
-cs = "Obal alba {album}"
-hr = "Omot albuma {album}"
-zh-Hant = "{album} 的封面"
-it = "La copertina di {album}"
-tr = "{album} kapağı"
-nl = "De hoes van {album}"
-sk = "Obal albumu {album}"
-hu = "A(z) {album} borítója"
-ro = "Coperta albumului {album}"
-el = "Το εξώφυλλο του {album}"
-pt-PT = "A capa de {album}"
-sv = "Omslaget till {album}"
-da = "Coveret til {album}"
-nb = "Omslaget til {album}"
-fi = "Albumin {album} kansi"
-[messages."core.pending.subject.artist_image"]
-comment = "Pending sync list: an artist image this device is uploading."
-value = "An artist image"
-
-[messages."core.pending.subject.artist_image".translations]
-es = "Una imagen de artista"
-fr = "Une image d’artiste"
-de = "Ein Künstlerbild"
-pt-BR = "Uma imagem de artista"
-ja = "アーティスト画像"
-ko = "아티스트 이미지"
-zh-Hans = "一张艺人图片"
-ar = "صورة فنان"
-he = "תמונת אמן"
-uk = "Зображення виконавця"
-bg = "Изображение на изпълнител"
-pl = "Obraz wykonawcy"
-cs = "Obrázek interpreta"
-hr = "Slika izvođača"
-zh-Hant = "一張藝人圖片"
-it = "Un’immagine dell’artista"
-tr = "Bir sanatçı görseli"
-nl = "Een artiestafbeelding"
-sk = "Obrázok interpreta"
-hu = "Egy előadói kép"
-ro = "O imagine de artist"
-el = "Μια εικόνα καλλιτέχνη"
-pt-PT = "Uma imagem de artista"
-sv = "En artistbild"
-da = "Et kunstnerbillede"
-nb = "Et artistbilde"
-fi = "Esittäjän kuva"
-[messages."core.pending.subject.avatar"]
-comment = "Pending sync list: a person's profile picture this device is uploading."
-value = "A profile picture"
-
-[messages."core.pending.subject.avatar".translations]
-es = "Una foto de perfil"
-fr = "Une photo de profil"
-de = "Ein Profilbild"
-pt-BR = "Uma foto de perfil"
-ja = "プロフィール写真"
-ko = "프로필 사진"
-zh-Hans = "一张头像"
-ar = "صورة ملف شخصي"
-he = "תמונת פרופיל"
-uk = "Фото профілю"
-bg = "Профилна снимка"
-pl = "Zdjęcie profilowe"
-cs = "Profilová fotka"
-hr = "Profilna slika"
-zh-Hant = "一張大頭貼"
-it = "Un’immagine del profilo"
-tr = "Bir profil resmi"
-nl = "Een profielfoto"
-sk = "Profilová fotka"
-hu = "Egy profilkép"
-ro = "O fotografie de profil"
-el = "Μια εικόνα προφίλ"
-pt-PT = "Uma fotografia de perfil"
-sv = "En profilbild"
-da = "Et profilbillede"
-nb = "Et profilbilde"
-fi = "Profiilikuva"
-[messages."core.pending.subject.deleted_release_file"]
-comment = "Pending sync list: a file this device is uploading whose release was deleted."
-value = "A file from a deleted release"
-
-[messages."core.pending.subject.deleted_release_file".translations]
-es = "Un archivo de una edición eliminada"
-fr = "Un fichier d’une édition supprimée"
-de = "Eine Datei einer gelöschten Veröffentlichung"
-pt-BR = "Um arquivo de um lançamento excluído"
-ja = "削除されたリリースのファイル"
-ko = "삭제된 릴리스의 파일"
-zh-Hans = "已删除发行版中的一个文件"
-ar = "ملف من إصدار محذوف"
-he = "קובץ מהוצאה שנמחקה"
-uk = "Файл із видаленого видання"
-bg = "Файл от изтрито издание"
-pl = "Plik z usuniętego wydania"
-cs = "Soubor ze smazaného vydání"
-hr = "Datoteka iz izbrisanog izdanja"
-zh-Hant = "已刪除發行版中的一個檔案"
-it = "Un file di un’edizione eliminata"
-tr = "Silinmiş bir yayından dosya"
-nl = "Een bestand van een verwijderde uitgave"
-sk = "Súbor z odstráneného vydania"
-hu = "Egy törölt kiadás fájlja"
-ro = "Un fișier dintr-o ediție ștearsă"
-el = "Ένα αρχείο από μια διαγραμμένη έκδοση"
-pt-PT = "Um ficheiro de uma edição eliminada"
-sv = "En fil från en borttagen utgåva"
-da = "En fil fra en slettet udgivelse"
-nb = "En fil fra en slettet utgivelse"
-fi = "Poistetun julkaisun tiedosto"
 [messages."core.pending.subject.file"]
-comment = "Pending sync list: a file this device can't name, such as one another device is to upload."
+comment = "What sync waits on while a library is restored or joined: a file, which no library on this device names yet."
 value = "A file from another device"
 
 [messages."core.pending.subject.file".translations]
@@ -12807,7 +12645,7 @@ da = "En fil fra en anden enhed"
 nb = "En fil fra en annen enhet"
 fi = "Toisen laitteen tiedosto"
 [messages."core.pending.subject.local_changes"]
-comment = "Pending sync list: edits made on this device that wait to be sent."
+comment = "What sync waits on while a library is restored or joined: edits made on this device that wait to be sent."
 value = "Edits made on this device"
 
 [messages."core.pending.subject.local_changes".translations]
@@ -12839,7 +12677,7 @@ da = "Ændringer foretaget på denne enhed"
 nb = "Endringer gjort på denne enheten"
 fi = "Tällä laitteella tehdyt muokkaukset"
 [messages."core.pending.subject.library_changes"]
-comment = "Pending sync list: changes in the library's copy in the cloud that wait to apply on this device."
+comment = "What sync waits on while a library is restored or joined: changes in the library's copy in the cloud that wait to apply on this device."
 value = "Library changes from the cloud"
 
 [messages."core.pending.subject.library_changes".translations]
@@ -12871,7 +12709,7 @@ da = "Biblioteksændringer fra skyen"
 nb = "Bibliotekendringer fra skyen"
 fi = "Kirjaston muutokset pilvestä"
 [messages."core.pending.subject.key_copy"]
-comment = "Pending sync list: a copy of an encryption key shared with one person."
+comment = "What sync waits on while a library is restored or joined: a copy of an encryption key shared with one person."
 value = "A key shared with a person"
 
 [messages."core.pending.subject.key_copy".translations]
@@ -12903,7 +12741,7 @@ da = "En nøgle delt med en person"
 nb = "En nøkkel delt med en person"
 fi = "Henkilön kanssa jaettu avain"
 [messages."core.pending.subject.snapshot"]
-comment = "Pending sync list: a saved copy of the library's data in the cloud."
+comment = "What sync waits on while a library is restored or joined: a saved copy of the library's data in the cloud."
 value = "A copy of the library in the cloud"
 
 [messages."core.pending.subject.snapshot".translations]
@@ -12935,7 +12773,7 @@ da = "En kopi af biblioteket i skyen"
 nb = "En kopi av biblioteket i skyen"
 fi = "Kirjaston kopio pilvessä"
 [messages."core.pending.subject.retention"]
-comment = "Pending sync list: deleting objects in the cloud that nothing refers to any more."
+comment = "What sync waits on while a library is restored or joined: deleting objects in the cloud that nothing refers to any more."
 value = "Cleaning up the cloud"
 
 [messages."core.pending.subject.retention".translations]
@@ -12967,7 +12805,7 @@ da = "Oprydning af skyen"
 nb = "Opprydding i skyen"
 fi = "Pilven siivous"
 [messages."core.pending.subject.library_data"]
-comment = "Pending sync list: the data every member of the library shares."
+comment = "What sync waits on while a library is restored or joined: the data every member of the library shares."
 value = "The library’s shared data"
 
 [messages."core.pending.subject.library_data".translations]
@@ -12999,7 +12837,7 @@ da = "Bibliotekets delte data"
 nb = "Bibliotekets delte data"
 fi = "Kirjaston jaetut tiedot"
 [messages."core.pending.subject.circle_data"]
-comment = "Pending sync list: data shared only within a circle of people, such as a person's own history."
+comment = "What sync waits on while a library is restored or joined: data shared only within a circle of people, such as a person's own history."
 value = "Data shared within a circle"
 
 [messages."core.pending.subject.circle_data".translations]
@@ -13031,7 +12869,7 @@ da = "Data delt inden for en kreds"
 nb = "Data delt innenfor en krets"
 fi = "Piirin sisällä jaetut tiedot"
 [messages."core.pending.subject.connection"]
-comment = "Pending sync list: this device's connection to the library's cloud."
+comment = "What sync waits on while a library is restored or joined: this device's connection to the library's cloud."
 value = "The connection to the cloud"
 
 [messages."core.pending.subject.connection".translations]
@@ -13063,7 +12901,7 @@ da = "Forbindelsen til skyen"
 nb = "Tilkoblingen til skyen"
 fi = "Yhteys pilveen"
 [messages."core.pending.operation.create_store"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Creating the library"
 
 [messages."core.pending.operation.create_store".translations]
@@ -13095,7 +12933,7 @@ da = "Opretter biblioteket"
 nb = "Oppretter biblioteket"
 fi = "Kirjastoa luodaan"
 [messages."core.pending.operation.rename_store"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Renaming the library"
 
 [messages."core.pending.operation.rename_store".translations]
@@ -13127,7 +12965,7 @@ da = "Omdøber biblioteket"
 nb = "Gir biblioteket nytt navn"
 fi = "Kirjastoa nimetään uudelleen"
 [messages."core.pending.operation.add_device"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Adding this device"
 
 [messages."core.pending.operation.add_device".translations]
@@ -13159,7 +12997,7 @@ da = "Tilføjer denne enhed"
 nb = "Legger til denne enheten"
 fi = "Tätä laitetta lisätään"
 [messages."core.pending.operation.set_role"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Changing a person’s role"
 
 [messages."core.pending.operation.set_role".translations]
@@ -13191,7 +13029,7 @@ da = "Ændrer en persons rolle"
 nb = "Endrer en persons rolle"
 fi = "Henkilön roolia muutetaan"
 [messages."core.pending.operation.set_access"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Changing a person’s access to the cloud"
 
 [messages."core.pending.operation.set_access".translations]
@@ -13223,7 +13061,7 @@ da = "Ændrer en persons adgang til skyen"
 nb = "Endrer en persons tilgang til skyen"
 fi = "Henkilön käyttöoikeutta pilveen muutetaan"
 [messages."core.pending.operation.remove_member"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Removing a person"
 
 [messages."core.pending.operation.remove_member".translations]
@@ -13255,7 +13093,7 @@ da = "Fjerner en person"
 nb = "Fjerner en person"
 fi = "Henkilöä poistetaan"
 [messages."core.pending.operation.remove_device"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Removing a device"
 
 [messages."core.pending.operation.remove_device".translations]
@@ -13287,7 +13125,7 @@ da = "Fjerner en enhed"
 nb = "Fjerner en enhet"
 fi = "Laitetta poistetaan"
 [messages."core.pending.operation.rename_circle"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Renaming a circle"
 
 [messages."core.pending.operation.rename_circle".translations]
@@ -13319,7 +13157,7 @@ da = "Omdøber en kreds"
 nb = "Gir en krets nytt navn"
 fi = "Piiriä nimetään uudelleen"
 [messages."core.pending.operation.remove_circle_member"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Removing a person from a circle"
 
 [messages."core.pending.operation.remove_circle_member".translations]
@@ -13351,7 +13189,7 @@ da = "Fjerner en person fra en kreds"
 nb = "Fjerner en person fra en krets"
 fi = "Henkilöä poistetaan piiristä"
 [messages."core.pending.operation.retain_sequence"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Clearing old history from the cloud"
 
 [messages."core.pending.operation.retain_sequence".translations]
@@ -13383,7 +13221,7 @@ da = "Rydder gammel historik fra skyen"
 nb = "Fjerner gammel historikk fra skyen"
 fi = "Vanhaa historiaa poistetaan pilvestä"
 [messages."core.pending.operation.retain_files"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Deleting files nothing uses"
 
 [messages."core.pending.operation.retain_files".translations]
@@ -13415,7 +13253,7 @@ da = "Sletter filer, som intet bruger"
 nb = "Sletter filer som ingenting bruker"
 fi = "Käyttämättömiä tiedostoja poistetaan"
 [messages."core.pending.operation.write_snapshot"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Saving a copy of the library to the cloud"
 
 [messages."core.pending.operation.write_snapshot".translations]
@@ -13447,7 +13285,7 @@ da = "Gemmer en kopi af biblioteket i skyen"
 nb = "Lagrer en kopi av biblioteket i skyen"
 fi = "Kirjaston kopiota tallennetaan pilveen"
 [messages."core.pending.operation.schema_change"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Updating the library’s format"
 
 [messages."core.pending.operation.schema_change".translations]
@@ -13479,7 +13317,7 @@ da = "Opdaterer bibliotekets format"
 nb = "Oppdaterer bibliotekets format"
 fi = "Kirjaston muotoa päivitetään"
 [messages."core.pending.operation.reset"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Resetting shared data"
 
 [messages."core.pending.operation.reset".translations]
@@ -13511,7 +13349,7 @@ da = "Nulstiller delte data"
 nb = "Tilbakestiller delte data"
 fi = "Jaettuja tietoja nollataan"
 [messages."core.pending.operation.reload_from_snapshot"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Reloading the library"
 
 [messages."core.pending.operation.reload_from_snapshot".translations]
@@ -13543,7 +13381,7 @@ da = "Genindlæser biblioteket"
 nb = "Laster inn biblioteket på nytt"
 fi = "Kirjastoa ladataan uudelleen"
 [messages."core.pending.operation.required_reload"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Reloading the library to catch up"
 
 [messages."core.pending.operation.required_reload".translations]
@@ -13575,7 +13413,7 @@ da = "Genindlæser biblioteket for at indhente"
 nb = "Laster inn biblioteket på nytt for å ta igjen"
 fi = "Kirjastoa ladataan uudelleen ajan tasalle"
 [messages."core.pending.operation.rotate_key"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Replacing a shared key"
 
 [messages."core.pending.operation.rotate_key".translations]
@@ -13607,7 +13445,7 @@ da = "Udskifter en delt nøgle"
 nb = "Erstatter en delt nøkkel"
 fi = "Jaettua avainta vaihdetaan"
 [messages."core.pending.operation.send_key_copy"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Sending a key to a person"
 
 [messages."core.pending.operation.send_key_copy".translations]
@@ -13639,7 +13477,7 @@ da = "Sender en nøgle til en person"
 nb = "Sender en nøkkel til en person"
 fi = "Avainta lähetetään henkilölle"
 [messages."core.pending.operation.create_circle"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Creating a circle"
 
 [messages."core.pending.operation.create_circle".translations]
@@ -13671,7 +13509,7 @@ da = "Opretter en kreds"
 nb = "Oppretter en krets"
 fi = "Piiriä luodaan"
 [messages."core.pending.operation.add_circle_member"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Adding a person to a circle"
 
 [messages."core.pending.operation.add_circle_member".translations]
@@ -13703,7 +13541,7 @@ da = "Tilføjer en person til en kreds"
 nb = "Legger til en person i en krets"
 fi = "Henkilöä lisätään piiriin"
 [messages."core.pending.operation.delete_circle"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Deleting a circle"
 
 [messages."core.pending.operation.delete_circle".translations]
@@ -13735,7 +13573,7 @@ da = "Sletter en kreds"
 nb = "Sletter en krets"
 fi = "Piiriä poistetaan"
 [messages."core.pending.operation.invite"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Inviting a person"
 
 [messages."core.pending.operation.invite".translations]
@@ -13767,7 +13605,7 @@ da = "Inviterer en person"
 nb = "Inviterer en person"
 fi = "Henkilöä kutsutaan"
 [messages."core.pending.operation.revoke_access"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Updating an account’s access to the cloud"
 
 [messages."core.pending.operation.revoke_access".translations]
@@ -13799,7 +13637,7 @@ da = "Opdaterer en kontos adgang til skyen"
 nb = "Oppdaterer en kontos tilgang til skyen"
 fi = "Tilin käyttöoikeutta pilveen päivitetään"
 [messages."core.pending.operation.replace_member_keys"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does."
 value = "Replacing a person’s keys"
 
 [messages."core.pending.operation.replace_member_keys".translations]
@@ -13832,7 +13670,7 @@ nb = "Erstatter en persons nøkler"
 fi = "Henkilön avaimia vaihdetaan"
 
 [messages."core.pending.operation.storage_setup"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does. This one connects the library to its cloud home."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does. This one connects the library to its cloud home."
 value = "Setting up the library’s cloud home"
 
 [messages."core.pending.operation.storage_setup".translations]
@@ -13865,7 +13703,7 @@ nb = "Konfigurerer bibliotekets skyhjem"
 fi = "Kirjaston pilvikotia määritetään"
 
 [messages."core.pending.operation.set_up_storage"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does. This one records, for every member, how the library reaches its cloud home."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does. This one records, for every member, how the library reaches its cloud home."
 value = "Recording how the library reaches its cloud home"
 
 [messages."core.pending.operation.set_up_storage".translations]
@@ -13898,7 +13736,7 @@ nb = "Registrerer hvordan biblioteket når skyhjemmet sitt"
 fi = "Kirjataan, miten kirjasto tavoittaa pilvikotinsa"
 
 [messages."core.pending.operation.pairing"]
-comment = "Pending sync list: one of the library's operations that waits, named by what it does. This one adds another of the person's own devices to the library."
+comment = "What sync waits on while a library is restored or joined: one of the library's operations that waits, named by what it does. This one adds another of the person's own devices to the library."
 value = "Adding a device"
 
 [messages."core.pending.operation.pairing".translations]

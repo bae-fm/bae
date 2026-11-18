@@ -4107,18 +4107,15 @@ new access key for its S3 storage, the provider's sign-in for Dropbox and
 OneDrive, iCloud's own setup for iCloud. On a Mac, a library with no recorded location
 is Not synced, and offers setting up sync instead.
 
-Each record names what it is about in plain words. A file is named by the row
-on this device that references it: a release file by its file name and album, a
-cover by its album, an artist image or a profile picture as such, and a
-release file or cover no row names any more, kept only by a lost value
-naming it, as a file of a release that is gone; a file no row here names, of
-no namespace bae knows, is a file. A move's record, about an original its
-upload found missing or changed, is named by the release file whose original
-coven records at that path on this device. A record is named as its row stands
-now. Any other subject, such
-as an operation or the connection, is named by what it is. In the upload list
-itself a file's row already names it, so its record there says only why it
-waits.
+When a pending record names a failed state, the Sync page's cause names the
+release file on this device that the record is about, by its file name: the
+release file that references the record's file, or for a move's record, about
+an original its upload found missing or changed, the release file whose
+original coven records at that path on this device. While a library is
+restored or joined, its waiting list names each record by what it is about,
+such as an operation or the connection, and a file as a file, since no library
+on this device names it yet. In the upload list a file's row already names it,
+so its record there says only why it waits.
 
 **Files another device hasn't uploaded.** A row references its coven file from
 the write that stages it
@@ -5560,7 +5557,7 @@ the desktop's secret service.
 | bae-store | the library's store over coven, with no table: the `Store` every read, write and live query runs through, the coven calls bae makes on a library (storage setup, sync, keys, files, pins, uploads, invites, restore codes), the schema's shape (each crate's parts, run in crate order as one migration) and the SQL functions and collation the parts declare, list windows (each the rows from one key of a list's order on, at most a limit of them, read as a run of index seeks, with the count of the rows before a key and the key at a position), the cancellable live queries a surface pulls values from and the live reads over them, whose request the caller changes on the same query, each request saying whether a read that finished after it was replaced still answers (a window's rows do; another id's detail does not), and the names a person enters |
 | bae-records | the library's records and where each release's files are: artists, albums, releases, tracks, works and labels with their files, the rules that resolve credits and labels and merge identities, the row writers an import and an edit call inside their own writes, release storage, and the language this device orders names in, with the `Records` owner over them |
 | bae-people | the library's members and each person's own data: who is in the library and on which devices, the admin changes this device asked for, profiles, plays, ratings and playlists, with the `Membership` and `People` owners |
-| bae-sync-status | the sync status as the Sync page and the Activity panel show it: coven's sync state, the library's pending records and the action each offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
+| bae-sync-status | the sync status as the Sync page and the Activity panel show it: coven's sync state, the release file its failure is about, the action each pending record offers, what a retry would do, why this device's last start failed and where its storage setup stands, with the `SyncStatus` owner |
 | bae-app-dir | bae's own directory and what it holds before any library opens: the libraries registered on this device and the one last opened, the installation id, the keyring namespace, and the transfer limits a library runs under before its preferences can be read |
 | bae-diagnostics | how a failure is told: the closed catalog of telemetry events and their upload, the bugs core hands the platform's crash reporter, the panic hook that reports each panic once, the tasks and threads that end what a panicking one served, and the error categories a person is shown |
 | bae-catalogs | the MusicBrainz, Discogs and Wikidata clients and the rate their requests are admitted at, the catalogs bae knows and the pages they publish, and the covers they offer with the cache their images are read through, which reports a panic in its own disk work; what the catalogs say about a release in bae's terms: searches and lookups, the documents a release is read from and what they state, each catalog's release mapped onto bae's values, and why a lookup failed |

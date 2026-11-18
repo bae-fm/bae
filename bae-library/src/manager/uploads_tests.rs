@@ -617,32 +617,6 @@ async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
     );
 }
 
-/// An upload whose original vanished is listed in the sync status, named by
-/// its file and album, with restoring the file as what the person can do.
-#[tokio::test]
-async fn an_upload_missing_its_original_is_listed_by_name() {
-    let (manager, temp, _release, _file_id) = queued_upload_fixture("listed").await;
-    std::fs::remove_file(temp.path().join("listed/a.flac")).unwrap();
-    assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
-    manager.library.manager().start().unwrap();
-    let mut values = manager.library.manager().subscribe_sync_status();
-    let items = pending_list_until(&mut values, |items| !items.is_empty()).await;
-    let item = items
-        .iter()
-        .find(|item| {
-            matches!(item.subject, bae_sync_status::PendingSubjectName::ReleaseFile { .. })
-        })
-        .expect("the upload is named by its file");
-    assert_eq!(
-        item.subject,
-        bae_sync_status::PendingSubjectName::ReleaseFile {
-            file_name: "a.flac".into(),
-            album_title: "Test Album".into(),
-        }
-    );
-    assert_eq!(item.wait.action, bae_sync_status::PendingAction::RestoreFile);
-}
-
 /// A release's cover, carried by the `covers` row whose key is the release
 /// id, is no file of the release's upload: its reference is bound, so it
 /// uploads through the pause that keeps the release's file waiting.

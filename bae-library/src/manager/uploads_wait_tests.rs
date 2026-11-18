@@ -65,8 +65,7 @@ async fn an_uploads_row_names_only_a_missing_original() {
     std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     manager.library.manager().start().unwrap();
-    let mut values = manager.library.manager().subscribe_sync_status();
-    pending_list_until(&mut values, |items| !items.is_empty()).await;
+    pending_records_until(manager.library.manager(), |records| !records.is_empty()).await;
     let named = Some("a.flac".to_string());
     assert_eq!(row_missing(manager.library.manager(), &release.id).await, named);
     manager.installation.lose_network();
