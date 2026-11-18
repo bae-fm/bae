@@ -40,7 +40,10 @@ struct ImportCandidateTablePlaceTests {
             try await Wait.until(notices: [.scroll(of: table)]) {
                 Self.topRow(of: table) == 35
             }
-            #expect(slot.list?.idAt(35) == Self.stableKey(30))
+            // The table keeps the folder on top as the count or the rows
+            // arrive, whichever comes first: wait for the rows too.
+            try await Wait.until { slot.list?.idAt(35) == Self.stableKey(30) }
+            #expect(Self.topRow(of: table) == 35)
         }
     }
 
