@@ -153,3 +153,45 @@ async fn blank_draft_statement_puts_each_disc_on_its_own_medium_loose_audio_firs
     );
     assert_eq!((stored.draft_blank, stored.draft_valid), (true, false));
 }
+
+/// The scan stores no candidate whose audio it has not measured: the write
+/// fails whole, so no state stands without the audio units its blank draft
+/// is made from.
+#[tokio::test]
+async fn a_candidate_with_unmeasured_audio_stores_no_state() {
+    use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedFile};
+
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = host_root("/mounted/library");
+    let unmeasured = CategorizedFiles {
+        files: vec![CandidateFile {
+            file: ScannedFile::new("01.flac".into(), "01.flac".to_string(), 123, 1),
+            role: FileRole::Audio,
+        }],
+        parts: Vec::new(),
+    };
+    let hash = unmeasured.content_hash();
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+
+    let tentative = ScanItem::Discovered(candidate_with(
+        &root,
+        "Album",
+        unmeasured,
+        crate::ReleaseFileScope::Direct,
+    ));
+    let write = tables.save_folder_scan_item(&root, generation, &tentative).await;
+    assert!(write.is_err(), "the scan stores no audio it has not measured");
+    let states: i64 = db
+        .read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT COUNT(*) FROM import_candidate_state WHERE content_hash = ?",
+                [hash],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    assert_eq!(states, 0);
+}

@@ -25,17 +25,14 @@ struct SliceColumns<'a> {
 
 /// Write the units and sheet offers of `files`, the files of the candidate
 /// `candidate_path`. `insert_candidate_files` writes their file rows first,
-/// in the same write. A folder whose audio the scan has not read yet has no
-/// layout to store.
+/// in the same write, and `scan_candidate_file` refuses an audio file without
+/// the facts the scan measured, so every audio file here has them.
 pub(super) fn insert_units(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     candidate_path: &CandidateKey,
     files: &CategorizedFiles,
 ) -> Result<(), DbError> {
-    if files.audio().any(|audio| audio.source_audio.is_none()) {
-        return Ok(());
-    }
     let unreadable = |what: &str, error: crate::ImportError| DbError::unreadable(what, error);
     let durations = crate::probe::source_durations(files)
         .map_err(|error| unreadable("the audio lengths of a candidate's files", error))?;
