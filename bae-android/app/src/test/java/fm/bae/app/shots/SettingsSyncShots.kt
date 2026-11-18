@@ -5,6 +5,7 @@ import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.settings.AndroidSettingsSync
 import fm.bae.app.ui.settings.RestoreCodeState
 import fm.bae.app.ui.settings.S3KeyReplacement
+import fm.bae.app.ui.settings.s3KeyDialogParts
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -74,22 +75,73 @@ class SettingsSyncShots : BoardShot() {
 
     /** Sync over an S3 bucket whose storage refuses the key. */
     @Test
-    fun androidSettingsSyncSignedOutS3() =
-        shot("android.settings.sync.signed-out-s3") {
-            Sync(
-                SyncLine.Read(
-                    syncShown(
-                        BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
-                        "core.sync.status.signed_out_s3",
-                        BridgeSyncTone.WARNING,
-                        cause = BridgeSyncCause.ChangesStayOnDevice,
-                        fix = BridgeSyncFix.EnterAccessKey,
-                        lastSyncedAgo = threeDaysAgo,
-                    ),
-                ),
-                s3,
-            )
+    fun androidSettingsSyncSignedOutS3() = shot("android.settings.sync.signed-out-s3") { Sync(signedOutOfS3, s3) }
+
+    /** The S3 key dialog that Replace key opens, its fields empty. */
+    @Test
+    fun androidSettingsSyncS3ReplaceKeyEmpty() =
+        shot("android.settings.sync.s3-replace-key-empty") { S3KeyDialogOverSync(S3KeyReplacement.Sheet.Fields(null)) }
+
+    /** The S3 key dialog with a new key typed, Save on. */
+    @Test
+    fun androidSettingsSyncS3ReplaceKeyFilled() =
+        shot("android.settings.sync.s3-replace-key-filled") {
+            S3KeyDialogOverSync(S3KeyReplacement.Sheet.Fields(null), typed = TYPED_KEY)
         }
+
+    /** The S3 key dialog while bae checks the key with S3 storage. */
+    @Test
+    fun androidSettingsSyncS3ReplaceKeyChecking() =
+        shot("android.settings.sync.s3-replace-key-checking") {
+            S3KeyDialogOverSync(S3KeyReplacement.Sheet.Checking, typed = TYPED_KEY)
+        }
+
+    /** The S3 key dialog after S3 storage refused the key, the fields as the person typed them. */
+    @Test
+    fun androidSettingsSyncS3ReplaceKeyRefused() =
+        shot("android.settings.sync.s3-replace-key-refused") {
+            S3KeyDialogOverSync(S3KeyReplacement.Sheet.Fields(S3KeyReplacement.Failure.Refused), typed = TYPED_KEY)
+        }
+
+    /** The S3 key dialog that Sign in to S3 opens over the signed-out page. */
+    @Test
+    fun androidSettingsSyncSignedOutS3SignIn() =
+        shot("android.settings.sync.signed-out-s3-sign-in") {
+            S3KeyDialogOverSync(S3KeyReplacement.Sheet.Fields(null), line = signedOutOfS3)
+        }
+}
+
+private val signedOutOfS3 =
+    SyncLine.Read(
+        syncShown(
+            BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
+            "core.sync.status.signed_out_s3",
+            BridgeSyncTone.WARNING,
+            cause = BridgeSyncCause.ChangesStayOnDevice,
+            fix = BridgeSyncFix.EnterAccessKey,
+            lastSyncedAgo = threeDaysAgo,
+        ),
+    )
+
+/** The new key the boards' dialogs show typed: its ID and its secret. */
+private val TYPED_KEY = "AKIA4EXAMPLENEW" to "abcdefghijkl"
+
+/** The S3 key dialog as [sheet] and [typed] show it, over the Sync page of the S3 library at [line]. */
+@Composable
+private fun S3KeyDialogOverSync(
+    sheet: S3KeyReplacement.Sheet,
+    line: SyncLine = synced,
+    typed: Pair<String, String> = "" to "",
+) = InPlaceDialogScene(behind = { SyncPage(line, s3) }) {
+    s3KeyDialogParts(
+        sheet = sheet,
+        accessKeyId = typed.first,
+        secretAccessKey = typed.second,
+        onAccessKeyIdChange = {},
+        onSecretAccessKeyChange = {},
+        onSave = {},
+        onCancel = {},
+    )
 }
 
 private val synced = SyncLine.Read(syncShown(BridgeSyncStatusWord.SYNCED, "core.sync.synced", BridgeSyncTone.SUCCESS))
@@ -103,7 +155,7 @@ private val folder =
 
 private val s3 = BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)
 
-/** The Sync page over [location], an S3 library recording [key] for the person, with [keySaved]'s line under it. */
+/** The Sync page over [location] as a screen of its own; [SyncPage] says what it shows. */
 @Composable
 private fun Sync(
     line: SyncLine,
@@ -111,7 +163,17 @@ private fun Sync(
     restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
     key: String = "AKIA4EXAMPLEOLD",
     keySaved: S3KeyReplacement.Saved? = null,
-) = ScreenScene {
+) = ScreenScene { SyncPage(line, location, restoreCode, key, keySaved) }
+
+/** The Sync page over [location], an S3 library recording [key] for the person, with [keySaved]'s line under it. */
+@Composable
+private fun SyncPage(
+    line: SyncLine,
+    location: BridgeStorageLocation,
+    restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
+    key: String = "AKIA4EXAMPLEOLD",
+    keySaved: S3KeyReplacement.Saved? = null,
+) {
     AndroidSettingsSync(
         line = line,
         notices = {},

@@ -32,8 +32,8 @@ import uniffi.bae_bridge.BridgeException
 /**
  * Replacing the S3 key of the library on the Sync page: whether the S3 key dialog is open and what it shows, the call
  * that checks the key with S3 storage and uses it, and the line after a save that names the old key to delete. The
- * page owns it: Replace key, Sign in to S3 and a pending record's S3 sign-in all open the same dialog. Nothing stores
- * the old key's id; it goes when the person dismisses the line or the page closes.
+ * page owns it: Replace key and Sign in to S3 both open the same dialog. Nothing stores the old key's id; it goes when
+ * the person dismisses the line or the page closes.
  */
 internal class S3KeyReplacement(
     private val scope: CoroutineScope,

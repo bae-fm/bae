@@ -103,8 +103,14 @@ android.settings.sync.dropbox
 android.settings.sync.onedrive
 android.settings.sync.pending
 android.settings.sync.s3
+android.settings.sync.s3-key-replaced
+android.settings.sync.s3-replace-key-checking
+android.settings.sync.s3-replace-key-empty
+android.settings.sync.s3-replace-key-filled
+android.settings.sync.s3-replace-key-refused
 android.settings.sync.signed-out-dropbox
 android.settings.sync.signed-out-s3
+android.settings.sync.signed-out-s3-sign-in
 android.settings.transfers
 android.settings.your-name.blank
 android.settings.your-name.editing
