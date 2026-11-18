@@ -58,14 +58,6 @@ extension View {
     }
 }
 
-// periphery:ignore
-/// What starts a requested reveal: the request, and the list it scrolls
-/// coming into existence under one already waiting.
-private struct RequestedRevealStart: Hashable {
-    let candidateKey: Data?
-    let listLoaded: Bool
-}
-
 @MainActor
 private final class ImportCandidateRevealOperation {
     var task: Task<Void, Never>?
@@ -103,8 +95,8 @@ struct MacImportSidebarContainer: View {
 
     @Environment(UiStore.self)
     private var uiStore
-    /// The candidate a navigation asked the list to show, taken from
-    /// `UiStore.importCandidateReveals` and waiting for the list to exist.
+    /// The candidate a navigation asked the list to show before the list
+    /// existed, which the list shows once it does.
     @State
     private var requestedReveal: Data?
     /// The reveal on its way: from a request, once the list exists, or from
@@ -207,23 +199,20 @@ struct MacImportSidebarContainer: View {
             cancelReveal()
         }
         .onReceive(uiStore.importCandidateReveals.requests) { candidateKey in
-            requestedReveal = candidateKey
-        }
-        .task(
-            id: RequestedRevealStart(
-                candidateKey: requestedReveal,
-                listLoaded: listSlot.list != nil
-            )
-        ) {
             // A reveal started before the list exists would be lost.
-            guard listSlot.list != nil, let candidateKey = requestedReveal
-            else { return }
-            // The reveal goes on its way, where the person's next action
-            // cancels it.
-            requestedReveal = nil
-            startReveal {
-                try await listSlot.revealCandidate(candidateKey)
+            if listSlot.list != nil {
+                reveal(candidateKey)
             }
+            else {
+                requestedReveal = candidateKey
+            }
+        }
+        .onChange(of: listSlot.list != nil) { _, listExists in
+            guard listExists, let candidateKey = requestedReveal else {
+                return
+            }
+            requestedReveal = nil
+            reveal(candidateKey)
         }
     }
 
@@ -289,6 +278,14 @@ extension MacImportSidebarContainer {
 }
 
 extension MacImportSidebarContainer {
+    /// Show the candidate a navigation asked for; the person's next action
+    /// cancels it on its way.
+    private func reveal(_ candidateKey: Data) {
+        startReveal {
+            try await listSlot.revealCandidate(candidateKey)
+        }
+    }
+
     /// Go to the first row still being identified.
     private func goToFirstUnidentified() {
         startReveal {
