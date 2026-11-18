@@ -284,7 +284,7 @@ enum ReceiverPairing {
 /// A receiver bae paired with by code, and what bae kept from it.
 fn paired_by_code() -> (CodeReceiver, KeptPairing) {
     let controller = ControllerIdentity { id: "controller".to_string(), seed: [0x11; 32] };
-    let mut receiver = CodeReceiver::new(ReceiverCode::Pins(Vec::new()));
+    let mut receiver = CodeReceiver::new(ReceiverCode::pins(&[]));
     receiver.paired.push(PairedController {
         id: controller.id.clone().into_bytes(),
         public: public_key(&controller.seed),

@@ -35,15 +35,11 @@ fn identity() -> ControllerIdentity {
     ControllerIdentity { id: "6F1C2A4E-0B3D-4C5E-8F70-9A1B2C3D4E5F".to_string(), seed: [0x11; 32] }
 }
 
-fn pins(pins: &[&str]) -> ReceiverCode {
-    ReceiverCode::Pins(pins.iter().map(ToString::to_string).collect())
-}
-
 /// Pair-setup with the PIN the receiver shows, after a PIN start on the same
 /// connection: both sides end up holding each other's identity.
 #[test]
 fn pin_start_then_pair_setup_with_the_right_pin_pairs() {
-    let (port, server) = serve_one(CodeReceiver::new(pins(&["4821"])));
+    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821"])));
     let mut conn = connect(port);
     start_pin(&mut conn, NAME).unwrap();
     let keys = run_code_pair_setup(&mut conn, NAME, "4821", identity()).unwrap();
@@ -52,7 +48,7 @@ fn pin_start_then_pair_setup_with_the_right_pin_pairs() {
     let (receiver, served) = server.join().unwrap();
     assert_eq!(served, Served::Closed);
     assert_eq!(receiver.requests, ["/pair-pin-start", "/pair-setup", "/pair-setup", "/pair-setup"]);
-    assert_eq!(receiver.pin_shown_beside.as_deref(), Some(NAME));
+    assert_eq!(receiver.pin_shown_beside(), Some(NAME));
     assert_eq!(keys.controller, identity());
     assert_eq!(keys.receiver_id, receiver.identity.id);
     assert_eq!(keys.receiver_public, receiver.identity.public());
@@ -67,7 +63,7 @@ fn pin_start_then_pair_setup_with_the_right_pin_pairs() {
 /// same connection.
 #[test]
 fn a_wrong_pin_fails_and_the_next_pin_pairs() {
-    let (port, server) = serve_one(CodeReceiver::new(pins(&["4821", "0937"])));
+    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821", "0937"])));
     let mut conn = connect(port);
     start_pin(&mut conn, NAME).unwrap();
     let wrong = run_code_pair_setup(&mut conn, NAME, "4812", identity()).unwrap_err();
@@ -89,7 +85,7 @@ fn a_wrong_pin_fails_and_the_next_pin_pairs() {
 /// reports the delay.
 #[test]
 fn a_wrong_pin_reports_the_receiver_s_retry_delay() {
-    let mut receiver = CodeReceiver::new(pins(&["4821"]));
+    let mut receiver = CodeReceiver::new(ReceiverCode::pins(&["4821"]));
     receiver.retry_delay = Some(4);
     let (port, server) = serve_one(receiver);
     let mut conn = connect(port);
@@ -130,7 +126,7 @@ fn a_refusal_of_a_code_pair_setup_is_the_receiver_s_error() {
         (0x06, HomeKitError::Unavailable),
         (0x04, HomeKitError::MaxPeers),
     ] {
-        let mut receiver = CodeReceiver::new(pins(&["4821"]));
+        let mut receiver = CodeReceiver::new(ReceiverCode::pins(&["4821"]));
         receiver.refusal = Some(CodeRefusal::SetupM2(code));
         let (port, server) = serve_one(receiver);
         let mut conn = connect(port);
@@ -148,7 +144,7 @@ fn a_refusal_of_a_code_pair_setup_is_the_receiver_s_error() {
 /// Pair on one connection, then pair-verify on another with the keys that
 /// pairing gave: both sides derive the same session secret.
 fn paired_receiver() -> (CodeReceiver, PairingKeys) {
-    let (port, server) = serve_one(CodeReceiver::new(pins(&["4821"])));
+    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821"])));
     let mut conn = connect(port);
     start_pin(&mut conn, NAME).unwrap();
     let keys = run_code_pair_setup(&mut conn, NAME, "4821", identity()).unwrap();

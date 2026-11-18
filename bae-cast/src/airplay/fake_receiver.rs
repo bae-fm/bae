@@ -489,11 +489,29 @@ pub(crate) enum CodeRefusal {
 /// The code a scripted receiver takes.
 #[derive(Debug, Clone)]
 pub(crate) enum ReceiverCode {
-    /// A PIN it shows on each `/pair-pin-start`: the first entry on the first,
-    /// the next on the next, as a receiver shows a new PIN after a wrong one.
-    Pins(Vec<String>),
+    /// The PINs it shows, one on each `/pair-pin-start`: the first entry on
+    /// the first, the next on the next, as a receiver shows a new PIN after a
+    /// wrong one.
+    Pins {
+        pins: Vec<String>,
+        /// How many it has shown.
+        shown: usize,
+        /// The sender's name it showed beside the last one.
+        shown_beside: Option<String>,
+    },
     /// A password set on it; it takes no `/pair-pin-start`.
     Password(String),
+}
+
+impl ReceiverCode {
+    /// A receiver that shows `pins`, none shown yet.
+    pub(crate) fn pins(pins: &[&str]) -> Self {
+        ReceiverCode::Pins {
+            pins: pins.iter().map(ToString::to_string).collect(),
+            shown: 0,
+            shown_beside: None,
+        }
+    }
 }
 
 /// A receiver that pairs by code and pair-verifies the controllers it paired
@@ -503,10 +521,6 @@ pub(crate) enum ReceiverCode {
 pub(crate) struct CodeReceiver {
     pub(crate) identity: ReceiverIdentity,
     code: ReceiverCode,
-    /// How many PINs it has shown.
-    pins_shown: usize,
-    /// The sender's name it showed beside the last PIN.
-    pub(crate) pin_shown_beside: Option<String>,
     pub(crate) refusal: Option<CodeRefusal>,
     /// The seconds a wrong code's Authentication asks the sender to wait.
     pub(crate) retry_delay: Option<u8>,
@@ -533,8 +547,6 @@ impl CodeReceiver {
         CodeReceiver {
             identity: ReceiverIdentity::new(),
             code,
-            pins_shown: 0,
-            pin_shown_beside: None,
             refusal: None,
             retry_delay: None,
             paired: Vec::new(),
@@ -573,12 +585,11 @@ impl CodeReceiver {
         let step = || Tlv8::decode(&request.body).unwrap().get_u8(tlv_type::STATE);
         match request.uri.as_str() {
             "/pair-pin-start" => {
-                assert!(
-                    matches!(self.code, ReceiverCode::Pins(_)),
-                    "a password takes no PIN start"
-                );
-                self.pins_shown += 1;
-                self.pin_shown_beside = request.header("X-Apple-Client-Name").map(String::from);
+                let ReceiverCode::Pins { shown, shown_beside, .. } = &mut self.code else {
+                    panic!("a password takes no PIN start");
+                };
+                *shown += 1;
+                *shown_beside = request.header("X-Apple-Client-Name").map(String::from);
                 (OK, Vec::new(), None)
             }
             "/pair-setup" => match step() {
@@ -629,12 +640,20 @@ impl CodeReceiver {
         }
     }
 
+    /// The sender's name it showed beside the last PIN, if it showed one.
+    pub(crate) fn pin_shown_beside(&self) -> Option<&str> {
+        match &self.code {
+            ReceiverCode::Pins { shown_beside, .. } => shown_beside.as_deref(),
+            ReceiverCode::Password(_) => None,
+        }
+    }
+
     /// The PIN it shows now, or its password.
     fn current_code(&self) -> &[u8] {
         match &self.code {
-            ReceiverCode::Pins(pins) => {
-                let shown = self.pins_shown.checked_sub(1).expect("a PIN start came first");
-                pins[shown].as_bytes()
+            ReceiverCode::Pins { pins, shown, .. } => {
+                let last = shown.checked_sub(1).expect("a PIN start came first");
+                pins[last].as_bytes()
             }
             ReceiverCode::Password(password) => password.as_bytes(),
         }
