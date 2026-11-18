@@ -915,7 +915,6 @@ fn a_mapping_file_s_audition_target_survives_its_json() {
             name: "01.flac".to_string(),
             size: 1_024,
             preview_target,
-            audio_format: None,
             role: MappingRole::Audio,
         };
         let json = serde_json::to_string(&file).unwrap();

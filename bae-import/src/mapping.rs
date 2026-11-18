@@ -162,7 +162,6 @@ pub struct MappingFile {
     /// The whole-file audition target when this file currently supplies audio.
     #[serde(with = "stored_preview_target")]
     pub preview_target: Option<bae_track_audio::PreviewTarget>,
-    pub audio_format: Option<bae_types::audio_format::AudioFormat>,
     pub role: MappingRole,
 }
 
@@ -217,7 +216,6 @@ pub struct MappingEntry {
     pub container_id: String,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: bae_track_audio::PreviewTarget,
-    pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
 /// A track sheet, as the header of the group of rows it carves.
@@ -267,7 +265,6 @@ pub struct MappingContainer {
     pub file_id: String,
     pub name: String,
     pub size: u64,
-    pub audio_format: bae_types::audio_format::AudioFormat,
 }
 
 /// The table's track rows in commit order — what the editor shapes into the

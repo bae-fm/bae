@@ -258,7 +258,6 @@ pub struct BridgeMappingFile {
     pub size: u64,
     /// The whole-file target when this file currently supplies audio.
     pub preview_target: Option<BridgePreviewTarget>,
-    pub audio_format: Option<BridgeAudioFormat>,
     pub role: BridgeMappingRole,
 }
 
@@ -278,7 +277,6 @@ pub struct BridgeMappingEntry {
     pub container_id: String,
     /// The exact window of the container that auditioning this entry plays.
     pub preview_target: BridgePreviewTarget,
-    pub audio_format: BridgeAudioFormat,
 }
 
 /// The left half of a mapping row: what the folder offers for it. Mirror of
@@ -323,7 +321,6 @@ pub struct BridgeMappingContainer {
     pub file_id: String,
     pub name: String,
     pub size: u64,
-    pub audio_format: BridgeAudioFormat,
 }
 
 /// A track sheet, as the header of the group of rows it carves. Mirror of

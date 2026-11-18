@@ -365,7 +365,6 @@ extension ImportMappingTracksLayoutTests {
                     name: "track.flac",
                     size: 24_000_000,
                     previewTarget: previewTarget,
-                    audioFormat: MappingFixtures.audioFormat,
                     role: .audio
                 )
             ),
@@ -397,8 +396,7 @@ extension ImportMappingTracksLayoutTests {
                     container: BridgeMappingContainer(
                         fileId: longAudioName,
                         name: longAudioName,
-                        size: 460_000_000,
-                        audioFormat: MappingFixtures.audioFormat
+                        size: 460_000_000
                     )
                 )
                 : .unresolved(requested: [longAudioName]),
@@ -434,8 +432,7 @@ extension ImportMappingTracksLayoutTests {
                 name: "track.flac",
                 startSample: UInt64(number - 1) * 44_100,
                 endSample: UInt64(number) * 44_100
-            ),
-            audioFormat: MappingFixtures.audioFormat
+            )
         )
         return BridgeTrackMapping(
             source: .sheetEntry(entry: entry),

@@ -18,7 +18,6 @@ use crate::mapping::{
     TrackMapping,
 };
 use crate::ImportError;
-use bae_types::audio_format::AudioFormat;
 
 /// The mapping table as one JSON document, for the release the scan stores
 /// at the key the statement binds as `:key`, over the draft stored under its
@@ -40,10 +39,7 @@ f AS (
 audio_json (relative_path, json) AS (
     SELECT relative_path,
            json_object('file_id', relative_path, 'name', file_name, 'size', size,
-                       'path', hex(absolute_path), 'content_type', audio_content_type,
-                       'sample_rate_hz', audio_sample_rate_hz,
-                       'bits_per_sample', audio_bits_per_sample,
-                       'bitrate_kbps', audio_bitrate_kbps, 'channels', audio_channels)
+                       'path', hex(absolute_path))
     FROM f WHERE role = 'audio'
 ),
 mediums AS (
@@ -250,25 +246,6 @@ struct AudioJson {
     size: u64,
     #[serde(deserialize_with = "path_column::from_hex")]
     path: std::path::PathBuf,
-    content_type: String,
-    sample_rate_hz: i64,
-    bits_per_sample: Option<i64>,
-    bitrate_kbps: Option<i64>,
-    channels: i64,
-}
-
-impl AudioJson {
-    fn format(&self) -> AudioFormat {
-        AudioFormat {
-            codec: bae_util::content_type::ContentType::from_mime(&self.content_type)
-                .display_name()
-                .to_string(),
-            sample_rate_hz: self.sample_rate_hz,
-            bits_per_sample: self.bits_per_sample,
-            bitrate_kbps: self.bitrate_kbps,
-            channels: self.channels,
-        }
-    }
 }
 
 #[derive(serde::Deserialize)]
@@ -435,7 +412,6 @@ impl MappingRows {
                         name: file.name,
                         size: file.size,
                         preview_target: None,
-                        audio_format: None,
                         role: carried_role(&file.role)?,
                     }),
                 })
@@ -494,12 +470,7 @@ fn carried_role(role: &str) -> Result<MappingRole, ImportError> {
 }
 
 fn container(audio: &AudioJson) -> MappingContainer {
-    MappingContainer {
-        file_id: audio.file_id.clone(),
-        name: audio.name.clone(),
-        size: audio.size,
-        audio_format: audio.format(),
-    }
+    MappingContainer { file_id: audio.file_id.clone(), name: audio.name.clone(), size: audio.size }
 }
 
 fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
@@ -597,7 +568,6 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             name: audio.file_id.clone(),
             size: audio.size,
             preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path.clone())),
-            audio_format: Some(audio.format()),
             role: MappingRole::Audio,
         }),
         Some("sheet_slice") => MappingSource::SheetEntry(MappingEntry {
@@ -611,7 +581,6 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
                 row.start.ok_or_else(|| internal("a slice has no start".to_owned()))?,
                 row.end,
             ),
-            audio_format: audio.format(),
         }),
         other => {
             return Err(internal(format!(

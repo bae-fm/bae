@@ -247,7 +247,6 @@ pub(crate) fn load_invalid_detail(
                 size: to_u64(size, "a skipped file's size")?,
                 preview_target: (role == MappingRole::Audio)
                     .then(|| bae_track_audio::PreviewTarget::whole_file(path)),
-                audio_format: None,
                 role,
             })
         })

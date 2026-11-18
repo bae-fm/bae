@@ -108,15 +108,13 @@ mirror_enum! {
 
 impl BridgeMappingFile {
     pub(crate) fn from_core(file: bae_import::MappingFile) -> Self {
-        let bae_import::MappingFile { file_id, name, size, preview_target, audio_format, role } =
-            file;
+        let bae_import::MappingFile { file_id, name, size, preview_target, role } = file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
             preview_target: preview_target.map(BridgePreviewTarget::from_core),
             file_id,
             name,
             size,
-            audio_format: audio_format.map(BridgeAudioFormat::from_core),
         }
     }
 }
@@ -130,7 +128,6 @@ impl BridgeMappingEntry {
             title,
             container_id,
             preview_target,
-            audio_format,
         } = entry;
         BridgeMappingEntry {
             sheet_id,
@@ -139,7 +136,6 @@ impl BridgeMappingEntry {
             title,
             container_id,
             preview_target: BridgePreviewTarget::from_core(preview_target),
-            audio_format: BridgeAudioFormat::from_core(audio_format),
         }
     }
 }
@@ -177,7 +173,7 @@ impl BridgeTrackMapping {
 mirror_struct! {
     BridgeMappingContainer = bae_import::MappingContainer,
     from_core: fn,
-    fields: { file_id, name, size, audio_format: (BridgeAudioFormat) },
+    fields: { file_id, name, size },
 }
 
 impl BridgeSheetGroup {

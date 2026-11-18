@@ -51,7 +51,6 @@ extension MappingFixtures {
                 startSample: 0,
                 endSample: nil
             ),
-            audioFormat: audioFormat,
             role: .audio
         )
     }
@@ -142,15 +141,13 @@ extension MappingFixtures {
             startSample: 0,
             endSample: nil
         ),
-        audioFormat: audioFormat,
         role: .audio
     )
 
     static let container = BridgeMappingContainer(
         fileId: containerId,
         name: containerId,
-        size: 380_000_000,
-        audioFormat: audioFormat
+        size: 380_000_000
     )
 
     static func sheetGroup(
@@ -247,8 +244,7 @@ extension MappingFixtures {
                     number: UInt32(index + 1),
                     title: "Sheet Track \(index + 1)",
                     containerId: containerId,
-                    previewTarget: previewTarget,
-                    audioFormat: audioFormat
+                    previewTarget: previewTarget
                 )
             ),
             track: trackEdit(

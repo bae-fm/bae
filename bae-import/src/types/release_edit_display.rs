@@ -236,7 +236,6 @@ fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
         name: file.original_filename.clone(),
         size: file.file_size,
         preview_target: None,
-        audio_format: file.source_audio.as_ref().map(|audio| audio.format.clone()),
         role: match file.role {
             ReleaseFileRole::Audio => MappingRole::Audio,
             // The library keeps no sheet's binding: a sheet is the text it is.

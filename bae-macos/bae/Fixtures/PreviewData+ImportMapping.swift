@@ -35,7 +35,6 @@ extension PreviewData {
                 startSample: 0,
                 endSample: nil
             ),
-            audioFormat: sourceAudioFormat,
             role: .audio
         )
     }
@@ -55,7 +54,6 @@ extension PreviewData {
                     startSample: 0,
                     endSample: nil
                 ) : nil,
-            audioFormat: file.file.audioFormat,
             role: role
         )
     }
@@ -193,8 +191,6 @@ extension PreviewData {
                                         startSample: 0,
                                         endSample: nil
                                     ),
-                                    audioFormat: moreTracksAudio.file
-                                        .audioFormat,
                                     role: .audio
                                 )
                             ),
@@ -228,8 +224,7 @@ extension PreviewData {
                 name: mappedAudioContainer.file.fileName,
                 startSample: UInt64(index) * 44_100,
                 endSample: UInt64(index + 1) * 44_100
-            ),
-            audioFormat: sourceAudioFormat
+            )
         )
         return BridgeTrackMapping(
             source: .sheetEntry(entry: entry),
@@ -249,8 +244,7 @@ extension PreviewData {
             container: BridgeMappingContainer(
                 fileId: mappedAudioContainer.file.name,
                 name: mappedAudioContainer.file.fileName,
-                size: mappedAudioContainer.file.size,
-                audioFormat: sourceAudioFormat
+                size: mappedAudioContainer.file.size
             )
         ),
         referenceOptions: sheetReferenceOptions,
@@ -313,7 +307,6 @@ extension PreviewData {
             name: name,
             size: size,
             previewTarget: nil,
-            audioFormat: nil,
             role: role
         )
     }
