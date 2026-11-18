@@ -60,13 +60,14 @@ impl LibraryViews {
         &self,
         album_id: &str,
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let album_id = album_id.to_string();
         let order = album_track_order();
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            album_track_statement,
             move |sql, seek, limit| album_track_rows_on(sql, &album_id, &read_order, seek, limit),
             |rows| Ok(album_track_rows(rows)),
         )
@@ -208,12 +209,13 @@ impl LibraryViews {
         &self,
         sort: &[AlbumSortCriterion],
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let (_, order) = album_browse_order(sort, false);
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            |order, seek| listing::album_window_statement(false, order, seek),
             move |sql, seek, limit| album_rows_on(sql, false, &read_order, seek, limit),
             |rows| {
                 Ok(album_rows(
@@ -776,16 +778,10 @@ fn album_track_filter() -> String {
     format!("a.id = :album_id AND r.id = {}", album_primary_release_sql())
 }
 
-/// The album `album_id`'s tracks that `seek` reads in `order`, at most
-/// `limit`, each with its key.
-fn album_track_rows_on(
-    sql: &SqlReadContext<'_>,
-    album_id: &str,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbTrackSearchResult>>, DbError> {
-    let statement = format!(
+/// The statement reading the album `:album_id`'s tracks `seek` holds, in
+/// `order`, each with its key.
+fn album_track_statement(order: &ListOrder, seek: &Seek) -> String {
+    format!(
         "SELECT {columns}, {keys} {TRACK_HIT_FROM}
          WHERE {filter} AND {condition}
          ORDER BY {ordering} {limit}",
@@ -795,7 +791,19 @@ fn album_track_rows_on(
         condition = order.condition(seek),
         ordering = order.ordering(seek),
         limit = seek.limit_clause(),
-    );
+    )
+}
+
+/// The album `album_id`'s tracks that `seek` reads in `order`, at most
+/// `limit`, each with its key.
+fn album_track_rows_on(
+    sql: &SqlReadContext<'_>,
+    album_id: &str,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+) -> Result<Vec<Keyed<DbTrackSearchResult>>, DbError> {
+    let statement = album_track_statement(order, seek);
     Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":album_id", &album_id as &dyn rusqlite::ToSql));

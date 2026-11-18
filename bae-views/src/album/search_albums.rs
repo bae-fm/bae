@@ -13,13 +13,14 @@ impl LibraryViews {
         &self,
         query: Option<crate::LibrarySearchQuery>,
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
         let order = search_album_order();
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            search_album_statement,
             move |sql, seek, limit| match &pattern {
                 Some(pattern) => {
                     search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit)

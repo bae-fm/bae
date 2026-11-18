@@ -46,17 +46,22 @@ fn read(
     seek: &Seek,
     limit: u64,
 ) -> rusqlite::Result<Vec<Keyed<String>>> {
-    let statement = format!(
+    let mut statement = conn.prepare(&statement(order, seek))?;
+    seek.bound(limit, |params| {
+        statement.query_map(params, |row| Ok((row.get(0)?, order.key_of(row)?)))?.collect()
+    })
+}
+
+/// The statement reading `t`'s rows `seek` holds, in `order`, each with its
+/// key.
+fn statement(order: &ListOrder, seek: &Seek) -> String {
+    format!(
         "SELECT t.id, {keys} FROM t WHERE {condition} ORDER BY {order} {limit}",
         keys = order.key_columns(),
         condition = order.condition(seek),
         order = order.ordering(seek),
         limit = seek.limit_clause(),
-    );
-    let mut statement = conn.prepare(&statement)?;
-    seek.bound(limit, |params| {
-        statement.query_map(params, |row| Ok((row.get(0)?, order.key_of(row)?)))?.collect()
-    })
+    )
 }
 
 /// Every row of `t` in `order`, with its key.
@@ -333,6 +338,24 @@ async fn a_write_reruns_only_the_window_over_the_nulls_or_the_values_that_reach_
             if marked {
                 tokio::time::timeout(HANG_GUARD, query.next_inline()).await.unwrap().unwrap();
             }
+        }
+    }
+}
+
+/// A page's one statement reads exactly the `limit` rows from the row at its
+/// first place, in every order, with its ties, its NULLs and its terms of a
+/// collation, and none for a page past the list's end.
+#[test]
+fn a_page_holds_the_rows_from_its_first_place() {
+    let conn = rows();
+    for order in orders() {
+        let everything = listed(&conn, &order);
+        for place in [0, 1, 2, 39, 40, 41, 99, 150, 195, 199, 200, 250] {
+            let seek = order.from_place(place, statement);
+            let read = read(&conn, &order, &seek, 7).unwrap();
+            let start = (place as usize).min(everything.len());
+            let end = (start + 7).min(everything.len());
+            assert_eq!(read, everything[start..end], "page at {place} in {order:?}");
         }
     }
 }

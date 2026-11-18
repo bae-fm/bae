@@ -85,9 +85,9 @@ pub fn read_range<R, E>(
 }
 
 /// A page of a list: the `limit` rows from the row at `offset` in the list's
-/// order. A page's live read follows the key of the row at `offset`, read
-/// live by offset, and takes at most `limit` rows from that key on, as a
-/// window does; a page that starts past the list's end holds no rows.
+/// order. A page's live read is one statement, whose subquery finds the row
+/// at `offset` the page starts at; a page that starts past the list's end
+/// holds no rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ListPage {
     pub offset: u64,
@@ -177,45 +177,33 @@ fn row_key_at<R, E>(
 
 impl crate::Store {
     /// The live read of one page of the list `order` sorts, its rows made
-    /// into a value by `process`. One live read follows the key of the row at
-    /// the page's offset: coven reruns it for each write to the list, and it
-    /// answers one row. The page's rows follow from that key as a window,
-    /// which coven reruns for a write at or before its last row alone, and
-    /// which moves to the key's new value each time the key changes, so the
-    /// page holds the rows at its places after every write. `read` runs the
-    /// list's statement under a seek for at most a limit and gives each row
+    /// into a value by `process`: one statement holding the list's rows to
+    /// those at or after the row at the page's offset, which a subquery of
+    /// the statement reads by offset, at most the page's limit of them. The
+    /// subquery's comparison keeps coven from narrowing which writes rerun
+    /// it, so coven reruns it for every write to the list. `statement` is the
+    /// list's statement under a seek, and `read` runs it, giving each row
     /// with its key.
     pub fn subscribe_list_page<R, T>(
         &self,
         page: ListPage,
         order: ListOrder,
+        statement: impl Fn(&ListOrder, &Seek) -> String,
         read: impl Fn(&coven::SqlReadContext<'_>, &Seek, u64) -> Result<Vec<Keyed<R>>, crate::DbError>
             + Send
             + Sync
             + 'static,
         process: impl Fn(Vec<R>) -> Result<T, crate::DbError> + Send + Sync + 'static,
-    ) -> crate::live_query::LivePage<T>
+    ) -> coven::LiveQuery<T, crate::DbError>
     where
         R: Clone + PartialEq + Send + 'static,
         T: Send + 'static,
     {
-        let read = std::sync::Arc::new(read);
-        let key = {
-            let (order, read) = (order.clone(), read.clone());
-            self.subscribe(move |sql| {
-                row_key_at(&order, page.offset, &mut |seek, limit| read(&sql, seek, limit))
-            })
-        };
-        // The page asks for the window from the key's first answer before
-        // the rows read first runs.
-        let rows = self
-            .subscribe_reconfigurable(ListWindow::top(0), move |window, sql| {
-                let window =
-                    read_range(&order, window, &mut |seek, limit| read(&sql, seek, limit))?;
-                Ok(window.rows.into_iter().map(|(row, _)| row).collect::<Vec<R>>())
-            })
-            .process(process);
-        crate::live_query::LivePage::new(key, rows, page.limit)
+        let seek = order.from_place(page.offset, statement);
+        self.subscribe(move |sql| {
+            Ok(read(&sql, &seek, page.limit)?.into_iter().map(|(row, _)| row).collect::<Vec<R>>())
+        })
+        .process(process)
     }
 
     /// A live query of one window of the list `order` sorts. When the list's

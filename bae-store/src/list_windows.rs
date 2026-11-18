@@ -5,8 +5,8 @@
 //!
 //! A jump to a position reads the key of the row at that position by offset
 //! once (`key_at`), and the window starts at that key. A page of a list
-//! (`ListPage`) follows the key of the row at its offset, read live the same
-//! way, and takes its rows from there as a window does. `RowsBefore` counts
+//! (`ListPage`) is one statement: it takes its rows from those at or after
+//! the row at its offset, which a subquery of the statement reads by offset. `RowsBefore` counts
 //! the rows before a key over index ranges in one statement, without
 //! numbering the list. The module keeps nothing about where rows sit between
 //! reads.
@@ -149,6 +149,22 @@ pub struct Seek {
     /// How many of the seek's rows the read skips, for a read by offset; a
     /// window's read skips none and has no OFFSET.
     offset: Option<u64>,
+    /// For a page's read, where the page starts: the read holds its rows to
+    /// those at or after the row at the page's first place, which a subquery
+    /// of the same statement finds by offset.
+    start: Option<PageStart>,
+    /// Whether the seek reads the one row at the place `:place` names, by
+    /// offset: the subquery a page's statement finds its first row with.
+    place_row: bool,
+}
+
+/// Where a page's read starts: the page's first place, and the statement that
+/// reads the row at that place by offset, whose key columns the page's
+/// condition compares each row with.
+#[derive(Debug, Clone)]
+struct PageStart {
+    place: u64,
+    row: String,
 }
 
 /// What a seek holds the term at its place to.
@@ -177,31 +193,38 @@ impl Seek {
     }
 
     /// The statement's LIMIT clause: `LIMIT :limit`, with `OFFSET :offset`
-    /// for a read by offset. A window's statement has no OFFSET, so coven
-    /// reruns it only for a write at or before its last row.
+    /// for a read by offset, and `LIMIT 1 OFFSET :place` for the read of a
+    /// page's first row. A window's statement has no OFFSET, so coven reruns
+    /// it only for a write at or before its last row.
     pub fn limit_clause(&self) -> &'static str {
-        match self.offset {
-            Some(_) => "LIMIT :limit OFFSET :offset",
-            None => "LIMIT :limit",
+        match (self.place_row, self.offset) {
+            (true, _) => "LIMIT 1 OFFSET :place",
+            (false, Some(_)) => "LIMIT :limit OFFSET :offset",
+            (false, None) => "LIMIT :limit",
         }
     }
 
-    /// Run `run` with the seek's parameters, `limit` as `:limit`, and for a
-    /// read by offset, the offset as `:offset`.
+    /// Run `run` with the seek's parameters, `limit` as `:limit`, for a
+    /// read by offset, the offset as `:offset`, and for a page, its first
+    /// place as `:place`.
     pub fn bound<T>(&self, limit: u64, run: impl FnOnce(&[(&str, &dyn ToSql)]) -> T) -> T {
         let limit = sql_bound(limit);
         let offset = self.offset.map(sql_bound);
+        let place = self.start.as_ref().map(|start| sql_bound(start.place));
         let mut params = self.params();
         params.push((":limit", &limit));
         if let Some(offset) = &offset {
             params.push((":offset", offset));
+        }
+        if let Some(place) = &place {
+            params.push((":place", place));
         }
         run(&params)
     }
 
     /// Whether the read skips rows by offset.
     pub fn by_offset(&self) -> bool {
-        self.offset.is_some()
+        self.offset.is_some() || self.place_row
     }
 
     /// How many of the order's leading terms the seek holds equal.
@@ -264,7 +287,26 @@ impl ListOrder {
     /// Every row of the list, in its order: the seek a window from the
     /// list's top runs.
     pub fn everything(&self) -> Seek {
-        Seek { equal: 0, past: None, from: 0, reversed: false, binds: Vec::new(), offset: None }
+        Seek {
+            equal: 0,
+            past: None,
+            from: 0,
+            reversed: false,
+            binds: Vec::new(),
+            offset: None,
+            start: None,
+            place_row: false,
+        }
+    }
+
+    /// The rows of one page of the list: those at or after the row at
+    /// `place`, in the order. `statement` is the list's statement in this
+    /// order under a seek; the page's statement holds, as a subquery,
+    /// `statement` reading the row at `place` by offset, so one statement
+    /// reads the page's rows after every write.
+    pub fn from_place(&self, place: u64, statement: impl Fn(&Self, &Seek) -> String) -> Seek {
+        let row = statement(self, &Seek { place_row: true, ..self.everything() });
+        Seek { start: Some(PageStart { place, row }), ..self.everything() }
     }
 
     /// Every row of the list from `position` on, read by offset: the seek
@@ -287,6 +329,9 @@ impl ListOrder {
     /// one's albums, would sort the second table's rows instead of reading
     /// them in its index's order.
     pub fn condition(&self, seek: &Seek) -> String {
+        if let Some(start) = &seek.start {
+            return self.page_condition(&start.row);
+        }
         let term = |at: usize| &self.terms[at].expression;
         let held = |at: usize| match &seek.binds[at].1 {
             Value::Null => format!("({}) IS {}", term(at), key_parameter(at)),
@@ -313,6 +358,44 @@ impl ListOrder {
         } else {
             conditions.join(" AND ")
         }
+    }
+
+    /// The condition holding this order's rows to those at or after the row
+    /// `row` reads, in the order: a row past it on one term and tying it on
+    /// every term before, or tying it on every term but the last and at or
+    /// past it on that. NULL sorts below every value, and `IS` compares a
+    /// NULL. When `row` reads no row, the last term's value, never NULL for
+    /// a row, is NULL, and the condition holds no row.
+    fn page_condition(&self, row: &str) -> String {
+        let value = |at: usize| format!("(SELECT {} FROM ({row}))", key_column(at));
+        let term = |at: usize| &self.terms[at].expression;
+        let ties = |before: usize| {
+            (0..before).map(|at| format!("({}) IS {}", term(at), value(at))).collect::<Vec<_>>()
+        };
+        let last = self.terms.len() - 1;
+        let past = |at: usize| {
+            let (term, value) = (term(at), value(at));
+            let descending = self.terms[at].descending;
+            match (at == last, descending) {
+                (true, false) => format!("({term}) >= {value}"),
+                (true, true) => format!("({term}) <= {value}"),
+                (false, false) => {
+                    format!("(({term}) > {value} OR ({value} IS NULL AND ({term}) IS NOT NULL))")
+                }
+                (false, true) => {
+                    format!("(({term}) < {value} OR (({term}) IS NULL AND {value} IS NOT NULL))")
+                }
+            }
+        };
+        let rows = (0..self.terms.len())
+            .map(|at| {
+                let mut held = ties(at);
+                held.push(past(at));
+                format!("({})", held.join(" AND "))
+            })
+            .collect::<Vec<_>>()
+            .join(" OR ");
+        format!("({} IS NOT NULL AND ({rows}))", value(last))
     }
 
     /// The ORDER BY clause `seek` reads this order's rows in.
@@ -417,6 +500,8 @@ impl ListOrder {
                         .map(|bound| (key_parameter(bound), key.0[bound].clone()))
                         .collect(),
                     offset: None,
+                    start: None,
+                    place_row: false,
                 }
             };
             let bound =

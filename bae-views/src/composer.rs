@@ -49,12 +49,13 @@ impl LibraryViews {
         &self,
         sort: &[ComposerSortCriterion],
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let order = composer_order(sort);
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            |order, seek| listing_window_query(composer_listing_query, order, seek),
             move |sql, seek, limit| composer_rows_on(sql, &read_order, seek, limit),
             |rows| Ok(crate::ListRows::Composers(rows)),
         )
@@ -131,13 +132,14 @@ impl LibraryViews {
         &self,
         work_id: &str,
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let work_id = work_id.to_string();
         let order = work_child_order();
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            work_child_statement,
             move |sql, seek, limit| work_child_rows_on(sql, &work_id, &read_order, seek, limit),
             |rows| Ok(work_child_rows(rows)),
         )
@@ -603,17 +605,10 @@ fn work_child_order() -> ListOrder {
     ])
 }
 
-/// The work `work_id`'s children that `seek` reads in `order`, at most
-/// `limit`, each with its key and what it shows: a part's summary or a
-/// release's.
-fn work_child_rows_on(
-    sql: &SqlReadContext<'_>,
-    work_id: &str,
-    order: &ListOrder,
-    seek: &Seek,
-    limit: u64,
-) -> Result<Vec<Keyed<DbWorkChild>>, DbError> {
-    let statement = format!(
+/// The statement reading the work `:work_id`'s children `seek` holds, in
+/// `order`, each with its key.
+fn work_child_statement(order: &ListOrder, seek: &Seek) -> String {
+    format!(
         "SELECT child.section, {work}, {release}, {keys}
          FROM ({children}) child
          LEFT JOIN works w ON child.section = 0 AND w.id = child.item_id
@@ -629,7 +624,20 @@ fn work_child_rows_on(
         condition = order.condition(seek),
         ordering = order.ordering(seek),
         limit = seek.limit_clause(),
-    );
+    )
+}
+
+/// The work `work_id`'s children that `seek` reads in `order`, at most
+/// `limit`, each with its key and what it shows: a part's summary or a
+/// release's.
+fn work_child_rows_on(
+    sql: &SqlReadContext<'_>,
+    work_id: &str,
+    order: &ListOrder,
+    seek: &Seek,
+    limit: u64,
+) -> Result<Vec<Keyed<DbWorkChild>>, DbError> {
+    let statement = work_child_statement(order, seek);
     Ok(seek.bound(limit, |params| {
         let mut params = params.to_vec();
         params.push((":work_id", &work_id as &dyn rusqlite::ToSql));

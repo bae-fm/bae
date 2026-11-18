@@ -305,9 +305,6 @@ task_types = [
     "CancellableLiveQuery",
     # One live query's results for an async reader, for as long as it reads.
     "LiveResults",
-    # One list page's live query for an async reader, opened on its first
-    # pull, for as long as it reads.
-    "PageSource",
     "AddDeviceStatusSubscription",
     "AdminChangesSubscription",
     "AlbumDetailSubscription",
@@ -1932,6 +1929,7 @@ allowed = [
     { path = "bae-store/src/list_windows.rs", item = "ListOrder::column_ordering", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
     { path = "bae-store/src/list_windows.rs", item = "ListOrder::condition", shape = "length-branch", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
     { path = "bae-store/src/list_windows.rs", item = "ListOrder::key_of", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
+    { path = "bae-store/src/list_windows.rs", item = "ListOrder::page_condition", shape = "aggregate", count = 2, reason = "works on the terms of a list's order to write a page's condition; the values are term counts, not rows" },
     { path = "bae-store/src/list_windows.rs", item = "ListOrder::seeks", shape = "aggregate", count = 2, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
     { path = "bae-store/src/list_windows.rs", item = "ListOrder::term_count", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
     { path = "bae-transfers/src/queued_releases/tables.rs", item = "queue_row", shape = "aggregate", count = 1, reason = "counts a row type's constant column list (`COLUMNS.len()`) to find where its columns start; not rows" },

@@ -97,13 +97,14 @@ impl LibraryViews {
         &self,
         artist_id: &str,
         page: ListPage,
-    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+    ) -> coven::LiveQuery<crate::ListRows, bae_store::DbError> {
         let artist_id = artist_id.to_string();
         let order = composer_detail_order("listing");
         let read_order = order.clone();
         self.store.subscribe_list_page(
             page,
             order,
+            composer_detail_rows_query,
             move |sql, seek, limit| {
                 composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit)
             },
