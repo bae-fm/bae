@@ -249,6 +249,7 @@ object PreviewData {
                 } else {
                     emptyList()
                 },
+            attentionCount = if (needsAttention) 1u else 0u,
             syncing = true,
             uploads =
                 BridgeUploadQueueActivity(

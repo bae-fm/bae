@@ -39,7 +39,7 @@ struct ActivityList: View {
                         problem(id)
                             .settingsRowInset(0)
                     }
-                    if let activity, !activity.attention.isEmpty {
+                    if let activity, activity.attentionCount > 0 {
                         PendingRecordsView(
                             records: activity.attention,
                             perform: nil

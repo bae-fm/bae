@@ -258,7 +258,7 @@ private fun NeedsAttention(
                 )
             }
         }
-        if (activity?.attention?.isNotEmpty() == true) {
+        if (activity != null && activity.attentionCount > 0u) {
             PendingRecords(activity.attention, onOpenSettings)
         }
     }

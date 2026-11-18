@@ -32,7 +32,7 @@ struct ActivityProblems: Equatable {
         }
         self.listed = listed
         shown = listed.filter { !dismissed.contains($0) }
-        recordsListed = activity?.attention.isEmpty == false
+        recordsListed = (activity?.attentionCount ?? 0) > 0
     }
 
     var needsAttention: Bool {

@@ -57,6 +57,7 @@ public final class SyncActivityStore {
                 needsAttention: needsAttention,
                 failure: nil,
                 attention: needsAttention ? [previewSignIn] : [],
+                attentionCount: needsAttention ? 1 : 0,
                 syncing: true,
                 uploads: BridgeUploadQueueActivity(
                     batch: BridgeTransferBatch(done: 1, total: 2),

@@ -18,6 +18,9 @@ pub struct BridgeSyncActivity {
     pub failure: Option<super::BridgeError>,
     /// The pending records that need the person.
     pub attention: Vec<super::BridgePendingRecord>,
+    /// How many records `attention` lists, as the sync status query counts
+    /// them. The apps decide from it whether any record is listed.
+    pub attention_count: u32,
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded. The panel's Syncing changes line shows while it is.
     pub syncing: bool,
@@ -37,7 +40,7 @@ impl BridgeSyncActivity {
         let bae_views::SyncActivity {
             failure,
             attention,
-            attention_count: _,
+            attention_count,
             syncing,
             moving,
             uploads,
@@ -50,6 +53,7 @@ impl BridgeSyncActivity {
             needs_attention,
             failure: failure.map(super::BridgeError::from_core),
             attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),
+            attention_count,
             syncing,
             uploads: uploads.map(BridgeUploadQueueActivity::from_core),
             pins: pins.map(BridgeDownloadQueueActivity::from_core),

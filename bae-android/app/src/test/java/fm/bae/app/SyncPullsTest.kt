@@ -88,6 +88,7 @@ class SyncPullsTest {
             needsAttention = false,
             failure = null,
             attention = emptyList(),
+            attentionCount = 0u,
             syncing = false,
             uploads = uploads,
             pins = null,

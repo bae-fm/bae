@@ -138,6 +138,7 @@ struct SyncActivitySubscriptionTests {
             needsAttention: false,
             failure: nil,
             attention: [],
+            attentionCount: 0,
             syncing: false,
             uploads: sending.map {
                 BridgeUploadQueueActivity(

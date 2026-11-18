@@ -82,6 +82,7 @@ class ActivityProblemsTest {
             needsAttention = false,
             failure = null,
             attention = emptyList(),
+            attentionCount = 0u,
             syncing = false,
             uploads = null,
             pins = null,

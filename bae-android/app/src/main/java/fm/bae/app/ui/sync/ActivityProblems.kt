@@ -38,6 +38,6 @@ fun activityProblems(
     return ActivityProblems(
         listed = listed,
         shown = listed.filter { it !in dismissed },
-        recordsListed = activity?.attention?.isNotEmpty() == true,
+        recordsListed = (activity?.attentionCount ?: 0u) > 0u,
     )
 }
