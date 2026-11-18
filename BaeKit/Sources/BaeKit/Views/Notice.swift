@@ -165,7 +165,7 @@ public struct Notice: View {
         switch look {
         case .filled, .quiet:
             row
-        case .centered, .centeredOnStage:
+        case .centered, .centeredNoGlyph, .centeredOnStage:
             centered
         }
     }
@@ -368,7 +368,7 @@ extension Notice {
                         .foregroundStyle(Theme.onFillSecondary)
                         .accessibilityHidden(true)
                 }
-                else {
+                else if look != .centeredNoGlyph {
                     StatusGlyph(tone, muted: true)
                         .font(Self.glyphFont(scaledTo: .heading))
                         .accessibilityHidden(true)
@@ -515,7 +515,7 @@ extension Notice {
     private var centeredSecondary: Color? {
         switch look {
         case .filled, .quiet: nil
-        case .centered: Color.secondary
+        case .centered, .centeredNoGlyph: Color.secondary
         case .centeredOnStage: Theme.onFillSecondary
         }
     }

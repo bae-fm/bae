@@ -25,6 +25,9 @@ struct LibraryView: View {
     /// shows.
     @State
     private var albumIdPendingDelete: String?
+    /// The read Retry started on the failed albums view.
+    @State
+    private var retryRead = CancellableTaskSlot()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +61,7 @@ struct LibraryView: View {
             }
         }
         .task { libraryProjections.activatePlaylists() }
+        .onDisappear { retryRead.cancel() }
         .onChange(of: libraryProjections.composer.value) { _, detail in
             guard let detail,
                 case .composer(let artistId, nil) = session.detailSelection,
@@ -222,12 +226,15 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    LibraryFailedView(
+                    Notice(
                         title: String(localized: "Could not read your library"),
-                        error: error
-                    ) {
-                        Task { await albumList.loadInitial() }
-                    }
+                        advice: nil,
+                        error: error,
+                        look: .centeredNoGlyph,
+                        action: error.retryAction {
+                            retryRead.replace { await albumList.loadInitial() }
+                        }
+                    )
                 }
                 else if albumList.count?.rows == 0 {
                     LibraryEmptyState(title: "No albums")

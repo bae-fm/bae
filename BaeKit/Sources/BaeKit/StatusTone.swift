@@ -82,6 +82,9 @@ public enum NoticeLook: Sendable, Equatable {
     /// grey outline glyph in front of a title in primary text, the buttons in
     /// secondary text in a row under it. No fill.
     case centered
+    /// The centred layout with no glyph before the title, for a view that
+    /// failed whole where the title alone says what happened.
+    case centeredNoGlyph
     /// The centred layout on the image viewer's dark stage, in the stage's own
     /// text colours.
     case centeredOnStage
@@ -141,7 +144,7 @@ extension View {
                 )
         case .quiet:
             padding(.vertical, ThemeSpace.related + ThemeSpace.line)
-        case .centered:
+        case .centered, .centeredNoGlyph:
             padding(ThemeSpace.section)
                 .frame(
                     maxWidth: .infinity,
