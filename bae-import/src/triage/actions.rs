@@ -63,52 +63,17 @@ impl CandidateAction {
     };
 }
 
-/// What the tables say a candidate's commands are decided from: whether it can
-/// be acted on at all, where it is placed, whether its draft would import, and
-/// what its stored lookup came to — none offers identifying it, and a failed
-/// one offers a retry whatever the draft over it says. The list's placement
-/// holds each of them per row (`import_list_placement`).
+/// What the list's placement (`import_list_placement`) says of a candidate
+/// beside its commands: whether it can be acted on at all, and where it is
+/// placed.
 ///
-/// The commands a row offers are these facts and what is running for it right
-/// now, its standing: the read that places the row composes the two into the
-/// row's [`CandidateLiveState`].
+/// The placement's columns decide the commands themselves, in SQL, with what
+/// is running for the candidate right now, its standing: the read that places
+/// the row composes the two into the row's [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateActionBasis {
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// Whether the draft shapes into a release an import can commit.
-    pub draft_valid: bool,
-    /// What the lookup stored for the candidate's current files came to, or
-    /// `None` when none is stored.
-    pub lookup: Option<StoredLookup>,
-    /// Whether this release is folders a grouping reads as one, which the
-    /// candidate offers to read as releases of their own.
-    pub separable: bool,
-}
-
-/// What a candidate's stored lookup came to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StoredLookup {
-    /// It found a release, found none, or left the choice to the person.
-    Answered,
-    /// A source it asked could not answer, a release it found could not be
-    /// read in full, or bae broke on its own side: another run may answer.
-    Failed,
-}
-
-impl CandidateActionBasis {
-    /// `lookup` is what the candidate's stored lookup came to, or `None` with
-    /// none stored.
-    #[cfg(test)]
-    pub(crate) fn of(
-        actionable: bool,
-        placement: &TriagePlacement,
-        draft_valid: bool,
-        lookup: Option<StoredLookup>,
-        separable: bool,
-    ) -> Self {
-        Self { actionable, placement: *placement, draft_valid, lookup, separable }
-    }
 }
 
 /// What is running for one candidate right now, and the commands its row

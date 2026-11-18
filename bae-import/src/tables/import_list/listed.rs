@@ -6,8 +6,8 @@
 use super::views::tab_of;
 use super::*;
 use crate::{
-    CandidateActionBasis, ListedRelease, NeedsYouReason, PendingStanding, StoredLookup,
-    TriagePlacement, TriageTab,
+    CandidateActionBasis, ListedRelease, NeedsYouReason, PendingStanding, TriagePlacement,
+    TriageTab,
 };
 use bae_catalogs::InternalFailure;
 
@@ -15,7 +15,7 @@ use bae_catalogs::InternalFailure;
 /// alias `p`, in the order [`BasisColumns::read`] reads them.
 macro_rules! basis_columns {
     () => {
-        "p.tab, p.import_failed, p.actionable, p.draft_valid, p.lookup, p.separable"
+        "p.tab, p.import_failed, p.actionable"
     };
 }
 
@@ -34,9 +34,6 @@ pub(super) struct BasisColumns {
     tab: String,
     import_failed: Option<bool>,
     actionable: Option<bool>,
-    draft_valid: Option<bool>,
-    lookup: Option<String>,
-    separable: Option<bool>,
 }
 
 impl BasisColumns {
@@ -45,9 +42,6 @@ impl BasisColumns {
             tab: row.get(first)?,
             import_failed: row.get(first + 1)?,
             actionable: row.get(first + 2)?,
-            draft_valid: row.get(first + 3)?,
-            lookup: row.get(first + 4)?,
-            separable: row.get(first + 5)?,
         })
     }
 
@@ -69,19 +63,7 @@ impl BasisColumns {
             (TriageTab::Done, _) => TriagePlacement::Done,
             (TriageTab::Skipped, _) => TriagePlacement::Skipped,
         };
-        let lookup = match self.lookup.as_deref() {
-            None => None,
-            Some("answered") => Some(StoredLookup::Answered),
-            Some("failed") => Some(StoredLookup::Failed),
-            Some(other) => return Err(DbError::unreadable("import_list_placement.lookup", other)),
-        };
-        Ok(CandidateActionBasis {
-            actionable: column(self.actionable)?,
-            placement,
-            draft_valid: column(self.draft_valid)?,
-            lookup,
-            separable: column(self.separable)?,
-        })
+        Ok(CandidateActionBasis { actionable: column(self.actionable)?, placement })
     }
 }
 
@@ -101,7 +83,7 @@ pub(super) struct ListedColumns {
 impl ListedColumns {
     /// The columns from `first` on, in [`LISTED_COLUMNS`]' order.
     pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
-        let state = first + 6;
+        let state = first + 3;
         Ok(Self {
             basis: BasisColumns::read(row, first)?,
             pending_state: row.get(state)?,

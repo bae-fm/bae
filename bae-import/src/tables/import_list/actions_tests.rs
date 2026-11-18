@@ -1,16 +1,33 @@
 use super::*;
 use crate::{
-    CandidateActionBasis, IdentificationStatus, ImportPhase, ImportStep, PrepareStep, StoredLookup,
-    TriagePlacement, TriageRuntimeFacts, TriageTab,
+    IdentificationStatus, ImportPhase, ImportStep, PrepareStep, TriagePlacement,
+    TriageRuntimeFacts, TriageTab,
 };
 
-/// Returns the commands the command columns offer, computed over one
-/// placement row and one standing row that holds the given facts.
-trait Offered {
-    fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction>;
+/// The columns of one release's `import_list_placement` row that its command
+/// columns read. `lookup` is the stored `lookup` column: `"answered"`,
+/// `"failed"`, or `None` with no lookup stored.
+struct PlacementRow {
+    actionable: bool,
+    placement: TriagePlacement,
+    draft_valid: bool,
+    lookup: Option<&'static str>,
+    separable: bool,
 }
 
-impl Offered for CandidateActionBasis {
+impl PlacementRow {
+    fn of(
+        actionable: bool,
+        placement: &TriagePlacement,
+        draft_valid: bool,
+        lookup: Option<&'static str>,
+        separable: bool,
+    ) -> Self {
+        Self { actionable, placement: *placement, draft_valid, lookup, separable }
+    }
+
+    /// The commands the command columns offer, computed over this placement
+    /// row and one standing row that holds the given facts.
     fn actions(&self, live: &TriageRuntimeFacts) -> Vec<CandidateAction> {
         let (tab, failed) = match self.placement {
             TriagePlacement::Pending => ("pending", 0),
@@ -19,9 +36,8 @@ impl Offered for CandidateActionBasis {
             TriagePlacement::Skipped => ("skipped", 0),
         };
         let lookup = match self.lookup {
-            None => "NULL",
-            Some(StoredLookup::Answered) => "'answered'",
-            Some(StoredLookup::Failed) => "'failed'",
+            None => "NULL".to_owned(),
+            Some(lookup) => format!("'{lookup}'"),
         };
         let (identification, asked) = match &live.identification {
             None => ("NULL", "NULL"),
@@ -75,8 +91,8 @@ impl Offered for CandidateActionBasis {
     }
 }
 
-fn basis(placement: TriagePlacement, lookup: Option<StoredLookup>) -> CandidateActionBasis {
-    CandidateActionBasis::of(true, &placement, true, lookup, false)
+fn placed(placement: TriagePlacement, lookup: Option<&'static str>) -> PlacementRow {
+    PlacementRow::of(true, &placement, true, lookup, false)
 }
 
 fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
@@ -96,15 +112,15 @@ fn every_pending_candidate_with_a_valid_draft_offers_import() {
     ] {
         let pending = placement.tab() == TriageTab::Pending;
         assert_eq!(
-            basis(placement, None).actions(&rest).contains(&CandidateAction::Import),
+            placed(placement, None).actions(&rest).contains(&CandidateAction::Import),
             pending,
             "{placement:?}"
         );
-        assert!(!CandidateActionBasis::of(true, &placement, false, None, false)
+        assert!(!PlacementRow::of(true, &placement, false, None, false)
             .actions(&rest)
             .contains(&CandidateAction::Import));
         assert_eq!(
-            CandidateActionBasis::of(false, &placement, true, None, false)
+            PlacementRow::of(false, &placement, true, None, false)
                 .actions(&TriageRuntimeFacts::default()),
             vec![CandidateAction::RevealFolder],
             "a candidate that cannot be acted on still shows where it is"
@@ -115,7 +131,7 @@ fn every_pending_candidate_with_a_valid_draft_offers_import() {
 #[test]
 fn skipped_candidates_offer_restore_without_replacing_metadata() {
     assert_eq!(
-        basis(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
+        placed(TriagePlacement::Skipped, None).actions(&TriageRuntimeFacts::default()),
         vec![CandidateAction::Combine, CandidateAction::Restore, CandidateAction::RevealFolder]
     );
 }
@@ -132,7 +148,7 @@ fn a_queued_or_running_import_offers_only_its_cancel() {
         let importing = TriageRuntimeFacts { identification: None, import: Some(step) };
         for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
             assert_eq!(
-                basis(placement, None).actions(&importing),
+                placed(placement, None).actions(&importing),
                 vec![CandidateAction::CancelImport, CandidateAction::RevealFolder],
                 "{step:?}, {placement:?}"
             );
@@ -149,7 +165,7 @@ fn an_import_writing_its_release_offers_no_cancel() {
         import: Some(crate::ImportStep::Running(crate::ImportPhase::Finalizing)),
     };
     assert_eq!(
-        basis(TriagePlacement::Pending, None).actions(&writing),
+        placed(TriagePlacement::Pending, None).actions(&writing),
         vec![CandidateAction::RevealFolder]
     );
 }
@@ -162,8 +178,7 @@ fn a_draft_cannot_be_replaced_while_identification_is_running() {
         IdentificationStatus::Finalizing,
     ] {
         assert_eq!(
-            basis(TriagePlacement::Pending, Some(StoredLookup::Answered))
-                .actions(&identifying(status)),
+            placed(TriagePlacement::Pending, Some("answered")).actions(&identifying(status)),
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -179,10 +194,9 @@ fn a_draft_cannot_be_replaced_while_identification_is_running() {
 #[test]
 fn a_pick_being_read_offers_import_until_it_is_asked() {
     for draft_valid in [true, false] {
-        let basis =
-            CandidateActionBasis::of(true, &TriagePlacement::Pending, draft_valid, None, false);
+        let row = PlacementRow::of(true, &TriagePlacement::Pending, draft_valid, None, false);
         assert_eq!(
-            basis.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: false })),
+            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: false })),
             vec![
                 CandidateAction::Import,
                 CandidateAction::CancelIdentification,
@@ -192,7 +206,7 @@ fn a_pick_being_read_offers_import_until_it_is_asked() {
             "draft valid: {draft_valid}"
         );
         assert_eq!(
-            basis.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: true })),
+            row.actions(&identifying(IdentificationStatus::ReadingPick { import_asked: true })),
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -214,7 +228,7 @@ fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
         IdentificationStatus::Finalizing,
     ] {
         assert_eq!(
-            basis(TriagePlacement::Pending, None).actions(&identifying(status)),
+            placed(TriagePlacement::Pending, None).actions(&identifying(status)),
             vec![
                 CandidateAction::CancelIdentification,
                 CandidateAction::Skip,
@@ -231,17 +245,17 @@ fn active_identification_cannot_be_overwritten_by_a_bulk_action() {
 #[test]
 fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
     let rest = TriageRuntimeFacts::default();
-    let grouped = CandidateActionBasis::of(true, &TriagePlacement::Pending, true, None, true);
+    let grouped = PlacementRow::of(true, &TriagePlacement::Pending, true, None, true);
     assert!(grouped.actions(&rest).contains(&CandidateAction::Separate));
     assert!(!grouped.actions(&rest).contains(&CandidateAction::Combine));
-    let blocked = CandidateActionBasis::of(false, &TriagePlacement::Failed, true, None, true);
+    let blocked = PlacementRow::of(false, &TriagePlacement::Failed, true, None, true);
     assert_eq!(
         blocked.actions(&rest),
         vec![CandidateAction::Separate, CandidateAction::RevealFolder]
     );
-    let lone = basis(TriagePlacement::Pending, Some(StoredLookup::Answered));
+    let lone = placed(TriagePlacement::Pending, Some("answered"));
     assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
-    let done = CandidateActionBasis::of(true, &TriagePlacement::Done, true, None, true);
+    let done = PlacementRow::of(true, &TriagePlacement::Done, true, None, true);
     assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
     let importing = TriageRuntimeFacts {
         identification: None,
@@ -257,10 +271,12 @@ fn a_candidate_offers_separating_or_combining_while_it_is_settled_nowhere() {
 fn only_a_candidate_with_no_stored_lookup_offers_identify() {
     let rest = TriageRuntimeFacts::default();
     for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
-        assert!(basis(placement, None).actions(&rest).contains(&CandidateAction::Identify));
-        for lookup in [StoredLookup::Answered, StoredLookup::Failed] {
+        assert!(placed(placement, None).actions(&rest).contains(&CandidateAction::Identify));
+        for lookup in ["answered", "failed"] {
             assert!(
-                !basis(placement, Some(lookup)).actions(&rest).contains(&CandidateAction::Identify),
+                !placed(placement, Some(lookup))
+                    .actions(&rest)
+                    .contains(&CandidateAction::Identify),
                 "{placement:?} with a stored {lookup:?} lookup"
             );
         }
@@ -270,21 +286,21 @@ fn only_a_candidate_with_no_stored_lookup_offers_identify() {
 #[test]
 fn lookup_and_finalization_failures_offer_retry() {
     for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
-        assert!(basis(placement, Some(StoredLookup::Failed))
+        assert!(placed(placement, Some("failed"))
             .actions(&TriageRuntimeFacts::default())
             .contains(&CandidateAction::RetryIdentification));
     }
     let failure = identifying(IdentificationStatus::FinalizationFailed {
         failure: crate::SaveFailure::NotWritten { error: "Provider unavailable".to_owned() },
     });
-    assert!(basis(TriagePlacement::Pending, None)
+    assert!(placed(TriagePlacement::Pending, None)
         .actions(&failure)
         .contains(&CandidateAction::RetryIdentification));
-    assert!(!basis(TriagePlacement::Pending, None)
+    assert!(!placed(TriagePlacement::Pending, None)
         .actions(&TriageRuntimeFacts::default())
         .contains(&CandidateAction::RetryIdentification));
     assert!(
-        !basis(TriagePlacement::Pending, Some(StoredLookup::Answered))
+        !placed(TriagePlacement::Pending, Some("answered"))
             .actions(&TriageRuntimeFacts::default())
             .contains(&CandidateAction::RetryIdentification),
         "a lookup that finished offers no retry"
@@ -300,7 +316,7 @@ fn an_answer_that_fails_again_offers_no_retry() {
             error: "the release lists a track with no title".to_owned(),
         },
     });
-    let actions = basis(TriagePlacement::Pending, None).actions(&failure);
+    let actions = placed(TriagePlacement::Pending, None).actions(&failure);
     assert!(!actions.contains(&CandidateAction::RetryIdentification));
     assert!(!actions.contains(&CandidateAction::Identify));
 }

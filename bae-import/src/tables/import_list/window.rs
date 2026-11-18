@@ -245,9 +245,9 @@ enum ShownColumns {
 
 impl ShownColumns {
     fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(match row.get::<_, Option<String>>(18)? {
+        Ok(match row.get::<_, Option<String>>(15)? {
             Some(release_id) => Self::Imported {
-                release: ImportedRelease { release_id, album_id: row.get(19)? },
+                release: ImportedRelease { release_id, album_id: row.get(16)? },
                 cover: row.get("library_cover")?,
                 records: records_column(row, "library_records")?,
                 records_kind: row.get("library_records_kind")?,
@@ -360,13 +360,13 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         key: row.get(1)?,
         summary,
         listed: ListedColumns::read(row, 5)?,
-        name: row.get(15)?,
-        block: (row.get(20)?, row.get(21)?, row.get(22)?),
+        name: row.get(12)?,
+        block: (row.get(17)?, row.get(18)?, row.get(19)?),
         failure: match failed {
             true => Some(failure_reason_from_row(row)?),
             false => None,
         },
-        facts: RuntimeFactColumns::read(row, 25)?,
+        facts: RuntimeFactColumns::read(row, 22)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
         group: read_member(row)?,
         shown: ShownColumns::read(row)?,

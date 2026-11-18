@@ -318,8 +318,8 @@ pub const TEST_SCHEMA: bae_store::Schema = bae_store::Schema::new(&[
 pub use triage::{
     BadgeTone, CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
     IdentifyingStep, ImportedRelease, NeedsYouReason, PendingBadge, PendingStanding, PendingState,
-    StoredLookup, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
-    TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
+    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
+    TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
 #[cfg(desktop)]
 pub use types::ImportCommand;
