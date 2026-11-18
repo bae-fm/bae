@@ -107,9 +107,7 @@ impl ActivityBarsWatch {
                 changes = self.uploads.next() => {
                     crate::file_transfers::apply(&mut self.sent, changes?);
                 }
-                changes = self.downloads.next() => {
-                    bae_transfers::apply_release_changes(&mut self.downloading, changes?);
-                }
+                downloading = self.downloads.next() => self.downloading = downloading?,
             }
             if let Some(rows) = &self.read {
                 return Some(Ok(ActivityBars::of(rows, &self.sent, &self.downloading)));

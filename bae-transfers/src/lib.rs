@@ -32,10 +32,7 @@ pub use release_queue::{
     ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot, ReleaseQueueState,
     TransferCount, TransferStage,
 };
-pub use release_transfers::{
-    apply_release_changes, release_changes, ReleaseTransferChange, ReleaseTransferReport,
-    ReleaseTransfers, ReleaseTransfersWatch,
-};
+pub use release_transfers::{ReleaseTransferReport, ReleaseTransfers, ReleaseTransfersWatch};
 pub use storage_moves::{StorageMoveError, StorageMoveRefusal};
 
 /// The transfer queues' part of the library's schema: one domain, its files in

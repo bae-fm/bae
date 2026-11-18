@@ -42,27 +42,17 @@ where
     Arc::new(KeyedValueStream::new(values, stop, runtime))
 }
 
-/// Write each batch of a release transfer watch: every release a `Reset`
-/// names, then each one that moved or left.
-fn write_release_changes<Progress>(
-    writer: &StreamWriter,
-    changes: Vec<bae_transfers::ReleaseTransferChange<Progress>>,
-    value: impl Fn(Progress) -> BridgeFastValue,
-) {
-    use bae_transfers::ReleaseTransferChange;
-    for change in changes {
-        match change {
-            ReleaseTransferChange::Updated { release_id, progress } => {
-                writer.set(release_id, value(progress))
-            }
-            ReleaseTransferChange::Removed { release_id } => writer.remove(release_id.as_bytes()),
-            ReleaseTransferChange::Reset(all) => writer.reset(
-                all.into_iter()
-                    .map(|(release_id, progress)| (release_id.into_bytes(), value(progress)))
-                    .collect(),
-            ),
-        }
-    }
+/// Every release's progress in one read of a release transfer watch as its
+/// stream holds it: under each release's id, the value `value` gives, and
+/// nothing for a release it gives none.
+fn release_transfers_held<Progress>(
+    transfers: std::collections::BTreeMap<String, Progress>,
+    value: impl Fn(Progress) -> Option<BridgeFastValue>,
+) -> HashMap<Vec<u8>, BridgeFastValue> {
+    transfers
+        .into_iter()
+        .filter_map(|(release_id, progress)| Some((release_id.into_bytes(), value(progress)?)))
+        .collect()
 }
 
 /// The files being sent together as their stream holds them: only while
@@ -241,35 +231,6 @@ fn activity_bars_held(bars: bae_library::ActivityBars) -> HashMap<Vec<u8>, Bridg
         .collect()
 }
 
-/// What a download watch's changes say to a stream of one kind of download:
-/// the releases doing that kind, and a release that stops doing it, whether
-/// it ended or turned to the other kind, as removed.
-fn download_changes<Progress>(
-    changes: Vec<bae_transfers::ReleaseTransferChange<bae_transfers::DownloadTransfer>>,
-    kind: impl Fn(bae_transfers::DownloadTransfer) -> Option<Progress>,
-) -> Vec<bae_transfers::ReleaseTransferChange<Progress>> {
-    use bae_transfers::ReleaseTransferChange;
-    changes
-        .into_iter()
-        .map(|change| match change {
-            ReleaseTransferChange::Updated { release_id, progress } => match kind(progress) {
-                Some(progress) => ReleaseTransferChange::Updated { release_id, progress },
-                None => ReleaseTransferChange::Removed { release_id },
-            },
-            ReleaseTransferChange::Removed { release_id } => {
-                ReleaseTransferChange::Removed { release_id }
-            }
-            ReleaseTransferChange::Reset(all) => ReleaseTransferChange::Reset(
-                all.into_iter()
-                    .filter_map(|(release_id, progress)| {
-                        kind(progress).map(|progress| (release_id, progress))
-                    })
-                    .collect(),
-            ),
-        })
-        .collect()
-}
-
 /// The pin of a download, if that is what it is.
 fn pin_progress(
     transfer: bae_transfers::DownloadTransfer,
@@ -298,14 +259,12 @@ pub(crate) fn download_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(
-                    &writer,
-                    download_changes(changes, pin_progress),
-                    |progress| BridgeFastValue::Download {
+            while let Some(downloads) = transfers.next().await {
+                writer.reset(release_transfers_held(downloads, |transfer| {
+                    pin_progress(transfer).map(|progress| BridgeFastValue::Download {
                         progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-                    },
-                );
+                    })
+                }));
             }
         }
     })
@@ -319,14 +278,16 @@ pub(crate) fn move_to_this_device_transfers(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(
-                    &writer,
-                    download_changes(changes, move_to_this_device_progress),
-                    |progress| BridgeFastValue::MoveToThisDevice {
-                        progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
-                    },
-                );
+            while let Some(downloads) = transfers.next().await {
+                writer.reset(release_transfers_held(downloads, |transfer| {
+                    move_to_this_device_progress(transfer).map(|progress| {
+                        BridgeFastValue::MoveToThisDevice {
+                            progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(
+                                progress,
+                            ),
+                        }
+                    })
+                }));
             }
         }
     })
@@ -432,10 +393,10 @@ pub(crate) fn export_percents(
     feed(runtime, run, move |services, writer| {
         let mut transfers = services.watch_output_transfers();
         async move {
-            while let Some(changes) = transfers.next().await {
-                write_release_changes(&writer, changes, |percent| BridgeFastValue::ExportPercent {
-                    percent,
-                });
+            while let Some(exports) = transfers.next().await {
+                writer.reset(release_transfers_held(exports, |percent| {
+                    Some(BridgeFastValue::ExportPercent { percent })
+                }));
             }
         }
     })

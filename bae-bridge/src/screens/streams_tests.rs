@@ -45,54 +45,55 @@ fn a_tracks_held_stretches_are_held_under_its_track() {
 }
 
 /// A stream of one kind of download names only the releases doing that
-/// kind: a release that turns to the other kind leaves it, and a reset
-/// names only its own.
+/// kind, each read whole: a release that turns to the other kind or ends
+/// leaves it.
 #[test]
 fn a_download_stream_holds_only_its_own_kind_of_download() {
-    use bae_transfers::{
-        DownloadTransfer, MoveToThisDeviceTransferProgress, ReleaseTransferChange,
-    };
+    use bae_transfers::{DownloadTransfer, MoveToThisDeviceTransferProgress};
     let pin = DownloadTransfer::Pin(
         bae_transfers::DownloadTransferProgress::new("pinning", 10, 40).unwrap(),
     );
     let local = DownloadTransfer::MoveToThisDevice(MoveToThisDeviceTransferProgress::begin(40));
-    let reset = || {
-        ReleaseTransferChange::Reset(
-            [("pinning".to_string(), pin.clone()), ("local".to_string(), local.clone())].into(),
-        )
+    let downloads = |transfers: &[(&str, &DownloadTransfer)]| {
+        transfers
+            .iter()
+            .map(|(release, transfer)| (release.to_string(), (*transfer).clone()))
+            .collect::<std::collections::BTreeMap<_, _>>()
     };
-    let moved = |release: &str, transfer: &DownloadTransfer| ReleaseTransferChange::Updated {
-        release_id: release.to_string(),
-        progress: transfer.clone(),
+    let (pin_values, local_values) = (StreamValues::new(), StreamValues::new());
+    let (pins, locals) =
+        (StreamWriter::new(pin_values.clone()), StreamWriter::new(local_values.clone()));
+    let write = |read: std::collections::BTreeMap<String, DownloadTransfer>| {
+        pins.reset(release_transfers_held(read.clone(), |transfer| {
+            pin_progress(transfer).map(|progress| BridgeFastValue::Download {
+                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+            })
+        }));
+        locals.reset(release_transfers_held(read, |transfer| {
+            move_to_this_device_progress(transfer).map(|progress| {
+                BridgeFastValue::MoveToThisDevice {
+                    progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
+                }
+            })
+        }));
     };
 
-    let pins = download_changes(vec![reset(), moved("local", &local)], pin_progress);
-    let DownloadTransfer::Pin(pin_progress) = pin.clone() else { unreachable!() };
-    assert_eq!(
-        pins,
-        vec![
-            ReleaseTransferChange::Reset([("pinning".to_string(), pin_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
-        ]
-    );
+    write(downloads(&[("pinning", &pin), ("local", &local)]));
+    assert!(matches!(pin_values.latest(b"pinning"), Some(BridgeFastValue::Download { .. })));
+    assert_eq!(pin_values.latest(b"local"), None);
+    assert!(matches!(
+        local_values.latest(b"local"),
+        Some(BridgeFastValue::MoveToThisDevice { .. })
+    ));
+    assert_eq!(local_values.latest(b"pinning"), None);
 
-    let locals = download_changes(
-        vec![
-            reset(),
-            moved("pinning", &pin),
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
-        ],
-        move_to_this_device_progress,
-    );
-    let DownloadTransfer::MoveToThisDevice(local_progress) = local else { unreachable!() };
-    assert_eq!(
-        locals,
-        vec![
-            ReleaseTransferChange::Reset([("local".to_string(), local_progress)].into()),
-            ReleaseTransferChange::Removed { release_id: "pinning".to_string() },
-            ReleaseTransferChange::Removed { release_id: "local".to_string() },
-        ]
-    );
+    write(downloads(&[("pinning", &local)]));
+    assert_eq!(pin_values.latest(b"pinning"), None);
+    assert!(matches!(
+        local_values.latest(b"pinning"),
+        Some(BridgeFastValue::MoveToThisDevice { .. })
+    ));
+    assert_eq!(local_values.latest(b"local"), None);
 }
 
 /// Each delivery of the outbox's transfers writes both streams whole: every
