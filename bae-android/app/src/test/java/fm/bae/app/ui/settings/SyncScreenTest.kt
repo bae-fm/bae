@@ -39,7 +39,7 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
-/** The Sync page's list of what sync waits on runs each record's action as the library's storage takes it. */
+/** The Sync page runs its status's fix and each action of what sync waits on as the library's storage takes it. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class SyncScreenTest {
@@ -167,6 +167,57 @@ class SyncScreenTest {
     }
 
     /**
+     * After another of the person's devices made a new restore code, the status's Scan restore code asks the app to
+     * close the library for the restore screen.
+     */
+    @Test
+    fun aNewRestoreCodeIsScannedFromTheStatus() {
+        var restores = 0
+        val handle =
+            object : FakeAppHandle() {
+                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
+
+                override suspend fun generateRestoreCode() = restoreCodeShare
+
+                override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
+
+                override fun close() = Unit
+            }
+        val status = SyncStatusStore()
+        val session = openTestLibrary(handle, status)
+        status.apply(
+            BridgeSyncStatusSnapshot(
+                shown =
+                    BridgeSyncShown(
+                        status = BridgeSyncStatusWord.NEW_RESTORE_CODE,
+                        statusKey = "core.sync.status.new_restore_code",
+                        tone = BridgeSyncTone.WARNING,
+                        cause = null,
+                        fix = BridgeSyncFix.ScanRestoreCode,
+                        lastSynced = null,
+                    ),
+                pending = emptyList(),
+                setupRunning = false,
+                undoneSetup = null,
+            ),
+            NoErrorDisplays,
+            BugReports(),
+        )
+        compose.setContent {
+            TestTheme {
+                CompositionLocalProvider(LocalBugReports provides session.bugs) {
+                    SyncScreen(session = session, actions = actions(onRestoreFromCode = { restores += 1 }), onBack = {})
+                }
+            }
+        }
+
+        compose.onNodeWithText("New restore code").assertExists()
+        compose.onNodeWithText("Scan restore code…").performClick()
+
+        assertEquals(1, restores)
+    }
+
+    /**
      * The Sync page holds the library's restore code, masked until shown, where setup's Done lands. The code is made
      * once per visit: scrolling its section away and back shows the same code without making it again.
      */
@@ -239,12 +290,12 @@ class SyncScreenTest {
             sendsFiles = false,
         )
 
-    private fun actions() =
+    private fun actions(onRestoreFromCode: () -> Unit = {}) =
         SessionActions(
             oauthProviders = null,
             switchLibrary = {},
             resetDevice = {},
-            restoreFromCode = {},
+            restoreFromCode = onRestoreFromCode,
             leaveLibrary = {},
             reloadLibraries = {},
         )

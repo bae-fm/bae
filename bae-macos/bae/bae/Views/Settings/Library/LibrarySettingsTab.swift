@@ -266,6 +266,7 @@ private struct SyncSettingsPage: View {
                     location: configStore.storage,
                     actions: SyncFixActions(
                         onResetDevice: onResetDevice,
+                        onRestoreFromCode: onRestoreFromCode,
                         onCheckForUpdates: onCheckForUpdates,
                         onRemoveLibrary: onRemoveLibrary
                     )

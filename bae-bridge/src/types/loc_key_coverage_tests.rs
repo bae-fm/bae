@@ -74,6 +74,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.sync.copy_reset.files",
     // The Settings fix that offers Reset from cloud.
     "core.sync.reset_from_cloud",
+    // The Settings fix that scans the person's new restore code.
+    "core.sync.scan_restore_code",
     // The warning before restoring over this device's copy with a code.
     "core.sync.restore_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
@@ -497,6 +499,7 @@ fn produced_keys() -> Vec<String> {
         BridgeSyncStatusWord::SignedOutOfICloud,
         BridgeSyncStatusWord::AccessKeyNotAccepted,
         BridgeSyncStatusWord::DeviceNeedsReset,
+        BridgeSyncStatusWord::NewRestoreCode,
         BridgeSyncStatusWord::NoAccess,
         BridgeSyncStatusWord::FolderMissing,
         BridgeSyncStatusWord::ClockWrong,

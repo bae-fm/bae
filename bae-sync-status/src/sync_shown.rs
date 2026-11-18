@@ -6,7 +6,9 @@
 use crate::pending_item::PendingSubjectName;
 use crate::sync_status::{StorageSetupState, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
-use coven::{CloudProvider, LocalFailure, PendingReason, SyncCause, SyncState, SyncWait};
+use coven::{
+    CloudProvider, LocalFailure, PendingReason, ResetReason, SyncCause, SyncState, SyncWait,
+};
 use std::time::SystemTime;
 
 /// The color a state reads in: gray for what is ordinary, green for synced,
@@ -37,6 +39,10 @@ pub enum SyncStatusWord {
     /// was not accepted.
     SignedOut(CloudProvider),
     DeviceNeedsReset,
+    /// Another of the person's devices made a new restore code, which
+    /// replaced the keys this device holds: sync stays stopped until the
+    /// person scans the new code.
+    NewRestoreCode,
     NoAccess,
     FolderMissing,
     ClockWrong,
@@ -106,6 +112,9 @@ pub enum SyncFix {
     /// iCloud signs in from the system's settings.
     OpenSystemSettings,
     ResetDevice,
+    /// Scan the person's new restore code, after another of their devices
+    /// made it.
+    ScanRestoreCode,
     RemoveFromThisDevice,
     OpenInBrowser,
 }
@@ -206,9 +215,13 @@ impl SyncStatusSnapshot {
             SyncState::Removed { .. } => SyncShown::new(W::RemovedFromTheLibrary, T::Danger)
                 .because(SyncCauseLine::OldCopy)
                 .fixed_by(SyncFix::RemoveFromThisDevice),
-            SyncState::NeedsReset { .. } => {
-                SyncShown::new(W::DeviceNeedsReset, T::Danger).fixed_by(SyncFix::ResetDevice)
+            SyncState::NeedsReset { reason: ResetReason::MemberKeysReplaced { .. }, .. } => {
+                SyncShown::new(W::NewRestoreCode, T::Warning).fixed_by(SyncFix::ScanRestoreCode)
             }
+            SyncState::NeedsReset {
+                reason: ResetReason::Replaced | ResetReason::DeviceIdInUse,
+                ..
+            } => SyncShown::new(W::DeviceNeedsReset, T::Danger).fixed_by(SyncFix::ResetDevice),
             SyncState::Failed(cause) => SyncShown::new(W::SyncFailed, T::Danger)
                 .because(self.failure_cause(cause))
                 .fixed_by(SyncFix::RetryNow),

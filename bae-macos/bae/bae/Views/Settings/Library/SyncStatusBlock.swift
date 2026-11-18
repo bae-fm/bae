@@ -10,6 +10,9 @@ struct SyncFixActions {
     /// Shows the screen that offers resetting this device for the active
     /// library.
     let onResetDevice: () -> Void
+    /// Closes the active library and asks for the person's new restore code,
+    /// after another of their devices made it.
+    let onRestoreFromCode: () -> Void
     /// Asks Sparkle for a newer version of the app.
     let onCheckForUpdates: () -> Void
     /// Asks whether to remove the active library from this Mac.
@@ -131,6 +134,8 @@ struct SyncFixButton: View {
             String(localized: "Open System Settings…")
         case .resetDevice:
             localizedCoreString("core.sync.reset_from_cloud")
+        case .scanRestoreCode:
+            localizedCoreString("core.sync.scan_restore_code")
         case .removeFromThisDevice:
             String(localized: "Remove from this Mac…")
         case .openInBrowser:
@@ -163,6 +168,8 @@ struct SyncFixButton: View {
             openSystemSettings()
         case .resetDevice:
             actions.onResetDevice()
+        case .scanRestoreCode:
+            actions.onRestoreFromCode()
         case .removeFromThisDevice:
             actions.onRemoveLibrary()
         case .openInBrowser:

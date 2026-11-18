@@ -116,6 +116,13 @@ fn every_state_shows_its_words_color_cause_and_fix() {
 
     let by_pass = |failure, named: Names| dropbox(failed_status(failure, named));
     check(dropbox(needs_reset_state()), W::DeviceNeedsReset, T::Danger, None, Some(F::ResetDevice));
+    let keys_replaced = coven::SyncState::NeedsReset {
+        reason: coven::ResetReason::MemberKeysReplaced {
+            member: coven::MemberId(uuid::Uuid::from_u128(7)),
+        },
+        unsent: coven::UnsentWork { writes: 1, files: 0 },
+    };
+    check(dropbox(keys_replaced), W::NewRestoreCode, T::Warning, None, Some(F::ScanRestoreCode));
     check(
         by_pass(
             coven::StatusFailure::Storage(coven::StorageFailure::PermissionDenied),

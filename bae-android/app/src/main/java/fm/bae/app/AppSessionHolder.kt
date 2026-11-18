@@ -745,7 +745,7 @@ object AppSessionHolder {
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ) {
-        val open = checkNotNull(current) { "a pending record asks for a restore only while open" }
+        val open = checkNotNull(current) { "the Sync page asks for a restore only while its library is open" }
         current = null
         closeShowing(open, context, onScreen)
         onScreen(AppScreen.RestoreOffered(open.libraryId))

@@ -541,6 +541,9 @@ pub enum BridgeSyncStatusWord {
     /// An S3 library has no sign-in: its key was not accepted.
     AccessKeyNotAccepted,
     DeviceNeedsReset,
+    /// Another of the person's devices made a new restore code; sync stays
+    /// stopped until the person scans it.
+    NewRestoreCode,
     NoAccess,
     FolderMissing,
     ClockWrong,
@@ -585,6 +588,9 @@ pub enum BridgeSyncFix {
     /// iCloud signs in from the system's settings.
     OpenSystemSettings,
     ResetDevice,
+    /// Scan the person's new restore code, after another of their devices
+    /// made it.
+    ScanRestoreCode,
     RemoveFromThisDevice,
     OpenInBrowser,
 }
@@ -641,6 +647,7 @@ impl BridgeSyncStatusWord {
             W::SignedOut(coven::CloudProvider::CloudKit) => Self::SignedOutOfICloud,
             W::SignedOut(coven::CloudProvider::S3) => Self::AccessKeyNotAccepted,
             W::DeviceNeedsReset => Self::DeviceNeedsReset,
+            W::NewRestoreCode => Self::NewRestoreCode,
             W::NoAccess => Self::NoAccess,
             W::FolderMissing => Self::FolderMissing,
             W::ClockWrong => Self::ClockWrong,
@@ -732,6 +739,7 @@ impl BridgeSyncFix {
             F::EnterAccessKey => Self::EnterAccessKey,
             F::OpenSystemSettings => Self::OpenSystemSettings,
             F::ResetDevice => Self::ResetDevice,
+            F::ScanRestoreCode => Self::ScanRestoreCode,
             F::RemoveFromThisDevice => Self::RemoveFromThisDevice,
             F::OpenInBrowser => Self::OpenInBrowser,
         }
@@ -757,6 +765,7 @@ impl BridgeSyncStatusWord {
                 "core.sync.status.access_key_not_accepted"
             }
             BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
+            BridgeSyncStatusWord::NewRestoreCode => "core.sync.status.new_restore_code",
             BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",
             BridgeSyncStatusWord::FolderMissing => "core.sync.status.folder_missing",
             BridgeSyncStatusWord::ClockWrong => "core.sync.status.clock_wrong",
