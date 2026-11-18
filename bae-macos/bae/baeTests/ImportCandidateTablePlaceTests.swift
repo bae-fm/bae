@@ -337,7 +337,10 @@ extension ImportCandidateTablePlaceTests {
         ) { table in
             let clipView = try #require(table.enclosingScrollView?.contentView)
             Self.scroll(table, toRow: 30)
-            try await Wait.until { slot.place?.position == 30 }
+            // The window holds row 30 once the table reports it on screen.
+            try await Wait.until {
+                slot.place?.position == 30 && slot.list?.idAt(30) != nil
+            }
             let key = slot.list?.idAt(30)
             let offset = table.rect(ofRow: 30).minY - clipView.bounds.minY
 
