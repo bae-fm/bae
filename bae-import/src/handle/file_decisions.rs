@@ -251,7 +251,7 @@ impl ImportServiceHandle {
             replacement.files = settled_files.clone();
             let reads = crate::folder_scanner::FileReads::new(
                 self.services.file_tags.clone(),
-                self.services.store.file_leases(),
+                self.services.files.clone(),
             );
             let initialized = self
                 .services

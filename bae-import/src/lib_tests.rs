@@ -175,6 +175,7 @@ pub(crate) mod import {
                 crate::tables::ImportTables::new(self.db.clone()),
                 self.clock.clone(),
                 self.ids.clone(),
+                self.db.test_sources().files().clone(),
                 self.closing.child_token(),
             )
             .await
@@ -195,6 +196,7 @@ pub(crate) mod import {
                 crate::tables::ImportTables::new(self.db.clone()),
                 self.clock.clone(),
                 self.ids.clone(),
+                self.db.test_sources().files().clone(),
                 self.closing.child_token(),
                 file_tags,
             )

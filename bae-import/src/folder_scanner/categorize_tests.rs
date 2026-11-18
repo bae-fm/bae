@@ -535,7 +535,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
         &ScanCancellation::new(),
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
     );
     assert!(result.is_err(), "an I/O fault during validation must surface as an error");

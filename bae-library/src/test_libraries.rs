@@ -85,7 +85,7 @@ impl TestLibrary {
         let remote_images = RemoteImageCache::for_test(http, store.clone(), diagnostics.clone());
         let preferences = bae_preferences::PreferencesRow::new(store.clone());
         let records = bae_records::Records::new(store.clone(), ids.clone());
-        let people = bae_people::People::new(store.clone());
+        let people = bae_people::People::new(store.clone(), store.test_sources().files().clone());
         let membership = bae_people::Membership::new(store.clone());
         let sync_status = SyncStatus::new(store.clone());
         let catalogs = CatalogSessions::new(
@@ -111,6 +111,7 @@ impl TestLibrary {
             app_dir,
             clock.clone(),
             ids.clone(),
+            store.test_sources().files().clone(),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
             remote_images.clone(),
@@ -195,6 +196,12 @@ impl TestLibrary {
         &self.ids
     }
 
+    /// The budget of open files the library's holders open the person's
+    /// files within.
+    pub fn files(&self) -> &coven::FileBudget {
+        self.store.test_sources().files()
+    }
+
     /// Where the library reports.
     pub fn diagnostics(&self) -> &Diagnostics {
         &self.diagnostics
@@ -218,6 +225,7 @@ impl TestLibrary {
             self.import_tables.clone(),
             self.clock.clone(),
             self.ids.clone(),
+            self.files().clone(),
             self.closing.child_token(),
         )
         .await
@@ -323,6 +331,7 @@ impl TestLibrary {
             self.records.clone(),
             self.people.clone(),
             self.ids.clone(),
+            self.files().clone(),
             bae_playback::tables::PlaybackQueueTables::new(self.store.clone()),
             bae_playback::tables::PlaybackNowRow::new(self.store.clone()),
             bae_playback::tables::PlaybackTimelineRow::new(self.store.clone()),

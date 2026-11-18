@@ -377,7 +377,7 @@ pub async fn store_scan_item(
         generation,
         std::sync::Arc::new(crate::folder_scanner::FileReads::new(
             std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         )),
         &HashSet::new(),
     )

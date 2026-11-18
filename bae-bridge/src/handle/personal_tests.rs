@@ -33,7 +33,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
     ));
     let store = library.store().clone();
     let records = library.records().clone();
-    let people = bae_people::People::new(store.clone());
+    let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
     let started = super::super::tests::start_test_handle(runtime, library, root);
     let app = started.handle().clone();
     app.runtime.block_on(async {

@@ -255,7 +255,9 @@ async fn walk_and_reconcile(
     // opens only the files that are new or changed since, and what this
     // one reads, which the drafts of the releases it finds are seeded
     // from.
-    let reads = Arc::new(tables.load_file_reads(root, services.file_tags.clone()).await?);
+    let reads = Arc::new(
+        tables.load_file_reads(root, services.file_tags.clone(), services.files.clone()).await?,
+    );
     let walk_reads = reads.clone();
     let root_buf = root.to_path_buf();
     let dropped_item_root = root.to_path_buf();

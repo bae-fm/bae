@@ -23,9 +23,8 @@ use std::num::NonZeroUsize;
 use crate::data_source::{AudioDataReader, FillErrorHandler, FillTask};
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::SharedSparseBuffer;
-use bae_store::FileLeases;
 use bae_util::task_failure::{caught, TaskFailed};
-use coven::{FileLease, LeaseTooLarge};
+use coven::{FileBudget, FileLease, LeaseTooLarge};
 
 /// One track's work, as its failure names it.
 const TRACK_WORK: &str = "work on one track";
@@ -88,7 +87,7 @@ impl SourceStream {
 /// it.
 pub async fn run_tracks_over_sources<K, T, R, E, Fut>(
     tracks: Vec<T>,
-    budget: &FileLeases,
+    budget: &FileBudget,
     parallelism: NonZeroUsize,
     files_of: impl Fn(&T) -> Vec<K>,
     open: impl Fn(&K, &FileLease) -> SourceStream,
@@ -119,7 +118,7 @@ where
         })
         .collect::<Vec<_>>();
     let widest = waiting.iter().map(|(_, files)| files.len()).max().unwrap_or(0);
-    let places = parallelism.get().min(budget.places()).max(widest);
+    let places = parallelism.get().min(budget.size()).max(widest);
     let lease = budget.lease(places).await.map_err(&too_wide)?;
     let parallelism = parallelism.get().min(places);
     let mut waiting = waiting.into_iter().enumerate().peekable();

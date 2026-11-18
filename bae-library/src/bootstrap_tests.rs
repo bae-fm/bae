@@ -142,7 +142,6 @@ async fn a_creator_s_name_that_cant_be_kept_leaves_no_library() {
         bae_store::EnteredName::parse("Failed Library").unwrap(),
         "Test Device",
         sources.clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
         |_| async {
             Err(bae_store::DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
@@ -758,7 +757,6 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
         store,
         |_| (),
         std::sync::Arc::new(coven::SystemClock),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

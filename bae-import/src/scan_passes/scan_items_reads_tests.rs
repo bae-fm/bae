@@ -23,7 +23,7 @@ async fn reads_to_store(
     let generation = services.tables.begin_folder_scan(root, crate::VolumeKind::Local).await?;
     let reads = Arc::new(crate::folder_scanner::FileReads::new(
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     ));
     let before = test.db.reads_asked();
     let stored = store_scan_items(
@@ -166,7 +166,12 @@ async fn an_unchanged_release_is_not_seeded_and_its_picture_is_not_loaded() {
     let items = tables.load_folder_scan_items(&root).await.unwrap();
     assert_eq!(items.len(), 3, "every release was scanned");
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    let reads = Arc::new(tables.load_file_reads(&root, services.file_tags.clone()).await.unwrap());
+    let reads = Arc::new(
+        tables
+            .load_file_reads(&root, services.file_tags.clone(), services.files.clone())
+            .await
+            .unwrap(),
+    );
 
     let readings = tables.load_scan_batch_readings(&items, &HashSet::new()).await.unwrap();
     let seeds = scan_item_seeds(
@@ -269,7 +274,12 @@ async fn an_entry_changed_between_the_read_and_the_write_is_read_again() {
         ..candidate.clone()
     });
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    let reads = Arc::new(tables.load_file_reads(&root, services.file_tags.clone()).await.unwrap());
+    let reads = Arc::new(
+        tables
+            .load_file_reads(&root, services.file_tags.clone(), services.files.clone())
+            .await
+            .unwrap(),
+    );
     let held = services.folder_state_commit.lock("hold the pass's write back").await;
 
     let mut written = Vec::new();
@@ -349,7 +359,7 @@ async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() 
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     let reads = Arc::new(crate::folder_scanner::FileReads::new(
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     ));
 
     let stored = tokio::time::timeout(
@@ -423,7 +433,7 @@ async fn a_folder_whose_tags_cannot_be_read_for_its_draft_fails_its_seed() {
         generation,
         Arc::new(crate::folder_scanner::FileReads::new(
             Arc::new(VanishedShareTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         )),
         &HashSet::new(),
     )

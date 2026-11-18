@@ -663,8 +663,9 @@ fn start_playback_on(
     PlaybackService::start_with_audio_device(
         db.clone(),
         bae_records::test_fixtures::test_records(db),
-        bae_people::People::new(db.clone()),
+        bae_people::People::new(db.clone(), db.test_sources().files().clone()),
         Arc::new(coven::UuidIds),
+        db.test_sources().files().clone(),
         crate::tables::PlaybackQueueTables::new(db.clone()),
         crate::tables::PlaybackNowRow::new(db.clone()),
         crate::tables::PlaybackTimelineRow::new(db.clone()),

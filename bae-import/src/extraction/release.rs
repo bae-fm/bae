@@ -87,6 +87,7 @@ impl ReleaseIdentity {
 pub async fn resolve_release_identity(
     tables: &crate::tables::ImportTables,
     records: &Records,
+    budget: &coven::FileBudget,
     diagnostics: &Diagnostics,
     release_id: &str,
 ) -> Result<ReleaseIdentity, ReleaseIdentityError> {
@@ -104,7 +105,7 @@ pub async fn resolve_release_identity(
         .blocking("make a folder for a release's rip files", StagedFiles::create)
         .await?
         .map_err(ReleaseIdentityError::Staging)?;
-    let lease = records.lease_one().await;
+    let lease = bae_store::lease_one(budget).await;
     for file in files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)) {
         let bytes = records.read_release_file(&file.id, &lease).await.map_err(|error| {
             ReleaseIdentityError::FileRead { name: file.original_filename.clone(), error }
@@ -175,6 +176,7 @@ fn library_file(
 pub(crate) async fn resolve_release_artwork_paths(
     store: &bae_store::Store,
     records: &Records,
+    budget: &coven::FileBudget,
     diagnostics: &Diagnostics,
     release_id: &str,
 ) -> Result<(Vec<PathBuf>, StagedFiles), ReleaseArtworkError> {
@@ -183,7 +185,7 @@ pub(crate) async fn resolve_release_artwork_paths(
         .blocking("make a folder for a release's artwork", StagedFiles::create)
         .await?
         .map_err(ReleaseArtworkError::Staging)?;
-    let lease = store.lease_one().await;
+    let lease = bae_store::lease_one(budget).await;
     let mut paths: Vec<PathBuf> = Vec::new();
 
     match records.library_image_file(release_id, &LibraryImageType::Cover).await? {

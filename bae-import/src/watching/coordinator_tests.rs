@@ -252,6 +252,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
         active_roots,
         test.event_tx().clone(),
         tables,
+        coven::FileBudget::for_test(),
         bae_diagnostics::Diagnostics::noop(),
         checked_tx,
     );
@@ -382,7 +383,13 @@ async fn a_network_check_that_cannot_read_the_last_scan_reports_the_failure() {
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let tables = crate::tables::ImportTables::new(harness.db.clone());
 
-    let found = check_network_folder(&tables, &root_path("/music"), &diagnostics).await;
+    let found = check_network_folder(
+        &tables,
+        &coven::FileBudget::for_test(),
+        &root_path("/music"),
+        &diagnostics,
+    )
+    .await;
 
     assert_eq!(found, NetworkCheck::Unfinished);
     assert_eq!(bugs.reports().len(), 1, "{:?}", bugs.reports());

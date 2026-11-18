@@ -22,7 +22,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     )
     .await;
     let store = library.store().clone();
-    let people = bae_people::People::new(store.clone());
+    let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
     connect_storage(library.manager(), library.store(), &storage).await;
     let person = made_profile(library.manager(), library.people(), "Robin").await;
     let release = test_uuid("collection-release");
@@ -113,7 +113,7 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     connect_storage(library.manager(), library.store(), &storage).await;
     made_profile(library.manager(), library.people(), "Robin").await;
     let release = test_uuid("made-release");
@@ -161,7 +161,7 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     connect_storage(library.manager(), library.store(), &storage).await;
     made_profile(library.manager(), library.people(), "Robin").await;
     let first = test_uuid("several-first");
@@ -218,7 +218,7 @@ async fn a_playlists_summary_comes_counted_with_its_row() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     connect_storage(library.manager(), library.store(), &storage).await;
     made_profile(library.manager(), library.people(), "Robin").await;
     let tracks: Vec<String> = (0..5).map(|n| test_uuid(&format!("summary-track-{n}"))).collect();
@@ -292,7 +292,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     .await;
     connect_storage(library.manager(), library.store(), &storage).await;
     let robin = made_profile(library.manager(), library.people(), "Robin").await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     let views = bae_views::LibraryViews::new(library.store().clone());
     let first = test_uuid("reads-first");
     let second = test_uuid("reads-second");
@@ -429,7 +429,7 @@ async fn rating_delivers_a_new_album_detail() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     connect_storage(library.manager(), library.store(), &storage).await;
     made_profile(library.manager(), library.people(), "Robin").await;
     let release = test_uuid("rating-release");

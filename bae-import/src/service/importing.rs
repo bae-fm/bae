@@ -400,7 +400,7 @@ impl ImportService {
         // The read loop holds one place for all its files: it opens each file
         // after it closes the one before. The loop drops the lease before the
         // steps that follow take theirs.
-        let read_lease = self.records.lease_one().await;
+        let read_lease = bae_store::lease_one(&self.files).await;
         for (idx, entry) in discovered_files.iter().enumerate() {
             let file = &entry.file;
             // The scan identity for every file was validated once before any
@@ -496,7 +496,7 @@ impl ImportService {
             let file_ids = file_ids.clone();
             let clock = self.clock.clone();
             let ids = self.ids.clone();
-            let files = self.file_leases.clone();
+            let files = self.files.clone();
             self.diagnostics
                 .blocking("build the import's audio formats", move || {
                     super::build_audio_formats(
@@ -549,7 +549,7 @@ impl ImportService {
             .await?;
         let loudness = crate::loudness::measure_loudness(
             &self.event_tx,
-            &self.file_leases,
+            &self.files,
             parallelism,
             &mut built_audio.audio_formats,
             &built_audio.audio_segments,
@@ -569,7 +569,7 @@ impl ImportService {
         let cover_winner = match cover {
             Some(cover) => Some(
                 cover
-                    .stored(discovered_files, &db_release.id, &self.diagnostics, &self.records)
+                    .stored(discovered_files, &db_release.id, &self.diagnostics, &self.files)
                     .await?,
             ),
             None => None,

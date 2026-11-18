@@ -712,7 +712,7 @@ where
         &ScanReadings { stored, decisions, new_grouping_key: &new_key },
         &FileReads::new(
             std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         &ScanCancellation::new(),
         |_| {},
@@ -787,7 +787,7 @@ pub fn collect_release_candidate_files_with_scope(
         &ScanCancellation::new(),
         &FileReads::new(
             std::sync::Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
     )? {
         CategorizeOutcome::Valid(files) => Ok(files),

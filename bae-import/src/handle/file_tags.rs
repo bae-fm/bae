@@ -60,7 +60,7 @@ impl ImportServiceHandle {
         } = stored;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
-        let lease = self.services.store.lease_one().await;
+        let lease = bae_store::lease_one(&self.services.files).await;
         let snapshot = self
             .services
             .diagnostics

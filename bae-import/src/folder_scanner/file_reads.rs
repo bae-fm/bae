@@ -18,9 +18,8 @@ use crate::file_tag_snapshot::{
 };
 use crate::track_numbers::TrackNumbers;
 use crate::ImportError;
-use bae_store::FileLeases;
 use bae_util::content_type::ContentType;
-use coven::{FileLease, LeasePlace};
+use coven::{FileBudget, FileLease, LeasePlace};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -110,13 +109,13 @@ pub(crate) struct FileReads {
     tags: Arc<dyn FileTagReader>,
     /// The installation's places for open files: every read of a file takes
     /// one, on the thread that reads, before it opens the file.
-    files: FileLeases,
+    files: FileBudget,
 }
 
 impl FileReads {
     /// A FileReads that has read nothing yet. FileReads reads a track's tags
     /// through `tags` and opens each file in a place of `files`.
-    pub(crate) fn new(tags: Arc<dyn FileTagReader>, files: FileLeases) -> Self {
+    pub(crate) fn new(tags: Arc<dyn FileTagReader>, files: FileBudget) -> Self {
         Self { known: Mutex::new(Known::default()), tags, files }
     }
 
@@ -144,7 +143,7 @@ impl FileReads {
         entries: &[FolderEntry],
         stored_tags: &[(FileVersion, TagReading)],
         tags: Arc<dyn FileTagReader>,
-        files: FileLeases,
+        files: FileBudget,
     ) -> Result<Self, FolderScanError> {
         let mut known = Known::default();
         for entry in entries {

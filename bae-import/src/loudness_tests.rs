@@ -251,7 +251,7 @@ async fn measure(
 ) -> LoudnessResult {
     measure_loudness(
         event_tx,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
         NonZeroUsize::MIN,
         audio_formats,
         audio_segments,
@@ -283,7 +283,7 @@ async fn measure_failure(path: &std::path::Path, size: u64) -> crate::ImportErro
 
     let result = measure_loudness(
         &event_tx,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
         NonZeroUsize::MIN,
         &mut audio_formats,
         &audio_segments,
@@ -537,7 +537,7 @@ async fn peak_open_sources(
     let watch = budget.watch();
     measure_loudness(
         &event_tx,
-        &bae_store::FileLeases::for_test(budget),
+        &budget,
         NonZeroUsize::new(parallelism).unwrap(),
         audio_formats,
         audio_segments,
@@ -745,7 +745,7 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     let mut formats = vec![audio_format("track-0", "af-0")];
     let error = measure_loudness(
         &event_tx,
-        &bae_store::FileLeases::for_test(budget),
+        &budget,
         NonZeroUsize::MIN,
         &mut formats,
         &segments,
@@ -837,7 +837,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
 
     measure_loudness(
         &event_tx,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
         NonZeroUsize::MIN,
         &mut formats,
         &segments,
@@ -923,7 +923,7 @@ async fn a_seektable_less_cue_image_gets_scrub_points_for_every_track() {
         &file_ids,
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
         &coven::SequentialIds::new(),
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build the audio formats");
 

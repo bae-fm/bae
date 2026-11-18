@@ -276,7 +276,7 @@ impl SaveService {
         tracks: Vec<(SaveTrackPlan, PathBuf)>,
         cover_image_bytes: Option<Vec<u8>>,
         codec: bae_preferences::SaveCodec,
-        files: &bae_store::FileLeases,
+        files: &coven::FileBudget,
         parallelism: NonZeroUsize,
         existing: ExistingOutput,
         open: impl Fn(&String, &coven::FileLease) -> SourceStream,

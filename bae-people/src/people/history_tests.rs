@@ -11,7 +11,7 @@ use std::time::Duration;
 #[tokio::test]
 async fn a_play_begun_as_another_person_is_refused() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let people = People::new(db);
+    let people = People::new(db, coven::FileBudget::for_test());
     let person = coven::MemberId(uuid::Uuid::from_u128(1));
     let play = HistoryPlay {
         entry: HistoryEntry {

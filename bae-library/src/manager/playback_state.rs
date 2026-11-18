@@ -29,7 +29,7 @@ impl LibraryManager {
         file_id: &str,
         size: u64,
     ) -> bae_audio::sparse_buffer::SharedSparseBuffer {
-        self.start_release_file_stream(file_id, size, self.records.lease_one().await)
+        self.start_release_file_stream(file_id, size, bae_store::lease_one(&self.files).await)
     }
 
     /// Starts the stream that [`Self::open_release_file_stream`] returns, in
@@ -68,8 +68,7 @@ impl LibraryManager {
         let files: std::collections::HashSet<&str> =
             audio.segments.iter().map(|segment| segment.file_id.as_str()).collect();
         let lease = self
-            .store
-            .file_leases()
+            .files
             .lease(files.len())
             .await
             .map_err(|error| LibraryError::Internal(error.to_string()))?;

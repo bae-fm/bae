@@ -28,6 +28,9 @@ pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_s
 struct PeopleInner {
     /// The store every read and write of the people runs through.
     store: Store,
+    /// The installation's budget of open files, which a read of an avatar
+    /// takes its place from.
+    files: coven::FileBudget,
     /// Held while a profile is created, so two creations never overlap.
     profile_creation: tokio::sync::Mutex<()>,
     /// Held while a play is registered or local history moves into a profile.
@@ -49,10 +52,11 @@ impl std::fmt::Debug for People {
 }
 
 impl People {
-    pub fn new(store: Store) -> Self {
+    pub fn new(store: Store, files: coven::FileBudget) -> Self {
         People {
             inner: Arc::new(PeopleInner {
                 store,
+                files,
                 profile_creation: tokio::sync::Mutex::new(()),
                 history_registration: tokio::sync::Mutex::new(()),
             }),

@@ -63,7 +63,7 @@ fn tag_draft(root: &Path) -> Vec<(String, u16, u32, String)> {
         0,
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         None,
     )
@@ -232,7 +232,7 @@ fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
         0,
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         None,
     )

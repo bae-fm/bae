@@ -40,7 +40,7 @@ impl LibraryManager {
         };
         // The fixture reads its files one at a time in one place, and drops
         // the lease before build_audio_formats takes its own.
-        let lease = self.records.lease_one().await;
+        let lease = bae_store::lease_one(&self.files).await;
         let sheet = bae_import::cue_sheet::parse_cue_sheet(&playing.cue_sheet, lease.place().await)
             .map_err(|error| invalid(error.to_string()))?;
         let folder =
@@ -143,7 +143,7 @@ impl LibraryManager {
         drop(lease);
         let built = {
             let clock = self.clock.clone();
-            let budget = self.store.file_leases();
+            let budget = self.files.clone();
             let ids = self.ids.clone();
             let tracks = tracks_to_files.clone();
             self.diagnostics

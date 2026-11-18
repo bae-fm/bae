@@ -1,6 +1,5 @@
 use super::*;
 use crate::data_source::LocalReader;
-use bae_store::FileLeases;
 use bae_util::test_channels::HANG_GUARD;
 use coven::{FileBudget, FileLease};
 use std::path::{Path, PathBuf};
@@ -76,7 +75,7 @@ async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: 
 
     let names = run_tracks_over_sources(
         tracks,
-        &FileLeases::for_test(budget.clone()),
+        &budget.clone(),
         NonZeroUsize::new(parallelism).unwrap(),
         |track: &Track| track.files.clone(),
         |path: &PathBuf, lease: &FileLease| {
@@ -222,7 +221,7 @@ async fn a_track_reading_more_files_than_the_budget_holds_fails_the_pass_at_once
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         vec![both],
-        &FileLeases::for_test(budget.clone()),
+        &budget.clone(),
         NonZeroUsize::new(4).unwrap(),
         |track: &Track| track.files.clone(),
         |path: &PathBuf, lease: &FileLease| {
@@ -279,7 +278,7 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
-        &FileLeases::for_test_default(),
+        &FileBudget::for_test(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
         |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
@@ -330,7 +329,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
     let (next_read_tx, next_read) = tokio::sync::oneshot::channel();
     let track_ends = Arc::new(Mutex::new(Some((reading_tx, pass_dropped_rx, next_read_tx))));
 
-    let leases = FileLeases::for_test_default();
+    let leases = FileBudget::for_test();
     let mut pass = Box::pin(run_tracks_over_sources(
         tracks,
         &leases,
@@ -382,7 +381,7 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
-        &FileLeases::for_test_default(),
+        &FileBudget::for_test(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
         |path: &PathBuf, lease: &FileLease| local_stream(path, lease),

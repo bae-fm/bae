@@ -27,7 +27,7 @@ impl LibraryManager {
         let total = files.len();
         // The export holds one place and opens each file's stream in it after
         // the one before closes.
-        let lease = self.records.lease_one().await;
+        let lease = bae_store::lease_one(&self.files).await;
         for (index, file) in files.iter().enumerate() {
             self.export_one_file(file, staging_dir, &lease).await?;
             self.set_output_progress(release_id, output_percent(index + 1, total));

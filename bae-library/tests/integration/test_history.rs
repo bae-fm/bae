@@ -14,7 +14,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     )
     .await;
     let store = library.store().clone();
-    let people = bae_people::People::new(store.clone());
+    let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");
     bae_records::test_fixtures::album_with_tracks(
@@ -109,7 +109,7 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let people = bae_people::People::new(library.store().clone());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
     let release = test_uuid("off-release");
     let track = test_uuid("off-track");
     bae_records::test_fixtures::album_with_tracks(
@@ -198,7 +198,8 @@ fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
         devices
             .settle("the profile on both devices", async |_, store| {
                 let listed = bae_library::followed::query_matching(
-                    &mut bae_people::People::new(store.clone()).subscribe_people(),
+                    &mut bae_people::People::new(store.clone(), coven::FileBudget::for_test())
+                        .subscribe_people(),
                     |_| true,
                 )
                 .await;

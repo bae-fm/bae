@@ -54,7 +54,7 @@ impl TestSources {
     /// The store over `handle`, which a builder from these sources made. A
     /// bug one of its calls carries back fails the test as the store drops.
     pub fn store(&self, handle: coven::CovenHandle) -> Store {
-        Store::new_on(handle, self.clone(), coven::task::HeardBugs::shared(), self.files.clone())
+        Store::new_on(handle, self.clone(), coven::task::HeardBugs::shared())
     }
 
     /// The clock.
@@ -65,5 +65,11 @@ impl TestSources {
     /// The ids.
     pub fn ids(&self) -> &IdSourceRef {
         &self.ids
+    }
+
+    /// The budget of open files, which the library's holders open the
+    /// person's files within.
+    pub fn files(&self) -> &FileBudget {
+        &self.files
     }
 }

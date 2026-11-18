@@ -282,7 +282,7 @@ pub(super) fn playback_service_and_commands_over(
         command_tx.clone(),
         50,
         diagnostics.clone(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let playback_queue = PlaybackQueue::new(crate::tables::PlaybackQueueTables::new(db.clone()));
     let staged_sides = advance::track_infos_follow(db, "the staged crossing's sides", &diagnostics);
@@ -291,7 +291,7 @@ pub(super) fn playback_service_and_commands_over(
         runtime: tokio::runtime::Handle::current(),
         store: db.clone(),
         records: bae_records::test_fixtures::test_records(db),
-        people: bae_people::People::new(db.clone()),
+        people: bae_people::People::new(db.clone(), coven::FileBudget::for_test()),
         ids: Arc::new(coven::UuidIds),
         diagnostics,
         command_tx,
@@ -318,7 +318,7 @@ pub(super) fn playback_service_and_commands_over(
             tokio::runtime::Handle::current(),
             FetchArbiter::new(),
             tokio::sync::watch::channel(None).0,
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         starvation_episode: None,
         persisted_position: None,

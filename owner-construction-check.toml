@@ -534,9 +534,6 @@ task_types = [
 # Only the owner makes and returns one; a holder receives it when it is built
 # and keeps it for its one piece of work.
 [handles]
-# The handle through which work on its own threads and services takes places of
-# the budget of open files.
-FileLeases = "Store"
 # Where one close or removal writes its steps: the send end of the stream
 # the app pulls from the closing it made.
 ClosingSteps = "ClosingFeed"
@@ -659,13 +656,15 @@ OpenCalls = "LibrarySessions"
     "BootstrapCancellation::new",
     "BridgeJoinControl::new",
 ]
-# The clock and ids a test makes once, builds its store from and opens its
-# library on.
+# The clock, ids and budget of open files a test makes once, builds its store
+# from and opens its library on.
 "bae-store/src/test_sources.rs" = [
     "TestSources::system",
     "TestSources::on",
     "TestSources::on_budget",
     "TestSources::ids",
+    "TestSources::files",
+    "TestSources::store",
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
@@ -866,6 +865,7 @@ OpenCalls = "LibrarySessions"
     "TestLibrary::closing",
     "TestLibrary::clock",
     "TestLibrary::ids",
+    "TestLibrary::files",
     "TestLibrary::diagnostics",
     "TestLibrary::remote_images",
     "TestLibrary::cast_picker",
@@ -1231,8 +1231,6 @@ OpenCalls = "LibrarySessions"
     "ReleaseTransfers::new",
     "ReleaseTransfers::report",
 ]
-# A test builds its own budget of open files with these functions.
-"bae-store/src/file_leases.rs" = ["FileLeases::for_test", "FileLeases::for_test_default"]
 "bae-util/src/server.rs" = [
     "ServerController::new",
     # The server's task: the controller holds it, and shutdown cancels it and waits for it.

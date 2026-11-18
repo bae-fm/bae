@@ -150,7 +150,7 @@ INDEX 01 01:00:00
         &file_ids,
         &test_clock(),
         &ids,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build audio formats");
 
@@ -305,7 +305,7 @@ INDEX 01 11:01:30
         &file_ids,
         &clock,
         &ids,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build audio formats");
     let main_segments: Vec<_> = built
@@ -480,7 +480,7 @@ FILE "second.flac" WAVE
         &file_ids,
         &test_clock(),
         &coven::SequentialIds::new(),
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build audio formats");
 
@@ -646,7 +646,7 @@ fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
         &HashMap::from([(path.clone(), "image".to_string())]),
         &test_clock(),
         &coven::SequentialIds::new(),
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     ) else {
         panic!("an image whose track starts can't be read fails the import");
     };
@@ -717,7 +717,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         &file_ids,
         &test_clock(),
         &SequentialIds::new(),
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build_audio_formats");
 
@@ -795,7 +795,7 @@ fn cue_image(
         &HashMap::from([(path, "image".to_string())]),
         &coven::FixedClock::new(std::time::SystemTime::UNIX_EPOCH),
         &coven::SequentialIds::new(),
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build audio formats");
     (bytes, built.audio_segments)

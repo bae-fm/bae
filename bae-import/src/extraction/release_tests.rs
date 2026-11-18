@@ -118,6 +118,7 @@ async fn identity_of(
     resolve_release_identity(
         &crate::tables::ImportTables::new(db.clone()),
         &bae_records::test_fixtures::test_records(db),
+        db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         release_id,
     )
@@ -160,6 +161,7 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
     let result = resolve_release_artwork_paths(
         &db,
         &records,
+        db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         &release_id,
     )
@@ -208,6 +210,7 @@ async fn the_artwork_gathering_stages_each_image_coven_reads() {
     let (paths, _staged) = resolve_release_artwork_paths(
         &db,
         &records,
+        db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         &release_id,
     )
@@ -428,6 +431,7 @@ async fn folder_and_library_disc_ids_with_decisions(
     let identity = resolve_release_identity(
         &tables,
         &records,
+        db.test_sources().files(),
         &bae_diagnostics::Diagnostics::noop(),
         &release_id,
     )

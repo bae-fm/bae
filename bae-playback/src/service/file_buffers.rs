@@ -14,9 +14,8 @@
 //! task must survive the switch).
 
 use super::*;
-use bae_store::FileLeases;
 use bae_track_audio::data_source::AudioDataReader;
-use coven::FileLease;
+use coven::{FileBudget, FileLease};
 
 /// The places of the open-files budget playback holds while anything plays: a
 /// track reads at most two files (its pregap's and its own), and playback
@@ -44,7 +43,7 @@ pub(super) struct FileBuffers {
     playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
     /// The installation's places for open files, which playback takes its
     /// lease of from.
-    files: FileLeases,
+    files: FileBudget,
     /// The places every fill opens its file in while anything plays: those of
     /// the playing track and the preloaded next one, each reading at most two
     /// files. `lease` takes them when playback first prepares a track, and
@@ -63,7 +62,7 @@ impl FileBuffers {
         runtime: tokio::runtime::Handle,
         arbiter: Arc<FetchArbiter>,
         playing: tokio::sync::watch::Sender<Option<PlayingBytes>>,
-        files: FileLeases,
+        files: FileBudget,
     ) -> Self {
         Self {
             runtime,

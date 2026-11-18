@@ -106,7 +106,7 @@ impl ImportServiceHandle {
         &self,
         files: &crate::folder_scanner::CategorizedFiles,
     ) -> Result<bae_catalogs::reading::ReadAudio, crate::ImportError> {
-        let lease = self.services.store.lease_one().await;
+        let lease = bae_store::lease_one(&self.services.files).await;
         let files = files.clone();
         self.services
             .diagnostics

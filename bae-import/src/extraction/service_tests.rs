@@ -132,6 +132,7 @@ pub(super) async fn make_service(
         db.clone(),
         crate::tables::ImportTables::new(db.clone()),
         bae_records::test_fixtures::test_records(&db),
+        db.test_sources().files().clone(),
         bae_diagnostics::Diagnostics::noop(),
     );
     (handle, tx, rx, lib_tmp)
@@ -556,6 +557,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         analyzer: std::sync::Mutex::new(None),
         records: bae_records::test_fixtures::test_records(&db),
         tables: crate::tables::ImportTables::new(db.clone()),
+        files: db.test_sources().files().clone(),
         store: db,
         diagnostics: bae_diagnostics::Diagnostics::noop(),
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),

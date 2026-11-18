@@ -145,7 +145,7 @@ pub fn build_audio_formats(
     file_ids: &HashMap<PathBuf, String>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdSource,
-    files: &bae_store::FileLeases,
+    files: &coven::FileBudget,
 ) -> Result<BuiltAudioFormats, ImportError> {
     let now = bae_store::utc_now(clock);
     // When the first CUE image needs them, the build waits once for the

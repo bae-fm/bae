@@ -158,11 +158,6 @@ impl Records {
     pub fn new(store: Store, ids: coven::IdSourceRef) -> Self {
         Records { store, ids }
     }
-
-    /// A lease of one place ([`Store::lease_one`]).
-    pub async fn lease_one(&self) -> coven::FileLease {
-        self.store.lease_one().await
-    }
 }
 
 /// Records' part of the schema: `records.sql`, and the device's sort

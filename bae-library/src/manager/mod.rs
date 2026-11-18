@@ -780,6 +780,9 @@ pub struct LibraryManager {
     app_dir: bae_app_dir::AppDir,
     clock: ClockRef,
     ids: IdSourceRef,
+    /// The installation's budget of open files, which every read of the
+    /// person's files the manager makes takes its places from.
+    files: coven::FileBudget,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id
     /// sources. The sync-failure path emits through it.
     diagnostics: Diagnostics,

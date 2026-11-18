@@ -43,6 +43,7 @@ pub async fn start_library_services(
     #[cfg(desktop)] closing: CancellationToken,
     #[cfg(desktop)] clock: ClockRef,
     ids: IdSourceRef,
+    files: coven::FileBudget,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -69,6 +70,7 @@ pub async fn start_library_services(
             records.clone(),
             people.clone(),
             ids.clone(),
+            files.clone(),
             queue_tables,
             now_row,
             timeline_row,
@@ -85,6 +87,7 @@ pub async fn start_library_services(
             records.clone(),
             people.clone(),
             ids.clone(),
+            files.clone(),
             queue_tables,
             now_row,
             timeline_row,
@@ -111,6 +114,7 @@ pub async fn start_library_services(
             import_tables,
             clock,
             ids,
+            files,
             closing.child_token(),
         )
         .await?;

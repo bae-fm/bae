@@ -21,7 +21,7 @@ impl LibraryManager {
         &self,
         file_id: &str,
     ) -> Result<Vec<u8>, LibraryError> {
-        let lease = self.records.lease_one().await;
+        let lease = bae_store::lease_one(&self.files).await;
         Ok(self.records.read_release_file(file_id, &lease).await?)
     }
 
@@ -78,7 +78,7 @@ impl LibraryManager {
 
     /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_file(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
-        let lease = self.records.lease_one().await;
+        let lease = bae_store::lease_one(&self.files).await;
         Ok(self.records.read_release_file(&file.id, &lease).await?)
     }
 
@@ -115,7 +115,7 @@ impl LibraryManager {
         let Some(file) = self.library_image_file(id, image_type).await? else {
             return Ok(None);
         };
-        let lease = self.store.lease_one().await;
+        let lease = bae_store::lease_one(&self.files).await;
         let bytes = self
             .store
             .read_file(&file, &lease)

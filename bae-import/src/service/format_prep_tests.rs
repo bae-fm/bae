@@ -49,7 +49,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         &file_ids,
         &test_clock(),
         &ids,
-        &bae_store::FileLeases::for_test_default(),
+        &coven::FileBudget::for_test(),
     )
     .expect("build audio formats");
 

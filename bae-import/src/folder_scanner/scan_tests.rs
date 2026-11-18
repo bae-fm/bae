@@ -332,7 +332,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
             },
             &FileReads::new(
                 Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-                bae_store::FileLeases::for_test_default(),
+                coven::FileBudget::for_test(),
             ),
             &thread_cancellation,
             |_| {},

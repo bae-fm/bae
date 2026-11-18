@@ -378,7 +378,7 @@ impl People {
             return Ok(None);
         };
         let file = self.inner.store.file_ref(avatar.file).await?;
-        let lease = self.inner.store.lease_one().await;
+        let lease = bae_store::lease_one(&self.inner.files).await;
         Ok(Some(self.inner.store.read_file(&file, &lease).await.map_err(DbError::from)?))
     }
 }

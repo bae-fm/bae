@@ -57,25 +57,31 @@ impl LibraryManager {
         release_id: &str,
     ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
         use bae_import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
-        resolve_release_identity(&self.import_tables, &self.records, &self.diagnostics, release_id)
-            .await
-            .map_err(|error| match error {
-                ReleaseIdentityError::Database(error) => LibraryError::Database(error),
-                ReleaseIdentityError::NotFound { release_id } => {
-                    LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
+        resolve_release_identity(
+            &self.import_tables,
+            &self.records,
+            &self.files,
+            &self.diagnostics,
+            release_id,
+        )
+        .await
+        .map_err(|error| match error {
+            ReleaseIdentityError::Database(error) => LibraryError::Database(error),
+            ReleaseIdentityError::NotFound { release_id } => {
+                LibraryError::release_missing(&release_id, super::ReleaseWork::Edit)
+            }
+            ReleaseIdentityError::FileRead { name, error } => match error {
+                bae_store::DbError::FileRead(error) => {
+                    LibraryError::file_read(format!("read the release's file {name}"), *error)
                 }
-                ReleaseIdentityError::FileRead { name, error } => match error {
-                    bae_store::DbError::FileRead(error) => {
-                        LibraryError::file_read(format!("read the release's file {name}"), *error)
-                    }
-                    error => LibraryError::Database(error),
-                },
-                ReleaseIdentityError::Staging(error) => LibraryError::Io(error),
-                ReleaseIdentityError::Unreadable(error) => LibraryError::from(error),
-                ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
-            })?
-            .read_audio()
-            .map_err(LibraryError::from)
+                error => LibraryError::Database(error),
+            },
+            ReleaseIdentityError::Staging(error) => LibraryError::Io(error),
+            ReleaseIdentityError::Unreadable(error) => LibraryError::from(error),
+            ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
+        })?
+        .read_audio()
+        .map_err(LibraryError::from)
     }
 
     /// Test-only: seed a full album/release/tracks in one call. Production imports

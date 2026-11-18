@@ -34,7 +34,7 @@ async fn preview_play_rejects_unprobeable_file() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -60,7 +60,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -101,7 +101,7 @@ async fn preview_plays_only_the_requested_sample_window() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -169,7 +169,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let device = ManualCaptureDevice::new(captured, AudioClock::new());
@@ -246,7 +246,7 @@ async fn a_preview_asked_to_pause_twice_stays_paused() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = ManualCaptureDevice::new(captured, AudioClock::new());
@@ -335,7 +335,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, mut capture_rx) = tokio_mpsc::unbounded_channel();
     let capture = ManualCaptureAudioOutput::new(captured, AudioClock::new());
@@ -406,7 +406,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let buffer = create_sparse_buffer(0);
 
@@ -426,7 +426,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -451,7 +451,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
 
     let (mut audio_tx, audio_rx) =
@@ -533,7 +533,7 @@ async fn failed_preview_seek_surfaces_idle() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
 
     // Set up an active preview over a working capture output.
@@ -637,7 +637,7 @@ async fn ending_a_preview_closes_its_file() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);
@@ -688,7 +688,7 @@ async fn a_preview_waits_for_a_place_then_plays() {
         command_tx,
         50,
         bae_diagnostics::Diagnostics::noop(),
-        bae_store::FileLeases::for_test(budget.clone()),
+        budget.clone(),
     );
     let (captured, _capture_rx) = tokio_mpsc::unbounded_channel();
     let device = CaptureAudioDevice::new(captured);

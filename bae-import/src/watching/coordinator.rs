@@ -78,8 +78,15 @@ pub(super) fn run_watcher_with_starter(
     starter: RootScanStarter,
     removal_backend: Arc<dyn RootRemovalBackend>,
 ) {
-    let crate::ImportServices { event_tx, tables, folder_state_commit, diagnostics, clock, .. } =
-        services;
+    let crate::ImportServices {
+        event_tx,
+        tables,
+        files,
+        folder_state_commit,
+        diagnostics,
+        clock,
+        ..
+    } = services;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -104,6 +111,7 @@ pub(super) fn run_watcher_with_starter(
             active_roots,
             event_tx,
             tables,
+            files,
             diagnostics,
             checked_tx,
         );
@@ -215,6 +223,9 @@ pub(super) struct Coordinator {
     checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     event_tx: crate::ImportEventBus,
     tables: crate::tables::ImportTables,
+    /// The installation's budget of open files, which a network check's read
+    /// of a folder takes its place from.
+    files: coven::FileBudget,
     diagnostics: bae_diagnostics::Diagnostics,
 }
 
@@ -227,6 +238,7 @@ impl Coordinator {
         active_roots: ActiveRoots,
         event_tx: crate::ImportEventBus,
         tables: crate::tables::ImportTables,
+        files: coven::FileBudget,
         diagnostics: bae_diagnostics::Diagnostics,
         checked_tx: mpsc::UnboundedSender<(PathBuf, NetworkCheck)>,
     ) -> Self {
@@ -237,6 +249,7 @@ impl Coordinator {
             checked_tx,
             event_tx,
             tables,
+            files,
             diagnostics,
         }
     }
@@ -467,6 +480,7 @@ impl Coordinator {
             return false;
         }
         let tables = self.tables.clone();
+        let files = self.files.clone();
         let diagnostics = self.diagnostics.clone();
         let answer = self.checked_tx.clone();
         let panicked_answer = self.checked_tx.clone();
@@ -477,7 +491,8 @@ impl Coordinator {
             &self.runtime,
             "check a network folder",
             async move {
-                let found = check_network_folder(&tables, &checked_root, &diagnostics).await;
+                let found =
+                    check_network_folder(&tables, &files, &checked_root, &diagnostics).await;
                 if answer.send((checked_root, found)).is_err() {
                     debug!("folder scan coordinator ended before a check landed");
                 }
@@ -495,6 +510,7 @@ impl Coordinator {
 /// What the network folder `root` holds against what its last scan saw.
 async fn check_network_folder(
     tables: &crate::tables::ImportTables,
+    files: &coven::FileBudget,
     root: &Path,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> NetworkCheck {
@@ -509,7 +525,7 @@ async fn check_network_folder(
         }
     };
     let checked_root = root.to_path_buf();
-    let lease = tables.lease_one().await;
+    let lease = bae_store::lease_one(files).await;
     let changes = match diagnostics
         .blocking("check a network folder", move || {
             network_changes(&checked_root, &recorded, &lease)

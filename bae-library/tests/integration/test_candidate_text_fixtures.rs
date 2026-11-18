@@ -189,6 +189,7 @@ async fn drive_fixture(
         db.clone(),
         bae_import::tables::ImportTables::new(db.clone()),
         bae_records::test_fixtures::test_records(&db),
+        db.test_sources().files().clone(),
         bae_diagnostics::Diagnostics::noop(),
     );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));

@@ -87,8 +87,8 @@ pub async fn create_library(
     files: coven::FileBudget,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
-    create_keeping(builder, name, device_name, clock, files, diagnostics, |store| async move {
-        bae_people::People::new(store).keep_creator_name(&creator).await
+    create_keeping(builder, name, device_name, clock, diagnostics, |store| async move {
+        bae_people::People::new(store, files).keep_creator_name(&creator).await
     })
     .await
 }
@@ -100,7 +100,6 @@ async fn create_keeping<Keep, Kept>(
     name: bae_store::EnteredName,
     device_name: &str,
     clock: coven::ClockRef,
-    files: coven::FileBudget,
     diagnostics: &bae_diagnostics::Diagnostics,
     keep: Keep,
 ) -> Result<coven::CovenHandle, CreateLibraryError>
@@ -112,7 +111,7 @@ where
         .create_store(name.as_str(), device_name, &[], |_, _| Ok(()))
         .await
         .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))?;
-    let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink(), files);
+    let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink());
     match keep(store.clone()).await {
         Ok(()) => Ok(handle),
         Err(name) => match store.delete_store().await {

@@ -138,7 +138,7 @@ pub async fn reopen_store(
 /// (use [`crate::TestSources::store`] for one a library opens over). A bug
 /// one of its calls carries back fails the test as the store drops.
 pub fn store_under(handle: coven::CovenHandle, clock: coven::ClockRef) -> Store {
-    Store::new(handle, clock, coven::task::HeardBugs::shared(), coven::FileBudget::for_test())
+    Store::new(handle, clock, coven::task::HeardBugs::shared())
 }
 
 /// How `store`'s last pass ended and when a pass last reached the end

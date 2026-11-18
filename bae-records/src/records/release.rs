@@ -312,7 +312,7 @@ impl Records {
         &self,
         files: Vec<(NewReleaseFile, std::path::PathBuf, coven::Place)>,
     ) -> Result<Vec<coven::FileId>, IdentityWriteError> {
-        let lease = self.lease_one().await;
+        let lease = bae_store::lease_one(self.store.test_sources().files()).await;
         let mut rows = Vec::with_capacity(files.len());
         let mut prepared = Vec::with_capacity(files.len());
         for (file, original, place) in files {

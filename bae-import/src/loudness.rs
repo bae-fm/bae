@@ -496,7 +496,7 @@ fn decode_track(
 /// it measured is committed.
 pub(super) async fn measure_loudness(
     event_tx: &crate::ImportEventBus,
-    files: &bae_store::FileLeases,
+    files: &coven::FileBudget,
     parallelism: NonZeroUsize,
     audio_formats: &mut [bae_records::DbAudioFormat],
     audio_segments: &[bae_records::DbAudioSegment],

@@ -130,7 +130,7 @@ fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
             Household::owner(coven::CloudProvider::S3, None).await;
         let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
         let membership = bae_people::Membership::new(store.clone());
-        let people = bae_people::People::new(store);
+        let people = bae_people::People::new(store, coven::FileBudget::for_test());
         assert!(matches!(
             inviter_named(&owner, &membership).await,
             Err(bae_people::membership::InviteError::InviterUnnamed)
@@ -148,7 +148,10 @@ fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
             Household::owner(coven::CloudProvider::S3, None).await;
         let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
         let membership = bae_people::Membership::new(store.clone());
-        bae_people::People::new(store).create_profile("Robin").await.unwrap();
+        bae_people::People::new(store, coven::FileBudget::for_test())
+            .create_profile("Robin")
+            .await
+            .unwrap();
         assert_eq!(inviter_named(&owner, &membership).await.unwrap(), "Robin");
         owner.close().await.unwrap();
 
@@ -320,10 +323,10 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         let (dir, owner, storage, sources) = Self::owner(provider, sign_in).await;
-        let people = bae_people::People::new(bae_store::test_devices::store_under(
-            owner.clone(),
-            sources.clock().clone(),
-        ));
+        let people = bae_people::People::new(
+            bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
+            sources.files().clone(),
+        );
         let robin = made_profile_on(&owner, &people, "Robin").await;
         Self { _dir: dir, owner, storage, sources, robin }
     }
@@ -551,10 +554,10 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
         owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
     let name = format!("bae-person:{member}");
     let made = landed_circle(&owner, &name).await;
-    let people = bae_people::People::new(bae_store::test_devices::store_under(
-        owner.clone(),
-        sources.clock().clone(),
-    ));
+    let people = bae_people::People::new(
+        bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
+        sources.files().clone(),
+    );
     people.create_profile("Robin").await.unwrap();
     let profile = people.profile(member).await.unwrap().unwrap();
     assert_eq!(profile.private_circle, made);
@@ -567,10 +570,10 @@ async fn a_profile_takes_the_private_circle_already_made_for_it() {
     for _ in 0..2 {
         landed_circle(&owner, &name).await;
     }
-    let people = bae_people::People::new(bae_store::test_devices::store_under(
-        owner.clone(),
-        sources.clock().clone(),
-    ));
+    let people = bae_people::People::new(
+        bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
+        sources.files().clone(),
+    );
     assert!(matches!(
         people.create_profile("Robin").await,
         Err(ProfileError::InvalidPrivateCircle)
@@ -616,10 +619,10 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         let members = guest.circles().members(profile.private_circle).await.unwrap();
         assert_eq!(members.len(), 1);
         assert_eq!(members[0].member, profile.id);
-        let error = bae_people::People::new(bae_store::test_devices::store_under(
-            guest.clone(),
-            household.sources.clock().clone(),
-        ))
+        let error = bae_people::People::new(
+            bae_store::test_devices::store_under(guest.clone(), household.sources.clock().clone()),
+            household.sources.files().clone(),
+        )
         .rename_profile_of_for_test(owner_profile.id, "Impersonated")
         .await
         .expect_err("only the profile's owner may rename it");

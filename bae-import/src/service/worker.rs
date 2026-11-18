@@ -16,6 +16,7 @@ impl ImportService {
         tables: crate::tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        files: coven::FileBudget,
         closing: tokio_util::sync::CancellationToken,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
         Self::start_reading_tags_through(
@@ -28,6 +29,7 @@ impl ImportService {
             tables,
             clock,
             ids,
+            files,
             closing,
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
         )
@@ -47,6 +49,7 @@ impl ImportService {
         tables: crate::tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        files: coven::FileBudget,
         closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
@@ -70,6 +73,7 @@ impl ImportService {
             tables.clone(),
             clock,
             ids,
+            files,
             file_tags,
             diagnostics.clone(),
             closing,
@@ -90,7 +94,7 @@ impl ImportService {
         let tables = services.tables.clone();
         let clock = services.clock.clone();
         let ids = services.ids.clone();
-        let file_leases = services.store.file_leases();
+        let files = services.files.clone();
         let import_cancels = services.import_cancels.clone();
         let catalogs = services.catalogs.clone();
         let remote_images = services.remote_images.clone();
@@ -125,7 +129,7 @@ impl ImportService {
                     remote_images,
                     clock,
                     ids,
-                    file_leases,
+                    files,
                     import_cancels,
                     diagnostics,
                 };
@@ -162,6 +166,7 @@ impl ImportService {
             services.store.clone(),
             services.tables.clone(),
             services.records.clone(),
+            services.files.clone(),
             services.diagnostics.clone(),
         );
 

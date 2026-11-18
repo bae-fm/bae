@@ -204,7 +204,7 @@ pub struct ImportService {
     ids: coven::IdSourceRef,
     /// The budget of open files that the import's reads take their places
     /// from.
-    file_leases: bae_store::FileLeases,
+    files: coven::FileBudget,
     import_cancels: crate::import_cancel::ImportCancels,
     /// Where every bug the import worker finds is reported: a write no
     /// caller waits on, and an image the blocking format prep can't read.

@@ -59,10 +59,10 @@ async fn storage_library_on(
         .await
         .unwrap();
     if let Some(creator) = creator {
-        bae_people::People::new(bae_store::test_devices::store_under(
-            handle.clone(),
-            sources.clock().clone(),
-        ))
+        bae_people::People::new(
+            bae_store::test_devices::store_under(handle.clone(), sources.clock().clone()),
+            sources.files().clone(),
+        )
         .keep_creator_name(&bae_store::EnteredName::parse(creator).unwrap())
         .await
         .unwrap();

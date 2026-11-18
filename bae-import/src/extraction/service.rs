@@ -101,6 +101,9 @@ struct ExtractionServiceInner {
     tables: crate::tables::ImportTables,
     /// The library a `Release` re-identify reads the release's rows from.
     records: bae_records::Records,
+    /// The installation's budget of open files, which each pass's reads of
+    /// files take their places from.
+    files: coven::FileBudget,
     /// Where a panic in a pass is reported as the bug it is.
     diagnostics: bae_diagnostics::Diagnostics,
     /// Each folder's settled snapshot this session, so a later run over the
@@ -163,6 +166,7 @@ impl ExtractionService {
         store: bae_store::Store,
         tables: crate::tables::ImportTables,
         records: bae_records::Records,
+        files: coven::FileBudget,
         diagnostics: bae_diagnostics::Diagnostics,
     ) -> ExtractionService {
         let inner = Arc::new(ExtractionServiceInner {
@@ -172,6 +176,7 @@ impl ExtractionService {
             store,
             tables,
             records,
+            files,
             diagnostics,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
             candidates,
@@ -285,7 +290,7 @@ async fn extract(
                 emit_signals(inner, extraction, settled);
                 return;
             }
-            let lease = inner.store.lease_one().await;
+            let lease = bae_store::lease_one(&inner.files).await;
             let fast = match run_fast_pass_blocking(&inner.diagnostics, move || {
                 gather_non_ocr_sources(&candidate.source_folders(), &candidate.files, &lease)
             })
@@ -342,6 +347,7 @@ async fn extract(
             let (origin, audio, disc_id) = match resolve_release_identity(
                 &inner.tables,
                 &inner.records,
+                &inner.files,
                 &inner.diagnostics,
                 &release_id,
             )
@@ -373,6 +379,7 @@ async fn extract(
                 match resolve_release_artwork_paths(
                     &inner.store,
                     &inner.records,
+                    &inner.files,
                     &inner.diagnostics,
                     &release_id,
                 )

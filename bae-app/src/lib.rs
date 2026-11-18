@@ -429,7 +429,6 @@ enum LibraryOpening {
 async fn open_store(
     opening: LibraryOpening,
     clock: ClockRef,
-    files: coven::FileBudget,
     diagnostics: &Diagnostics,
 ) -> Result<bae_store::Store, bae_store::DbError> {
     let handle = match opening {
@@ -441,7 +440,7 @@ async fn open_store(
         }
         LibraryOpening::Open(handle) => handle,
     };
-    Ok(bae_store::Store::new(handle, clock, diagnostics.bug_sink(), files))
+    Ok(bae_store::Store::new(handle, clock, diagnostics.bug_sink()))
 }
 
 /// The library a registered id names; an id that is no library's is not
@@ -639,12 +638,12 @@ fn open_library(
     // built from it here, once, and handed to what holds it.
     let store = timing
         .stage(library_id, "open the library's store", || {
-            runtime.block_on(open_store(builder, Arc::clone(&clock), files, diagnostics))
+            runtime.block_on(open_store(builder, Arc::clone(&clock), diagnostics))
         })
         .map_err(classify_open_error)?;
     let preferences = bae_preferences::PreferencesRow::new(store.clone());
     let records = bae_records::Records::new(store.clone(), ids.clone());
-    let people = bae_people::People::new(store.clone());
+    let people = bae_people::People::new(store.clone(), files.clone());
     let membership = bae_people::Membership::new(store.clone());
     let sync_status = bae_sync_status::SyncStatus::new(store.clone());
     #[cfg(desktop)]
@@ -686,6 +685,7 @@ fn open_library(
                 app_dir.clone(),
                 Arc::clone(&clock),
                 ids.clone(),
+                files.clone(),
                 diagnostics.clone(),
                 runtime.handle().clone(),
                 #[cfg(desktop)]
@@ -784,6 +784,7 @@ fn open_library(
                     #[cfg(desktop)]
                     Arc::clone(&clock),
                     ids,
+                    files,
                     diagnostics.clone(),
                     runtime.handle().clone(),
                     #[cfg(desktop)]

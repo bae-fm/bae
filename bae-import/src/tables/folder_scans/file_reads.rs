@@ -15,15 +15,15 @@ impl ImportTables {
     /// What the scans of `watched_folder_path` stored about each file they
     /// read — its entries, its folders' sidecars, and the tags read from its
     /// releases' tracks — for a pass that reads any other track's tags
-    /// through `tags`. A store that says two things about one file fails the
-    /// read.
+    /// through `tags` and opens each file in a place of `files`. A store that
+    /// says two things about one file fails the read.
     pub(crate) async fn load_file_reads(
         &self,
         watched_folder_path: &Path,
         tags: Arc<dyn FileTagReader>,
+        files: coven::FileBudget,
     ) -> Result<FileReads, crate::ImportError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
-        let files = self.store.file_leases();
         self.store
             .read(move |sql| {
                 let items = load_items(&sql, &watched_folder_path, RowSources::Scanned)?;

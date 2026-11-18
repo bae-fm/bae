@@ -41,7 +41,7 @@ fn pass_over_root<R: DirectoryReader>(
         },
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         cancellation,
         |directory| said.directories.push(directory),
@@ -64,7 +64,7 @@ fn reading_of_one_folder(root: &Path, folder: &str) -> SaidByPass {
         },
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         &ScanCancellation::new(),
         |directory| said.directories.push(directory),

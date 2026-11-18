@@ -49,7 +49,7 @@ impl ImportServiceHandle {
         }
         let path = entry.file.version.path;
         let file = file_id.to_string();
-        let lease = self.services.store.lease_one().await;
+        let lease = bae_store::lease_one(&self.services.files).await;
         self.services
             .diagnostics
             .blocking("read a candidate's document", move || {

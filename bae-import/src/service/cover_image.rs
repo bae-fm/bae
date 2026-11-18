@@ -73,13 +73,18 @@ impl ImportCover {
         discovered_files: &[CandidateFile],
         release_id: &str,
         diagnostics: &bae_diagnostics::Diagnostics,
-        records: &bae_records::Records,
+        files: &coven::FileBudget,
     ) -> Result<(bae_records::DbLibraryImage, Vec<u8>), ImportError> {
         let source = match self {
             Self::Remote(bytes) | Self::Embedded(bytes) => bytes,
             Self::Local(path) => {
-                folder_cover(discovered_files, &path, diagnostics, records.lease_one().await)
-                    .await?
+                folder_cover(
+                    discovered_files,
+                    &path,
+                    diagnostics,
+                    bae_store::lease_one(files).await,
+                )
+                .await?
             }
         };
         // Decoding and re-encoding the image is CPU work.

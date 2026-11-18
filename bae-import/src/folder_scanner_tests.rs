@@ -785,7 +785,7 @@ pub(super) fn scan_with_reader<R: DirectoryReader, F: FnMut(WalkItem)>(
         },
         &FileReads::new(
             Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-            bae_store::FileLeases::for_test_default(),
+            coven::FileBudget::for_test(),
         ),
         &ScanCancellation::new(),
         |_| {},

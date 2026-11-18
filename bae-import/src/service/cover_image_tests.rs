@@ -290,16 +290,6 @@ async fn the_import_cover_read_waits_for_a_place() {
     let temp = tempfile::tempdir().unwrap();
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
     let watch = budget.watch();
-    let db = bae_store::Store::new_test_within(
-        crate::TEST_SCHEMA,
-        temp.path(),
-        Arc::new(coven::SystemClock),
-        coven::task::HeardBugs::shared(),
-        budget.clone(),
-    )
-    .await
-    .unwrap();
-    let records = bae_records::test_fixtures::test_records(&db);
     let cover = temp.path().join("front.gif");
     std::fs::write(&cover, bae_util::test_cover_art::SOLID_GIF).unwrap();
     let discovered = vec![artwork(ScannedFile::new(
@@ -316,7 +306,7 @@ async fn the_import_cover_read_waits_for_a_place() {
         &discovered,
         "release-1",
         &diagnostics,
-        &records,
+        &budget,
     );
     tokio::pin!(storing);
     tokio::select! {
@@ -329,5 +319,4 @@ async fn the_import_cover_read_waits_for_a_place() {
     assert_eq!(image.id, "release-1");
     assert!(!bytes.is_empty());
     assert_eq!(watch.holding(), 0);
-    db.close().await.unwrap();
 }

@@ -256,7 +256,9 @@ async fn read_folder_again(
         decisions.insert(key.relative_folder.clone(), reading.clone());
         (key.clone(), reading)
     });
-    let reads = Arc::new(tables.load_file_reads(root, services.file_tags.clone()).await?);
+    let reads = Arc::new(
+        tables.load_file_reads(root, services.file_tags.clone(), services.files.clone()).await?,
+    );
     let walk_reads = reads.clone();
 
     let directories = services.directories.clone();

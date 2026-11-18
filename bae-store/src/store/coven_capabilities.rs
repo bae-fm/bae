@@ -298,19 +298,6 @@ impl Store {
         Ok(self.reported(self.inner.handle.user_file(file).await)?)
     }
 
-    /// Returns a handle that leases places of the installation's budget of
-    /// open files, for code that leases its own places from its own threads
-    /// or services.
-    pub fn file_leases(&self) -> crate::FileLeases {
-        crate::FileLeases::of(self.inner.files.clone())
-    }
-
-    /// A lease of one place, for work that reads one file at a time (see
-    /// [`crate::FileLeases::lease_one`]).
-    pub async fn lease_one(&self) -> coven::FileLease {
-        self.file_leases().lease_one().await
-    }
-
     /// Read a whole file, in one place of `lease`.
     pub async fn read_file(
         &self,

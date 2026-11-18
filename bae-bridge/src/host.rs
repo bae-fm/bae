@@ -492,7 +492,6 @@ impl BridgeHost {
         let builder = self.library_builder();
         let report = opening.report();
         let clock = self.clock.clone();
-        let files = self.files.clone();
         self.operations
             .clone()
             .run("BridgeHost.unsent_before_removal", move || async move {
@@ -502,7 +501,6 @@ impl BridgeHost {
                     store,
                     report,
                     clock,
-                    files,
                     &self.diagnostics,
                 )
                 .await?

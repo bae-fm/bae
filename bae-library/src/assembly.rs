@@ -26,6 +26,7 @@ pub async fn open_library_manager(
     app_dir: bae_app_dir::AppDir,
     clock: ClockRef,
     ids: IdSourceRef,
+    files: coven::FileBudget,
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     #[cfg(desktop)] remote_images: bae_catalogs::remote_image::RemoteImageCache,
@@ -43,6 +44,7 @@ pub async fn open_library_manager(
         app_dir,
         clock,
         ids,
+        files,
         diagnostics,
         runtime_handle,
         #[cfg(desktop)]

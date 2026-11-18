@@ -28,6 +28,7 @@ pub async fn start_services_on(
         library.closing().clone(),
         library.clock().clone(),
         library.ids().clone(),
+        library.files().clone(),
         library.diagnostics().clone(),
         tokio::runtime::Handle::current(),
         library.remote_images().clone(),

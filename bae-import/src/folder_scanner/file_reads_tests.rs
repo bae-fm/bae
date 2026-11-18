@@ -47,7 +47,7 @@ fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
         ],
         &[],
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     )
     .err()
     .expect("the rows disagree");
@@ -59,7 +59,7 @@ fn stored_rows_that_disagree_about_a_file_fail_the_pass() {
         ],
         &[],
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test_default()
+        coven::FileBudget::for_test()
     )
     .is_ok());
 }
@@ -135,7 +135,7 @@ fn a_pass_holds_only_the_picture_a_release_takes() {
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
     std::fs::write(album.join("02.flac"), fake_flac()).unwrap();
     let reader = PictureReader::new(16);
-    let reads = FileReads::new(reader.clone(), bae_store::FileLeases::for_test_default());
+    let reads = FileReads::new(reader.clone(), coven::FileBudget::for_test());
     let [release] = scan_reading(tmp.path(), &reads).try_into().unwrap();
     let audio = audio_of(&release);
 
@@ -163,7 +163,7 @@ fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
         std::fs::write(tmp.path().join(folder).join("01.flac"), fake_flac()).unwrap();
     }
     let reader = PictureReader::new(file_reads::HELD_COVER_BYTES / 2 + 1);
-    let reads = FileReads::new(reader.clone(), bae_store::FileLeases::for_test_default());
+    let reads = FileReads::new(reader.clone(), coven::FileBudget::for_test());
     let [first, second] = scan_reading(tmp.path(), &reads).try_into().unwrap();
 
     for release in [&second, &first] {
@@ -239,10 +239,8 @@ async fn read_after_waiting_for_the_only_place<T: Send + 'static>(
 ) -> T {
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
     let watch = budget.watch();
-    let reads = FileReads::new(
-        Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test(budget.clone()),
-    );
+    let reads =
+        FileReads::new(Arc::new(crate::file_tag_reader::LoftyFileTagReader), budget.clone());
     let held = budget.lease(1).await.unwrap();
     let waited = watch.lease_waits_from_now(1);
 
@@ -269,7 +267,7 @@ fn one_scanned_track() -> (tempfile::TempDir, ScannedFile) {
     std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
     let reads = FileReads::new(
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
-        bae_store::FileLeases::for_test_default(),
+        coven::FileBudget::for_test(),
     );
     let [release] = scan_reading(tmp.path(), &reads).try_into().unwrap();
     let track = audio_of(&release).remove(0);

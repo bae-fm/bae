@@ -109,12 +109,6 @@ impl ImportTables {
         Self { store }
     }
 
-    /// A lease of one place of the store's budget of open files, for a read
-    /// of one file or folder.
-    pub(crate) async fn lease_one(&self) -> coven::FileLease {
-        self.store.lease_one().await
-    }
-
     /// How many rows of `table` have `column` equal to `value`, for a test.
     #[cfg(test)]
     pub(crate) async fn count_rows_for_test(

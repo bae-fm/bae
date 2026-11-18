@@ -29,11 +29,10 @@ use crate::stream_pipeline::{
 use crate::timeline::{StreamPosition, TrackTimeline};
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_diagnostics::{Diagnostics, ReportedTask};
-use bae_store::FileLeases;
 use bae_track_audio::data_source::{AudioDataReader, LocalReader};
 use bae_track_audio::{PreviewTarget, SegmentDecodeParams, StreamDecodeParams};
 use bae_util::task_failure::TaskFailed;
-use coven::FileLease;
+use coven::{FileBudget, FileLease};
 use std::path::Path;
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
@@ -122,7 +121,7 @@ pub(crate) struct PreviewPlayer {
     diagnostics: Diagnostics,
     /// The installation's places for open files: each preview takes one for
     /// its probe and its fill, which holds it while the preview plays.
-    files: FileLeases,
+    files: FileBudget,
     /// Every preview's fill, which holds its file open until it ends, for a
     /// test to wait on.
     #[cfg(test)]
@@ -168,7 +167,7 @@ impl PreviewPlayer {
         command_tx: OwnCommands,
         position_update_interval_ms: u32,
         diagnostics: Diagnostics,
-        files: FileLeases,
+        files: FileBudget,
     ) -> Self {
         Self {
             runtime,
@@ -231,7 +230,7 @@ impl PreviewPlayer {
         // once the probe closes it the fill opens the file in it and holds it
         // while the preview plays. play takes the lease here, while it holds
         // no other place.
-        let lease = self.files.lease(1).await.expect("a budget holds at least one place");
+        let lease = bae_store::lease_one(&self.files).await;
         let Some(probe) = probe_preview_audio(&self.diagnostics, target.path(), &lease).await
         else {
             return PreviewPlayOutcome::SetupFailed(crate::PlaybackErrorReason::internal(

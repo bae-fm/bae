@@ -55,8 +55,13 @@ async fn two_rows_disagreeing_about_a_file_fail_the_read_as_the_scan() {
     tables.finish_folder_scan(&root, generation, None).await.unwrap();
     ImportTables::store_sidecar_file_as_for_test(tmp.path(), "back.jpg", "cover.jpg").await;
 
-    let Err(error) =
-        tables.load_file_reads(&root, Arc::new(crate::file_tag_reader::LoftyFileTagReader)).await
+    let Err(error) = tables
+        .load_file_reads(
+            &root,
+            Arc::new(crate::file_tag_reader::LoftyFileTagReader),
+            coven::FileBudget::for_test(),
+        )
+        .await
     else {
         panic!("one image read as both damaged and whole is no scan's reading");
     };

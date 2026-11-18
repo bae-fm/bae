@@ -144,6 +144,9 @@ pub(crate) struct ImportServices {
     remote_images: bae_catalogs::remote_image::RemoteImageCache,
     clock: coven::ClockRef,
     ids: coven::IdSourceRef,
+    /// The installation's budget of open files, which every read of a file
+    /// that import and its scans make takes its place from.
+    files: coven::FileBudget,
     /// What reads a folder's audio files for their embedded tags. Held here
     /// rather than reached for, so a test can hand the scan a reader whose
     /// answers — and whose count of calls — it decides.
@@ -175,6 +178,7 @@ impl ImportServices {
         tables: tables::ImportTables,
         clock: coven::ClockRef,
         ids: coven::IdSourceRef,
+        files: coven::FileBudget,
         file_tags: std::sync::Arc<dyn file_tag_reader::FileTagReader>,
         diagnostics: bae_diagnostics::Diagnostics,
         closing: tokio_util::sync::CancellationToken,
@@ -188,6 +192,7 @@ impl ImportServices {
             remote_images,
             clock,
             ids,
+            files,
             file_tags,
             directories: std::sync::Arc::new(folder_scanner::OsDirectoryReader),
             folder_state_commit: folder_state_commit::FolderStateCommit::new(),

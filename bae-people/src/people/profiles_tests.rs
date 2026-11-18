@@ -8,7 +8,7 @@ use super::*;
 #[tokio::test]
 async fn a_request_no_longer_stored_is_not_written_as_a_profile() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let people = People::new(db.clone());
+    let people = People::new(db.clone(), coven::FileBudget::for_test());
     let operation = coven::OperationId(7);
     let request = ProfileRequest {
         operation,
