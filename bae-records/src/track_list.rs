@@ -87,7 +87,7 @@ impl TrackList {
 
     /// The list's ids in its order for an action that leaves out what the
     /// person picked and the library lacks: a given list's every id, and a
-    /// picked list's held ids. The picks left out go in one warning, since
+    /// picked list's held ids. Each pick left out goes in a warning, since
     /// the app shows nothing of them.
     pub fn ordered_leaving_out_missing_picks(
         &self,
@@ -99,14 +99,10 @@ impl TrackList {
         };
         let ordered = self.ordered_on(sql, reading)?;
         if let Self::Picked(picked) = self {
-            let mut left_out = Vec::new();
             for id in picked {
                 if !ordered.contains(id) {
-                    left_out.push(id);
+                    tracing::warn!(track_id = %id, "picked track the library lacks left out");
                 }
-            }
-            if let [_, ..] = left_out.as_slice() {
-                tracing::warn!(?left_out, "picked tracks the library lacks left out");
             }
         }
         Ok(ordered)
