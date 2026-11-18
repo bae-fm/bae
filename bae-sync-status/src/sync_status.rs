@@ -210,16 +210,7 @@ pub fn sync_status_rows_on(
 fn recorded_provider_on(
     sql: &coven::SqlReadContext<'_>,
 ) -> Result<Option<coven::CloudProvider>, DbError> {
-    let name: Option<String> =
-        sql.query_row("SELECT provider FROM coven_sync_status", [], |row| row.get(0))?;
-    name.map(|name| match name.as_str() {
-        "S3" => Ok(coven::CloudProvider::S3),
-        "Dropbox" => Ok(coven::CloudProvider::Dropbox),
-        "OneDrive" => Ok(coven::CloudProvider::OneDrive),
-        "CloudKit" => Ok(coven::CloudProvider::CloudKit),
-        _ => Err(DbError::Unreadable { what: "coven_sync_status.provider".into(), stored: name }),
-    })
-    .transpose()
+    Ok(sql.query_row("SELECT provider FROM coven_sync_status", [], |row| row.get(0))?)
 }
 
 impl SyncStatusSnapshot {
