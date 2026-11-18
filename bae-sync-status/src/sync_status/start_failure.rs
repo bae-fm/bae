@@ -303,43 +303,48 @@ impl StoredColumns {
 }
 
 /// The columns of `sync_start_failure`'s row as the status query reads them:
-/// the class's columns, then the failure's text. Each is NULL when no failed
-/// start stands.
-pub(super) struct StartFailureColumns {
-    stored: Option<StoredColumns>,
-    detail: Option<String>,
-}
+/// the class's columns with the failure's text, which are all NULL when no
+/// failed start stands.
+pub(super) struct StartFailureColumns(Option<(StoredColumns, String)>);
 
 impl StartFailureColumns {
     /// The columns of the table's row: category, storage failure, required
-    /// access, size, limit, then detail, from column `first`.
+    /// access, size, limit, then detail, from column `first`. The category
+    /// and the detail are both NULL or both set; a row that has one without
+    /// the other is damaged.
     pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
         let category: Option<String> = row.get(first)?;
-        let stored = category
-            .map(|category| {
-                Ok::<_, rusqlite::Error>(StoredColumns {
+        let detail: Option<String> = row.get(first + 5)?;
+        match (category, detail) {
+            (Some(category), Some(detail)) => Ok(Self(Some((
+                StoredColumns {
                     category,
                     storage_failure: row.get(first + 1)?,
                     required_access: row.get(first + 2)?,
                     size_bytes: row.get(first + 3)?,
                     limit_bytes: row.get(first + 4)?,
-                })
-            })
-            .transpose()?;
-        Ok(Self { stored, detail: row.get(first + 5)? })
+                },
+                detail,
+            )))),
+            (None, None) => Ok(Self(None)),
+            (category, detail) => Err(rusqlite::Error::FromSqlConversionFailure(
+                first,
+                rusqlite::types::Type::Null,
+                format!(
+                    "sync_start_failure has a category and a detail together: category {category:?}, detail {detail:?}"
+                )
+                .into(),
+            )),
+        }
     }
 
     /// Why the last attempt to start sync failed, while that stands.
     pub(super) fn error(self) -> Result<Option<UiError>, DbError> {
-        match (self.stored, self.detail) {
-            (Some(columns), Some(detail)) => {
-                Ok(Some(UiError::Diagnostic { category: columns.category()?, detail }))
-            }
-            (None, None) => Ok(None),
-            (stored, detail) => {
-                Err(unnamed("detail", &format!("{:?}", (stored.is_some(), detail))))
-            }
-        }
+        self.0
+            .map(|(columns, detail)| {
+                Ok(UiError::Diagnostic { category: columns.category()?, detail })
+            })
+            .transpose()
     }
 }
 
