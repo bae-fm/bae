@@ -3795,9 +3795,9 @@ sync starts, which the library does at launch for it as for a library with
 storage set up. While a setup runs, the Sync page says "Setting up your cloud home…"
 in place of any state that names no problem; a library with no location
 recorded yet shows that where Settings would offer setting up sync, and
-Settings shows the location once the setup ends. A setup that ended undone
-with nobody waiting on it, such as one bae was stopped partway through, shows
-on Settings' Sync page, why with *Dismiss*, until the person dismisses it. Starting a setup while another runs, a call still under way or
+Settings shows the location once the setup ends. The Sync page shows every
+storage setup that ended undone, why with *Dismiss*, until the person dismisses
+it or starts another setup. Starting a setup while another runs, a call still under way or
 one from before that sync finishes, is refused, saying to try again once it
 has. A cancel counts from the moment the setup's call starts.
 
