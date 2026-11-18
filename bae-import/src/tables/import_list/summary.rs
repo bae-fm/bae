@@ -164,17 +164,12 @@ pub(super) fn search_counts(request: &ImportListRequest) -> String {
 /// groups it folds shut, plus the header of each group holding a kept
 /// release.
 fn kept_items(request: &ImportListRequest) -> String {
-    let entry = request.view.pending_filter != PendingFilter::All;
     let pending = request.view.tab == TriageTab::Pending;
-    let kept = match pending && entry {
-        true => {
-            "SELECT COUNT(*) FROM import_list_placement AS p \
-                 WHERE p.pending_entry = :filter"
-        }
-        false => {
-            "SELECT COUNT(*) FROM import_list_placement AS p \
-                  WHERE p.tab = :tab AND p.item <> 'group'"
-        }
+    let kept = match request.entry_sql("p") {
+        Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),
+        None => "SELECT COUNT(*) FROM import_list_placement AS p \
+                 WHERE p.tab = :tab AND p.item <> 'group'"
+            .to_string(),
     };
     let folded = match pending {
         true => format!(
@@ -182,27 +177,23 @@ fn kept_items(request: &ImportListRequest) -> String {
              WHERE p.item <> 'group' AND p.group_folder IS NOT NULL \
                AND {folds} AND {entry}",
             folds = request.folds_sql("p.watched_folder_path", "p.group_folder"),
-            entry = match entry {
-                true => "p.pending_entry = :filter",
-                false => "1",
-            },
+            entry = request.entry_sql("p").unwrap_or_else(|| "1".to_string()),
         ),
         false => "SELECT 0".to_string(),
     };
-    let headers = match (pending, entry) {
-        (false, _) => "SELECT 0",
-        (true, false) => {
-            "SELECT COUNT(*) FROM import_list_placement AS h \
-             WHERE h.tab = 'pending' AND h.item = 'group'"
-        }
-        (true, true) => {
+    let headers = match (pending, request.entry_sql("m")) {
+        (false, _) => "SELECT 0".to_string(),
+        (true, None) => "SELECT COUNT(*) FROM import_list_placement AS h \
+                         WHERE h.tab = 'pending' AND h.item = 'group'"
+            .to_string(),
+        (true, Some(entry)) => format!(
             "SELECT COUNT(*) FROM import_list_placement AS h \
              WHERE h.tab = 'pending' AND h.item = 'group' \
                AND EXISTS (SELECT 1 FROM import_list_placement AS m \
                            WHERE m.watched_folder_path = h.watched_folder_path \
                              AND m.group_folder = h.key AND m.item <> 'group' \
-                             AND m.pending_entry = :filter)"
-        }
+                             AND {entry})"
+        ),
     };
     format!("SELECT ({kept}) - ({folded}) + ({headers})")
 }
@@ -220,9 +211,10 @@ fn listed(request: &ImportListRequest) -> String {
         true => "SELECT COUNT(*) FROM import_list_placement WHERE tab = :tab".to_string(),
         false => kept_items(request),
     };
-    let shown = match request.narrows() {
-        true => "SELECT COUNT(*) FROM import_list_placement WHERE pending_entry = :filter",
-        false => "SELECT NULL",
+    // Without a search, only Found's filter entry narrows the list.
+    let shown = match request.entry_sql("p") {
+        Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),
+        None => "SELECT NULL".to_string(),
     };
     format!("SELECT ({items}) AS items, ({shown}) AS shown")
 }

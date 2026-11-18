@@ -45,24 +45,32 @@ impl ImportListRequest {
         serde_json::to_string(&groups).expect("a list of text pairs serializes")
     }
 
-    /// The test that the filters keep the row aliased `p`: on Found, its
-    /// filter entry; and its shown text matching the search's pattern, the
-    /// test `import_list_search` finds the matching rows by. `1` when
-    /// nothing narrows the list.
-    pub(super) fn kept_sql(&self, p: &str) -> String {
-        let mut tests = Vec::new();
-        if self.view.tab == TriageTab::Pending && self.view.pending_filter != PendingFilter::All {
-            tests.push(format!("{p}.pending_entry = :filter"));
-        }
-        if self.filters_text() {
-            tests.push(format!(
+    /// The test that Found's filter entry keeps the row aliased `p`; `None`
+    /// on another tab, or while the entry keeps every row.
+    pub(super) fn entry_sql(&self, p: &str) -> Option<String> {
+        self.entry().map(|_entry| format!("{p}.pending_entry = :filter"))
+    }
+
+    /// The test that the row aliased `p`'s shown text matches the search's
+    /// pattern, the test `import_list_search` finds the matching rows by;
+    /// `None` while the list searches for nothing.
+    fn text_sql(&self, p: &str) -> Option<String> {
+        self.filters_text().then(|| {
+            format!(
                 "({p}.filter_title GLOB bae_search_pattern(:filter_text) \
                   OR {p}.filter_artists GLOB bae_search_pattern(:filter_text))"
-            ));
-        }
-        match tests.is_empty() {
-            true => "1".to_string(),
-            false => tests.join(" AND "),
+            )
+        })
+    }
+
+    /// The test that the filters keep the row aliased `p`: on Found, its
+    /// filter entry; and its shown text matching the search's pattern. `1`
+    /// when nothing narrows the list.
+    pub(super) fn kept_sql(&self, p: &str) -> String {
+        match (self.entry_sql(p), self.text_sql(p)) {
+            (None, None) => "1".to_string(),
+            (Some(test), None) | (None, Some(test)) => test,
+            (Some(entry), Some(text)) => format!("{entry} AND {text}"),
         }
     }
 

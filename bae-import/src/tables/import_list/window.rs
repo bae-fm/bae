@@ -141,10 +141,7 @@ fn header_columns(request: &ImportListRequest) -> String {
              WHERE m.watched_folder_path = w.watched_folder_path \
                AND m.group_folder = {HEADER_FOLDER} AND m.item <> 'group' \
                AND {kept}",
-            kept = match request.view.pending_filter {
-                PendingFilter::All => "1".to_string(),
-                _ => "m.pending_entry = :filter".to_string(),
-            },
+            kept = request.entry_sql("m").unwrap_or_else(|| "1".to_string()),
         ),
     };
     format!(

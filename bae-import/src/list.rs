@@ -99,11 +99,19 @@ impl ImportListRequest {
         !self.view.filter_text.is_empty()
     }
 
+    /// Found's filter entry while it narrows the list: `None` on another tab,
+    /// or while the entry keeps every row.
+    pub(crate) fn entry(&self) -> Option<PendingFilter> {
+        match (self.view.tab, self.view.pending_filter) {
+            (TriageTab::Done | TriageTab::Skipped, _)
+            | (TriageTab::Pending, PendingFilter::All) => None,
+            (TriageTab::Pending, entry) => Some(entry),
+        }
+    }
+
     /// Whether the text filter or Found's filter entry narrows the tab.
     pub(crate) fn narrows(&self) -> bool {
-        self.filters_text()
-            || (self.view.tab == TriageTab::Pending
-                && self.view.pending_filter != PendingFilter::All)
+        self.filters_text() || self.entry().is_some()
     }
 
     /// Whether the list shows every row of its tab: nothing narrows it and no
