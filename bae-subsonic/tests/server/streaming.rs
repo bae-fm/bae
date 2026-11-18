@@ -726,12 +726,7 @@ async fn a_stream_request_holds_its_places_until_its_response_ends() {
 
         let response = request.await;
         assert_eq!(response.status, StatusCode::OK, "{format}");
-        tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            while watch.holding() != 0 || watch.leased() != 0 {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("every place is back once the response has ended");
+        // Every place is back once the response has ended.
+        watch.empty().await;
     }
 }

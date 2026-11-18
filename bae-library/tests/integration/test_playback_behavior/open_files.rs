@@ -103,12 +103,9 @@ async fn playback_opens_at_most_four_files_across_advances() {
         watch.most_holding()
     );
     // Every fill ends and gives its file and place back once playback stops.
-    tokio::time::timeout(HANG_GUARD, async {
-        while watch.holding() != 0 {
-            tokio::task::yield_now().await;
-        }
-    })
-    .await
-    .expect("every place is back after playback stops");
+    tokio::time::timeout(HANG_GUARD, handle.fills_ended())
+        .await
+        .expect("every fill ends after playback stops");
+    assert_eq!(watch.holding(), 0, "every place is back after playback stops");
     library.manager().close().await.expect("close the test library");
 }
