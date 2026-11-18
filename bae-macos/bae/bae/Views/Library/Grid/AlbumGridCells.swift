@@ -8,8 +8,9 @@ enum AlbumGridCell: Identifiable, Equatable {
     case sectionFiller(sectionId: String, index: Int)
     /// The album at `position` in the list.
     case album(position: Int, albumId: String, sectionId: String? = nil)
-    /// A position whose row the list's window does not hold.
-    case placeholder(position: Int)
+    /// A position whose row the list's window does not hold, in the group of
+    /// the artist `sectionId` when the grid groups by artist.
+    case placeholder(position: Int, sectionId: String? = nil)
     /// The open album's detail, first in the row under that album's row and
     /// drawn across the whole row.
     case detail(albumId: String)
@@ -39,7 +40,7 @@ enum AlbumGridCell: Identifiable, Equatable {
             .sectionFiller(sectionId, index)
         case .album(_, let albumId, let sectionId):
             .album(albumId, sectionId: sectionId)
-        case .placeholder(let position): .placeholder(position)
+        case .placeholder(let position, _): .placeholder(position)
         case .detail: .detail
         case .filler(_, let index): .filler(index)
         }
@@ -236,6 +237,6 @@ struct AlbumGridCells: RandomAccessCollection {
             .map {
                 .album(position: position, albumId: $0, sectionId: sectionId)
             }
-            ?? .placeholder(position: position)
+            ?? .placeholder(position: position, sectionId: sectionId)
     }
 }

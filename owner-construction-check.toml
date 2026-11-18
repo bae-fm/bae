@@ -311,6 +311,7 @@ task_types = [
     "AddDeviceStatusSubscription",
     "AdminChangesSubscription",
     "AlbumDetailSubscription",
+    "AlbumPlaceSubscription",
     "AlbumSectionsSubscription",
     "AlbumSelectionSubscription",
     "ArtistDetailSubscription",

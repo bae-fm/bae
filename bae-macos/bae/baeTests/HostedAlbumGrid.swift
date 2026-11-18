@@ -6,7 +6,8 @@ import Testing
 @testable import bae
 
 /// An album grid over `albums`, hosted in a 1180 by 720 window with the stores
-/// it reads, its core index lookup answered from the albums' order.
+/// it reads, where core places an album's card answered from the albums'
+/// order.
 @MainActor
 struct HostedAlbumGrid {
     let window: NSWindow
@@ -48,9 +49,14 @@ struct HostedAlbumGrid {
             list.preloadRows(rows: albums, extra: .none)
         }
         uiStore.selectAlbum(openAlbumId)
-        let library = Library(getAlbumIndex: { _, albumId, _ in
-            albums.firstIndex { $0.id == albumId }.map(UInt64.init)
-        })
+        let place: @Sendable (String) -> BridgeAlbumPlace? = { albumId in
+            albums.firstIndex { $0.id == albumId }
+                .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
+        }
+        let library = Library(
+            albumPlace: { _, albumId, _, _ in place(albumId) },
+            albumPlaceReads: { _, albumId, _, _ in .fixed(place(albumId)) }
+        )
         let view = AnyView(
             grid(list)
                 .environment(uiStore)

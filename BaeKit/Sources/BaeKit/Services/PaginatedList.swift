@@ -460,14 +460,6 @@ extension PaginatedList {
         delivered?.row(at: position)
     }
 
-    /// The artist heading whose albums include `position`.
-    public func section(at position: Int) -> BridgeLibraryBrowseSection? {
-        sections.first {
-            position >= Int($0.firstPosition)
-                && position < Int($0.firstPosition + $0.albumCount)
-        }
-    }
-
     /// Every held position with the id held there, in position order.
     public var loadedEntries: [(position: Int, id: Row.ID)] {
         guard let delivered else { return [] }

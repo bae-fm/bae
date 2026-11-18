@@ -423,6 +423,17 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// Where an album's card is in the album grid, or none once the grid
+    /// shows no such card.
+    AlbumPlaceSubscription:
+        LiveValues<Option<bae_views::album::AlbumPlace>> => Option<crate::types::BridgeAlbumPlace>,
+    converted by |place: Option<bae_views::album::AlbumPlace>| {
+        place.map(crate::types::BridgeAlbumPlace::from_core)
+    },
+    built by album_place
+}
+
+pulled_read! {
     /// Every playlist this device holds.
     PlaylistsSubscription:
         LiveValues<bae_views::playlists::PlaylistListing> => crate::types::BridgePlaylistListing,

@@ -5,6 +5,7 @@ import kotlinx.coroutines.awaitCancellation
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
 import uniffi.bae_bridge.AlbumDetailSubscription
+import uniffi.bae_bridge.AlbumPlaceSubscription
 import uniffi.bae_bridge.AlbumSectionsSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
 import uniffi.bae_bridge.AppHandleInterface
@@ -14,6 +15,7 @@ import uniffi.bae_bridge.BridgeAddDeviceRequest
 import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumPlace
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeBrowsingFor
@@ -444,11 +446,19 @@ internal open class FakeAppHandle(
 
     override suspend fun addDevice(): BridgeAddDevice = unfaked("addDevice")
 
-    override suspend fun getAlbumIndex(
+    override suspend fun albumPlace(
         sortCriteria: List<BridgeSortCriterion>,
         albumId: String,
         groupByArtist: Boolean,
-    ): ULong? = unfaked("getAlbumIndex")
+        sectionId: String?,
+    ): BridgeAlbumPlace? = unfaked("albumPlace")
+
+    override fun subscribeAlbumPlace(
+        sortCriteria: List<BridgeSortCriterion>,
+        albumId: String,
+        groupByArtist: Boolean,
+        sectionId: String?,
+    ): AlbumPlaceSubscription = unfaked("subscribeAlbumPlace")
 
     override suspend fun albumsInBrowseOrder(
         sortCriteria: List<BridgeSortCriterion>,

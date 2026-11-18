@@ -43,28 +43,59 @@ struct AlbumGridView<ExpansionContent: View>: View {
     )
     @State
     private var viewport = AlbumGridViewport()
-    /// The card whose album's detail is open: the one the person opened or a
-    /// reveal scrolled to, else the one core places the album selected
-    /// elsewhere at. An album grouped by artist has a card in each of its
-    /// artists' groups, and the detail opens under one of them.
+    /// The card the person opened or a reveal scrolled to. An album grouped
+    /// by artist has a card in each of its artists' groups, and its detail
+    /// opens under the one opened; an album selected elsewhere opens under
+    /// its first card.
     @State
     private var openedCard: OpenedCard?
+    /// Where core places the open album's card, read live.
+    @State
+    private var openPlace = AlbumGridOpenPlace()
 
-    /// The list the grid shows now, which the positions it keeps are in.
+    /// The list the grid shows now, which the selection's anchor position is
+    /// in.
     private var listing: AlbumGridListing {
         AlbumGridListing(epoch: list.loadEpoch, rows: list.positionCount)
     }
 
-    /// The opened card, while its album is the one open.
-    private var openCard: OpenedCard? {
-        guard let openedCard,
-            openedCard.card.albumId == uiStore.selectedAlbumId
+    /// What the grid asks core to place: the open album, in the group the
+    /// person opened it under.
+    private var placeRequest: AlbumPlaceRequest? {
+        guard let albumId = uiStore.selectedAlbumId else { return nil }
+        let sectionId =
+            groupByArtist && openedCard?.albumId == albumId
+            ? openedCard?.sectionId : nil
+        return AlbumPlaceRequest(
+            albumId: albumId,
+            sectionId: sectionId,
+            sortCriteria: sortCriteria,
+            groupByArtist: groupByArtist
+        )
+    }
+
+    /// Where core places the open album's card, while that album is open.
+    private var openAnswer:
+        (request: AlbumPlaceRequest, place: BridgeAlbumPlace)?
+    {
+        guard let answer = openPlace.answer,
+            answer.request.albumId == uiStore.selectedAlbumId
         else { return nil }
-        return openedCard
+        return answer
+    }
+
+    /// The open album's card at the position core places it.
+    private var openCard: AlbumGridOpenCard? {
+        openAnswer.map {
+            AlbumGridOpenCard(
+                albumId: $0.request.albumId,
+                position: Int($0.place.position)
+            )
+        }
     }
 
     private var expandedSectionId: String? {
-        openCard?.sectionId
+        openAnswer?.place.sectionId
     }
 
     var body: some View {
@@ -212,13 +243,14 @@ struct AlbumGridView<ExpansionContent: View>: View {
             .onChange(of: listing) {
                 selection.dropAnchor()
             }
-            .task(
-                id: OpenedListing(
-                    albumId: uiStore.selectedAlbumId,
-                    listing: listing
-                )
-            ) {
-                await placeOpenedCard()
+            .task(id: placeRequest) {
+                guard let request = placeRequest else {
+                    openPlace.clear()
+                    return
+                }
+                await openPlace.follow(request, in: library) { error in
+                    uiStore.showError(error)
+                }
             }
             .onChange(of: uiStore.selectedAlbumId) { _, albumId in
                 viewport.release()
@@ -258,27 +290,20 @@ private struct GridScreen: Equatable {
     let columns: Int
 }
 
-/// One load of the grid's list at one row count. A position the grid keeps
-/// names a card in the listing it was taken in: another sort or grouping
-/// loads the list anew, and a write that adds or removes rows moves the rows
-/// after it.
+/// One load of the grid's list at one row count. The selection's anchor
+/// position names a card in the listing it was taken in: another sort or
+/// grouping loads the list anew, and a write that adds or removes rows moves
+/// the rows after it.
 private struct AlbumGridListing: Hashable {
     let epoch: LoadEpoch
     let rows: Int
 }
 
-/// The card the grid opened, at its list position in `listing`, and the
-/// artist's group it is in when the grid groups by artist.
+/// The card the grid opened: its album, and the artist's group it is in when
+/// the grid groups by artist.
 private struct OpenedCard: Equatable {
-    let card: AlbumGridOpenCard
+    let albumId: String
     let sectionId: String?
-    let listing: AlbumGridListing
-}
-
-/// The album open in a listing, which the grid places the open card for.
-private struct OpenedListing: Equatable {
-    let albumId: String?
-    let listing: AlbumGridListing
 }
 
 /// The grid's columns at one available width.
@@ -373,7 +398,7 @@ extension AlbumGridView {
             sections: groupByArtist ? list.sections : [],
             columnCount: columnCount,
             idAt: { delivered?.row(at: $0)?.id },
-            open: openCard?.card
+            open: openCard
         )
     }
 
@@ -404,10 +429,10 @@ extension AlbumGridView {
                     await list.holdPage(containing: position)
                 },
                 cell.id,
-                as: .position(position),
+                as: .position(position, sectionId: sectionId),
                 columnCount: metrics.columnCount
             )
-        case .placeholder(let position):
+        case .placeholder(let position, let sectionId):
             placed(
                 AlbumCardPlaceholder(size: metrics.cardWidth)
                     .frame(width: metrics.cardWidth)
@@ -417,7 +442,7 @@ extension AlbumGridView {
                         await list.holdPage(containing: position)
                     },
                 cell.id,
-                as: .position(position),
+                as: .position(position, sectionId: sectionId),
                 columnCount: metrics.columnCount
             )
         case .detail(let albumId):
@@ -525,14 +550,15 @@ extension AlbumGridView {
             showRevealedRow(row)
             return
         }
-        let getAlbumIndex = library.getAlbumIndex
+        let albumPlace = library.albumPlace
         let sort = sortCriteria
-        let resolved: UInt64?
+        let resolved: BridgeAlbumPlace?
         do {
-            resolved = try await getAlbumIndex(
+            resolved = try await albumPlace(
                 sort,
                 reveal.albumId,
-                groupByArtist
+                groupByArtist,
+                nil
             )
         }
         catch {
@@ -548,13 +574,14 @@ extension AlbumGridView {
         if Task.isCancelled {
             return
         }
-        guard let index = resolved.map(Int.init) else {
+        guard let place = resolved else {
             albumGridLogger.warning(
                 "No index for album \(reveal.albumId) under the current sort; skipping reveal"
             )
             uiStore.consumeAlbumReveal(seq: reveal.seq)
             return
         }
+        let index = Int(place.position)
 
         await list.withPage(containing: index) {
             // The reveal may have ended while its page loaded: its row shown,
@@ -574,20 +601,24 @@ extension AlbumGridView {
             albumGridLogger.debug(
                 "reveal \(reveal.seq): scrolling to the album at \(index)"
             )
-            scrollToAlbum(of: reveal, at: index)
+            scrollToAlbum(of: reveal, at: index, in: place.sectionId)
             await Task.untilCancelled()
         }
     }
 
     /// Scrolls the card of the album `reveal` names, at list position
-    /// `index`, to the top. The reveal arrives at the album once the card is
+    /// `index` in the group of the artist `sectionId`, to the top. The reveal arrives at the album once the card is
     /// laid out on top.
     ///
     /// The scroll does not animate. An animated scroll to the card left the
     /// scroll view's position on the card after the scroll stopped, so the
     /// scroll to the track's row that followed was undone: the grid went back
     /// to the card with the row below the visible area.
-    private func scrollToAlbum(of reveal: PendingAlbumReveal, at index: Int) {
+    private func scrollToAlbum(
+        of reveal: PendingAlbumReveal,
+        at index: Int,
+        in sectionId: String?
+    ) {
         // The list moved under the reveal between core placing the album and
         // its page answering: there is no card to scroll to.
         guard list.idAt(index) == reveal.albumId else {
@@ -598,12 +629,7 @@ extension AlbumGridView {
             return
         }
         viewport.release()
-        let sectionId = groupByArtist ? list.section(at: index)?.id : nil
-        openedCard = OpenedCard(
-            card: AlbumGridOpenCard(albumId: reveal.albumId, position: index),
-            sectionId: sectionId,
-            listing: listing
-        )
+        openedCard = OpenedCard(albumId: reveal.albumId, sectionId: sectionId)
         let card = AlbumGridCell.Identity.album(
             reveal.albumId,
             sectionId: sectionId
@@ -615,7 +641,7 @@ extension AlbumGridView {
         // The scroll lands where the lazy grid estimated the card, and the
         // grid moves the card as it draws the rows around it; the hold puts
         // the card back on top each time.
-        viewport.hold(.position(index))
+        viewport.hold(.position(index, sectionId: sectionId))
         scrollPosition.scrollTo(id: card, anchor: .top)
     }
 
@@ -670,50 +696,6 @@ extension AlbumGridView {
         scrollPosition.scrollTo(y: offset)
     }
 
-    /// Places the open album's card: the card the grid opened in this listing
-    /// stays, and an album selected elsewhere, or opened in a listing the
-    /// list has since left, opens at the place core reads for it.
-    private func placeOpenedCard() async {
-        guard let albumId = uiStore.selectedAlbumId else {
-            openedCard = nil
-            return
-        }
-        let listing = listing
-        if let openedCard, openedCard.card.albumId == albumId,
-            openedCard.listing == listing
-        {
-            return
-        }
-        let getAlbumIndex = library.getAlbumIndex
-        let index: UInt64?
-        do {
-            index = try await getAlbumIndex(
-                sortCriteria,
-                albumId,
-                groupByArtist
-            )
-        }
-        catch {
-            if !Task.isCancelled {
-                uiStore.showError(error)
-            }
-            return
-        }
-        guard !Task.isCancelled else { return }
-        openedCard = index.map(Int.init)
-            .map { position in
-                OpenedCard(
-                    card: AlbumGridOpenCard(
-                        albumId: albumId,
-                        position: position
-                    ),
-                    sectionId: groupByArtist
-                        ? list.section(at: position)?.id : nil,
-                    listing: listing
-                )
-            }
-    }
-
     /// Gives up the pending reveal: the person moved on before it was shown.
     private func endReveal() {
         if let reveal = uiStore.pendingAlbumReveal {
@@ -734,13 +716,10 @@ extension AlbumGridView {
     private func scrollToTop(_ slot: AlbumGridSlot) {
         let id: AlbumGridCell.Identity
         switch slot {
-        case .position(let position) where position < list.positionCount:
+        case .position(let position, let sectionId)
+        where position < list.positionCount:
             if let albumId = list.idAt(position) {
-                id = .album(
-                    albumId,
-                    sectionId: groupByArtist
-                        ? list.section(at: position)?.id : nil
-                )
+                id = .album(albumId, sectionId: sectionId)
             }
             else {
                 id = .placeholder(position)
@@ -788,14 +767,7 @@ extension AlbumGridView {
                 let isOpen =
                     uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId)
-                openedCard = OpenedCard(
-                    card: AlbumGridOpenCard(
-                        albumId: albumId,
-                        position: position
-                    ),
-                    sectionId: sectionId,
-                    listing: listing
-                )
+                openedCard = OpenedCard(albumId: albumId, sectionId: sectionId)
                 uiStore.selectAlbum(
                     isOpen ? nil : albumId
                 )

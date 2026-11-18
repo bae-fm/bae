@@ -32,6 +32,14 @@ extension ShotScene {
         )
     }
 
+    /// Where core places `albumId`'s card in the boards' flat grid.
+    nonisolated private static func boardAlbumPlace(
+        _ albumId: String
+    ) -> BridgeAlbumPlace? {
+        boardAlbums.firstIndex { $0.id == albumId }
+            .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
+    }
+
     /// A browse session over `boardAlbums`, with the first album open when
     /// `openAlbum` is set, as the album boards draw it.
     @MainActor
@@ -47,9 +55,9 @@ extension ShotScene {
             albumList: { _, _ in
                 .fixed(boardAlbums, answers: UnansweredCount())
             },
-            getAlbumIndex: { _, albumId, _ in
-                boardAlbums.firstIndex { $0.id == albumId }
-                    .map(UInt64.init)
+            albumPlace: { _, albumId, _, _ in boardAlbumPlace(albumId) },
+            albumPlaceReads: { _, albumId, _, _ in
+                .fixed(boardAlbumPlace(albumId))
             },
             albumDetail: {
                 .fixed(answers: UnansweredCount()) { request in

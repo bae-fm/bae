@@ -140,6 +140,29 @@ impl AppHandle {
         )
     }
 
+    /// Where `album_id`'s card is in the album grid under `sort_criteria`,
+    /// read live: its card in the group of the artist `section_id` when that
+    /// group holds one, else its first card, again after each write that
+    /// moves it.
+    pub fn subscribe_album_place(
+        &self,
+        sort_criteria: Vec<BridgeSortCriterion>,
+        album_id: String,
+        group_by_artist: bool,
+        section_id: Option<String>,
+    ) -> Arc<crate::AlbumPlaceSubscription> {
+        let sort: Vec<_> = sort_criteria.into_iter().map(BridgeSortCriterion::into_core).collect();
+        crate::screens::album_place(
+            self.services.subscribe_album_place(
+                &sort,
+                &album_id,
+                group_by_artist,
+                section_id.as_deref(),
+            ),
+            self.runtime.clone(),
+        )
+    }
+
     /// A read of the album grid's selection that reads no albums until
     /// `set_albums`.
     pub fn subscribe_album_selection(&self) -> Arc<crate::AlbumSelectionSubscription> {

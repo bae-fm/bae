@@ -292,6 +292,25 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_album_sections(sort))
     }
 
+    /// Where the album `album_id`'s card is in the grid under `sort`: its
+    /// card in the group of the artist `section` when that group holds one,
+    /// else its first card. The first value comes at once, then one after
+    /// each write that moves the card.
+    pub fn subscribe_album_place(
+        &self,
+        sort: &[bae_views::AlbumSortCriterion],
+        album_id: &str,
+        group_by_artist: bool,
+        section: Option<&str>,
+    ) -> bae_store::live_query::LiveValues<Option<bae_views::album::AlbumPlace>> {
+        self.inner.manager.values_until_closed(self.inner.views.subscribe_album_place(
+            sort,
+            album_id,
+            group_by_artist,
+            section,
+        ))
+    }
+
     /// Which of the albums the grid has selected are gone from the library,
     /// as one live query whose ids move in place as the selection changes; it
     /// starts with none.
@@ -469,7 +488,7 @@ impl AppServices {
     delegate_async!(manager, add_artist_credit_name => add_artist_credit_name(artist_id: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, rename_artist_credit_name => rename_artist_credit_name(artist_id: &str, key: &str, name: &str) -> Result<(), bae_library::LibraryError>);
     delegate_lib!(records, remove_artist_credit_name => remove_artist_credit_name(artist_id: &str, key: &str) -> ());
-    delegate_view!(get_album_index => get_album_index(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Option<u64>);
+    delegate_view!(album_place => album_place(sort: &[bae_views::AlbumSortCriterion], album_id: &str, group_by_artist: bool, section: Option<&str>) -> Option<bae_views::album::AlbumPlace>);
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
     delegate_lib!(records, track_ids_in_release_order => track_ids_in_release_order(track_ids: Vec<String>) -> Vec<String>);

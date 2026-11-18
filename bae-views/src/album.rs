@@ -1,6 +1,7 @@
 //! The album views: the album grid, flat or grouped by artist, its
 //! selection, an album's detail, an album's tracks as a list, library
-//! search, and the albums a search lists as a list (`search_albums`).
+//! search, the albums a search lists as a list (`search_albums`), and where
+//! an album's card is in the grid (`place`).
 
 use super::*;
 use listing::{
@@ -12,6 +13,8 @@ pub(crate) use listing::{
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
+mod place;
+pub use place::AlbumPlace;
 mod search_albums;
 use search_albums::first_search_albums_on;
 
@@ -330,36 +333,6 @@ impl LibraryViews {
             .process(|rows| rows.into_iter().map(AlbumSummaryRow::process).collect())
             .await?;
         Ok(rows.into_iter().map(crate::album_detail::AlbumSummary::from_raw).collect())
-    }
-
-    /// The album's first appearance in the browse order, or `None` if absent.
-    /// Uses the same relation and order as the live page query.
-    pub async fn get_album_index(
-        &self,
-        sort: &[AlbumSortCriterion],
-        album_id: &str,
-        group_by_artist: bool,
-    ) -> Result<Option<u64>, DbError> {
-        let (relation, order) = album_browse_order(sort, group_by_artist);
-        let order_by = order.clause();
-        let album_id = album_id.to_string();
-
-        let query = format!(
-            "SELECT idx FROM ( \
-                SELECT a.id AS id, \
-                    ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS idx \
-                {relation} \
-            ) WHERE id = ? ORDER BY idx LIMIT 1"
-        );
-
-        self.store
-            .read(move |sql| {
-                sql.query_row(&query, params![album_id], |row| row.get::<_, i64>("idx"))
-                    .optional()
-                    .map(|idx| idx.map(|i| i as u64))
-                    .map_err(DbError::from)
-            })
-            .await
     }
 
     pub async fn get_album_count(&self) -> Result<u64, DbError> {

@@ -418,10 +418,13 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             for (position, album) in albums.iter().enumerate() {
                 assert_eq!(
                     LibraryViews::new(db.clone())
-                        .get_album_index(&sort, &album.id, true)
+                        .album_place(&sort, &album.id, true, Some(&section.id))
                         .await
                         .unwrap(),
-                    Some(offset + position as u64)
+                    Some(crate::album::AlbumPlace {
+                        position: offset + position as u64,
+                        section_id: Some(section.id.clone()),
+                    })
                 );
             }
             offset += section.album_count;
@@ -535,10 +538,22 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         }
     }
     assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
+    let views = LibraryViews::new(db.clone());
+    let first = views.album_place(&sort, album_id, true, None).await.unwrap();
     assert_eq!(
-        LibraryViews::new(db.clone()).get_album_index(&sort, album_id, true).await.unwrap(),
+        first.map(|place| place.position),
         rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
     );
+    // Each of its artists' groups holds a card of the album, at its place in
+    // that group.
+    for section in sections.iter().filter(|section| [ARTIST_A, ARTIST_B].contains(&&*section.id)) {
+        let place = views.album_place(&sort, album_id, true, Some(&section.id)).await.unwrap();
+        let place = place.expect("the album has a card in each of its artists' groups");
+        assert_eq!(place.section_id.as_deref(), Some(section.id.as_str()));
+        let start = section.first_position;
+        assert!((start..start + section.album_count).contains(&place.position));
+        assert_eq!(rows[place.position as usize].album.id, album_id);
+    }
     let flat = window_under(&db, &sort, false, top(20)).await;
     let counts = counts_of(&db, false).await;
     assert_eq!((counts.albums, counts.rows), (5, 5));
@@ -546,6 +561,10 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     records.credit_album_for_test(album_id, &[ARTIST_A]).await.unwrap();
     let counts = counts_of(&db, true).await;
     assert_eq!((counts.albums, counts.rows), (5, 5));
+    // B's group no longer holds a card of the album, so its place is its
+    // first card, in A's group.
+    let place = views.album_place(&sort, album_id, true, Some(ARTIST_B)).await.unwrap();
+    assert_eq!(place.and_then(|place| place.section_id).as_deref(), Some(ARTIST_A));
 }
 
 /// An album crediting A twice, then B, lists once under each; once A and B

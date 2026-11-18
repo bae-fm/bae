@@ -32,6 +32,21 @@ impl BridgeLibraryBrowseSection {
     }
 }
 
+/// Where an album's card is in the album grid: its position, and when the
+/// grid groups by artist, the id of the artist whose group holds it (the
+/// section's `id`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeAlbumPlace {
+    pub position: u64,
+    pub section_id: Option<String>,
+}
+
+impl BridgeAlbumPlace {
+    pub(crate) fn from_core(place: bae_views::album::AlbumPlace) -> Self {
+        Self { position: place.position, section_id: place.section_id }
+    }
+}
+
 /// Which list a view or a count is of. A list is a value, not a type of its
 /// own, because the bridge exports no generics.
 #[derive(Debug, Clone, uniffi::Enum)]

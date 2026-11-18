@@ -294,7 +294,7 @@ fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
     let values = rows.album_values();
     // Every order ends with the album id, a total order over albums. Without
     // it rows sharing a sort value order arbitrarily — and a window read by
-    // its offset, one read from a row beside it and `get_album_index` (a
+    // its offset, one read from a row beside it and `album_place` (a
     // ROW_NUMBER window) are different query shapes, so SQLite could
     // tie-break them differently and a reveal would scroll to the wrong
     // album.

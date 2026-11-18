@@ -5808,7 +5808,13 @@ Reads come two ways:
   row 0. Core holds the latest answer of the window's query and of its
   position's query, and nothing else. The app draws each row at the window's
   position plus the row's place in the window, and a placeholder at every
-  place outside the window. When rows come or go above the rows on screen, the
+  place outside the window. The album grid draws an open album's detail under
+  the row that holds its card: the card the person opened, in its artist's
+  group when the grid groups by artist, else the album's first card, which the
+  grid also uses once the artist's group no longer holds the album. Where that
+  card is, its position and its artist's group, is a live read of its own, so a
+  write that moves the card, such as a new title under a title sort, moves the
+  detail with it. When rows come or go above the rows on screen, the
   window's position moves with them, and the app keeps the top row on screen
   where it was. A list's count is its own live query delivering its row count,
   which sizes the scroll view, and how many distinct items the rows show: the

@@ -2,8 +2,9 @@ import SwiftUI
 
 /// A grid slot the scroll can keep on top.
 enum AlbumGridSlot: Hashable {
-    /// The album slot at a list position.
-    case position(Int)
+    /// The album slot at a list position, in the group of the artist
+    /// `sectionId` when the grid groups by artist.
+    case position(Int, sectionId: String? = nil)
     /// The open album's detail.
     case detail(albumId: String)
 }
