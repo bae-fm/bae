@@ -6,10 +6,11 @@
 //! The joined columns are coven's sync state and when sync last finished,
 //! what a retry would do, the recorded location, why this
 //! device's last start failed, where its storage setup stands, whether a
-//! pending record already shows the failure the state names, and how many
-//! records are pending.
+//! pending record already shows the failure the state names, how many
+//! records are pending, and the name of the file the failure's pending
+//! record is about.
 
-use super::pending::{pending_columns, pending_joins, PendingColumns};
+use super::pending::{cause_file_column, pending_columns, pending_joins, PendingColumns};
 use super::start_failure::{StartFailureColumns, START_FAILURE_COLUMNS};
 use super::storage_setup::{storage_setup_columns, StorageSetupColumns, UNDONE_SETUP_JOIN};
 use super::*;
@@ -28,6 +29,11 @@ const SHOWN_PASS: &str = "CASE sync.state \
      WHEN 'update_needed' THEN sync.detail->'$.UpdateNeeded.Pass' \
      WHEN 'failed' THEN sync.detail->'$.Failed.Pass' \
      END";
+
+/// The subject of the pending record the state names as its cause, when the
+/// state is a failure a pending record names.
+const CAUSE_SUBJECT: &str =
+    "CASE sync.state WHEN 'failed' THEN sync.detail->'$.Failed.Pending.record.subject' END";
 
 /// Whether a pending record shows the failure `state` shows: a removed
 /// device or one whose keys another device replaced shows its failure from
@@ -65,14 +71,17 @@ pub(crate) fn status_query() -> String {
     let undone = UNDONE_SETUP_JOIN;
     let pending = pending_columns();
     let joins = pending_joins();
+    let cause_file = cause_file_column();
     format!(
         "SELECT shown.detail, shown.last_synced, retry.effect, retry.cooling_until, \
              status.location, {start_failure}, {setup}, \
              shown.failure_recorded, \
              COUNT(file.position) OVER () AS attention_count, \
+             {cause_file} AS cause_file, \
              {pending} \
          FROM (SELECT state.*, {FAILURE_RECORDED} AS failure_recorded \
-             FROM (SELECT sync.*, {SHOWN_PASS} AS pass FROM coven_sync_state AS sync) AS state \
+             FROM (SELECT sync.*, {SHOWN_PASS} AS pass, {CAUSE_SUBJECT} AS cause_subject \
+                 FROM coven_sync_state AS sync) AS state \
              ) AS shown \
          JOIN coven_sync_status AS status \
          JOIN coven_retry_effect AS retry \
@@ -95,6 +104,7 @@ struct StatusColumns {
     storage_setup: StorageSetupColumns,
     failure_recorded: bool,
     attention_count: u32,
+    cause_file: Option<String>,
 }
 
 impl StatusColumns {
@@ -109,6 +119,7 @@ impl StatusColumns {
             storage_setup: StorageSetupColumns::read(row, 11)?,
             failure_recorded: row.get("failure_recorded")?,
             attention_count: bae_store::read::count_column(row, "attention_count")?,
+            cause_file: row.get("cause_file")?,
         })
     }
 }
@@ -118,7 +129,7 @@ impl StatusColumns {
 type StatusRow = (StatusColumns, PendingColumns);
 
 fn read_row(row: &Row<'_>) -> rusqlite::Result<StatusRow> {
-    Ok((StatusColumns::read(row)?, PendingColumns::read(row, 16)?))
+    Ok((StatusColumns::read(row)?, PendingColumns::read(row, 17)?))
 }
 
 /// The sync status as one read of the library sees it.
@@ -146,6 +157,7 @@ fn snapshot_of(rows: Vec<StatusRow>) -> Result<SyncStatusSnapshot, DbError> {
         storage_setup,
         failure_recorded,
         attention_count,
+        cause_file,
     } = status.ok_or_else(|| DbError::unreadable("coven_sync_state", "no row"))?;
     Ok(SyncStatusSnapshot {
         coven: coven::SyncStatus {
@@ -159,6 +171,7 @@ fn snapshot_of(rows: Vec<StatusRow>) -> Result<SyncStatusSnapshot, DbError> {
         location,
         failure_recorded,
         attention_count,
+        cause_file,
     })
 }
 

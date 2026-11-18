@@ -21,6 +21,7 @@ pub(crate) fn read(
     SyncStatusSnapshot {
         coven: coven::SyncStatus { state, last_synced: None },
         attention_count: u32::try_from(pending.len()).unwrap(),
+        cause_file: None,
         pending,
         error,
         retry_effect,

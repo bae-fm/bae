@@ -62,6 +62,7 @@ fn shown_on_location(location: coven::StorageConfig, state: coven::SyncState) ->
         location: Some(location),
         failure_recorded: false,
         attention_count: 0,
+        cause_file: None,
     }
     .shown()
 }
@@ -339,6 +340,7 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
         location: Some(location_on(coven::CloudProvider::Dropbox)),
         failure_recorded: false,
         attention_count: 1,
+        cause_file: Some("Cover.jpg".into()),
     }
 }
 
@@ -353,7 +355,7 @@ fn sync_failed_names_the_file_that_cannot_be_uploaded() {
         status.shown().cause,
         Some(SyncCauseLine::FileMissingOrChanged { file: Some("Cover.jpg".into()) })
     );
-    status.pending.clear();
+    status.cause_file = None;
     assert_eq!(status.shown().cause, Some(SyncCauseLine::FileMissingOrChanged { file: None }));
 }
 
@@ -367,7 +369,7 @@ fn sync_failed_names_the_file_the_system_refuses_bae() {
         status.shown().cause,
         Some(SyncCauseLine::DeviceDiskDenied { file: Some("Cover.jpg".into()) })
     );
-    status.pending.clear();
+    status.cause_file = None;
     assert_eq!(status.shown().cause, Some(SyncCauseLine::DeviceDiskDenied { file: None }));
 }
 

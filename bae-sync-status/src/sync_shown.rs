@@ -3,7 +3,6 @@
 //! finished. coven gives the state, and ranks it when several hold; this
 //! picks the words and the fix.
 
-use crate::pending_item::PendingSubjectName;
 use crate::sync_status::{StorageSetupState, SyncStatusSnapshot};
 use bae_diagnostics::UiError;
 use coven::{
@@ -288,14 +287,18 @@ impl SyncStatusSnapshot {
         use coven::{LastPass, StatusFailure};
         let reason = match cause {
             SyncCause::Pending(record) => {
-                return self.reason_cause(&record.reason, Some(record), record.cause.as_deref())
+                return self.reason_cause(
+                    &record.reason,
+                    self.cause_file.as_deref(),
+                    record.cause.as_deref(),
+                )
             }
             SyncCause::Pass(LastPass::Blocked { reason, error, .. }) => {
                 return self.reason_cause(reason, None, error.as_deref())
             }
             SyncCause::Pass(LastPass::Failed { failure, error }) => match failure {
                 StatusFailure::Operation(record) => {
-                    return self.reason_cause(&record.reason, Some(record), Some(error))
+                    return self.reason_cause(&record.reason, None, Some(error))
                 }
                 StatusFailure::Storage(failure) => {
                     return self.storage_cause(*failure, error);
@@ -329,20 +332,18 @@ impl SyncStatusSnapshot {
     fn reason_cause(
         &self,
         reason: &PendingReason,
-        record: Option<&coven::PendingRecord>,
+        file: Option<&str>,
         detail: Option<&str>,
     ) -> SyncCauseLine {
         use coven::FileMissingReason as M;
         match reason {
             PendingReason::FileUnavailable(M::Source(_)) | PendingReason::Original { .. } => {
-                SyncCauseLine::FileMissingOrChanged {
-                    file: record.and_then(|r| self.file_named(r)),
-                }
+                SyncCauseLine::FileMissingOrChanged { file: file.map(str::to_string) }
             }
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
             PendingReason::Failed(LocalFailure::DiskFull) => SyncCauseLine::DeviceDiskFull,
             PendingReason::Failed(LocalFailure::DiskDenied) => {
-                SyncCauseLine::DeviceDiskDenied { file: record.and_then(|r| self.file_named(r)) }
+                SyncCauseLine::DeviceDiskDenied { file: file.map(str::to_string) }
             }
             PendingReason::Failed(LocalFailure::DiskOther) => SyncCauseLine::DeviceDiskFailed,
             PendingReason::Failed(LocalFailure::KeyCustody) => SyncCauseLine::DeviceKeysUnreadable,
@@ -359,22 +360,9 @@ impl SyncStatusSnapshot {
                     detail: detail.unwrap_or_default().to_string(),
                 }
             }
-            PendingReason::Cleanup { cleanup, .. } => self.reason_cause(cleanup, record, detail),
+            PendingReason::Cleanup { cleanup, .. } => self.reason_cause(cleanup, file, detail),
             other => SyncCauseLine::Pending(other.clone()),
         }
-    }
-
-    /// The name of the file `record` is about, when a release file's row on
-    /// this device names it.
-    fn file_named(&self, record: &coven::PendingRecord) -> Option<String> {
-        self.pending.iter().find_map(|item| match &item.subject {
-            PendingSubjectName::ReleaseFile { file_name, .. }
-                if item.record_subject == record.subject =>
-            {
-                Some(file_name.clone())
-            }
-            _ => None,
-        })
     }
 }
 

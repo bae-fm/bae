@@ -121,3 +121,34 @@ fn a_record_of_replaced_member_keys_shows_the_reset_the_state_needs() {
     assert_eq!(status.attention_count, 1);
     assert!(status.failure_recorded);
 }
+
+/// A failed state that a pending record names reads that record's subject,
+/// where the status query looks for the file the record is about. No release
+/// file is about an operation's record, so the status names no file.
+#[test]
+fn a_failed_state_named_by_a_record_has_that_records_subject() {
+    let connection = connected_library();
+    let invite = coven::record_invite(
+        &connection,
+        coven::RecordedInvite {
+            id: coven::InviteId(uuid::Uuid::from_bytes([1; 16])),
+            member: coven::MemberId(uuid::Uuid::from_bytes([101; 16])),
+            stage: coven::RecordedInviteStage::Granting,
+        },
+    )
+    .unwrap();
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Operation { id: invite, kind: coven::OperationKind::Invite },
+        coven::PendingReason::Failed(coven::LocalFailure::DiskDenied),
+    );
+    coven::record_pending(&connection, &record).unwrap();
+    let status = status_of(&connection);
+    let named: Option<String> = connection
+        .query_row(&format!("SELECT {CAUSE_SUBJECT} FROM coven_sync_state AS sync"), [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert!(matches!(status.coven.state, coven::SyncState::Failed(coven::SyncCause::Pending(_))));
+    assert!(named.is_some());
+    assert_eq!(status.cause_file, None);
+}

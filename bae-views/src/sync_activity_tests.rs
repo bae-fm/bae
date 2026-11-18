@@ -32,6 +32,7 @@ fn status() -> SyncStatusSnapshot {
         location: None,
         failure_recorded: false,
         attention_count: 0,
+        cause_file: None,
     }
 }
 

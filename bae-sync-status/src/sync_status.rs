@@ -75,6 +75,9 @@ pub struct SyncStatusSnapshot {
     pub failure_recorded: bool,
     /// How many pending records `pending` lists.
     pub attention_count: u32,
+    /// The name of the release file on this device that the pending record
+    /// naming the failed state is about, when there is one.
+    pub cause_file: Option<String>,
 }
 
 /// Why this device isn't in the library, as the failure's detail says it.
@@ -204,6 +207,7 @@ impl SyncStatusSnapshot {
             location,
             failure_recorded: false,
             attention_count: 0,
+            cause_file: None,
         }
     }
 

@@ -151,10 +151,11 @@ impl SyncActivity {
     /// while it is, so the hold stays in reach.
     pub fn held(&self) -> bool {
         let uploads_held = self.uploads.as_ref().is_some_and(|uploads| uploads.wait.is_some());
-        let downloads_held = [&self.pins, &self.moving_to_this_device]
-            .into_iter()
-            .flatten()
-            .any(|line| line.wait.is_some());
+        let download_held = |line: &Option<DownloadQueueActivity>| {
+            line.as_ref().is_some_and(|line| line.wait.is_some())
+        };
+        let downloads_held =
+            download_held(&self.pins) || download_held(&self.moving_to_this_device);
         !self.moving && (uploads_held || downloads_held)
     }
 }

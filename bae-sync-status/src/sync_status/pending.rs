@@ -67,6 +67,17 @@ pub(super) fn pending_columns() -> String {
     format!("file.record, file.cause, {ORIGINAL_COLUMNS}, {FILE_ROW_COLUMNS}")
 }
 
+/// The status query's column for the name of the release file that the
+/// pending record named by `cause_subject` is about: the original of a
+/// move's record, or the file of any other file record. It is `NULL` when
+/// no pending record is the cause or no release file here is its file.
+pub(super) fn cause_file_column() -> String {
+    "MAX(CASE WHEN CAST(file.record AS TEXT)->'$.subject' = shown.cause_subject \
+         THEN CASE file.reason_kind WHEN 'original' THEN original_file.original_filename \
+             ELSE named_file.original_filename END END) OVER ()"
+        .to_string()
+}
+
 /// The joins [`pending_columns`] reads, after `coven_pending AS file`.
 pub(super) fn pending_joins() -> String {
     format!("{FILE_ROW_JOINS} {ORIGINAL_JOINS}")
