@@ -45,7 +45,7 @@ class OnboardingSavedRestoreTest {
             OnboardingFlow(
                 scope,
                 RuntimeEnvironment.getApplication(),
-                OnboardingCore(host, NoErrorDisplays::display, ::FakeBootstrapCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
+                OnboardingCore(host, NoErrorDisplays::display, ::FakeBridgeCancellation, ::unfakedOpenProgress, ::fakeSetupStatus),
                 oauthProvidersError,
                 null,
             ) {}
@@ -138,7 +138,7 @@ class OnboardingSavedRestoreTest {
                 OnboardingCore(
                     SavedCodesHost(listOf(dropboxCode)),
                     NoErrorDisplays::display,
-                    ::FakeBootstrapCancellation,
+                    ::FakeBridgeCancellation,
                     ::unfakedOpenProgress,
                     ::fakeSetupStatus,
                 ),

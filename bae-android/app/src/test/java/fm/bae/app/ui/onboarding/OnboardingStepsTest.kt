@@ -41,7 +41,7 @@ class OnboardingStepsTest {
                         OnboardingCore(
                             NoJoinsHost(),
                             NoErrorDisplays::display,
-                            ::FakeBootstrapCancellation,
+                            ::FakeBridgeCancellation,
                             ::unfakedOpenProgress,
                             ::fakeSetupStatus,
                         ),

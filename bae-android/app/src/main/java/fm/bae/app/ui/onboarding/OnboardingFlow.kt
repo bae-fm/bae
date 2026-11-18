@@ -16,10 +16,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStep
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -284,7 +284,7 @@ internal fun codeReadStep(
 internal class OnboardingCore(
     val host: BridgeHostInterface,
     val errorDisplay: (BridgeException) -> DisplayError?,
-    val newCancellation: () -> BootstrapCancellation,
+    val newCancellation: () -> BridgeCancellation,
     val newOpenProgress: () -> LibraryOpenProgress,
     val newSetupStatus: () -> LibrarySetupStatus,
     val joins: JoinCore = JoinCore(),

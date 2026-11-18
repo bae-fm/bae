@@ -1,21 +1,7 @@
 use super::*;
 use crate::types::*;
+use crate::BridgeCancellation;
 
-#[derive(uniffi::Object)]
-pub struct BootstrapCancellation {
-    cancel: tokio::sync::watch::Sender<bool>,
-}
-#[uniffi::export]
-impl BootstrapCancellation {
-    #[uniffi::constructor]
-    pub fn new() -> Arc<Self> {
-        let (cancel, _) = tokio::sync::watch::channel(false);
-        Arc::new(Self { cancel })
-    }
-    pub fn cancel(&self) {
-        self.cancel.send_replace(true);
-    }
-}
 /// The app's hold on a running join: cancel it before its request is sent,
 /// or ask it to check for approval often while its waiting screen shows.
 #[derive(uniffi::Object)]
@@ -61,13 +47,6 @@ impl BridgeHost {
     }
 }
 
-struct CancelBootstrapOnDrop(Arc<BootstrapCancellation>);
-impl Drop for CancelBootstrapOnDrop {
-    fn drop(&mut self) {
-        self.0.cancel();
-    }
-}
-
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl BridgeHost {
     pub async fn saved_restore_codes(
@@ -107,10 +86,9 @@ impl BridgeHost {
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
-        cancellation: Arc<BootstrapCancellation>,
+        cancellation: Arc<BridgeCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let (cancel, _cancel_on_drop) = cancellation.watched();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
@@ -148,12 +126,11 @@ impl BridgeHost {
         device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
         opening: Arc<crate::BridgeLibraryOpening>,
-        cancellation: Arc<BootstrapCancellation>,
+        cancellation: Arc<BridgeCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
         let report = opening.report();
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let (cancel, _cancel_on_drop) = cancellation.watched();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
@@ -195,12 +172,11 @@ impl BridgeHost {
         library_id: String,
         by: BridgeReplacedBy,
         setup: Arc<crate::BridgeLibrarySetup>,
-        cancellation: Arc<BootstrapCancellation>,
+        cancellation: Arc<BridgeCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
         let store = crate::from_app::store(&library_id)?;
         let cancellable = bae_library::replacement_cancellable(by.into_core());
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let (cancel, _cancel_on_drop) = cancellation.watched();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
@@ -231,10 +207,9 @@ impl BridgeHost {
         credentials: Option<BridgeS3Credentials>,
         device_name: String,
         setup: Arc<crate::BridgeLibrarySetup>,
-        cancellation: Arc<BootstrapCancellation>,
+        cancellation: Arc<BridgeCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let (cancel, _cancel_on_drop) = cancellation.watched();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()
@@ -462,10 +437,9 @@ impl BridgeHost {
         self: Arc<Self>,
         restore: Arc<BridgeUnfinishedRestore>,
         setup: Arc<crate::BridgeLibrarySetup>,
-        cancellation: Arc<BootstrapCancellation>,
+        cancellation: Arc<BridgeCancellation>,
     ) -> Result<BridgeBootstrapResult, BridgeError> {
-        let cancel = cancellation.cancel.subscribe();
-        let _cancel_on_drop = CancelBootstrapOnDrop(cancellation);
+        let (cancel, _cancel_on_drop) = cancellation.watched();
         let steps = crate::screens::SetupFeed::new(Some(setup.clone())).steps();
         self.operations
             .clone()

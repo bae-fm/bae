@@ -606,6 +606,10 @@ OpenCalls = "LibrarySessions"
 # The platform hands its artwork analyzer in once at launch; the adapter is
 # built where it arrives.
 "bae-bridge/src/handle/desktop.rs" = ["AppHandle::register_artwork_analyzer"]
+# The app makes a cancel for each call it may stop while the call runs, and
+# the call takes the cancel's signal with the guard that sends it when the
+# call's future drops.
+"bae-bridge/src/cancellation.rs" = ["BridgeCancellation::new", "BridgeCancellation::watched"]
 "bae-bridge/src/host.rs" = [
     "BridgeHost::open_prepared",
     "BridgeHost::create_library",
@@ -631,7 +635,6 @@ OpenCalls = "LibrarySessions"
     "BridgeHost::resume_replacement",
     "BridgeHost::resume_restore",
     "BridgeDeviceReset::confirm",
-    "BootstrapCancellation::new",
     "BridgeJoinControl::new",
 ]
 # An owner's constructor builds the owner and the parts it holds that nothing

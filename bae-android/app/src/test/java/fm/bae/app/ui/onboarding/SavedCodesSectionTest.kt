@@ -46,7 +46,7 @@ class SavedCodesSectionTest {
                         OnboardingCore(
                             host,
                             NoErrorDisplays::display,
-                            ::FakeBootstrapCancellation,
+                            ::FakeBridgeCancellation,
                             ::unfakedOpenProgress,
                             ::fakeSetupStatus,
                         ),

@@ -32,7 +32,7 @@ extension BridgeHost {
                 libraryId: libraryId,
                 by: .reset,
                 setup: setup,
-                cancellation: BootstrapCancellation()
+                cancellation: BridgeCancellation()
             )
         )
     }

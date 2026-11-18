@@ -159,7 +159,7 @@ class WelcomeLibrariesTest {
                         OnboardingCore(
                             NoJoinsHost(),
                             NoErrorDisplays::display,
-                            ::FakeBootstrapCancellation,
+                            ::FakeBridgeCancellation,
                             ::unfakedOpenProgress,
                             ::fakeSetupStatus,
                         ),

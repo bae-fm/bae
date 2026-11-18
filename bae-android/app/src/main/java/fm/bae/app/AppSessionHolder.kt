@@ -31,10 +31,10 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeCopyReset
@@ -696,7 +696,7 @@ object AppSessionHolder {
             resetShowing(context, libraryId, onScreen, failed) { setup ->
                 // A reset under way goes on whatever is cancelled, so nothing
                 // cancels this.
-                host.resumeReplacement(libraryId, BridgeReplacedBy.RESET, setup, BootstrapCancellation())
+                host.resumeReplacement(libraryId, BridgeReplacedBy.RESET, setup, BridgeCancellation())
             } ?: return
         openBootstrapped(context, result, notice = null, onScreen)
     }

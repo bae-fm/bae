@@ -2,8 +2,8 @@ package fm.bae.app.ui.onboarding
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeDropboxAccess
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeErrorCategory
@@ -100,7 +100,7 @@ internal class SavedCodesHost(
         credentials: BridgeS3Credentials?,
         deviceName: String,
         setup: BridgeLibrarySetup,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult {
         restored += saved.info().libraryId to credentials
         if (savedCodeGone) return BridgeBootstrapResult.SavedCodeRemoved

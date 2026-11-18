@@ -58,7 +58,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         credentials _: BridgeS3Credentials?,
         deviceName _: String,
         setup _: BridgeLibrarySetup,
-        cancellation _: BootstrapCancellation
+        cancellation _: BridgeCancellation
     ) async throws -> BridgeBootstrapResult {
         record.yield(code)
         if let restoreAnswer { return restoreAnswer }
@@ -105,7 +105,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
         libraryId: String,
         by: BridgeReplacedBy,
         setup _: BridgeLibrarySetup,
-        cancellation _: BootstrapCancellation
+        cancellation _: BridgeCancellation
     ) async throws -> BridgeBootstrapResult {
         recordFinish.yield(FinishedReplacement(libraryId: libraryId, by: by))
         throw CancellationError()
@@ -114,7 +114,7 @@ private final class RestoreRecordingHost: BridgeHost, @unchecked Sendable {
     override func resumeRestore(
         restore: BridgeUnfinishedRestore,
         setup _: BridgeLibrarySetup,
-        cancellation _: BootstrapCancellation
+        cancellation _: BridgeCancellation
     ) async throws -> BridgeBootstrapResult {
         recordResume.yield(ObjectIdentifier(restore))
         throw CancellationError()

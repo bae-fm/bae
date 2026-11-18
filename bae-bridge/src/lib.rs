@@ -7,6 +7,7 @@ mod app_dir;
 #[cfg(any(test, not(desktop)))]
 mod audio_focus;
 mod bridge_utils;
+mod cancellation;
 #[cfg(all(feature = "dev-reset", unix))]
 mod dev_reset;
 mod from_app;
@@ -28,6 +29,7 @@ mod types;
 pub use app_dir::*;
 #[cfg(any(test, not(desktop)))]
 pub use audio_focus::*;
+pub use cancellation::BridgeCancellation;
 #[cfg(all(feature = "dev-reset", unix))]
 pub use dev_reset::*;
 pub use handle::*;

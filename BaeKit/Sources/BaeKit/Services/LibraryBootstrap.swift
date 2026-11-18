@@ -187,10 +187,10 @@ public final class LibraryBootstrap {
     }
 
     private func runRestore(
-        _ work: (BridgeLibrarySetup, BootstrapCancellation) async throws ->
+        _ work: (BridgeLibrarySetup, BridgeCancellation) async throws ->
             BridgeBootstrapResult
     ) async throws -> BridgeBootstrapResult {
-        let token = BootstrapCancellation()
+        let token = BridgeCancellation()
         return try await run(cancel: token.cancel) { setup in
             // A published result owns a live store even if cancellation raced
             // it. Always deliver that result so its owner can finish opening

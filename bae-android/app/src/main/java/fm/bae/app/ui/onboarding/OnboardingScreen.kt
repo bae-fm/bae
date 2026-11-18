@@ -42,9 +42,9 @@ import fm.bae.app.ui.components.Logo
 import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeCancellation
 
 internal val actionWidth = 220.dp
 
@@ -97,7 +97,7 @@ internal fun OnboardingScreen(
                 OnboardingCore(
                     app.host,
                     { context.displayError(it) },
-                    ::BootstrapCancellation,
+                    ::BridgeCancellation,
                     { LibraryOpenProgress(app.host, scope, app.bugs) },
                     { LibrarySetupStatus.of(app.host, scope, app.bugs) },
                 ),

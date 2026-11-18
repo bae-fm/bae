@@ -20,10 +20,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapState
 import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeInfo
 import uniffi.bae_bridge.BridgeCodeMetadata
@@ -126,7 +126,7 @@ class OnboardingFlowTest {
         override suspend fun resumeRestore(
             restore: BridgeUnfinishedRestore,
             setup: BridgeLibrarySetup,
-            cancellation: BootstrapCancellation,
+            cancellation: BridgeCancellation,
         ): BridgeBootstrapResult {
             resumed += restore
             awaitCancellation()
@@ -136,7 +136,7 @@ class OnboardingFlowTest {
             libraryId: String,
             by: BridgeReplacedBy,
             setup: BridgeLibrarySetup,
-            cancellation: BootstrapCancellation,
+            cancellation: BridgeCancellation,
         ): BridgeBootstrapResult {
             finished += libraryId to by
             finishFailure?.let { throw it }
@@ -148,7 +148,7 @@ class OnboardingFlowTest {
             credentials: BridgeS3Credentials?,
             deviceName: String,
             setup: BridgeLibrarySetup,
-            cancellation: BootstrapCancellation,
+            cancellation: BridgeCancellation,
         ): BridgeBootstrapResult {
             restoredCodes += code
             restoreAnswer?.let { return it }
@@ -198,7 +198,7 @@ class OnboardingFlowTest {
                 OnboardingCore(
                     host,
                     NoErrorDisplays::display,
-                    ::FakeBootstrapCancellation,
+                    ::FakeBridgeCancellation,
                     ::unfakedOpenProgress,
                     {
                         LibrarySetupStatus.written(

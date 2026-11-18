@@ -1,8 +1,8 @@
 package fm.bae.app.ui.onboarding
 
 import fm.bae.app.playback.unfaked
-import uniffi.bae_bridge.BootstrapCancellation
 import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeJoinControl
 import uniffi.bae_bridge.BridgeLibraryClosing
@@ -109,7 +109,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         credentials: BridgeS3Credentials?,
         deviceName: String,
         setup: BridgeLibrarySetup,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("restoreFromCode")
 
     override suspend fun restoreFromSavedCode(
@@ -117,7 +117,7 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         credentials: BridgeS3Credentials?,
         deviceName: String,
         setup: BridgeLibrarySetup,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("restoreFromSavedCode")
 
     override suspend fun restoreReplacingDevice(
@@ -127,20 +127,20 @@ internal open class NoJoinsHost : EditionFakeBridgeHost() {
         deviceName: String,
         setup: BridgeLibrarySetup,
         opening: BridgeLibraryOpening,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("restoreReplacingDevice")
 
     override suspend fun resumeReplacement(
         libraryId: String,
         by: BridgeReplacedBy,
         setup: BridgeLibrarySetup,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("resumeReplacement")
 
     override suspend fun resumeRestore(
         restore: BridgeUnfinishedRestore,
         setup: BridgeLibrarySetup,
-        cancellation: BootstrapCancellation,
+        cancellation: BridgeCancellation,
     ): BridgeBootstrapResult = unfaked("resumeRestore")
 
     override suspend fun resumeJoin(
