@@ -365,11 +365,11 @@ async fn extract(
                 return;
             }
             // The artwork is resolved only when there is an analyzer to read
-            // it. `_cover_staging` holds the staged cover's temp dir until
-            // `stream_extraction` returns; a resolve error means the release's
-            // files cannot be read at all, so the extraction aborts.
+            // it. `_artwork_staging` holds the staged artwork's temp folder
+            // until `stream_extraction` returns; a resolve error means the
+            // release's artwork cannot be read, so the extraction aborts.
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
-            let (artwork, _cover_staging) = if let Some(analyzer) = analyzer {
+            let (artwork, _artwork_staging) = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork_paths(
                     &inner.store,
                     &inner.records,
@@ -387,7 +387,7 @@ async fn extract(
                                 .map(|path| ArtworkImage { path, file_id: None })
                                 .collect(),
                         ),
-                        staging,
+                        Some(staging),
                     ),
                     Err(e) => {
                         error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");

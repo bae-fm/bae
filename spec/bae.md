@@ -369,7 +369,12 @@ a rip log, `.accurip` an AccurateRip report, `.m3u` and `.m3u8` a playlist,
 `.txt` other text.
 A library release's re-identify reads its files as the role and kind each
 recorded, not from their names: its audio, its track sheets (parsed again from
-the file), its rip logs and its AccurateRip reports.
+the file), its rip logs and its AccurateRip reports. Re-identify reads the
+audio by the facts its import stored. coven reads the sheets, logs and
+reports, and the images the artwork reader reads, from wherever it has each
+one: the original on this device, its cache or storage. When coven can't read
+one, such as an original that moved or changed, the reading of the release's
+Disc ID or artwork that needs it fails with coven's reason.
 
 The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. A release's folder comes back

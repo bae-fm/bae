@@ -1,20 +1,26 @@
 use super::*;
 use bae_store::Store;
-use bae_util::test_logs::capture_warn_logs_async;
 use std::sync::Arc;
 
 /// A test library under `root` holding one release of one album and artist,
 /// with no files or tracks yet.
 async fn library_with_release(root: &std::path::Path) -> (Store, String) {
-    use bae_records::{DbAlbum, DbArtist, DbRelease};
-    use time::UtcDateTime;
-
     let library_root = root.join("library");
     std::fs::create_dir_all(&library_root).unwrap();
     let db = Store::new_test(crate::TEST_SCHEMA, &library_root, Arc::new(coven::SystemClock))
         .await
         .unwrap();
-    let records = bae_records::test_fixtures::test_records(&db);
+    let release_id = insert_release(&db).await;
+    (db, release_id)
+}
+
+/// Insert one release of one album and artist into `db`, with no files or
+/// tracks yet, and return its id.
+async fn insert_release(db: &Store) -> String {
+    use bae_records::{DbAlbum, DbArtist, DbRelease};
+    use time::UtcDateTime;
+
+    let records = bae_records::test_fixtures::test_records(db);
     let artist = DbArtist {
         id: bae_util::test_ids::test_uuid("artist-1"),
         name: "Test Artist".to_string(),
@@ -47,57 +53,178 @@ async fn library_with_release(root: &std::path::Path) -> (Store, String) {
         created_at: UtcDateTime::now(),
     };
     records.insert_release(&release).await.unwrap();
-    (db, release.id)
+    release.id
 }
 
+/// A release file row named `name`, of `role` and `content_type`.
+fn release_file(
+    release_id: &str,
+    name: &str,
+    content_type: bae_util::content_type::ContentType,
+    role: bae_records::ReleaseFileRole,
+) -> bae_records::NewReleaseFile {
+    bae_records::NewReleaseFile {
+        id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        release_id: release_id.to_string(),
+        original_filename: name.to_string(),
+        content_type,
+        role,
+        source_audio: None,
+        created_at: time::UtcDateTime::now(),
+    }
+}
+
+/// The release's rip log, a copy of the fixture log, as a file row.
+fn rip_log(release_id: &str) -> bae_records::NewReleaseFile {
+    release_file(
+        release_id,
+        "test_album.log",
+        bae_util::content_type::ContentType::PlainText,
+        bae_records::ReleaseFileRole::Document(bae_records::DocumentKind::RipLog),
+    )
+}
+
+/// Write a copy of the fixture rip log into `dir`, returning its path.
+fn write_rip_log(dir: &std::path::Path) -> std::path::PathBuf {
+    let path = dir.join("test_album.log");
+    std::fs::copy(std::path::Path::new("tests/fixtures/logs/test_album.log"), &path).unwrap();
+    path
+}
+
+/// Give the release two track rows, so a reading's track count and lengths
+/// come from them.
+async fn insert_two_tracks(records: &Records, release_id: &str) {
+    use bae_records::DbTrack;
+
+    records
+        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(release_id))
+        .await
+        .unwrap();
+    for n in 1..=2 {
+        let track = DbTrack {
+            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
+            release_id: release_id.to_string(),
+            title: format!("Track {n}"),
+            medium_id: bae_records::first_medium_id(release_id),
+            side: std::num::NonZeroU8::MIN,
+            track_number: std::num::NonZeroU32::new(
+                u32::try_from(n).expect("a test track number fits u32"),
+            )
+            .expect("track numbers count from one"),
+            duration_ms: 180_000 + n as u64,
+            created_at: time::UtcDateTime::now(),
+        };
+        records.insert_track(&track).await.unwrap();
+    }
+}
+
+/// Re-identify's reading of the release `release_id` in `db`.
+async fn identity_of(
+    db: &Store,
+    release_id: &str,
+) -> Result<ReleaseIdentity, ReleaseIdentityError> {
+    resolve_release_identity(
+        &crate::tables::ImportTables::new(db.clone()),
+        &bae_records::test_fixtures::test_records(db),
+        &bae_diagnostics::Diagnostics::noop(),
+        release_id,
+    )
+    .await
+}
+
+/// The coven failure a reading of a rip file failed with.
+fn file_read_failure(
+    result: Result<ReleaseIdentity, ReleaseIdentityError>,
+) -> coven::FileReadError {
+    match result {
+        Err(ReleaseIdentityError::FileRead {
+            error: bae_store::DbError::FileRead(error), ..
+        }) => *error,
+        Err(error) => panic!("the reading failed otherwise: {error}"),
+        Ok(_) => panic!("the reading succeeded"),
+    }
+}
+
+/// An image of the release whose original is gone fails the gathering of the
+/// release's artwork with coven's reason, rather than being skipped.
 #[tokio::test]
-async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() {
-    use bae_records::NewReleaseFile;
+async fn a_missing_image_original_fails_the_artwork_gathering() {
     use bae_util::content_type::ContentType;
-    use time::UtcDateTime;
 
     let temp = tempfile::TempDir::new().unwrap();
     let (db, release_id) = library_with_release(temp.path()).await;
     let records = bae_records::test_fixtures::test_records(&db);
+    let file = release_file(
+        &release_id,
+        "cover.jpg",
+        ContentType::Jpeg,
+        bae_records::ReleaseFileRole::Artwork,
+    );
+    let original = temp.path().join("cover.jpg");
+    std::fs::write(&original, b"cover").unwrap();
+    records.insert_file_for_test(&file, &original).await.unwrap();
+    std::fs::remove_file(&original).unwrap();
 
-    let file = NewReleaseFile {
-        id: "4c3b28d5-7315-48f1-8352-500492675441".to_string(),
-        release_id: release_id.clone(),
-        original_filename: "cover.jpg".to_string(),
-        content_type: ContentType::Jpeg,
-        role: bae_records::ReleaseFileRole::Artwork,
-        source_audio: None,
-        created_at: UtcDateTime::now(),
-    };
-    let missing_dir = temp.path().join("missing-image-dir");
-    std::fs::create_dir_all(&missing_dir).unwrap();
-    let missing_path = missing_dir.join(&file.original_filename);
-    std::fs::write(&missing_path, b"cover").unwrap();
-    records.insert_file_for_test(&file, &missing_path).await.unwrap();
-    std::fs::remove_file(&missing_path).unwrap();
+    let result = resolve_release_artwork_paths(
+        &db,
+        &records,
+        &bae_diagnostics::Diagnostics::noop(),
+        &release_id,
+    )
+    .await;
 
-    let logs = capture_warn_logs_async(|| async {
-        let (paths, cover_staging) = resolve_release_artwork_paths(
-            &db,
-            &bae_records::test_fixtures::test_records(&db),
-            &bae_diagnostics::Diagnostics::noop(),
-            &release_id,
+    match result {
+        Err(ReleaseArtworkError::ImageRead {
+            name,
+            error: bae_store::DbError::FileRead(error),
+        }) => {
+            assert_eq!(name, "cover.jpg");
+            assert!(
+                matches!(*error, coven::FileReadError::UserFileMissing { .. }),
+                "coven reports the original missing: {error}"
+            );
+        }
+        Err(error) => panic!("the gathering failed otherwise: {error}"),
+        Ok(_) => panic!("the gathering succeeded without the image"),
+    }
+}
+
+/// The OCR pass reads a copy of each image of the release, holding the bytes
+/// coven read.
+#[tokio::test]
+async fn the_artwork_gathering_stages_each_image_coven_reads() {
+    use bae_util::content_type::ContentType;
+
+    let temp = tempfile::TempDir::new().unwrap();
+    let (db, release_id) = library_with_release(temp.path()).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let original = temp.path().join("back.jpg");
+    std::fs::write(&original, b"the back cover").unwrap();
+    records
+        .insert_file_for_test(
+            &release_file(
+                &release_id,
+                "Scans/back.jpg",
+                ContentType::Jpeg,
+                bae_records::ReleaseFileRole::Artwork,
+            ),
+            &original,
         )
         .await
         .unwrap();
-        assert!(paths.is_empty());
-        assert!(cover_staging.is_none());
-    })
-    .await;
 
-    assert!(
-        logs.contains(&format!("artwork OCR: registered image file {}", file.id)),
-        "expected missing image-file warning, got {logs:?}",
-    );
-    assert!(
-        logs.contains(&missing_dir.join("cover.jpg").display().to_string()),
-        "expected missing image path in warning, got {logs:?}",
-    );
+    let (paths, _staged) = resolve_release_artwork_paths(
+        &db,
+        &records,
+        &bae_diagnostics::Diagnostics::noop(),
+        &release_id,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(paths.len(), 1, "one image and no cover: {paths:?}");
+    assert!(paths[0].ends_with("Scans/back.jpg"), "{paths:?}");
+    assert_eq!(std::fs::read(&paths[0]).unwrap(), b"the back cover");
 }
 
 /// Re-identify reads LOG/CUE from the release's library files, not from a
@@ -106,19 +233,12 @@ async fn resolve_release_artwork_paths_warns_on_missing_registered_image_file() 
 /// would have computed.
 #[tokio::test]
 async fn test_resolve_release_identity_local() {
-    use bae_records::{DbTrack, NewReleaseFile};
     use bae_util::content_type::ContentType;
-    use time::UtcDateTime;
 
     let temp = tempfile::TempDir::new().unwrap();
     let local_dir = temp.path().join("rip");
     std::fs::create_dir_all(&local_dir).unwrap();
-
-    std::fs::copy(
-        std::path::Path::new("tests/fixtures/logs/test_album.log"),
-        local_dir.join("test_album.log"),
-    )
-    .unwrap();
+    write_rip_log(&local_dir);
     let fixture_dir = std::path::Path::new("tests/fixtures/flac");
     std::fs::copy(fixture_dir.join("01 Test Track 1.flac"), local_dir.join("01 Test Track 1.flac"))
         .unwrap();
@@ -128,60 +248,25 @@ async fn test_resolve_release_identity_local() {
     let (db, release_id) = library_with_release(temp.path()).await;
     let records = bae_records::test_fixtures::test_records(&db);
 
-    for (filename, content_type, role) in [
-        (
-            "test_album.log",
-            ContentType::PlainText,
-            bae_records::ReleaseFileRole::Document(bae_records::DocumentKind::RipLog),
-        ),
-        ("01 Test Track 1.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
-        ("02 Test Track 2.flac", ContentType::Flac, bae_records::ReleaseFileRole::Other),
-    ] {
-        let abs = local_dir.join(filename);
-        let file = NewReleaseFile {
-            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            release_id: release_id.clone(),
-            original_filename: filename.to_string(),
-            content_type,
-            role,
-            source_audio: None,
-            created_at: UtcDateTime::now(),
-        };
-        records.insert_file_for_test(&file, &abs).await.unwrap();
+    records
+        .insert_file_for_test(&rip_log(&release_id), &local_dir.join("test_album.log"))
+        .await
+        .unwrap();
+    for filename in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
+        let file = release_file(
+            &release_id,
+            filename,
+            ContentType::Flac,
+            bae_records::ReleaseFileRole::Other,
+        );
+        records.insert_file_for_test(&file, &local_dir.join(filename)).await.unwrap();
     }
-
     // Two track rows, so the assertion below pins the count and the
     // lengths to the DB rather than to whatever a folder walk would have
     // read.
-    records
-        .insert_release_medium(&bae_records::DbReleaseMedium::new_test(&release_id))
-        .await
-        .unwrap();
-    for n in 1..=2 {
-        let track = DbTrack {
-            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            release_id: release_id.clone(),
-            title: format!("Track {n}"),
-            medium_id: bae_records::first_medium_id(&release_id),
-            side: std::num::NonZeroU8::MIN,
-            track_number: std::num::NonZeroU32::new(
-                u32::try_from(n).expect("a test track number fits u32"),
-            )
-            .expect("track numbers count from one"),
-            duration_ms: 180_000 + n as u64,
-            created_at: UtcDateTime::now(),
-        };
-        records.insert_track(&track).await.unwrap();
-    }
+    insert_two_tracks(&records, &release_id).await;
 
-    let identity = resolve_release_identity(
-        &crate::tables::ImportTables::new(db.clone()),
-        &records,
-        &bae_diagnostics::Diagnostics::noop(),
-        &release_id,
-    )
-    .await
-    .unwrap();
+    let identity = identity_of(&db, &release_id).await.unwrap();
     let (rip, track_count) = (identity.rip, identity.audio.track_count);
 
     assert!(rip.disc_id.computed().len() == 1, "LOG file in local folder must produce a Disc ID");
@@ -191,6 +276,83 @@ async fn test_resolve_release_identity_local() {
         vec![180_001, 180_002],
         "a document is read against the lengths a pick lays the release out on"
     );
+}
+
+/// A rip log whose original changed since its import fails the reading with
+/// coven's reason, rather than reading the changed bytes.
+#[tokio::test]
+async fn a_changed_rip_log_original_fails_the_reading() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let (db, release_id) = library_with_release(temp.path()).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let log = write_rip_log(temp.path());
+    records.insert_file_for_test(&rip_log(&release_id), &log).await.unwrap();
+    insert_two_tracks(&records, &release_id).await;
+    std::fs::write(&log, "a log someone rewrote").unwrap();
+
+    let failure = file_read_failure(identity_of(&db, &release_id).await);
+
+    assert!(
+        matches!(failure, coven::FileReadError::UserFileChanged { .. }),
+        "coven reports the original changed: {failure}"
+    );
+}
+
+/// A rip log whose original is gone fails the reading with coven's reason,
+/// rather than being skipped.
+#[tokio::test]
+async fn a_missing_rip_log_original_fails_the_reading() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let (db, release_id) = library_with_release(temp.path()).await;
+    let records = bae_records::test_fixtures::test_records(&db);
+    let log = write_rip_log(temp.path());
+    records.insert_file_for_test(&rip_log(&release_id), &log).await.unwrap();
+    insert_two_tracks(&records, &release_id).await;
+    std::fs::remove_file(&log).unwrap();
+
+    let failure = file_read_failure(identity_of(&db, &release_id).await);
+
+    assert!(
+        matches!(failure, coven::FileReadError::UserFileMissing { .. }),
+        "coven reports the original missing: {failure}"
+    );
+}
+
+/// A release another device imported and stored in the cloud has no
+/// originals here, and re-identify reads its rip log from storage: the log's
+/// Disc ID comes out on this device too.
+#[test]
+fn a_cloud_release_from_another_device_reads_its_rip_log() {
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let rip = tempfile::TempDir::new().unwrap();
+        let log = write_rip_log(rip.path());
+        let release_id = insert_release(devices.a()).await;
+        let records = bae_records::test_fixtures::test_records(devices.a());
+        records
+            .insert_files_placed_for_test(vec![(rip_log(&release_id), log, coven::Place::Cloud)])
+            .await
+            .unwrap();
+        insert_two_tracks(&records, &release_id).await;
+        devices
+            .converge(
+                "SELECT f.id, f.file, hex(c.hash), c.coordinates FROM release_files AS f \
+                 LEFT JOIN coven_files AS c ON c.id = f.file",
+            )
+            .await;
+        let files = bae_records::test_fixtures::test_records(devices.b())
+            .get_files_for_release(&release_id)
+            .await
+            .unwrap();
+        assert!(
+            files.iter().all(|file| file.stored),
+            "the rip log reached the other device stored: {files:?}"
+        );
+
+        let identity = identity_of(devices.b(), &release_id).await.unwrap();
+
+        assert_eq!(identity.rip.disc_id.computed().len(), 1, "the rip log hashes its disc");
+        assert_eq!(identity.audio.track_count, 2);
+    });
 }
 
 /// The disc IDs `folder`'s scan reads off its rip files, and the ones

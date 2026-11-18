@@ -337,38 +337,6 @@ impl Records {
             .await
     }
 
-    /// The release's files in their order, each with the path of the original
-    /// coven records on this device for its file, `None` when it records
-    /// none: for a release another device imported.
-    pub async fn get_files_with_originals_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, DbError> {
-        let release_id = release_id.to_string();
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    concat!(
-                        "SELECT ",
-                        release_file_columns!(),
-                        ", u.path AS original_path \
-                     FROM release_files AS f \
-                     LEFT JOIN coven_user_files AS u ON u.file = f.file \
-                     WHERE f.release_id = ?1 \
-                     ORDER BY f.original_filename COLLATE natural_order, f.id"
-                    ),
-                    params![release_id],
-                    |row| Ok((row_to_file(row)?, row.get::<_, Option<Vec<u8>>>("original_path")?)),
-                )?
-                .into_iter()
-                .map(|(file, original)| {
-                    Ok((file, original.map(bae_store::path_column::decode).transpose()?))
-                })
-                .collect()
-            })
-            .await
-    }
-
     pub async fn get_files_for_release(&self, release_id: &str) -> Result<Vec<DbFile>, DbError> {
         let release_id = release_id.to_string();
         self.store.read(move |sql| get_files_for_release_on(&sql, &release_id)).await

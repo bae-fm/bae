@@ -49,6 +49,15 @@ impl ScannedFile {
         }
     }
 
+    /// A library release's file at `path`, the place re-identify lays it out
+    /// at below the folder it stages the release's files in, with the size
+    /// coven records for it. A coven file never changes its bytes, so no
+    /// modification time has to tell them from what a later write puts at
+    /// the path: every library file's is zero.
+    pub(crate) fn library(path: PathBuf, relative_path: String, size: u64) -> Self {
+        Self::new(path, relative_path, size, 0)
+    }
+
     #[cfg(test)]
     pub(crate) fn with_test_flac_audio(mut self) -> Self {
         self.source_audio = Some(ScannedAudio {

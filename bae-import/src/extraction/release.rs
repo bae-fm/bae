@@ -8,8 +8,8 @@ use bae_records::LibraryImageType;
 use bae_records::Records;
 use bae_store::DbError;
 use bae_util::task_failure::TaskFailed;
-use std::path::PathBuf;
-use tracing::{debug, warn};
+use std::path::{Path, PathBuf};
+use tracing::debug;
 
 /// What a release already in the library was copied from: what its rip
 /// artifacts say, and what its audio is.
@@ -25,6 +25,12 @@ pub enum ReleaseIdentityError {
     Database(#[from] DbError),
     #[error("release '{release_id}' not found")]
     NotFound { release_id: String },
+    /// coven could not read one of the release's rip files.
+    #[error("bae could not read the release's file {name}: {error}")]
+    FileRead { name: String, error: DbError },
+    /// bae could not write the copies of the rip files its readers open.
+    #[error("bae could not copy the release's rip files to read them: {0}")]
+    Staging(std::io::Error),
     /// A rip file of the release could not be read.
     #[error(transparent)]
     Unreadable(#[from] crate::ImportError),
@@ -38,13 +44,15 @@ pub enum ReleaseIdentityError {
 pub enum ReleaseArtworkError {
     #[error(transparent)]
     Database(#[from] DbError),
-    #[error("the release's cover could not be read: {0}")]
+    #[error("bae could not read the release's cover: {0}")]
     CoverRead(coven::FileReadError),
-    #[error("the release's cover could not be staged to be read: {0}")]
-    CoverStaging(std::io::Error),
-    #[error("the release's image file {path} could not be checked: {error}")]
-    Image { path: PathBuf, error: std::io::Error },
-    /// Staging the cover panicked, reported as the bug it is.
+    /// coven could not read one of the release's image files.
+    #[error("bae could not read the release's image {name}: {error}")]
+    ImageRead { name: String, error: DbError },
+    /// bae could not write the copies of the artwork the OCR reader opens.
+    #[error("bae could not copy the release's artwork to read it: {0}")]
+    Staging(std::io::Error),
+    /// Staging the artwork panicked, reported as the bug it is.
     #[error(transparent)]
     Panicked(#[from] TaskFailed),
 }
@@ -62,7 +70,7 @@ impl ReleaseIdentity {
     }
 }
 
-/// Read the release's local files the way a folder's scan reads its rip files
+/// Read the release's files the way a folder's scan reads its rip files
 /// (`folder_scanner::categorize_library_files`), so the function binds each
 /// sheet to the audio the person chose for it, or else to the audio the scan
 /// would choose, and the release hashes the discs its folder did. The track
@@ -70,9 +78,12 @@ impl ReleaseIdentity {
 /// person sets those rows, and the files may not match them. The function
 /// reports a panic reading the files to `diagnostics`.
 ///
-/// A cloud-only release with no local copy has no files to read, so its
-/// reading proves nothing and computes no disc ID. A file that is there and
-/// cannot be read fails the reading.
+/// coven reads each file the reading opens (`rip_reading::opens_library_file`)
+/// from wherever it has it: the original on this device, its cache or
+/// storage. A file coven can't read, such as an original that moved or
+/// changed since its import, or a file only on another device, fails the
+/// reading. Audio is read by the facts its import stored, so none of its
+/// bytes are read.
 pub async fn resolve_release_identity(
     tables: &crate::tables::ImportTables,
     records: &Records,
@@ -83,17 +94,37 @@ pub async fn resolve_release_identity(
         .find_release_by_id(release_id)
         .await?
         .ok_or_else(|| ReleaseIdentityError::NotFound { release_id: release_id.to_string() })?;
-    let files = records.get_files_with_originals_for_release(release_id).await?;
+    let files = records.get_files_for_release(release_id).await?;
     let tracks = records.get_tracks_for_release(release_id).await?;
     // The lengths a pick of this release is laid out against, so a document
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
     let sheet_decisions = tables.load_release_sheet_decisions(release_id).await?;
+    let staged = diagnostics
+        .blocking("make a folder for a release's rip files", StagedFiles::create)
+        .await?
+        .map_err(ReleaseIdentityError::Staging)?;
     let lease = records.lease_one().await;
+    for file in files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)) {
+        let bytes = records.read_release_file(&file.id, &lease).await.map_err(|error| {
+            ReleaseIdentityError::FileRead { name: file.original_filename.clone(), error }
+        })?;
+        staged
+            .write(diagnostics, staged.release_file(&file.original_filename), bytes)
+            .await?
+            .map_err(ReleaseIdentityError::Staging)?;
+    }
+    let library_files: Vec<_> = files
+        .into_iter()
+        .map(|file| {
+            let path = staged.release_file(&file.original_filename);
+            library_file(file, path)
+        })
+        .collect();
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
-                files.into_iter().filter_map(|(file, original)| local_file(file, original?)),
+                library_files,
                 sheet_decisions,
                 &lease,
             );
@@ -108,123 +139,130 @@ pub async fn resolve_release_identity(
             ))
         })
         .await??;
+    // The readers are done with the copies.
+    drop(staged);
     let audio =
         bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
     Ok(ReleaseIdentity { rip, audio })
 }
 
-/// A release file as the file at `original`, the path this device recorded
-/// at import, with the audio facts the import stored and the role it stored; `None` when nothing is
-/// there now. A release imported elsewhere records no originals here, so it
-/// has no such files. Blocking: it reads the file's metadata.
-fn local_file(
+/// A release file as the file at `path`, its place in the release's staged
+/// folder, with the audio facts the import stored and the role it stored.
+fn library_file(
     file: bae_records::DbFile,
-    original: PathBuf,
-) -> Option<(crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole)> {
-    let metadata = match std::fs::metadata(&original) {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            debug!("release file {} is not at {}: {error}", file.id, original.display());
-            return None;
-        }
-    };
-    let modified_at_ns = match crate::folder_scanner::file_modified_at_ns(&original, &metadata) {
-        Ok(modified_at_ns) => modified_at_ns,
-        Err(error) => {
-            warn!(
-                "release file {} at {} has no usable modification time: {error}",
-                file.id,
-                original.display()
-            );
-            return None;
-        }
-    };
-    let mut scanned = crate::folder_scanner::ScannedFile::new(
-        original,
-        file.original_filename,
-        metadata.len(),
-        modified_at_ns,
-    );
-    let role = file.role;
+    path: PathBuf,
+) -> (crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole) {
+    let mut scanned =
+        crate::folder_scanner::ScannedFile::library(path, file.original_filename, file.file_size);
     scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
         content_type: audio.content_type,
         container: audio.container,
         duration_ms: audio.duration_ms,
         format: audio.format,
     });
-    Some((scanned, role))
+    (scanned, file.role)
 }
 
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
-/// release-attached image file that resolves to a path on this device. A
-/// cloud-only image has no local copy and is skipped — OCR can't run on it.
-/// A cover or image that is there and cannot be read fails the gathering.
+/// image file of the release. coven reads each from wherever it has it, and
+/// one coven can't read fails the gathering.
 ///
-/// The cover's bytes live in coven's store, which exposes no path bae may
-/// compute, so they are read out and staged into a temp dir. That dir's guard
-/// comes back alongside the paths and must outlive the OCR pass; `None` when the
-/// release has no cover. A panic staging the cover is reported to
+/// The OCR reader opens paths, so the function stages a copy of each image
+/// in a temp folder, whose guard comes back alongside the paths and must
+/// outlive the OCR pass. A panic staging the artwork is reported to
 /// `diagnostics`.
 pub(crate) async fn resolve_release_artwork_paths(
     store: &bae_store::Store,
     records: &Records,
     diagnostics: &Diagnostics,
     release_id: &str,
-) -> Result<(Vec<PathBuf>, Option<tempfile::TempDir>), ReleaseArtworkError> {
-    let files = records.get_files_with_originals_for_release(release_id).await?;
+) -> Result<(Vec<PathBuf>, StagedFiles), ReleaseArtworkError> {
+    let files = records.get_files_for_release(release_id).await?;
+    let staged = diagnostics
+        .blocking("make a folder for a release's artwork", StagedFiles::create)
+        .await?
+        .map_err(ReleaseArtworkError::Staging)?;
+    let lease = store.lease_one().await;
     let mut paths: Vec<PathBuf> = Vec::new();
 
-    let cover_staging = match records
-        .library_image_file(release_id, &LibraryImageType::Cover)
-        .await?
-    {
+    match records.library_image_file(release_id, &LibraryImageType::Cover).await? {
         Some(file) => {
-            let lease = store.lease_one().await;
             let bytes =
                 store.read_file(&file, &lease).await.map_err(ReleaseArtworkError::CoverRead)?;
-            let (dir, cover_path) = diagnostics
-                .blocking("stage a cover for reading", move || stage_cover_for_ocr(&bytes))
+            let path = staged.cover();
+            staged
+                .write(diagnostics, path.clone(), bytes)
                 .await?
-                .map_err(ReleaseArtworkError::CoverStaging)?;
-            paths.push(cover_path);
-            Some(dir)
+                .map_err(ReleaseArtworkError::Staging)?;
+            paths.push(path);
         }
         None => {
             debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
-            None
-        }
-    };
-
-    // In-folder artwork (cover.jpg and the like), resolved to this device's
-    // original file whether or not it has been attached for upload.
-    for (file, original) in &files {
-        if !file.content_type.is_image() {
-            continue;
-        }
-        if let Some(p) = original.clone() {
-            match tokio::fs::try_exists(&p).await {
-                Ok(true) => paths.push(p),
-                Ok(false) => warn!(
-                    "artwork OCR: registered image file {} resolved to missing path {}; skipping image",
-                    file.id,
-                    p.display()
-                ),
-                Err(error) => return Err(ReleaseArtworkError::Image { path: p, error }),
-            }
         }
     }
 
-    Ok((paths, cover_staging))
+    // In-folder artwork (cover.jpg and the like).
+    for file in files.iter().filter(|file| file.content_type.is_image()) {
+        let bytes = records.read_release_file(&file.id, &lease).await.map_err(|error| {
+            ReleaseArtworkError::ImageRead { name: file.original_filename.clone(), error }
+        })?;
+        let path = staged.release_file(&file.original_filename);
+        staged
+            .write(diagnostics, path.clone(), bytes)
+            .await?
+            .map_err(ReleaseArtworkError::Staging)?;
+        paths.push(path);
+    }
+
+    Ok((paths, staged))
 }
 
-/// Write cover bytes to a temp file the OCR reader can open, returning the
-/// temp-dir guard and the file's path. Blocking; run it off the runtime.
-fn stage_cover_for_ocr(bytes: &[u8]) -> std::io::Result<(tempfile::TempDir, PathBuf)> {
-    let dir = tempfile::tempdir()?;
-    let cover_path = dir.path().join("cover");
-    std::fs::write(&cover_path, bytes)?;
-    Ok((dir, cover_path))
+/// A temp folder holding copies of a release's files that coven read, for
+/// readers that open a path. The release's files sit below `files/` at the
+/// paths their names in the release give, each name written as coven writes
+/// it (see [`bae_records::stored_name`]), so a sheet finds the audio its
+/// `FILE` lines name where it did in the release's folder. The folder goes
+/// when this drops.
+pub(crate) struct StagedFiles {
+    dir: tempfile::TempDir,
+}
+
+impl StagedFiles {
+    /// A new, empty folder. Blocking.
+    fn create() -> std::io::Result<Self> {
+        Ok(Self { dir: tempfile::tempdir()? })
+    }
+
+    /// Where the release file named `name` in its release is staged.
+    fn release_file(&self, name: &str) -> PathBuf {
+        self.dir.path().join("files").join(bae_records::stored_name::file_path(name).local_path())
+    }
+
+    /// Where the release's cover is staged.
+    fn cover(&self) -> PathBuf {
+        self.dir.path().join("cover")
+    }
+
+    /// Write `bytes` to `path`, one of this folder's paths, making the
+    /// folders above it.
+    async fn write(
+        &self,
+        diagnostics: &Diagnostics,
+        path: PathBuf,
+        bytes: Vec<u8>,
+    ) -> Result<std::io::Result<()>, TaskFailed> {
+        diagnostics.blocking("stage a release's file", move || write_file(&path, &bytes)).await
+    }
+}
+
+/// Write `bytes` to a file at `path`, making the folders above it.
+/// Blocking.
+fn write_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, bytes)
 }
 
 #[cfg(test)]

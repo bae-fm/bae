@@ -229,6 +229,25 @@ fn discid_from_cue_audio(
     })
 }
 
+/// The documents a rip reading reads, logs first: a log's table of contents
+/// is the Disc ID as well as the proof, which a report is not.
+const RIP_DOCUMENTS: [DocumentKind; 2] = [DocumentKind::RipLog, DocumentKind::AccurateRipReport];
+
+/// Whether a rip reading of a library release opens a file of `role`: each
+/// track sheet, which categorizing the release's files parses, and each rip
+/// document. Audio is read by the facts its import stored.
+pub(crate) fn opens_library_file(role: &bae_records::ReleaseFileRole) -> bool {
+    use bae_records::ReleaseFileRole;
+    match role {
+        ReleaseFileRole::TrackSheet => true,
+        ReleaseFileRole::Document(kind) => RIP_DOCUMENTS.contains(kind),
+        ReleaseFileRole::Audio
+        | ReleaseFileRole::Artwork
+        | ReleaseFileRole::DamagedImage
+        | ReleaseFileRole::Other => false,
+    }
+}
+
 /// Read already-categorized files, reusing the track sheets the folder scan
 /// parsed — no re-read, no re-parse. Only the sheets that carve are read: one
 /// the person took out of the tracklist describes a disc this folder is no
@@ -260,17 +279,15 @@ fn read_categorized(
     named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
     lease: &FileLease,
 ) -> Result<RipReading, ImportError> {
-    // Logs first: a log's table of contents is the Disc ID as well as the
-    // proof, which a report is not.
-    let rip_documents = |kind| {
-        categorized.documents_of(kind).map(move |doc| RipDocument {
-            path: &doc.version.path,
-            file: named(doc),
-            kind,
+    let documents = RIP_DOCUMENTS
+        .into_iter()
+        .flat_map(|kind| {
+            categorized.documents_of(kind).map(move |doc| RipDocument {
+                path: &doc.version.path,
+                file: named(doc),
+                kind,
+            })
         })
-    };
-    let documents = rip_documents(DocumentKind::RipLog)
-        .chain(rip_documents(DocumentKind::AccurateRipReport))
         .collect();
     let carving = categorized.carving_sheets();
     let sheets = carving
