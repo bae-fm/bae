@@ -57,9 +57,17 @@ impl Columns for JsonColumns {
         let value = match json {
             Json::Null => Value::Null,
             Json::Bool(flag) => Value::Integer(i64::from(*flag)),
-            Json::Number(number) => match number.as_i64() {
-                Some(integer) => Value::Integer(integer),
-                None => Value::Real(number.as_f64().unwrap_or(f64::NAN)),
+            Json::Number(number) => match (number.as_i64(), number.as_f64()) {
+                (Some(integer), _) => Value::Integer(integer),
+                (None, Some(real)) => Value::Real(real),
+                (None, None) => {
+                    return Err(rusqlite::Error::FromSqlConversionFailure(
+                        0,
+                        rusqlite::types::Type::Real,
+                        format!("column {name} holds {number}, which no SQLite number holds")
+                            .into(),
+                    ))
+                }
             },
             Json::String(text) => Value::Text(text.clone()),
             list @ (Json::Array(_) | Json::Object(_)) => Value::Text(list.to_string()),
