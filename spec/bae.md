@@ -487,10 +487,9 @@ merging artists a person names is for the main app, designed later.
 
 Merging records that one artist was absorbed into the other; both rows stay, so
 a credit naming the absorbed artist still resolves. Every read shows the
-survivor. A chain of merges shows its last artist, and a loop shows the artist
-with the smallest id. The artist each artist shows as is kept on the device
-(`artist_shown_as`), written in the same write as the artist or the merge that
-decides it. No write deletes a merge; an
+survivor. A chain of merges shows its last artist. The artist each artist
+shows as is kept on the device (`artist_shown_as`), written in the same write
+as the artist or the merge that decides it. No write deletes a merge; an
 artist a merge names stays while the merge does, and any other artist is
 deleted by the write that leaves nothing crediting it (§2.1), with its other
 printed names and its picture.
@@ -595,7 +594,7 @@ import's or an edit's save:
 A label that matches fills in its missing ids. Two labels merge in any
 write that finds one id on both (rule 1); as for artists, bae has no merge
 action yet. Both rows stay, and every read shows the survivor, following a
-chain or a loop as artists do; no list sorts by label, so no table keeps the
+chain as artists do; no list sorts by label, so no table keeps the
 label each label shows as. The artist edge cases hold for labels: two ids
 naming two labels name the MusicBrainz one, and a label whose name alone
 matches a label holding a different id of the same catalog is not that

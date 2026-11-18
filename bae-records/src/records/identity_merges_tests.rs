@@ -250,6 +250,90 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
     assert_eq!(merges(&db, "artist_merges").await, expected);
 }
 
+/// Each merged row of `view` and the row it shows as, by merged id.
+async fn survivors(store: &Store, view: &'static str) -> Vec<(String, String)> {
+    store
+        .read(move |sql| {
+            Ok(sql.query(&format!("SELECT * FROM {view} ORDER BY 1"), [], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?)
+        })
+        .await
+        .unwrap()
+}
+
+/// `ids` from the smallest to the largest.
+fn ordered<const N: usize>(mut ids: [String; N]) -> [String; N] {
+    ids.sort();
+    ids
+}
+
+/// Two devices apart each merge one artist of three into the next smaller
+/// one: the middle into the smallest on one, the largest into the middle on
+/// the other. Once both hold both merges, the chain shows its last artist
+/// on each.
+#[test]
+fn a_synced_chain_of_two_artist_merges_shows_its_last_artist() {
+    bae_store::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_synced_artist_merge_chain,
+    );
+}
+
+async fn check_synced_artist_merge_chain(devices: &bae_store::test_devices::TwoStores) {
+    let artists = ["a", "b", "c"].map(|seed| artist(seed, None, None));
+    for artist in &artists {
+        crate::test_fixtures::test_records(devices.a()).insert_artist(artist).await.unwrap();
+    }
+    let [smallest, middle, largest] = ordered(artists.map(|artist| artist.id));
+    devices.converge("SELECT id FROM artists").await;
+
+    devices.pause().await;
+    merge_artist(devices.a(), &smallest, &middle, None).await.unwrap();
+    merge_artist(devices.b(), &middle, &largest, None).await.unwrap();
+    devices.resume().await;
+    devices.converge("SELECT id || '>' || into_artist_id FROM artist_merges").await;
+
+    for device in [devices.a(), devices.b()] {
+        assert_eq!(
+            survivors(device, "merged_artist_survivors").await,
+            [(middle.clone(), smallest.clone()), (largest.clone(), smallest.clone())]
+        );
+    }
+}
+
+/// Two devices apart each merge one label of three into the next smaller
+/// one. Once both hold both merges, the chain shows its last label on each.
+#[test]
+fn a_synced_chain_of_two_label_merges_shows_its_last_label() {
+    bae_store::test_devices::run_two_store_test(
+        crate::test_fixtures::TEST_SCHEMA,
+        check_synced_label_merge_chain,
+    );
+}
+
+async fn check_synced_label_merge_chain(devices: &bae_store::test_devices::TwoStores) {
+    let mut added = Vec::new();
+    for name in ["Label Name A", "Label Name B", "Label Name C"] {
+        added.push(add_label(devices.a(), name, None, None).await);
+    }
+    let [smallest, middle, largest] = ordered(added.try_into().unwrap());
+    devices.converge("SELECT id FROM labels").await;
+
+    devices.pause().await;
+    merge_label(devices.a(), &smallest, &middle).await.unwrap();
+    merge_label(devices.b(), &middle, &largest).await.unwrap();
+    devices.resume().await;
+    devices.converge("SELECT id || '>' || into_label_id FROM label_merges").await;
+
+    for device in [devices.a(), devices.b()] {
+        assert_eq!(
+            survivors(device, "merged_label_survivors").await,
+            [(middle.clone(), smallest.clone()), (largest.clone(), smallest.clone())]
+        );
+    }
+}
+
 /// The one bug `heard` was reported, which `failed` carries back from the
 /// panic that failed its write: its message.
 fn reported_bug(heard: &coven::task::HeardBugs, failed: &DbError) -> String {

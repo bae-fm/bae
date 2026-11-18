@@ -56,8 +56,7 @@ pub(crate) fn merge_artist_on(
         params![merge.survivor, merge.absorbed],
     )?;
     conn.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?1, ?2, ?3) \
-         ON CONFLICT (id) DO UPDATE SET into_artist_id = excluded.into_artist_id",
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?1, ?2, ?3)",
         params![merge.absorbed, merge.survivor, merge.at],
     )?;
     Ok(())
@@ -91,8 +90,7 @@ pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> R
         params![merge.survivor, merge.absorbed],
     )?;
     conn.execute(
-        "INSERT INTO label_merges (id, into_label_id, created_at) VALUES (?1, ?2, ?3) \
-         ON CONFLICT (id) DO UPDATE SET into_label_id = excluded.into_label_id",
+        "INSERT INTO label_merges (id, into_label_id, created_at) VALUES (?1, ?2, ?3)",
         params![merge.absorbed, merge.survivor, merge.at],
     )?;
     Ok(())

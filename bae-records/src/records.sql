@@ -49,26 +49,17 @@ CREATE TABLE IF NOT EXISTS artist_merges (
 CREATE INDEX IF NOT EXISTS idx_artist_merges_into ON artist_merges (into_artist_id);
 
 -- Each merged artist and the artist it shows as: the end of its merge chain.
--- A cycle, left by devices merging a pair in opposite directions, shows as its
--- smallest id. An artist absent here shows as itself.
+-- Every merge points at the smaller id of its two artists, so a chain, such as
+-- two devices apart leave, ends. An artist absent here shows as itself.
 CREATE VIEW IF NOT EXISTS merged_artist_survivors AS
-WITH RECURSIVE hop(start, current, depth) AS (
-    SELECT id, into_artist_id, 1 FROM artist_merges
+WITH RECURSIVE hop(start, current) AS (
+    SELECT id, into_artist_id FROM artist_merges
     UNION ALL
-    SELECT hop.start, merge.into_artist_id, hop.depth + 1
+    SELECT hop.start, merge.into_artist_id
     FROM hop JOIN artist_merges merge ON merge.id = hop.current
-    WHERE hop.depth < 64
-),
-resolved(artist_id, survivor_id) AS (
-    SELECT start,
-           COALESCE(
-               MIN(CASE WHEN current NOT IN (SELECT id FROM artist_merges) THEN current END),
-               MIN(current)
-           )
-    FROM hop
-    GROUP BY start
 )
-SELECT artist_id, survivor_id FROM resolved WHERE artist_id <> survivor_id;
+SELECT start AS artist_id, current AS survivor_id FROM hop
+WHERE current NOT IN (SELECT id FROM artist_merges);
 
 -- Each artist and the artist it shows as (§2.3): the survivor of its merges
 -- (`merged_artist_survivors`), else itself. Every read of a credit goes
@@ -335,27 +326,18 @@ CREATE TABLE IF NOT EXISTS label_merges (
 
 CREATE INDEX IF NOT EXISTS idx_label_merges_into ON label_merges (into_label_id);
 
--- Each merged label and the label it shows as: the end of its merge chain. A
--- cycle, left by devices merging a pair in opposite directions, shows as its
--- smallest id. A label absent here shows as itself.
+-- Each merged label and the label it shows as: the end of its merge chain.
+-- Every merge points at the smaller id of its two labels, so a chain, such as
+-- two devices apart leave, ends. A label absent here shows as itself.
 CREATE VIEW IF NOT EXISTS merged_label_survivors AS
-WITH RECURSIVE hop(start, current, depth) AS (
-    SELECT id, into_label_id, 1 FROM label_merges
+WITH RECURSIVE hop(start, current) AS (
+    SELECT id, into_label_id FROM label_merges
     UNION ALL
-    SELECT hop.start, merge.into_label_id, hop.depth + 1
+    SELECT hop.start, merge.into_label_id
     FROM hop JOIN label_merges merge ON merge.id = hop.current
-    WHERE hop.depth < 64
-),
-resolved(label_id, survivor_id) AS (
-    SELECT start,
-           COALESCE(
-               MIN(CASE WHEN current NOT IN (SELECT id FROM label_merges) THEN current END),
-               MIN(current)
-           )
-    FROM hop
-    GROUP BY start
 )
-SELECT label_id, survivor_id FROM resolved WHERE label_id <> survivor_id;
+SELECT start AS label_id, current AS survivor_id FROM hop
+WHERE current NOT IN (SELECT id FROM label_merges);
 
 -- Every label a pressing is on, in its source's order, each naming a library
 -- label, the catalog number that label gives the pressing, or both. A save

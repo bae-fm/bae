@@ -399,6 +399,33 @@ async fn a_catalog_id_two_library_artists_hold_merges_them() {
     assert_eq!(survivor.musicbrainz_artist_id.as_deref(), Some("mb-2"));
 }
 
+/// A merge points at the smaller id of its two artists, whichever the
+/// library holds first, so no set of merges forms a loop.
+#[tokio::test]
+async fn a_merge_points_at_the_smaller_id_whichever_artist_came_first() {
+    for order in [["first", "second"], ["second", "first"]] {
+        let (db, _tmp) = library().await;
+        for id in order {
+            add_artist(&db, id, "Artist Name", Some("discogs-1"), None).await;
+        }
+
+        crate::test_fixtures::test_records(&db)
+            .find_or_create_artists(&[credit("credit", "Artist Name", Some("discogs-1"), None)])
+            .await
+            .unwrap();
+
+        let merges: Vec<(String, String)> = db
+            .read(|sql| {
+                Ok(sql.query("SELECT id, into_artist_id FROM artist_merges", [], |row| {
+                    Ok((row.get(0)?, row.get(1)?))
+                })?)
+            })
+            .await
+            .unwrap();
+        assert_eq!(merges, [("second".to_string(), "first".to_string())], "{order:?}");
+    }
+}
+
 /// An id on the row it derives and on another artist that was given it is
 /// one artist too: the smaller id survives.
 #[tokio::test]
