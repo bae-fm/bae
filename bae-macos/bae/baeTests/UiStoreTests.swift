@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import Foundation
 import Testing
 
@@ -165,120 +166,80 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.selectedReleaseIdByAlbum["album-1"] == "release-9")
     }
 
-    @Test(
-        "navigateToAlbum names the track in the reveal, and flashes nothing yet"
-    )
-    func navigateToAlbumSetsRevealRequest() {
+    @Test("navigateToAlbum asks to see the album and the track in it")
+    func navigateToAlbumSetsReveal() {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        #expect(store.pendingAlbumReveal?.albumId == "album-1")
-        #expect(store.pendingAlbumReveal?.trackId == "track-7")
-        #expect(store.pendingTrackFlash == nil)
+        #expect(
+            store.albumReveal
+                == AlbumReveal(albumId: "album-1", trackId: "track-7")
+        )
     }
 
-    @Test("navigateToAlbum drops a flash the last reveal handed over")
-    func navigateToAlbumClearsPendingFlash() throws {
+    @Test("a later navigation asks to see its own album instead")
+    func laterNavigationReplacesReveal() {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = try #require(store.pendingAlbumReveal?.seq)
-        store.consumeAlbumReveal(seq: seq)
-        store.flashTrack("track-7", seq: seq)
         store.navigateToAlbum("album-2")
-        #expect(store.pendingTrackFlash == nil)
+        #expect(
+            store.albumReveal == AlbumReveal(albumId: "album-2", trackId: nil)
+        )
     }
 
-    @Test("navigateToAlbum bumps the reveal seq (strictly increasing)")
-    func navigateToAlbumBumpsSeq() throws {
+    @Test("opening an album by its card ends the reveal")
+    func selectingAlbumEndsReveal() {
         let store = UiStore()
-        store.navigateToAlbum("album-1")
-        let first = store.pendingAlbumReveal?.seq
-        store.navigateToAlbum("album-2")
-        let second = store.pendingAlbumReveal?.seq
-        #expect(try #require(second) > #require(first))
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        store.selectAlbum("album-1")
+        #expect(store.albumReveal == nil)
+
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        store.selectAlbum("album-2")
+        #expect(store.albumReveal == nil)
+        #expect(store.selectedAlbumId == "album-2")
     }
 
-    @Test(
-        "repeat navigation to the same album produces two distinct seq values"
-    )
-    func navigateToSameAlbumTwiceRefires() {
+    @Test("closing the revealed album ends the reveal")
+    func closingAlbumEndsReveal() {
         let store = UiStore()
-        store.navigateToAlbum("album-1")
-        let first = store.pendingAlbumReveal?.seq
-        store.navigateToAlbum("album-1")
-        let second = store.pendingAlbumReveal?.seq
-        #expect(first != second)
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        store.closeAlbumDetail()
+        #expect(store.selectedAlbumId == nil)
+        #expect(store.albumReveal == nil)
     }
 
-    @Test("consumeAlbumReveal clears the pending reveal it names")
-    func consumeAlbumRevealClearsMatchingReveal() throws {
-        let store = UiStore()
-        store.navigateToAlbum("album-1")
-        let seq = try #require(store.pendingAlbumReveal?.seq)
-
-        store.consumeAlbumReveal(seq: seq)
-
-        #expect(store.pendingAlbumReveal == nil)
-    }
-
-    @Test("consumeAlbumReveal is a no-op against a superseded reveal")
-    func consumeAlbumRevealIgnoresStaleSeq() throws {
-        let store = UiStore()
-        store.navigateToAlbum("album-1")
-        let staleSeq = try #require(store.pendingAlbumReveal?.seq)
-        store.navigateToAlbum("album-2")
-
-        store.consumeAlbumReveal(seq: staleSeq)
-
-        #expect(store.pendingAlbumReveal?.albumId == "album-2")
-    }
-
-    @Test("endAlbumReveal clears only a reveal of the album it names")
+    @Test("endAlbumReveal(of:) ends only a reveal of the album it names")
     func endAlbumRevealClearsOnlyItsAlbum() {
         let store = UiStore()
         store.navigateToAlbum("album-2")
 
         store.endAlbumReveal(of: "album-1")
-        #expect(store.pendingAlbumReveal?.albumId == "album-2")
+        #expect(store.albumReveal?.albumId == "album-2")
 
         store.endAlbumReveal(of: "album-2")
-        #expect(store.pendingAlbumReveal == nil)
+        #expect(store.albumReveal == nil)
     }
 
-    @Test("flashTrack hands the reveal's track to its row")
-    func flashTrackSetsFlash() throws {
+    @Test("endAlbumReveal() ends the reveal and leaves the album open")
+    func endAlbumRevealEndsAnyReveal() {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = try #require(store.pendingAlbumReveal?.seq)
-        store.consumeAlbumReveal(seq: seq)
-
-        store.flashTrack("track-7", seq: seq)
-
-        #expect(store.pendingTrackFlash?.trackId == "track-7")
-        #expect(store.pendingTrackFlash?.seq == seq)
+        store.endAlbumReveal()
+        #expect(store.albumReveal == nil)
+        #expect(store.selectedAlbumId == "album-1")
     }
 
-    @Test("flashTrack is a no-op for a reveal a newer navigation superseded")
-    func flashTrackIgnoresStaleSeq() throws {
+    @Test("flashTrack sends the track to the rows")
+    func flashTrackSendsTrack() {
         let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        let staleSeq = try #require(store.pendingAlbumReveal?.seq)
-        store.navigateToAlbum("album-2", trackId: "track-8")
+        var flashed: [String] = []
+        let subscription = store.trackFlashes.sink { flashed.append($0) }
+        defer { subscription.cancel() }
 
-        store.flashTrack("track-7", seq: staleSeq)
+        store.flashTrack("track-7")
+        store.flashTrack("track-7")
 
-        #expect(store.pendingTrackFlash == nil)
-    }
-
-    @Test("consumeTrackFlash clears the flash it names")
-    func consumeTrackFlashClearsMatchingFlash() throws {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = try #require(store.pendingAlbumReveal?.seq)
-        store.flashTrack("track-7", seq: seq)
-
-        store.consumeTrackFlash(seq: seq)
-
-        #expect(store.pendingTrackFlash == nil)
+        #expect(flashed == ["track-7", "track-7"])
     }
 }
 

@@ -62,8 +62,13 @@ struct QueueNowPlayingNavigationTests {
             #expect(ui.activeSection == .library)
             #expect(ui.libraryBrowserMode == .albums)
             #expect(ui.selectedAlbumId == "playing-album")
-            #expect(ui.pendingAlbumReveal?.albumId == "playing-album")
-            #expect(ui.pendingAlbumReveal?.trackId == "playing-track")
+            #expect(
+                ui.albumReveal
+                    == AlbumReveal(
+                        albumId: "playing-album",
+                        trackId: "playing-track"
+                    )
+            )
             // No release details are loaded: the release comes with the
             // playing track, not from the library's cache.
             #expect(

@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import Observation
 import SwiftUI
 import Testing
@@ -11,12 +12,10 @@ import Testing
 @MainActor
 @Suite("AlbumGridView revealing a track", .serialized)
 struct AlbumGridRevealTests {
-    /// Measure the flash and frame together; separate callbacks can pair
-    /// a new flash with a position from the previous layout.
+    /// A flashed track and where its row sat when the flash came.
     struct Placement: Equatable {
         let trackId: String
-        let frame: CGRect
-        let flashSeq: Int?
+        let frame: CGRect?
     }
 
     @Observable
@@ -27,8 +26,10 @@ struct AlbumGridRevealTests {
         var rowsShown = true
         /// Where each track row sits in the visible area.
         var rowFrames: [String: CGRect] = [:]
-        /// The track flashed, and where its row sat when the flash came.
+        /// The last track flashed, and where its row sat when the flash came.
         var flashed: Placement?
+        /// How many flashes the rows received.
+        var flashCount = 0
     }
 
     /// Thirty 40-point track rows, `<album>-t0` to `<album>-t29`, in place
@@ -56,20 +57,22 @@ struct AlbumGridRevealTests {
             Text(verbatim: trackId)
                 .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
                 .revealsAsTrackRow(trackId)
-                .onGeometryChange(for: Placement.self) { geometry in
-                    Placement(
-                        trackId: trackId,
-                        frame: geometry.frame(in: .scrollView),
-                        flashSeq: uiStore.pendingTrackFlash.flatMap {
-                            $0.trackId == trackId ? $0.seq : nil
-                        }
-                    )
-                } action: { placement in
-                    stage.rowFrames[trackId] = placement.frame
-                    if let seq = placement.flashSeq,
-                        stage.flashed?.flashSeq != seq
-                    {
-                        stage.flashed = placement
+                .onGeometryChange(for: CGRect.self) { geometry in
+                    geometry.frame(in: .scrollView)
+                } action: { frame in
+                    stage.rowFrames[trackId] = frame
+                }
+                .onReceive(uiStore.trackFlashes) { flashed in
+                    guard flashed == trackId else { return }
+                    // The grid sends the flash from the layout it measured
+                    // the row in, which may report the row's own frame
+                    // after it: read the frame once that layout is done.
+                    DispatchQueue.main.async {
+                        stage.flashCount += 1
+                        stage.flashed = Placement(
+                            trackId: trackId,
+                            frame: stage.rowFrames[trackId]
+                        )
                     }
                 }
         }
@@ -123,17 +126,13 @@ struct AlbumGridRevealTests {
         return frame.minY > -0.5 && frame.maxY < height + 0.5
     }
 
-    /// Return once the reveal of `trackId` has ended with the track flashed,
-    /// and the grid has come to rest.
+    /// Return once the grid has flashed `trackId`'s row and come to rest.
     private func revealed(
         _ trackId: String,
         in hosted: HostedAlbumGrid,
         _ stage: Stage
     ) async throws {
-        try await Wait.until {
-            hosted.uiStore.pendingAlbumReveal == nil
-                && stage.flashed?.trackId == trackId
-        }
+        try await Wait.until { stage.flashed?.trackId == trackId }
         try await hosted.settle()
     }
 
@@ -172,8 +171,7 @@ struct AlbumGridRevealTests {
         defer { hosted.window.close() }
         hosted.uiStore.navigateToAlbum("grid-404", trackId: "grid-404-t28")
         try await revealed("grid-404-t28", in: hosted, stage)
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
-        #expect(stage.flashed?.trackId == "grid-404-t28")
+        #expect(stage.flashCount == 1)
         #expect(try inView(stage.rowFrames["grid-404-t28"], of: hosted))
     }
 
@@ -186,11 +184,14 @@ struct AlbumGridRevealTests {
         hosted.uiStore.navigateToAlbum("grid-300", trackId: "grid-300-t28")
         try await revealed("grid-300-t28", in: hosted, stage)
 
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
-        #expect(hosted.uiStore.pendingTrackFlash?.trackId == "grid-300-t28")
         #expect(try inView(stage.rowFrames["grid-300-t28"], of: hosted))
-        #expect(stage.flashed?.trackId == "grid-300-t28")
+        #expect(stage.flashCount == 1)
         #expect(try inView(stage.flashed?.frame, of: hosted))
+        // The reveal holds until the person moves on.
+        #expect(
+            hosted.uiStore.albumReveal
+                == AlbumReveal(albumId: "grid-300", trackId: "grid-300-t28")
+        )
     }
 
     @Test("a track already in view is flashed where it is")
@@ -209,8 +210,7 @@ struct AlbumGridRevealTests {
         try await revealed("grid-0-t1", in: hosted, stage)
 
         #expect(scrollView.contentView.bounds.origin.y == 0)
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
-        #expect(stage.flashed?.trackId == "grid-0-t1")
+        #expect(stage.flashCount == 1)
     }
 
     @Test("a track below the fold of an open album is scrolled into view")
@@ -227,9 +227,7 @@ struct AlbumGridRevealTests {
         hosted.uiStore.navigateToAlbum("grid-0", trackId: "grid-0-t28")
         try await revealed("grid-0-t28", in: hosted, stage)
 
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
         #expect(try inView(stage.rowFrames["grid-0-t28"], of: hosted))
-        #expect(stage.flashed?.trackId == "grid-0-t28")
         #expect(try inView(stage.flashed?.frame, of: hosted))
     }
 
@@ -243,14 +241,11 @@ struct AlbumGridRevealTests {
         hosted.uiStore.navigateToAlbum("grid-300", trackId: "grid-300-t28")
         try await hosted.untilScrolled()
         try await hosted.settle()
-        #expect(hosted.uiStore.pendingAlbumReveal?.trackId == "grid-300-t28")
         #expect(stage.flashed == nil)
 
         stage.rowsShown = true
         try await revealed("grid-300-t28", in: hosted, stage)
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
         #expect(try inView(stage.rowFrames["grid-300-t28"], of: hosted))
-        #expect(stage.flashed?.trackId == "grid-300-t28")
         #expect(try inView(stage.flashed?.frame, of: hosted))
     }
 
@@ -266,49 +261,44 @@ struct AlbumGridRevealTests {
         try await hosted.settle()
         hosted.uiStore.closeAlbumDetail()
         try await hosted.settle()
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
+        #expect(hosted.uiStore.albumReveal == nil)
 
         // Opening the album again later flashes nothing.
         hosted.uiStore.selectAlbum("grid-300")
         stage.rowsShown = true
         try await Wait.until { stage.rowFrames["grid-300-t29"] != nil }
+        try await hosted.settle()
         #expect(stage.flashed == nil)
-        #expect(hosted.uiStore.pendingTrackFlash == nil)
     }
 
-    @Test("an album revealed alone ends its reveal with nothing flashed")
+    @Test("an album revealed alone is scrolled to with nothing flashed")
     func albumAloneFlashesNothing() async throws {
         let stage = Stage()
         let hosted = try await host(stage, preloaded: false)
         defer { hosted.window.close() }
 
         hosted.uiStore.navigateToAlbum("grid-300")
-        try await Wait.until {
-            hosted.uiStore.pendingAlbumReveal == nil
-                && stage.rowFrames["grid-300-t0"] != nil
-        }
+        try await Wait.until { stage.rowFrames["grid-300-t0"] != nil }
+        try await hosted.settle()
 
-        #expect(hosted.uiStore.pendingAlbumReveal == nil)
-        #expect(hosted.uiStore.pendingTrackFlash == nil)
-        #expect(stage.rowFrames["grid-300-t0"] != nil)
+        #expect(stage.flashed == nil)
     }
 }
 
 extension AlbumGridRevealTests {
-    @Test("a reveal of an album the grid has no card of ends where it is")
-    func albumWithNoCardEndsReveal() async throws {
+    @Test("a reveal of an album the grid has no card of scrolls nowhere")
+    func albumWithNoCardScrollsNowhere() async throws {
         let stage = Stage()
         let hosted = try await host(stage, preloaded: false)
         defer { hosted.window.close() }
         let top = try #require(hosted.scrollView).contentView.bounds.origin
 
         hosted.uiStore.navigateToAlbum("no-such-album")
-        try await Wait.until { hosted.uiStore.pendingAlbumReveal == nil }
         try await hosted.settle()
 
         #expect(
             try #require(hosted.scrollView).contentView.bounds.origin == top
         )
-        #expect(hosted.uiStore.pendingTrackFlash == nil)
+        #expect(stage.flashed == nil)
     }
 }

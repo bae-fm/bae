@@ -1,13 +1,10 @@
 import SwiftUI
 
-/// The row of the track a pending reveal names, as that row reports itself to
-/// the grid that scrolls to it: the row exists only once the album's detail is
+/// The row of the track a reveal names, as that row reports itself to the
+/// grid that scrolls to it: the row exists only once the album's detail is
 /// laid out, which the grid cannot see from its own slots.
 struct RevealedTrackRow: Equatable {
     let trackId: String
-    /// The reveal the row answers, so a row laid out for an earlier one is
-    /// never taken for it.
-    let seq: Int
     let bounds: Anchor<CGRect>
 }
 
@@ -36,16 +33,13 @@ private struct RevealsAsTrackRow: ViewModifier {
     let trackId: String
 
     func body(content: Content) -> some View {
-        let seq = uiStore.pendingAlbumReveal.flatMap { reveal in
-            reveal.trackId == trackId ? reveal.seq : nil
-        }
+        let revealed = uiStore.albumReveal?.trackId == trackId
         content.anchorPreference(
             key: RevealedTrackRowKey.self,
             value: .bounds
         ) { bounds in
-            seq.map {
-                RevealedTrackRow(trackId: trackId, seq: $0, bounds: bounds)
-            }
+            revealed
+                ? RevealedTrackRow(trackId: trackId, bounds: bounds) : nil
         }
     }
 }

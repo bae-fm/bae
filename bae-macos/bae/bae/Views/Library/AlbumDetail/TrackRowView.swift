@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import SwiftUI
 
 /// One row in an album's track list, as drawn: the position, the title and
@@ -149,19 +150,12 @@ struct TrackRowView: View {
                 .accessibilityHidden(track.myStars == nil)
         }
         .revealsAsTrackRow(track.id)
-        // Keyed on the flash's `seq` so a remounted row still sees the flash
-        // and a repeat navigation fires it again.
-        .task(id: uiStore.pendingTrackFlash?.seq) {
-            guard let flash = uiStore.pendingTrackFlash,
-                flash.trackId == track.id
-            else {
-                return
-            }
+        .onReceive(uiStore.trackFlashes) { trackId in
+            guard trackId == track.id else { return }
             highlightOpacity = ThemeOpacity.tintStrong
             withAnimation(.easeOut(duration: 3)) {
                 highlightOpacity = 0
             }
-            uiStore.consumeTrackFlash(seq: flash.seq)
         }
         .onTapGesture(count: 2) {
             onPlay()

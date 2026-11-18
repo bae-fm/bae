@@ -22,7 +22,6 @@ struct AlbumGridScroll: Equatable {
 /// The track row and scroll bounds measured in one content layout.
 struct PlacedTrackRow: Equatable {
     let trackId: String
-    let seq: Int
     let frame: CGRect
     let scroll: AlbumGridScroll
 
@@ -43,7 +42,8 @@ struct PlacedTrackRow: Equatable {
 }
 
 /// Where the grid's slots sit in the visible area, the slot a change of
-/// column count keeps on top, and where the row a reveal scrolls to is.
+/// column count keeps on top, and how far the grid has come in showing the
+/// album the person asked to see.
 ///
 /// A reference the view holds rather than view state: slots report their
 /// frames on every scrolled frame, and nothing the grid draws reads them.
@@ -72,10 +72,11 @@ final class AlbumGridViewport {
     /// the slot on top was handed out, so the same standing asks for no
     /// second scroll.
     private var lastHoldScroll: HoldScroll?
-    /// The row of the track the pending reveal names, while it is laid out.
+    /// The row of the track the reveal names, while it is laid out.
     private var revealRow: PlacedTrackRow?
-    /// How far the pending reveal's scroll to its album has come, so its
-    /// row's place is measured where that scroll stops, not on the way there.
+    /// How far the grid's scroll to the revealed album has come, so the
+    /// track's row is measured where that scroll stops, not on the way
+    /// there; nil while the grid scrolls for no reveal.
     private var revealScroll: RevealScroll?
     /// What the scroll view is doing: a scroll is on its way until this is
     /// idle again.
@@ -102,11 +103,11 @@ final class AlbumGridViewport {
 
     private enum RevealScroll {
         /// Scrolling the album's card to the top.
-        case toAlbum(seq: Int, card: AlbumGridCell.Identity)
+        case toAlbum(card: AlbumGridCell.Identity)
         /// The scroll has come to rest at the album.
-        case atAlbum(seq: Int)
+        case atAlbum
         /// Scrolling the track's row into view.
-        case toRow(seq: Int)
+        case toRow
     }
 
     func place(
@@ -132,51 +133,60 @@ final class AlbumGridViewport {
         revealRow = row
     }
 
-    /// Reveal `seq` scrolls its album's `card` to the top. Returns `seq`
-    /// when the card sits there already, where the scroll moves nothing: the
-    /// reveal is at its album.
-    func revealScrolls(seq: Int, to card: AlbumGridCell.Identity) -> Int? {
-        revealScroll = .toAlbum(seq: seq, card: card)
+    /// The grid scrolls the revealed album's `card` to the top. Returns
+    /// whether the card sits there already, where the scroll moves nothing:
+    /// the grid is at the album.
+    func revealScrolls(to card: AlbumGridCell.Identity) -> Bool {
+        revealScroll = .toAlbum(card: card)
         return revealArrivedInPlace()
     }
 
-    /// Takes the scroll view's new phase. Returns the reveal this brings to
-    /// its album: the scroll view comes to rest with the album's card on top.
-    func setPhase(_ new: ScrollPhase) -> Int? {
+    /// Takes the scroll view's new phase. Returns whether this brings the
+    /// grid to the revealed album: the scroll view comes to rest with the
+    /// album's card on top.
+    func setPhase(_ new: ScrollPhase) -> Bool {
         phase = new
         return revealArrivedInPlace()
     }
 
-    /// Returns the reveal its scroll, or a scroll it did not need, has
-    /// brought to its album: the album's card sits on top while the scroll
-    /// view is idle.
-    func revealArrivedInPlace() -> Int? {
+    /// Returns whether the scroll to the revealed album, or a scroll it did
+    /// not need, has just brought the grid there: the album's card sits on
+    /// top while the scroll view is idle.
+    func revealArrivedInPlace() -> Bool {
         guard phase == .idle,
-            case .toAlbum(let seq, let card) = revealScroll,
+            case .toAlbum(let card) = revealScroll,
             sitsOnTop(card)
-        else { return nil }
-        revealScroll = .atAlbum(seq: seq)
-        return seq
+        else { return false }
+        revealScroll = .atAlbum
+        return true
     }
 
-    /// The row reveal `seq` names, laid out; `arrived` asks only once the
-    /// reveal has scrolled to its album, from then on through its scroll to
+    /// `trackId`'s row, laid out; `arrived` asks only once the grid has
+    /// scrolled to the revealed album, from then on through its scroll to
     /// the row.
-    func revealedRow(seq: Int, arrived: Bool = false) -> PlacedTrackRow? {
-        guard let revealRow, revealRow.seq == seq else { return nil }
+    func revealedRow(of trackId: String, arrived: Bool = false)
+        -> PlacedTrackRow?
+    {
+        guard let revealRow, revealRow.trackId == trackId else { return nil }
         guard arrived else { return revealRow }
         switch revealScroll {
-        case .atAlbum(seq), .toRow(seq):
+        case .atAlbum, .toRow:
             return revealRow
-        default:
+        case .toAlbum, nil:
             return nil
         }
     }
 
-    /// Reveal `seq` scrolls its track's row into view, and measures the row
-    /// again wherever the grid lays it out next.
-    func revealScrollsToRow(seq: Int) {
-        revealScroll = .toRow(seq: seq)
+    /// The grid scrolls the revealed track's row into view, and measures the
+    /// row again wherever it lays it out next.
+    func revealScrollsToRow() {
+        revealScroll = .toRow
+    }
+
+    /// The grid has shown what the reveal names, or starts showing it again:
+    /// no scroll of the reveal's is on its way.
+    func endRevealScroll() {
+        revealScroll = nil
     }
 
     /// Holds `slot` on top until the hold ends.
