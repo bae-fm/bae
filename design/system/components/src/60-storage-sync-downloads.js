@@ -71,18 +71,19 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as MacStorageChip draws it: one word, with no icon. At rest, Local, Pinned and Cloud are plain words, since every row has one; only the states the person must notice are chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back. `long`, for a release's Storage sheet (MacStorageBand), names what a waiting or moving change does, as everywhere but the column: Queued to upload, Queued to pin, Queued to move to This Mac, Moving to This Mac….
+  // The Storage column, as MacStorageChip draws it: one word, with no icon. Every state that stands still is a plain word: Local, Pinned and Cloud at rest, Queued, and Waiting and Error in their tone's colour. Only the states with progress (Uploading, Pinning, Moving) are filled chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back. `long`, for a release's Storage sheet (MacStorageBand), names what a waiting or moving change does, as everywhere but the column: Queued to upload, Queued to pin, Queued to move to This Mac, Moving to This Mac….
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
-    var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
+    // A state that stands still is a word in the row's text; a problem's word takes its tone's colour. Only a state with progress is a filled chip.
+    var word = function (tone, label) { return h('span', { className: cx('bae-m-storeword', tone && 'bae-tone-' + tone + ' bae-m-storeword-tone') }, label); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : props.long ? 'Moving to This Mac…' : 'Moving';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
-    if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return chip('danger', 'Error');
-    if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return chip('activity', props.long ? { queued: 'Queued to pin', uploadQueued: 'Queued to upload', moveToThisDeviceQueued: 'Queued to move to This Mac' }[s] : 'Queued');
-    if (s === 'uploadBlocked') return chip('warning', 'Waiting');
-    return h('span', { className: 'bae-m-storeword' }, { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
+    if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return word('danger', 'Error');
+    if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return word(null, props.long ? { queued: 'Queued to pin', uploadQueued: 'Queued to upload', moveToThisDeviceQueued: 'Queued to move to This Mac' }[s] : 'Queued');
+    if (s === 'uploadBlocked') return word('warning', 'Waiting');
+    return word(null, { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
   }
 
   // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`moveToThisDevice`) that failed shows the notice Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.

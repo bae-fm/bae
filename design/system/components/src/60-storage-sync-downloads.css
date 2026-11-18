@@ -30,8 +30,9 @@
 .bae-m-table-tr { border-radius: 5px; }
 .bae-m-table-alt { background: var(--hover); }
 .bae-m-table-row { height: 28px; border-radius: 5px; }
-/* A resting storage state (Local, Pinned, Cloud): a plain word in the row's text, with no chip. */
+/* A storage state that stands still (Local, Pinned, Cloud, Queued, Waiting, Error): a plain word in the row's text, with no chip; a problem's word in its tone's colour. */
 .bae-m-storeword { font: 400 13px var(--font-sans); color: var(--text-primary); text-align: start; white-space: nowrap; }
+.bae-m-storeword-tone { color: var(--bae-tone); }
 .bae-m-table-selected { background: var(--accent-tint); }
 .bae-m-table-td { padding: 0 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
 .bae-m-table-empty { position: absolute; inset: 28px 0 0; display: flex; align-items: center; justify-content: center; }
