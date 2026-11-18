@@ -207,6 +207,15 @@ playlist appends it to the playlist in that order in one write: when the
 library lacks any of the tracks, Add to playlist adds none of them. New
 playlist starts a playlist holding it.
 
+On macOS the person picks several albums in the album grid the same way:
+cmd-click picks or unpicks an album, shift-click picks the albums of the cards
+from the last pick's card to the one clicked, and a plain click clears the
+picks. Core reads the albums a shift-click picks, each once, from the grid's
+order under its sort and grouping, whether or not the grid has loaded their
+cards. Grouped by artist, each end is the card the person clicked, in its
+artist's group. A pick or a clear made while core reads those albums cancels
+the read.
+
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).
 

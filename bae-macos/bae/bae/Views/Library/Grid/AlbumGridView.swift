@@ -53,12 +53,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @State
     private var openPlace = AlbumGridOpenPlace()
 
-    /// The list the grid shows now, which the selection's anchor position is
-    /// in.
-    private var listing: AlbumGridListing {
-        AlbumGridListing(epoch: list.loadEpoch, rows: list.positionCount)
-    }
-
     /// What the grid asks core to place: the open album, in the group the
     /// person opened it under.
     private var placeRequest: AlbumPlaceRequest? {
@@ -254,11 +248,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
             .onChange(of: list.loadEpoch) {
                 viewport.release()
             }
-            // The selection's anchor is a position in the list the grid
-            // showed when it was clicked.
-            .onChange(of: listing) {
-                selection.dropAnchor()
-            }
             .task(id: placeRequest) {
                 guard let request = placeRequest else {
                     openPlace.clear()
@@ -309,15 +298,6 @@ private struct GridScreen: Equatable {
     let height: CGFloat
     let rowHeight: CGFloat
     let columns: Int
-}
-
-/// One load of the grid's list at one row count. The selection's anchor
-/// position names a card in the listing it was taken in: another sort or
-/// grouping loads the list anew, and a write that adds or removes rows moves
-/// the rows after it.
-private struct AlbumGridListing: Hashable {
-    let epoch: LoadEpoch
-    let rows: Int
 }
 
 /// A pending reveal, with what core answered for where its album's card is.
@@ -553,7 +533,7 @@ extension AlbumGridView {
             .frame(width: width)
             .draggable(dragPayload(for: albumId))
             .onTapGesture {
-                handleTap(on: albumId, position: position, sectionId: sectionId)
+                handleTap(on: albumId, sectionId: sectionId)
             }
         }
         else {
@@ -751,27 +731,34 @@ extension AlbumGridView {
 
     /// Cmd toggles the album in the selection, shift extends the range, and a
     /// plain click clears the selection and toggles the album's detail.
-    private func handleTap(
-        on albumId: String,
-        position: Int,
-        sectionId: String?
-    ) {
+    private func handleTap(on albumId: String, sectionId: String?) {
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
             selection.setSelected(
                 albumId,
                 selected: !selection.contains(albumId),
-                position: position,
                 sectionId: sectionId
             )
             gridFocused = true
         }
         else if modifiers.contains(.shift) {
+            let between = library.albumIdsBetween
+            let sort = sortCriteria
+            let grouped = groupByArtist
             selection.extendRange(
                 to: albumId,
-                position: position,
                 sectionId: sectionId,
-                idAt: { list.idAt($0) }
+                readRange: { from, to in
+                    try await between(
+                        sort,
+                        grouped,
+                        from.albumId,
+                        from.sectionId,
+                        to.albumId,
+                        to.sectionId
+                    )
+                },
+                onFailure: { uiStore.showError($0) }
             )
             gridFocused = true
         }

@@ -22,6 +22,17 @@ public final class Library: Sendable, Observable {
             _ groupByArtist: Bool, _ sectionId: String?
         )
             -> PulledValues<BridgeAlbumPlace?>
+    /// The albums of the album list's cards under one sort and grouping from
+    /// the card of `fromAlbumId` to the card of `toAlbumId`, both included,
+    /// each once, in the list's order, which core reads: what a shift-click
+    /// selects. Each card is its album's card in the group of the artist its
+    /// section id names when that group holds one, else its first card.
+    public let albumIdsBetween:
+        @Sendable (
+            _ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool,
+            _ fromAlbumId: String, _ fromSectionId: String?,
+            _ toAlbumId: String, _ toSectionId: String?
+        ) async throws -> [String]
     /// The albums of `albumIds` the album list holds, each once, in its order
     /// under one sort and grouping: what an action on the grid's selection
     /// acts on, in that order.
@@ -142,6 +153,12 @@ public final class Library: Sendable, Observable {
             -> PulledValues<BridgeAlbumPlace?> = { _, _, _, _ in
                 fatalError("Library album place reads are not installed")
             },
+        albumIdsBetween:
+            @escaping @Sendable (
+                [BridgeSortCriterion], Bool, String, String?, String, String?
+            ) async throws -> [String] = { _, _, _, _, _, _ in
+                throw StubError.notImplemented
+            },
         albumsInBrowseOrder:
             @escaping @Sendable ([BridgeSortCriterion], [String], Bool)
             async throws
@@ -258,6 +275,7 @@ public final class Library: Sendable, Observable {
     ) {
         self.albumList = albumList
         self.albumPlaceReads = albumPlaceReads
+        self.albumIdsBetween = albumIdsBetween
         self.albumsInBrowseOrder = albumsInBrowseOrder
         self.composerList = composerList
         self.artistList = artistList
@@ -305,6 +323,7 @@ extension Library {
             self.init(
                 albumList: Self.albumList(handle),
                 albumPlaceReads: Self.albumPlaceReads(handle),
+                albumIdsBetween: Self.albumIdsBetween(handle),
                 albumsInBrowseOrder: Self.albumsInBrowseOrder(handle),
                 composerList: Self.composerList(handle),
                 artistList: Self.artistList(handle),
@@ -411,6 +430,27 @@ extension Library {
                         groupByArtist: $2,
                         sectionId: $3
                     )
+                )
+            }
+        }
+
+        /// The albums of the album list's cards between two cards, read
+        /// through `handle`.
+        private static func albumIdsBetween(
+            _ handle: any AppHandleProtocol
+        )
+            -> @Sendable (
+                [BridgeSortCriterion], Bool, String, String?, String, String?
+            ) async throws -> [String]
+        {
+            {
+                try await handle.albumIdsBetween(
+                    sortCriteria: $0,
+                    groupByArtist: $1,
+                    fromAlbumId: $2,
+                    fromSectionId: $3,
+                    toAlbumId: $4,
+                    toSectionId: $5
                 )
             }
         }

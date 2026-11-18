@@ -453,6 +453,15 @@ internal open class FakeAppHandle(
         sectionId: String?,
     ): AlbumPlaceSubscription = unfaked("subscribeAlbumPlace")
 
+    override suspend fun albumIdsBetween(
+        sortCriteria: List<BridgeSortCriterion>,
+        groupByArtist: Boolean,
+        fromAlbumId: String,
+        fromSectionId: String?,
+        toAlbumId: String,
+        toSectionId: String?,
+    ): List<String> = unfaked("albumIdsBetween")
+
     override suspend fun albumsInBrowseOrder(
         sortCriteria: List<BridgeSortCriterion>,
         albumIds: List<String>,

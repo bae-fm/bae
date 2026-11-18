@@ -420,8 +420,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         }
         session.albumSelection.setSelected(
             "album-a",
-            selected: true,
-            position: 0
+            selected: true
         )
         #expect(selectionProbe.requested.last == ["album-a"])
 
@@ -444,13 +443,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 
         session.albumSelection.setSelected(
             "album-a",
-            selected: true,
-            position: 0
+            selected: true
         )
         session.albumSelection.setSelected(
             "album-b",
-            selected: true,
-            position: 1
+            selected: true
         )
         selectionProbe.emit(
             requested: ["album-a", "album-b"],
@@ -475,18 +472,15 @@ struct LibraryBrowseSessionAlbumProjectionTests {
 
         session.albumSelection.setSelected(
             "album-a",
-            selected: true,
-            position: 0
+            selected: true
         )
         session.albumSelection.setSelected(
             "album-b",
-            selected: true,
-            position: 1
+            selected: true
         )
         session.albumSelection.setSelected(
             "album-a",
-            selected: false,
-            position: 0
+            selected: false
         )
 
         #expect(selectionProbe.opened == 1)
@@ -508,7 +502,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         weak var weakSession = session
 
         session?.albumSelection
-            .setSelected("album-a", selected: true, position: 0)
+            .setSelected("album-a", selected: true)
         session = nil
         try await Wait.until { selectionProbe.cancelled }
 

@@ -132,6 +132,39 @@ forward! { async this => {
             .map(crate::types::BridgeWorkDetail::from_core))
     }
 
+    /// The albums of the grid's cards from the card of `from_album_id` to the
+    /// card of `to_album_id`, both included, each album once, in the grid's
+    /// order under `sort_criteria` and `group_by_artist`: what a shift-click
+    /// on the grid selects. Each card is its album's card in the group of the
+    /// artist its section id names when that group holds one, else the
+    /// album's first card. With no card of the first album, the albums are
+    /// the second's alone.
+    fn album_ids_between(
+        sort_criteria: Vec<BridgeSortCriterion>,
+        group_by_artist: bool,
+        from_album_id: String,
+        from_section_id: Option<String>,
+        to_album_id: String,
+        to_section_id: Option<String>,
+    ) -> Vec<String> {
+        let sort: Vec<bae_views::AlbumSortCriterion> = sort_criteria
+            .into_iter()
+            .map(BridgeSortCriterion::into_core)
+            .collect();
+        let from = bae_views::album::AlbumCard {
+            album_id: &from_album_id,
+            section_id: from_section_id.as_deref(),
+        };
+        let to = bae_views::album::AlbumCard {
+            album_id: &to_album_id,
+            section_id: to_section_id.as_deref(),
+        };
+        this.services
+            .album_ids_between(&sort, group_by_artist, from, to)
+            .await
+            .map_err(BridgeError::from)
+    }
+
     /// The albums of `album_ids` the grid lists, each once, in the grid's
     /// order under `sort_criteria` and `group_by_artist`: what an action on
     /// the grid's selection acts on, in that order.

@@ -11,17 +11,20 @@ import Observation
 @MainActor
 @Observable
 final class AlbumGridSelection {
-    /// The card a shift-click extends from: its album, at the list position
-    /// it was clicked at, in its artist's group when the grid groups by
-    /// artist.
-    struct Anchor {
+    /// The card a shift-click extends from: its album, in its artist's group
+    /// when the grid groups by artist.
+    struct Anchor: Equatable {
         let albumId: String
-        let position: Int
         let sectionId: String?
     }
 
     private(set) var selectedIds: Set<String> = []
     private(set) var anchor: Anchor?
+    /// The read of the albums a shift-click selects, while core reads them.
+    /// Any later change to the selection cancels the read, so the selection
+    /// never takes in a range that core returns after it changed.
+    @ObservationIgnored
+    private var rangeRead: Task<Void, Never>?
     @ObservationIgnored
     private let onSelectionChanged: @MainActor (Set<String>) -> Void
 
@@ -40,62 +43,60 @@ final class AlbumGridSelection {
         selectedIds.contains(id)
     }
 
-    /// Set the album's membership and anchor at the clicked card, at list
-    /// position `position`.
+    /// Set the album's membership and anchor at the clicked card, in the
+    /// group of the artist `sectionId`.
     func setSelected(
         _ id: String,
         selected: Bool,
-        position: Int,
         sectionId: String? = nil
     ) {
+        rangeRead?.cancel()
         if selected {
             selectedIds.insert(id)
         }
         else {
             selectedIds.remove(id)
         }
-        anchor = Anchor(albumId: id, position: position, sectionId: sectionId)
+        anchor = Anchor(albumId: id, sectionId: sectionId)
         onSelectionChanged(selectedIds)
     }
 
-    /// shift-click on the card of `targetId` at list position `position`:
-    /// union the contiguous range of positions between the anchor's and the
-    /// target's into the selection. Ids in the range that aren't loaded
-    /// (`idAt` returns nil) are skipped. The anchor is unchanged. With no
-    /// anchor, the clicked album is selected and anchored.
+    /// shift-click on the card of `targetId` in the group of the artist
+    /// `sectionId`: add the albums of the cards from the anchor's to the
+    /// target's, which `readRange` reads from core, to the selection. The
+    /// anchor is unchanged. With no anchor, the clicked album is selected and
+    /// anchored. When `readRange` fails, nothing is selected and the error
+    /// goes to `onFailure`.
     func extendRange(
         to targetId: String,
-        position: Int,
         sectionId: String? = nil,
-        idAt: (Int) -> String?
+        readRange:
+            @escaping @Sendable (_ from: Anchor, _ to: Anchor) async throws
+            -> [String],
+        onFailure: @escaping @MainActor (any Error) -> Void
     ) {
         guard let anchor else {
-            setSelected(
-                targetId,
-                selected: true,
-                position: position,
-                sectionId: sectionId
-            )
+            setSelected(targetId, selected: true, sectionId: sectionId)
             return
         }
-        for index in min(
-            anchor.position,
-            position
-        )...max(anchor.position, position) {
-            if let id = idAt(index) {
-                selectedIds.insert(id)
+        let target = Anchor(albumId: targetId, sectionId: sectionId)
+        rangeRead?.cancel()
+        rangeRead = Task {
+            do {
+                let range = try await readRange(anchor, target)
+                guard !Task.isCancelled else { return }
+                selectedIds.formUnion(range)
+                onSelectionChanged(selectedIds)
+            }
+            catch {
+                guard !Task.isCancelled else { return }
+                onFailure(error)
             }
         }
-        onSelectionChanged(selectedIds)
-    }
-
-    /// Forget the anchor, keeping the selection: the list it was clicked in
-    /// has moved its rows, so its position no longer names its card.
-    func dropAnchor() {
-        anchor = nil
     }
 
     func clear() {
+        rangeRead?.cancel()
         selectedIds = []
         anchor = nil
         onSelectionChanged(selectedIds)

@@ -14,7 +14,7 @@ pub(crate) use listing::{
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
 mod place;
-pub use place::AlbumPlace;
+pub use place::{AlbumCard, AlbumPlace};
 mod search_albums;
 use search_albums::first_search_albums_on;
 
