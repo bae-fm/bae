@@ -6,8 +6,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.AppScreen
 import fm.bae.app.DisplayError
+import fm.bae.app.FailedStep
 import fm.bae.app.LocaleErrorDisplays
 import fm.bae.app.R
+import fm.bae.app.ScreenFailure
 import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
@@ -154,6 +156,27 @@ class WelcomeShots : BoardShot() {
                 ResetOfferedScreen(
                     libraryId = "home",
                     error = null,
+                    lines = testRecoveryLines,
+                    prepare = { error("a shot was tapped") },
+                    errors = LocaleErrorDisplays(LocalContext.current),
+                    onReset = {},
+                    onLeave = {},
+                )
+            }
+        }
+
+    /** A library whose data bae cannot use: the centred notice over its advice, with Details and Reset from cloud. */
+    @Test
+    fun androidWelcomeOpeningDamaged() =
+        shot("android.welcome.opening.damaged") {
+            ScreenScene {
+                ResetOfferedScreen(
+                    libraryId = "home",
+                    error =
+                        ScreenFailure(
+                            FailedStep.LIBRARY_OPEN,
+                            DisplayError("Something went wrong with the database.", "damaged", offersRetry = false),
+                        ),
                     lines = testRecoveryLines,
                     prepare = { error("a shot was tapped") },
                     errors = LocaleErrorDisplays(LocalContext.current),

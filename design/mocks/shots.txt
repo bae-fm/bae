@@ -129,6 +129,7 @@ android.welcome.libraries.saved-codes
 android.welcome.library-details
 android.welcome.library-details.unsent-changes
 android.welcome.library-menu
+android.welcome.opening.damaged
 android.welcome.opening.failed
 android.welcome.opening.finding-libraries
 android.welcome.opening.resetting

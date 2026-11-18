@@ -170,7 +170,7 @@ private fun ErrorNoticeContent(
     var detailsShown by rememberSaveable(details) { mutableStateOf(false) }
     val opensDetails = details != null && onOpenDetails != null
     if (look == NoticeLook.CENTERED) {
-        CenteredNotice(title, tone, modifier, details != null, { detailsShown = true }, action)
+        CenteredNotice(title, advice, tone, modifier, details != null, { detailsShown = true }, action)
     } else {
         FramedNotice(
             title = title,
@@ -197,11 +197,13 @@ private fun ErrorNoticeContent(
 
 /**
  * A view that failed whole: in the middle of the space it's given, the title in secondary text,
- * then Details and the action in one row.
+ * then Details and the action in one row. Under [advice] the title is primary text and the advice
+ * sits under it in secondary text.
  */
 @Composable
 private fun CenteredNotice(
     title: String,
+    advice: String?,
     tone: StatusTone,
     modifier: Modifier,
     hasDetails: Boolean,
@@ -221,6 +223,14 @@ private fun CenteredNotice(
             Text(
                 text = title,
                 style = ThemeText.androidBodyLarge.style,
+                color = with(MaterialTheme.colorScheme) { if (advice != null) onSurface else onSurfaceVariant },
+                textAlign = TextAlign.Center,
+            )
+        }
+        advice?.let {
+            Text(
+                text = it,
+                style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )

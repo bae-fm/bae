@@ -37,7 +37,6 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.ErrorAction
-import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
@@ -131,15 +130,13 @@ internal fun ResetOfferedScreen(
 
         // After a failed open, the notice names the failed step, says the data is wrong and offers Reset from cloud.
         shown != null && shown.step == FailedStep.LIBRARY_OPEN -> {
-            Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-                AndroidNotice(
-                    title = context.coreString(shown.step.titleKey),
-                    advice = stringResource(R.string.library_data_wrong),
-                    error = reason,
-                    action = offer,
-                    buttons = NoticeButtons.BELOW,
-                )
-            }
+            AndroidNotice(
+                title = context.coreString(shown.step.titleKey),
+                advice = stringResource(R.string.library_data_wrong),
+                error = reason,
+                look = NoticeLook.CENTERED,
+                action = offer,
+            )
         }
 
         else -> {
