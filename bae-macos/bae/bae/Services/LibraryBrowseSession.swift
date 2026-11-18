@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import Foundation
 import Observation
 
@@ -129,6 +130,10 @@ final class LibraryBrowseSession {
     /// The selected playlist in the playlists browser, or `nil` before any
     /// selection. Views read it and call `selectPlaylist(_:)`.
     private(set) var selectedPlaylistId: String?
+    /// Takes the navigations `UiStore.libraryNavigations` sends, for as long
+    /// as the session lives.
+    @ObservationIgnored
+    private var navigations: AnyCancellable?
 
     init(
         library: Library,
@@ -173,6 +178,10 @@ final class LibraryBrowseSession {
                 )
             }
         )
+        navigations = uiStore.libraryNavigations.requests.sink {
+            [weak self] target in
+            MainActor.assumeIsolated { self?.open(target) }
+        }
     }
 
     private static func makeAlbumList(
@@ -218,6 +227,19 @@ final class LibraryBrowseSession {
     }
 
     // MARK: - Detail-pane selection
+
+    /// Select what a navigation asks to open. The navigation itself switches
+    /// the browser to the mode that shows it.
+    private func open(_ target: LibraryNavigationTarget) {
+        switch target {
+        case .artist(let artistId):
+            selectArtist(artistId)
+        case .composer(let artistId):
+            selectComposer(artistId)
+        case .work(let workId):
+            selectWork(workId)
+        }
+    }
 
     /// Select a composer with no work drilled into yet (the composer's
     /// overview). Used by a composer-list click and by cross-section

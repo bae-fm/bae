@@ -78,13 +78,6 @@ struct LibraryView: View {
         .onChange(of: libraryProjections.work.error?.line) { _, line in
             if let line { uiStore.showError(line) }
         }
-        .task(id: uiStore.pendingLibraryNavigation?.seq) {
-            guard let request = uiStore.pendingLibraryNavigation else {
-                return
-            }
-            applyLibraryNavigation(request.target)
-            uiStore.consumeLibraryNavigation(seq: request.seq)
-        }
         .sheet(
             item: Binding(
                 get: { uiStore.newPlaylistSheet },
@@ -392,17 +385,6 @@ extension LibraryView {
             playlistDetail?.summary.id == session.selectedPlaylistId
         else { return nil }
         return playlistDetail
-    }
-
-    private func applyLibraryNavigation(_ target: LibraryNavigationTarget) {
-        switch target {
-        case .artist(let artistId):
-            session.selectArtist(artistId)
-        case .composer(let artistId):
-            session.selectComposer(artistId)
-        case .work(let workId):
-            session.selectWork(workId)
-        }
     }
 
     private func artistRow(at index: Int, list: ArtistList) -> some View {

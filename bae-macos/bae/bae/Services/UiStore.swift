@@ -25,19 +25,11 @@ enum LibraryBrowserMode: CaseIterable {
     }
 }
 
-enum LibraryNavigationTarget {
+/// What a navigation asks the library browser to open.
+enum LibraryNavigationTarget: Equatable {
     case artist(String)
     case composer(String)
     case work(String)
-}
-
-/// A pending composer/work reveal, consumed exactly once by `LibraryView`.
-/// Durable, not a stream: cross-section navigation can switch the browser
-/// mode and mount the consumer after the producer records the request. `seq`
-/// lets repeat navigation to the same target run again.
-struct LibraryNavigationRequest {
-    let target: LibraryNavigationTarget
-    let seq: Int
 }
 
 /// A request to show an album in the album grid, by a navigation such as Go
@@ -76,10 +68,10 @@ class UiStore: @unchecked Sendable {
     @ObservationIgnored
     let trackFlashes = PassthroughSubject<String, Never>()
 
-    /// The pending composer/work reveal, or `nil` before any such navigation or
-    /// once applied. Durable until consumed — see `LibraryNavigationRequest`.
-    private(set) var pendingLibraryNavigation: LibraryNavigationRequest?
-    private var libraryNavigationSeq = 0
+    /// The requests to open an artist, a composer or a work in the library
+    /// browser, which the browse session takes as they come.
+    @ObservationIgnored
+    let libraryNavigations = HeldRequests<LibraryNavigationTarget>()
 
     // ── Shared selections ───────────────────────────────────────────────
 
@@ -184,44 +176,24 @@ class UiStore: @unchecked Sendable {
     func navigateToArtist(_ artistId: String) {
         activeSection = .library
         libraryBrowserMode = .artists
-        libraryNavigationSeq += 1
-        pendingLibraryNavigation = LibraryNavigationRequest(
-            target: .artist(artistId),
-            seq: libraryNavigationSeq
-        )
+        libraryNavigations.send(.artist(artistId))
     }
 
     func navigateToComposer(_ artistId: String) {
         activeSection = .library
         libraryBrowserMode = .composers
-        libraryNavigationSeq += 1
-        pendingLibraryNavigation = LibraryNavigationRequest(
-            target: .composer(artistId),
-            seq: libraryNavigationSeq
-        )
+        libraryNavigations.send(.composer(artistId))
     }
 
     func navigateToWork(_ workId: String) {
         activeSection = .library
         libraryBrowserMode = .composers
-        libraryNavigationSeq += 1
-        pendingLibraryNavigation = LibraryNavigationRequest(
-            target: .work(workId),
-            seq: libraryNavigationSeq
-        )
+        libraryNavigations.send(.work(workId))
     }
 
     /// Flash `trackId`'s row, once the grid has shown it.
     func flashTrack(_ trackId: String) {
         trackFlashes.send(trackId)
-    }
-
-    /// Clear the pending composer/work reveal once `LibraryView` has applied
-    /// it. A no-op if a newer request already superseded it.
-    func consumeLibraryNavigation(seq: Int) {
-        if pendingLibraryNavigation?.seq == seq {
-            pendingLibraryNavigation = nil
-        }
     }
 
     func selectAlbum(_ albumId: String?) {

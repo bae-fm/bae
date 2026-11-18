@@ -52,83 +52,11 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.activeSection == .library)
     }
 
-    @Test("navigateToComposer records a durable navigation request")
-    func navigateToComposerRecordsNavigationRequest() {
-        let store = UiStore()
-        store.navigateToComposer("artist-1")
-
-        guard
-            case .composer("artist-1") = store.pendingLibraryNavigation?
-                .target
-        else {
-            Issue.record("expected composer navigation target")
-            return
-        }
-        #expect(store.pendingLibraryNavigation?.seq == 1)
-    }
-
     @Test("navigateToWork switches to composers mode")
     func navigateToWorkSwitchesMode() {
         let store = UiStore()
         store.navigateToWork("work-1")
         #expect(store.libraryBrowserMode == .composers)
-    }
-
-    @Test("repeat composer navigation records a fresh request")
-    func repeatComposerNavigationRecordsFreshRequest() {
-        let store = UiStore()
-        store.navigateToComposer("artist-1")
-        let first = store.pendingLibraryNavigation?.seq
-        store.navigateToComposer("artist-1")
-        let second = store.pendingLibraryNavigation?.seq
-
-        guard let first, let second else {
-            Issue.record("expected navigation sequence values")
-            return
-        }
-        #expect(second > first)
-    }
-
-    @Test("navigateToWork records a durable navigation request")
-    func navigateToWorkRecordsNavigationRequest() {
-        let store = UiStore()
-        store.navigateToWork("work-1")
-
-        guard case .work("work-1") = store.pendingLibraryNavigation?.target
-        else {
-            Issue.record("expected work navigation target")
-            return
-        }
-        #expect(store.pendingLibraryNavigation?.seq == 1)
-    }
-
-    @Test("consumeLibraryNavigation clears the pending request it names")
-    func consumeLibraryNavigationClearsMatchingRequest() throws {
-        let store = UiStore()
-        store.navigateToComposer("artist-1")
-        let seq = try #require(store.pendingLibraryNavigation?.seq)
-
-        store.consumeLibraryNavigation(seq: seq)
-
-        #expect(store.pendingLibraryNavigation == nil)
-    }
-
-    @Test(
-        "consumeLibraryNavigation is a no-op against a superseded request"
-    )
-    func consumeLibraryNavigationIgnoresStaleSeq() throws {
-        let store = UiStore()
-        store.navigateToComposer("artist-1")
-        let staleSeq = try #require(store.pendingLibraryNavigation?.seq)
-        store.navigateToWork("work-1")
-
-        store.consumeLibraryNavigation(seq: staleSeq)
-
-        guard case .work("work-1") = store.pendingLibraryNavigation?.target
-        else {
-            Issue.record("newer request should survive a stale consume")
-            return
-        }
     }
 
     @Test("navigateToLibraryRoot does not change libraryBrowserMode")
@@ -195,6 +123,56 @@ struct UiStoreLibraryBrowserModeTests {
         store.flashTrack("track-7")
 
         #expect(flashed == ["track-7", "track-7"])
+    }
+}
+
+@MainActor
+@Suite("Library navigation in the browse session")
+struct LibraryNavigationTests {
+    @Test("a navigation opens the artist, composer or work it names")
+    func navigationOpensItsTarget() async throws {
+        let store = UiStore()
+        let session = LibraryBrowseSession(library: .stub(), uiStore: store)
+
+        store.navigateToComposer("artist-1")
+        try await Wait.until {
+            session.detailSelection
+                == .composer(artistId: "artist-1", workId: nil)
+        }
+        store.navigateToWork("work-1")
+        try await Wait.until {
+            session.detailSelection == .work(workId: "work-1")
+        }
+        store.navigateToArtist("artist-2")
+        try await Wait.until { session.selectedArtistId == "artist-2" }
+    }
+
+    @Test("asking again for the composer open on a work opens its overview")
+    func repeatComposerNavigationOpensOverview() async throws {
+        let store = UiStore()
+        let session = LibraryBrowseSession(library: .stub(), uiStore: store)
+        store.navigateToComposer("artist-1")
+        try await Wait.until { session.detailSelection != .none }
+        session.selectComposerWork(artistId: "artist-1", workId: "work-1")
+
+        store.navigateToComposer("artist-1")
+
+        try await Wait.until {
+            session.detailSelection
+                == .composer(artistId: "artist-1", workId: nil)
+        }
+    }
+
+    @Test("a navigation sent before the session exists waits for it")
+    func navigationWaitsForTheSession() async throws {
+        let store = UiStore()
+        store.navigateToWork("work-1")
+
+        let session = LibraryBrowseSession(library: .stub(), uiStore: store)
+
+        try await Wait.until {
+            session.detailSelection == .work(workId: "work-1")
+        }
     }
 }
 
