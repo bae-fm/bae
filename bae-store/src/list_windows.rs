@@ -406,6 +406,24 @@ impl ListOrder {
         }
     }
 
+    /// The condition holding this order's rows to those after another row of
+    /// the same statement, whose value of the order's term `at` the
+    /// expression `value_of(at)` reads: the conditions of the seeks that read
+    /// the rows after that row, any of them.
+    pub fn after_row(&self, value_of: impl Fn(usize) -> String) -> String {
+        let values = self
+            .terms
+            .iter()
+            .enumerate()
+            .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
+            .collect::<Vec<_>>();
+        self.seeks_from(&values, Side::After, false, false)
+            .iter()
+            .map(|seek| format!("({})", self.condition(seek)))
+            .collect::<Vec<_>>()
+            .join(" OR ")
+    }
+
     /// The condition holding this order's rows to those at or after the row
     /// `row` reads: the conditions of the seeks a window from that row's key
     /// runs, any of them, over the values a subquery of `row` reads. When

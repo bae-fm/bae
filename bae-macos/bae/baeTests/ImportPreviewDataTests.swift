@@ -31,8 +31,8 @@ struct ImportPreviewDataTests {
 
         let headers = items[(groupIndex + 1)...]
             .compactMap { item in
-                if case .candidate(_, _, let header) = item {
-                    return header
+                if case .candidate(_, _, let group) = item {
+                    return group?.header
                 }
                 return nil
             }

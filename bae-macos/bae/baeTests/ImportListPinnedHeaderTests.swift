@@ -6,55 +6,54 @@ import Testing
 
 /// The header pinned over the top of the import list is the header of the
 /// group the row on top is listed under, which that row carries, never the
-/// last header the table happened to have loaded above it.
+/// last header the table happened to have loaded above it, and the row on
+/// top says whether the group ends with it.
 @Suite("Import list pinned header")
 struct ImportListPinnedHeaderTests {
     @Test("a member pins the header it carries, whatever rows the list holds")
     func memberPinsItsHeader() {
-        // The list holds the rows on top, but not the header's own row, far
-        // above.
-        let landed = Self.rows(in: 50..<81)
         #expect(
-            Self.pinned(over: 60, landed: landed)
-                == ImportListPinnedHeader(header: Self.header)
+            ImportListPinnedHeader.over(top: Self.list[60])
+                == ImportListPinnedHeader(header: Self.header, ends: false)
         )
     }
 
     @Test("a release in no group pins nothing, whatever header is above it")
     func looseReleasePinsNothing() {
-        let landed = Self.rows(in: 0..<81)
-        #expect(Self.pinned(over: 80, landed: landed) == nil)
+        #expect(ImportListPinnedHeader.over(top: Self.list[80]) == nil)
     }
 
     @Test("a row that has not landed pins nothing")
     func unlandedRowPinsNothing() {
-        let landed = Self.rows(in: 0..<50)
-        #expect(Self.pinned(over: 60, landed: landed) == nil)
+        #expect(ImportListPinnedHeader.over(top: nil) == nil)
     }
 
-    @Test("a header on top pins itself")
+    @Test("an open header on top pins itself over its members")
     func headerOnTopPinsItself() {
-        let landed = Self.rows(in: 0..<50)
         #expect(
-            Self.pinned(over: 0, landed: landed)
-                == ImportListPinnedHeader(header: Self.header)
+            ImportListPinnedHeader.over(top: Self.list[0])
+                == ImportListPinnedHeader(header: Self.header, ends: false)
+        )
+    }
+
+    @Test("a folded header on top ends its group")
+    func foldedHeaderEndsItsGroup() {
+        let folded = PreviewData.groupHeader(
+            key: Self.header.group.key,
+            name: "Group",
+            expanded: false,
+            entryCount: 79
+        )
+        #expect(
+            ImportListPinnedHeader.over(top: .groupHeader(header: folded))?.ends
+                == true
         )
     }
 
     @Test("the group's last row on top takes its header away with it")
     func lastMemberOnTopEndsTheGroup() {
-        let landed = Self.rows(in: 0..<81)
-        let last = Self.pinned(over: 79, landed: landed)
-        #expect(last?.ends(below: 79) { landed[$0] } == true)
-        let inside = Self.pinned(over: 60, landed: landed)
-        #expect(inside?.ends(below: 60) { landed[$0] } == false)
-    }
-
-    private static func pinned(
-        over top: Int,
-        landed: [Int: BridgeImportListItem]
-    ) -> ImportListPinnedHeader? {
-        ImportListPinnedHeader.over(top: top, item: { landed[$0] })
+        #expect(ImportListPinnedHeader.over(top: Self.list[79])?.ends == true)
+        #expect(ImportListPinnedHeader.over(top: Self.list[60])?.ends == false)
     }
 }
 
@@ -74,19 +73,13 @@ extension ImportListPinnedHeaderTests {
 
     private static let list: [BridgeImportListItem] =
         [.groupHeader(header: header)]
-        + (1..<80).map { member(index: $0, header: header) }
-        + [member(index: 80, header: nil)]
-
-    /// The rows of `list` at `positions`, as the pages holding them landed.
-    private static func rows(
-        in positions: Range<Int>
-    ) -> [Int: BridgeImportListItem] {
-        Dictionary(uniqueKeysWithValues: positions.map { ($0, list[$0]) })
-    }
+        + (1..<80).map { member(index: $0, header: header, last: $0 == 79) }
+        + [member(index: 80, header: nil, last: false)]
 
     private static func member(
         index: Int,
-        header: BridgeImportGroupHeader?
+        header: BridgeImportGroupHeader?,
+        last: Bool
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -109,7 +102,8 @@ extension ImportListPinnedHeaderTests {
                 metadataProvenance: nil,
                 reading: .unidentified
             ),
-            header: header
+            header: header,
+            last: last
         )
     }
 }

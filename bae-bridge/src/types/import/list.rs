@@ -66,6 +66,15 @@ pub struct BridgeImportGroupHeader {
     pub entry_count: u32,
 }
 
+/// A release's place in the group it is listed under: the group's header,
+/// and whether the release is the last member the list shows of the group.
+/// Mirrors `bae_import::ImportGroupMember`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportGroupMember {
+    pub header: BridgeImportGroupHeader,
+    pub last: bool,
+}
+
 /// One item at one offset. `stable_key` identifies it across reruns — the id a
 /// paged list holds positions by.
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -80,9 +89,9 @@ pub enum BridgeImportListItem {
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
-        /// The header of the group it is listed under, for a member of a
-        /// group, whether or not the window holds the header's own row.
-        header: Option<BridgeImportGroupHeader>,
+        /// The group it is listed under, for a member of a group, whether or
+        /// not the window holds the header's own row.
+        group: Option<BridgeImportGroupMember>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.

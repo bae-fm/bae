@@ -468,10 +468,15 @@ impl crate::types::BridgeImportListItem {
             bae_import::ImportListItem::GroupHeader(header) => Self::GroupHeader {
                 header: crate::types::BridgeImportGroupHeader::from_core(header),
             },
-            bae_import::ImportListItem::Candidate { row, live, header } => Self::Candidate {
+            bae_import::ImportListItem::Candidate { row, live, group } => Self::Candidate {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row, live),
-                header: header.map(crate::types::BridgeImportGroupHeader::from_core),
+                group: group.map(|bae_import::ImportGroupMember { header, last }| {
+                    crate::types::BridgeImportGroupMember {
+                        header: crate::types::BridgeImportGroupHeader::from_core(header),
+                        last,
+                    }
+                }),
             },
             bae_import::ImportListItem::Invalid { row } => Self::Invalid {
                 stable_key,

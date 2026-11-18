@@ -424,6 +424,25 @@ impl<'a> Items<'a> {
         }
     }
 
+    /// An expression over the window's row aliased `w`, whose key columns
+    /// hold its values of the tab's order: for a member of a group, whether
+    /// the list shows no member of the group after it, so the row is the
+    /// group's last; NULL for every other row, and on a tab that holds no
+    /// group.
+    pub(super) fn ends_group(&self, w: &str) -> String {
+        let Some((_, members)) = self.run_sources() else {
+            return "NULL".to_string();
+        };
+        // Each member sorts under its header `h` as the run reads it.
+        let after = unit_order(self.order, "h", "m").after_row(|at| format!("{w}.order_key_{at}"));
+        format!(
+            "CASE WHEN {w}.item <> 'group' AND {w}.group_folder IS NOT NULL \
+                  THEN NOT EXISTS (SELECT 1 FROM {members} \
+                                   AND m.watched_folder_path = {w}.watched_folder_path \
+                                   AND m.group_folder = {w}.group_folder AND ({after})) END"
+        )
+    }
+
     /// A statement over `part`'s rows, aliased `i`, sorted by
     /// [`Self::part_order`]: Found's each joined to the row it sorts in the
     /// place of as `unit`.

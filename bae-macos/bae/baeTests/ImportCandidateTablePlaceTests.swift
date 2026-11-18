@@ -313,7 +313,7 @@ extension ImportCandidateTablePlaceTests {
             #expect(Self.topRow(of: table) == 19)
             let pinned = try #require(coordinator.pinnedHeader())
             #expect(pinned.header == Self.header(0))
-            #expect(pinned.ends(below: 19) { coordinator.item(at: $0) })
+            #expect(pinned.ends)
             #expect(!coordinator.pinnedStrip.isHidden)
         }
     }
@@ -452,10 +452,13 @@ extension ImportCandidateTablePlaceTests {
                     return headerItem(index)
                 }
                 let header = headersAt.last { $0 < index }
+                // A member ends its group where the next header or the list's
+                // end comes.
                 return candidateItem(
                     index,
                     folderName: "Release \(index)",
-                    header: header.map { Self.header($0) }
+                    header: header.map { Self.header($0) },
+                    last: headersAt.contains(index + 1) || index == 89
                 )
             }
     }
@@ -463,7 +466,8 @@ extension ImportCandidateTablePlaceTests {
     private static func candidateItem(
         _ index: Int,
         folderName: String,
-        header: BridgeImportGroupHeader? = nil
+        header: BridgeImportGroupHeader? = nil,
+        last: Bool = false
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -486,7 +490,8 @@ extension ImportCandidateTablePlaceTests {
                 metadataProvenance: nil,
                 reading: .unidentified
             ),
-            header: header
+            header: header,
+            last: last
         )
     }
 }

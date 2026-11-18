@@ -12,14 +12,15 @@
 //! it opens the folder's files. A group's header says how many of its releases the
 //! filters keep, whether the list folds it, and whether its folder is offered
 //! to be read as one release, as its placement holds it. Each member of a
-//! group reads its group's header beside its own row.
+//! group reads its group's header beside its own row, and whether the list
+//! shows no member of the group after it.
 
 use super::actions::action_columns;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::Item;
 use super::*;
 use crate::candidate_detail::ListedRelease;
-use crate::list::{ImportGroupHeader, ImportListItem, ImportWindow};
+use crate::list::{ImportGroupHeader, ImportGroupMember, ImportListItem, ImportWindow};
 use crate::tables::folder_scans::{
     self, cover_version_joins, CoverVersionColumns, COVER_VERSION_COLUMNS,
 };
@@ -72,7 +73,7 @@ pub(super) fn read_window(
              FROM ({range}) AS k) \
          {rows}",
         range = range.sql(),
-        rows = rows_statement(&range.columns),
+        rows = rows_statement(&range.columns, &items.ends_group("w")),
     );
     let limit = bae_store::list_windows::sql_bound(range.limit);
     let range_params = range.params();
@@ -203,6 +204,9 @@ struct ReleaseRows {
     invalid: Option<folder_scans::InvalidColumns>,
     /// The header of the group the release is listed under.
     header: Option<HeaderRow>,
+    /// Whether the release is the last member the list shows of its group,
+    /// for a member of a group.
+    ends_group: Option<bool>,
     /// What the row shows past its placement.
     shown: ShownColumns,
 }
@@ -267,9 +271,10 @@ impl ShownColumns {
 
 /// The statement's last part: each item of the range, a group's header or a
 /// release's rows, by its key, in the window's order. A group's header reads
-/// its header; a release reads its placement, the keyed rows beside it and
-/// the header of its group.
-fn rows_statement(columns: &str) -> String {
+/// its header; a release reads its placement, the keyed rows beside it, the
+/// header of its group and whether it ends its group, as `ends_group`
+/// reads it.
+fn rows_statement(columns: &str, ends_group: &str) -> String {
     use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
     let covers = cover_version_joins(
@@ -288,6 +293,7 @@ fn rows_statement(columns: &str) -> String {
                 {library_cover} AS library_cover, \
                 {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
                 w.item AS item, w.part AS part, {header_columns}, \
+                {ends_group} AS ends_group, \
                 {RELEASE_UPLOAD_COUNT_COLUMNS}, \
                 CASE WHEN origin.release_id IS NOT NULL THEN {library_records} END \
                     AS library_records, \
@@ -360,6 +366,7 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         facts: RuntimeFactColumns::read(row, 25)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
         header: read_member_header(row)?,
+        ends_group: row.get("ends_group")?,
         shown: ShownColumns::read(row)?,
     })
 }
@@ -415,6 +422,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         failure,
         facts,
         header,
+        ends_group,
         shown,
         ..
     } = release;
@@ -474,7 +482,16 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     Ok(ImportListItem::Candidate {
         row,
         live: crate::CandidateLiveState::of(actions, facts, standing),
-        header: header.map(group_header).transpose()?,
+        group: header
+            .map(|header| {
+                Ok::<_, DbError>(ImportGroupMember {
+                    header: group_header(header)?,
+                    last: ends_group.ok_or_else(|| {
+                        DbError::unreadable("whether a group member ends its group", "NULL")
+                    })?,
+                })
+            })
+            .transpose()?,
     })
 }
 

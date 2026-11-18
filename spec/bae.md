@@ -1123,8 +1123,10 @@ releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of
 every tab. While the rows on top are a group's, that group's header stays pinned
 over the top of the list; over a release in no group no header is pinned. Each
-member is read with its group's header, so the pinned header is its own group's
-however far above it the header's row is and whichever rows have loaded.
+member is read with its group's header and with whether the list shows no
+member of the group after it, so the pinned header is its own group's however
+far above it the header's row is and whichever rows have loaded, and it leaves
+with the group's last row as that row scrolls away.
 
 Each Found row is in exactly one state. The first that applies wins:
 
@@ -1301,7 +1303,8 @@ each release's placement, scan, link and draft, the records and the upload
 standing of an imported release, the records stored for what a linked row's
 link claims (each release's album, its own records and the albums kept for
 those), the file versions its folder-image and embedded covers name, and each
-group member's header.
+group member's header and whether a member of its group the list shows sorts
+after it.
 Core sends each offer with the number shown beside it and whether it can run:
 a row's own offers, each for that one row and leaving out Combine, come with
 the row, and a selection's come from one statement, which counts the rows each
@@ -1333,9 +1336,10 @@ at every size: a jump reads its key by offset from the top, as it does without a
 search, however few rows the search finds, and its count is a live query of its
 own, so the screen draws a search's rows as its window arrives and its "N
 of M" and length when the count arrives, showing the placeholder in their place
-meanwhile. A member of a group carries its group's header, so the screen pins
-the header of the row on top whatever rows it has loaded, and no read counts the
-rows above the window to find it. Found reads its window
+meanwhile. A member of a group carries its group's header and whether it is
+the group's last member the list shows, so the screen pins the header of the
+row on top, and lifts it with the group's last row, whatever rows it has
+loaded, and no read counts the rows above the window to find it. Found reads its window
 past the members of the groups it folds shut, so with every group folded the
 window costs about the headers it shows; and whether a header offers to read its folder
 as one release is kept on the header as the rows below it and the readings

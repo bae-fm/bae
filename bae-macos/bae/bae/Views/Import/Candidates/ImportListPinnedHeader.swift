@@ -3,41 +3,29 @@ import BaeKit
 
 /// The group header pinned over the top of the import list: the header of
 /// the group the row on top is listed under. Each member carries its group's
-/// header, so the header is known from the row on top alone, whichever rows
-/// the list holds.
+/// header and whether it is the last row the list shows of the group, so the
+/// header is known from the row on top alone, whichever rows the list holds.
 struct ImportListPinnedHeader: Equatable {
     let header: BridgeImportGroupHeader
+    /// Whether the row on top is the last row the list shows of its group:
+    /// the pinned header then leaves with that row as it scrolls away.
+    let ends: Bool
 
-    /// The header pinned while the row at `top` is on top: a header on top
+    /// The header pinned while `item` is the row on top: a header on top
     /// pins itself, and a release in no group, or a row that is not loaded,
     /// pins none.
-    static func over(
-        top: Int,
-        item: (Int) -> BridgeImportListItem?
-    ) -> ImportListPinnedHeader? {
-        header(of: top, item: item).map(ImportListPinnedHeader.init)
-    }
-
-    /// Whether the group ends with the row at `top`: the row below it has
-    /// landed under another header, or under none. The pinned header then
-    /// leaves with the row on top as it scrolls away.
-    func ends(below top: Int, item: (Int) -> BridgeImportListItem?) -> Bool {
-        guard item(top + 1) != nil else { return false }
-        return Self.header(of: top + 1, item: item)?.stableKey
-            != header.stableKey
-    }
-
-    /// The header the row at `row` is listed under: the row itself for a
-    /// header, its group's header for a member.
-    private static func header(
-        of row: Int,
-        item: (Int) -> BridgeImportListItem?
-    ) -> BridgeImportGroupHeader? {
-        switch item(row) {
+    static func over(top item: BridgeImportListItem?) -> ImportListPinnedHeader?
+    {
+        switch item {
         case .groupHeader(let header):
-            header
-        case .candidate(_, _, let header?):
-            header
+            // An open header that counts any release has its releases
+            // listed under it.
+            ImportListPinnedHeader(
+                header: header,
+                ends: !header.expanded || header.entryCount == 0
+            )
+        case .candidate(_, _, let group?):
+            ImportListPinnedHeader(header: group.header, ends: group.last)
         case .candidate, .invalid, nil:
             nil
         }
@@ -45,8 +33,8 @@ struct ImportListPinnedHeader: Equatable {
 }
 
 /// The strip over the top of the import list's rows that the pinned header
-/// draws in: the header's own row. The strip cuts the header off as it leaves with the last row of
-/// its group.
+/// draws in: the header's own row. The strip cuts the header off as it
+/// leaves with the last row of its group.
 final class ImportListPinnedHeaderStrip: NSView {
     private let cell = ImportListEntryCell(
         identifier: NSUserInterfaceItemIdentifier("pinned-header")

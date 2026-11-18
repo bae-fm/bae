@@ -88,7 +88,7 @@ enum ScrollCostFixture {
                 entryCount: UInt32(members)
             )
             items.append(.groupHeader(header: header))
-            for _ in 0..<members {
+            for index in 0..<members {
                 var member = found[row % found.count]
                 member.candidateKey = key("found", row)
                 member.folderName = "Release \(row)"
@@ -96,7 +96,8 @@ enum ScrollCostFixture {
                 items.append(
                     PreviewData.candidateItem(
                         member,
-                        header: header
+                        header: header,
+                        last: index == members - 1
                     )
                 )
                 row += 1

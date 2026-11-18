@@ -51,9 +51,6 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// under a table that has not scrolled. A scroll by the person ends the
     /// wait.
     private var keepTask: Task<Void, Never>?
-    /// The rows last told to the table as header rows, whose height is a
-    /// header's.
-    private var headerRows = IndexSet()
     /// Where the header of the group on top is pinned.
     let pinnedStrip = ImportListPinnedHeaderStrip()
 
@@ -206,26 +203,23 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         pinnedStrip.forget()
     }
 
-    /// Tell the table of the rows whose height changed: a header's row is
-    /// shorter than a release's, and a row's height is known only once its
-    /// page has landed, or after the page is let go. The row on top stays
-    /// where it is on screen as the heights above it change.
+    /// Tell the table the heights of the rows the list's view delivered: a
+    /// header's row is shorter than a release's, and a row's height is known
+    /// only once its page has landed. A row past the view's window keeps the
+    /// height the table last took for it until the window holds it again.
+    /// The row on top stays where it is on screen as the heights above it
+    /// change.
     private func noteHeights(in tableView: ImportCandidateTableView) {
-        var headers = IndexSet()
-        for entry in list.loadedEntries {
-            if case .groupHeader = list.row(at: entry.position) {
-                headers.insert(entry.position)
-            }
-        }
-        let changed = headers.symmetricDifference(headerRows)
-        guard !changed.isEmpty else { return }
-        headerRows = headers
+        guard let delivered = list.delivered else { return }
+        let end = min(delivered.start + delivered.rows.count, rowCount)
+        guard delivered.start < end else { return }
+        let rows = IndexSet(integersIn: delivered.start..<end)
         guard let clipView = scrollView?.contentView, let top = topRow else {
-            tableView.noteHeightOfRows(withIndexesChanged: changed)
+            tableView.noteHeightOfRows(withIndexesChanged: rows)
             return
         }
         let offset = tableView.rect(ofRow: top).minY - clipView.bounds.minY
-        tableView.noteHeightOfRows(withIndexesChanged: changed)
+        tableView.noteHeightOfRows(withIndexesChanged: rows)
         scroll(toY: tableView.rect(ofRow: top).minY - offset)
     }
 
@@ -656,11 +650,7 @@ extension ImportCandidateTableCoordinator {
     /// carries it.
     func pinnedHeader() -> ImportListPinnedHeader? {
         guard let top = topRow else { return nil }
-        let list = list
-        return ImportListPinnedHeader.over(
-            top: top,
-            item: { list.row(at: $0) }
-        )
+        return ImportListPinnedHeader.over(top: list.row(at: top))
     }
 
     /// Pin the header of the group on top over the rows, once its page has
@@ -673,9 +663,8 @@ extension ImportCandidateTableCoordinator {
             pinnedStrip.hide()
             return
         }
-        let ends = pinned.ends(below: top) { item(at: $0) }
         let lift =
-            ends
+            pinned.ends
             ? scrollView.contentView.bounds.minY
                 - tableView.rect(ofRow: top).minY
             : 0

@@ -86,11 +86,11 @@ pub enum ImportListItem {
         /// What is running for the candidate, as the read found it, and the
         /// commands and state the row has with it.
         live: CandidateLiveState,
-        /// The header of the group it is listed under, for a member of a
-        /// group. The list's query reads the header with the row, so a
-        /// surface has the row's header as soon as it has the row, whichever
-        /// window holds the header's own row.
-        header: Option<ImportGroupHeader>,
+        /// The group it is listed under, for a member of a group. The
+        /// list's query reads the group's header with the row, so a surface
+        /// has the row's header as soon as it has the row, whichever window
+        /// holds the header's own row.
+        group: Option<ImportGroupMember>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.
@@ -108,6 +108,14 @@ pub struct ImportGroupHeader {
     pub expanded: bool,
     /// How many entries the group holds in this tab, after the filter.
     pub entry_count: u32,
+}
+
+/// A release's place in the group it is listed under: the group's header,
+/// and whether the release is the last member the list shows of the group.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportGroupMember {
+    pub header: ImportGroupHeader,
+    pub last: bool,
 }
 
 impl ImportGroupHeader {

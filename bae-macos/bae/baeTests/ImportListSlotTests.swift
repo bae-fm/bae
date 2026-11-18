@@ -120,7 +120,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             metadataProvenance: nil,
             reading: .unidentified
         ),
-        header: nil
+        group: nil
     )
 }
 

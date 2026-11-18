@@ -79,8 +79,8 @@ fn header_keys(items: &[ImportListItem]) -> Vec<Option<String>> {
     items
         .iter()
         .map(|item| match item {
-            ImportListItem::Candidate { header, .. } => {
-                header.as_ref().map(crate::ImportGroupHeader::stable_key)
+            ImportListItem::Candidate { group, .. } => {
+                group.as_ref().map(|group| group.header.stable_key())
             }
             ImportListItem::GroupHeader(_) | ImportListItem::Invalid { .. } => None,
         })
@@ -93,7 +93,9 @@ fn headers(items: &[ImportListItem]) -> Vec<Option<crate::ImportGroupHeader>> {
     items
         .iter()
         .map(|item| match item {
-            ImportListItem::Candidate { header, .. } => header.clone(),
+            ImportListItem::Candidate { group, .. } => {
+                group.as_ref().map(|group| group.header.clone())
+            }
             ImportListItem::GroupHeader(_) | ImportListItem::Invalid { .. } => None,
         })
         .collect()
@@ -203,6 +205,55 @@ async fn a_folded_lists_members_name_their_header() {
         ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]
     );
     assert_eq!(header_keys(&unkeyed(&window.rows)), [b.clone(), b, None]);
+}
+
+/// Whether each release ends the group it is listed under, in a read's
+/// order: `None` for a release in no group, and for each header.
+fn group_ends(items: &[ImportListItem]) -> Vec<Option<bool>> {
+    items
+        .iter()
+        .map(|item| match item {
+            ImportListItem::Candidate { group, .. } => group.as_ref().map(|group| group.last),
+            ImportListItem::GroupHeader(_) | ImportListItem::Invalid { .. } => None,
+        })
+        .collect()
+}
+
+/// A group member says it ends its group when the list shows no member of
+/// the group after it, in every order, and so does a window that holds the
+/// member alone.
+#[tokio::test]
+async fn a_groups_last_member_says_it_ends_the_group() {
+    let lib = Library::new().await;
+    lib.run(
+        lib.scan("A/One")
+            + lib.scan("A/Two")
+            + lib.scan("A/Three")
+            + lib.scan("B/Four")
+            + lib.scan("Loose"),
+    )
+    .await;
+    for order in [
+        ImportListOrder::NewestFirst,
+        ImportListOrder::OldestFirst,
+        ImportListOrder::PathAscending,
+        ImportListOrder::PathDescending,
+    ] {
+        let list = lib.open(ordered(TriageTab::Pending, order)).await;
+        let items = items_of(&lib.read(list).await);
+        let keys = header_keys(&items);
+        // A member ends its group when the row after it is not a member of
+        // the same group.
+        let expected = (0..items.len())
+            .map(|at| keys[at].as_ref().map(|key| keys.get(at + 1) != Some(&Some(key.clone()))))
+            .collect::<Vec<_>>();
+        assert_eq!(group_ends(&items), expected, "{order:?}");
+        assert_eq!(expected.iter().filter(|ends| **ends == Some(true)).count(), 2, "{order:?}");
+        for (at, ends) in (0..).zip(&expected) {
+            let window = lib.window_at(list, at, 1).await;
+            assert_eq!(group_ends(&unkeyed(&window.rows)), [*ends], "{order:?} at {at}");
+        }
+    }
 }
 
 /// A group header asks how the folder under it is read, and offers to read it

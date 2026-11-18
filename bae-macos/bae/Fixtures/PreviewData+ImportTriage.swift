@@ -453,7 +453,14 @@ extension PreviewData {
             )
             return importTabPendingRows.map(candidateItem)
                 + [.groupHeader(header: header)]
-                + triageGroupedRows.map { candidateItem($0, header: header) }
+                + triageGroupedRows.map {
+                    candidateItem(
+                        $0,
+                        header: header,
+                        last: $0.candidateKey
+                            == triageGroupedRows.last?.candidateKey
+                    )
+                }
         case .done:
             return importTabDoneRows.map(candidateItem)
         case .skipped:

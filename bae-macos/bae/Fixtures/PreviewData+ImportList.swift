@@ -38,15 +38,19 @@ extension PreviewData {
         candidateItem(row, header: nil)
     }
 
-    /// `row` listed under the group header `header`, or in no group.
+    /// `row` listed under the group header `header`, the group's last member
+    /// the list shows when `last`, or in no group.
     static func candidateItem(
         _ row: BridgeTriageRow,
-        header: BridgeImportGroupHeader?
+        header: BridgeImportGroupHeader?,
+        last: Bool = false
     ) -> BridgeImportListItem {
         .candidate(
             stableKey: "candidate:\(hex(row.candidateKey))",
             row: row,
-            header: header
+            group: header.map {
+                BridgeImportGroupMember(header: $0, last: last)
+            }
         )
     }
 

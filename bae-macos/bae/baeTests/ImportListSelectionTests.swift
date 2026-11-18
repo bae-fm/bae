@@ -34,7 +34,8 @@ struct ImportListSelectionTests {
                 + [
                     PreviewData.candidateItem(
                         PreviewData.triageRowIdentified,
-                        header: grouped ? Self.groupHeader : nil
+                        header: grouped ? Self.groupHeader : nil,
+                        last: true
                     )
                 ],
             store: store,
@@ -148,7 +149,8 @@ struct ImportListSelectionTests {
                 .groupHeader(header: header),
                 PreviewData.candidateItem(
                     PreviewData.triageRowUnidentified,
-                    header: header
+                    header: header,
+                    last: true
                 ),
             ],
             store: store,
