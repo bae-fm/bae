@@ -1,11 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// The Storage column's chip: one word of what core says the row's storage
-/// shows, with no icon. While files upload, pin or move to This Mac, the chip
-/// fills by the share of bytes bae has transferred. The chip shows Queued for
-/// a change that has not started, Error for a failure, and Waiting for an
-/// upload that needs a missing original; the tooltip says which and why.
+/// The Storage column: one word of what core says the row's storage shows,
+/// with no icon. Every state that stands still is a plain word in the row's
+/// text: Local, Pinned and Cloud at rest, Queued for a change that has not
+/// started, and, in their tone's colour, Error for a failure and Waiting for
+/// an upload that needs a missing original; the tooltip says which and why.
+/// Only a release whose files upload, pin or move to This Mac shows a chip,
+/// filled by the share of bytes bae has transferred.
 struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
@@ -13,10 +15,10 @@ struct MacStorageChip: View {
     var body: some View {
         switch status {
         case .downloadFailed(let error), .moveToThisDeviceFailed(let error):
-            StatusChip("Error", tone: .danger)
+            StorageWord("Error", tone: .danger)
                 .help(error)
         case .moveFailed(let fileName):
-            StatusChip("Error", tone: .danger)
+            StorageWord("Error", tone: .danger)
                 .help(
                     String(
                         localized:
@@ -25,17 +27,17 @@ struct MacStorageChip: View {
                 )
         case .uploading:
             if let missing = release.upload?.missing {
-                StatusChip("Waiting", tone: .warning)
+                StorageWord("Waiting", tone: .warning)
                     .help(String(localized: "Waiting for \(missing)"))
             }
             else if release.upload?.progress.activity == .uploading {
                 StorageUploadingChipContainer(releaseId: release.id)
             }
             else {
-                StatusChip("Queued", tone: .activity)
+                StorageWord("Queued")
             }
         case .pinning(.queued), .movingToThisDevice(.queued):
-            StatusChip("Queued", tone: .activity)
+            StorageWord("Queued")
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
         case .movingToThisDevice(.running):
@@ -44,12 +46,32 @@ struct MacStorageChip: View {
                 label: Text("Moving")
             )
         case .onOneDevice:
-            StatusChip("Local")
+            StorageWord("Local")
         case .pinned:
-            StatusChip("Pinned")
+            StorageWord("Pinned")
         case .inStorage:
-            StatusChip("Cloud")
+            StorageWord("Cloud")
         }
+    }
+}
+
+/// A storage state that stands still, as a word in the row's text: primary
+/// text, or a problem's tone colour. The design system draws it at 11 points
+/// regular, a size its text roles don't name.
+private struct StorageWord: View {
+    let key: LocalizedStringKey
+    let tone: StatusTone?
+
+    init(_ key: LocalizedStringKey, tone: StatusTone? = nil) {
+        self.key = key
+        self.tone = tone
+    }
+
+    var body: some View {
+        Text(key)
+            .font(.system(size: 11))
+            .lineLimit(1)
+            .foregroundStyle(tone?.color ?? Theme.textPrimary)
     }
 }
 

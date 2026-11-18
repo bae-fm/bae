@@ -2482,7 +2482,10 @@ an upload held by a missing original; Uploading, filled as far as its bytes
 have come while any file is being sent; Pinning, filled as far as its download
 has come; Moving, filled as far as a move to This Mac's copies have downloaded
 (§4.4); Queued, for an upload, a pin or a move to This Mac that waits its turn;
-Local, Pinned or Cloud at rest. The inspector says the rest for the selected
+Local, Pinned or Cloud at rest. The column draws a chip only for Uploading,
+Pinning and Moving, the states that fill, and draws every other state as a
+plain word, Error in the danger colour and Waiting in the warning colour.
+The inspector says the rest for the selected
 release: how many files are queued, moving or done, with Cancel; for a failed
 pin, *Could not pin*, and for a failed move to This Mac, *Could not move to
 This Mac*, each with *Details* (§9.6) and *Retry*; for a failed move to the
