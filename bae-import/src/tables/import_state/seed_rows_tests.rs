@@ -106,31 +106,50 @@ fn bonus_and_two_discs(folder: &std::path::Path) {
 
 /// The scan stores a folder's draft from its stored audio units: one medium
 /// per disc the files state, loose audio (no disc) first, each track on its
-/// disc's medium and numbered as its unit is. The stored draft equals the
-/// draft that `blank_candidate_draft` builds in memory from the same files.
+/// disc's medium, numbered as its unit is and holding its unit's audio. The
+/// blank draft a write starts over from is the same draft.
 #[tokio::test]
 async fn blank_draft_statement_puts_each_disc_on_its_own_medium_loose_audio_first() {
     use crate::tables::folder_scans::tests::stored_folder;
+    use crate::AudioFile;
     let (db, _tmp, root) = watched_root().await;
     let hash = stored_folder(&db, &root, "Album", bonus_and_two_discs).await;
-    let files = crate::mapping::tests::scan(&root.join("Album"));
     let tables = crate::tables::ImportTables::new(db.clone());
+    let slice = |file: &str, sheet: &str, index| AudioFile::SheetSlice {
+        file_id: file.to_string(),
+        sheet_id: sheet.to_string(),
+        index,
+    };
+    let expected = [
+        (1, 1, AudioFile::Standalone { file_id: "a bonus.flac".to_string() }),
+        (2, 2, slice("disc 1.flac", "disc 1.cue", 0)),
+        (2, 3, slice("disc 1.flac", "disc 1.cue", 1)),
+        (3, 4, slice("disc 2.flac", "disc 2.cue", 0)),
+        (3, 5, slice("disc 2.flac", "disc 2.cue", 1)),
+        (3, 6, slice("disc 2.flac", "disc 2.cue", 2)),
+    ];
+    let assert_blank = |draft: &crate::CandidateDraft| {
+        assert_eq!(draft.album_title, "");
+        assert_eq!(
+            draft
+                .tracks
+                .iter()
+                .map(|track| (
+                    track.place.medium.get(),
+                    track.place.number.get(),
+                    track.edit.file.clone()
+                ))
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert!(draft.tracks.iter().all(|track| track.edit.title.is_empty()));
+        assert_eq!(draft.mediums, [bae_types::mediums::ReleaseMedium::one_sided(None); 3]);
+    };
 
     let stored = tables.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(
-        stored
-            .draft
-            .tracks
-            .iter()
-            .map(|track| (track.place.medium.get(), track.place.number.get()))
-            .collect::<Vec<_>>(),
-        [(1, 1), (2, 2), (2, 3), (3, 4), (3, 5), (3, 6)]
-    );
-    assert_eq!(stored.draft.mediums.len(), 3);
-    assert_eq!(stored.draft, crate::pane::blank_candidate_draft(&files));
-    assert_eq!(
-        tables.load_blank_draft(&hash).await.unwrap(),
-        Some(crate::pane::blank_candidate_draft(&files))
+    assert_blank(&stored.draft);
+    assert_blank(
+        &tables.load_blank_draft(&hash).await.unwrap().expect("the folder has a blank draft"),
     );
     assert_eq!((stored.draft_blank, stored.draft_valid), (true, false));
 }

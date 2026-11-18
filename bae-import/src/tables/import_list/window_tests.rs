@@ -951,7 +951,18 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     let draft = pane.draft().expect("a folder nobody imported holds a draft");
     assert_eq!(
         draft.metadata_draft,
-        crate::pane::blank_candidate_draft(&candidate.files).release_edit()
+        crate::RawReleaseEdit {
+            album_title: String::new(),
+            album_artist_assignments: Vec::new(),
+            album_year: String::new(),
+            pressing: crate::RawPressingEdit::from_pressing(&bae_types::pressing::Pressing::blank()),
+            tracks: vec![crate::RawTrackEdit {
+                id: "candidate-track-0".to_string(),
+                title: String::new(),
+                artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
+                file: Some(crate::AudioFile::Standalone { file_id: "01.flac".to_string() }),
+            }],
+        }
     );
     let stored = tables.load_import_candidate_states().await.unwrap();
     let state = stored.get(&candidate.files.content_hash()).expect("the folder stores its state");
