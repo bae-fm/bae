@@ -304,6 +304,7 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_track",
         "import_candidate_release_link",
         "import_candidate_release_link_album",
+        "import_candidate_claimed_record",
         "import_candidate_cover",
     ] {
         let count = test.db.count_rows_for_test(table, "content_hash", content_hash).await.unwrap();

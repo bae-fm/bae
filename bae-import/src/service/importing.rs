@@ -201,7 +201,15 @@ impl ImportService {
 
         let records = match &release_link {
             // Boxed: the worker thread's stack holds this future whole.
-            Some(link) => Box::pin(linked_records(&self.release_reads, link)).await?,
+            Some(link) => {
+                Box::pin(linked_records(
+                    &self.release_reads,
+                    &self.tables,
+                    &expected_content_hash,
+                    link,
+                ))
+                .await?
+            }
             None => Vec::new(),
         };
         // The draft holds every value the release is written with; nothing
@@ -683,25 +691,29 @@ impl ImportService {
     }
 }
 
-/// The records an import of a candidate linked to `link` stores.
+/// The records an import of the candidate `content_hash`, linked to `link`,
+/// commits: the records the link claims, as stored.
 ///
-/// A linked album is stored as each catalog's album record. A linked
-/// pressing is stored as every catalog its releases describe it in, the
-/// linked primary's own record first. Every release the pressing claims is
-/// read in full first, from storage where it was read that far and from its
-/// catalog otherwise; a read that fails fails the import.
+/// Every release a linked pressing claims is read in full first, from
+/// storage where it was read that far and from its catalog otherwise; a read
+/// that fails fails the import before it writes anything. The import then
+/// stores what it read, which stores what the link claims again where a read
+/// is fuller than the stored release, and commits the stored claims.
 async fn linked_records(
     reads: &crate::ReleaseReads,
+    tables: &crate::tables::ImportTables,
+    content_hash: &str,
     link: &crate::ReleaseLink,
 ) -> Result<Vec<bae_catalogs::records::ReleaseRecord>, crate::ImportError> {
-    let pressing = match link {
-        crate::ReleaseLink::Album(album) => return Ok(album.records()),
-        crate::ReleaseLink::Pressing(pressing) => pressing,
+    let releases = match link {
+        crate::ReleaseLink::Album(_) => Vec::new(),
+        crate::ReleaseLink::Pressing(pressing) => {
+            let (primary, partners) =
+                reads.claimed(pressing, bae_catalogs::rate_limiter::CallClass::REQUESTED).await?;
+            std::iter::once(primary).chain(partners).map(|read| read.stored).collect()
+        }
     };
-    let (primary, partners) =
-        reads.claimed(pressing, bae_catalogs::rate_limiter::CallClass::REQUESTED).await?;
-    let partners: Vec<_> = partners.into_iter().map(|partner| partner.release).collect();
-    Ok(records_for_commit(&primary.release, &partners))
+    Ok(tables.store_import_reads(content_hash, releases).await?)
 }
 
 #[cfg(test)]

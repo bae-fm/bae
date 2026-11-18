@@ -8,7 +8,9 @@
 //! that comes from: one that stores a claimed release again
 //! ([`store_claims_of_releases_on`]), and one that changes the albums kept
 //! for a claimed release's album ([`store_claims_of_albums_on`]). Every
-//! surface reads the stored rows.
+//! surface reads the stored rows, and an import commits the stored records
+//! once it has stored the releases it read in full
+//! ([`ImportTables::store_import_reads`]).
 //! Its tables are `claim_rows.sql`.
 
 pub(super) const SQL: &str = include_str!("claim_rows.sql");
@@ -185,6 +187,7 @@ pub(crate) fn claimed_records_sql(hash: &str) -> String {
     )
 }
 
+/// One stored claimed record's columns.
 #[derive(serde::Deserialize)]
 struct RecordColumns {
     catalog: String,
@@ -193,20 +196,67 @@ struct RecordColumns {
     album: Option<String>,
 }
 
+impl RecordColumns {
+    fn record(self) -> Result<ReleaseRecord, DbError> {
+        let reference = MetadataRef::new(super::match_rows::catalog_of(&self.catalog)?, self.key);
+        match self.kind.as_str() {
+            "pressing" => Ok(ReleaseRecord::new(&reference, self.album)),
+            "album" => Ok(ReleaseRecord::album(&reference)),
+            other => Err(DbError::unreadable("a claimed record's kind", other)),
+        }
+    }
+}
+
 /// The records a [`claimed_records_sql`] column holds.
 pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, DbError> {
     let rows: Vec<RecordColumns> = serde_json::from_str(json)
         .map_err(|error| DbError::unreadable_json("the claimed records", json, error))?;
-    rows.into_iter()
-        .map(|row| {
-            let reference = MetadataRef::new(super::match_rows::catalog_of(&row.catalog)?, row.key);
-            match row.kind.as_str() {
-                "pressing" => Ok(ReleaseRecord::new(&reference, row.album)),
-                "album" => Ok(ReleaseRecord::album(&reference)),
-                other => Err(DbError::unreadable("a claimed record's kind", other)),
-            }
-        })
-        .collect()
+    rows.into_iter().map(RecordColumns::record).collect()
+}
+
+/// The stored records the link of the candidate `content_hash` claims, in
+/// the order surfaces list them.
+fn load_claimed_records_on<S: coven::SqlRead>(
+    sql: &S,
+    content_hash: &str,
+) -> Result<Vec<ReleaseRecord>, DbError> {
+    sql.query(
+        "SELECT catalog, kind, key, album FROM import_candidate_claimed_record \
+         WHERE content_hash = ? ORDER BY position",
+        [content_hash],
+        |row| {
+            Ok(RecordColumns {
+                catalog: row.get(0)?,
+                kind: row.get(1)?,
+                key: row.get(2)?,
+                album: row.get(3)?,
+            })
+        },
+    )?
+    .into_iter()
+    .map(RecordColumns::record)
+    .collect()
+}
+
+impl ImportTables {
+    /// Store `releases`, the releases the link of the candidate
+    /// `content_hash` claims as an import read them in full, as every write
+    /// naming a release stores it, and return the records the link claims
+    /// once they are stored: a release this stores again stores what the
+    /// link claims again from it. The import commits these records.
+    pub(crate) async fn store_import_reads(
+        &self,
+        content_hash: &str,
+        releases: Vec<SourceRelease>,
+    ) -> Result<Vec<ReleaseRecord>, DbError> {
+        let content_hash = content_hash.to_owned();
+        self.store
+            .call(move |sql| {
+                crate::tables::source_releases::store_named_releases_on(sql, &releases)?;
+                load_claimed_records_on(sql, &content_hash)
+            })
+            .await
+    }
 }
 
 /// The SQL of the rows the picker of each candidate the table `candidates`

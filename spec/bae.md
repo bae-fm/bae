@@ -1492,7 +1492,9 @@ number is now worth asking Discogs about. A run therefore goes in rounds:
    rest, that page included, before it applies anything. An unattended pick
    reads nothing more: its draft is read from what its run read, and the
    import reads every release the candidate is linked to in full before it
-   writes anything, so an import whose read fails fails. The Disc ID lookup
+   writes anything, so an import whose read fails fails. The import then
+   stores the releases it read and commits the records stored for what its
+   link claims (§3.5). The Disc ID lookup
    asks for the release's artist relations, so the release read from its
    answer states the artists it credits as roles. Runs go four at a time.
    That complete read of a Discogs release asks MusicBrainz in one request
@@ -1805,7 +1807,7 @@ claimed release's own record outranks what another says about its catalog, the
 applied catalog comes first, and the albums kept for the releases' albums join
 them. A write that stores a claimed release again, or changes the albums kept
 for a claimed release's album, merges them again in its own transaction. The
-pane and the import list read the stored records.
+pane and the import list read the stored records, and an import commits them.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog

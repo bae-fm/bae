@@ -129,6 +129,47 @@ async fn an_import_whose_full_read_of_its_release_fails_fails() {
     );
 }
 
+/// An unattended pick drafts from its run's read, and the import commits the
+/// records the release's full read states: here a Discogs release the
+/// release's own page links, which the Disc ID answer did not list.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_import_commits_the_records_its_full_read_of_its_release_adds() {
+    let fixture = Fixture::importing("import-full-read-adds").await;
+    fixture.set_import_when_identified(true).await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = crate::CandidateKey::folder(&dir);
+    let mut page: serde_json::Value = serde_json::from_str(&mb_release_json(
+        "mb-full",
+        "rg-full",
+        &[fixture.probed_total_ms(&dir), 0],
+    ))
+    .expect("the release fixture parses");
+    page["relations"] = serde_json::json!([{
+        "target-type": "url",
+        "type": "discogs",
+        "url": { "resource": "https://www.discogs.com/release/4242" }
+    }]);
+    fixture.provider.route("/release/mb-full?", 200, page.to_string());
+    fixture.route_disc_id_match(&dir, "mb-full", "rg-full", 2);
+    fixture.scan(1).await;
+    let mut events = fixture.import.every_event();
+
+    fixture.drain_automatic().await;
+
+    let (_, failure) = await_import_ending(&mut events, &key).await;
+    assert_eq!(failure, None, "the import completes: {:?}", fixture.provider.requests());
+    assert_eq!(
+        fixture
+            .db
+            .query_texts_for_test(
+                "SELECT catalog || ' ' || key FROM release_records ORDER BY catalog"
+            )
+            .await
+            .unwrap(),
+        vec!["discogs 4242".to_string(), "musicbrainz mb-full".to_string()],
+    );
+}
+
 /// With the setting off, an auto-importable verdict waits for a person.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_imports_nothing() {
