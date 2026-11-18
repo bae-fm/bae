@@ -6,7 +6,7 @@ import SwiftUI
 /// sheet asks for or reports, as an alert's message is.
 struct MacSheet<Content: View, Footer: View>: View {
     let title: Text
-    let message: LocalizedStringKey?
+    let message: Text?
     let width: CGFloat
     private let content: Content
     private let footer: Footer
@@ -19,7 +19,7 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder footer: () -> Footer
     ) {
         self.title = Text(title)
-        self.message = message
+        self.message = message.map { Text($0) }
         self.width = width
         self.content = content()
         self.footer = footer()
@@ -35,6 +35,22 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder footer: () -> Footer
     ) {
         self.title = Text(verbatim: title)
+        self.message = message.map { Text($0) }
+        self.width = width
+        self.content = content()
+        self.footer = footer()
+    }
+
+    /// A sheet whose title and line the caller words, such as a title that
+    /// names a receiver over a line core localized.
+    init(
+        title: Text,
+        message: Text,
+        width: CGFloat,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.title = title
         self.message = message
         self.width = width
         self.content = content()

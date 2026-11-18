@@ -170,4 +170,25 @@ struct CastStartTests {
         #expect(await endings.next() == true)
         #expect(start.started == nil)
     }
+
+    @Test("a receiver's refusal shows titled with the receiver, not reported")
+    func refusalNamesTheReceiver() async {
+        let cast = Cast(castTo: { _, _ in
+            throw BridgeError.Diagnostic(
+                category: .airPlayLockedOut(receiver: "Kitchen"),
+                detail: "pair-setup M2: MaxTries"
+            )
+        })
+        let start = CastStart(
+            cast: cast,
+            report: { Issue.record("a refusal was reported as \($0)") }
+        )
+
+        start.cast(to: receiver("kitchen"))
+        while start.connecting != nil { await Task.yield() }
+
+        #expect(start.refusal?.receiver == "Kitchen")
+        start.dismissRefusal()
+        #expect(start.refusal == nil)
+    }
 }

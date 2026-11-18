@@ -30,6 +30,8 @@ struct MacMainWindowContainer: View {
     var playback
     @Environment(LibraryBrowseSession.self)
     var session
+    @Environment(CastStart.self)
+    var castStart
     @State
     private var searchText: String = ""
     /// The lightbox's image as it loads.
@@ -180,13 +182,29 @@ struct MacMainWindowContainer: View {
         // edit, in this window and in popovers alike.
         .background(FieldClickAwayMonitor())
         .errorAlert(uiStore)
-        .playbackFailureAlert(playbackStore) {
+        .playbackFailureAlert(
+            playbackStore,
+            pairAgain: { castStart.cast(to: $0) }
+        ) {
             let playback = playback
             Task {
                 do { try await playback.dismissFailure() }
                 catch { uiStore.showError(error) }
             }
         }
+        .sheet(
+            item: Binding(
+                get: { castStart.codeSheet },
+                set: { if $0 == nil { castStart.cancelCode() } }
+            )
+        ) { sheet in
+            CastCodeSheet(
+                sheet: sheet,
+                onPair: { castStart.pair(code: $0) },
+                onCancel: { castStart.cancelCode() }
+            )
+        }
+        .castRefusalAlert(castStart)
         .fileImporter(
             isPresented: Binding(
                 get: { uiStore.isImportFolderPickerPresented },
