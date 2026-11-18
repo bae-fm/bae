@@ -157,8 +157,14 @@ impl CdRipper {
 }
 
 impl CueSheet {
+    /// Each track that plays audio, with its position among all the sheet's
+    /// tracks, data tracks included.
+    pub fn playable_tracks_with_positions(&self) -> impl Iterator<Item = (usize, &CueTrack)> {
+        self.tracks.iter().enumerate().filter(|(_, track)| track.mode.is_audio())
+    }
+
     pub fn playable_tracks(&self) -> impl Iterator<Item = &CueTrack> {
-        self.tracks.iter().filter(|track| track.mode.is_audio())
+        self.playable_tracks_with_positions().map(|(_, track)| track)
     }
 
     pub fn playable_track_count(&self) -> usize {

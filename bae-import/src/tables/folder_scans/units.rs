@@ -36,14 +36,10 @@ pub(super) fn insert_units(
                     .iter()
                     .find(|sheet| sheet.file.relative_path == *sheet_id)
                     .ok_or_else(|| DbError::unreadable("the sheet of an audio unit", sheet_id))?;
-                let (cue_position, cue_track) = sheet
-                    .sheet
-                    .tracks
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, track)| track.mode.is_audio())
-                    .nth(*index as usize)
-                    .ok_or_else(|| DbError::unreadable("the CUE track of an audio unit", index))?;
+                let (cue_position, cue_track) =
+                    sheet.sheet.playable_tracks_with_positions().nth(*index as usize).ok_or_else(
+                        || DbError::unreadable("the CUE track of an audio unit", index),
+                    )?;
                 let audio = sheet.audio_for(cue_track);
                 let rate = u64::try_from(
                     audio
