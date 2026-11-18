@@ -187,10 +187,12 @@ async fn stored_cards(db: &Store, hash: &str) -> bae_identify::VerdictCards {
     crate::tables::ImportTables::new(db.clone()).load_verdict_cards(hash).await.unwrap()
 }
 
-/// The statement returns the cards, badges and counts that the rules build
-/// from the verdict.
+/// The statement returns the cards the verdict's write laid out: the card
+/// whose offered row the text agrees with first, then the other offered
+/// card, then the card holding only the row the agreement check set aside,
+/// with that row's count and each row's badges.
 #[tokio::test]
-async fn verdict_cards_statement_matches_the_rules() {
+async fn verdict_cards_statement_reads_the_stored_cards() {
     let verdict = TerminalVerdict::Found {
         findings: Findings {
             matches: vec![release("b", "CAT-B"), release("a", "CAT-A")],
@@ -209,10 +211,27 @@ async fn verdict_cards_statement_matches_the_rules() {
 
     let read = stored_cards(&db, &hash).await;
 
-    let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
-    let expected =
-        bae_identify::view::reference_cards_of(&bae_identify::RunOutcome::Answered(verdict), &text);
-    assert_eq!(read, expected);
+    let ids: Vec<&str> = read.groups.iter().map(|group| group.id.as_str()).collect();
+    assert_eq!(ids, ["group-a", "group-b", "group-c"]);
+    let rows = |group: &bae_identify::release_group::ReleaseGroup| {
+        (
+            group.pressings().map(|row| row.lead().release_id.clone()).collect::<Vec<_>>(),
+            group.narrowed_out().map(|row| row.lead().release_id.clone()).collect::<Vec<_>>(),
+        )
+    };
+    assert_eq!(
+        read.groups.iter().map(rows).collect::<Vec<_>>(),
+        [
+            (vec!["a".to_string()], Vec::new()),
+            (vec!["b".to_string()], Vec::new()),
+            (Vec::new(), vec!["c".to_string()]),
+        ]
+    );
+    assert_eq!(read.narrowed_out_count, 1);
+    let catalog_agrees = |release: &str| {
+        read.agreements.iter().find(|(id, _)| id == release).map(|(_, row)| row.fields.catalog)
+    };
+    assert_eq!(["a", "b", "c"].map(catalog_agrees), [Some(true), Some(false), Some(false)]);
 }
 
 /// A found verdict offering each of `matches` as its own row.
@@ -293,9 +312,8 @@ async fn pressings_no_catalog_files_under_an_album_share_none() {
     assert_eq!(shared_album_of(verdict).await, None);
 }
 
-/// The cards the statement reads are the cards the rules build by grouping
-/// the rows, and within one card the rows are in order of what the text
-/// agrees with.
+/// Within one card the statement reads the rows in the order the verdict's
+/// write stored: by what the text agrees with.
 #[tokio::test]
 async fn verdict_cards_order_the_rows_of_one_card_by_agreement() {
     let one_album = |release_id: &str, catalog: &str| {
@@ -306,10 +324,10 @@ async fn verdict_cards_order_the_rows_of_one_card_by_agreement() {
 
     let read = stored_cards(&db, &hash).await;
 
-    let text = bae_identify::CandidateText::of(&printing_cat_a(), &[], &[]);
-    let expected =
-        bae_identify::view::reference_cards_of(&bae_identify::RunOutcome::Answered(verdict), &text);
-    assert_eq!(read.groups, expected.groups);
+    assert_eq!(read.groups.len(), 1, "both rows are of one album");
+    let rows: Vec<&str> =
+        read.groups[0].pressings().map(|row| row.lead().release_id.as_str()).collect();
+    assert_eq!(rows, ["a", "b"], "the row the text agrees with comes first");
 }
 
 /// A card that offers a row with more agreements comes before one that

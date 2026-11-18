@@ -79,6 +79,8 @@ impl MatchOwner<'_> {
 pub(super) struct Placed {
     pub(super) card: u32,
     pub(super) record_order: u32,
+    pub(super) section: u32,
+    pub(super) row_order: u32,
     pub(super) agreements: bae_identify::Agreements,
 }
 
@@ -171,6 +173,8 @@ pub(super) fn store_match(
             Some(Placed {
                 card: to_u32(position, "a search release's place in its list")?,
                 record_order: 0,
+                section: 0,
+                row_order: 0,
                 agreements: bae_identify::Agreements::NONE,
             }),
         ),
@@ -182,6 +186,8 @@ pub(super) fn store_match(
     };
     let own_card = placed.map(|placed| i64::from(placed.card));
     let record_order = placed.map(|placed| i64::from(placed.record_order));
+    let section = placed.map(|placed| i64::from(placed.section));
+    let row_order = placed.map(|placed| i64::from(placed.row_order));
     let agrees = placed.map(|placed| placed.agreements).unwrap_or(bae_identify::Agreements::NONE);
     // A search's release hangs off the part that answered with it, which
     // holds releases only while it stands answered.
@@ -216,7 +222,7 @@ pub(super) fn store_match(
         &format!(
             "INSERT INTO import_candidate_match \
              (content_hash, identify_run, search_run, search_state, position, pressing, card, \
-              record_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, \
+              record_order, section, row_order, agrees_disc_id, agrees_barcode, agrees_catalog, agrees_label, \
               agrees_year, agrees_country, agrees_title, agrees_artist, \
               source, release_id, title, credits, year, \
               country, region, status, packaging, discogs_details, \
@@ -225,10 +231,11 @@ pub(super) fn store_match(
               source_tracks_count, listing, document_failure, document_failure_status, \
               named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT ({column}, position) DO UPDATE SET \
              pressing = excluded.pressing, card = excluded.card, \
-             record_order = excluded.record_order, \
+             record_order = excluded.record_order, section = excluded.section, \
+             row_order = excluded.row_order, \
              agrees_disc_id = excluded.agrees_disc_id, agrees_barcode = excluded.agrees_barcode, \
              agrees_catalog = excluded.agrees_catalog, agrees_label = excluded.agrees_label, \
              agrees_year = excluded.agrees_year, agrees_country = excluded.agrees_country, \
@@ -258,6 +265,8 @@ pub(super) fn store_match(
             pressing,
             own_card,
             record_order,
+            section,
+            row_order,
             agrees.disc_id,
             agrees.barcode,
             agrees.catalog,

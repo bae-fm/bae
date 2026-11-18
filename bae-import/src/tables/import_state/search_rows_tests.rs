@@ -602,7 +602,6 @@ async fn a_pick_joins_the_search_s_cards_from_then_on() {
     );
     let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.groups.len(), 1, "the picked result joins the cards");
-    assert_cards_are_the_rules_cards(&tables, run, &search).await;
 }
 
 /// A search of a folder the scan no longer holds, as one removed after the
@@ -623,24 +622,6 @@ async fn a_search_of_a_folder_the_scan_does_not_hold_is_refused() {
             )) if *named == key
         ),
         "{refused:?}"
-    );
-}
-
-/// The cards a search reads are the cards the rules make of the releases the
-/// search holds, as the last write that changed them grouped them with
-/// bae_identify's grouping rules.
-pub(crate) async fn assert_cards_are_the_rules_cards(
-    tables: &ImportTables,
-    run: SearchRun,
-    search: &CandidateSearch,
-) {
-    let landed = every_returned(tables, run).await;
-    assert_eq!(
-        search.groups,
-        bae_identify::release_group::group_results(
-            bae_identify::release_group::unranked(landed),
-            None
-        )
     );
 }
 

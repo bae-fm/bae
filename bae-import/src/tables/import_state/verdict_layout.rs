@@ -59,6 +59,8 @@ impl VerdictLayout {
         Placed {
             card: place.card,
             record_order: place.record_order,
+            section: place.section,
+            row_order: place.row_order,
             agreements: self.agreements[index],
         }
     }
@@ -157,7 +159,7 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
         sql.execute(
             &format!(
                 "UPDATE import_candidate_match \
-                 SET card = ?, record_order = ?, agrees_disc_id = ?, agrees_barcode = ?, \
+                 SET card = ?, record_order = ?, section = ?, row_order = ?, agrees_disc_id = ?, agrees_barcode = ?, \
                      agrees_catalog = ?, agrees_label = ?, agrees_year = ?, agrees_country = ?, \
                      agrees_title = ?, agrees_artist = ? \
                  WHERE {column} = ? AND position = ?"
@@ -165,6 +167,8 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
             params![
                 placed.card,
                 placed.record_order,
+                placed.section,
+                placed.row_order,
                 agrees.disc_id,
                 agrees.barcode,
                 agrees.catalog,

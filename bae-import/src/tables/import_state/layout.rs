@@ -1,11 +1,13 @@
 //! How bae places one list of releases into pressing rows and album cards, as
 //! the tables keep it. The write that changes a typed search's list or a
-//! ledger cell's list also groups it into rows and cards and stores the text
-//! the cards name, so a read only selects them and never groups a list again.
+//! ledger cell's list also groups it into rows and cards and stores where
+//! each card, section and row shows and the text the cards name, so a read
+//! only selects them and never groups or orders a list again.
 //!
 //! The rules are the identify domain's (`bae_identify::release_group`); this
 //! module takes what they decided for a list, in list order, and writes each
-//! release's place and the text of each card and row beside it.
+//! release's place, each card's place, heading, cover and catalogs, and the
+//! text of each card and row beside it.
 
 use super::match_record::load_search_run_matches_on;
 use super::match_rows::{album_links_column, ordinal_column, store_album_link_rows, MatchOwner};
@@ -14,25 +16,42 @@ use super::*;
 use bae_catalogs::album_links::{self, AlbumLinks, GroupLinks};
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::MetadataResult;
-use bae_identify::release_group::{group_results, unranked, ReleaseGroup, Statement, Statements};
+use bae_identify::release_group::{
+    group_results, unranked, AlbumHeading, ReleaseGroup, ReleaseGroupSource, Statement, Statements,
+};
 use std::collections::HashMap;
 
-/// Where one release of a list stands: its row, its card and its place among
-/// the records of its row. A card's number is the list place of its first
-/// record. `ListLayout::of` numbers rows in the order each first appears in
-/// the list, and `ListLayout::of_verdict` keeps the numbers the run gave them.
+/// Where one release of a list stands: its row, its card, its place among
+/// the records of its row, the section of the card its row shows in and the
+/// row's place among that section's rows of its listing. A card's number is
+/// the list place of its first record. `ListLayout::of` numbers rows in the
+/// order each first appears in the list, and `ListLayout::of_verdict` keeps
+/// the numbers the run gave them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Place {
     pub(super) pressing: u32,
     pub(super) card: u32,
     pub(super) record_order: u32,
+    pub(super) section: u32,
+    pub(super) row_order: u32,
 }
 
-/// The titles, artists and labels a card names, in the order its records give
-/// them.
+/// One card as the grouping rules made it: its number, its place among the
+/// list's cards, what names and heads it, the list place of the release whose
+/// cover it shows, and the titles, artists and labels it names, in the order
+/// its records give them.
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct CardText {
+pub(super) struct CardLayout {
     pub(super) card: u32,
+    pub(super) card_order: u32,
+    pub(super) id: String,
+    pub(super) cover_ord: Option<u32>,
+    pub(super) year_min: Option<i32>,
+    pub(super) year_max: Option<i32>,
+    pub(super) sources: Vec<ReleaseGroupSource>,
+    /// Each section's album heading, for a card that splits its rows by
+    /// album; `None` for a card of one section.
+    pub(super) headings: Option<Vec<AlbumHeading>>,
     pub(super) titles: Vec<String>,
     pub(super) artists: Vec<bae_types::credits::CreditLine>,
     pub(super) labels: Vec<String>,
@@ -53,7 +72,7 @@ pub(super) struct RowStatements {
 pub(super) struct ListLayout {
     /// Each release's place, aligned with the list.
     pub(super) places: Vec<Place>,
-    pub(super) cards: Vec<CardText>,
+    pub(super) cards: Vec<CardLayout>,
     pub(super) rows: Vec<RowStatements>,
 }
 
@@ -107,20 +126,30 @@ impl ListLayout {
             *at.get(&(release.source, release.release_id.as_str()))
                 .expect("a card holds only releases of the list it was made from")
         };
-        // Every row of every card, with the list index of each of its records.
+        // Every row of every card, with the list index of each of its records,
+        // the section it shows in and its place among that section's rows of
+        // its listing.
         struct Found<'a> {
             card: usize,
             records: Vec<usize>,
             pressing: &'a bae_identify::release_group::Pressing,
+            section: usize,
+            row_order: usize,
         }
         let mut found: Vec<Found<'_>> = Vec::new();
         for (card, group) in groups.iter().enumerate() {
-            for pressing in group.pressings().chain(group.narrowed_out()) {
-                found.push(Found {
-                    card,
-                    records: pressing.releases.iter().map(index_of).collect(),
-                    pressing,
-                });
+            for (section, rows) in group.sections.iter().enumerate() {
+                for listed in [&rows.pressings, &rows.narrowed_out] {
+                    for (row_order, pressing) in listed.iter().enumerate() {
+                        found.push(Found {
+                            card,
+                            records: pressing.releases.iter().map(index_of).collect(),
+                            pressing,
+                            section,
+                            row_order,
+                        });
+                    }
+                }
             }
         }
         let first_of = |records: &[usize]| *records.iter().min().expect("a row holds a record");
@@ -141,6 +170,8 @@ impl ListLayout {
                     pressing: pressing_of[row],
                     card: card_first[found.card] as u32,
                     record_order: record_order as u32,
+                    section: found.section as u32,
+                    row_order: found.row_order as u32,
                 };
                 assert!(
                     places[release].replace(place).is_none(),
@@ -151,11 +182,35 @@ impl ListLayout {
         let cards = groups
             .iter()
             .enumerate()
-            .map(|(card, group)| CardText {
-                card: card_first[card] as u32,
-                titles: group.titles.clone(),
-                artists: group.artists.clone(),
-                labels: group.labels.clone(),
+            .map(|(card, group)| {
+                // The card shows the cover the rules chose from one of its
+                // releases: the first of its releases in the list that carries
+                // that cover.
+                let cover_ord = group.cover_art.as_ref().and_then(|cover| {
+                    found
+                        .iter()
+                        .filter(|row| row.card == card)
+                        .flat_map(|row| row.records.iter().copied())
+                        .filter(|&at| list[at].cover_art.as_ref() == Some(cover))
+                        .min()
+                        .map(|at| at as u32)
+                });
+                let splits = group.sections.iter().any(|section| section.album.is_some());
+                CardLayout {
+                    card: card_first[card] as u32,
+                    card_order: card as u32,
+                    id: group.id.clone(),
+                    cover_ord,
+                    year_min: group.year_min,
+                    year_max: group.year_max,
+                    sources: group.sources.clone(),
+                    headings: splits.then(|| {
+                        group.sections.iter().filter_map(|section| section.album.clone()).collect()
+                    }),
+                    titles: group.titles.clone(),
+                    artists: group.artists.clone(),
+                    labels: group.labels.clone(),
+                }
             })
             .collect();
         let rows = found
@@ -227,7 +282,9 @@ pub(super) fn store_list_text(
     layout: &ListLayout,
 ) -> Result<(), DbError> {
     let ListOwner { content_hash, identify_run, search_run, step, position, cell } = owner;
-    for table in ["import_candidate_card_text", "import_candidate_row_statement"] {
+    for table in
+        ["import_candidate_card", "import_candidate_card_text", "import_candidate_row_statement"]
+    {
         sql.execute(
             &format!(
                 "DELETE FROM {table} WHERE content_hash IS ?1 AND identify_run IS ?2 \
@@ -257,7 +314,50 @@ pub(super) fn store_list_text(
         )?;
         Ok::<_, DbError>(())
     };
+    let source_json = |source: &ReleaseGroupSource| {
+        serde_json::json!({
+            "catalog": source.source.as_str(),
+            "group_url": source.group_url,
+            "unread": source.album_links_unread,
+        })
+    };
     for card in &layout.cards {
+        let sources = serde_json::Value::Array(card.sources.iter().map(source_json).collect());
+        let headings = card.headings.as_ref().map(|headings| {
+            serde_json::Value::Array(
+                headings
+                    .iter()
+                    .map(|heading| {
+                        let mut json = source_json(&heading.source);
+                        json["title"] = serde_json::Value::String(heading.title.clone());
+                        json
+                    })
+                    .collect(),
+            )
+            .to_string()
+        });
+        sql.execute(
+            "INSERT INTO import_candidate_card \
+                 (content_hash, identify_run, search_run, step, position, cell, card, \
+                  card_order, id, cover_ord, year_min, year_max, sources, headings) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                content_hash,
+                identify_run,
+                search_run,
+                step,
+                position,
+                cell,
+                card.card,
+                card.card_order,
+                card.id,
+                card.cover_ord,
+                card.year_min,
+                card.year_max,
+                sources.to_string(),
+                headings,
+            ],
+        )?;
         for (ordinal, title) in card.titles.iter().enumerate() {
             card_text(card.card, "title", ordinal, title)?;
         }
@@ -348,12 +448,15 @@ pub(super) fn lay_out_search_on(
     for ((row, result), place) in rows.iter().zip(&results).zip(&layout.places) {
         sql.execute(
             "UPDATE import_candidate_match \
-             SET pressing = ?, card = ?, record_order = ?, album_links = ? \
+             SET pressing = ?, card = ?, record_order = ?, section = ?, row_order = ?, \
+                 album_links = ? \
              WHERE search_run = ? AND position = ?",
             params![
                 place.pressing,
                 place.card,
                 place.record_order,
+                place.section,
+                place.row_order,
                 album_links_column(&result.album_links),
                 run,
                 row.position

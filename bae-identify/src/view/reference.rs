@@ -1,7 +1,6 @@
-//! This module builds a verdict's cards in memory by the identify rules.
-//! Tests compare the cards that bae-import's stored layout statement
-//! (`cards_sql`) reads with these cards, and tests of the rules read the
-//! view's cards from them; no product code reads them.
+//! This module builds a verdict's cards in memory by the identify rules, for
+//! tests of the rules to read the view's cards from; no product code reads
+//! them.
 
 use super::{IdentifyRunView, IdentifyStateView, RowAgreements, RunOutcome, VerdictCards};
 use crate::agreements::{judged_results, CandidateText};

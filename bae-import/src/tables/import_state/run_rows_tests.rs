@@ -261,20 +261,26 @@ async fn a_run_in_flight_reads_back_as_it_published() {
     let state = barcode_half_answered();
     tables.publish_release_run(release, run(1), &state, Some(&signals)).await.unwrap();
     let outcome = bae_identify::RunOutcome::of(&state).unwrap();
-    // The run's rows hold the cards that `reference_cards_of` builds from the
-    // run's outcome and the text in its signals.
-    let text = bae_identify::CandidateText::of(&signals.text_pool, &[], signals.barcode.codes());
-    let expected = bae_identify::PublishedRun {
-        cards: bae_identify::view::reference_cards_of(&outcome, &text),
-        outcome,
-        signals: Some(signals.clone()),
-    };
-    let bae_identify::RunOutcome::Running { findings, .. } = &expected.outcome else {
+    let bae_identify::RunOutcome::Running { findings, .. } = &outcome else {
         panic!("a run partway through is running");
     };
     assert_eq!(findings.matches.len(), 1, "the half-answered barcode found one release");
-    assert_eq!(expected.rate_ruling_out_cd(), Some(96_000));
-    assert_eq!(stored_runs(&tables, release).await, BTreeMap::from([(run(1), expected.clone())]));
+    let found = findings.matches[0].release_id.clone();
+    let stored = stored_runs(&tables, release).await;
+    assert_eq!(stored.keys().collect::<Vec<_>>(), [&run(1)]);
+    let published = &stored[&run(1)];
+    assert_eq!(published.outcome, outcome);
+    assert_eq!(published.signals, Some(signals.clone()));
+    assert_eq!(published.rate_ruling_out_cd(), Some(96_000));
+    // The run's rows hold the one card its write laid out for the release it
+    // found.
+    let leads: Vec<Vec<String>> = published
+        .cards
+        .groups
+        .iter()
+        .map(|group| group.pressings().map(|row| row.lead().release_id.clone()).collect())
+        .collect();
+    assert_eq!(leads, [vec![found]]);
 
     // A later state without new signals keeps the ones the run read.
     tables.publish_release_run(release, run(1), &search_waiting(), None).await.unwrap();

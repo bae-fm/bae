@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- Where this release stands among the records of its row, 0 for the row's
     -- lead, which a pick reads the draft from. NULL where `card` is.
     record_order        INTEGER CHECK (record_order >= 0),
+    -- Where the release's row shows on its card, as the layout write placed
+    -- it by the identify grouping rules: the card's section (its album, 0
+    -- where the card holds one section), and the row's place among the rows
+    -- of that section that are listed as it is. NULL where `card` is.
+    section             INTEGER CHECK (section >= 0),
+    row_order           INTEGER CHECK (row_order >= 0),
     -- Which of its fields the folder's text agrees with, 1 where it does: the
     -- disc ID (a lookup of the folder's disc IDs returned the release), the
     -- barcode, the catalog number, the label, the pressing year, the country,
@@ -120,6 +126,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK (listing = 'offered' OR named_note IS NULL),
     CHECK ((listing = 'unlisted') = (pressing IS NULL)),
     CHECK ((card IS NULL) = (record_order IS NULL)),
+    CHECK ((card IS NULL) = (section IS NULL)),
+    CHECK ((card IS NULL) = (row_order IS NULL)),
     CHECK ((card IS NULL) = (pressing IS NULL)),
     CHECK (listing IN ('offered', 'narrowed_out')
            OR agrees_disc_id + agrees_barcode + agrees_catalog + agrees_label + agrees_year
@@ -277,6 +285,39 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
         REFERENCES import_candidate_match (search_run, position, media_kind)
         ON DELETE CASCADE,
     CHECK (media_kind = 'formats' OR quantity = 1),
+    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+) STRICT;
+
+-- Each card of a list as the layout write placed it by the identify grouping
+-- rules: its place among the list's cards (`card_order`, 0 first), the id
+-- that names it, the list place of the release whose cover it shows, the
+-- years its releases state, the catalogs it names as a JSON array of
+-- `{catalog, group_url, unread}`, and, for a card that holds one section per
+-- album, each section's album heading as a JSON array of `{title, catalog,
+-- group_url, unread}` in section order (NULL for a card of one section). A
+-- list and `card` are as `import_candidate_card_text` names them.
+CREATE TABLE IF NOT EXISTS import_candidate_card (
+    content_hash TEXT,
+    identify_run INTEGER,
+    search_run   INTEGER,
+    step         TEXT NOT NULL,
+    position     INTEGER NOT NULL CHECK (position >= 0),
+    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    card         INTEGER NOT NULL CHECK (card >= 0),
+    card_order   INTEGER NOT NULL CHECK (card_order >= 0),
+    id           TEXT NOT NULL CHECK (id <> ''),
+    cover_ord    INTEGER CHECK (cover_ord >= 0),
+    year_min     INTEGER,
+    year_max     INTEGER,
+    sources      TEXT NOT NULL CHECK (json_valid(sources)),
+    headings     TEXT CHECK (json_valid(headings)),
+    UNIQUE (content_hash, step, position, cell, card),
+    UNIQUE (identify_run, step, position, cell, card),
+    UNIQUE (search_run, step, position, cell, card),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
+    CHECK (step <> '' OR (position = 0 AND cell = 0)),
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
 ) STRICT;
 

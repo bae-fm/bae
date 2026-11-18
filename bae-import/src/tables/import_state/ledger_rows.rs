@@ -322,8 +322,8 @@ fn store_lookup(
         sql.execute(
             "INSERT INTO import_candidate_lookup_release \
                  (content_hash, identify_run, step, position, cell, ordinal, match_position, \
-                  pressing, card, record_order) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  pressing, card, record_order, section, row_order) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 owner.content_hash(),
                 owner.run(),
@@ -335,6 +335,8 @@ fn store_lookup(
                 place.pressing,
                 place.card,
                 place.record_order,
+                place.section,
+                place.row_order,
             ],
         )?;
     }

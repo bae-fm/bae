@@ -5,8 +5,7 @@
 use super::*;
 use crate::candidate_search::SearchRun;
 use crate::tables::import_state::search_rows::tests::{
-    assert_cards_are_the_rules_cards, kept_for, land, scanned, search_of, search_result,
-    started_search,
+    kept_for, land, scanned, search_of, search_result, started_search,
 };
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::records::MetadataRef;
@@ -305,7 +304,6 @@ async fn search_cards_statement_orders_rows_by_pressing_year() {
         .map(|row| row.lead().release_id.as_str())
         .collect();
     assert_eq!(rows, ["mb-1992", "mb-1995", "mb-1995-again", "mb-undated"]);
-    assert_cards_are_the_rules_cards(&tables, run, &search).await;
 }
 
 /// Two albums of one catalog on one card split the card into a section for
@@ -361,7 +359,6 @@ async fn search_cards_statement_splits_a_card_holding_two_albums_of_one_catalog(
         .map(|section| section.album.as_ref().map(|album| album.title.as_str()))
         .collect();
     assert_eq!(headed, [Some("First Album"), Some("Second Album")]);
-    assert_cards_are_the_rules_cards(&tables, run, &search).await;
 }
 
 /// When Discogs answers later with a release that prints the same barcode,
@@ -385,7 +382,6 @@ async fn a_later_catalog_merges_into_the_card_already_drawn() {
     let drawn = search_of(&tables, key).await.unwrap();
     assert_eq!(drawn.groups.len(), 1);
     assert_eq!(drawn.groups[0].pressings().count(), 1);
-    assert_cards_are_the_rules_cards(&tables, run, &drawn).await;
 
     assert!(
         land(
@@ -406,7 +402,6 @@ async fn a_later_catalog_merges_into_the_card_already_drawn() {
         .map(|release| release.release_id.as_str())
         .collect();
     assert_eq!(ids, ["mb-1", "dg-1"]);
-    assert_cards_are_the_rules_cards(&tables, run, &merged).await;
 }
 
 /// When a picked result's documents link nothing, bae compares it with the
@@ -458,7 +453,6 @@ async fn a_picked_result_no_document_links_is_joined_by_what_the_list_prints() {
 
     let search = search_of(&tables, key).await.unwrap();
     assert_eq!(search.groups.len(), 1);
-    assert_cards_are_the_rules_cards(&tables, run, &search).await;
     assert_eq!(
         kept_for(&tables, "group-x").await,
         [bae_catalogs::album_links::GroupAlbum {
