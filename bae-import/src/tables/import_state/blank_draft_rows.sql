@@ -7,12 +7,13 @@
 -- The cover is the image file that the folder's cover rules pick
 -- (`scan_candidate.blank_cover_file`).
 --
--- These views are the one definition of that draft. The scan stores a new
--- state's draft from them when the folder's files hold no tags to draft from,
--- and so does the trigger that runs when bae deletes this device's release of
--- the folder (`local_release_origin_gone_seeds_blank_draft`). A state the scan
--- holds no audio units of yet (a folder that the scan found before it read
--- the folder's audio) has no rows in them.
+-- These views are the one definition of that draft, and `blank_draft_seed`
+-- is the one write that stores it. The scan stores a new state's draft when
+-- the folder's files hold no tags to draft from, and so does the trigger that
+-- runs when bae deletes this device's release of the folder
+-- (`local_release_origin_gone_seeds_blank_draft`). A state the scan holds no
+-- audio units of yet (a folder that the scan found before it read the
+-- folder's audio) has no rows in them.
 
 -- This view joins each state to the first scan row of its candidate key and
 -- content hash. The view leaves out a state the scan holds no audio units of
@@ -72,6 +73,37 @@ SELECT content_hash, 'local' AS kind, blank_cover_file AS file_id
 FROM blank_draft_candidate
 WHERE blank_cover_file IS NOT NULL;
 
+-- Store the blank draft and cover of the state whose hash is inserted here,
+-- from the views above. SQLite has no procedures, so each write that stores a
+-- blank draft names the state by inserting its hash here, and the trigger on
+-- this view stores it. The scan inserts a new state's hash when the folder's
+-- files hold no tags to draft from, and the trigger below inserts the hash of
+-- a folder whose release bae deleted. Nothing is ever stored in the view.
+CREATE VIEW IF NOT EXISTS blank_draft_seed AS
+SELECT content_hash FROM import_candidate_state WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS blank_draft_seed_stores INSTEAD OF INSERT ON blank_draft_seed
+BEGIN
+    INSERT INTO import_candidate_edit
+        (content_hash, album_title, album_year, year, media, discogs_details, author,
+         draft_blank, draft_valid)
+    SELECT content_hash, album_title, album_year, year, media, discogs_details, author,
+           draft_blank, draft_valid
+    FROM blank_draft_edit WHERE content_hash = NEW.content_hash;
+    INSERT INTO import_candidate_medium (content_hash, position, medium, side_count)
+    SELECT content_hash, position, medium, side_count
+    FROM blank_draft_medium WHERE content_hash = NEW.content_hash;
+    INSERT INTO import_candidate_track
+        (content_hash, track_id, position, title, artist_assignment_kind, medium, side,
+         track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index)
+    SELECT content_hash, track_id, position, title, artist_assignment_kind, medium, side,
+           track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index
+    FROM blank_draft_track WHERE content_hash = NEW.content_hash;
+    INSERT INTO import_candidate_cover (content_hash, kind, file_id)
+    SELECT content_hash, kind, file_id
+    FROM blank_draft_cover WHERE content_hash = NEW.content_hash;
+END;
+
 -- Deleting a folder's `local_release_origin` row writes the folder's blank
 -- draft from its scanned files, so the folder is back in Found. The import
 -- deleted the folder's draft, and no other bae write runs when bae deletes
@@ -82,22 +114,5 @@ CREATE TRIGGER IF NOT EXISTS local_release_origin_gone_seeds_blank_draft
 AFTER DELETE ON local_release_origin
 WHEN NOT EXISTS (SELECT 1 FROM import_candidate_edit WHERE content_hash = OLD.content_hash)
 BEGIN
-    INSERT INTO import_candidate_edit
-        (content_hash, album_title, album_year, year, media, discogs_details, author,
-         draft_blank, draft_valid)
-    SELECT content_hash, album_title, album_year, year, media, discogs_details, author,
-           draft_blank, draft_valid
-    FROM blank_draft_edit WHERE content_hash = OLD.content_hash;
-    INSERT INTO import_candidate_medium (content_hash, position, medium, side_count)
-    SELECT content_hash, position, medium, side_count
-    FROM blank_draft_medium WHERE content_hash = OLD.content_hash;
-    INSERT INTO import_candidate_track
-        (content_hash, track_id, position, title, artist_assignment_kind, medium, side,
-         track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index)
-    SELECT content_hash, track_id, position, title, artist_assignment_kind, medium, side,
-           track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index
-    FROM blank_draft_track WHERE content_hash = OLD.content_hash;
-    INSERT INTO import_candidate_cover (content_hash, kind, file_id)
-    SELECT content_hash, kind, file_id
-    FROM blank_draft_cover WHERE content_hash = OLD.content_hash;
+    INSERT INTO blank_draft_seed (content_hash) VALUES (OLD.content_hash);
 END;

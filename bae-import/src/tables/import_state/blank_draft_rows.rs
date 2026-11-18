@@ -15,38 +15,11 @@ use super::*;
 use crate::{CandidateDraft, CandidateTrack, RawTrackEdit, TrackArtistAssignments};
 
 /// Store the blank draft and cover of the candidate `content_hash`, which
-/// holds no draft row. Stores nothing for a state the scan holds no audio
-/// units of yet.
+/// holds no draft row, through `blank_draft_seed`, the write the trigger on a
+/// deleted release runs too. Stores nothing for a state the scan holds no
+/// audio units of yet.
 pub(super) fn seed_blank_draft_on(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute(
-        "INSERT INTO import_candidate_edit \
-             (content_hash, album_title, album_year, year, media, discogs_details, author, \
-              draft_blank, draft_valid) \
-         SELECT content_hash, album_title, album_year, year, media, discogs_details, author, \
-                draft_blank, draft_valid \
-         FROM blank_draft_edit WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute(
-        "INSERT INTO import_candidate_medium (content_hash, position, medium, side_count) \
-         SELECT content_hash, position, medium, side_count \
-         FROM blank_draft_medium WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute(
-        "INSERT INTO import_candidate_track \
-             (content_hash, track_id, position, title, artist_assignment_kind, medium, side, \
-              track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index) \
-         SELECT content_hash, track_id, position, title, artist_assignment_kind, medium, side, \
-                track_number, stated_length_ms, file_kind, file_id, sheet_id, slice_index \
-         FROM blank_draft_track WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    sql.execute(
-        "INSERT INTO import_candidate_cover (content_hash, kind, file_id) \
-         SELECT content_hash, kind, file_id FROM blank_draft_cover WHERE content_hash = ?",
-        [content_hash],
-    )?;
+    sql.execute("INSERT INTO blank_draft_seed (content_hash) VALUES (?)", [content_hash])?;
     Ok(())
 }
 
