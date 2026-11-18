@@ -6,12 +6,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ./scripts/build-layout.sh
 
-# The folder build-android.sh builds into.
-export CARGO_TARGET_DIR="target-android"
-
 source bae-android/toolchain.sh
 android_rust_env
 TARGET=$(android_rust_target "${ANDROID_ABIS%%,*}")
 rustup target add "$TARGET"
+# Into target-android, the folder build-android.sh builds into.
 FFMPEG_DIR="$ANDROID_FFMPEG_DIR/${TARGET%%-*}" \
-    ./scripts/cargo.sh clippy --target "$TARGET" -p bae-bridge -- -D warnings
+    ./scripts/cargo.sh clippy --target "$TARGET" --target-dir target-android -p bae-bridge -- -D warnings

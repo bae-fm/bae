@@ -3,9 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ./scripts/build-layout.sh
 
-# This script reads the staticlib it builds back out of the target dir, so it
-# owns that dir: a shared one can be rewritten by another checkout in between.
-export CARGO_TARGET_DIR="target-android"
+# The Android builds go in target-android, the checkout's own folder for them
+# (.build-dirs), where this script reads the libraries back from. The host
+# tools it runs build in the host target.
+ANDROID_TARGET_DIR="target-android"
 
 usage() {
     echo "Usage: $0 [--release] [--abi <abi>]..."
@@ -72,7 +73,7 @@ for ABI in "${ABIS[@]}"; do
     FA="${TARGET%%-*}"
     ./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-android.sh "$ANDROID_FFMPEG_DIR/$FA"
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS --target "$TARGET" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS --target "$TARGET" --target-dir "$ANDROID_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi
@@ -85,9 +86,9 @@ mkdir -p "$BINDINGS_DIR"
 # The generator is its own host-only package so this build doesn't compile
 # bae-library again.
 ./scripts/cargo.sh build -p bae-uniffi-bindgen
-BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
+BINDGEN="target/debug/uniffi-bindgen"
 "$BINDGEN" generate \
-    --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
+    --library "$ANDROID_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
     --language kotlin \
     --out-dir "$BINDINGS_DIR/" \
     --no-format
@@ -121,7 +122,7 @@ for ABI in "${ABIS[@]}"; do
     DEST="$JNILIBS/$ABI"
     SYMDIR="bae-android/debug-symbols/$ABI"
     mkdir -p "$DEST" "$SYMDIR"
-    SRC="$CARGO_TARGET_DIR/$TARGET/$CARGO_PROFILE/libbae_bridge.so"
+    SRC="$ANDROID_TARGET_DIR/$TARGET/$CARGO_PROFILE/libbae_bridge.so"
     # Ship a stripped .so and keep the debug info beside it for symbolicating
     # native crashes: ndk-stack --sym bae-android/debug-symbols/<abi> --dump <logcat>
     "$OBJCOPY" --only-keep-debug "$SRC" "$SYMDIR/libbae_bridge.so.debug"
