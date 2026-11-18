@@ -2902,9 +2902,8 @@ track's rating belongs to one release's track, so the tracks of two copies of a
 pressing (§2.7) are rated apart. An album's page shows the person's own stars
 for it and a line naming who rated it: *You* when they did, then each other
 person who did, with their stars, by name. A track's stars on the page are the
-person's own. Only a person with a profile rates (§5.4); the page's detail says
-whether this person can, and whether the page shows the rating at all, which it
-does when this person can rate or anyone rated the album.
+person's own. Only a person with a profile rates (§5.4). The page shows the
+rating when this person can rate or anyone rated the album.
 
 On macOS the album's stars sit above its tracks: clicking a star rates the album
 with that many stars, and clicking the star the person already gave clears the
@@ -2969,9 +2968,8 @@ playlist twice. Each entry also has a position number that orders it: an
 append takes the next number, and a move renumbers every entry from 0.
 Playlists list by name, and profiles list by name too. A name a person gives
 a library, a profile, a playlist or another printed name of an artist is kept
-without its leading and trailing spaces, and a blank one is refused; core
-answers whether a typed name is blank, so a Create button disables on the same
-rule. A playlist made from a track holds that track from its first write, and
+without its leading and trailing spaces, and a blank one is refused; a Create
+button stays off while the typed name is blank. A playlist made from a track holds that track from its first write, and
 one made with a track the library lacks is not made. A playlist plays as a list
 of its tracks in its order (§7.1), from the entry picked, from the first, or
 shuffled; one with no entries plays nothing, and a picked entry the playlist
@@ -2984,13 +2982,10 @@ own and the household ones others made, never another person's private ones
 owner, who sees it, and a picture. The picture is the covers of the first four
 different releases its entries are on, as a 2×2 square; a playlist on fewer
 than four releases shows its first entry's cover, and one with no entries
-shows the missing-art tile. The list comes with how many playlists the device
-holds, counted by the database, which both apps read to tell an empty list from
-one that has rows. A playlist's page shows its owner, count, length
+shows the missing-art tile. A playlist's page shows its owner, count, length
 and who sees it, then its tracks in order, each with its credit line (§2.3),
 album and release cover. On macOS each track also shows its number in the
-playlist, from 1, which the page's query counts; while a move's write runs,
-the rows show no number. The Add to playlist menu offers only the person's own
+playlist, from 1; while a move's write runs, the rows show no number. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
@@ -3023,12 +3018,10 @@ next and Add to queue to everyone, and *Remove from playlist* to the owner. The
 owner reorders the entries by dragging a row: on macOS a line marks the edge
 of the row the dragged copy is over, where the entry goes when the owner lets
 go, and on Android a held row lifts and the rows between make room. Letting go
-writes a move: the row's position id and the entry it now sits just before or
-just after, and core finds that entry's place in the playlist's order. On
+moves the entry to just before or just after the entry it now sits by. On
 Android a screen reader also offers *Move up* and *Move down* on each of the
-owner's rows, each a move of one place that core makes, except *Move up* on the
-first entry and *Move down* on the last, which the page's query marks on each
-row. The row stays where the person let it go until the write returns; then the
+owner's rows, each a move of one place, except *Move up* on the first entry and
+*Move down* on the last. The row stays where the person let it go until the write returns; then the
 page draws the entries as stored, so a write that fails
 puts the row back.
 
@@ -3039,7 +3032,7 @@ makes a new one holding it.
 
 Ben adds a track to his party playlist, which holds seven entries: the new
 entry takes position 7. He drags it to the top: the move names the entry and
-the entry it now sits just before, and core puts it there in one write,
+the entry it now sits just before, and bae puts it there in one write,
 renumbering the other entries from 1 in the order they were in. A move up from
 the first entry or down from the last leaves the order as it was, and a move
 that names an entry the playlist no longer holds fails.
@@ -3093,11 +3086,9 @@ history setting.
   so asking for a profile is one write that asks coven for the circle, as a
   step of the write, and records the request in the device-local
   `profile_request`: the circle's operation, the circle and the name. It
-  needs no connection. While the library is open, bae follows the request
-  beside coven's list of the operations the app's writes started
-  (`coven_operations`); once sync has landed the circle's entry, one write
-  creates the profile, moves the waiting plays into the circle, acknowledges
-  the operation's outcome to coven and deletes the request. Until then the
+  needs no connection. Once sync has landed the circle's entry, while the
+  library is open, one write creates the profile, moves the waiting plays
+  into the circle and deletes the request. Until then the
   person has no profile and their plays stay in `local_history`, and asking
   again is refused while the circle is being made. A circle the library
   refused, or one this device's stop for good ended unmade, stays recorded
@@ -3107,15 +3098,13 @@ history setting.
   writes the profile in one write.
 - **Settings shows a profile not written yet.** In *You* on People and
   devices, a person with no profile gets their name field and **Create profile**. While
-  their circle is being made it says the profile is being made and appears
-  once the library syncs, in place of the form, following `profile_request`
-  and coven's outcome as one read. A circle that wasn't made shows why
+  their circle is being made it says, in place of the form, that the profile
+  is being made and appears once the library syncs. A circle that wasn't made
+  shows why
   above the form, which asks again: why the library refused it, as coven
   gives the reason (one of its people is no longer in the library, say), or
   why this device stopped syncing for good before it was made (another
-  device removed it, say), as coven names the stop. Each change of that read
-  reads the person again, since the request ends in the write that makes
-  their profile.
+  device removed it, say), as coven names the stop.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:
@@ -3125,13 +3114,11 @@ history setting.
   the image the person picked, and bae stores it the way it stores a cover
   or an artist image (§4.1). Other devices download it when it is first
   shown.
-- **The people list joins coven's members with `people`** in one query:
-  everyone in the library, each with their profile once they made one,
-  sorted by the profile's name in the device's language. The people with no
-  profile yet come after them, in the order bae made their member ids: bae's
-  UUIDv7 id source makes a member's id when the founder creates the library
-  or an inviter creates the invite. The query reads the person using this
-  device the same way. A removed person's row stays, read-only, and the list
+- **The people list shows everyone in the library**, each with their profile
+  once they made one, sorted by the profile's name in the device's language.
+  The people with no profile yet come after them, in the order their member
+  ids were made: when the founder created the library, or when an inviter
+  created the invite. A removed person's row stays, read-only, and the list
   does not show them.
 
 ### 5.5 "Ana rated this"
@@ -3196,20 +3183,16 @@ device too
 ([coven §11.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#111-the-steps)).
 
 The same write records what the change changes in the device-local
-`admin_operations`, keyed by its operation in coven's list of the operations
-the app's writes started (`coven_operations`): the new name, the person and
+`admin_operations`, keyed by its coven operation: the new name, the person and
 the role, the person, the device, or for an approval the person it lets in
-and the name the invite gave them. Coven's list says what kind of change it
-is and how it ended, so the row holds neither. Each change shows, in a box titled
+and the name the invite gave them. coven records what kind of change it is and
+how it ended, so the row holds neither. Each change shows, in a box titled
 **Changes from this Mac** on a Mac and **Changes from this device** on Android,
 where the change is: a rename under the library's name on the Library page, a
 role change on that person's page above their role, and removing a person or a
-device and approving a request on People and devices. Each place reads only
-its own changes: the app passes the place to the read of admin changes, and
-the read's SQL keeps only the kinds of change that belong to that place and
-says whether the place has any change, so the box shows only while it has
-one. A change whose kind no place shows fails the read in every place. Each
-shows as what it asks ("Remove Ben",
+device and approving a request on People and devices. Each place shows only its
+own changes, and its box shows only while it has one. Each shows as what it
+asks ("Remove Ben",
 "Rename the library to “Home”", "Let Dan in"), named from the person's profile or the
 device's name as they stand ("Remove a device" for one this device hasn't
 read yet): waiting to sync, then done, refused or
@@ -3235,18 +3218,15 @@ names the step for Dropbox, OneDrive and iCloud, and on S3 there is none).
 **Cutting off a lost device.** When the step is for one of the person's own
 devices and their account holds the library's storage, the same message offers
 **I cut off this device** beside **Not yet**: the person does the step at the
-provider and presses it, and the app calls coven's `confirm_device_cut_off`,
-which says nothing more of that device can land, so this device takes back
-every account the lost device's shares named that no member or open invite
-uses
+provider and presses it, which tells coven that nothing more of that device
+can land, so this device takes back every account the lost device's shares
+named that no member or open invite uses
 ([coven §14.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#142-provider-access),
 [§20.9](https://github.com/bae-fm/coven/blob/main/spec/coven.md#209-sharing-with-accounts)).
-Removing the device asks coven's `holds_store` before anything is removed
-and returns the message's instruction together with whether the cut-off is
-offered: only the member whose account holds the store has devices that change
+Only the member whose account holds the store has devices that change
 sharing, so for anyone else, and on S3, the button would only be refused and
-isn't offered. When that read fails the removal fails to the person, changing
-nothing, and they retry it. Coven refuses a device the
+isn't offered. When bae can't find out whether the person's account holds the
+store, the removal fails to the person, changing nothing, and they retry it. Coven refuses a device the
 history doesn't have removed yet, which the removal on this device may not have
 reached; the app then says the removal hasn't reached this device yet and asks
 to **Try again** after the next sync, or **Not yet**. While a request to one of
@@ -3281,20 +3261,18 @@ library's id under it and **Discard…**, which asks "Discard the unfinished
 join?" ("It did not finish, and this Mac cannot read what it saved. Discarding
 removes it from this Mac. The library in the cloud is not touched." on a Mac, "phone" on
 Android) with **Discard** and **Cancel**. **Discard** deletes the unfinished
-installation from this device (`discard_unfinished_installation`) and lists
-what is under way again, so another unreadable one shows its own row and a join
+installation from this device and lists what is under way again, so another unreadable one shows its own row and a join
 that can resume goes on; a discard that fails says why where the listing's
 failures show, and the row stays. A join whose request was sent stays pending in the
 library's storage until its invite ends, and the person's saved restore code
 stays. A
 library that fails to open on a Mac shows the failure joined to its row, under
-its name: **Could not open**, with **Details**; when core says Reset from
-cloud replaces what failed (the open fails as `ResetFromCloud`: bae can't use
-the library's data on this Mac, such as a damaged database file or tables
-that don't match the app's, and the library has storage to load it from), it
-says "Something is wrong with this library’s data." and offers **Reset from
-cloud…**, the reset below, in place of *Retry*. Core reads whether the
-library has storage when the open fails. A library kept on this Mac only has
+its name: **Could not open**, with **Details**; when Reset from cloud
+replaces what failed (bae can't use the library's data on this Mac, such as a
+damaged database file or tables that don't match the app's, and the library
+has storage to load it from), it says "Something is wrong with this library’s
+data." and offers **Reset from cloud…**, the reset below, in place of *Retry*.
+A library kept on this Mac only has
 none, so its failure shows **Details** alone, and its row's menu still offers
 **Delete…**. A phone
 that fails to open a library the same way shows a notice in the middle of the
@@ -3320,8 +3298,7 @@ list. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
 **Continue**, off until the field holds something; **Scan Code…** opens the
 scanner. On both platforms the field is several lines tall and monospaced, and
 shows a typed or pasted code in groups of four with a space between, as Settings
-shows a restore code (core's `restore_code::grouped`); what it passes on is the
-code without the spaces (`restore_code::entered`). A scanned code starts at once, as an invite does, with no sheet to
+shows a restore code, and bae reads the code without the spaces. A scanned code starts at once, as an invite does, with no sheet to
 confirm it, and a typed code starts when the person chooses **Continue**: the
 person scanned or entered it to add this device, or to join. Only an S3 code
 without the key stops first, to ask for it on a second sheet, **S3 key**, in a
@@ -3376,8 +3353,7 @@ invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
 account, and the invite's code shows once it has. On S3 the form asks for an
 access key Ana made for Dan, or **Use my key instead**: Dan then uses the key
-this device connects with, which core hands to the invite without the app ever
-holding its secret, and the form says that to remove him later Ana makes a new
+this device connects with, and the form says that to remove him later Ana makes a new
 key for herself and enters it on each of her devices; **Use their own key
 instead** goes back. A library on iCloud or OneDrive asks for his Apple Account
 or Microsoft account email in the same way. When sync can't share it, or
@@ -3472,12 +3448,9 @@ notice in the invite's place: the address it was to share with, "Could not
 invite:" and what went wrong and what to fix ("Dropbox has no account for it";
 "your Dropbox email is not verified. Verify it, then invite them again"), and
 **Dismiss**. The notice stays until she dismisses it, in its place among the
-rows by when the invite was made. One statement over coven's invites, pending
-records and operations reads the rows in that order, each open invite with the
-pending record that is a hold and the name its request shows, and each notice.
-**Dismiss** is one local write that
-acknowledges the operation, so the notice leaves the list in that write; it
-refuses an operation that is no refused invite's.
+rows by when the invite was made. **Dismiss** is one local write that
+acknowledges the outcome to coven, so the notice leaves the list in that
+write.
 
 On S3 the invite's screen also shows the id of the key it carries, and says to
 delete that key in the provider's console if nobody uses the invite: bae keeps
@@ -3638,9 +3611,8 @@ closes it. A pairing she declines closes the sheet. One that expires says "This 
 ended" and to choose Add device again for a new one, and one coven refuses
 because the request failed a check says the request was refused and the device
 was not added, each in the sheet with **Done**. Closing the sheet, however it
-closes, ends the pairing, which coven then forgets. When the sheet closes,
-the sheet first stops following the pairing and then ends the pairing, so the
-sheet keeps showing its last step until it closes; a
+closes, ends the pairing, which coven then forgets. The sheet keeps showing
+its last step until it closes; a
 pairing coven has forgotten while the sheet follows it says "This code has
 ended" as an expired one does. While the sheet follows it, Carol's
 device syncs every 5 seconds instead of every 30, so the request reaches her
@@ -3651,13 +3623,11 @@ about 24 a minute, only while the sheet is open
 The restore code is shown on the Sync page alone: Settings keeps
 the code there, in a **Restore code**
 section, for the day she loses every device; the Library page has no row for
-it. It is
-made when Settings opens, one local read of her keys that the section names
-while it runs, never a bare spinner: the sheet says it is making a code for her
-new device, and the section that it is making her restore code. It shows
-masked: its first two groups and its last, the groups between as dots. Core
-masks the code and sends the masked groups beside it, so every app shows the
-same groups.
+it. bae makes it from her keys, on this device, when Settings opens, and
+names what it is doing meanwhile, never with a bare spinner: the sheet says it
+is making a code for her new device, and the section that it is making her
+restore code. It shows masked: its first two groups and its last, the groups
+between as dots, the same groups in every app.
 **Show** reveals it in
 groups of four and **Hide** masks it again; **Copy** copies the whole code,
 shown or not; **Print…** on a Mac and **Print** on Android print one page: the
