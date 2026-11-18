@@ -948,8 +948,8 @@ leaves, whoever waited on the pass hears why instead of hearing it ended. A fold
 current scan stored an outcome shows it. One whose scan stored none reads as
 scanning while a scan of all of it runs or is owed, or a removal holds it.
 A folder that no scan has opened a generation for shows Not scanned. The folder
-scans list every watched folder with its status and whether it is on a network
-volume, and say whether any folder's last scan failed or left it not watched
+scans list every watched folder with its status and, once a scan has found its
+volume, whether that volume is on the network, and say whether any folder's last scan failed or left it not watched
 and whether bae is scanning any folder, so the list's menu draws them without
 joining anything; one live query reads them all. Until that query sends its first value,
 the menu's Folders section says *Reading…* and lists no folder. How many folders a scan has
