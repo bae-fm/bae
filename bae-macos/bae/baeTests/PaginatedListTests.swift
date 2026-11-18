@@ -374,13 +374,18 @@ struct PaginatedListTests {
 
         let tasks = held(list, 0...10)
         try await Wait.until { view.shown == 0...10 }
-        #expect(idsAt(list, 0...10) == ids(0...10).map(Optional.init))
+        // The view answers each report after it: the rows arrive once it
+        // answers the last.
+        try await Wait.until {
+            idsAt(list, 0...10) == ids(0...10).map(Optional.init)
+        }
 
         for task in tasks { task.cancel() }
         let further = held(list, 100...110)
         try await Wait.until { view.shown == 100...110 }
-        try await Wait.until { list.idAt(100) != nil }
-        #expect(idsAt(list, 100...110) == ids(100...110).map(Optional.init))
+        try await Wait.until {
+            idsAt(list, 100...110) == ids(100...110).map(Optional.init)
+        }
         for task in further { task.cancel() }
         list.cancel()
     }
@@ -473,7 +478,9 @@ extension PaginatedListTests {
         let probe = ProbeList(ids(0...999))
         let list = try await open(probe)
         let holds = held(list, 400...410)
-        try await Wait.until { list.idAt(400) != nil }
+        try await Wait.until {
+            idsAt(list, 400...410) == ids(400...410).map(Optional.init)
+        }
         let opened = probe.views.count
 
         probe.holdViews()
