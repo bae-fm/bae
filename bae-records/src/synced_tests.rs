@@ -116,6 +116,9 @@ const DEVICE_LOCAL_TABLES: &[&str] = &[
     // Where each release's files are on this device, kept from them and
     // coven's records by local triggers.
     "release_storage",
+    // The language this device orders names in, and the version of the
+    // collation data its name keys were written with.
+    "name_sort",
 ];
 
 #[test]
