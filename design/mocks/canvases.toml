@@ -1,5 +1,5 @@
 # The claude.ai canvases the boards publish to, split by page.
-# `builds design canvas-files` reads this file.
+# `builds design publish-files` reads this file.
 
 [[canvas]]
 url = "https://claude.ai/artifact/FLmQghVJ24uoT5Ukpe92NR"
@@ -12,3 +12,6 @@ url = "https://claude.ai/artifact/UD1cAH7iWgr6927dGF2m4j"
 title = "bae boards: home, import, storage"
 launch = "home"
 pages = ["home", "loading", "search", "import", "storage", "explore"]
+
+[design_system]
+url = "https://claude.ai/artifact/MUbLkiU63y27pSuFTgm8CE"
