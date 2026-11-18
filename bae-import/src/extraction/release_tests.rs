@@ -100,19 +100,11 @@ async fn insert_two_tracks(records: &Records, release_id: &str) {
         .insert_release_medium(&bae_records::DbReleaseMedium::new_test(release_id))
         .await
         .unwrap();
-    for n in 1..=2 {
+    for n in 1..=2u32 {
+        let id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         let track = DbTrack {
-            id: coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            release_id: release_id.to_string(),
-            title: format!("Track {n}"),
-            medium_id: bae_records::first_medium_id(release_id),
-            side: std::num::NonZeroU8::MIN,
-            track_number: std::num::NonZeroU32::new(
-                u32::try_from(n).expect("a test track number fits u32"),
-            )
-            .expect("track numbers count from one"),
-            duration_ms: 180_000 + n as u64,
-            created_at: time::UtcDateTime::now(),
+            duration_ms: 180_000 + u64::from(n),
+            ..DbTrack::new_test(release_id, &id, &format!("Track {n}"), n)
         };
         records.insert_track(&track).await.unwrap();
     }
