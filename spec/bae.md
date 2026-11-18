@@ -867,8 +867,7 @@ apart. Their answer is marked as theirs, and no later scan overrides it. The
 person can also combine releases from anywhere into one, in an order they
 choose; such a grouping reads exactly those folders. Combining selects the
 release it makes. When a release's files come from several folders, its
-pane lists those folders at the top. The pane's SQL query returns how many
-folders there are, and 0 for one folder. A combined release's pane offers Keep as Separate
+pane lists those folders at the top. A combined release's pane offers Keep as Separate
 Releases, which separates it at once, with no confirmation, and selects the
 releases it returns.
 
@@ -879,12 +878,12 @@ folder's sidecar.
 **Watching.** Each watched folder has its own filesystem watch. A change reads
 again only the folder directly under the watched root that it reached, and
 only after that folder has been quiet for a second, so a download writing into
-one album for an hour holds back only that album. If gathering the watches'
-reports panics, it is reported as a bug and every watch stops; scans, refreshes
-and the network check go on. A watch report that arrives while the watched
-folders cannot be read is reported as a bug and reads nothing, since no folder
-can be matched to it; the next change under the folder, a refresh, or the next
-launch reads it. A directory that cannot be watched
+one album for an hour holds back only that album. If watching panics, bae
+reports a bug and stops every watch; scans, refreshes and the network check go
+on. A change that arrives while bae can't read its list of watched folders
+matches no folder, so bae reports a bug and reads nothing for it; the next
+change under the folder, a refresh, or the next launch reads it. A directory
+that cannot be watched
 (inotify's watch limit on a large tree, or the watches not starting) is not
 hidden: the tree is read and stored as usual, and the folder's status is *not
 watched*, with the first directory that failed and the system's reason. The
@@ -894,13 +893,11 @@ again after a change reports it the same way.
 
 A watched folder on a network volume is watched like any other, but on macOS
 and Linux a network mount reports only the changes this machine makes (Windows
-does report a server's changes on an SMB share, through
-`ReadDirectoryChangesW`). bae also checks such a folder every 15 minutes, on
-every platform, which is what notices a change made on the server or from
-another machine, and the import list says so. Which folders are checked is
-read from the volume each one's last scan found it on, the one the list shows,
-so a check never waits on a mount to say what it is. A check that panics is
-reported as a bug and reads the whole folder.
+does report a server's changes on an SMB share). bae also checks such a folder
+every 15 minutes, on every platform, which is what notices a change made on the
+server or from another machine, and the import list says so. bae checks each
+folder whose last scan found it on a network volume, the volume the list shows.
+A check that panics is reported as a bug and reads the whole folder.
 
 **What a scan stores.** Everything a scan reads is device-local: the
 candidates, their files and the role each plays (audio, track sheet, artwork,
@@ -910,74 +907,58 @@ artists, compilation flag,
 years and disc and track numbers, or, for tags that don't parse, why, and when
 each folder was first seen. A file
 is stored by its name in the release and by its path, as the system's own
-bytes for it, which is what opens it again. A scan writes as it finds: what it found while its last write ran, up to
-eight entries, goes in one transaction, so an interrupted scan loses at most
-those and the next scan finds them again. Completing removes what it didn't
-see, in the same transaction that marks it complete. A failed or interrupted
-scan keeps both old and new entries. A pass that panics fails the scan as an
-error does, stored with the panic's message and reported as a bug; the folder
-is free for its next read, and whoever waited on the pass is answered. A
-panic while removing a watched folder fails the removal the same way, and the
-folder is read again. An add or a removal announces the watched folders as
-its own write left them, read inside that write; a write that leaves folders
-no read can list is refused whole. Each entry's write reads only that entry
-and the entries reading the same files, which it finds by their folders, so it
-costs the same however much else the watched folder holds.
+bytes for it, which is what opens it again. A scan stores what it finds as it
+goes, a few entries in each write, so an interrupted scan keeps what it stored
+and the next scan finds the rest. Completing removes what it didn't see, in the
+same transaction that marks it complete. A failed or interrupted scan keeps
+both old and new entries. A scan that panics fails as an error does, with the
+panic's message, and bae reports a bug. A panic while removing a watched folder
+fails the removal the same way, and the folder is read again. bae refuses,
+whole, an add or a removal of a watched folder that would leave a watched
+folder it can't list. Storing a candidate takes the same time however much else
+the watched folder holds.
 
-**How a scan's state shows.** The folder's scan stores only how its current
-scan ended, complete, failed with the error, or not watched with the reason,
-and nothing until that scan stores it. The coordinator that starts the passes
-records whether a pass is reading the folder: it writes that to the
-device-local table `folder_scan_held` in the step that changes it, and the
-library empties that table each time it opens, so a folder never shows as
-scanning with nothing scanning it. The coordinator stores what a step will hold before it starts or
-queues a pass or a removal, and when the store refuses, it starts and queues
-nothing and tells whoever asked why. When the store refuses what a pass's end
-leaves, whoever waited on the pass hears why instead of hearing it ended. A folder whose
-current scan stored an outcome shows it. One whose scan stored none reads as
-scanning while a scan of all of it runs or is owed, or a removal holds it.
-A folder that no scan has opened a generation for shows Not scanned. The folder
-scans list every watched folder with its status and, once a scan has found its
-volume, whether that volume is on the network, and say whether any folder's last scan failed or left it not watched
-and whether bae is scanning any folder, so the list's menu draws them without
-joining anything; one live query reads them all. Until that query sends its first value,
-the menu's Folders section says *Reading…* and lists no folder. How many folders a scan has
-stored goes up with every folder it walks, so it is not part of that query: a
-live query of its own lists each folder bae is scanning with that count,
-which the query counts from the index of the scan's candidates. The scan indicator's list of
-folders shows that query's rows, through a subscription like any other
-screen's, and each folder a scan stores makes coven run only that query again. A pass whose failure the
-store won't take, a whole scan's or a changed folder's reading's, still shows as
-failed with its error: the coordinator writes that failure to `folder_scan_held` as the
-folder's status until the folder's next pass starts, with the volume the pass found the
+**How a scan's state shows.** A folder shows how its current scan ended:
+complete, failed with the error, or not watched with the reason. While a scan
+of all of the folder runs or waits to run, or a removal holds the folder, the
+folder shows as scanning, and it never shows as scanning with nothing scanning
+it, even after bae quits during a scan. A watched folder that no scan has
+started shows Not scanned. bae keeps which folders a scan is reading, and each
+failure it could not store with the scan, in the device-local table
+`folder_scan_held`, which the library empties each time it opens.
+
+When bae can't store that a scan or a removal is starting, it starts nothing
+and tells the person why. A scan whose failure bae can't store with the scan, a
+whole scan's or a changed folder's reading's, still shows as failed with its
+error until the folder's next scan starts, with the volume the scan found the
 folder on, so a folder whose first scan could not even store its start shows
-too. A folder with no scan stored and no failure held has no status yet and
-is not listed; a scan stores its start, with the folder's volume, as it
-begins. A refusal that is a bug is reported as
-one; a full, failing or damaged disk, a store that failed as a whole (on an
-earlier bug too, which was reported as it happened), or the library closing
-is not. A scan that ended with nothing stored and nothing
-held, as one that panicked while storing its failure does, shows as failed,
-saying it stopped before bae stored its result. No event carries a
-scan's state: the screen's query reads it from the stored outcome and
-`folder_scan_held` together.
+too. A refusal that is a bug is reported as one; a full, failing or damaged
+disk, a store that failed as a whole (on an earlier bug too, which was reported
+as it happened), or the library closing is not. A scan that ended with nothing
+stored, as one that panicked while storing its failure does, shows as failed,
+saying it stopped before bae stored its result.
+
+The folder scans list every watched folder that has a status, with that status
+and, once a scan has found its volume, whether that volume is on the network,
+and say whether any folder's last scan failed or left it not watched and
+whether bae is scanning any folder. A scan stores its start, with the folder's
+volume, as it begins. Until the list has loaded, the menu's Folders section
+says *Reading…* and lists no folder. The scan indicator lists each folder bae
+is scanning, with how many folders the scan has stored so far.
 
 On a Mac, a folder whose scan failed, or that is not watched, raises an alert
 headlined "Could not scan {folder}" or "Not watching {folder} for changes",
 with the error or the reason. The folder scans list each problem the app has
-raised no alert for. The app raises each one and records that it did in the
-device-local table `folder_scan_alert_shown`, so one problem raises one alert. A folder's problem ends
-when a new scan of the folder starts, or when the coordinator stops holding a
-failure for it, and the folder's next problem raises its alert again, even with
-the same error. The library empties that table each time it opens, so a
-problem still stored at launch raises its alert again.
+raised no alert for. bae records each alert it raised in the device-local table
+`folder_scan_alert_shown`, so one problem raises one alert. A folder's problem
+ends when a new scan of the folder starts, and the folder's next problem raises
+its alert again, even with the same error. The library empties that table each
+time it opens, so a problem still stored at launch raises its alert again.
 
-**What a scan reads.** A scan reads each file once. It opens a track twice:
-FFmpeg's probe, which says whether it plays, and one read of its tags, which
-places it in play order, names a broken folder, and seeds a new release's
-draft, picture included: the scan seeds the draft and the cover in the write
-that first stores the release's state, and never for files this device
-imported, whose release is the library's. A folder read again within the same scan, such as disc
+**What a scan reads.** A scan reads each file once. For each track it checks
+whether bae can play it and reads its tags, which place it in play order, name
+a broken folder, and start a new release's draft, picture included. A folder
+this device imported gets no draft: its release is the library's. A folder read again within the same scan, such as disc
 folders read as one release after each was read on its own, reads none of its
 files again. A track that can't be read at all — the file won't open, or a
 read of it fails partway, as when a network share goes away, whether the probe
@@ -996,12 +977,8 @@ don't parse is not read again until it changes. It opens only the files that are
 folder nothing in has changed opens none. A release's draft takes each
 unchanged track's tags, and the picture they embed, from the reading stored
 for the release, and reads only its new or changed tracks; the stored picture
-is read back only when the track it came from is unchanged. A release whose
-stored entry is already exactly what the rescan read takes no draft or
-reading at all: its entry stays as it is, and nothing of its stored reading,
-the picture included, is read back. When that entry changes between the read
-and the write that keeps it, the write stores nothing, and the scan reads the
-release's reading again and stores it as it read it. A store that says two
+is read back only when the track it came from is unchanged. A rescan leaves a
+release whose files are all unchanged exactly as it was. A store that says two
 different things about one file fails the scan.
 
 **Edge cases.**
@@ -1013,7 +990,7 @@ different things about one file fails the scan.
   or holds no audio bae can read — and the album title and artist its
   playable tracks' tags agree on, read as a draft's are. The scan also
   stores with them why bae can't import the folder and the folder's cover
-  image, which its row and pane read back as stored.
+  image, which its row and pane show.
 - **A file whose name isn't valid UTF-8**, which Linux allows (a Latin-1
   `Café.flac` from an old rip), is read and imported like any other. Its name
   in the release, which the library syncs and every surface shows, is its
@@ -1051,11 +1028,9 @@ different things about one file fails the scan.
   contains watched folders, bae stops watching those folders and watches the
   new folder in their place, in one write. bae stores what it knows about a
   folder under the folder's path on disk, so the person's groupings stay.
-  Unwatching the folder that covers a grouping deletes it. The write that
-  watches a folder checks that no watched folder holds it or lies in it. That
-  write refuses a folder inside a watched one and stores nothing, and the
-  error names both folders. No two watched folders ever overlap, so no read
-  checks them for it.
+  Unwatching the folder that covers a grouping deletes it. bae refuses to
+  watch a folder inside a watched one, stores nothing, and names both folders
+  in the error. No two watched folders ever overlap.
 - **A dismissed candidate** is skipped by path, so a later scan doesn't offer it
   again.
 
@@ -1082,9 +1057,7 @@ its rows are still another tab's or filter's, the list is a plain surface.
 
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a
-release's own files count, as the Storage manager counts them (§4.2); the
-list reads the queue as coven's state view `coven_uploads`
-holds it, so it is never waiting on it and never out of step with it.
+release's own files count, as the Storage manager counts them (§4.2).
 
 Each tab sorts newest first, oldest first, or by path either way. A date order
 sorts by each row's date — its folder's for Found and Skipped, its release's
@@ -1102,11 +1075,9 @@ folder as one release (§3.1) when a stored reading of the folder keeps its
 releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of
 every tab. While the rows on top are a group's, that group's header stays pinned
-over the top of the list; over a release in no group no header is pinned. Each
-member is read with its group's header and with whether the list shows no
-member of the group after it, so the pinned header is its own group's however
-far above it the header's row is and whichever rows have loaded, and it leaves
-with the group's last row as that row scrolls away.
+over the top of the list; over a release in no group no header is pinned. The
+pinned header is the top row's own group's, however far above it the header's
+row is, and it leaves with the group's last row as that row scrolls away.
 
 Each Found row is in exactly one state. The first that applies wins:
 
@@ -1155,18 +1126,15 @@ shows the library release imported from the folder's files as the library
 holds it now — its album's title and credits, each printed as the library
 prints it, its cover, and the arrow of a release a catalog's record describes
 — so retitling the album, editing its credits or merging an artist they name
-changes the row in the same write. It says nothing more but its release's
+changes the row at once. It says nothing more but its release's
 upload: the tab says it is done. Its pane is that release, to edit as the
 library editor edits it (§3.8), with the folder's images and other files as
 its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
 Storage manager does (§4.2): Uploading while any file is being sent, beside a
 bar of the bytes of the release's whole size stored or sent, or Queued to upload with no
-bar while its files only wait. The row reads how many of the release's files
-wait and how many are being sent in the list's own read, from the counts the
-Storage manager reads, so the row changes as each file starts and lands; the
-bar's bytes arrive apart, in the release's value of the upload transfer stream
-the Storage manager's chip reads. It names the one release imported from those
+bar while its files only wait. The row changes as each file starts and
+finishes uploading, and its bar moves as bae sends bytes. The row names the one release imported from those
 files, which Show in library and a double-click on the row open.
 
 A folder this device didn't import is in Found like any other, whatever another
@@ -1187,9 +1155,7 @@ then every other file with each damaged one marked and why. Where a release's
 Import would be, the pane states the reason. A playable track in it can still
 be auditioned.
 
-The person can select any number of rows. The screen keeps the selection, as
-the keys of the rows the person selected, and core keeps none. A change the
-person makes to the view takes out of the selection the rows it stops showing:
+The person can select any number of rows. A change the person makes to the view takes out of the selection the rows it stops showing:
 another tab, filter or search takes out each selected row the new view doesn't
 show, a fold takes out the selected rows it hides, and a row they hid comes
 back unselected when it is shown again. A row that leaves the list through a
@@ -1202,129 +1168,51 @@ Found row whose import finishes moves to Imported, but the list stays on Found,
 the row stays selected and its pane stays open, showing the release as
 imported (Imported's pane, above) with its way to open the release in the
 library, until the person selects another row or changes the tab, filter or
-search. A write that stores a candidate's state, such as an
-edit in its pane or a pick, changes only the rows whose values change, each in
-place, so no step of it shows the row as something it isn't, such as unlinked
-on the way to linked again: typing into the selected row's pane keeps the row
-selected and the pane open, under any view that still shows it. A release the scan reads again with changed files is
-the same row: it stays selected, under a group as folded as it was. What the selection holds and offers is a live
-query keyed by the selected keys, which reads their rows whatever the list
-shows. The pane a selection opens reads only that selection,
-so with nothing selected it shows nothing selected. A bulk action, combining,
-keeping separate and showing the folders take the selected keys, and each runs in core over
-the selected rows the list shows that offer it, in the order the list shows
-them; a bulk action answers with the rows it failed on. Core also sends how
-many rows the action has done and the share of the rows done, which its bar
-fills to. Before the action has counted the rows, core sends no share, and
-the bar moves without a count. That progress changes with each row, so it
-reaches the app only in a `KeyedValueStream` (§10.2) that the list hands out
-and holds while the action runs. A broken folder offers
-no action, so selected among others it counts
-toward the selection but holds back combining it. Combining selects the release
-it makes, and keeping a release as separate releases selects the releases it
-returns. Selecting a range with Shift-click and Select All take their keys
-from core, which reads every release the list shows from one release to
-another in its order, or every release it shows, loaded or not.
+search. An edit in a row's pane or a pick changes the row in place, and no
+step of it shows the row as something it isn't, such as unlinked on the way to
+linked again: typing into the selected row's pane keeps the row selected and
+the pane open, under any view that still shows it. A release the scan reads
+again with changed files is the same row: it stays selected, under a group as
+folded as it was. With nothing selected, the pane shows nothing selected. A
+bulk action, combining, keeping separate and showing the folders run over the
+selected rows the list shows that offer them, in the order the list shows
+them, and a bulk action names the rows it failed on. While a bulk action runs,
+its bar says how many rows it has done and fills to the share done; until the
+action has counted the rows, the bar moves without a count. A broken folder
+offers no action, so selected among others it counts toward the selection but
+holds back combining it. Combining selects the release it makes, and keeping a
+release as separate releases selects the releases it returns. Shift-click
+selects every release the list shows from one release to another in its order,
+and Select All every release it shows, including releases not yet on screen.
+
+Each offer shows the number of rows it runs on and whether it can run. A row's
+own offers act on that row alone and leave out Combine. A selection offers
+Combine for every selected row while every one can join one release, and not
+at all otherwise. The tab bar shows every tab's count, whatever the person
+narrows the list by. A folder on a slow or unreachable volume does not hold up
+the list. A search shows its rows as they arrive, and its "N of M" and the
+list's length once it has counted them, with a placeholder in their place
+until then.
 
 Another tab, filter, search or order is a view the list has not read yet:
 until the read reflecting it lands, the list shows no rows rather than the
 previous view's, nor "No matches" for them.
 
-A list narrowed anew — another tab, filter or search — shows on top the row
-its view opened at: its first selected row as it sat when the view was set,
-or its top while no selected row is shown. The screen passes the keys it
-keeps selected to the write that sets the view, which works that place out and
-answers with it, as the row's position, or its top, with the selected rows
-that leave the selection; the screen drops the view and count it holds, opens
-new ones at that place, and scrolls the table there,
-so a read opened after the write sees the new view from its first value and no
-read carries a revision. Changing the order does not move the list to a new
-place: the write answers nothing, as it does when the view did not change, and
-no selected row leaves the selection. The screen opens a new view at the rows
-on screen, since a window starts at a row's sort values in the order the screen
-read it in, and keeps its count, since another order moves the rows and not how
-many there are; the table keeps its own scroll and draws the rows in the old
-order until the new view answers. Nothing keeps the place on the list: selecting rows
-since moves no place, and the list otherwise keeps the person's place as rows
-come and go: when the rows change, core says where the release on top sits now
-in the view as it stands, its filters and folds included, and the table puts it
-back on top, unless the person scrolls before core
-answers. A header or a broken folder on top keeps its position. The write looks
-for the first selected row only among the keys the screen passes, and counts the rows before it by the same index seeks bae uses to read
-the window from a row, as a count over index ranges and not a numbering of
-each row, and a view with nothing selected opens at its top without reading its
-rows.
+A list narrowed anew (another tab, filter or search) shows on top the row its
+view opened at: its first selected row as it sat when the view was set, or its
+top while no selected row is shown. Changing the order keeps the list's scroll
+and every selected row, and the list draws the rows in the old order until the
+rows in the new order arrive. Selecting rows moves the list nowhere. As rows
+come and go, the list keeps the release on top where it is, its filters and
+folds included, unless the person scrolls first. A header or a broken folder on
+top keeps its position.
 
-Revealing a candidate — the first one still being identified, or one the
-person asks for — shows it on the tab its placement puts it on, with the
-filters cleared and its group opened, the list's other folds kept. Once the
-list shows that view, core reads where the candidate sits in it, and the list
-opens there and scrolls to it; a candidate the view no longer shows is
-scrolled to nowhere.
+Revealing a candidate (the first one still being identified, or one the person
+asks for) shows it on the tab its placement puts it on, with the filters
+cleared and its group opened, the list's other folds kept. The list then
+scrolls to it; a candidate the view no longer shows is scrolled to nowhere.
 
-bae reads everything the list shows from tables, each piece its own live query:
-the window of its rows (the rows of its order from the sort values of one row
-on), how many items it holds and how many its filters keep, where
-a key sits in it, whether bae watches any folder, whether Found has groups,
-and what the view narrows by, Found's filter entries, and what the selected
-rows hold and offer. A row carries nothing of the selection: the screen draws each row's
-highlight from the keys it keeps, so selecting rows writes nothing and reruns
-no read of the rows, and the selection's own read reruns when the screen gives it other
-keys or a write changes their rows. Folding a group reruns the window when it
-holds the group, and the fold answers with the selected rows it hid. Each release's tab, state, group, dates, shown
-text and what its commands are decided from are kept beside it as it changes
-(Appendix A.7), so the list reads the rows it shows and not the whole queue. A
-row reads none of its folder's files, so a folder on a slow or unreachable
-volume does not hold up the list, and a linked row reads only the records its
-stored releases name, not the releases whole. The list reads its window in one
-statement, which takes the window's range of the order as its first table. The
-statement joins these rows to the range by each item's key: each group's header,
-each release's placement, scan, link and draft, the records and the upload
-standing of an imported release, the records stored for what a linked row's
-link claims (each release's album, its own records and the albums kept for
-those), the file versions its folder-image and embedded covers name, and each
-group member's header and whether a member of its group the list shows sorts
-after it.
-Core sends each offer with the number shown beside it and whether it can run:
-a row's own offers, each for that one row and leaving out Combine, come with
-the row, and a selection's come from one statement, which counts the rows each
-command runs on and gives Combine every selected row while every one can join
-one release and none otherwise. bae counts each tab's rows, each filter entry's
-rows, how many items the list holds, how many releases its filters keep and how
-many rows each group's header counts with COUNT queries over the placement's
-rows, which read the placement's indexes. No table stores the counts. The list's count, with the narrowed count it carries, is a live
-query of its own, apart from the window: a scan's commit changes it without
-resending the window. The list's count also carries every tab's count,
-whatever the person narrows the list by, and the tab bar shows them from it. Coven
-narrows a rerun of the window only for a statement that orders by stored
-columns it returns; the list reads its window as one compound statement whose
-items read their group's header through correlated subqueries of the placement, so
-a scan item or a fold reruns the list's window, and a rerun that finds the rows
-the window already held sends nothing to the screen. A search counts the rows its index finds in every read of the list:
-each release's shown text is kept, case folded, in a trigram index beside its
-placement (Appendix A.7), so a search of three characters or more reads the rows
-holding it, and a shorter one reads every release's text from the index. The
-window is the rows from the sort values of one row on (from the tab's top when
-it has none), at most as many as core sized it for, read through the order's
-index and running on into the next part of the tab when its part holds too few
-rows. A row's sort values lead with the number of its part (Imported's queued
-uploads are the first part, its other rows the second, every other tab one), so
-the window may start in one part and end in another. A jump to a position reads
-the sort values of the item there by offset from the top of the tab, once, and
-starts the window from them. A search reads each row the list's order passes and tests it,
-at every size: a jump reads its key by offset from the top, as it does without a
-search, however few rows the search finds, and its count is a live query of its
-own, so the screen draws a search's rows as its window arrives and its "N
-of M" and length when the count arrives, showing the placeholder in their place
-meanwhile. A member of a group carries its group's header and whether it is
-the group's last member the list shows, and a header carries whether the list
-shows no member under it, which holds when the list folds the group shut or
-keeps none of its releases, so the screen pins the header of the row on top, and lifts it with the group's last row, whatever rows it has
-loaded, and no read counts the rows above the window to find it. Found reads its window
-past the members of the groups it folds shut, so with every group folded the
-window costs about the headers it shows; and whether a header offers to read its folder
-as one release is kept on the header as the rows below it and the readings
-stored for it change. The pane reads its one candidate's rows by the candidate's
+The pane reads its one candidate's rows by the candidate's
 key, and so does every read of one candidate's state, draft or preparation, so
 how long one takes does not grow with how many candidates the queue holds.
 The pane reads each of its parts with a statement of its own. Each statement
@@ -1385,13 +1273,11 @@ under that mark: an ID3v1 tag's title, artist and album, and the ID3v2 title,
 artist, album artist, album, publisher and copyright frames marked Latin-1.
 Tag text declared UTF-8 or UTF-16 is taken as it is.
 
-Reading the artwork means reading text off images. On macOS this uses the
-system's Vision framework. bae reads no artwork on other platforms, though
-Windows has a text reader of its own (`Windows.Media.Ocr`).
-An image the system can't decode or read is not an image with nothing printed
-on it: the candidate's artwork scan fails with the image's path and the reason,
-its barcode and text signals show that failure, and the reading is not kept for
-the next run to reuse.
+Reading the artwork means reading text off images, which bae does on macOS
+only. An image the system can't decode or read is not an image with nothing
+printed on it: the candidate's artwork scan fails with the image's path and the
+reason, its barcode and text signals show that failure, and the next run reads
+the image again.
 
 Ana's folder yields a Disc ID from her CUE sheet, the barcode from her scan of
 the case, LBL-1001 from the folder's text, and eleven ISRCs. The fast clues
@@ -1448,8 +1334,8 @@ Discogs label or artist name
 loses the " (2)" Discogs adds to tell two of one name apart: the
 id tells them apart, and the name is what a release prints. Either catalog can be
 switched off, but not the last one asked. A library left asking none, its
-last asked catalog having lost its key, has nothing to search, which core
-states and Find online says. A catalog switched off is asked nothing: a read
+last asked catalog having lost its key, has nothing to search, and Find online
+says so. A catalog switched off is asked nothing: a read
 of a release asks its own catalog, and of the documents its pages link, only
 those on a catalog switched on; the rest it names as not asked, and a later
 read asks them once their catalog is switched on. MusicBrainz is asked no more than once every 1.2 seconds, under
@@ -1621,9 +1507,9 @@ A Discogs credit's role string is read role by role: it splits at the commas
 outside brackets, each part is a credit, and a bracket qualifies its role.
 Every role is kept.
 
-**Which of its mediums the folder holds.** A release is read against the
-folder's audio once, and the run's documents, a pick, the draft it writes, the
-shared album and a library re-identify all read that one reading. The mediums
+**Which of its mediums the folder holds.** The run, a pick, the draft it
+writes, the shared album and a library re-identify all agree on which of a
+release's mediums the folder holds. The mediums
 it reads are a set whose tracks, laid out against the folder's audio — a
 Discogs index or heading read as one track or as its sub-tracks — number
 exactly as many as the folder's; a medium listing no tracks is in none.
@@ -1664,8 +1550,9 @@ Two kinds of pressing never stand:
   rule a pressing out: catalogs round them and count pregaps differently.
 - **Look-alikes.** Pressings that would show exactly the same on screen are
   kept once; nobody could choose between them in bae. Whether one is already
-  in the library plays no part: that is read live when a row shows, and what a
-  run keeps must not depend on what the library held when it ran.
+  in the library plays no part, so what a run keeps doesn't depend on what the
+  library held when it ran; a row shows whether its pressing is in the library
+  now.
 
 The last point of the ranking reads the catalogs' free-text notes. Discogs
 writes links and formatting into a note as markup; bae reads the note as the
@@ -1679,10 +1566,9 @@ fetched again, and a release whose document it read is stored on the device
 (`source_release` and its tables, Appendix A) for as long as something names
 it. A catalog release is stored only while a row names it: a match of a
 verdict, of a run in flight or of a typed search, a draft read from it, a link
-to it, or a linked pressing it partners. A fetched release is held in memory
-until the write that writes the first such row, which stores it; a fetch whose
-release no row names, such as a library release's re-identify applying a
-release, stores nothing. The write that drops the last row naming a release —
+to it, or a linked pressing it partners. A fetch whose release no row names,
+such as a library release's re-identify applying a release, stores nothing.
+The write that drops the last row naming a release —
 a verdict replaced or cleared, a run ending, a search replaced, a pick of
 another release, an unlink, an import, a folder leaving the queue — deletes
 it. A write that names a release already stored replaces it only where its
@@ -1694,13 +1580,12 @@ found is kept, also one no list shows because its tracklist doesn't fit or it
 looks like an offered one; only its lookup shows and counts it. A release is
 kept once, as the run last read it, and every lookup that found it shows it
 that way, while the run is going and after it ends, so a candidate opened
-later shows what its run showed. Its track titles and notes, which only the
-run's ranking reads, are not kept. A run with no clue to lay out keeps none.
+later shows what its run showed. Its track titles and notes are not kept. A
+run with no clue to lay out keeps none.
 
 A stored release keeps no album year or media count of its own: its album
 year is the year the album first came out, else the pressing's year, and its
-media are counted from its mediums or format entries, as the fetch worked
-them out.
+media are counted from its mediums or format entries.
 
 ### 3.5 Picking a pressing
 
@@ -1714,11 +1599,10 @@ A run *picks unattended* only when all of these hold:
 - the run read every record of that pressing;
 - its tracklist lists as many tracks as the folder holds.
 
-The write that stores a run's verdict works this decision out and stores it
-with the verdict: the release the run picks, which is the lead, the offered
-release with the lowest position, or why it picks none. The import list's
-reason, the check the pane shows beside Import, and the release that a run's
-last write applies all come from that decision.
+The release a run picks is the lead: the offered release with the lowest
+position. The import list's reason, the check the pane shows beside Import and
+the release the run applies always agree on that pick, or on why the run picks
+none.
 
 Ana's run finds one pressing, on both catalogs, read in full, eleven tracks.
 bae picks it, and her row reads Identified at once. bae writes the metadata
@@ -1750,19 +1634,15 @@ value. The row lists the notes of its records the folder's text names it by,
 each followed by its catalog where they differ, and the barcodes it states.
 What the row lists is what look-alike rows are compared by, so two pressings
 that differ only in what a second record states are two rows. Picking the
-row still applies its lead record alone. bae works out what each row lists,
-judges each release against the folder's text, and groups the rows into cards
-in their order, when the rows, the text or the numbers struck out change, and
-stores all of it with the rows. An album's card lists every title,
+row still applies its lead record alone. An album's card lists every title,
 every artist and every label its records state, each once, `Low Tide Hours /
 Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
 case, accents or punctuation are one. The summary line of an import pressing row
 lists the format, then the country, `CD · US`; the library's release summary
 keeps the country first. A row whose lead record names a pressing the library
-already holds shows dimmed and marked In library. The statement that reads a
-list's cards (a verdict's, a ledger cell's, a typed search's) reads that from
-the library's release records, so the mark comes and goes as the library
-gains and loses the release.
+already holds shows dimmed and marked In library, on every list of cards (a
+verdict's, a ledger cell's, a typed search's), and the mark comes and goes as
+the library gains and loses the release.
 
 When the run doesn't pick, the pane says why: nothing found, several
 pressings, a record that couldn't be read, or a tracklist that couldn't be
@@ -1778,9 +1658,9 @@ picked. The person then:
   catalogs that failed, keeping what the others returned. A library that
   asks no catalog is in an invalid state: a search started there fails, and
   bae stores no search. An answer bae cannot
-  save counts as that catalog's failure, so Retry covers it. Nothing more is
-  read about a result until it is picked, so a statement joins two catalogs'
-  albums on the search's cards only once a pick has read a MusicBrainz
+  save counts as that catalog's failure, so Retry covers it. bae reads
+  nothing more about a result until the person picks it, so a search's cards
+  show two catalogs' albums as one only once a pick has read a MusicBrainz
   release's documents;
 - **links the album** when several pressings of one album are offered and they
   can't tell which is theirs. The link names the album, not a pressing, and the
@@ -1792,28 +1672,19 @@ soon as its draft is read from what its run read. Nothing previews the
 release's tracklist first: the draft the pick writes is what the pane shows. While a person's pick waits
 on the network, the row it was made on names what it waits on: reading the
 release, and then each other catalog's release of the pressing, from its
-catalog, or fetching the cover from the catalog that offers it. The pick
-writes each of those reads to its apply's row in
-`import_catalog_apply_step` as the read starts and deletes it as the read
-ends, and the row's line reads that row through a live query. A release the
+catalog, or fetching the cover from the catalog that offers it. A release the
 library already holds whole is read without a line, and the rest of the
 pick, which is local, shows none; the row takes no second pick meanwhile.
-Each row of the pane's cards says whether it holds the release bae linked
-the candidate to, and the pane shows that row selected. While bae reads the
-release a run picked unattended, the row that holds it says bae is reading
-the release, and shows selected too until bae links the candidate to a
-pressing. The SQL query that reads the pane's cards returns, for each row,
-whether it holds the linked release and whether bae is reading it as the run's
-pick. The query reads both from the candidate's link and its standing, so
-the pane never looks for a release among the rows it shows.
+The pane shows selected the row of its cards that holds the release bae
+linked the candidate to. While bae reads the release a run picked unattended,
+the row that holds it says bae is reading the release, and shows selected too
+until bae links the candidate to a pressing.
 A pick claims its release and, where the pick pairs another catalog's, that
-catalog's release. The write that stores the link merges the claimed releases'
-records, as the releases are stored, and stores them with the link: each
-claimed release's own record outranks what another says about its catalog, the
+catalog's release. The link holds the claimed releases' records: each claimed
+release's own record outranks what another says about its catalog, the
 applied catalog comes first, and the albums kept for the releases' albums join
-them. A write that stores a claimed release again, or changes the albums kept
-for a claimed release's album, merges them again in its own transaction. The
-pane and the import list read the stored records, and an import commits them.
+them. The link's records follow each later store of a claimed release, or
+change to the albums kept for its album, and an import commits them.
 
 The person also decides which clues a run asks about. Ben unchecks a barcode
 that belongs to a box set rather than his disc; Carol picks the one catalog
@@ -1844,9 +1715,9 @@ don't state comes from its name, read as `07 Title` (track 7) or `2-07 Title`
 (disc 2, track 7). Files go by disc, then track; a file stating no number goes
 after those that do, and files the numbers don't tell apart go in name order.
 A release read from several folders keeps each folder's files together, the
-folders in name order. Name order is the library's `natural_order` (Appendix
-A): "Disc 2" before "Disc 10", case aside, then by bytes, so the import lists
-a folder's files in the order the library lists the release's files in. Ben's download names its files by title alone, but tags
+folders in name order. Name order is natural order: "Disc 2" before "Disc 10",
+case aside, then by bytes, so the import lists a folder's files in the order
+the library lists the release's files in. Ben's download names its files by title alone, but tags
 `Track Title.mp3` as track 7, so it is the seventh unit: a draft read from the
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
@@ -1944,9 +1815,7 @@ undo: to start over, the person applies a source again (a catalog release, or
 the files' tags) or clears the metadata, and the file decisions stay as they
 are.
 
-The mapping table pairs each unit with its draft track. bae lays the folder's
-audio out once, when it stores the files, and the pane reads that layout in one
-statement. Each row shows the
+The mapping table pairs each unit with its draft track. Each row shows the
 length its audio measures; where the track's source lists a length more than
 three seconds apart, that listed length follows it in the warning colour, so
 the row says what disagrees. A CUE image's track names its image once, in its
@@ -1972,13 +1841,12 @@ A document opens in the
 viewer when clicked, over whatever else is open. A library release's editor
 (§3.8), on an imported folder's pane and in the album's *Edit release* sheet,
 lists the release's files, images included, the same way, under its tracks, and
-an imported folder's pane puts the folder's images above its tracks; one view draws
-the files in all three, so a release's files never show two ways. On the Mac, a
-click on one of the folder's images opens the lightbox over the folder's images
-at that image. One read of the folder's images says which image the lightbox
-shows, the one the person last moved to while the folder holds it and otherwise
-the folder's first image, and which images come before and after it, wrapping
-around the ends; a lone image has none.
+an imported folder's pane puts the folder's images above its tracks; a
+release's files show the same way in all three. On the Mac, a click on one of
+the folder's images opens the lightbox over the folder's images at that image.
+The lightbox shows the image the person last moved to while the folder holds
+it, otherwise the folder's first image, and its arrows move to the images
+before and after it, wrapping around the ends; a lone image has none.
 
 Before importing, the person can play a file through a second player, which
 pauses the library's playback and resumes it when it ends.
@@ -1988,16 +1856,9 @@ pauses the library's playback and resumes it when it ends.
 Importing measures loudness and adds the release to the library. Audio stays
 where it is; bae never copies, moves or rewrites it.
 
-Every open of the person's files, by the scan, an import, a save, an export,
-playback or a preview, takes a place from one budget of open files the host
-makes when it starts, so bae cannot run out of descriptors through those
-opens. The budget has an eighth of the process's descriptor limit in places,
-at least one (a macOS app's limit of 256 gives 32): a file or a stream of
-one holds a place from its open until it closes, and the other seven eighths
-hold the library's own database files, sockets and the platform's
-descriptors. A piece of work takes every place it will hold at once, in one
-wait, and opens its files only while it holds them, so work that holds places
-never waits for the budget; every library the host opens shares the one budget.
+bae limits how many of the person's files it holds open at once, across the
+scan, imports, saves, exports, playback and previews, so it never runs out of
+open files.
 
 Ana clicks Import. bae:
 
@@ -2012,31 +1873,28 @@ Ana clicks Import. bae:
    "Fetching artist pictures…"; an import that creates no Discogs artist
    fetches nothing and its progress never says so.
 3. **Reads each file** whole where it sits, for a local import as for an
-   import to storage, one file at a time in one place of the budget of open
-   files: coven records its path, size and modification time and hashes
-   its bytes, its content and each chunk, and the import's progress counts
+   import to storage, one file at a time: bae records its path, size and
+   modification time and hashes its content and each chunk of it, and the
+   import's progress counts
    the bytes read. The upload of an import to storage checks what it sends against
    those hashes, and so does a local release's later move to storage (§4.2),
    which reads nothing again. A file whose size or modification time is no
    longer what the scan recorded fails the import before any row is
    written.
 4. **Measures loudness** by decoding every track: its EBU R128 integrated
-   loudness and true peak, and the album's over all its tracks. bae measures as
-   many tracks at once as there are cores and places in the budget of open
-   files, taking its places in one wait before it opens a file; a track whose
-   audio is in more files than the budget has places for fails the import,
-   saying so. A near-silent
+   loudness and true peak, and the album's over all its tracks. bae measures
+   several tracks at once. A track whose audio is in more files than bae may
+   hold open at once fails the import, saying so. A near-silent
    track stores no loudness and plays unchanged. The same decode records
-   *scrub points* for a FLAC whose seektable leaves FFmpeg somewhere to seek
-   more than 10 seconds of audio short of its target: none, one of only
+   *scrub points* for a FLAC whose seektable would leave a seek more than 10
+   seconds of audio short of its target: none, one of only
    placeholder points, or one whose points lie more than 10 seconds apart,
    or start or stop more than 10 seconds from the file's start or end. For
    each segment of a track, the frame it starts in, then the first frame
    each 10 seconds of audio on, or sooner where the bytes from the last point would outgrow the window a
-   scrub fetches (§7.6). A segment's last frame is never a point: FFmpeg's
-   FLAC parser gives a FLAC's last frame no timestamp, though the frame's
-   header carries its number, so a decode that jumps there can't tell which
-   sample it holds, and the frame before it stands in. Each point is a
+   scrub fetches (§7.6). A segment's last frame is never a point, since a
+   decode that jumps there can't tell which sample it holds; the frame before
+   it stands in. Each point is a
    frame's first sample and the byte it starts at, read from a decode that
    began on a frame. Every MP3 gets scrub points too: its frames state no
    position, and each depends on the frames before it. For the first frame
@@ -2068,12 +1926,10 @@ Ana clicks Import. bae:
    or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
    names every album holding the release, or another release of its album:
-   those holding the release first, then oldest first. The pane's statement
-   reads the banner's albums for the release bae linked the candidate to, and
-   the statement that reads a list's cards reads, for each offered row,
-   whether the library holds its lead release, so the banner and the dimmed
-   rows change as the library gains and loses releases. bae stores no library
-   status with an identify verdict or a search result, in flight or stored.
+   those holding the release first, then oldest first. The banner and the
+   dimmed rows change as the library gains and loses releases. bae stores no
+   library status with an identify verdict or a search result, in flight or
+   stored.
 7. **Writes everything in one transaction**, from the draft as it stands, read
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
@@ -2081,16 +1937,15 @@ Ana clicks Import. bae:
    length that audio measures, so no track is ever stored without one. A track
    left untitled takes its file's name. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
-   write took its last release (§2.1), fails the import as `AlbumGone`, which
-   writes nothing and tells the person to pick another album or New album.
+   write took its last release (§2.1), fails the import, which writes nothing
+   and tells the person to pick another album or New album.
    The same write decides a new album's id: the album takes its group's id
    (§2.6), except that a New album the person picked keeps its own id when
    the library holds the group's album, even one that another import of the
-   group wrote after this import was prepared. Each credit, role
-   and composer is its own artist credit until that transaction decides which
-   library artist it is (§2.3), so two credits naming one artist write one.
-   Each label is its own statement until the same transaction decides which
-   library label it names (§2.3).
+   group wrote after this import was prepared. The same write decides which
+   library artist each credit, role and composer names (§2.3), so two credits
+   naming one artist write one, and which library label each label names
+   (§2.3).
    The same transaction deletes what the folder's state holds that nothing
    reads once the release is in: the identify verdict with the releases it
    found, what the person let the lookups use, where the pane was, the
@@ -2127,22 +1982,19 @@ so having a picture comes before which picture it is.
 
 While the draft is the one read from the pressing
 the candidate is linked to, the picker offers that pressing's covers: every
-claimed release's own images, then their albums'. The write that stores the
-link works them out from the claimed releases as they are stored and stores
-them with it, and a write that stores a claimed release again or changes the
-albums kept for its album works them out again, so a later fetch that stored
-more shows it. A MusicBrainz release group a kept statement joins to a claimed
+claimed release's own images, then their albums'. When bae later stores more
+of a claimed release, or of its album, the picker offers it. A MusicBrainz
+release group a kept statement joins to a claimed
 release offers its front image after that release's own album images. The first is the
-draft's cover when the release is applied, until the person picks another. Core
-names each image by pieces, and each app words them in its language: the service
+draft's cover when the release is applied, until the person picks another. The
+apps name each image in the viewer's language, from its parts: the service
 that serves it (the Cover Art Archive, Discogs), the album's front image as the
 album's, a gallery entry's number and what it shows (front, back, booklet and
 the archive's other types) and the archive's comment, joined by the language's
 separator. A release's gallery names its cover Cover and an image file by its
-filename. Core counts a release's gallery items. On Android the album page's
-cover opens the gallery only when that count is above zero, and the gallery
-shows its page counter, with that count as its total, only when the count is
-above one. Saving the cover picked, in the import's picker or a library
+filename. On Android the album page's cover opens the gallery only when the
+release has gallery items, and the gallery shows its page counter, with the
+number of items as its total, only when it holds more than one. Saving the cover picked, in the import's picker or a library
 release's, can download it from its catalog or read it from the release's
 storage, so the picker says it is saving the cover while it does. On the Mac, an album's cover, and the release editor's, opens
 that picker as the Change cover sheet, on its grid, and the release editor's sheet opens over the editor; a tile there shows its image and its name, since its section's heading says where it comes from, and opens the lightbox. Until the
@@ -2155,34 +2007,31 @@ import runs, so the import never asks a catalog for it. A cover is a catalog's i
 one of the folder's images in a format bae can store, or the artwork its
 tags hold, as the scan read them. When the person saves a draft naming a
 file the scan did not store as an image, an image in another format, or
-artwork the tags do not hold, core refuses the draft, and the cover stays as
-it was. Dropping one
-of the folder's images on the pane's cover sends its file to core, which makes
-it the cover or refuses it by the same rule. The artists' pictures
+artwork the tags do not hold, bae refuses the draft, and the cover stays as
+it was. Dropping one of the folder's images on the pane's cover makes it the
+cover, or bae refuses it by the same rule. The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels
 on a side and stored as JPEG.
 
-A library release's picker and a candidate's each follow one live query under
-the source the person chose (all, the release's files, or one catalog): a
-library release's saved cover, shown under all; the covers its catalogs
-offered when this device last fetched them; and the images a cover can be
-made from, the release's files or the folder's images in a format bae can
-store. Each source comes with its count and the whole with its total, so the
-section counts come from that read. The same read says which cover the
-picker's preview and its lightbox focus: the one the person last moved to,
-while the source shows it; otherwise the release's saved cover or the
-candidate's chosen cover, while the source shows that; otherwise its first
-cover. The read also says where the focused cover sits among them all, for
-the preview's "N of M", and which covers come before and after it, for the
-arrows of the preview and the lightbox, wrapping around the ends; a picker
-that shows no cover focuses none. Opening the picker, and its
-Refresh, fetch the catalogs' covers and store them, replacing what the last
-fetch stored on this device (§A.8); that write, a change to the release's
-files or saved cover, or the candidate's folder, draft or link, from this or
-another device, and the person's choice of another source or another cover
-each reach the open picker as a new value. bae stores a candidate's fetch with the link it
+A library release's picker and a candidate's each show, under the source the
+person chose (all, the release's files, or one catalog): a library release's
+saved cover, shown under all; the covers its catalogs offered when this device
+last fetched them; and the images a cover can be made from, the release's
+files or the folder's images in a format bae can store. Each section shows its
+count, and the picker its total. The picker's preview and its lightbox focus
+the cover the person last moved to, while the source shows it; otherwise the
+release's saved cover or the candidate's chosen cover, while the source shows
+that; otherwise its first cover. The preview shows where the focused cover
+sits among them all as "N of M", and the arrows of the preview and the
+lightbox move to the covers before and after it, wrapping around the ends; a
+picker that shows no cover focuses none. Opening the picker, and its Refresh,
+fetch the catalogs' covers and store them, replacing what the last fetch
+stored on this device (§A.8). The open picker shows that fetch, a change to
+the release's files or saved cover, or the candidate's folder, draft or link,
+from this or another device, and the person's choice of another source or
+another cover as each happens. bae stores a candidate's fetch with the link it
 fetched for, and its picker shows the fetch only while the candidate
 keeps that link; otherwise it offers what the pressing that bae read the
 draft from offers (above). A fetch that fails stores nothing, so the covers stored
@@ -2190,10 +2039,10 @@ stay on screen, and for a release or candidate that names no catalog release,
 the fetch stores that it has no catalog covers.
 
 **Where it goes.** Each import lands on this device or goes to storage, as
-the person last chose (§4.2): This Mac or Cloud, one choice. Either import stages its files with
-coven in the same transaction as its rows: on this device only for a local
-import, and for storage for an import to storage, which queues their upload, so
-the choice is never lost, and needs no connection to record it.
+the person last chose (§4.2): This Mac or Cloud, one choice. Either import
+records where its files go in the same transaction as its rows, and an import
+to storage queues their upload in that transaction, so the choice is never
+lost and needs no connection to record it.
 
 **Automatic identification and import.** By default, each release a scan finds
 for the first time is identified on its own, in the background, behind
@@ -2257,7 +2106,7 @@ reported and stops for the session, as it does when the library closes.
   every app states that refusal in its own line (G.1), as the import does, never
   as a generic import failure, and MCP's re-identify returns the refusal's own
   text.
-- **One import at a time.** Imports run one after another on one worker.
+- **One import at a time.** bae runs imports one after another.
 
 ### 3.8 Editing a library release
 
@@ -2272,7 +2121,7 @@ and *Search* opens the typed search — whose results replace the draft in
 place until a pick applies one, or *Back* returns to it. *Save* writes the
 session; *Cancel*, shown once something changed, discards it. While an apply
 reads a release from its catalog, the editor names the catalog it reads from,
-from the apply's row, as an import's pick does (§3.5); saving, cancelling and picking an album are
+as an import's pick does (§3.5); saving, cancelling and picking an album are
 local and show no spinner, their controls disabled until they end.
 
 A library release is edited in a *session* the editor opens on it: its form
@@ -2337,7 +2186,8 @@ from (§3.6): its track sheets, documents, images and anything else its folder
 held, in the release's file order, each as the role its import's scan gave it
 (§2.2) says. A track sheet reads as the text it is, an image the scan found
 damaged says so, and a document or track sheet opens in the viewer, read from
-wherever coven has the file and decoded as a folder's document is (§3.3).
+wherever this device can get the file and decoded as a folder's document is
+(§3.3).
 
 ---
 ## 4. Files
