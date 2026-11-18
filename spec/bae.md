@@ -2213,9 +2213,7 @@ Two kinds of file, matching coven's
   downscaled to at most 600 pixels as JPEG, and hands the bytes to coven,
   which keeps them. It makes one from an image up to 8,192 pixels on its
   longer side, a 48-megapixel camera photo included; a 16-bit PNG, which
-  takes twice the memory to decode, up to about 5,800 pixels square. A JPEG
-  decodes at the largest 1/2, 1/4 or 1/8 scale whose longer side still reaches
-  600 pixels, so the memory it takes follows the stored size, not the photo's.
+  takes twice the memory to decode, up to about 5,800 pixels square.
 
 A cover belongs to one release, an artist image to one artist, an avatar to one
 person. A row references its image by the id of a coven file, the record coven
@@ -2246,21 +2244,12 @@ behind it too, a rating made right after included, which is why a bound file
 must be small: coven refuses a write naming a file over 1.5 MiB. Every image
 bae stores is a JPEG at most 600 pixels across, which stays under that limit.
 
-The apps cache covers, artist images and avatars, and Subsonic clients cache
-art, by an image's version, which must move whenever its bytes do, and when an
-image a device couldn't read becomes readable. A coven file never changes its bytes, and a new image is a new file,
-so the version is the file's id: it moves on every device with the write that
-sets it. While the file is on one device only, the version also names that
-device, so it moves again when the file is stored, and an app that couldn't
-read the image asks for it again.
+When an image changes, every device and every Subsonic client shows the new
+one, and an image a device couldn't read shows once its file is stored.
 
-Opening a library that has storage starts sync before the app can ask for
-anything, so coven's storage is connecting from the first screen: a cover that
-is not on this device waits for the connection and then shows, instead of
-failing as a library with no storage does. Starting sync does not wait for the
-network, so a library opened offline still opens. The Mac cancels an image's
-read when the last view that wants it goes away, so a tile scrolled off screen
-does not keep its read waiting in core until storage connects.
+A cover that is not on this device shows once the library's storage connects,
+from the first screen on, instead of failing as it does in a library with no
+storage. A library opened offline still opens.
 
 ### 4.2 Local and uploaded releases
 
@@ -2282,9 +2271,9 @@ modification time, and the hashes of the bytes the import read
 ([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
 Before that write, bae compares the size and modification time coven found
 with the ones its scan recorded, and refuses the import if a file changed in
-between: the release's rows describe the file the scan read. coven lists the
-originals it records on this device in `coven_user_files`, and these paths
-never leave the device. Every device reads every release file through coven:
+between: the release's rows describe the file the scan read. The paths of the
+originals never leave the device. Every device reads every release file through
+coven:
 
 - the file is stored: from the cache or storage;
 - the file is on this device only: from its original, which coven checks
@@ -2295,11 +2284,7 @@ never leave the device. Every device reads every release file through coven:
 A release with any audio file on another device only cannot play here, and
 names that device in the album and release views: "On Ana's Mac". bae names the
 device that alone holds the audio file with the lowest file id among the
-release's audio files that another device alone holds. The view
-`release_audio_elsewhere` reads which audio files coven says this device
-can't read (`coven_file_reads`) and joins coven's registration of the device
-that holds each in `coven_devices`, and the query that reads the release reads
-the view. The album and release
+release's audio files that another device alone holds. The album and release
 views stop showing the line once coven records the file in storage, and show
 the device's new state when a member removes the device. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
@@ -2308,10 +2293,8 @@ its files stay on it, and no device can move them to storage any more. Such
 a release still offers moving it to storage here, and coven refuses the move,
 the app showing coven's reason that another device holds the file; it offers
 no pinning, since not every file of it is in storage (§4.3). Playing it fails
-with the same line:
-the line names the device that coven reports when it fails to read the file,
-with the name and state that coven's registration of that device holds at
-that moment.
+with the same line, naming the device that holds the file with the name and
+state the device has at that moment.
 
 Whether this device can play a release comes from these records alone; bae
 doesn't ask the disk whether
@@ -2334,10 +2317,7 @@ device knows what the household owns, and a rating or playlist entry pointing
 at a local release's track points at a row every device can read
 ([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
 Where a file is changes in coven's own record of it, with no change to a row
-of bae's, so the release's storage row (`release_storage`) follows coven's `coven_files`, which also
-gives each file's size, and the pending record of a failed move in `coven_pending`, which names the
-original that changed; `coven_moves` says which of the release's files are in that move and that
-coven failed it (Appendix B).
+of bae's (Appendix B).
 
 A release's cover is bound (§4.1), so it reaches other devices with the
 release, local or not: the write that imports the release, or sets its cover,
@@ -2428,8 +2408,7 @@ added. It shows every
 release, or only the local ones, or only the uploaded ones; text typed in its
 filter field narrows that to the releases whose album library search finds
 (§2.3), as each character is typed, and blank text narrows nothing. It shows
-the shown list's count and total size, which one statement counts over the
-releases' storage rows with or without the search, and says there are no matches when the
+the shown list's count and total size, and says there are no matches when the
 text narrows it to none. It sorts by album title (ignoring ASCII
 case), artist (§2.3), media (a release stating none last), file count, size,
 storage — a failed download first, then uploading, then pinning: files
@@ -2440,28 +2419,13 @@ with a column for each of these; a column can be dragged wider or narrower or
 to another place, sized to its header and the rows in view by double-clicking
 the divider after its header, and hidden or shown again from the menu the
 header row opens, except the release column, which always shows. Which
-columns show, their order and their widths are kept across launches. The upload queue and the pins are
-coven's, which the list's query reads beside the library's rows. Whether a
-release is pinned, here and in the album and release details, is read from
-how many of its files coven's `coven_pins` lists, whole on this device, a
-count bae keeps per release in the transaction that changes a pin, so each
-view's own query follows a pin as it lands. coven lists a pin only once its
-whole copy is kept. Whether a release is uploaded is kept the same way, from
-coven's `coven_files`, in the transaction that records a file, switches it to
-storage or deletes it.
-How many of a release's files
-wait in the upload queue, and the place of the first, are counts bae keeps
-the same way from
-coven's `coven_upload_queue`, in the transaction that queues or dequeues a
-file; the import list's Imported tab reads them in queue order, and each Imported row
-its own release's (§3.2). Whether
-the download queue holds a release waiting or downloading, or failed, is a
-flag bae keeps the same way, in the transaction that changes the queue, and where the release
-sorts by storage is worked out from these in the same write, so the storage
-sort reads an index like every other.
+columns show, their order and their widths are kept across launches. A
+release reads as pinned, here and in the album and release details, once this
+device keeps every one of its files whole, and the views change as each pin
+finishes.
 
-At rest, a release's album storage band says where its files are, the one
-state core gives it: on one device, or in storage, pinned here or not. Only a
+At rest, a release's album storage band says where its files are: on one
+device, or in storage, pinned here or not. Only a
 file in storage is pinned, so no release reads as both on one device and
 pinned.
 
@@ -2470,11 +2434,9 @@ bytes have come, in its row and in its album's storage band, or before then
 Queued in its row and Queued to upload in its band (its Imported row in the import
 list shows the phase that makes, §3.2); the
 Storage manager's inspector shows how many wait, are being sent and are
-stored, and how many bytes of its whole size are stored or sent. The counts
-are read in the same query as the row: which files are being sent comes
-from coven's `coven_sending`, a live view of the uploads in flight. While coven
-sends none of the release's files, the row shows Queued. When coven's
-`coven_pending` names a file whose original is missing, the row shows Waiting
+stored, and how many bytes of its whole size are stored or sent. While coven
+sends none of the release's files, the row shows Queued. When a file's
+original is missing, the row shows Waiting
 instead, and the inspector says *Waiting for a file*, names the file and offers
 *Restore source file…*, since only restoring it lets the move go on. Its sheet
 says to put the file back where it was imported from, and its *Retry* asks coven
@@ -2483,49 +2445,32 @@ release's storage band shows Queued to upload and, under it, a warning that
 names the file. A pause, the network, a metered network or a retry's time holds
 the whole queue, so it shows once, where the queue shows, never on a release: in
 place of the queue's rate under the list, on the Activity panel's Uploading
-line, and on the phones' Pinning screen. How far the bytes have got is not in
-any table: coven's upload watch tells, file by file, how much of each file's
-encrypted object has gone to the connection, whether the file goes in parts or
-in one request. A release's bytes are its stored files' sizes and, of each file
-being sent, that share of its size, beside the stored bytes a live query of the
-files being sent reads; the files being sent together count their objects'
-bytes. Core sends each bar's
-fraction, its bytes done of its bytes in all, and the apps fill the bar to
-it. Core measures every release's bar and the total again each time the
-query reads or a file's bytes move, from the query's first read on, and
-writes them all to the stream, which holds the latest per release; a release
-the query no longer names leaves the stream. Core also sends each file's share, keyed by file, for the Storage
-manager's rings. Core measures how fast
-the transfers go outside the database, from the same watch's bytes, file by file, as
-each step of them goes, so a file sent in one request has a rate too: a rate
-for each release, its files being sent together, and for every file being sent
-together; no screen shows one file's rate, so core sends none. A
-file that only waits has no rate, and a pause ends every measurement. While its files wait, or a download holds it,
-the release offers no storage action but cancelling, which would race it
-otherwise. The query that reads a release's storage state decides each
-action it offers (upload, pin, unpin, move to this device) as a column of its
-own. No column asks what coven would refuse: a release offers each action its
-place allows, and when coven refuses one, the app shows coven's reason. Upload
-alone also waits for storage to be connected, since coven queues a move with
-no storage rather than refusing it. The Storage Manager's selection offers an action when every selected
-release does (the least of each column over the selected rows), and only
-cancelling when a selected release is moving or its move failed (the greatest
-of those two flags over them). The answer names the releases it was asked
-about, so the Mac's menu acts on the rows core answered for the selection it
-shows and offers nothing while the answer is for an earlier one. The answer
-also names the one release the list holds among them when it holds exactly one,
-with its album's title, which the inspector shows and the Unpin alert names;
-the app does not search its own rows for either one. An action on the selection
-passes core the ids the person picked, and core acts on each, refusing one it
-can't act on (a release that someone deleted meanwhile, or one in the wrong
-state for the action), and the person sees each refusal. A release in a download is the download queue's
+line, and on the phones' Pinning screen. A release's bar fills to its stored
+files' sizes plus, of each file being sent, the share of its encrypted object
+sent so far, whether the file goes in parts or in one request; the Storage
+manager's rings show each file's share. bae shows how fast each release's
+files go, and every file being sent together, a file sent in one request
+included; no screen shows one file's rate. A file that only waits has no
+rate, and a pause ends every measurement. While its files wait, or a download
+holds it, the release offers no storage action but cancelling, which would
+race it otherwise. A release offers each action its place allows (upload, pin,
+unpin, move to this device), and when coven refuses one, the app shows coven's
+reason. Upload alone also waits for storage to be connected, since coven
+queues a move with no storage rather than refusing it. The Storage Manager's
+selection offers an action when every selected release does, and only
+cancelling when a selected release is moving or its move failed. The Mac's
+menu offers nothing until it has the actions of the selection it shows. When
+the selection holds exactly one release the list shows, the inspector shows it
+and the Unpin alert names its album's title. An action on the selection acts on
+each release the person picked, refusing one it can't act on (a release that
+someone deleted meanwhile, or one in the wrong state for the action), and the
+person sees each refusal. A release in a download is the download queue's
 entry for it (§4.3, §4.4), a pin or a move-to-this-device, ended in the write
 that changes its files, so the entry and coven's change commit together and the
-release never shows a download its files have finished. The storage rows and the
-album and release detail read the entry in their own query.
+release never shows a download its files have finished.
 
-Each row's storage state is the place it sorts by, which core reads with the
-row, and the Storage column shows it as one word with no icon: Error, first,
+Each row's storage state is the place it sorts by, and the Storage column shows
+it as one word with no icon: Error, first,
 for a pin, a move to the cloud or a move to This Mac that failed; Waiting, for
 an upload held by a missing original; Uploading, filled as far as its bytes
 have come while any file is being sent; Pinning, filled as far as its download
@@ -2541,10 +2486,8 @@ file list, the file whose original is missing or changed, or whose download
 failed. No rate shows beside a row, nor how many entries wait ahead of it or
 what holds the queue back: a row's storage is its state and at most the one
 change on its way. A move fails when a file's original changed before its upload
-(coven marks the move failed in `coven_moves` and keeps its pending record,
-which names that original, until the person cancels the move; the release's
-row takes the failure from `coven_moves` and the file from that record); the
-release stays on this
+(coven keeps the move failed, naming that original, until the person cancels
+the move); the release stays on this
 device only, its row sorts first beside a failed download, and its Cancel ends
 the move.
 
@@ -2555,9 +2498,6 @@ place what holds the whole queue back (Paused, Waiting for network, Waiting for
 Wi-Fi, Retrying at the earliest retry's time, the first that holds), an export
 with how far its release has been written, and a control that pauses or
 resumes the whole queue. A queue holding only failed entries shows nothing.
-The list's own query reads which queues hold work, what holds each back,
-and the release a pin or export queue runs, from their tables beside the
-rows; how fast and how far arrive apart, keyed by that release.
 
 ### 4.3 Pinning and the cache
 
@@ -2603,7 +2543,7 @@ from the cache, and nothing of it was pinned until every file is whole.
 Cancelling a pin removes what it downloaded, in the write that takes its entry
 out of the queue: the release's files leave this device, partial downloads
 included. The queue takes no entry while the device has no
-usable network, as coven's network watch says, and goes on when it returns; a
+usable network, and goes on when it returns; a
 platform that cannot tell holds nothing back. What holds the queue back,
 Paused or Waiting for network, shows once where the queue shows: in place of
 its rate under the Storage manager's list, on the Activity panel's Pinning
@@ -2611,9 +2551,8 @@ and Moving to This Mac lines and on the phones' Pinning screen, never on a relea
 nothing of it pinned, and its row sorts first, reading Error, with Could not pin in the inspector; one that breaks on a bug fails the
 same way, reported as one, and the queue goes on to the next. The queue's
 Retry queues every failed pin again, each in its place; a release's own Retry
-queues only that release's failed pin. The queue's counts say, with its per-phase numbers,
-whether it holds any entry and whether any failed, which is what the phones' Pinning screen
-reads to offer Pause and Retry. Each entry keeps its release's file count and total size from the write that queued it, so its row (on a Mac's transfer queues and Android's Pinning screen) still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
+queues only that release's failed pin. The phones' Pinning screen offers Pause
+while the queue holds an entry, and Retry while an entry has failed. Each entry keeps its release's file count and total size from the write that queued it, so its row (on a Mac's transfer queues and Android's Pinning screen) still says "4 files · 120 MB" under *Release no longer in library* once the library has dropped the release and its files. While a release's pin waits, its
 storage band offers Cancel pinning in Pin's place, which takes the entry out of
 the queue and removes what it downloaded. A failed download shows on its
 release in Storage Manager, whose *Retry* queues the release's pin again; nothing retries it on its own. A read that fails, as a
@@ -2624,17 +2563,13 @@ wasn't fully pinned stays as it was, and the entry that was downloading
 downloads again from its start. coven downloads each file whole first and pins
 nothing until then; one write pins every file of the release once the last is whole and takes it out of the queue
 ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)),
-so a failed or cancelled pin leaves no file of it pinned. How far the release
-downloading has got is not kept, nor how fast it goes. Its bytes are the sizes
-of its files kept whole, of its files whose download for this pin finished,
-each whole and waiting for that write, and, of each file coven's download
-watch has in flight (the files `coven_downloading` lists), the share of its
-size its object has moved, so they move as a file arrives rather than as each
-lands; a share counts against the file's own size, since the watch's bytes are
-the encrypted object's. A file counts its share until the watch says how its
-download ended, and its whole size after only if the download finished, so the
-bytes never go back as a file lands; a download that failed, was held or was
-dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning removes the release's files from this device in the same write, with room in the cache or not: the pinned whole copy, any cached chunks and the partial download a pin left go once the write has committed, nothing else is evicted, and playing the release again reads from storage. It also ends any request coven still holds to
+so a failed or cancelled pin leaves no file of it pinned. The release
+downloading shows as its bytes the sizes of its files kept whole, of its files
+whose download for this pin finished, and, of each file in flight, the share
+of the file's size its encrypted object has moved, so the bytes move as a file
+arrives and never go back as a file lands; a download that failed, was held or
+was dropped counts none of its file. Its rate is what it has moved since it
+began over the time since. Unpinning removes the release's files from this device in the same write, with room in the cache or not: the pinned whole copy, any cached chunks and the partial download a pin left go once the write has committed, nothing else is evicted, and playing the release again reads from storage. It also ends any request coven still holds to
 keep them here ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)); unpinning a selection is one write for
 all its releases, and one that is gone or holds no files is named while the
 rest unpin. coven has nothing to remove for a file only this device holds, so
@@ -2653,8 +2588,8 @@ unpins at once. The MCP tool's unpin never asks.
 
 Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, or pinned, needs
-nothing, as the releases' storage rows say, and the write queues again, in its
-place, one whose pin failed, as retrying queues it. Core refuses a release that
+nothing, and the write queues again, in its place, one whose pin failed, as
+retrying queues it. bae refuses a release that
 someone deleted meanwhile, or one whose files are not in the cloud, and queues
 the rest, and the person sees the refusal. If the write fails, it queues
 nothing; the person sees the error and bae reports the failure as a bug.
@@ -2683,19 +2618,16 @@ the entry that was running starts again. A queued move-to-this-device reads Queu
 move to This Mac, and Queued in the Storage manager's row; one that fails
 stays with its error, reading Could not move to This Mac, and Error in the
 row, until retried or cancelled. A cancel takes the entry out
-and stops the download. bae hands coven the folder and each release's file
-paths below it, in one call
-([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)).
-coven downloads every file, checking its content hash as every download does,
+and stops the download. coven downloads every file to its path below the
+folder
+([coven §17.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#173-staging-a-file)),
+checking its content hash as every download does,
 writes it under a temporary name in its final folder, and renames it once it
 is whole and synced. While it downloads, the release's Storage manager row and
 its storage band fill Moving to This Mac… as far as its copies have downloaded, and
 the inspector shows the bytes of the whole release and of the file being
-downloaded, over a bar that fills to the share of the release's bytes downloaded,
-which core sends with the bytes. coven reports both as each file's
-bytes arrive, a few times a second; they are kept only in memory, keyed by
-release, beside the tables, in the stream of the active download's progress,
-and the release leaves them as its entry ends, however it ends. Then one
+downloaded, over a bar that fills to the share of the release's bytes
+downloaded, a few times a second as the bytes arrive. Then one
 write switches every file to Carol's device only, coven recording each copy as
 the file's original there, and takes the release out of the download queue
 (§4.3); no synced row of the release changes. Other devices see the files on Carol's device,
@@ -2724,11 +2656,10 @@ is cut before its extension. Every name is then one name inside Carol's folder
 on every device, so no row can make a device write outside the folder chosen:
 `Caf\xE9.flac` is written as `Caf＼xE9.flac`, and `..` as `.．`. The tables
 refuse a name that names no file, an empty one or one holding an empty name
-(`a//b`, a leading or trailing `/`), by a CHECK on each column, so every name a
-read finds is one and nothing re-checks it.
-Before anything downloads, coven refuses the whole call when a copy's path
+(`a//b`, a leading or trailing `/`), by a CHECK on each column.
+Before anything downloads, coven refuses the whole move when a copy's path
 already holds something, passes through a symbolic link below the folder, or
-is one path with another of the call's once written, or differs from one only
+is one path with another of the move's once written, or differs from one only
 in case or Unicode form (`Why?.flac` and `Why？.flac`), so no copy ever
 replaces another or a file already there. The folder's own path must be valid
 Unicode.
@@ -2772,17 +2703,15 @@ Two ways put a release back on disk, from desktop:
   when that name is taken ("FLAC", "FLAC (2)"), the number in the digits of the
   viewer's language ("FLAC (٢)" in Arabic); names are unique, and two
   formats may write the same thing. The settings add, change and delete one
-  format at a time, and core refuses an added or changed format whose name
+  format at a time, and bae refuses an added or changed format whose name
   another has; the edit sheet shows that refusal under the name field. Save as… offers every format, for a track
   and for a release, starting with the one last used; its Format menu ends in
   Edit Formats…, which opens Settings at Save as in front of the panel, which
   stays open behind it; the menu follows any change made there, and a format
   added there is chosen in it at once. Deleting the format last used makes the
   first format left the last used, in the same write; the only format left
-  can't be deleted, and its Delete… is off. The query that reads the
-  preferences joins the saved formats on the id the preferences name and
-  returns the whole format last used, and the file name field's preview ends
-  in its extension.
+  can't be deleted, and its Delete… is off. The file name field's preview
+  ends in the extension of the format Save as… starts with.
   One file name pattern and one folder name pattern serve every format. A
   pattern is text with values in it, each value one chip: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward
@@ -2808,11 +2737,9 @@ Two ways put a release back on disk, from desktop:
   drive holds as one (`Track Title` and `track title` on a drive that folds
   case) fail the save rather than one track replacing the other; a single
   track's Save as replaces a file only when the person confirms it.
-  A release save and an export open files within the budget of open files
-(§3.7): a save runs as many tracks at once as there are cores and places, each
-track's files open only while the save writes that track, and an export copies
-one file at a time.
-Every save writes one file per track. A pregap, stored or generated, goes
+  A release save converts several tracks at once, and an export copies one
+  file at a time.
+  Every save writes one file per track. A pregap, stored or generated, goes
   at the end of the track before, and the hidden audio before track 1 stays
   at the start of track 1; a release stored as one image with a CUE sheet is
   split at its track marks. A track that is all of one file, already in a
@@ -2861,16 +2788,11 @@ Releases imported as local stay in their folders, and bae does not count them.
 On a desktop, bae keeps each catalog image it downloads, or the answer that
 an address serves no image, as a file in the library's cache folder, with a
 row in the device-local table `cached_image` that holds the file's size and
-when bae last read or wrote it (Appendix A.12). bae writes a file before its
-row and deletes a row before its file, so every row names a file that is
-there; a crash between the two steps leaves a file that no row names, which
-bae neither reads nor counts, and which Clear cache removes. When the rows'
+when bae last read or wrote it (Appendix A.12). Every row names a file that is
+there. A file that no row names, which a crash can leave, bae neither reads nor
+counts, and Clear cache removes it. When the rows'
 sizes add up to more than 128 MiB, bae deletes the rows of the files it read
 or wrote longest ago, and those files, until the rest fit.
-
-The page reads one live query: SQL sums coven's tables of what the device
-keeps and `cached_image` into the parts, the total and the audio budget, and
-the page shows its rows as they change.
 
 **Clear cache** removes every unpinned file and chunk in every kind of file the
 library keeps, and on a desktop deletes every `cached_image` row and then the
