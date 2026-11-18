@@ -11,8 +11,8 @@ import SwiftUI
 ///
 /// With `long`, which a release's Storage sheet passes, a change on its way
 /// names what it does: Queued to upload, Queued to pin, Queued to move to
-/// This Mac and Moving to This Mac…, each a chip. A release whose upload
-/// waits on a missing original shows the queued chip, beside the notice that
+/// This Mac as words, and Moving to This Mac… as a chip. A release whose upload
+/// waits on a missing original shows Queued to upload, beside the notice that
 /// names the file.
 struct MacStorageChip: View {
     let release: ReleaseSummary
@@ -43,24 +43,21 @@ struct MacStorageChip: View {
                 StorageUploadingChipContainer(releaseId: release.id)
             }
             else if long {
-                StatusChip(
-                    verbatim: BridgeUploadActivity.queued.phaseText,
-                    tone: .activity
-                )
+                StorageWord(verbatim: BridgeUploadActivity.queued.phaseText)
             }
             else {
                 StorageWord("Queued")
             }
         case .pinning(.queued):
             if long {
-                StatusChip("Queued to pin", tone: .activity)
+                StorageWord("Queued to pin")
             }
             else {
                 StorageWord("Queued")
             }
         case .movingToThisDevice(.queued):
             if long {
-                StatusChip("Queued to move to This Mac", tone: .activity)
+                StorageWord("Queued to move to This Mac")
             }
             else {
                 StorageWord("Queued")
@@ -91,16 +88,21 @@ struct MacStorageChip: View {
 /// text, or a problem's tone colour. The design system draws it at 11 points
 /// regular, a size its text roles don't name.
 private struct StorageWord: View {
-    let key: LocalizedStringKey
+    let text: Text
     let tone: StatusTone?
 
     init(_ key: LocalizedStringKey, tone: StatusTone? = nil) {
-        self.key = key
+        text = Text(key)
         self.tone = tone
     }
 
+    init(verbatim string: String) {
+        text = Text(verbatim: string)
+        tone = nil
+    }
+
     var body: some View {
-        Text(key)
+        text
             .font(.system(size: 11))
             .lineLimit(1)
             .foregroundStyle(tone?.color ?? Theme.textPrimary)
