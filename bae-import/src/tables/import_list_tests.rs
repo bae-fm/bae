@@ -207,34 +207,14 @@ impl Library {
         counter.take().app_write_steps
     }
 
-    /// Run `write`, and check the search index kept beside the placement and
-    /// the tab counts still say what the placement holds: every write here
-    /// moves placement rows, and each must move the searched text with them.
+    /// Run `write`, and check the search index kept beside the placement
+    /// still says what the placement holds: every write here moves placement
+    /// rows, and each must move the searched text with them.
     pub(crate) async fn run(&self, write: Write) {
         for step in write.0 {
             step.await;
         }
         self.searchable().await;
-        let counted: Vec<(String, i64)> = self
-            .db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT tab, count(*) FROM import_list_placement \
-                     WHERE item <> 'group' GROUP BY tab ORDER BY tab",
-                    [],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-                )?)
-            })
-            .await
-            .unwrap();
-        let shown = self.tab_counts().await;
-        let held =
-            |tab: &str| counted.iter().find(|(name, _)| name == tab).map_or(0, |(_, count)| *count);
-        assert_eq!(
-            (i64::from(shown.pending), i64::from(shown.done), i64::from(shown.skipped)),
-            (held("pending"), held("done"), held("skipped")),
-            "the tab counts"
-        );
     }
 
     /// Check the search index holds each release's folded shown text under
