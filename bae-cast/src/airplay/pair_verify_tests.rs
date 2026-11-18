@@ -46,7 +46,7 @@ fn a_receiver_with_another_key_lost_the_pairing() {
     let mut verify = PairVerify::new(&keys);
 
     let m2 = server.m2(&verify.start().unwrap());
-    assert_eq!(verify.handle_m2(&m2), Err(PairingError::PairingLost));
+    assert!(matches!(verify.handle_m2(&m2), Err(PairingError::PairingLost)));
 }
 
 /// Authentication at M2 or M4 is the pairing lost; another error is itself.
@@ -57,20 +57,26 @@ fn refusals_read_as_what_they_say() {
 
     let mut verify = PairVerify::new(&keys);
     verify.start().unwrap();
-    assert_eq!(verify.handle_m2(&error_reply(state::M2, 0x02)), Err(PairingError::PairingLost));
+    assert!(matches!(
+        verify.handle_m2(&error_reply(state::M2, 0x02)),
+        Err(PairingError::PairingLost)
+    ));
 
     let mut verify = PairVerify::new(&keys);
     verify.start().unwrap();
-    assert_eq!(
+    assert!(matches!(
         verify.handle_m2(&error_reply(state::M2, 0x07)),
         Err(PairingError::Receiver(HomeKitError::Busy))
-    );
+    ));
 
     let mut server = VerifyServer::new(receiver);
     let mut verify = PairVerify::new(&keys);
     let m2 = server.m2(&verify.start().unwrap());
     verify.handle_m2(&m2).unwrap();
-    assert_eq!(verify.handle_m4(&error_reply(state::M4, 0x02)), Err(PairingError::PairingLost));
+    assert!(matches!(
+        verify.handle_m4(&error_reply(state::M4, 0x02)),
+        Err(PairingError::PairingLost)
+    ));
 }
 
 /// A receiver ephemeral of a low-order point gives a secret anyone knows,
@@ -85,7 +91,7 @@ fn a_low_order_ephemeral_is_refused() {
         .push(tlv_type::PUBLIC_KEY, vec![0u8; 32])
         .push(tlv_type::ENCRYPTED_DATA, vec![0u8; 32])
         .encode();
-    assert_eq!(verify.handle_m2(&m2), Err(PairingError::InvalidField("public key")));
+    assert!(matches!(verify.handle_m2(&m2), Err(PairingError::InvalidField("public key"))));
 }
 
 /// Calling the steps out of order is refused.
@@ -93,6 +99,6 @@ fn a_low_order_ephemeral_is_refused() {
 fn out_of_sequence_is_refused() {
     let keys = keys_for(&ReceiverIdentity::new());
     let mut verify = PairVerify::new(&keys);
-    assert_eq!(verify.handle_m2(&[]), Err(PairingError::WrongState));
-    assert_eq!(verify.handle_m4(&[]), Err(PairingError::WrongState));
+    assert!(matches!(verify.handle_m2(&[]), Err(PairingError::WrongState)));
+    assert!(matches!(verify.handle_m4(&[]), Err(PairingError::WrongState)));
 }

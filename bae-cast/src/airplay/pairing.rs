@@ -49,7 +49,6 @@ const MAX_PUBLIC_KEY_LEN: usize = 384;
 const SERVER_PROOF_LEN: usize = 64;
 /// An Ed25519 public key, and a signature, in bytes.
 pub(crate) const ED25519_PUBLIC_KEY_LEN: usize = 32;
-const ED25519_SIGNATURE_LEN: usize = 64;
 
 /// The `X-Apple-HKP` value on every transient `/pair-setup` POST: 4 marks the
 /// transient flow. Receivers read nothing else from a request without it.
@@ -75,31 +74,20 @@ pub(crate) fn open(
     label: &[u8; 8],
     sealed: &[u8],
 ) -> Result<Vec<u8>, PairingError> {
-    #[expect(
-        clippy::map_err_ignore,
-        reason = "an AEAD failure is opaque by design: it says only that the tag did not verify"
-    )]
     ChaCha20Poly1305::new(Key::from_slice(key))
         .decrypt(&nonce_with_tail(label), sealed)
-        .map_err(|_| PairingError::Decrypt)
+        .map_err(PairingError::Decrypt)
 }
 
 /// Check `signature` over `message` with the Ed25519 `public_key`.
-#[expect(
-    clippy::map_err_ignore,
-    reason = "a signature or key that fails to parse or verify says nothing more than which of them failed"
-)]
 pub(crate) fn verify_signature(
     public_key: &[u8; ED25519_PUBLIC_KEY_LEN],
     message: &[u8],
     signature: &[u8],
 ) -> Result<(), PairingError> {
-    let signature: [u8; ED25519_SIGNATURE_LEN] =
-        signature.try_into().map_err(|_| PairingError::InvalidField("signature length"))?;
-    let key = VerifyingKey::from_bytes(public_key)
-        .map_err(|_| PairingError::InvalidField("public key"))?;
-    key.verify_strict(message, &Signature::from_bytes(&signature))
-        .map_err(|_| PairingError::BadSignature)
+    let signature = Signature::from_slice(signature).map_err(PairingError::MalformedSignature)?;
+    let key = VerifyingKey::from_bytes(public_key).map_err(PairingError::MalformedPublicKey)?;
+    key.verify_strict(message, &signature).map_err(PairingError::BadSignature)
 }
 
 /// Sign `message` with the Ed25519 key `seed` makes.
@@ -367,7 +355,7 @@ fn setup_key(srp_key: &[u8]) -> [u8; 32] {
 }
 
 /// A failure during pair-setup or pair-verify.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub(crate) enum PairingError {
     /// A method was called out of sequence.
     #[error("pairing step called out of sequence")]
@@ -398,11 +386,17 @@ pub(crate) enum PairingError {
     #[error("the receiver no longer knows this device")]
     PairingLost,
     /// A sealed message didn't open: its tag didn't verify.
-    #[error("a sealed pairing message did not open")]
-    Decrypt,
+    #[error("a sealed pairing message did not open: {0}")]
+    Decrypt(chacha20poly1305::Error),
+    /// The receiver's signature is not an Ed25519 signature's 64 bytes.
+    #[error("the receiver's pairing signature is malformed: {0}")]
+    MalformedSignature(ed25519_dalek::SignatureError),
+    /// The receiver's public key is not an Ed25519 point.
+    #[error("the receiver's pairing public key is malformed: {0}")]
+    MalformedPublicKey(ed25519_dalek::SignatureError),
     /// The receiver's Ed25519 signature didn't verify.
-    #[error("the receiver's pairing signature did not verify")]
-    BadSignature,
+    #[error("the receiver's pairing signature did not verify: {0}")]
+    BadSignature(ed25519_dalek::SignatureError),
     /// The SRP exchange failed (bad server public value or proof). `SrpError` is
     /// a plain result enum, not an `Error`, so this carries it by `From` without
     /// making it this error's `source()`.

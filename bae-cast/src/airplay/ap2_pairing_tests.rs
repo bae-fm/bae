@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::airplay::fake_receiver::{
     CodeReceiver, CodeRefusal, PairedController, ReceiverCode, Served,
@@ -10,18 +5,28 @@ use crate::airplay::fake_receiver::{
 use crate::airplay::pairing::{public_key, HomeKitError};
 use std::net::TcpListener;
 
-/// Serve one connection with `receiver` on its own thread, then hand the
-/// receiver back with how the connection ended.
-fn serve_one(mut receiver: CodeReceiver) -> (u16, std::thread::JoinHandle<(CodeReceiver, Served)>) {
+/// Serve one connection with `receiver` while `sender` drives a connection
+/// to it, which closes once `sender` returns. Gives back what `sender`
+/// returned, the receiver, and how the connection ended.
+fn with_receiver<T>(
+    mut receiver: CodeReceiver,
+    sender: impl FnOnce(&mut RtspConnection) -> T,
+) -> (T, CodeReceiver, Served) {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let port = listener.local_addr().unwrap().port();
-    let server = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
-        let served = receiver.serve(&mut reader, &mut stream);
-        (receiver, served)
-    });
-    (port, server)
+    std::thread::scope(|scope| {
+        let server = scope.spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+            let served = receiver.serve(&mut reader, &mut stream);
+            (receiver, served)
+        });
+        let mut conn = connect(port);
+        let sent = sender(&mut conn);
+        drop(conn);
+        let (receiver, served) = server.join().unwrap();
+        (sent, receiver, served)
+    })
 }
 
 /// The name bae gives this device in each pairing request.
@@ -39,13 +44,11 @@ fn identity() -> ControllerIdentity {
 /// connection: both sides end up holding each other's identity.
 #[test]
 fn pin_start_then_pair_setup_with_the_right_pin_pairs() {
-    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821"])));
-    let mut conn = connect(port);
-    start_pin(&mut conn, NAME).unwrap();
-    let keys = run_code_pair_setup(&mut conn, NAME, "4821", identity()).unwrap();
-    drop(conn);
-
-    let (receiver, served) = server.join().unwrap();
+    let (keys, receiver, served) =
+        with_receiver(CodeReceiver::new(ReceiverCode::pins(&["4821"])), |conn| {
+            start_pin(conn, NAME).unwrap();
+            run_code_pair_setup(conn, NAME, "4821", identity()).unwrap()
+        });
     assert_eq!(served, Served::Closed);
     assert_eq!(receiver.requests, ["/pair-pin-start", "/pair-setup", "/pair-setup", "/pair-setup"]);
     assert_eq!(receiver.pin_shown_beside(), Some(NAME));
@@ -63,20 +66,20 @@ fn pin_start_then_pair_setup_with_the_right_pin_pairs() {
 /// same connection.
 #[test]
 fn a_wrong_pin_fails_and_the_next_pin_pairs() {
-    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821", "0937"])));
-    let mut conn = connect(port);
-    start_pin(&mut conn, NAME).unwrap();
-    let wrong = run_code_pair_setup(&mut conn, NAME, "4812", identity()).unwrap_err();
-    assert!(
-        matches!(wrong, Ap2Error::Pairing(PairingError::WrongCode { retry_after_seconds: None })),
-        "{wrong:?}"
-    );
-
-    start_pin(&mut conn, NAME).unwrap();
-    let keys = run_code_pair_setup(&mut conn, NAME, "0937", identity()).unwrap();
-    drop(conn);
-
-    let (receiver, _) = server.join().unwrap();
+    let (keys, receiver, _) =
+        with_receiver(CodeReceiver::new(ReceiverCode::pins(&["4821", "0937"])), |conn| {
+            start_pin(conn, NAME).unwrap();
+            let wrong = run_code_pair_setup(conn, NAME, "4812", identity()).unwrap_err();
+            assert!(
+                matches!(
+                    wrong,
+                    Ap2Error::Pairing(PairingError::WrongCode { retry_after_seconds: None })
+                ),
+                "{wrong:?}"
+            );
+            start_pin(conn, NAME).unwrap();
+            run_code_pair_setup(conn, NAME, "0937", identity()).unwrap()
+        });
     assert_eq!(keys.receiver_public, receiver.identity.public());
     assert_eq!(receiver.paired.len(), 1);
 }
@@ -87,10 +90,10 @@ fn a_wrong_pin_fails_and_the_next_pin_pairs() {
 fn a_wrong_pin_reports_the_receiver_s_retry_delay() {
     let mut receiver = CodeReceiver::new(ReceiverCode::pins(&["4821"]));
     receiver.retry_delay = Some(4);
-    let (port, server) = serve_one(receiver);
-    let mut conn = connect(port);
-    start_pin(&mut conn, NAME).unwrap();
-    let wrong = run_code_pair_setup(&mut conn, NAME, "4812", identity()).unwrap_err();
+    let (wrong, _, _) = with_receiver(receiver, |conn| {
+        start_pin(conn, NAME).unwrap();
+        run_code_pair_setup(conn, NAME, "4812", identity()).unwrap_err()
+    });
     assert!(
         matches!(
             wrong,
@@ -98,20 +101,16 @@ fn a_wrong_pin_reports_the_receiver_s_retry_delay() {
         ),
         "{wrong:?}"
     );
-    drop(conn);
-    server.join().unwrap();
 }
 
 /// A password pairs with no PIN start.
 #[test]
 fn a_password_pairs_with_no_pin_start() {
     let password = "kitchen speaker pässword";
-    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::Password(password.to_string())));
-    let mut conn = connect(port);
-    run_code_pair_setup(&mut conn, NAME, password, identity()).unwrap();
-    drop(conn);
-
-    let (receiver, _) = server.join().unwrap();
+    let (_, receiver, _) =
+        with_receiver(CodeReceiver::new(ReceiverCode::Password(password.to_string())), |conn| {
+            run_code_pair_setup(conn, NAME, password, identity()).unwrap()
+        });
     assert_eq!(receiver.requests, ["/pair-setup", "/pair-setup", "/pair-setup"]);
     assert_eq!(receiver.paired.len(), 1);
 }
@@ -128,39 +127,33 @@ fn a_refusal_of_a_code_pair_setup_is_the_receiver_s_error() {
     ] {
         let mut receiver = CodeReceiver::new(ReceiverCode::pins(&["4821"]));
         receiver.refusal = Some(CodeRefusal::SetupM2(code));
-        let (port, server) = serve_one(receiver);
-        let mut conn = connect(port);
-        start_pin(&mut conn, NAME).unwrap();
-        let refused = run_code_pair_setup(&mut conn, NAME, "4821", identity()).unwrap_err();
+        let (refused, _, _) = with_receiver(receiver, |conn| {
+            start_pin(conn, NAME).unwrap();
+            run_code_pair_setup(conn, NAME, "4821", identity()).unwrap_err()
+        });
         assert!(
             matches!(refused, Ap2Error::Pairing(PairingError::Receiver(error)) if error == expected),
             "code {code}: {refused:?}"
         );
-        drop(conn);
-        server.join().unwrap();
     }
 }
 
 /// Pair on one connection, then pair-verify on another with the keys that
 /// pairing gave: both sides derive the same session secret.
 fn paired_receiver() -> (CodeReceiver, PairingKeys) {
-    let (port, server) = serve_one(CodeReceiver::new(ReceiverCode::pins(&["4821"])));
-    let mut conn = connect(port);
-    start_pin(&mut conn, NAME).unwrap();
-    let keys = run_code_pair_setup(&mut conn, NAME, "4821", identity()).unwrap();
-    drop(conn);
-    let (receiver, _) = server.join().unwrap();
+    let (keys, receiver, _) =
+        with_receiver(CodeReceiver::new(ReceiverCode::pins(&["4821"])), |conn| {
+            start_pin(conn, NAME).unwrap();
+            run_code_pair_setup(conn, NAME, "4821", identity()).unwrap()
+        });
     (receiver, keys)
 }
 
 #[test]
 fn pair_verify_with_kept_keys_agrees_on_the_session_secret() {
     let (receiver, keys) = paired_receiver();
-    let (port, server) = serve_one(receiver);
-    let mut conn = connect(port);
-    let secret = run_pair_verify(&mut conn, NAME, &keys).unwrap();
-
-    let (receiver, served) = server.join().unwrap();
+    let (secret, receiver, served) =
+        with_receiver(receiver, |conn| run_pair_verify(conn, NAME, &keys).unwrap());
     assert_eq!(served, Served::Verified(secret));
     assert_eq!(receiver.requests.last().map(String::as_str), Some("/pair-verify"));
 }
@@ -184,12 +177,9 @@ fn a_receiver_that_forgot_this_device_reads_as_the_pairing_lost() {
     for (case, change) in cases {
         let (mut receiver, keys) = paired_receiver();
         change(&mut receiver);
-        let (port, server) = serve_one(receiver);
-        let mut conn = connect(port);
-        let lost = run_pair_verify(&mut conn, NAME, &keys).unwrap_err();
+        let (lost, _, _) =
+            with_receiver(receiver, |conn| run_pair_verify(conn, NAME, &keys).unwrap_err());
         assert!(matches!(lost, Ap2Error::Pairing(PairingError::PairingLost)), "{case}: {lost:?}");
-        drop(conn);
-        server.join().unwrap();
     }
 }
 
@@ -198,15 +188,12 @@ fn a_receiver_that_forgot_this_device_reads_as_the_pairing_lost() {
 fn another_refusal_of_pair_verify_is_the_receiver_s_error() {
     let (mut receiver, keys) = paired_receiver();
     receiver.refusal = Some(CodeRefusal::VerifyM2(0x07));
-    let (port, server) = serve_one(receiver);
-    let mut conn = connect(port);
-    let refused = run_pair_verify(&mut conn, NAME, &keys).unwrap_err();
+    let (refused, _, _) =
+        with_receiver(receiver, |conn| run_pair_verify(conn, NAME, &keys).unwrap_err());
     assert!(
         matches!(refused, Ap2Error::Pairing(PairingError::Receiver(HomeKitError::Busy))),
         "{refused:?}"
     );
-    drop(conn);
-    server.join().unwrap();
 }
 
 /// A receiver with an identifier other than the kept one is another
@@ -215,10 +202,7 @@ fn another_refusal_of_pair_verify_is_the_receiver_s_error() {
 fn another_receiver_identifier_is_the_pairing_lost() {
     let (mut receiver, keys) = paired_receiver();
     receiver.identity = receiver.identity.with_id(b"58:55:CA:00:00:01");
-    let (port, server) = serve_one(receiver);
-    let mut conn = connect(port);
-    let lost = run_pair_verify(&mut conn, NAME, &keys).unwrap_err();
+    let (lost, _, _) =
+        with_receiver(receiver, |conn| run_pair_verify(conn, NAME, &keys).unwrap_err());
     assert!(matches!(lost, Ap2Error::Pairing(PairingError::PairingLost)), "{lost:?}");
-    drop(conn);
-    server.join().unwrap();
 }

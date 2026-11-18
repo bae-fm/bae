@@ -113,7 +113,7 @@ impl<'k> PairVerify<'k> {
             signature,
         )
         .map_err(|error| match error {
-            PairingError::BadSignature => PairingError::PairingLost,
+            PairingError::BadSignature(_) => PairingError::PairingLost,
             other => other,
         })?;
 
