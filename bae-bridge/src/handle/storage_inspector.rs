@@ -31,17 +31,11 @@ impl crate::types::BridgeStorageInspectorTransfer {
             StorageInspectorTransfer::Output { operation } => {
                 Self::Output { operation: crate::types::BridgeOutputOp::from_core(operation) }
             }
-            StorageInspectorTransfer::Upload {
+            StorageInspectorTransfer::Upload { release_id, release, upload } => Self::Upload {
                 release_id,
-                title,
-                file_count,
-                total_size,
-                upload,
-            } => Self::Upload {
-                release_id,
-                title,
-                file_count,
-                total_size,
+                title: release.title,
+                file_count: release.file_count,
+                total_size: release.total_size,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
             },
         }

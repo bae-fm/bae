@@ -122,12 +122,17 @@ fn an_upload_names_its_release() {
         None,
         Some(waiting()),
     );
-    let [StorageInspectorTransfer::Upload { title, file_count, total_size, .. }] =
-        inspector.transfers.as_slice()
-    else {
+    let [StorageInspectorTransfer::Upload { release, .. }] = inspector.transfers.as_slice() else {
         panic!("only the upload is queued: {:?}", inspector.transfers);
     };
-    assert_eq!((title.as_str(), *file_count, *total_size), ("Album Title", 9, 356_000_000));
+    assert_eq!(
+        release,
+        &crate::DbInspectorRelease {
+            title: "Album Title".to_string(),
+            file_count: 9,
+            total_size: 356_000_000,
+        }
+    );
 }
 
 #[test]

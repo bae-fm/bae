@@ -50,14 +50,12 @@ pub enum StorageInspectorTransfer {
     Output {
         operation: OutputPhaseRow,
     },
-    /// The release's files waiting in this device's upload queue, with its
-    /// album's title and its files' count and size, which name the upload
-    /// while it waits for a missing original.
+    /// The release's files waiting in this device's upload queue, with the
+    /// release's album title and its files' count and size, which name the
+    /// upload while it waits for a missing original.
     Upload {
         release_id: String,
-        title: String,
-        file_count: u64,
-        total_size: u64,
+        release: crate::DbInspectorRelease,
         upload: ReleaseUpload,
     },
 }
@@ -120,12 +118,9 @@ fn storage_inspector_transfers(
         items.push(StorageInspectorTransfer::Output { operation: operation.clone() });
     }
     if let Some(upload) = upload {
-        let crate::DbInspectorRelease { title, file_count, total_size } = release;
         items.push(StorageInspectorTransfer::Upload {
             release_id: release_id.to_string(),
-            title,
-            file_count,
-            total_size,
+            release,
             upload,
         });
     }
