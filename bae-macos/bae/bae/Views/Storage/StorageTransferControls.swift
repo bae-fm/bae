@@ -82,7 +82,39 @@ struct StorageTransferControls: View {
             ) {
                 run { try await outputs.cancelOutput(operation.releaseId) }
             }
-        case .upload(let releaseId, let upload):
+        case .upload(
+            let releaseId,
+            let title,
+            let fileCount,
+            let totalSize,
+            let upload
+        ):
+            uploadTransfer(releaseId, title, fileCount, totalSize, upload)
+        }
+    }
+
+    /// The release's upload: its counts with Cancel and its bytes while files
+    /// move, or, while a missing original holds it, the row that says which
+    /// file and offers restoring it.
+    @ViewBuilder
+    private func uploadTransfer(
+        _ releaseId: String,
+        _ title: String,
+        _ fileCount: UInt64,
+        _ totalSize: UInt64,
+        _ upload: BridgeReleaseUpload
+    ) -> some View {
+        if let missing = upload.missing {
+            UploadWaitingRow(
+                title: title,
+                fileCount: fileCount,
+                totalSize: totalSize,
+                missing: missing
+            ) {
+                run { try await sync.cancelReleaseTransition(releaseId) }
+            }
+        }
+        else {
             MacTransferSummary(
                 kind: .upload,
                 counts: upload.summary,

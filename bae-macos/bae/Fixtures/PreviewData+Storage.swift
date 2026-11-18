@@ -524,6 +524,7 @@ extension PreviewData {
                 return (
                     row.id,
                     storageInspector(
+                        row: row,
                         files: [audioFile, imageFile],
                         download: downloads.first {
                             $0.releaseId == row.release.id
@@ -615,11 +616,12 @@ extension PreviewData {
         )
     }
 
-    /// What core's inspector read delivers for a release's `files` beside
-    /// its queue entries. While its download waits or runs, its images are
-    /// kept, and its audio downloads while the download runs and waits
-    /// while it waits its turn, as core counts them.
+    /// What core's inspector read delivers for the release of `row`: its
+    /// `files` beside its queue entries. While its download waits or runs,
+    /// its images are kept, and its audio downloads while the download runs
+    /// and waits while it waits its turn, as core counts them.
     private static func storageInspector(
+        row: BridgeStorageRow,
         files: [BridgeFile],
         download: BridgeDownloadOp?,
         output: BridgeOutputOp?,
@@ -670,6 +672,9 @@ extension PreviewData {
             transfers.append(
                 .upload(
                     releaseId: upload.releaseId,
+                    title: row.album.title,
+                    fileCount: UInt64(row.release.fileCount),
+                    totalSize: row.release.totalSize,
                     upload: upload.upload
                 )
             )

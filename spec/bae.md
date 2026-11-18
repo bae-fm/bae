@@ -2628,7 +2628,9 @@ from coven's `coven_sending`, a live view of the uploads in flight. While coven
 sends none of the release's files, the row shows Queued. When coven's
 `coven_pending` names a file whose original is missing, the row shows Waiting
 instead, and the inspector says *Waiting for a file*, names the file and offers
-*Restore source file…*, since only restoring it lets the move go on; the
+*Restore source file…*, since only restoring it lets the move go on. Its sheet
+says to put the file back where it was imported from, and its *Retry* asks coven
+to retry the upload now; the
 release's storage band shows Queued to upload and, under it, a warning that
 names the file. A pause, the network, a metered network or a retry's time holds
 the whole queue, so it shows once, where the queue shows, never on a release: in

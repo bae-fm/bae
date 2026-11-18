@@ -50,9 +50,14 @@ pub enum StorageInspectorTransfer {
     Output {
         operation: OutputPhaseRow,
     },
-    /// The release's files waiting in this device's upload queue.
+    /// The release's files waiting in this device's upload queue, with its
+    /// album's title and its files' count and size, which name the upload
+    /// while it waits for a missing original.
     Upload {
         release_id: String,
+        title: String,
+        file_count: u64,
+        total_size: u64,
         upload: ReleaseUpload,
     },
 }
@@ -63,7 +68,7 @@ impl StorageInspector {
     /// in each queue and its files waiting to upload; and, while its download
     /// pins it, the download's count of its files by where their pins stand.
     pub fn read(rows: crate::DbStorageInspector) -> Self {
-        let crate::DbStorageInspector { release_id, files, pins, upload, entries } = rows;
+        let crate::DbStorageInspector { release_id, release, files, pins, upload, entries } = rows;
         let files: Vec<StorageInspectorFile> = files
             .into_iter()
             .map(|file| StorageInspectorFile {
@@ -87,15 +92,19 @@ impl StorageInspector {
             ])
         });
         let upload = upload.map(ReleaseUpload::from_raw);
-        Self { transfers: storage_inspector_transfers(&release_id, &entries, upload, pins), files }
+        Self {
+            transfers: storage_inspector_transfers(&release_id, release, &entries, upload, pins),
+            files,
+        }
     }
 }
 
 /// The release's entry in each queue, downloads first, then exports, then
-/// its files waiting to upload (`upload`); `pins` summarizes its files for
+/// its files waiting to upload (`upload`), named by `release`; `pins` summarizes its files for
 /// the download that pins them.
 fn storage_inspector_transfers(
     release_id: &str,
+    release: crate::DbInspectorRelease,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
     pins: Option<Vec<bae_transfers::TransferCount>>,
@@ -111,7 +120,14 @@ fn storage_inspector_transfers(
         items.push(StorageInspectorTransfer::Output { operation: operation.clone() });
     }
     if let Some(upload) = upload {
-        items.push(StorageInspectorTransfer::Upload { release_id: release_id.to_string(), upload });
+        let crate::DbInspectorRelease { title, file_count, total_size } = release;
+        items.push(StorageInspectorTransfer::Upload {
+            release_id: release_id.to_string(),
+            title,
+            file_count,
+            total_size,
+            upload,
+        });
     }
     items
 }
@@ -127,16 +143,38 @@ fn storage_inspector_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<DbStorageInspector>, DbError> {
-    if find_release_by_id_on(sql, release_id)?.is_none() {
+    let Some(release) =
+        sql.query_row(INSPECTOR_RELEASE, params![release_id], inspector_release).optional()?
+    else {
         return Ok(None);
-    }
+    };
     Ok(Some(DbStorageInspector {
         release_id: release_id.to_string(),
+        release,
         files: inspector_files_on(sql, release_id)?,
         pins: pin_counts_on(sql, release_id)?,
         upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
         entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
     }))
+}
+
+/// The release `?1`'s album title and its files' count and total size, as
+/// `release_storage` keeps them; no row when the library holds no such
+/// release.
+const INSPECTOR_RELEASE: &str = "SELECT a.title AS title, storage.file_count AS file_count, \
+         storage.total_size AS total_size \
+     FROM releases AS r \
+     JOIN albums AS a ON a.id = r.album_id \
+     JOIN release_storage AS storage ON storage.release_id = r.id \
+     WHERE r.id = ?1";
+
+/// One row of [`INSPECTOR_RELEASE`].
+fn inspector_release(row: &Row<'_>) -> rusqlite::Result<crate::DbInspectorRelease> {
+    Ok(crate::DbInspectorRelease {
+        title: row.get("title")?,
+        file_count: count_column(row, "file_count")?,
+        total_size: count_column(row, "total_size")?,
+    })
 }
 
 impl LibraryViews {

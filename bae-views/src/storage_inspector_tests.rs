@@ -69,6 +69,11 @@ fn shown(
 ) -> StorageInspector {
     StorageInspector::read(crate::DbStorageInspector {
         release_id: "selected".to_string(),
+        release: crate::DbInspectorRelease {
+            title: "Album Title".to_string(),
+            file_count: 9,
+            total_size: 356_000_000,
+        },
         files,
         pins,
         upload,
@@ -105,6 +110,24 @@ fn each_queue_shows_the_selected_releases_entry() {
             .collect::<Vec<_>>(),
         vec![("download", "selected"), ("output", "selected"), ("upload", "selected"),]
     );
+}
+
+/// An upload names its release's album and its files' count and size, which
+/// its row shows while it waits for a missing original.
+#[test]
+fn an_upload_names_its_release() {
+    let inspector = shown(
+        Vec::new(),
+        &ReleaseQueueEntries { download: None, output: None },
+        None,
+        Some(waiting()),
+    );
+    let [StorageInspectorTransfer::Upload { title, file_count, total_size, .. }] =
+        inspector.transfers.as_slice()
+    else {
+        panic!("only the upload is queued: {:?}", inspector.transfers);
+    };
+    assert_eq!((title.as_str(), *file_count, *total_size), ("Album Title", 9, 356_000_000));
 }
 
 #[test]

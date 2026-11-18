@@ -391,6 +391,9 @@ pub enum StorageFilter {
 pub struct DbStorageInspector {
     /// The release the rows are of.
     pub release_id: String,
+    /// Its album's title and its files' count and size, which its upload's
+    /// row names.
+    pub release: DbInspectorRelease,
     /// The release's files in their order, each with its pin and upload.
     pub files: Vec<DbStorageInspectorFile>,
     /// How many of its files are downloading, waiting and kept while the
@@ -400,6 +403,16 @@ pub struct DbStorageInspector {
     pub upload: Option<DbReleaseUpload>,
     /// The release's entries in the download and export queues.
     pub entries: bae_transfers::ReleaseQueueEntries,
+}
+
+/// The release the inspector is set to, as a row of its transfers names it:
+/// its album's title, and how many files it has and their total size.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbInspectorRelease {
+    pub title: String,
+    pub file_count: u64,
+    pub total_size: u64,
 }
 
 /// How many of a pinning release's files are downloading now, waiting for

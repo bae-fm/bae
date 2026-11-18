@@ -54,9 +54,14 @@ pub enum BridgeStorageInspectorTransfer {
     Output {
         operation: BridgeOutputOp,
     },
-    /// The release's files waiting in this device's upload queue.
+    /// The release's files waiting in this device's upload queue, with its
+    /// album's title and its files' count and total size, which name the
+    /// upload while it waits for a missing original.
     Upload {
         release_id: String,
+        title: String,
+        file_count: u64,
+        total_size: u64,
         upload: super::BridgeReleaseUpload,
     },
 }
