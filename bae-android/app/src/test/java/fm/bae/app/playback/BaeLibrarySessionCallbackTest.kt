@@ -112,7 +112,11 @@ class BaeLibrarySessionCallbackTest {
         handle.albumList.changed()
         val result = callback.getChildren(browser, BrowseId.Albums.mediaId, 0, 20, null).get(1, TimeUnit.SECONDS)
 
-        assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
+        // The fake delivers its count again with each change; the page's new rows tell the car too.
+        assertEquals(
+            listOf(BrowseId.Albums.mediaId to 1, BrowseId.Albums.mediaId to UNKNOWN_CHILD_COUNT),
+            notifications,
+        )
         assertEquals(BrowseId.Album("album-new").mediaId, result.value!!.single().mediaId)
         tree.close()
         scope.cancel()
