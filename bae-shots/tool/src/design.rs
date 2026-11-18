@@ -50,7 +50,7 @@ fn read(path: &Path) -> Result<Vec<u8>, DesignError> {
 /// boards load and git does not hold.
 pub(crate) fn build(root: &Path) -> Result<(), DesignError> {
     Step::new("design system bundle", root, "python3", &["design/system/build-bundle.py"]).run()?;
-    Step::new("design tokens", root, "python3", &["scripts/design/tokens-css.py"]).run()?;
+    Step::new("design tokens", root, "builds", &["design", "tokens-css", "."]).run()?;
     Ok(())
 }
 

@@ -1,0 +1,19 @@
+name: 'Install builds'
+description: 'Install the builds tool from agent-instructions and put it on PATH'
+
+runs:
+  using: 'composite'
+  steps:
+    # builds uses macOS process and file-lock calls, so it compiles only on a
+    # Mac. It goes outside ~/.local/bin, so scripts/cargo.sh still runs cargo
+    # itself on CI.
+    - name: Install builds
+      shell: bash
+      env:
+        # The agent-instructions commit builds is installed from.
+        BUILDS_REV: 51b234ee1f28fb8069c5b29ee965cb9e999a4588
+      run: |
+        cargo install --locked --root "$RUNNER_TEMP/builds" \
+          --git https://github.com/hideselfview/agent-instructions \
+          --rev "$BUILDS_REV" builds
+        echo "$RUNNER_TEMP/builds/bin" >> "$GITHUB_PATH"
