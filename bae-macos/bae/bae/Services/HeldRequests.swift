@@ -15,9 +15,12 @@ final class HeldRequests<Request>: @unchecked Sendable {
 
     /// Each listener gets the request waiting for one, if any, then the
     /// requests sent from then on, on the main queue's next turn, so a
-    /// request never arrives while SwiftUI subscribes the listener.
+    /// request never arrives while SwiftUI subscribes the listener. A
+    /// subscription may outlive the requests, as a browse session's does the
+    /// UiStore a test makes for it, so it holds them weakly.
     private(set) lazy var requests: AnyPublisher<Request, Never> =
-        Deferred { [unowned self] in
+        Deferred { [weak self] () -> AnyPublisher<Request, Never> in
+            guard let self else { return Empty().eraseToAnyPublisher() }
             let waiting = lock.withLock {
                 listeners += 1
                 defer { self.waiting = nil }
@@ -25,12 +28,17 @@ final class HeldRequests<Request>: @unchecked Sendable {
             }
             return waiting.publisher
                 .append(sent)
-                .handleEvents(receiveCancel: { [unowned self] in
-                    lock.withLock { listeners -= 1 }
+                .handleEvents(receiveCancel: { [weak self] in
+                    self?.stopListening()
                 })
+                .eraseToAnyPublisher()
         }
         .receive(on: DispatchQueue.main)
         .eraseToAnyPublisher()
+
+    private func stopListening() {
+        lock.withLock { listeners -= 1 }
+    }
 
     func send(_ request: Request) {
         let listened = lock.withLock {
