@@ -520,17 +520,6 @@ pub(super) fn outcome_of(
             &failures,
         ));
     }
-    // Only a typed search's catalog returns a release; a verdict-shaped
-    // owner's rows are listed or unlisted.
-    if let Some(returned) = found.rows.iter().find(|row| matches!(row.listing, Listing::Returned)) {
-        return Err(DbError::unreadable(
-            format!(
-                "import_candidate_match.listing of match {} of {content_hash}",
-                returned.position
-            ),
-            "returned",
-        ));
-    }
     if let Some(stray) = ledger.stray_unlisted {
         return Err(DbError::unreadable(
             format!(

@@ -1794,7 +1794,7 @@ frozen = [
     { path = "bae-import/src/tables/import_state/rows.rs", item = "load_states_on", shape = "group", count = 1, finding = "`load_states_on` returns a `HashMap` (found by the check)" },
     { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "aggregate", count = 1, finding = "`outcome_of` aggregates with `count` (found by the check)" },
     { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "filter", count = 1, finding = "`outcome_of` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "pick", count = 2, finding = "`outcome_of` picks with `find` (found by the check)" },
+    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "pick", count = 1, finding = "`outcome_of` picks with `find` (found by the check)" },
     { path = "bae-import/src/tables/release_groupings.rs", item = "ImportTables::load_grouping", shape = "keyed-statement", count = 1, finding = "reads the anchored folder with `anchored_at`, keyed by the anchor the first statement returned" },
     { path = "bae-import/src/tables/release_groupings.rs", item = "load_candidate_on", shape = "keyed-statement", count = 2, finding = "reads whether a grouping took the candidate in, and its grouping's block, keyed by the candidate key and the grouping the first statement returned" },
     { path = "bae-import/src/tables/release_groupings/folder_readings.rs", item = "ImportTables::load_folder_release_decisions", shape = "group", count = 1, finding = "`ImportTables::load_folder_release_decisions` groups with `HashMap::new` (found by the check)" },
