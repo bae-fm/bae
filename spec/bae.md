@@ -1050,8 +1050,8 @@ The import list shows every candidate in one of three tabs:
 | Skipped | dismissed by the person, or broken |
 
 A tab reads *Nothing here yet* only once its list has been read and holds no
-rows (*No matches* when the filter narrows it to none); until then, and while
-its rows are still another tab's or filter's, the list is a plain surface.
+rows (*No matches* when the filter narrows it to none); until the list has
+first been read, it is a plain surface.
 
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a
@@ -1193,8 +1193,8 @@ list's length once it has counted them, with a placeholder in their place
 until then.
 
 Another tab, filter, search or order is a view the list has not read yet:
-until the read reflecting it lands, the list shows no rows rather than the
-previous view's, nor "No matches" for them.
+until its first rows arrive, the list keeps drawing the rows it has, and
+shows neither *Nothing here yet* nor *No matches* for the new view (§9.2).
 
 A list narrowed anew (another tab, filter or search) shows on top the row its
 view opened at: its first selected row as it sat when the view was set, or its
@@ -5144,7 +5144,7 @@ page of them the same way. bae answers a request for a page only for the phrase 
 searched for last, and refuses one for any other phrase.
 A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks
-(§7.8).
+(§7.1).
 
 **The home-screen widget.** Android's now-playing widget shows the track the
 open library plays, with Play or Pause and Next, and a tap elsewhere opens the
