@@ -41,7 +41,13 @@ class SyncShots : BoardShot() {
                                 ),
                             onFix = {},
                         )
-                        StorageSection(accountDropbox)
+                        StorageSection(
+                            location = accountDropbox,
+                            access = null,
+                            saved = null,
+                            onReplaceKey = {},
+                            onDismissSaved = {},
+                        )
                     }
                 }
             }
