@@ -4,7 +4,7 @@
 use super::*;
 use crate::tables::import_list::tests::*;
 use crate::tables::tests::*;
-use bae_catalogs::catalog::LookupCatalog;
+use bae_catalogs::catalog::{Catalog, LookupCatalog};
 use bae_catalogs::payloads::ReleasePayloads;
 use bae_catalogs::records::{LookupRef, PayloadSource};
 use bae_catalogs::remote_image::{CoverLabel, CoverStanding, RemoteCover, RemoteImageSet};

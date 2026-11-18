@@ -16,7 +16,6 @@ pub(super) const SQL: &str = include_str!("claim_rows.sql");
 use super::release_link_rows::{read_release_link, RELEASE_LINK_COLUMNS};
 use super::*;
 use crate::ReleaseLink;
-use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::{MetadataRef, ReleaseRecord};
 use bae_catalogs::source_release::{claimed_records, pick_covers, SourceRelease};
 
@@ -200,10 +199,7 @@ pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, 
         .map_err(|error| DbError::unreadable_json("the claimed records", json, error))?;
     rows.into_iter()
         .map(|row| {
-            let catalog = Catalog::from_str(&row.catalog).map_err(|_unknown| {
-                DbError::unreadable("a claimed record's catalog", &row.catalog)
-            })?;
-            let reference = MetadataRef::new(catalog, row.key);
+            let reference = MetadataRef::new(super::match_rows::catalog_of(&row.catalog)?, row.key);
             match row.kind.as_str() {
                 "pressing" => Ok(ReleaseRecord::new(&reference, row.album)),
                 "album" => Ok(ReleaseRecord::album(&reference)),
