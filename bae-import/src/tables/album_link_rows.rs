@@ -14,7 +14,7 @@
 pub(super) const SQL: &str = include_str!("album_link_rows.sql");
 
 use super::*;
-use bae_catalogs::album_links::GroupAlbum;
+use bae_catalogs::album_links::{AlbumLinks, GroupAlbum};
 use bae_catalogs::records::MetadataRef;
 
 fn catalog_of(stored: &str) -> Result<Catalog, DbError> {
@@ -34,6 +34,43 @@ impl AlbumLinkRow {
     pub(crate) fn album(self) -> Result<MetadataRef, DbError> {
         Ok(MetadataRef::new(catalog_of(&self.catalog)?, self.key))
     }
+}
+
+/// The stored `album_links` values, one per [`AlbumLinks`] shape.
+const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
+const ALBUM_LINKS_READ: &str = "read";
+const ALBUM_LINKS_UNREAD: &str = "unread";
+
+/// The stored `album_links` value of `links`.
+pub(super) fn album_links_column(links: &AlbumLinks) -> &'static str {
+    match links {
+        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
+        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
+        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
+    }
+}
+
+/// The album links of `owner` that its stored `album_links` value and its
+/// album link rows hold. Only read links have rows.
+pub(super) fn album_links_of(
+    owner: &str,
+    stored: &str,
+    rows: Vec<AlbumLinkRow>,
+) -> Result<AlbumLinks, DbError> {
+    Ok(match stored {
+        ALBUM_LINKS_READ => {
+            AlbumLinks::Read(rows.into_iter().map(AlbumLinkRow::album).collect::<Result<_, _>>()?)
+        }
+        ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !rows.is_empty() => {
+            return Err(DbError::unreadable(
+                format!("the album link rows of {owner}, whose album links are {stored}"),
+                rows.len(),
+            ))
+        }
+        ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
+        ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
+        other => return Err(DbError::unreadable(format!("the album links of {owner}"), other)),
+    })
 }
 
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key";

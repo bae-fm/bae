@@ -57,23 +57,18 @@ const CHILD_TABLES: [&str; 13] = [
     "source_release_unfetched",
 ];
 
-/// The stored `album_links` values of a MusicBrainz release.
-const ALBUM_LINKS_READ: &str = "read";
-const ALBUM_LINKS_UNREAD: &str = "unread";
-
 /// The `album_links` column a release's facts are stored with: a MusicBrainz
 /// release's reading, none for a Discogs release. Fetching a MusicBrainz
 /// release reads its album links, or fails to, so a stored one never holds
 /// links nothing asked for.
 fn album_links_column(facts: &CatalogFacts) -> Option<&'static str> {
     match facts {
-        CatalogFacts::MusicBrainz { album_links, .. } => match album_links {
-            AlbumLinks::Read(_) => Some(ALBUM_LINKS_READ),
-            AlbumLinks::Unread => Some(ALBUM_LINKS_UNREAD),
-            AlbumLinks::NotAsked => {
-                panic!("a fetched MusicBrainz release carries album links that were never read")
-            }
-        },
+        CatalogFacts::MusicBrainz { album_links: AlbumLinks::NotAsked, .. } => {
+            panic!("a fetched MusicBrainz release carries album links that were never read")
+        }
+        CatalogFacts::MusicBrainz { album_links, .. } => {
+            Some(super::album_link_rows::album_links_column(album_links))
+        }
         CatalogFacts::Discogs { .. } => None,
     }
 }
@@ -478,25 +473,26 @@ fn load_source_release_rows_on<S: coven::SqlRead>(
                     Ok(MetadataRef::new(catalog_column(&link_catalog)?, link_key))
                 })
                 .collect::<Result<_, DbError>>()?,
-            album_links: match album_links.as_deref() {
-                Some(ALBUM_LINKS_READ) => AlbumLinks::Read(
-                    sql.query(
-                        "SELECT album_catalog, album_key FROM source_release_album_link \
-                         WHERE catalog = ? AND release_id = ? ORDER BY ordinal",
-                        params![catalog, key],
-                        |row| {
-                            Ok(super::album_link_rows::AlbumLinkRow {
-                                catalog: row.get(0)?,
-                                key: row.get(1)?,
-                            })
-                        },
-                    )?
-                    .into_iter()
-                    .map(super::album_link_rows::AlbumLinkRow::album)
-                    .collect::<Result<_, DbError>>()?,
-                ),
-                Some(ALBUM_LINKS_UNREAD) => AlbumLinks::Unread,
-                other => return Err(DbError::unreadable("source_release.album_links", other)),
+            album_links: {
+                let owner = format!("source release {catalog} {key}");
+                let Some(stored) = album_links else {
+                    return Err(DbError::unreadable(
+                        format!("the album links of {owner}"),
+                        None::<String>,
+                    ));
+                };
+                let rows = sql.query(
+                    "SELECT album_catalog, album_key FROM source_release_album_link \
+                     WHERE catalog = ? AND release_id = ? ORDER BY ordinal",
+                    params![catalog, key],
+                    |row| {
+                        Ok(super::album_link_rows::AlbumLinkRow {
+                            catalog: row.get(0)?,
+                            key: row.get(1)?,
+                        })
+                    },
+                )?;
+                super::album_link_rows::album_links_of(&owner, &stored, rows)?
             },
         },
         LookupCatalog::Discogs => CatalogFacts::Discogs {

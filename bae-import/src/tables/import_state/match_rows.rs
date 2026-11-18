@@ -7,7 +7,7 @@ pub(super) const SQL: &str = include_str!("match_rows.sql");
 
 use super::verdict_rows::Owner;
 use super::*;
-use crate::tables::album_link_rows::AlbumLinkRow;
+use crate::tables::album_link_rows::{album_links_column, album_links_of, AlbumLinkRow};
 use crate::tables::cover_labels;
 use crate::tables::stored_credits;
 use bae_catalogs::album_links::AlbumLinks;
@@ -409,15 +409,6 @@ pub(super) fn store_album_link_rows(
     Ok(())
 }
 
-/// The stored `album_links` value of `links`.
-pub(super) fn album_links_column(links: &AlbumLinks) -> &'static str {
-    match links {
-        AlbumLinks::NotAsked => ALBUM_LINKS_NOT_ASKED,
-        AlbumLinks::Read(_) => ALBUM_LINKS_READ,
-        AlbumLinks::Unread => ALBUM_LINKS_UNREAD,
-    }
-}
-
 pub(super) fn ordinal_column(ordinal: usize) -> Result<i64, DbError> {
     to_i64(ordinal, "a match's place in its list")
 }
@@ -430,11 +421,6 @@ const LISTING_RETURNED: &str = "returned";
 
 /// The `search_state` a search's release names its answered part by.
 const SEARCH_STATE_DONE: &str = "done";
-
-/// The stored `album_links` values, one per [`AlbumLinks`] shape.
-const ALBUM_LINKS_NOT_ASKED: &str = "not_asked";
-const ALBUM_LINKS_READ: &str = "read";
-const ALBUM_LINKS_UNREAD: &str = "unread";
 
 /// The stored `media_kind` values, one per [`StatedMedia`] shape.
 pub(super) const MEDIA_UNDESCRIBED: &str = "undescribed";
@@ -583,23 +569,11 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         .into_iter()
         .map(|(catalog, key)| Ok(MetadataRef::new(catalog_of(&catalog)?, key)))
         .collect::<Result<_, DbError>>()?;
-    result.album_links = match album_links_kind.as_str() {
-        ALBUM_LINKS_READ => AlbumLinks::Read(
-            album_links.into_iter().map(AlbumLinkRow::album).collect::<Result<_, DbError>>()?,
-        ),
-        ALBUM_LINKS_NOT_ASKED | ALBUM_LINKS_UNREAD if !album_links.is_empty() => {
-            return Err(DbError::unreadable(
-                format!(
-                    "the album link rows of match {position} of {content_hash}, whose album \
-                     links are {album_links_kind}"
-                ),
-                album_links.len(),
-            ))
-        }
-        ALBUM_LINKS_NOT_ASKED => AlbumLinks::NotAsked,
-        ALBUM_LINKS_UNREAD => AlbumLinks::Unread,
-        other => return Err(DbError::unreadable("import_candidate_match.album_links", other)),
-    };
+    result.album_links = album_links_of(
+        &format!("match {position} of {content_hash}"),
+        &album_links_kind,
+        album_links,
+    )?;
     let listed = |pressing: Option<i64>| {
         let Some(pressing) = pressing else {
             return Err(DbError::unreadable(

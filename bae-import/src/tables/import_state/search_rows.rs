@@ -288,19 +288,11 @@ fn picks_of(json: &str) -> Result<Vec<PickedResult>, DbError> {
     picks
         .into_iter()
         .map(|StoredPick { release_id, links, albums }| {
-            let links = match links.as_str() {
-                "read" => AlbumLinks::Read(
-                    albums
-                        .into_iter()
-                        .map(crate::tables::album_link_rows::AlbumLinkRow::album)
-                        .collect::<Result<_, _>>()?,
-                ),
-                "not_asked" if albums.is_empty() => AlbumLinks::NotAsked,
-                "unread" if albums.is_empty() => AlbumLinks::Unread,
-                other => {
-                    return Err(DbError::unreadable("import_candidate_search_pick.links", other))
-                }
-            };
+            let links = crate::tables::album_link_rows::album_links_of(
+                &format!("the pick of release {release_id}"),
+                &links,
+                albums,
+            )?;
             Ok(PickedResult { release_id, links })
         })
         .collect()
@@ -331,7 +323,7 @@ fn store_pick_on(
     sql.execute(
         "INSERT INTO import_candidate_search_pick (search_run, release_id, links) \
          VALUES (?, ?, ?)",
-        params![run, release_id, super::match_rows::album_links_column(links)],
+        params![run, release_id, crate::tables::album_link_rows::album_links_column(links)],
     )?;
     for (ordinal, album) in links.read().iter().enumerate() {
         sql.execute(
