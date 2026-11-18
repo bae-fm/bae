@@ -345,8 +345,6 @@ CREATE TABLE IF NOT EXISTS label_shown_as (
     shown_label_id TEXT NOT NULL
 ) STRICT;
 
-CREATE INDEX IF NOT EXISTS idx_label_shown_as_shown ON label_shown_as (shown_label_id);
-
 -- Each label a merge names, and every label joined to it through merges in
 -- either direction: the labels a change to one of those merges can show as
 -- another label.
