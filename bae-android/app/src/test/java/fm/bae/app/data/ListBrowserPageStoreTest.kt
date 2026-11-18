@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -151,8 +152,9 @@ class ListBrowserPageStoreTest {
         assertEquals(ids(0..29), fixture.ids(0..29))
     }
 
+    /** A read that fails after rows arrived replaces them with the failure, and the read's next value replaces it. */
     @Test
-    fun aLaterReadThatFailsNamesWhatTheListHolds() {
+    fun aLaterFailedReadReplacesTheRowsUntilTheReadAnswersAgain() {
         val fixture = open(albums(ids(0..29)))
 
         fixture.list.windowFailure = readFailed
@@ -160,11 +162,35 @@ class ListBrowserPageStoreTest {
         fixture.idle()
 
         assertEquals(
-            "Could not load more albums.",
+            "Could not load your library.",
             fixture.store.error
                 ?.error
                 ?.line,
         )
+        assertEquals(List(30) { null }, fixture.ids(0..29))
+
+        fixture.list.windowFailure = null
+        fixture.list.changed()
+        fixture.idle()
+
+        assertNull(fixture.store.error)
+        assertEquals(ids(0..29), fixture.ids(0..29))
+    }
+
+    /** The view answering leaves a failed count's failure in place: the failure goes once the count answers. */
+    @Test
+    fun aFailedCountStandsUntilTheCountAnswers() {
+        val fixture = open(albums(ids(0..29)))
+
+        fixture.list.countFailure = readFailed
+        fixture.list.changed()
+        fixture.idle()
+        assertNotNull(fixture.store.error)
+
+        fixture.list.countFailure = null
+        fixture.list.emitCount()
+        fixture.idle()
+        assertNull(fixture.store.error)
     }
 
     @Test

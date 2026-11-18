@@ -26,9 +26,6 @@
     <string name="sort_by">Подреждане по</string>
     <string name="library_empty_albums">Все още няма албуми</string>
     <string name="library_load_failed">Библиотеката ви не може да бъде заредена.</string>
-    <string name="library_load_more_albums_failed">Не могат да бъдат заредени още албуми.</string>
-    <string name="library_load_more_artists_failed">Не могат да бъдат заредени още изпълнители.</string>
-    <string name="library_load_more_composers_failed">Не могат да бъдат заредени още композитори.</string>
     <string name="library">Библиотека</string>
     <string name="album_not_in_library">Този албум вече не е във вашата библиотека.</string>
     <string name="playlist_not_in_library">Този плейлист вече не е във вашата библиотека.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Данните за произведението не са намерени</string>
     <string name="composer_detail_load_failed">Този композитор не можа да бъде зареден</string>
     <string name="library_read_failed">Библиотеката не можа да бъде прочетена</string>
-    <string name="albums_append_failed">Още албуми не можаха да бъдат прочетени.</string>
     <string name="artist_also_credited_as">Също кредитиран като</string>
     <string name="composer_detail_not_found">Данните за композитора не са намерени</string>
     <string name="search_section_recordings">Записи</string>
@@ -470,7 +466,6 @@
     <string name="pins_at_once">Едновременни закачания</string>
     <string name="pinning_empty">Няма нищо за закачане</string>
     <string name="pinning_load_failed">Закачанията не можаха да се заредят.</string>
-    <string name="pinning_load_more_failed">Не можаха да се заредят още закачания.</string>
     <string name="onboarding_invited_to">Поканени сте в %1$s</string>
     <string name="onboarding_join_library">Присъединяване към библиотека</string>
     <string name="onboarding_join">Присъединяване</string>

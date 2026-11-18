@@ -26,9 +26,6 @@
     <string name="sort_by">Sortiraj po</string>
     <string name="library_empty_albums">Još nema albuma</string>
     <string name="library_load_failed">Nije moguće učitati vašu fonoteku.</string>
-    <string name="library_load_more_albums_failed">Nije moguće učitati više albuma.</string>
-    <string name="library_load_more_artists_failed">Nije moguće učitati više izvođača.</string>
-    <string name="library_load_more_composers_failed">Nije moguće učitati više skladatelja.</string>
     <string name="library">Fonoteka</string>
     <string name="album_not_in_library">Ovaj album više nije u vašoj fonoteci.</string>
     <string name="playlist_not_in_library">Ovaj popis za reprodukciju više nije u vašoj fonoteci.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Detalji djela nisu pronađeni</string>
     <string name="composer_detail_load_failed">Nije moguće učitati ovog skladatelja</string>
     <string name="library_read_failed">Nije moguće pročitati vašu fonoteku</string>
-    <string name="albums_append_failed">Nije moguće pročitati više albuma.</string>
     <string name="artist_also_credited_as">Navodi se i kao</string>
     <string name="composer_detail_not_found">Detalji skladatelja nisu pronađeni</string>
     <string name="search_section_recordings">Snimke</string>
@@ -478,7 +474,6 @@
     <string name="pins_at_once">Istodobna prikvačivanja</string>
     <string name="pinning_empty">Ništa za prikvačivanje</string>
     <string name="pinning_load_failed">Prikvačivanja nije moguće učitati.</string>
-    <string name="pinning_load_more_failed">Nije moguće učitati još prikvačivanja.</string>
     <string name="onboarding_invited_to">Pozvani ste u %1$s</string>
     <string name="onboarding_join_library">Pridruži se fonoteci</string>
     <string name="onboarding_join">Pridruži se</string>

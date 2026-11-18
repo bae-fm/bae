@@ -74,12 +74,31 @@ class PlaylistListingStoreTest {
 
         assertEquals("Could not load your library.", store.error?.error?.line)
         assertFalse(store.loading)
+        assertFalse("a failed read leaves its read open", reads.single().cancelled)
 
         store.error!!.onRetry()
         assertNull(store.error)
         assertEquals(2, reads.size)
         reads.last().emit(BridgeFixtures.playlistListing())
         shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, store.totalCount)
+    }
+
+    /** A failure replaces the listing the read held, and the read's next value replaces the failure. */
+    @Test
+    fun aFailureReplacesTheListingUntilTheReadAnswersAgain() {
+        store.activate()
+        reads.single().emit(BridgeFixtures.playlistListing(listOf(BridgeFixtures.playlistSummary("a"))))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        reads.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull(store.listing)
+        assertEquals(0, store.totalCount)
+
+        reads.single().emit(BridgeFixtures.playlistListing(listOf(BridgeFixtures.playlistSummary("a"))))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull(store.error)
         assertEquals(1, store.totalCount)
     }
 

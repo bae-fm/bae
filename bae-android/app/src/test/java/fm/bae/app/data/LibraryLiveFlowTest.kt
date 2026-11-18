@@ -17,6 +17,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LibraryLiveFlowTest {
@@ -44,7 +46,7 @@ class LibraryLiveFlowTest {
             store.activate(request("album-2"))
             assertEquals(
                 "album-2",
-                store.state.value.value
+                store.state.value.answer
                     ?.album
                     ?.id,
             )
@@ -62,7 +64,7 @@ class LibraryLiveFlowTest {
             assertEquals(listOf(request("album-3")), second.requestedIds)
             assertEquals(
                 "album-3",
-                store.state.value.value
+                store.state.value.answer
                     ?.album
                     ?.id,
             )
@@ -79,7 +81,7 @@ class LibraryLiveFlowTest {
             val store = LibraryQueryStores(Library(handle), scope).album
             store.activate(request("album-1"))
             val shown = mutableListOf<String?>()
-            val watching = scope.launch { store.state.collect { shown += it.value?.album?.id } }
+            val watching = scope.launch { store.state.collect { shown += it.answer?.album?.id } }
 
             store.activate(request("album-1", chosenReleaseId = "rel-2"))
             watching.cancel()
@@ -90,6 +92,31 @@ class LibraryLiveFlowTest {
                 handle.albumDetailSubscriptions
                     .single()
                     .read.cancelled,
+            )
+            scope.cancel()
+        }
+
+    /** A failed read replaces the album the pane shows, and the read's next value replaces the failure. */
+    @Test
+    fun a_failed_read_replaces_the_album_until_the_read_answers_again() =
+        runBlocking {
+            val handle =
+                FakeAppHandle(albumDetails = mapOf("album-1" to BridgeFixtures.albumDetail(BridgeFixtures.album("album-1"))))
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+            val store = LibraryQueryStores(Library(handle), scope).album
+            store.activate(request("album-1"))
+            val read = handle.albumDetailSubscriptions.single().read
+            val failure = BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed")
+
+            read.fail(failure)
+            assertEquals(LiveQueryState.Failed(failure), store.state.value)
+
+            read.setId(request("album-1"))
+            assertEquals(
+                "album-1",
+                store.state.value.answer
+                    ?.album
+                    ?.id,
             )
             scope.cancel()
         }

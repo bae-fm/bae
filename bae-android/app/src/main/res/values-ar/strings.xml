@@ -26,9 +26,6 @@
     <string name="sort_by">ترتيب حسب</string>
     <string name="library_empty_albums">لا توجد ألبومات بعد</string>
     <string name="library_load_failed">تعذّر تحميل مكتبتك.</string>
-    <string name="library_load_more_albums_failed">تعذّر تحميل المزيد من الألبومات.</string>
-    <string name="library_load_more_artists_failed">تعذّر تحميل المزيد من الفنانين.</string>
-    <string name="library_load_more_composers_failed">تعذّر تحميل المزيد من المؤلفين.</string>
     <string name="library">المكتبة</string>
     <string name="album_not_in_library">لم يعد هذا الألبوم في مكتبتك.</string>
     <string name="playlist_not_in_library">لم تعد قائمة التشغيل هذه في مكتبتك.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">لم يتم العثور على تفاصيل العمل</string>
     <string name="composer_detail_load_failed">تعذر تحميل هذا المؤلف</string>
     <string name="library_read_failed">تعذّرت قراءة مكتبتك</string>
-    <string name="albums_append_failed">تعذّرت قراءة المزيد من الألبومات.</string>
     <string name="artist_also_credited_as">يُنسب إليه أيضًا باسم</string>
     <string name="composer_detail_not_found">لم يتم العثور على تفاصيل المؤلف</string>
     <string name="search_section_recordings">التسجيلات</string>
@@ -502,7 +498,6 @@
     <string name="pins_at_once">عمليات التثبيت المتزامنة</string>
     <string name="pinning_empty">لا شيء للتثبيت</string>
     <string name="pinning_load_failed">تعذر تحميل عمليات التثبيت.</string>
-    <string name="pinning_load_more_failed">تعذر تحميل المزيد من عمليات التثبيت.</string>
     <string name="onboarding_invited_to">تمت دعوتك إلى %1$s</string>
     <string name="onboarding_join_library">الانضمام إلى مكتبة</string>
     <string name="onboarding_join">انضمام</string>

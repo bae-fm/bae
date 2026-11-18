@@ -159,16 +159,21 @@ class PlaybackServiceTest {
 internal class FakeDetailRead<Id, Value>(
     private val lookup: (Id) -> Value?,
 ) {
-    private val events = Channel<Pair<Id?, Value?>>(Channel.UNLIMITED)
+    private val events = Channel<Result<Pair<Id?, Value?>>>(Channel.UNLIMITED)
     val requestedIds = mutableListOf<Id>()
     var cancelled = false
 
     fun setId(id: Id) {
         requestedIds += id
-        events.trySend(id to lookup(id))
+        events.trySend(Result.success(id to lookup(id)))
     }
 
-    suspend fun next(): Pair<Id?, Value?> = events.receive()
+    /** Answer the next pull with [error], as a read that failed does. */
+    fun fail(error: BridgeException) {
+        events.trySend(Result.failure(error))
+    }
+
+    suspend fun next(): Pair<Id?, Value?> = events.receive().getOrThrow()
 
     fun cancel() {
         cancelled = true

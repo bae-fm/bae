@@ -18,7 +18,7 @@ private val logger = BaeLogger("bae.PlaylistListingStore")
 /**
  * The Playlists view's one live read, open while the view is shown: every playlist this device
  * holds, whole, since the list is as long as the playlists the household made and is not read in
- * windows. A failure closes the read and shows until [retry] opens another.
+ * windows. A failure replaces the listing until the read answers again, or [retry] opens another.
  */
 internal class PlaylistListingStore(
     private val open: () -> PulledSubscription<BridgePlaylistListing>,
@@ -26,7 +26,7 @@ internal class PlaylistListingStore(
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
 ) : BrowserPageState {
-    /** The last value the read delivered; null until the first. */
+    /** The value the read last delivered; null until the first and after a failure. */
     var listing by mutableStateOf<BridgePlaylistListing?>(null)
         private set
     override var loading by mutableStateOf(true)
@@ -69,8 +69,7 @@ internal class PlaylistListingStore(
 
     private fun fail(value: BridgeException) {
         logger.error("playlists read failed", value)
-        deliveries?.stop()
-        deliveries = null
+        listing = null
         loading = false
         error = PageError(appContext.getString(R.string.library_load_failed), value, errors, ::retry)
     }

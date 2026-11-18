@@ -26,9 +26,6 @@
     <string name="sort_by">Trier par</string>
     <string name="library_empty_albums">Aucun album pour l’instant</string>
     <string name="library_load_failed">Impossible de charger votre bibliothèque.</string>
-    <string name="library_load_more_albums_failed">Impossible de charger plus d’albums.</string>
-    <string name="library_load_more_artists_failed">Impossible de charger plus d’artistes.</string>
-    <string name="library_load_more_composers_failed">Impossible de charger plus de compositeurs.</string>
     <string name="library">Bibliothèque</string>
     <string name="album_not_in_library">Cet album n’est plus dans votre bibliothèque.</string>
     <string name="playlist_not_in_library">Cette liste de lecture n’est plus dans votre bibliothèque.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Détails de l’œuvre introuvables</string>
     <string name="composer_detail_load_failed">Impossible de charger ce compositeur</string>
     <string name="library_read_failed">Impossible de lire votre bibliothèque</string>
-    <string name="albums_append_failed">Impossible de lire d’autres albums.</string>
     <string name="artist_also_credited_as">Aussi crédité sous</string>
     <string name="composer_detail_not_found">Détails du compositeur introuvables</string>
     <string name="search_section_recordings">Enregistrements</string>
@@ -476,7 +472,6 @@
     <string name="pins_at_once">Épinglages simultanés</string>
     <string name="pinning_empty">Rien à épingler</string>
     <string name="pinning_load_failed">Impossible de charger vos épinglages.</string>
-    <string name="pinning_load_more_failed">Impossible de charger plus d’épinglages.</string>
     <string name="onboarding_invited_to">Vous avez été invité à rejoindre %1$s</string>
     <string name="onboarding_join_library">Rejoindre une bibliothèque</string>
     <string name="onboarding_join">Rejoindre</string>

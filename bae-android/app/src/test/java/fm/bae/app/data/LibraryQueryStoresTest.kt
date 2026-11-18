@@ -13,9 +13,6 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -49,17 +46,13 @@ class LibraryQueryStoresTest {
             val store = SearchQueryStore(Library(handle), backgroundScope)
             store.activate("query-a")
             passDebounce()
-            assertTrue(store.state.value.delivered)
+            assertTrue(store.state.value is LiveQueryState.Answered)
 
             store.activate("query-b")
-            assertNull(store.state.value.value)
-            assertFalse(store.state.value.delivered)
-            assertNull(store.state.value.error)
+            assertEquals(LiveQueryState.Waiting, store.state.value)
             passDebounce()
 
-            assertNull(store.state.value.value)
-            assertFalse(store.state.value.delivered)
-            assertSame(failure, store.state.value.error)
+            assertEquals(LiveQueryState.Failed(failure), store.state.value)
             assertEquals("typing moves one search, never opens another", 1, handle.searchSubscriptions.size)
         }
 
@@ -74,7 +67,7 @@ class LibraryQueryStoresTest {
             val store = SearchQueryStore(Library(handle), backgroundScope)
             store.activate("query-a")
             passDebounce()
-            assertTrue(store.state.value.error != null)
+            assertTrue(store.state.value is LiveQueryState.Failed)
 
             store.retry()
             passDebounce()

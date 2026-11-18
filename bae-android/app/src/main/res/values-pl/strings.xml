@@ -26,9 +26,6 @@
     <string name="sort_by">Sortuj według</string>
     <string name="library_empty_albums">Nie ma jeszcze albumów</string>
     <string name="library_load_failed">Nie udało się wczytać biblioteki.</string>
-    <string name="library_load_more_albums_failed">Nie udało się wczytać kolejnych albumów.</string>
-    <string name="library_load_more_artists_failed">Nie udało się wczytać kolejnych wykonawców.</string>
-    <string name="library_load_more_composers_failed">Nie udało się wczytać kolejnych kompozytorów.</string>
     <string name="library">Biblioteka</string>
     <string name="album_not_in_library">Tego albumu nie ma już w Twojej bibliotece.</string>
     <string name="playlist_not_in_library">Tej playlisty nie ma już w Twojej bibliotece.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Nie znaleziono szczegółów dzieła</string>
     <string name="composer_detail_load_failed">Nie udało się wczytać tego kompozytora</string>
     <string name="library_read_failed">Nie udało się odczytać biblioteki</string>
-    <string name="albums_append_failed">Nie udało się odczytać kolejnych albumów.</string>
     <string name="artist_also_credited_as">Występuje też jako</string>
     <string name="composer_detail_not_found">Nie znaleziono szczegółów kompozytora</string>
     <string name="search_section_recordings">Nagrania</string>
@@ -486,7 +482,6 @@
     <string name="pins_at_once">Równoczesne przypinania</string>
     <string name="pinning_empty">Nic do przypięcia</string>
     <string name="pinning_load_failed">Nie udało się wczytać przypięć.</string>
-    <string name="pinning_load_more_failed">Nie udało się wczytać kolejnych przypięć.</string>
     <string name="onboarding_invited_to">Zaproszono Cię do %1$s</string>
     <string name="onboarding_join_library">Dołącz do biblioteki</string>
     <string name="onboarding_join">Dołącz</string>

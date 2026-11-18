@@ -22,7 +22,6 @@ import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.library.AndroidErrorBanner
 import fm.bae.app.ui.settings.AndroidAccentPicker
 import org.junit.Test
 
@@ -140,16 +139,6 @@ class NoticeComponentShots : BoardShot() {
                 text = "The sign-in settings file is missing.\nOAuthConfig: missing client id",
                 copyText = "The sign-in settings file is missing.\nOAuthConfig: missing client id",
                 modifier = Modifier.width(320.dp),
-            )
-        }
-
-    @Test
-    fun androidComponentErrorBannerDefault() =
-        component("android.component.error-banner.default", wide = true) {
-            AndroidErrorBanner(
-                title = "Could not read more albums.",
-                error = DisplayError("Could not read more albums."),
-                onRetry = {},
             )
         }
 

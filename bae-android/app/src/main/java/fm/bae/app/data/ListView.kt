@@ -49,9 +49,10 @@ internal class PageReads<Row>(
 
 /**
  * One open list: its view and its count, each a live read. The list reports the rows on screen to core, which
- * moves and sizes the window it reads around them. The list calls [onChange] after each delivery of the count or
- * of the view, and [onFailure] when either read fails. Its owner decides whether a call still counts, since a value
- * can arrive after the owner moved on to other reads.
+ * moves and sizes the window it reads around them. Each read's latest answer is its value or its failure, which
+ * the read's next value replaces. The list calls [onChange] after each delivery of the count or of the view, and
+ * [onFailure] when either read fails. Its owner decides whether a call still counts, since a value can arrive after
+ * the owner moved on to other reads.
  */
 internal class OpenList<Row>(
     private val scope: CoroutineScope,
@@ -59,18 +60,22 @@ internal class OpenList<Row>(
     private val onChange: () -> Unit,
     private val onFailure: (BridgeException) -> Unit,
 ) {
-    /** The list's count from its last value; null until the count delivers. */
-    var count by mutableStateOf<BridgeListCount?>(null)
+    /** The count's latest answer. */
+    var count by mutableStateOf<LiveQueryState<BridgeListCount>>(LiveQueryState.Waiting)
         private set
 
-    /** The view's last delivery; null until the view delivers. The rows stay after [stop]. */
-    var delivered by mutableStateOf<ListViewDelivery<Row>?>(null)
+    /** The view's latest answer. It stays after [stop]. */
+    var view by mutableStateOf<LiveQueryState<ListViewDelivery<Row>>>(LiveQueryState.Waiting)
         private set
 
-    /** Whether the count and the view have both answered. */
-    val answered: Boolean get() = count != null && delivered != null
+    /** Whether the count and the view have both answered with a value. */
+    val answered: Boolean get() = count is LiveQueryState.Answered && view is LiveQueryState.Answered
 
-    private var view: ListViewRead<Row>? = null
+    /** The failure of the count's or the view's latest read, while one stands. */
+    val failure: BridgeException?
+        get() = (count as? LiveQueryState.Failed)?.error ?: (view as? LiveQueryState.Failed)?.error
+
+    private var viewRead: ListViewRead<Row>? = null
     private var shown: IntRange? = null
     private var countDeliveries: ScreenSubscription<BridgeListCount>? = null
     private var viewDeliveries: ScreenSubscription<ListViewDelivery<Row>>? = null
@@ -86,23 +91,29 @@ internal class OpenList<Row>(
                 reads.count(),
                 scope,
                 onValue = {
-                    count = it
+                    count = LiveQueryState.Answered(it)
                     onChange()
                 },
-                onError = onFailure,
+                onError = {
+                    count = LiveQueryState.Failed(it)
+                    onFailure(it)
+                },
             )
         val opened = reads.view(first, last)
-        view = opened
+        viewRead = opened
         shown = first..last
         viewDeliveries =
             ScreenSubscription(
                 opened,
                 scope,
                 onValue = {
-                    delivered = it
+                    view = LiveQueryState.Answered(it)
                     onChange()
                 },
-                onError = onFailure,
+                onError = {
+                    view = LiveQueryState.Failed(it)
+                    onFailure(it)
+                },
             )
     }
 
@@ -113,13 +124,13 @@ internal class OpenList<Row>(
     ) {
         if (stopped || first > last || shown == first..last) return
         shown = first..last
-        view?.setVisible(first, last)
+        viewRead?.setVisible(first, last)
     }
 
-    /** The row at [position], or null when the window doesn't hold it. */
-    fun rowAt(position: Int): Row? = delivered?.rowAt(position)
+    /** The row at [position], or null when the view's latest answer holds no row there. */
+    fun rowAt(position: Int): Row? = view.answer?.rowAt(position)
 
-    /** End every read. The rows the view last delivered stay in [delivered]. */
+    /** End every read. The view's latest answer stays in [view]. */
     fun stop() {
         stopped = true
         viewDeliveries?.stop()

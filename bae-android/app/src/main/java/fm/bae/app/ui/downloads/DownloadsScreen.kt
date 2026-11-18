@@ -124,8 +124,8 @@ internal fun AndroidStoragePinning(
 }
 
 /**
- * The queue's rows, or why there are none: the counts failing, the first
- * read of the rows failing, an empty queue; nothing while the first rows load.
+ * The queue's rows, or why there are none: the counts failing, a read of
+ * the rows failing, an empty queue; nothing while the first rows load.
  */
 @Composable
 private fun BoxScope.DownloadsBody(
@@ -143,7 +143,7 @@ private fun BoxScope.DownloadsBody(
             )
         }
 
-        pageError != null && !page.hasRows -> {
+        pageError != null -> {
             AndroidNotice(
                 error = pageError.error,
                 look = NoticeLook.CENTERED,

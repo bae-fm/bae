@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LiveQueryState
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
@@ -36,48 +37,41 @@ internal fun ArtistDetailScreen(
 ) {
     val query by session.libraryQueries.artist.state
         .collectAsState()
-    val detail = query.value
     DisposableEffect(artistId, session) {
         session.libraryQueries.artist.activate(artistId)
         onDispose {
             session.libraryQueries.artist.deactivate(artistId)
         }
     }
-    val loadError =
-        when {
-            query.error != null -> stringResource(R.string.artist_detail_load_failed)
-            query.delivered && detail == null -> stringResource(R.string.artist_detail_not_found)
-            else -> null
-        }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
-        val loaded = detail
-        val error = loadError
-        when {
-            error != null && loaded == null -> {
+        when (val answer = query) {
+            is LiveQueryState.Failed -> {
                 ErrorText(
-                    message = error,
+                    message = stringResource(R.string.artist_detail_load_failed),
                     modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
 
             // The detail is a local read; nothing shows until it lands.
-            loaded == null -> {}
+            LiveQueryState.Waiting -> {}
 
-            else -> {
-                error?.let {
+            is LiveQueryState.Answered -> {
+                val detail = answer.value
+                if (detail == null) {
                     ErrorText(
-                        message = it,
-                        modifier = Modifier.padding(ThemeSpace.related),
+                        message = stringResource(R.string.artist_detail_not_found),
+                        modifier = Modifier.padding(ThemeSpace.page),
+                    )
+                } else {
+                    ArtistDetailContent(
+                        detail = detail,
+                        onSelectAlbum = onSelectAlbum,
                     )
                 }
-                ArtistDetailContent(
-                    detail = loaded,
-                    onSelectAlbum = onSelectAlbum,
-                )
             }
         }
     }

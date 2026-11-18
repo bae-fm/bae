@@ -29,22 +29,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidInlineIconButton
-
-/** A later page of the album grid that failed to load, above the rows that did, with Retry. */
-@Composable
-internal fun AndroidErrorBannerContainer(page: AlbumPageStore) {
-    val appendError = (if (page.hasRows) page.error else null) ?: return
-    AndroidErrorBanner(
-        title = stringResource(R.string.albums_append_failed),
-        error = appendError.error,
-        onRetry = appendError.onRetry,
-    )
-}
 
 /** The search field's height; its pill shape is half of it. */
 private val SEARCH_FIELD_HEIGHT = 56.dp

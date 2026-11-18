@@ -26,9 +26,6 @@
     <string name="sort_by">Ordenar por</string>
     <string name="library_empty_albums">Ainda sem álbuns</string>
     <string name="library_load_failed">Não foi possível carregar sua biblioteca.</string>
-    <string name="library_load_more_albums_failed">Não foi possível carregar mais álbuns.</string>
-    <string name="library_load_more_artists_failed">Não foi possível carregar mais artistas.</string>
-    <string name="library_load_more_composers_failed">Não foi possível carregar mais compositores.</string>
     <string name="library">Biblioteca</string>
     <string name="album_not_in_library">Este álbum não está mais na sua biblioteca.</string>
     <string name="playlist_not_in_library">Esta playlist não está mais na sua biblioteca.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Detalhes da obra não encontrados</string>
     <string name="composer_detail_load_failed">Não foi possível carregar este compositor</string>
     <string name="library_read_failed">Não foi possível ler sua biblioteca</string>
-    <string name="albums_append_failed">Não foi possível ler mais álbuns.</string>
     <string name="artist_also_credited_as">Também creditado como</string>
     <string name="composer_detail_not_found">Detalhes do compositor não encontrados</string>
     <string name="search_section_recordings">Gravações</string>
@@ -476,7 +472,6 @@
     <string name="pins_at_once">Fixações simultâneas</string>
     <string name="pinning_empty">Nada para fixar</string>
     <string name="pinning_load_failed">Não foi possível carregar suas fixações.</string>
-    <string name="pinning_load_more_failed">Não foi possível carregar mais fixações.</string>
     <string name="onboarding_invited_to">Você foi convidado para %1$s</string>
     <string name="onboarding_join_library">Entrar em uma biblioteca</string>
     <string name="onboarding_join">Entrar</string>

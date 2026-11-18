@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +21,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.creditLineText
+import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
@@ -61,44 +61,33 @@ fun SearchResultsScreen(
         }
     }
 
-    val current = state.value
-    val context = LocalContext.current
-    val failure: @Composable (NoticeLook, Modifier) -> Unit = { look, modifier ->
-        val shown = state.error?.let(context::displayError)
-        AndroidNotice(
-            title = stringResource(R.string.search_failed),
-            advice = null,
-            error = shown,
-            modifier = modifier,
-            look = look,
-            action = shown.retryAction(onClick = session.libraryQueries.search::retry),
-        )
-    }
     Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.error != null && current == null -> {
-                failure(NoticeLook.CENTERED, Modifier)
-            }
-
-            // Library search is a local read; nothing shows until it lands.
-            !state.delivered && current == null -> {}
-
-            current != null &&
-                current.hasNoResults() -> {
-                Text(
-                    text = stringResource(R.string.search_no_results, query),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+        when (val answer = state) {
+            is LiveQueryState.Failed -> {
+                val shown = LocalContext.current.displayError(answer.error)
+                AndroidNotice(
+                    title = stringResource(R.string.search_failed),
+                    advice = null,
+                    error = shown,
+                    look = NoticeLook.CENTERED,
+                    action = shown.retryAction(onClick = session.libraryQueries.search::retry),
                 )
             }
 
-            current != null -> {
-                Column {
-                    if (state.error != null) {
-                        failure(NoticeLook.QUIET, Modifier.padding(horizontal = ThemeSpace.edge))
-                    }
+            // Library search is a local read; nothing shows until it lands.
+            LiveQueryState.Waiting -> {}
+
+            is LiveQueryState.Answered -> {
+                val results = answer.value
+                if (results.hasNoResults()) {
+                    Text(
+                        text = stringResource(R.string.search_no_results, query),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
+                    )
+                } else {
                     SearchResultsList(
-                        results = current,
+                        results = results,
                         onSelectAlbum = onSelectAlbum,
                         onSelectArtist = onSelectArtist,
                         onSelectComposer = onSelectComposer,

@@ -26,9 +26,6 @@
     <string name="sort_by">排序方式</string>
     <string name="library_empty_albums">暂无专辑</string>
     <string name="library_load_failed">无法加载你的库。</string>
-    <string name="library_load_more_albums_failed">无法加载更多专辑。</string>
-    <string name="library_load_more_artists_failed">无法加载更多艺人。</string>
-    <string name="library_load_more_composers_failed">无法加载更多作曲家。</string>
     <string name="library">音乐库</string>
     <string name="album_not_in_library">此专辑已不在你的音乐库中。</string>
     <string name="playlist_not_in_library">此播放列表已不在你的音乐库中。</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">未找到作品详情</string>
     <string name="composer_detail_load_failed">无法加载此作曲家</string>
     <string name="library_read_failed">无法读取你的资料库</string>
-    <string name="albums_append_failed">无法读取更多专辑。</string>
     <string name="artist_also_credited_as">其他署名</string>
     <string name="composer_detail_not_found">未找到作曲家详情</string>
     <string name="search_section_recordings">录音</string>
@@ -462,7 +458,6 @@
     <string name="pins_at_once">同时固定数</string>
     <string name="pinning_empty">没有要固定的内容</string>
     <string name="pinning_load_failed">无法载入固定项。</string>
-    <string name="pinning_load_more_failed">无法载入更多固定项。</string>
     <string name="onboarding_invited_to">你已受邀加入 %1$s</string>
     <string name="onboarding_join_library">加入库</string>
     <string name="onboarding_join">加入</string>

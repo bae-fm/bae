@@ -240,16 +240,13 @@ private fun AlbumBrowserContent(
             groupByArtist = groupByArtist,
             gridState = gridState,
         )
-    Column(modifier = Modifier.fillMaxSize()) {
-        AndroidErrorBannerContainer(page = page)
-        AndroidAlbumGridContainer(
-            session = session,
-            page = page,
-            gridState = gridState,
-            onSelectAlbum = onSelectAlbum,
-            onSelectArtist = onSelectArtist,
-        )
-    }
+    AndroidAlbumGridContainer(
+        session = session,
+        page = page,
+        gridState = gridState,
+        onSelectAlbum = onSelectAlbum,
+        onSelectArtist = onSelectArtist,
+    )
 }
 
 @Composable

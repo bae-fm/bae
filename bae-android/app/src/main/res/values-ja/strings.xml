@@ -26,9 +26,6 @@
     <string name="sort_by">並べ替えの基準</string>
     <string name="library_empty_albums">アルバムがまだありません</string>
     <string name="library_load_failed">ライブラリを読み込めませんでした。</string>
-    <string name="library_load_more_albums_failed">これ以上アルバムを読み込めませんでした。</string>
-    <string name="library_load_more_artists_failed">これ以上アーティストを読み込めませんでした。</string>
-    <string name="library_load_more_composers_failed">これ以上作曲者を読み込めませんでした。</string>
     <string name="library">ライブラリ</string>
     <string name="album_not_in_library">このアルバムはもうライブラリにありません。</string>
     <string name="playlist_not_in_library">このプレイリストはもうライブラリにありません。</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">作品の詳細が見つかりません</string>
     <string name="composer_detail_load_failed">この作曲者を読み込めませんでした</string>
     <string name="library_read_failed">ライブラリを読み取れませんでした</string>
-    <string name="albums_append_failed">ほかのアルバムを読み取れませんでした。</string>
     <string name="artist_also_credited_as">別名義</string>
     <string name="composer_detail_not_found">作曲者の詳細が見つかりません</string>
     <string name="search_section_recordings">録音</string>
@@ -462,7 +458,6 @@
     <string name="pins_at_once">同時ピン留め数</string>
     <string name="pinning_empty">ピン留めするものはありません</string>
     <string name="pinning_load_failed">ピン留めを読み込めませんでした。</string>
-    <string name="pinning_load_more_failed">これ以上ピン留めを読み込めませんでした。</string>
     <string name="onboarding_invited_to">%1$s に招待されています</string>
     <string name="onboarding_join_library">ライブラリに参加</string>
     <string name="onboarding_join">参加</string>

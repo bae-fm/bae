@@ -26,9 +26,6 @@
     <string name="sort_by">Сортувати за</string>
     <string name="library_empty_albums">Поки немає альбомів</string>
     <string name="library_load_failed">Не вдалося завантажити вашу бібліотеку.</string>
-    <string name="library_load_more_albums_failed">Не вдалося завантажити більше альбомів.</string>
-    <string name="library_load_more_artists_failed">Не вдалося завантажити більше виконавців.</string>
-    <string name="library_load_more_composers_failed">Не вдалося завантажити більше композиторів.</string>
     <string name="library">Фонотека</string>
     <string name="album_not_in_library">Цього альбому більше немає у вашій фонотеці.</string>
     <string name="playlist_not_in_library">Цього плейлиста більше немає у вашій фонотеці.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Відомості про твір не знайдено</string>
     <string name="composer_detail_load_failed">Не вдалося завантажити цього композитора</string>
     <string name="library_read_failed">Не вдалося прочитати вашу бібліотеку</string>
-    <string name="albums_append_failed">Не вдалося прочитати більше альбомів.</string>
     <string name="artist_also_credited_as">Також зазначається як</string>
     <string name="composer_detail_not_found">Відомості про композитора не знайдено</string>
     <string name="search_section_recordings">Записи</string>
@@ -486,7 +482,6 @@
     <string name="pins_at_once">Одночасні закріплення</string>
     <string name="pinning_empty">Нічого закріплювати</string>
     <string name="pinning_load_failed">Не вдалося завантажити закріплення.</string>
-    <string name="pinning_load_more_failed">Не вдалося завантажити більше закріплень.</string>
     <string name="onboarding_invited_to">Вас запрошено до %1$s</string>
     <string name="onboarding_join_library">Приєднатися до бібліотеки</string>
     <string name="onboarding_join">Приєднатися</string>

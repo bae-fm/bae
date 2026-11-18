@@ -26,9 +26,6 @@
     <string name="sort_by">Sorter efter</string>
     <string name="library_empty_albums">Ingen album endnu</string>
     <string name="library_load_failed">Dit bibliotek kunne ikke indlæses.</string>
-    <string name="library_load_more_albums_failed">Der kunne ikke indlæses flere album.</string>
-    <string name="library_load_more_artists_failed">Der kunne ikke indlæses flere kunstnere.</string>
-    <string name="library_load_more_composers_failed">Der kunne ikke indlæses flere komponister.</string>
     <string name="library">Bibliotek</string>
     <string name="album_not_in_library">Dette album er ikke længere i dit bibliotek.</string>
     <string name="playlist_not_in_library">Denne afspilningsliste er ikke længere i dit bibliotek.</string>
@@ -81,7 +78,6 @@
     <string name="work_detail_not_found">Værkdetaljer blev ikke fundet</string>
     <string name="composer_detail_load_failed">Denne komponist kunne ikke indlæses</string>
     <string name="library_read_failed">Dit bibliotek kunne ikke læses</string>
-    <string name="albums_append_failed">Flere album kunne ikke læses.</string>
     <string name="artist_also_credited_as">Også krediteret som</string>
     <string name="composer_detail_not_found">Komponistdetaljer blev ikke fundet</string>
     <string name="search_section_recordings">Indspilninger</string>
@@ -468,7 +464,6 @@
     <string name="pins_at_once">Samtidige fastgørelser</string>
     <string name="pinning_empty">Intet at fastgøre</string>
     <string name="pinning_load_failed">Kunne ikke indlæse dine fastgørelser.</string>
-    <string name="pinning_load_more_failed">Kunne ikke indlæse flere fastgørelser.</string>
     <string name="onboarding_invited_to">Du er inviteret til %1$s</string>
     <string name="onboarding_join_library">Deltag i bibliotek</string>
     <string name="onboarding_join">Deltag</string>

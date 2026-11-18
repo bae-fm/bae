@@ -39,6 +39,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
+import fm.bae.app.data.answer
 import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
 import fm.bae.app.pressingLineText
@@ -112,7 +113,7 @@ fun AlbumDetailScreen(
         .collectAsState()
     // The album query is one shared slot that still holds the previous album
     // right after navigation, so ignore any value for another album.
-    val detail = query.value?.takeIf { it.album.id == albumId }
+    val detail = query.answer?.takeIf { it.album.id == albumId }
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
@@ -129,7 +130,7 @@ fun AlbumDetailScreen(
         onDispose { session.libraryQueries.album.deactivate(request) }
     }
 
-    val loadError = query.error?.let(LocalContext.current::displayError)
+    val loadError = (query as? LiveQueryState.Failed)?.error?.let(LocalContext.current::displayError)
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
@@ -146,12 +147,6 @@ fun AlbumDetailScreen(
                     onRetry = session.libraryQueries.album::retry,
                 )
             } else {
-                loadError?.let {
-                    AndroidNotice(
-                        error = it,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
-                    )
-                }
                 val release = loaded.shownRelease
                 AlbumDetailContent(
                     detail = loaded,
@@ -179,14 +174,14 @@ internal sealed interface AlbumDetailPlaceholder {
     data object NotInLibrary : AlbumDetailPlaceholder
 }
 
-/** The placeholder for [query] before it holds an album, given its failure as [loadError]. */
+/** The placeholder for [query] while it holds no album, given its failure as [loadError]. */
 internal fun albumDetailPlaceholder(
-    query: LiveQueryState<BridgeAlbumDetail>,
+    query: LiveQueryState<BridgeAlbumDetail?>,
     loadError: DisplayError?,
 ): AlbumDetailPlaceholder =
     when {
         loadError != null -> AlbumDetailPlaceholder.Failed(loadError)
-        query.delivered && query.value == null -> AlbumDetailPlaceholder.NotInLibrary
+        query is LiveQueryState.Answered && query.value == null -> AlbumDetailPlaceholder.NotInLibrary
         else -> AlbumDetailPlaceholder.Loading
     }
 

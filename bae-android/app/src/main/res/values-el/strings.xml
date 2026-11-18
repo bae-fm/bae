@@ -26,9 +26,6 @@
     <string name="sort_by">Ταξινόμηση κατά</string>
     <string name="library_empty_albums">Κανένα άλμπουμ ακόμη</string>
     <string name="library_load_failed">Δεν ήταν δυνατή η φόρτωση της βιβλιοθήκης σας.</string>
-    <string name="library_load_more_albums_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων άλμπουμ.</string>
-    <string name="library_load_more_artists_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καλλιτεχνών.</string>
-    <string name="library_load_more_composers_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων συνθετών.</string>
     <string name="library">Βιβλιοθήκη</string>
     <string name="album_not_in_library">Αυτό το άλμπουμ δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
     <string name="playlist_not_in_library">Αυτή η λίστα αναπαραγωγής δεν βρίσκεται πλέον στη βιβλιοθήκη σας.</string>
@@ -81,7 +78,6 @@
     <string name="work_detail_not_found">Δεν βρέθηκαν λεπτομέρειες έργου</string>
     <string name="composer_detail_load_failed">Δεν ήταν δυνατή η φόρτωση αυτού του συνθέτη</string>
     <string name="library_read_failed">Δεν ήταν δυνατή η ανάγνωση της βιβλιοθήκης σας</string>
-    <string name="albums_append_failed">Δεν ήταν δυνατή η ανάγνωση περισσότερων άλμπουμ.</string>
     <string name="artist_also_credited_as">Αναφέρεται επίσης ως</string>
     <string name="composer_detail_not_found">Δεν βρέθηκαν λεπτομέρειες συνθέτη</string>
     <string name="search_section_recordings">Ηχογραφήσεις</string>
@@ -468,7 +464,6 @@
     <string name="pins_at_once">Ταυτόχρονα καρφιτσώματα</string>
     <string name="pinning_empty">Τίποτα για καρφίτσωμα</string>
     <string name="pinning_load_failed">Δεν ήταν δυνατή η φόρτωση των καρφιτσωμάτων.</string>
-    <string name="pinning_load_more_failed">Δεν ήταν δυνατή η φόρτωση περισσότερων καρφιτσωμάτων.</string>
     <string name="onboarding_invited_to">Σας προσκάλεσαν στο %1$s</string>
     <string name="onboarding_join_library">Συμμετοχή σε βιβλιοθήκη</string>
     <string name="onboarding_join">Συμμετοχή</string>

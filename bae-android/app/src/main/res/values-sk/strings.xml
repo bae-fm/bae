@@ -26,9 +26,6 @@
     <string name="sort_by">Zoradiť podľa</string>
     <string name="library_empty_albums">Zatiaľ žiadne albumy</string>
     <string name="library_load_failed">Tvoju knižnicu sa nepodarilo načítať.</string>
-    <string name="library_load_more_albums_failed">Ďalšie albumy sa nepodarilo načítať.</string>
-    <string name="library_load_more_artists_failed">Ďalších interpretov sa nepodarilo načítať.</string>
-    <string name="library_load_more_composers_failed">Ďalších skladateľov sa nepodarilo načítať.</string>
     <string name="library">Knižnica</string>
     <string name="album_not_in_library">Tento album už nie je vo vašej knižnici.</string>
     <string name="playlist_not_in_library">Tento zoznam skladieb už nie je vo vašej knižnici.</string>
@@ -83,7 +80,6 @@
     <string name="work_detail_not_found">Podrobnosti o diele sa nenašli</string>
     <string name="composer_detail_load_failed">Tohto skladateľa sa nepodarilo načítať</string>
     <string name="library_read_failed">Knižnicu sa nepodarilo prečítať</string>
-    <string name="albums_append_failed">Ďalšie albumy sa nepodarilo prečítať.</string>
     <string name="artist_also_credited_as">Uvádzaný aj ako</string>
     <string name="composer_detail_not_found">Podrobnosti o skladateľovi sa nenašli</string>
     <string name="search_section_recordings">Nahrávky</string>
@@ -484,7 +480,6 @@
     <string name="pins_at_once">Súbežné pripnutia</string>
     <string name="pinning_empty">Nič na pripnutie</string>
     <string name="pinning_load_failed">Pripnutia sa nepodarilo načítať.</string>
-    <string name="pinning_load_more_failed">Ďalšie pripnutia sa nepodarilo načítať.</string>
     <string name="onboarding_invited_to">Boli ste pozvaní do %1$s</string>
     <string name="onboarding_join_library">Pripojiť sa ku knižnici</string>
     <string name="onboarding_join">Pripojiť sa</string>

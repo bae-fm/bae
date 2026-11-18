@@ -36,7 +36,7 @@ import fm.bae.app.ui.settings.syncLineText
 import kotlinx.coroutines.launch
 
 /**
- * A library browse tab's body: pull-to-refresh over load failure, nothing
+ * A library browse tab's body: pull-to-refresh over a failed read in the rows' place, nothing
  * while the first read runs, empty message (with the [emptyAction] under it,
  * when the list has one) or rows, each inside a scrollable so the pull reaches
  * [PullToRefreshBox]. The pull retries sync, and its spinner stays, over the
@@ -81,7 +81,7 @@ internal fun LibraryPageContent(
         },
     ) {
         when {
-            pageError != null && !page.hasRows -> {
+            pageError != null -> {
                 LibraryReadFailed(pageError)
             }
 

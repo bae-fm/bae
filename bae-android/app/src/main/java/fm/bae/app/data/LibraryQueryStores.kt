@@ -23,11 +23,27 @@ private val logger = BaeLogger("bae.LibraryQueryStores")
 
 internal const val SEARCH_DEBOUNCE_MS = 300L
 
-internal data class LiveQueryState<Value>(
-    val value: Value? = null,
-    val delivered: Boolean = false,
-    val error: BridgeException? = null,
-)
+/**
+ * A live read's latest answer for what a screen shows now: nothing yet, the value it last delivered, or that its
+ * last read failed. A failure replaces the value, so nothing shows a value that is no longer known to be current;
+ * the read goes on, and its next value replaces the failure.
+ */
+internal sealed interface LiveQueryState<out Value> {
+    /** The read has not answered what the screen shows now. */
+    data object Waiting : LiveQueryState<Nothing>
+
+    data class Answered<Value>(
+        val value: Value,
+    ) : LiveQueryState<Value>
+
+    data class Failed(
+        val error: BridgeException,
+    ) : LiveQueryState<Nothing>
+}
+
+/** The value the read last answered with, or null while it waits or after it failed. */
+internal val <Value> LiveQueryState<Value>.answer: Value?
+    get() = (this as? LiveQueryState.Answered)?.value
 
 /**
  * One detail pane's live read, open while the pane shows an item: [activate] opens it or moves it to
@@ -40,8 +56,10 @@ internal class DetailQueryStore<Id, Value>(
     private val open: () -> DetailRead<Id, Value>,
     private val sameItem: (Id, Id) -> Boolean = { a, b -> a == b },
 ) {
-    private val mutableState = MutableStateFlow(LiveQueryState<Value>())
-    val state: StateFlow<LiveQueryState<Value>> = mutableState.asStateFlow()
+    private val mutableState = MutableStateFlow<LiveQueryState<Value?>>(LiveQueryState.Waiting)
+
+    /** The read's answer for the item shown now: its detail, or null once no such item exists. */
+    val state: StateFlow<LiveQueryState<Value?>> = mutableState.asStateFlow()
     private var parameter: Id? = null
     private var read: DetailRead<Id, Value>? = null
     private var deliveries: ScreenSubscription<DetailDelivery<Id, Value>>? = null
@@ -51,7 +69,7 @@ internal class DetailQueryStore<Id, Value>(
         if (shown == value && read != null) return
         parameter = value
         if (shown == null || !sameItem(shown, value)) {
-            mutableState.value = LiveQueryState()
+            mutableState.value = LiveQueryState.Waiting
         }
         request(value)
     }
@@ -60,7 +78,7 @@ internal class DetailQueryStore<Id, Value>(
     fun retry() {
         val current = parameter ?: return
         closeRead()
-        mutableState.value = LiveQueryState()
+        mutableState.value = LiveQueryState.Waiting
         request(current)
     }
 
@@ -81,7 +99,7 @@ internal class DetailQueryStore<Id, Value>(
         try {
             current.setId(value)
         } catch (error: BridgeException) {
-            mutableState.value = mutableState.value.copy(error = error)
+            mutableState.value = LiveQueryState.Failed(error)
         }
     }
 
@@ -96,13 +114,13 @@ internal class DetailQueryStore<Id, Value>(
     private fun deliver(delivery: DetailDelivery<Id, Value>) {
         val shown = parameter
         if (shown != null && delivery.id == shown) {
-            mutableState.value = LiveQueryState(value = delivery.value, delivered = true)
+            mutableState.value = LiveQueryState.Answered(delivery.value)
         }
     }
 
     private fun report(error: BridgeException) {
         if (parameter != null) {
-            mutableState.value = mutableState.value.copy(error = error)
+            mutableState.value = LiveQueryState.Failed(error)
         } else {
             // Nothing is shown to report it on; the read goes on.
             logger.warning("detail read failed while showing nothing", error)
@@ -125,7 +143,7 @@ internal class SearchQueryStore(
     private val library: Library,
     private val scope: CoroutineScope,
 ) {
-    private val mutableState = MutableStateFlow(LiveQueryState<BridgeSearchResults>())
+    private val mutableState = MutableStateFlow<LiveQueryState<BridgeSearchResults>>(LiveQueryState.Waiting)
     val state: StateFlow<LiveQueryState<BridgeSearchResults>> = mutableState.asStateFlow()
     private var query: String? = null
     private var search: LibrarySearch? = null
@@ -136,7 +154,7 @@ internal class SearchQueryStore(
         val trimmed = value.trim()
         if (query == trimmed) return
         query = trimmed
-        mutableState.value = LiveQueryState()
+        mutableState.value = LiveQueryState.Waiting
         debounce?.cancel()
         if (trimmed.isEmpty()) {
             search?.let { setQuery(it, null) }
@@ -179,10 +197,10 @@ internal class SearchQueryStore(
                 onValue = { snapshot ->
                     // Only a value answering the query standing now is shown.
                     if (snapshot.query != null && snapshot.query == query) {
-                        mutableState.value = LiveQueryState(value = snapshot.results, delivered = true)
+                        mutableState.value = LiveQueryState.Answered(snapshot.results)
                     }
                 },
-                onError = { error -> mutableState.value = mutableState.value.copy(error = error) },
+                onError = { error -> mutableState.value = LiveQueryState.Failed(error) },
             )
         return live
     }
@@ -194,7 +212,7 @@ internal class SearchQueryStore(
         runCatching { live.setQuery(text) }
             .onFailure { error ->
                 if (error !is BridgeException) throw error
-                mutableState.value = LiveQueryState(error = error)
+                mutableState.value = LiveQueryState.Failed(error)
             }
     }
 }

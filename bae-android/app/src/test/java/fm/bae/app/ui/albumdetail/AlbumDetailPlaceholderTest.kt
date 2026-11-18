@@ -5,6 +5,8 @@ import fm.bae.app.data.LiveQueryState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 
 /**
  * An album the read answers with nothing was deleted, so the page says it is
@@ -14,7 +16,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 class AlbumDetailPlaceholderTest {
     @Test
     fun anAnsweredReadWithNoAlbumIsNotInTheLibrary() {
-        val query = LiveQueryState<BridgeAlbumDetail>(value = null, delivered = true)
+        val query = LiveQueryState.Answered<BridgeAlbumDetail?>(null)
 
         assertEquals(AlbumDetailPlaceholder.NotInLibrary, albumDetailPlaceholder(query, loadError = null))
     }
@@ -22,7 +24,7 @@ class AlbumDetailPlaceholderTest {
     @Test
     fun aFailedReadOffersRetry() {
         val error = DisplayError("Couldn't read the database.")
-        val query = LiveQueryState<BridgeAlbumDetail>(value = null, delivered = true)
+        val query = LiveQueryState.Failed(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
 
         assertEquals(AlbumDetailPlaceholder.Failed(error), albumDetailPlaceholder(query, error))
     }
@@ -31,7 +33,7 @@ class AlbumDetailPlaceholderTest {
     fun aReadNotYetAnsweredIsLoading() {
         assertEquals(
             AlbumDetailPlaceholder.Loading,
-            albumDetailPlaceholder(LiveQueryState(), loadError = null),
+            albumDetailPlaceholder(LiveQueryState.Waiting, loadError = null),
         )
     }
 }

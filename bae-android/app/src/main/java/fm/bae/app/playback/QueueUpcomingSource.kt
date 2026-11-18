@@ -4,6 +4,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.data.Library
 import fm.bae.app.data.ListReads
 import fm.bae.app.data.OpenList
+import fm.bae.app.data.answer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,23 +58,25 @@ internal class UpcomingTail(
      */
     private var opening: OrderReads? = null
 
-    /** The tail's length as the shown count last said it; 0 until the count delivers. */
+    /** The tail's length as the shown count last said it; 0 until the count delivers and after it fails. */
     val total: Int
         get() =
             shown
                 ?.list
                 ?.count
+                ?.answer
                 ?.rows
                 ?.toInt() ?: 0
 
     /** How many holds each place has: the rows on screen. */
     private val holds = mutableMapOf<Int, Int>()
 
-    /** The rows the shown view's window holds, by index in the tail. */
+    /** The rows the shown view's window holds, by index in the tail; none after the view's read failed. */
     fun entries(): Map<Int, BridgeQueueEntry> =
         shown
             ?.list
-            ?.delivered
+            ?.view
+            ?.answer
             ?.let { window -> window.rows.mapIndexed { i, entry -> window.start + i to entry } }
             .orEmpty()
             .toMap()

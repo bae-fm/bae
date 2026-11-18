@@ -1,5 +1,6 @@
 package fm.bae.app.ui.library
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
+import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
 import fm.bae.app.metadataText
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -37,7 +39,6 @@ import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailItem
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerHeading
-import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeWorkDetail
 
 @Composable
@@ -51,7 +52,6 @@ internal fun ComposerDetailScreen(
 ) {
     val query by session.libraryQueries.composer.state
         .collectAsState()
-    val detail = query.value
     val rows = session.browserPages.composerRows
     val screenRows = rememberScreenRows()
     DisposableEffect(artistId, session) {
@@ -63,64 +63,63 @@ internal fun ComposerDetailScreen(
             rows.deactivate(artistId)
         }
     }
-    val loadError =
-        when {
-            query.error != null -> stringResource(R.string.composer_detail_load_failed)
-            query.delivered && detail == null -> stringResource(R.string.composer_detail_not_found)
-            else -> null
-        }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
-        val loaded = detail
-        val error = loadError
-        when {
-            error != null && loaded == null -> {
-                ComposerLoadFailure(error, query.error, session.libraryQueries.composer::retry)
-            }
-
-            // The detail is a local read; nothing shows until it lands.
-            loaded == null -> {}
-
-            else -> {
-                error?.let {
-                    ErrorText(
-                        message = it,
-                        modifier = Modifier.padding(ThemeSpace.related),
-                    )
-                }
-                ComposerDetailContent(
-                    detail = loaded,
-                    rows = rows,
-                    onSelectWork = onSelectWork,
-                    onSelectAlbum = onSelectAlbum,
-                )
-            }
+        DetailAnswer(
+            query = query,
+            loadFailed = R.string.composer_detail_load_failed,
+            notFound = R.string.composer_detail_not_found,
+            onRetry = session.libraryQueries.composer::retry,
+        ) { detail ->
+            ComposerDetailContent(
+                detail = detail,
+                rows = rows,
+                onSelectWork = onSelectWork,
+                onSelectAlbum = onSelectAlbum,
+            )
         }
     }
 }
 
-/** A composer page that did not load: the centred notice when core failed, else the plain line. */
+/**
+ * A composer's or a work's page as its read answers: the centred notice when the read failed, nothing until it
+ * answers, the plain [notFound] line once no such item exists, else its [content].
+ */
 @Composable
-private fun ComposerLoadFailure(
-    title: String,
-    failure: BridgeException?,
+private fun <Detail : Any> DetailAnswer(
+    query: LiveQueryState<Detail?>,
+    @StringRes loadFailed: Int,
+    @StringRes notFound: Int,
     onRetry: () -> Unit,
+    content: @Composable (Detail) -> Unit,
 ) {
-    if (failure == null) {
-        ErrorText(message = title, modifier = Modifier.padding(ThemeSpace.page))
-        return
+    when (query) {
+        is LiveQueryState.Failed -> {
+            val shown = LocalContext.current.displayError(query.error)
+            AndroidNotice(
+                title = stringResource(loadFailed),
+                advice = null,
+                error = shown,
+                look = NoticeLook.CENTERED,
+                action = shown.retryAction(onClick = onRetry),
+            )
+        }
+
+        // The detail is a local read; nothing shows until it lands.
+        LiveQueryState.Waiting -> {}
+
+        is LiveQueryState.Answered -> {
+            val detail = query.value
+            if (detail == null) {
+                ErrorText(message = stringResource(notFound), modifier = Modifier.padding(ThemeSpace.page))
+            } else {
+                content(detail)
+            }
+        }
     }
-    val shown = LocalContext.current.displayError(failure)
-    AndroidNotice(
-        title = title,
-        advice = null,
-        error = shown,
-        look = NoticeLook.CENTERED,
-        action = shown.retryAction(onClick = onRetry),
-    )
 }
 
 /**
@@ -147,24 +146,26 @@ private fun ComposerDetailContent(
             rows.reportVisibleRange(first, last)
         }
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        rows.error?.let { failure ->
-            AndroidNotice(
-                error = failure.error,
-                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
-                action = failure.error.retryAction(onClick = failure.onRetry),
-                look = NoticeLook.QUIET,
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        item {
+            AndroidLibraryRow(
+                title = detail.composer.name,
+                subtitle = context.coreString(detail.composer.countLine),
+                art = detail.composer.image,
+                missing = detail.composer.image == null,
             )
         }
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        val failure = rows.error
+        if (failure != null) {
             item {
-                AndroidLibraryRow(
-                    title = detail.composer.name,
-                    subtitle = context.coreString(detail.composer.countLine),
-                    art = detail.composer.image,
-                    missing = detail.composer.image == null,
+                AndroidNotice(
+                    error = failure.error,
+                    modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                    action = failure.error.retryAction(onClick = failure.onRetry),
+                    look = NoticeLook.QUIET,
                 )
             }
+        } else {
             items(
                 count = rows.totalCount,
                 key = { index -> rows.rowAt(index)?.id ?: "composer-row-slot-$index" },
@@ -241,47 +242,28 @@ internal fun WorkDetailScreen(
 ) {
     val query by session.libraryQueries.work.state
         .collectAsState()
-    val detail = query.value
     DisposableEffect(workId, session) {
         session.libraryQueries.work.activate(workId)
         onDispose {
             session.libraryQueries.work.deactivate(workId)
         }
     }
-    val loadError =
-        when {
-            query.error != null -> stringResource(R.string.work_detail_load_failed)
-            query.delivered && detail == null -> stringResource(R.string.work_detail_not_found)
-            else -> null
-        }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
     ) {
-        val loaded = detail
-        val error = loadError
-        when {
-            error != null && loaded == null -> {
-                ComposerLoadFailure(error, query.error, session.libraryQueries.composer::retry)
-            }
-
-            // The detail is a local read; nothing shows until it lands.
-            loaded == null -> {}
-
-            else -> {
-                error?.let {
-                    ErrorText(
-                        message = it,
-                        modifier = Modifier.padding(ThemeSpace.related),
-                    )
-                }
-                WorkDetailContent(
-                    detail = loaded,
-                    onSelectWork = onSelectWork,
-                    onSelectAlbum = onSelectAlbum,
-                )
-            }
+        DetailAnswer(
+            query = query,
+            loadFailed = R.string.work_detail_load_failed,
+            notFound = R.string.work_detail_not_found,
+            onRetry = session.libraryQueries.work::retry,
+        ) { detail ->
+            WorkDetailContent(
+                detail = detail,
+                onSelectWork = onSelectWork,
+                onSelectAlbum = onSelectAlbum,
+            )
         }
     }
 }

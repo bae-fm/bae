@@ -26,9 +26,6 @@
     <string name="sort_by">Řadit podle</string>
     <string name="library_empty_albums">Zatím žádná alba</string>
     <string name="library_load_failed">Nelze načíst vaši knihovnu.</string>
-    <string name="library_load_more_albums_failed">Nelze načíst další alba.</string>
-    <string name="library_load_more_artists_failed">Nelze načíst další interprety.</string>
-    <string name="library_load_more_composers_failed">Nelze načíst další skladatele.</string>
     <string name="library">Knihovna</string>
     <string name="album_not_in_library">Toto album už ve vaší knihovně není.</string>
     <string name="playlist_not_in_library">Tento seznam skladeb už ve vaší knihovně není.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Detail díla nebyl nalezen</string>
     <string name="composer_detail_load_failed">Tohoto skladatele se nepodařilo načíst</string>
     <string name="library_read_failed">Knihovnu se nepodařilo přečíst</string>
-    <string name="albums_append_failed">Další alba se nepodařilo načíst.</string>
     <string name="artist_also_credited_as">Uváděn také jako</string>
     <string name="composer_detail_not_found">Detail skladatele nebyl nalezen</string>
     <string name="search_section_recordings">Nahrávky</string>
@@ -486,7 +482,6 @@
     <string name="pins_at_once">Souběžná připnutí</string>
     <string name="pinning_empty">Nic k připnutí</string>
     <string name="pinning_load_failed">Připnutí se nepodařilo načíst.</string>
-    <string name="pinning_load_more_failed">Další připnutí se nepodařilo načíst.</string>
     <string name="onboarding_invited_to">Jste pozváni do %1$s</string>
     <string name="onboarding_join_library">Připojit se ke knihovně</string>
     <string name="onboarding_join">Připojit se</string>

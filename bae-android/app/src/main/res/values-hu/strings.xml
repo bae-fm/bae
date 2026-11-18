@@ -26,9 +26,6 @@
     <string name="sort_by">Rendezés alapja</string>
     <string name="library_empty_albums">Még nincs album</string>
     <string name="library_load_failed">A könyvtáradat nem sikerült betölteni.</string>
-    <string name="library_load_more_albums_failed">Nem sikerült több albumot betölteni.</string>
-    <string name="library_load_more_artists_failed">Nem sikerült több előadót betölteni.</string>
-    <string name="library_load_more_composers_failed">Nem sikerült több zeneszerzőt betölteni.</string>
     <string name="library">Könyvtár</string>
     <string name="album_not_in_library">Ez az album már nincs a könyvtáradban.</string>
     <string name="playlist_not_in_library">Ez a lejátszási lista már nincs a könyvtáradban.</string>
@@ -81,7 +78,6 @@
     <string name="work_detail_not_found">A mű adatlapja nem található</string>
     <string name="composer_detail_load_failed">Ezt a zeneszerzőt nem sikerült betölteni</string>
     <string name="library_read_failed">Nem sikerült beolvasni a könyvtáradat</string>
-    <string name="albums_append_failed">További albumokat nem sikerült beolvasni.</string>
     <string name="artist_also_credited_as">Más néven is szerepel</string>
     <string name="composer_detail_not_found">A zeneszerző adatlapja nem található</string>
     <string name="search_section_recordings">Felvételek</string>
@@ -468,7 +464,6 @@
     <string name="pins_at_once">Egyidejű rögzítések</string>
     <string name="pinning_empty">Nincs mit rögzíteni</string>
     <string name="pinning_load_failed">Nem sikerült betölteni a rögzítéseket.</string>
-    <string name="pinning_load_more_failed">Nem sikerült további rögzítéseket betölteni.</string>
     <string name="onboarding_invited_to">Meghívást kaptál ide: %1$s</string>
     <string name="onboarding_join_library">Csatlakozás könyvtárhoz</string>
     <string name="onboarding_join">Csatlakozás</string>

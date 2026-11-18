@@ -41,9 +41,6 @@
     <string name="sort_by">Sort by</string>
     <string name="library_empty_albums">No albums yet</string>
     <string name="library_load_failed">Could not load your library.</string>
-    <string name="library_load_more_albums_failed">Could not load more albums.</string>
-    <string name="library_load_more_artists_failed">Could not load more artists.</string>
-    <string name="library_load_more_composers_failed">Could not load more composers.</string>
     <!-- The library as a place: the home screen's title, the back button to it, and the car's browse root. -->
     <string name="library">Library</string>
 
@@ -107,7 +104,6 @@
     <string name="work_detail_not_found">Work detail not found</string>
     <string name="composer_detail_load_failed">Could not load this composer</string>
     <string name="library_read_failed">Could not read your library</string>
-    <string name="albums_append_failed">Could not read more albums.</string>
     <string name="artist_also_credited_as">Also credited as</string>
     <string name="composer_detail_not_found">Composer detail not found</string>
     <string name="search_section_recordings">Recordings</string>
@@ -529,7 +525,6 @@
     <string name="pins_at_once">Pins at once</string>
     <string name="pinning_empty">Nothing to pin</string>
     <string name="pinning_load_failed">Could not load your pins.</string>
-    <string name="pinning_load_more_failed">Could not load more pins.</string>
     <string name="onboarding_invited_to">You are invited to %1$s</string>
     <string name="onboarding_join_library">Join library</string>
     <string name="onboarding_join">Join</string>

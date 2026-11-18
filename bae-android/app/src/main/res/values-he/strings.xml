@@ -26,9 +26,6 @@
     <string name="sort_by">מיון לפי</string>
     <string name="library_empty_albums">עדיין אין אלבומים</string>
     <string name="library_load_failed">לא ניתן לטעון את הספרייה שלך.</string>
-    <string name="library_load_more_albums_failed">לא ניתן לטעון אלבומים נוספים.</string>
-    <string name="library_load_more_artists_failed">לא ניתן לטעון אמנים נוספים.</string>
-    <string name="library_load_more_composers_failed">לא ניתן לטעון מלחינים נוספים.</string>
     <string name="library">ספרייה</string>
     <string name="album_not_in_library">האלבום הזה כבר לא נמצא בספרייה שלך.</string>
     <string name="playlist_not_in_library">רשימת ההשמעה הזו כבר לא נמצאת בספרייה שלך.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">פרטי היצירה לא נמצאו</string>
     <string name="composer_detail_load_failed">לא ניתן לטעון את המלחין הזה</string>
     <string name="library_read_failed">לא ניתן לקרוא את הספרייה שלך</string>
-    <string name="albums_append_failed">לא ניתן היה לקרוא אלבומים נוספים.</string>
     <string name="artist_also_credited_as">מופיע גם בשם</string>
     <string name="composer_detail_not_found">פרטי המלחין לא נמצאו</string>
     <string name="search_section_recordings">הקלטות</string>
@@ -478,7 +474,6 @@
     <string name="pins_at_once">הצמדות בו-זמניות</string>
     <string name="pinning_empty">אין מה להצמיד</string>
     <string name="pinning_load_failed">לא ניתן לטעון את ההצמדות.</string>
-    <string name="pinning_load_more_failed">לא ניתן לטעון הצמדות נוספות.</string>
     <string name="onboarding_invited_to">הוזמנת אל %1$s</string>
     <string name="onboarding_join_library">הצטרפות לספרייה</string>
     <string name="onboarding_join">הצטרפות</string>

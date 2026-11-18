@@ -26,9 +26,6 @@
     <string name="sort_by">Lajitteluperuste</string>
     <string name="library_empty_albums">Ei vielä albumeita</string>
     <string name="library_load_failed">Kirjastoasi ei voitu ladata.</string>
-    <string name="library_load_more_albums_failed">Lisää albumeita ei voitu ladata.</string>
-    <string name="library_load_more_artists_failed">Lisää esittäjiä ei voitu ladata.</string>
-    <string name="library_load_more_composers_failed">Lisää säveltäjiä ei voitu ladata.</string>
     <string name="library">Kirjasto</string>
     <string name="album_not_in_library">Tämä albumi ei ole enää kirjastossasi.</string>
     <string name="playlist_not_in_library">Tämä soittolista ei ole enää kirjastossasi.</string>
@@ -81,7 +78,6 @@
     <string name="work_detail_not_found">Teoksen tietoja ei löytynyt</string>
     <string name="composer_detail_load_failed">Tätä säveltäjää ei voitu ladata</string>
     <string name="library_read_failed">Kirjastoasi ei voitu lukea</string>
-    <string name="albums_append_failed">Lisää albumeita ei voitu lukea.</string>
     <string name="artist_also_credited_as">Mainitaan myös nimellä</string>
     <string name="composer_detail_not_found">Säveltäjän tietoja ei löytynyt</string>
     <string name="search_section_recordings">Äänitteet</string>
@@ -468,7 +464,6 @@
     <string name="pins_at_once">Samanaikaiset kiinnitykset</string>
     <string name="pinning_empty">Ei kiinnitettävää</string>
     <string name="pinning_load_failed">Kiinnityksiä ei voitu ladata.</string>
-    <string name="pinning_load_more_failed">Lisää kiinnityksiä ei voitu ladata.</string>
     <string name="onboarding_invited_to">Sinut on kutsuttu kirjastoon %1$s</string>
     <string name="onboarding_join_library">Liity kirjastoon</string>
     <string name="onboarding_join">Liity</string>

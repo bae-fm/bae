@@ -26,9 +26,6 @@
     <string name="sort_by">Sorteren op</string>
     <string name="library_empty_albums">Nog geen albums</string>
     <string name="library_load_failed">Kan je bibliotheek niet laden.</string>
-    <string name="library_load_more_albums_failed">Kan geen extra albums laden.</string>
-    <string name="library_load_more_artists_failed">Kan geen extra artiesten laden.</string>
-    <string name="library_load_more_composers_failed">Kan geen extra componisten laden.</string>
     <string name="library">Bibliotheek</string>
     <string name="album_not_in_library">Dit album staat niet meer in je bibliotheek.</string>
     <string name="playlist_not_in_library">Deze afspeellijst staat niet meer in je bibliotheek.</string>
@@ -77,7 +74,6 @@
     <string name="work_detail_not_found">Werkdetails niet gevonden</string>
     <string name="composer_detail_load_failed">Kan deze componist niet laden</string>
     <string name="library_read_failed">Je bibliotheek kon niet worden gelezen</string>
-    <string name="albums_append_failed">Kan niet meer albums lezen.</string>
     <string name="artist_also_credited_as">Ook vermeld als</string>
     <string name="composer_detail_not_found">Componistdetails niet gevonden</string>
     <string name="search_section_recordings">Opnamen</string>
@@ -470,7 +466,6 @@
     <string name="pins_at_once">Gelijktijdig vastzetten</string>
     <string name="pinning_empty">Niets om vast te zetten</string>
     <string name="pinning_load_failed">Kon je vastgezette items niet laden.</string>
-    <string name="pinning_load_more_failed">Kon niet meer vastgezette items laden.</string>
     <string name="onboarding_invited_to">Je bent uitgenodigd voor %1$s</string>
     <string name="onboarding_join_library">Word lid van een bibliotheek</string>
     <string name="onboarding_join">Deelnemen</string>

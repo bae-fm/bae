@@ -67,7 +67,6 @@ internal class AlbumPageStore(
         appContext,
         errors,
         scope,
-        loadMoreFailed = R.string.library_load_more_albums_failed,
     ) {
     fun activate(
         criterion: BridgeSortCriterion,
@@ -89,7 +88,6 @@ internal class ArtistPageStore(
         appContext,
         errors,
         scope,
-        loadMoreFailed = R.string.library_load_more_artists_failed,
     ) {
     override fun open(parameter: BridgeArtistSortCriterion) = library.artistList(parameter)
 }
@@ -103,7 +101,6 @@ internal class ComposerPageStore(
         appContext,
         errors,
         scope,
-        loadMoreFailed = R.string.library_load_more_composers_failed,
     ) {
     override fun open(parameter: BridgeComposerSortCriterion) = library.composerList(parameter)
 }
@@ -118,7 +115,6 @@ internal class ComposerDetailRowsPageStore(
         appContext,
         errors,
         scope,
-        loadMoreFailed = R.string.composer_detail_load_failed,
         loadFailed = R.string.composer_detail_load_failed,
     ) {
     override fun open(parameter: String): ListReads<BridgeComposerDetailRow> = library.composerPageList(parameter)
@@ -134,7 +130,6 @@ internal class DownloadPageStore(
         appContext,
         errors,
         scope,
-        loadMoreFailed = R.string.pinning_load_more_failed,
         loadFailed = R.string.pinning_load_failed,
     ) {
     override fun open(parameter: Unit): ListReads<BridgeDownloadOp> = library.downloadList()

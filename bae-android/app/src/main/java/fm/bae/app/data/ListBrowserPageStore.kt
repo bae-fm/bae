@@ -18,19 +18,18 @@ private val logger = BaeLogger("bae.ListBrowserPageStore")
 
 /**
  * One library list read through an [OpenList]: its view and its count, and its headings as a read of their own.
- * The screen reports the rows it shows, and core keeps the window it reads around them.
+ * The screen reports the rows it shows, and core keeps the window it reads around them. A failed read replaces the
+ * list's rows with the failure until every read answers with a value again.
  */
 internal abstract class ListBrowserPageStore<Parameter, Row>(
     private val appContext: Context,
     /** Core's answer to whether a failed read is worth reading again. */
     private val errors: ErrorDisplays,
     private val scope: CoroutineScope,
-    /** The headline for a later read that failed, naming what this list holds. */
-    @StringRes private val loadMoreFailed: Int,
-    /** The headline for the first read failing, naming what this list holds. */
+    /** The headline for a failed read, naming what this list holds. */
     @StringRes private val loadFailed: Int = R.string.library_load_failed,
 ) : BrowserPageState {
-    /** The open list's reads; null until [activate] and after [deactivate]. A failed read stops them and keeps them. */
+    /** The open list's reads; null until [activate] and after [deactivate]. */
     private var reader by mutableStateOf<OpenList<Row>?>(null)
 
     /**
@@ -42,6 +41,7 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         get() =
             reader
                 ?.count
+                ?.answer
                 ?.rows
                 ?.toInt() ?: 0
     override var loading by mutableStateOf(true)
@@ -51,11 +51,13 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
     override val hasRows: Boolean get() = firstReadReturned && totalCount > 0
 
     /** Whether the album grid's count says the grid groups its rows by artist; other lists never do. */
-    val grouped: Boolean get() = (reader?.count?.extra as? BridgeListCountExtra.AlbumGrid)?.grouped == true
+    val grouped: Boolean get() = (reader?.count?.answer?.extra as? BridgeListCountExtra.AlbumGrid)?.grouped == true
 
-    /** The artist headings of the album grid grouped by artist, from their own read. */
-    var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())
-        private set
+    /** The latest answer of the album grid's artist headings, a read of their own; null for a list without them. */
+    private var sectionsRead by mutableStateOf<LiveQueryState<List<BridgeLibraryBrowseSection>>?>(null)
+
+    /** The artist headings of the album grid grouped by artist; none until they answer and after they fail. */
+    val sections: List<BridgeLibraryBrowseSection> get() = sectionsRead?.answer.orEmpty()
 
     private var parameter: Parameter? = null
     private var active = false
@@ -71,7 +73,7 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
     fun activate(parameter: Parameter) {
         if (active && this.parameter == parameter) return
         close()
-        sections = emptyList()
+        sectionsRead = null
         loading = true
         error = null
         firstReadReturned = false
@@ -84,11 +86,20 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         reader = opening
         sectionDeliveries =
             opened.sections?.let { open ->
+                sectionsRead = LiveQueryState.Waiting
                 ScreenSubscription(
                     open(),
                     scope,
-                    onValue = { if (current == generation && it != sections) sections = it },
-                    onError = { failed(it, current) },
+                    onValue = {
+                        if (current == generation) {
+                            if (sectionsRead?.answer != it) sectionsRead = LiveQueryState.Answered(it)
+                            changed(current)
+                        }
+                    },
+                    onError = {
+                        if (current == generation) sectionsRead = LiveQueryState.Failed(it)
+                        failed(it, current)
+                    },
                 )
             }
         opening.start(0, maxOf(screenRows, 1) - 1)
@@ -103,7 +114,7 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         active = false
         close()
         reader = null
-        sections = emptyList()
+        sectionsRead = null
     }
 
     fun reportVisibleRange(
@@ -121,25 +132,26 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
 
     protected abstract fun open(parameter: Parameter): ListReads<Row>
 
+    /** A read delivered: the failure goes once no read's latest answer is one. */
     private fun changed(openedGeneration: Int) {
         if (openedGeneration != generation || !active) return
-        if (reader?.answered == true) {
+        val list = reader ?: return
+        if (list.failure == null && sectionsRead !is LiveQueryState.Failed) error = null
+        if (list.answered) {
             firstReadReturned = true
             loading = false
-            error = null
         }
     }
 
-    /** A failed read closes the list's reads, since it can no longer update, until [retry] opens them again. */
+    /** A failed read stands in place of the rows; the reads go on, and [retry] opens them again. */
     private fun failed(
         value: BridgeException,
         openedGeneration: Int,
     ) {
         if (openedGeneration != generation || !active) return
         logger.error("browser page query failed", value)
-        close()
         loading = false
-        error = PageError(appContext.getString(if (hasRows) loadMoreFailed else loadFailed), value, errors, ::retry)
+        error = PageError(appContext.getString(loadFailed), value, errors, ::retry)
     }
 
     private fun close() {

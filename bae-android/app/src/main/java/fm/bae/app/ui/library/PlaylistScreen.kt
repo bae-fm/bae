@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LiveQueryState
+import fm.bae.app.data.answer
 import fm.bae.app.displayError
 import fm.bae.app.factsLine
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -61,12 +63,12 @@ internal fun PlaylistScreen(
     val query by session.libraryQueries.playlist.state
         .collectAsState()
     // The playlist query is one shared slot that still holds the previous playlist right after navigation.
-    val detail = query.value?.takeIf { it.summary.id == playlistId }
+    val detail = query.answer?.takeIf { it.summary.id == playlistId }
     DisposableEffect(playlistId, session) {
         session.libraryQueries.playlist.activate(playlistId)
         onDispose { session.libraryQueries.playlist.deactivate(playlistId) }
     }
-    val loadError = query.error?.let(LocalContext.current::displayError)
+    val loadError = (query as? LiveQueryState.Failed)?.error?.let(LocalContext.current::displayError)
     val scope = rememberScreenScope()
     val deletion =
         rememberPageDeletion<BridgePlaylistSummary>(session, "delete playlist $playlistId", scope, onBack) {
@@ -104,7 +106,7 @@ internal fun PlaylistScreen(
                 }
 
                 // The playlist was deleted, here or on another device.
-                query.delivered -> {
+                query is LiveQueryState.Answered -> {
                     Text(
                         text = stringResource(R.string.playlist_not_in_library),
                         style = ThemeText.body.style,
