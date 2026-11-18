@@ -47,6 +47,40 @@ impl AppHandle {
         )
     }
 
+    /// Read live the `limit` rows of `list` from position `offset`: the rows
+    /// at those places, none past the list's end, again after each write
+    /// that changes them.
+    pub fn subscribe_list_page(
+        &self,
+        list: BridgePagedList,
+        offset: u64,
+        limit: u64,
+    ) -> Arc<crate::ListPageSubscription> {
+        let services = &self.services;
+        let page = bae_store::ListPage { offset, limit };
+        let live = match list {
+            BridgePagedList::AlbumGrid { sort, group_by_artist } => {
+                services.subscribe_album_page(&BridgeList::album_sort(sort), group_by_artist, page)
+            }
+            BridgePagedList::Composers { sort } => {
+                services.subscribe_composer_page(&BridgeList::composer_sort(sort), page)
+            }
+            BridgePagedList::ComposerPage { artist_id } => {
+                services.subscribe_composer_page_rows(&artist_id, page)
+            }
+            BridgePagedList::AlbumTracks { album_id } => {
+                services.subscribe_album_track_page(&album_id, page)
+            }
+            BridgePagedList::WorkChildren { work_id } => {
+                services.subscribe_work_child_page(&work_id, page)
+            }
+            BridgePagedList::SearchAlbums { query } => {
+                services.subscribe_search_album_page(BridgeList::search_query(&query), page)
+            }
+        };
+        crate::screens::list_page(live, self.runtime.clone())
+    }
+
     /// Read live how many rows `list` has, with the values its count carries
     /// (`BridgeListCountExtra`).
     pub fn subscribe_list_count(&self, list: BridgeList) -> Arc<crate::ListCountSubscription> {

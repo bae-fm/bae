@@ -39,6 +39,15 @@ impl ListViewSubscription {
 }
 
 pulled_read! {
+    /// One page of a list, read live: the rows at the page's places, none
+    /// past the list's end, as a media browser shows them.
+    ListPageSubscription:
+        bae_store::live_query::LiveValues<bae_views::ListRows> => BridgeListRows,
+    converted by BridgeListRows::from_core,
+    built by list_page
+}
+
+pulled_read! {
     /// Read live how many rows a list has, with the values its count carries
     /// (`BridgeListCountExtra`).
     ListCountSubscription:
@@ -80,7 +89,13 @@ impl BridgeList {
 
 impl BridgeListView {
     pub(crate) fn from_core(value: ListViewValue) -> Self {
-        let rows = match value.rows {
+        Self { start: value.start, rows: BridgeListRows::from_core(value.rows) }
+    }
+}
+
+impl BridgeListRows {
+    pub(crate) fn from_core(rows: bae_views::ListRows) -> Self {
+        match rows {
             bae_views::ListRows::Albums(rows) => BridgeListRows::Albums {
                 rows: rows
                     .into_iter()
@@ -137,8 +152,7 @@ impl BridgeListView {
                     .collect(),
                 leading_header: leading_header.map(crate::types::BridgeImportListItem::from_core),
             },
-        };
-        Self { start: value.start, rows }
+        }
     }
 }
 

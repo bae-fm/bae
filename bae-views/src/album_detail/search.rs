@@ -41,7 +41,7 @@ impl SearchResults {
 }
 
 /// A field-by-field copy of `DbAlbumSearchResult` under the public name.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AlbumSearchResult {
     pub id: String,
     pub title: String,
@@ -56,7 +56,7 @@ pub struct AlbumSearchResult {
 
 /// A resolved track hit: the raw row's display fields plus the cover of the
 /// release the track belongs to.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TrackSearchResult {
     pub id: String,
     pub title: String,

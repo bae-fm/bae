@@ -4899,12 +4899,14 @@ first album it finds that has a track on its main release. The search says
 which, and nothing plays when it finds neither. Android Auto reads that answer,
 and each item it opens, once from the database, not through a live query. The
 database picks the one track an item names, so Android Auto never filters rows
-it already holds. Each page of an album's tracks, a work's children or the
-albums a search lists that Android Auto shows is its own live read, bounded by
-the keys of the page's first row and of the row after its last, so Android
-Auto never pages through rows it already holds. The number of rows in each
-such list comes from a count the database takes, never from rows Android Auto
-holds.
+it already holds. Each page that Android Auto shows of the albums, the
+composers, a composer's page, an album's tracks, a work's children or the
+albums a search lists is its own live read of the rows at the page's places,
+read by offset: core hands Android Auto exactly the page's rows, and none for a
+page past the list's end, so Android Auto never pages through rows it already
+holds and never compares a page with the list's count. The number of rows in
+each such list comes from a count the database takes, never from rows Android
+Auto holds.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless

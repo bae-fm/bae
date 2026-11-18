@@ -43,6 +43,22 @@ impl LibraryViews {
         })
     }
 
+    /// Follow one page of the composer list under `sort`: the composers at
+    /// the page's places.
+    pub fn subscribe_composer_page(
+        &self,
+        sort: &[ComposerSortCriterion],
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let order = composer_order(sort);
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| {
+                composer_rows_on(sql, &read_order, seek, limit)
+            })
+            .process(|rows| Ok(crate::ListRows::Composers(rows)))
+    }
+
     /// Follow how many composers the list has. The count runs as a separate
     /// query from the windows' rows.
     pub fn subscribe_composer_count(&self) -> coven::LiveQuery<u64, bae_store::DbError> {
@@ -123,6 +139,23 @@ impl LibraryViews {
         })
     }
 
+    /// Follow one page of the work `work_id`'s children: the children at the
+    /// page's places, as a media browser lists them.
+    pub fn subscribe_work_child_page(
+        &self,
+        work_id: &str,
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let work_id = work_id.to_string();
+        let order = work_child_order();
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| {
+                work_child_rows_on(sql, &work_id, &read_order, seek, limit)
+            })
+            .process(|rows| Ok(work_child_rows(rows)))
+    }
+
     /// Follow how many children the work `work_id` has. The count runs as a
     /// separate query from the windows' rows.
     pub fn subscribe_work_child_count(
@@ -188,18 +221,21 @@ pub fn resolve_composer_window(read: WindowRead<DbComposerSummary>) -> crate::Li
 /// One delivery of a window of a work's children as a media browser lists
 /// them.
 pub fn resolve_work_child_window(read: WindowRead<DbWorkChild>) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::WorkChildren(
-            rows.into_iter()
-                .map(|child| match child {
-                    DbWorkChild::Part(work) => WorkChild::Part(work),
-                    DbWorkChild::Release(release) => {
-                        WorkChild::Release(WorkReleaseSummary::from_raw(release))
-                    }
-                })
-                .collect(),
-        )
-    })
+    crate::ListWindowValue::of(read, work_child_rows)
+}
+
+/// A work's children as a media browser lists them.
+fn work_child_rows(rows: Vec<DbWorkChild>) -> crate::ListRows {
+    crate::ListRows::WorkChildren(
+        rows.into_iter()
+            .map(|child| match child {
+                DbWorkChild::Part(work) => WorkChild::Part(work),
+                DbWorkChild::Release(release) => {
+                    WorkChild::Release(WorkReleaseSummary::from_raw(release))
+                }
+            })
+            .collect(),
+    )
 }
 
 /// One delivery of the work detail as the detail view shows it.

@@ -144,6 +144,75 @@ impl AppServices {
 }
 
 impl AppServices {
+    /// One page of the album grid under `sort`, flat or grouped by artist:
+    /// the rows at the page's places, the first value at once, then one after
+    /// each write that changes them.
+    pub fn subscribe_album_page(
+        &self,
+        sort: &[bae_views::AlbumSortCriterion],
+        group_by_artist: bool,
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(self.inner.views.subscribe_album_page(
+            sort,
+            group_by_artist,
+            page,
+        ))
+    }
+
+    /// One page of the composer list under `sort`.
+    pub fn subscribe_composer_page(
+        &self,
+        sort: &[bae_views::ComposerSortCriterion],
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(self.inner.views.subscribe_composer_page(sort, page))
+    }
+
+    /// One page of the rows of `artist_id`'s composer page.
+    pub fn subscribe_composer_page_rows(
+        &self,
+        artist_id: &str,
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager
+            .values_until_closed(self.inner.views.subscribe_composer_detail_page(artist_id, page))
+    }
+
+    /// One page of the album `album_id`'s tracks.
+    pub fn subscribe_album_track_page(
+        &self,
+        album_id: &str,
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(self.inner.views.subscribe_album_track_page(album_id, page))
+    }
+
+    /// One page of the work `work_id`'s children.
+    pub fn subscribe_work_child_page(
+        &self,
+        work_id: &str,
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(self.inner.views.subscribe_work_child_page(work_id, page))
+    }
+
+    /// One page of the albums library search's `query` lists; no query
+    /// (`None`) lists none.
+    pub fn subscribe_search_album_page(
+        &self,
+        query: Option<bae_views::LibrarySearchQuery>,
+        page: bae_store::ListPage,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
+        let manager = &self.inner.manager;
+        manager.values_until_closed(self.inner.views.subscribe_search_album_page(query, page))
+    }
+
     /// Open the view of the list `reads` reads, with the rows `visible` on
     /// screen: the view runs as a task of the library's, and the screen holds
     /// the handle it returns. The view ends when the handle is cancelled or

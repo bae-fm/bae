@@ -335,6 +335,50 @@ async fn grouped_by_title(db: &Store) -> Vec<String> {
     shown.rows.iter().map(|(row, _key)| row.album.title.clone()).collect()
 }
 
+/// The titles of the album grid's rows a page of it delivers.
+fn page_titles(rows: crate::ListRows) -> Vec<String> {
+    let crate::ListRows::Albums(rows) = rows else {
+        panic!("the album grid's page holds albums");
+    };
+    rows.into_iter().map(|row| row.album.title).collect()
+}
+
+/// A page of the grid holds the rows at its places, holds none past the
+/// grid's end, and follows a write that moves another row into its places.
+#[tokio::test]
+async fn a_page_holds_the_rows_at_its_places() {
+    let (db, _dir) = grouped_library().await;
+    let views = crate::LibraryViews::new(db.clone());
+    let sort =
+        [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
+    let page = |offset| bae_store::ListPage { offset, limit: 2 };
+    let first = |offset| {
+        let mut live = views.subscribe_album_page(&sort, true, page(offset));
+        async move {
+            tokio::time::timeout(HANG_GUARD, live.next_inline())
+                .await
+                .expect("a page answers")
+                .expect("the query stays open")
+                .unwrap()
+        }
+    };
+    assert_eq!(page_titles(first(1).await), ["Album B", "Album D"]);
+    assert_eq!(page_titles(first(4).await), ["Album C"]);
+    assert_eq!(page_titles(first(5).await), Vec::<String>::new());
+
+    let mut live = views.subscribe_album_page(&sort, true, page(3));
+    let before = live.next_inline().await.expect("the query stays open").unwrap();
+    assert_eq!(page_titles(before), ["Album A", "Album C"]);
+    test_records(&db).rename_album_for_test(&grouped_album(2), "Album 0").await.unwrap();
+    let after = tokio::time::timeout(HANG_GUARD, live.next_inline())
+        .await
+        .expect("the write reruns the page")
+        .expect("the query stays open")
+        .unwrap();
+    // "Album 0" sorts before "Album A" among artist A's albums.
+    assert_eq!(page_titles(after), ["Album 0", "Album A"]);
+}
+
 /// Renaming an album moves it among its artist's albums in the grid grouped
 /// by artist.
 #[tokio::test]

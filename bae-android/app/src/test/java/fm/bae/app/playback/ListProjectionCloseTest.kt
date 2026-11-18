@@ -1,7 +1,7 @@
 package fm.bae.app.playback
 
 import fm.bae.app.HANG_GUARD
-import fm.bae.app.data.ListReads
+import fm.bae.app.data.PageReads
 import fm.bae.screensubscription.PulledSubscription
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -20,8 +20,8 @@ class ListProjectionCloseTest {
         runBlocking {
             val count = FailingCancelCount()
             val reads =
-                ListReads<String>(
-                    view = { _, _ -> error("the test reads no view") },
+                PageReads<String>(
+                    page = { _, _ -> error("the test reads no page") },
                     count = { count },
                 )
             val projection =

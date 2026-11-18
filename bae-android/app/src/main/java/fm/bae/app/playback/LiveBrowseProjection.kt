@@ -1,8 +1,7 @@
 package fm.bae.app.playback
 
 import androidx.media3.common.MediaItem
-import fm.bae.app.data.ListReads
-import fm.bae.app.data.ListViewRead
+import fm.bae.app.data.PageReads
 import fm.bae.screensubscription.PulledSubscription
 import fm.bae.screensubscription.pullEach
 import kotlinx.coroutines.CompletableDeferred
@@ -76,9 +75,6 @@ internal class LiveCount(
     private val first = CompletableDeferred<Unit>()
     private var reader: Job? = null
 
-    /** The read's last count; null until its first. */
-    @Volatile private var rows: Int? = null
-
     /** Start reading. The tree starts the read once it holds it, so that [isCurrent] finds it. */
     fun start() {
         reader = scope.launch(start = CoroutineStart.UNDISPATCHED) { read() }
@@ -86,12 +82,6 @@ internal class LiveCount(
 
     /** Wait for the read's first count, throwing its error. */
     suspend fun awaitFirst() = first.await()
-
-    /** The read's last count, once its first has come, throwing its error. */
-    suspend fun awaitTotal(): Int {
-        first.await()
-        return checkNotNull(rows) { "a count answered without a value" }
-    }
 
     /** Stop reading; a wait for the first count gets [reason] when the read closes before it. */
     suspend fun close(reason: BrowseUnavailable) {
@@ -103,7 +93,6 @@ internal class LiveCount(
     private suspend fun read() {
         count.pullEach(
             onValue = { value ->
-                rows = value.rows.toInt()
                 val isFirst = !first.isCompleted
                 if (isCurrent(this@LiveCount)) onCount(value.rows.toInt(), isFirst)
                 first.complete(Unit)
@@ -118,15 +107,15 @@ internal class LiveCount(
 
 /**
  * A database list a controller asks for a page at a time by offset: a browse parent's children, such as an
- * album's tracks or a work's children, or the albums a search lists. For each page asked for, the tree opens a view
- * of the list with the page's rows on screen, whose window core places around them. The view's first rows answer
- * the request, and each later delivery tells the tree, through [onChanged], that the list changed, with the number
- * of rows unknown. A new request for the same page replaces its read. The list's live count tells the tree its
- * first number of rows and each change to it, and says which is the first.
+ * album's tracks or a work's children, or the albums a search lists. For each page asked for, the tree opens the
+ * page's live read, whose rows core reads at the page's places, none past the list's end. The page's first rows
+ * answer the request, and each later delivery tells the tree, through [onChanged], that the list changed, with the
+ * number of rows unknown. A new request for the same page replaces its read. The list's live count tells the tree
+ * its first number of rows and each change to it, and says which is the first.
  */
 internal class ChildPages<Row>(
     private val scope: CoroutineScope,
-    private val reads: ListReads<Row>,
+    private val reads: PageReads<Row>,
     private val item: (Row) -> MediaItem,
     private val onChanged: (itemCount: Int, isFirstCount: Boolean) -> Unit,
     private val onError: (BridgeException) -> Unit,
@@ -158,7 +147,6 @@ internal class ChildPages<Row>(
         offset: Int,
         limit: Int,
     ): List<MediaItem> {
-        if (limit <= 0 || offset >= reportingFailure(onError) { count.awaitTotal() }) return emptyList()
         val page = LivePage(offset, limit)
         val (refusal, replaced) =
             synchronized(lock) {
@@ -182,23 +170,23 @@ internal class ChildPages<Row>(
         open.forEach { it.close(reason) }
     }
 
-    /** One page's live view: its first rows answer the request, and each later delivery is a change. */
+    /** One page's live read: its first rows answer the request, and each later delivery is a change. */
     private inner class LivePage(
         private val offset: Int,
         private val limit: Int,
     ) {
         private val first = CompletableDeferred<List<MediaItem>>()
-        private var read: ListViewRead<Row>? = null
+        private var read: PulledSubscription<List<Row>>? = null
         private var reader: Job? = null
 
         fun start() {
-            val read = reads.view(offset, offset + limit - 1).also { this.read = it }
+            val read = reads.page(offset, limit).also { this.read = it }
             reader =
                 scope.launch(start = CoroutineStart.UNDISPATCHED) {
                     read.pullEach(
-                        onValue = { delivery ->
+                        onValue = { rows ->
                             if (!first.isCompleted) {
-                                first.complete(delivery.page(offset, limit).map(item))
+                                first.complete(rows.map(item))
                             } else if (isCurrent()) {
                                 onChanged(UNKNOWN_CHILD_COUNT, false)
                             }

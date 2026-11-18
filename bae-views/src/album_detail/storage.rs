@@ -118,7 +118,7 @@ impl StorageRowStatus {
 
 /// One row on the Storage Manager view: a release with its parent album,
 /// what its storage state shows, and when it was added.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StorageRow {
     pub release: ReleaseSummary,
     pub album: AlbumSummary,

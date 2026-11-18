@@ -6,7 +6,7 @@ use crate::DbArtistSummary;
 /// One existing library artist offered by an artist picker. Unlike the artist
 /// browser, this includes rows without album links and keeps every exact ID a
 /// person can use to distinguish otherwise identical names.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ArtistSearchResult {
     pub artist: bae_records::DbArtist,
     pub image: Option<ImageRef>,

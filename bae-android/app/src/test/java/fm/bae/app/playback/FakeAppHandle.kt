@@ -43,6 +43,7 @@ import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeOutboxFeeds
+import uniffi.bae_bridge.BridgePagedList
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeQueueLane
@@ -83,6 +84,7 @@ import uniffi.bae_bridge.KeyedValueStream
 import uniffi.bae_bridge.LibraryNameSubscription
 import uniffi.bae_bridge.LibrarySearchSubscription
 import uniffi.bae_bridge.ListCountSubscription
+import uniffi.bae_bridge.ListPageSubscription
 import uniffi.bae_bridge.ListViewSubscription
 import uniffi.bae_bridge.MembersSubscription
 import uniffi.bae_bridge.OpenInviteSubscription
@@ -215,6 +217,22 @@ internal open class FakeAppHandle(
     ): ListViewSubscription = fakeList(list).openView(first, last)
 
     override fun subscribeListCount(list: BridgeList): ListCountSubscription = fakeList(list).openCount()
+
+    override fun subscribeListPage(
+        list: BridgePagedList,
+        offset: ULong,
+        limit: ULong,
+    ): ListPageSubscription =
+        fakeList(
+            when (list) {
+                is BridgePagedList.AlbumGrid -> BridgeList.AlbumGrid(list.sort, list.groupByArtist)
+                is BridgePagedList.Composers -> BridgeList.Composers(list.sort)
+                is BridgePagedList.ComposerPage -> BridgeList.ComposerPage(list.artistId)
+                is BridgePagedList.AlbumTracks -> BridgeList.AlbumTracks(list.albumId)
+                is BridgePagedList.WorkChildren -> BridgeList.WorkChildren(list.workId)
+                is BridgePagedList.SearchAlbums -> BridgeList.SearchAlbums(list.query)
+            },
+        ).openPage(offset, limit)
 
     private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
     private val albumTrackLists = mutableMapOf<String, FakeList<BridgeBrowseTrack>>()

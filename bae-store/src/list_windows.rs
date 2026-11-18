@@ -4,7 +4,8 @@
 //! before them.
 //!
 //! A jump to a position reads the key of the row at that position by offset
-//! once (`key_at`), and the window starts at that key. `RowsBefore` counts
+//! once (`key_at`), and the window starts at that key. A page of a list
+//! (`ListPage`) is the rows at a run of places, read by offset. `RowsBefore` counts
 //! the rows before a key over index ranges in one statement, without
 //! numbering the list. The module keeps nothing about where rows sit between
 //! reads.
@@ -13,7 +14,9 @@ use rusqlite::types::Value;
 use rusqlite::{Row, ToSql};
 
 mod range;
-pub use range::{key_at, read_range, rows_before_on, ListWindow, RowsBefore, WindowRead};
+pub use range::{
+    key_at, read_page, read_range, rows_before_on, ListPage, ListWindow, RowsBefore, WindowRead,
+};
 
 /// Which way a list runs its order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

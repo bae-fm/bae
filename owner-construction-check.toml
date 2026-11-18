@@ -332,6 +332,7 @@ task_types = [
     "LibraryNameSubscription",
     "LibrarySearchSubscription",
     "ListCountSubscription",
+    "ListPageSubscription",
     "ListViewSubscription",
     "MembersSubscription",
     "OpenInviteSubscription",

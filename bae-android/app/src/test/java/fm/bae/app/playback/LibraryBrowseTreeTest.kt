@@ -47,7 +47,7 @@ class LibraryBrowseTreeTest {
             onChildrenChanged = onChildrenChanged,
         )
 
-    /** An album's children on each page are the tracks of a view with the page on screen, and none past the end. */
+    /** An album's children on each page are the tracks at the page's places, and none past the end. */
     @Test
     fun anAlbumsChildrenAreTheWindowOfThePageAsked() =
         runBlocking {
@@ -62,7 +62,7 @@ class LibraryBrowseTreeTest {
             )
             assertEquals(listOf(BrowseId.Track("rel-main", "trk-2").mediaId), tree.children(album, 1, 2)!!.map { it.mediaId })
             assertTrue(tree.children(album, 2, 2)!!.isEmpty())
-            assertEquals(listOf(0..1, 2..3), handle.albumTrackList("album-1").views.map { it.reported.first() })
+            assertEquals(listOf(0..1, 2..3, 4..5), handle.albumTrackList("album-1").pages.map { it.places })
             tree.close()
         }
 
@@ -89,7 +89,7 @@ class LibraryBrowseTreeTest {
 
             val list = handle.albumTrackList("album-1")
             list.rows = listOf(BridgeFixtures.browseTrack(id = "trk-0", title = "New"))
-            list.views.single().deliver()
+            list.pages.single().deliver()
 
             assertEquals(listOf(album to UNKNOWN_CHILD_COUNT), notifications)
             assertEquals(
@@ -99,9 +99,9 @@ class LibraryBrowseTreeTest {
                     .single()
                     .mediaMetadata.title,
             )
-            assertTrue(list.views.first().cancelled)
+            assertTrue(list.pages.first().cancelled)
             tree.close()
-            assertTrue(list.views.last().cancelled)
+            assertTrue(list.pages.last().cancelled)
         }
 
     /** The tree tells the controller each time an album's live track count changes, but not when the read delivers its first count. */
@@ -200,19 +200,19 @@ class LibraryBrowseTreeTest {
             tree.close()
         }
 
-    /** The car asks for a page by offset. The tree opens a view of the albums with that page's rows on screen. */
+    /** The car asks for a page by offset. The tree opens a live read of the albums at that page's places. */
     @Test
-    fun aPageIsAViewWithItsRowsOnScreen() =
+    fun aPageIsALiveReadOfItsPlaces() =
         runBlocking {
             val handle = FakeAppHandle(albumList = FakeAlbumList(albums(100)))
             val children = tree(handle).children(BrowseId.Albums.mediaId, 2, 20)!!
 
             assertEquals(List(20) { BrowseId.Album("album-%04d".format(40 + it)).mediaId }, children.map { it.mediaId })
             assertEquals(
-                listOf(40..59),
-                handle.albumList.views
+                40..59,
+                handle.albumList.pages
                     .single()
-                    .reported,
+                    .places,
             )
             assertEquals(1, handle.albumList.counts.size)
         }
@@ -226,21 +226,26 @@ class LibraryBrowseTreeTest {
 
             assertEquals(200, children.size)
             assertEquals(
-                listOf(800..1599),
-                handle.albumList.views
+                800..1599,
+                handle.albumList.pages
                     .single()
-                    .reported,
+                    .places,
             )
         }
 
-    /** A page past the list's end is empty, and opens no view. */
+    /** A page past the list's end is empty: its read answers with no rows. */
     @Test
     fun aPagePastTheEndIsEmpty() =
         runBlocking {
             val handle = FakeAppHandle(albumList = FakeAlbumList(albums(30)))
 
             assertEquals(emptyList<MediaItem>(), tree(handle).children(BrowseId.Albums.mediaId, 2, 20))
-            assertTrue(handle.albumList.views.isEmpty())
+            assertEquals(
+                40..59,
+                handle.albumList.pages
+                    .single()
+                    .places,
+            )
         }
 
     /** A request that names no page is answered as a bad value, not read as page 0 or one item. */
@@ -253,7 +258,7 @@ class LibraryBrowseTreeTest {
             assertNull(tree.children(BrowseId.Albums.mediaId, -1, 20))
             assertNull(tree.children(BrowseId.Albums.mediaId, 0, 0))
             assertNull(tree.search(Any(), "query", 0, 0))
-            assertTrue(handle.albumList.views.isEmpty())
+            assertTrue(handle.albumList.pages.isEmpty())
             tree.close()
         }
 
@@ -304,7 +309,7 @@ class LibraryBrowseTreeTest {
             val tree = tree(handle) { parent, count -> notifications += parent to count }
 
             tree.subscribeParent(Any(), BrowseId.Albums.mediaId)
-            assertTrue(handle.albumList.views.isEmpty())
+            assertTrue(handle.albumList.pages.isEmpty())
             assertTrue(notifications.isEmpty())
 
             handle.albumList.albums = albums(7)
@@ -323,10 +328,10 @@ class LibraryBrowseTreeTest {
             repeat(13) { tree.children(BrowseId.Albums.mediaId, it, 20) }
 
             assertEquals(1, handle.albumList.counts.size)
-            assertEquals(13, handle.albumList.views.size)
-            assertEquals(12, handle.albumList.views.count { !it.cancelled })
+            assertEquals(13, handle.albumList.pages.size)
+            assertEquals(12, handle.albumList.pages.count { !it.cancelled })
             assertTrue(
-                handle.albumList.views
+                handle.albumList.pages
                     .first()
                     .cancelled,
             )
@@ -334,18 +339,15 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
-    fun aPageRequestWaitsForItsView() =
+    fun aPageRequestWaitsForItsPage() =
         runBlocking {
             val handle = FakeAppHandle(albumList = FakeAlbumList(albums(40), deliverImmediately = false))
             val tree = tree(handle)
             val request = async { tree.children(BrowseId.Albums.mediaId, 1, 20) }
-            withTimeout(HANG_GUARD) { handle.albumList.firstCount.await() }
-            assertTrue(handle.albumList.views.isEmpty())
-            handle.albumList.emitCount()
-            val view = withTimeout(HANG_GUARD) { handle.albumList.firstView.await() }
+            val page = withTimeout(HANG_GUARD) { handle.albumList.firstPage.await() }
             assertFalse(request.isCompleted)
 
-            view.deliver()
+            page.deliver()
 
             assertEquals(List(20) { BrowseId.Album("album-%04d".format(20 + it)).mediaId }, request.await()!!.map { it.mediaId })
         }
@@ -371,12 +373,12 @@ class LibraryBrowseTreeTest {
             val request = async { runCatching { tree.children(BrowseId.Albums.mediaId, 0, 20) }.exceptionOrNull() }
             withTimeout(HANG_GUARD) { handle.albumList.firstCount.await() }
             handle.albumList.emitCount()
-            withTimeout(HANG_GUARD) { handle.albumList.firstView.await() }
+            withTimeout(HANG_GUARD) { handle.albumList.firstPage.await() }
 
             tree.close()
 
             assertTrue(
-                handle.albumList.views
+                handle.albumList.pages
                     .single()
                     .cancelled,
             )
@@ -446,8 +448,8 @@ class LibraryBrowseTreeTest {
             )
             assertTrue(tree.search(owner, "query", 3, 2)!!.isEmpty())
             assertEquals(
-                listOf(2..3),
-                handle.searchAlbumList("query").views.map { it.reported.first() },
+                listOf(2..3, 6..7),
+                handle.searchAlbumList("query").pages.map { it.places },
             )
             tree.close()
         }
@@ -464,7 +466,7 @@ class LibraryBrowseTreeTest {
             tree.subscribeSearch(owner, "query") {}
             assertNull(tree.search(owner, "other", 0, 10))
             assertNull(tree.search(Any(), "query", 0, 10))
-            assertTrue(handle.searchAlbumList("query").views.isEmpty())
+            assertTrue(handle.searchAlbumList("query").pages.isEmpty())
             tree.close()
         }
 
@@ -495,7 +497,7 @@ class LibraryBrowseTreeTest {
 
             val list = handle.searchAlbumList("query")
             list.rows = listOf(BridgeFixtures.albumSearchResult(id = "album-0", title = "New"))
-            list.views.single().deliver()
+            list.pages.single().deliver()
 
             assertEquals(listOf(1, UNKNOWN_CHILD_COUNT), notifications)
             assertEquals(
@@ -505,9 +507,9 @@ class LibraryBrowseTreeTest {
                     .single()
                     .mediaMetadata.title,
             )
-            assertTrue(list.views.first().cancelled)
+            assertTrue(list.pages.first().cancelled)
             tree.close()
-            assertTrue(list.views.last().cancelled)
+            assertTrue(list.pages.last().cancelled)
         }
 
     /** A track item is the one track the database read returns, found by its release and track ids. */
@@ -576,7 +578,7 @@ class LibraryBrowseTreeTest {
             assertTrue(runCatching { tree.subscribeSearch(owner, "second", notifications::add) }.exceptionOrNull() is BridgeException)
             val first = handle.searchAlbumList("first")
             assertTrue("the next phrase ends the last one's count", first.counts.single().cancelled)
-            assertTrue("the next phrase ends the last one's pages", first.views.single().cancelled)
+            assertTrue("the next phrase ends the last one's pages", first.pages.single().cancelled)
             val second = handle.searchAlbumList("second")
             second.countFailure = null
             second.rows = List(2) { BridgeFixtures.albumSearchResult(id = "album-$it") }

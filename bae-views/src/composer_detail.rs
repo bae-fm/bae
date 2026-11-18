@@ -91,6 +91,23 @@ impl LibraryViews {
         })
     }
 
+    /// Follow one page of the rows of `artist_id`'s composer page: the rows
+    /// at the page's places.
+    pub fn subscribe_composer_detail_page(
+        &self,
+        artist_id: &str,
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let artist_id = artist_id.to_string();
+        let order = composer_detail_order("listing");
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| {
+                composer_detail_rows_on(sql, &artist_id, &read_order, seek, limit)
+            })
+            .process(|rows| Ok(composer_detail_rows(rows)))
+    }
+
     /// Follow how many rows `artist_id`'s page holds. The count runs as a
     /// separate query from the windows' rows.
     pub fn subscribe_composer_detail_count(
@@ -153,9 +170,12 @@ fn composer_detail_of(raw: DbComposerDetail) -> ComposerDetail {
 pub fn resolve_composer_detail_window(
     read: WindowRead<DbComposerDetailRow>,
 ) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::ComposerPage(rows.into_iter().map(composer_detail_row_of).collect())
-    })
+    crate::ListWindowValue::of(read, composer_detail_rows)
+}
+
+/// A composer's page's rows as the page shows them.
+fn composer_detail_rows(rows: Vec<DbComposerDetailRow>) -> crate::ListRows {
+    crate::ListRows::ComposerPage(rows.into_iter().map(composer_detail_row_of).collect())
 }
 
 /// A row of a composer's page as its read found it, with the heading it

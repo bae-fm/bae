@@ -17,12 +17,6 @@ internal data class ListViewDelivery<Row>(
 ) {
     /** The row at [position], or null when the window doesn't hold it. */
     fun rowAt(position: Int): Row? = rows.getOrNull(position - start)
-
-    /** The rows from [offset], at most [limit] of them, that the window holds. */
-    fun page(
-        offset: Int,
-        limit: Int,
-    ): List<Row> = rows.drop((offset - start).coerceAtLeast(0)).take(limit)
 }
 
 /**
@@ -42,6 +36,15 @@ internal class ListReads<Row>(
     val count: () -> PulledSubscription<BridgeListCount>,
     /** The album grid grouped by artist: each artist's heading with where its albums start. Other lists have none. */
     val sections: (() -> PulledSubscription<List<BridgeLibraryBrowseSection>>)? = null,
+)
+
+/**
+ * The reads of a list a media browser shows a page at a time: each page, read live, and the list's count.
+ */
+internal class PageReads<Row>(
+    /** The rows at the [limit] places from [offset], none past the list's end, read live. */
+    val page: (offset: Int, limit: Int) -> PulledSubscription<List<Row>>,
+    val count: () -> PulledSubscription<BridgeListCount>,
 )
 
 /**

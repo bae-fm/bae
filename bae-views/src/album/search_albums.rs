@@ -24,6 +24,27 @@ impl LibraryViews {
         })
     }
 
+    /// Follow one page of the albums a search for `query` lists: the albums
+    /// at the page's places. No query (`None`) lists none; its page answers
+    /// with no rows.
+    pub fn subscribe_search_album_page(
+        &self,
+        query: Option<crate::LibrarySearchQuery>,
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let pattern = query.map(|query| search_pattern(query.as_str()));
+        let order = search_album_order();
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| match &pattern {
+                Some(pattern) => {
+                    search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit)
+                }
+                None => Ok(Vec::new()),
+            })
+            .process(|rows| Ok(search_album_rows(rows)))
+    }
+
     /// Follow how many albums a search for `query` lists: the albums it
     /// finds, up to [`crate::SEARCH_RESULT_LIMIT`]. The count runs as a
     /// separate query from the windows' rows. No query (`None`) lists none.
@@ -88,11 +109,14 @@ impl LibraryViews {
 pub fn resolve_search_album_window(
     read: WindowRead<DbAlbumSearchResult>,
 ) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::SearchAlbums(
-            rows.into_iter().map(crate::album_detail::AlbumSearchResult::from_raw).collect(),
-        )
-    })
+    crate::ListWindowValue::of(read, search_album_rows)
+}
+
+/// The albums a search lists, as a media browser lists them.
+fn search_album_rows(rows: Vec<DbAlbumSearchResult>) -> crate::ListRows {
+    crate::ListRows::SearchAlbums(
+        rows.into_iter().map(crate::album_detail::AlbumSearchResult::from_raw).collect(),
+    )
 }
 
 /// How many albums a media browser's search lists.

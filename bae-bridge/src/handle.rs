@@ -8,10 +8,10 @@ use crate::types::BridgeServerStatus;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSummary, BridgeComposerDetail, BridgeComposerSummary, BridgeError, BridgeFile,
-    BridgeGalleryItem, BridgeGallerySource, BridgeList, BridgePreviewTarget, BridgeRelease,
-    BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig,
-    BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow,
-    BridgeStorageRowStatus, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup,
+    BridgeGalleryItem, BridgeGallerySource, BridgeList, BridgePagedList, BridgePreviewTarget,
+    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
+    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
+    BridgeStorageRow, BridgeStorageRowStatus, BridgeStoreKeyState, BridgeTrack, BridgeTrackGroup,
     BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
     BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };

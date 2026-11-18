@@ -63,7 +63,7 @@ pub struct WorkDetail {
 
 /// One child of a work as a media browser lists it: its parts, then the
 /// releases that perform it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WorkChild {
     /// A work that is part of it.
     Part(DbWorkSummary),
@@ -71,7 +71,7 @@ pub enum WorkChild {
     Release(WorkReleaseSummary),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkReleaseSummary {
     pub release_id: String,
     pub album_id: String,

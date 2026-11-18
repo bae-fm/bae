@@ -71,6 +71,23 @@ impl LibraryViews {
         })
     }
 
+    /// Follow one page of the album `album_id`'s tracks: the tracks at the
+    /// page's places, as a media browser lists them.
+    pub fn subscribe_album_track_page(
+        &self,
+        album_id: &str,
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let album_id = album_id.to_string();
+        let order = album_track_order();
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| {
+                album_track_rows_on(sql, &album_id, &read_order, seek, limit)
+            })
+            .process(|rows| Ok(album_track_rows(rows)))
+    }
+
     /// Follow how many tracks the album `album_id` lists. The count runs as a
     /// separate query from the windows' rows.
     pub fn subscribe_album_track_count(
@@ -238,6 +255,27 @@ impl LibraryViews {
                 album_rows_on(sql, group_by_artist, &read_order, seek, limit)
             })
             .process(|window| window.try_map_rows(AlbumAppearanceRow::process))
+    }
+
+    /// Follow one page of the album list under `sort`, flat or grouped by
+    /// artist: the rows at the page's places, as the grid shows them.
+    pub fn subscribe_album_page(
+        &self,
+        sort: &[AlbumSortCriterion],
+        group_by_artist: bool,
+        page: ListPage,
+    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+        let (_, order) = album_browse_order(sort, group_by_artist);
+        let read_order = order.clone();
+        self.store
+            .subscribe_list_page(page, order, move |sql, seek, limit| {
+                album_rows_on(sql, group_by_artist, &read_order, seek, limit)
+            })
+            .process(|rows| {
+                Ok(album_rows(
+                    rows.into_iter().map(AlbumAppearanceRow::process).collect::<Result<_, _>>()?,
+                ))
+            })
     }
 
     /// Follow how many rows the album grid has: its albums, and flat or
@@ -430,11 +468,14 @@ impl LibraryViews {
 
 /// One delivery of an album grid window as the grid shows it.
 pub fn resolve_album_window(read: WindowRead<DbAlbumAppearance>) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::Albums(
-            rows.into_iter().map(crate::album_detail::AlbumAppearance::from_raw).collect(),
-        )
-    })
+    crate::ListWindowValue::of(read, album_rows)
+}
+
+/// The album grid's rows as the grid shows them.
+fn album_rows(rows: Vec<DbAlbumAppearance>) -> crate::ListRows {
+    crate::ListRows::Albums(
+        rows.into_iter().map(crate::album_detail::AlbumAppearance::from_raw).collect(),
+    )
 }
 
 /// One delivery of the album detail as the detail view shows it.
@@ -803,11 +844,14 @@ pub struct LibrarySearchProjection {
 /// One delivery of a window of an album's tracks as a media browser lists
 /// them.
 pub fn resolve_album_track_window(read: WindowRead<DbTrackSearchResult>) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, |rows| {
-        crate::ListRows::AlbumTracks(
-            rows.into_iter().map(crate::album_detail::TrackSearchResult::from_raw).collect(),
-        )
-    })
+    crate::ListWindowValue::of(read, album_track_rows)
+}
+
+/// An album's tracks as a media browser lists them.
+fn album_track_rows(rows: Vec<DbTrackSearchResult>) -> crate::ListRows {
+    crate::ListRows::AlbumTracks(
+        rows.into_iter().map(crate::album_detail::TrackSearchResult::from_raw).collect(),
+    )
 }
 
 /// The order of an album's tracks: playing order. A release holds one track

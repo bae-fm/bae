@@ -84,6 +84,26 @@ pub fn read_range<R, E>(
     Ok(WindowRead { window: window.clone(), rows })
 }
 
+/// A page of a list: the `limit` rows from the row at `offset` in the list's
+/// order, read by offset; none when the list ends at or before `offset`. A
+/// page's statement has an OFFSET, so coven reruns it for every write to
+/// what it reads, and its rows are always the rows at the page's places.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ListPage {
+    pub offset: u64,
+    pub limit: u64,
+}
+
+/// `page`'s rows from `read`, which runs the list's statement under a seek
+/// for at most the limit it is given.
+pub fn read_page<R, E>(
+    order: &ListOrder,
+    page: ListPage,
+    read: &mut impl FnMut(&Seek, u64) -> Result<Vec<Keyed<R>>, E>,
+) -> Result<Vec<R>, E> {
+    Ok(read(&order.at_offset(page.offset), page.limit)?.into_iter().map(|(row, _)| row).collect())
+}
+
 /// One statement that counts the rows of `from`, a statement's FROM clause,
 /// that `filter` keeps (every row when it is `None`) and that come before the
 /// row at `key` in `order`. The statement adds one COUNT for each seek before
@@ -156,6 +176,26 @@ pub fn key_at<R, E>(
 }
 
 impl crate::Store {
+    /// A live query of one page of the list `order` sorts. `read` runs the
+    /// list's statement under a seek for at most a limit and gives each row
+    /// with its key.
+    pub fn subscribe_list_page<R>(
+        &self,
+        page: ListPage,
+        order: ListOrder,
+        read: impl Fn(&coven::SqlReadContext<'_>, &Seek, u64) -> Result<Vec<Keyed<R>>, crate::DbError>
+            + Send
+            + Sync
+            + 'static,
+    ) -> coven::LiveQuery<Vec<R>, crate::DbError>
+    where
+        R: Send + 'static,
+    {
+        self.subscribe(move |sql| {
+            read_page(&order, page, &mut |seek, limit| read(&sql, seek, limit))
+        })
+    }
+
     /// A live query of one window of the list `order` sorts. When the list's
     /// screen moves the window, coven reruns this same live query with the
     /// new window. `read` runs the list's statement under a seek for at most

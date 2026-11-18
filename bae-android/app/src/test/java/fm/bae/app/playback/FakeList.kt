@@ -12,14 +12,16 @@ import uniffi.bae_bridge.BridgeListCountExtra
 import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgeListView
 import uniffi.bae_bridge.ListCountSubscription
+import uniffi.bae_bridge.ListPageSubscription
 import uniffi.bae_bridge.ListViewSubscription
 import uniffi.bae_bridge.NoHandle
 
 /**
  * A list as the bridge lists it, over [rows] in the order of their ids. Its view answers the way core's does: it
  * keeps a window of three screens around the rows on screen, starting a screen above them, and holds the window at
- * its first row's id, so rows inserted above it move the window's start and not its rows. The fake keeps every view
- * and count the handle opened so a test can change the list and deliver the change.
+ * its first row's id, so rows inserted above it move the window's start and not its rows. Its pages answer the way
+ * core's do: the rows at the page's places, none past the list's end. The fake keeps every view, page and count the
+ * handle opened so a test can change the list and deliver the change.
  */
 internal open class FakeList<Row>(
     var rows: List<Row>,
@@ -34,7 +36,11 @@ internal open class FakeList<Row>(
     var countFailure: BridgeException? = null,
 ) {
     val views = mutableListOf<FakeListViewSubscription>()
+    val pages = mutableListOf<FakeListPageSubscription>()
     val counts = mutableListOf<FakeListCountSubscription>()
+
+    /** The first page the handle opened, once it has. */
+    val firstPage = CompletableDeferred<FakeListPageSubscription>()
 
     /** The first count the handle opened, once it has. */
     val firstCount = CompletableDeferred<FakeListCountSubscription>()
@@ -57,10 +63,17 @@ internal open class FakeList<Row>(
         return BridgeListView(start.toULong(), wrap(if (start < stop) rows.subList(start, stop) else emptyList()))
     }
 
-    /** Deliver the list as it stands to every count and view open, the count first. */
+    /** The page's rows as the list stands: the [limit] rows from [offset], none past the list's end. */
+    fun page(
+        offset: Int,
+        limit: Int,
+    ): BridgeListRows = wrap(rows.drop(offset).take(limit))
+
+    /** Deliver the list as it stands to every count, view and page open, the count first. */
     fun changed() {
         counts.toList().forEach { it.deliver() }
         views.toList().forEach { it.deliver() }
+        pages.toList().forEach { it.deliver() }
     }
 
     /** Deliver the count alone, as a write that adds or removes a row does beside the view. */
@@ -73,6 +86,16 @@ internal open class FakeList<Row>(
         FakeListViewSubscription(this, first.toInt()..last.toInt()).also {
             views += it
             firstView.complete(it)
+            if (deliverImmediately) it.deliver()
+        }
+
+    fun openPage(
+        offset: ULong,
+        limit: ULong,
+    ): FakeListPageSubscription =
+        FakeListPageSubscription(this, offset.toInt(), limit.toInt()).also {
+            pages += it
+            firstPage.complete(it)
             if (deliverImmediately) it.deliver()
         }
 
@@ -138,6 +161,29 @@ internal class FakeListViewSubscription(
     /** Deliver [value] as it is, whatever the list holds. */
     fun deliver(value: BridgeListView) {
         events.trySend(Result.success(value))
+    }
+}
+
+internal class FakeListPageSubscription(
+    private val list: FakeList<*>,
+    private val offset: Int,
+    private val limit: Int,
+) : ListPageSubscription(NoHandle) {
+    private val events = Channel<Result<BridgeListRows>>(Channel.UNLIMITED)
+
+    /** The places the page holds. */
+    val places: IntRange get() = offset until offset + limit
+    var cancelled = false
+        private set
+
+    override suspend fun next(): BridgeListRows = events.receive().getOrThrow()
+
+    override suspend fun cancel() {
+        cancelled = true
+    }
+
+    fun deliver() {
+        events.trySend(list.windowFailure?.let { Result.failure(it) } ?: Result.success(list.page(offset, limit)))
     }
 }
 

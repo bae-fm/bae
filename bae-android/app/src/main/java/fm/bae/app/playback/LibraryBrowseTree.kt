@@ -3,7 +3,7 @@ package fm.bae.app.playback
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import fm.bae.app.BaeLogger
-import fm.bae.app.data.Library
+import fm.bae.app.data.PagedLists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,7 +81,7 @@ private fun ParentInterests.retain(
 internal class LibraryBrowseTree<Owner : Any>(
     /**
      * The open library's handle. The tree makes one-time reads on it and opens its live list queries through
-     * [library].
+     * [lists].
      */
     private val handle: AppHandleInterface,
     private val labels: () -> BrowseLabels,
@@ -89,7 +89,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
     private val onChildrenChanged: (parentId: String, itemCount: Int) -> Unit = { _, _ -> },
 ) {
-    private val library = Library(handle)
+    private val lists = PagedLists(handle)
 
     private val onQueryError: (BridgeException) -> Unit = { error ->
         logger.error("library browse live query failed", error)
@@ -398,7 +398,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         val pages =
             ChildPages(
                 scope,
-                library.searchAlbumList(query),
+                lists.searchAlbumPages(query),
                 { nodes.album(it.id, it.title, it.cover) },
                 { count, _ -> if (synchronized(lock) { searchesByOwner[owner] === this }) onResultsChanged(count) },
                 onQueryError,
@@ -410,7 +410,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             check(!closed)
             albums ?: ListProjection(
                 scope,
-                library.albumList(listOf(ALBUM_SORT)),
+                lists.albumPages(listOf(ALBUM_SORT)),
                 BridgeAlbumAppearance::album,
                 onChanged = { count -> notifyParent(BrowseId.Albums.mediaId, count) },
                 onError = onQueryError,
@@ -422,7 +422,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             check(!closed)
             composers ?: ListProjection(
                 scope,
-                library.composerList(COMPOSER_SORT),
+                lists.composerPages(COMPOSER_SORT),
                 { it },
                 onChanged = { count -> notifyParent(BrowseId.Composers.mediaId, count) },
                 onError = onQueryError,
@@ -438,7 +438,7 @@ internal class LibraryBrowseTree<Owner : Any>(
             check(!closed)
             composerPages[parentId] ?: ListProjection(
                 scope,
-                library.composerPageList(artistId),
+                lists.composerPagePages(artistId),
                 { it },
                 onChanged = { count -> notifyParent(parentId, count) },
                 onError = onQueryError,
@@ -457,7 +457,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                     is BrowseId.Album -> {
                         ChildPages(
                             scope,
-                            library.albumTrackList(id.albumId),
+                            lists.albumTrackPages(id.albumId),
                             nodes::browseTrack,
                             onChanged,
                             onQueryError,
@@ -467,7 +467,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                     is BrowseId.Work -> {
                         ChildPages(
                             scope,
-                            library.workChildList(id.workId),
+                            lists.workChildPages(id.workId),
                             nodes::workChild,
                             onChanged,
                             onQueryError,

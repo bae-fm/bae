@@ -27,7 +27,7 @@ pub(crate) struct ReleaseResolveCtx {
 /// Invariant: `album_id` names an album that exists — enforced by the
 /// `releases.album_id` FK and by `delete_release`, which removes the album when its
 /// last release goes.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReleaseSummary {
     pub id: String,
     pub album_id: String,

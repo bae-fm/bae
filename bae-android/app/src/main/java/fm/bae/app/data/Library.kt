@@ -7,11 +7,9 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
-import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistDetail
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSummary
-import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -24,7 +22,6 @@ import uniffi.bae_bridge.BridgeListRows
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistListing
 import uniffi.bae_bridge.BridgeSortCriterion
-import uniffi.bae_bridge.BridgeWorkChild
 import uniffi.bae_bridge.BridgeWorkDetail
 import uniffi.bae_bridge.LibrarySearchSubscription
 
@@ -193,24 +190,6 @@ class Library(
 
     /** One live library search, whose text changes on the same live query as the person types. */
     internal fun librarySearch(): LibrarySearch = BridgeLibrarySearch(handle.subscribeLibrarySearch())
-
-    /** The albums library search lists for [query] as a media browser lists them, in title order. */
-    internal fun searchAlbumList(query: String): ListReads<BridgeAlbumSearchResult> =
-        listReads(BridgeList.SearchAlbums(query)) { rows ->
-            (rows as? BridgeListRows.SearchAlbums)?.rows ?: error("a search's albums delivered rows of another list")
-        }
-
-    /** The album [albumId]'s tracks as a media browser lists them: its main release's, in playing order. */
-    internal fun albumTrackList(albumId: String): ListReads<BridgeBrowseTrack> =
-        listReads(BridgeList.AlbumTracks(albumId)) { rows ->
-            (rows as? BridgeListRows.AlbumTracks)?.rows ?: error("an album's tracks delivered rows of another list")
-        }
-
-    /** The work [workId]'s children as a media browser lists them: its parts, then the releases that perform it. */
-    internal fun workChildList(workId: String): ListReads<BridgeWorkChild> =
-        listReads(BridgeList.WorkChildren(workId)) { rows ->
-            (rows as? BridgeListRows.WorkChildren)?.rows ?: error("a work's children delivered rows of another list")
-        }
 }
 
 /** A live library search: point it at a query, and each value it is pulled for names the query it answers. */

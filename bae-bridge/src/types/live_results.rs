@@ -70,7 +70,27 @@ pub enum BridgeList {
     },
 }
 
-/// The rows of a window, by the list they belong to.
+/// Which list a media browser reads a page of: the lists it shows a page at
+/// a time.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgePagedList {
+    /// The album grid under `sort`, flat or grouped by artist.
+    AlbumGrid { sort: Vec<crate::types::BridgeSortCriterion>, group_by_artist: bool },
+    /// The composer list under `sort`.
+    Composers { sort: Vec<crate::types::BridgeComposerSortCriterion> },
+    /// The rows of a composer's page.
+    ComposerPage { artist_id: String },
+    /// An album's tracks: its main release's, in playing order.
+    AlbumTracks { album_id: String },
+    /// A work's children: its parts, then the releases that perform it.
+    WorkChildren { work_id: String },
+    /// The albums library search lists for `query`: the first it finds, up
+    /// to library search's result limit (`SEARCH_RESULT_LIMIT`), in title
+    /// order. A blank query lists none.
+    SearchAlbums { query: String },
+}
+
+/// The rows of a window or a page, by the list they belong to.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeListRows {
     Albums {

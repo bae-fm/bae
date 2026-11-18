@@ -40,18 +40,18 @@ class BaeLibrarySessionCallbackTest {
             ) { "not found: $it" }.getChildren(controller(), BrowseId.Albums.mediaId, 0, 20, null)
 
         assertFalse(request.isDone)
-        assertTrue(handle.albumList.views.isEmpty())
+        assertTrue(handle.albumList.pages.isEmpty())
         handle.albumList.emitCount()
-        handle.albumList.views
+        handle.albumList.pages
             .single()
             .deliver()
 
         assertEquals(SessionResult.RESULT_SUCCESS, request.get(1, TimeUnit.SECONDS).resultCode)
         assertEquals(
-            listOf(0..19),
-            handle.albumList.views
+            0..19,
+            handle.albumList.pages
                 .single()
-                .reported,
+                .places,
         )
         tree.close()
         scope.cancel()
@@ -76,7 +76,7 @@ class BaeLibrarySessionCallbackTest {
         }
 
         assertEquals(1, handle.albumList.counts.size)
-        assertEquals(1, handle.albumList.views.size)
+        assertEquals(1, handle.albumList.pages.size)
         tree.close()
         scope.cancel()
     }

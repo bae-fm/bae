@@ -19,8 +19,8 @@ pub struct LibraryBrowseSection {
     pub album_count: u64,
 }
 
-/// The rows of a list's window, by the list they belong to.
-#[derive(Debug, Clone)]
+/// The rows of a list's window or page, by the list they belong to.
+#[derive(Debug, Clone, PartialEq)]
 pub enum ListRows {
     /// The album grid's rows, each an album appearance.
     Albums(Vec<crate::album_detail::AlbumAppearance>),
