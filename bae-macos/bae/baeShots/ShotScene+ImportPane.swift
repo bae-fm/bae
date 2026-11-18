@@ -8,7 +8,9 @@ extension ShotScene {
     /// The import pane's boards, each the main window on Import as a board
     /// draws it: Found with nothing opened, or with Northbound on its draft
     /// or its running import, a release the library already holds, a folder
-    /// with nothing read, or CUE sheets; Imported, uploading; Skipped. The
+    /// with nothing read, or CUE sheets; Imported, uploading; Skipped; and
+    /// Find online on a folder no catalog has, on Search with a typed search
+    /// out, or on Automatic in a library with no Discogs key. The
     /// lists, names, progress and folders are the boards' own
     /// (`PreviewData.importBoardScene`), in the states the app reads for
     /// them.
@@ -66,6 +68,21 @@ extension ShotScene {
             )
         },
         importPaneScene("mac.import.folder.skipped", height: 900, .skipped),
+        importPaneScene(
+            "mac.import.identify.search",
+            height: 900,
+            .found(northbound: .importing, opening: .copperSky)
+        ),
+        ShotScene(
+            id: "mac.import.identify.no-discogs-key",
+            size: CGSize(width: 1_400, height: 900)
+        ) {
+            importPaneStage(
+                .found(northbound: .importing, opening: .winterKitchen),
+                size: CGSize(width: 1_400, height: 900),
+                discogsUsable: false
+            )
+        },
     ]
 
     /// A board shot of `board` with nothing else to state.
@@ -82,11 +99,13 @@ extension ShotScene {
         }
     }
 
-    /// The main window on Import as `board` draws it.
+    /// The main window on Import as `board` draws it, in a library that
+    /// can ask Discogs when `discogsUsable`.
     @MainActor
     private static func importPaneStage(
         _ board: PreviewData.ImportBoard,
         size: CGSize,
+        discogsUsable: Bool = true,
         releaseEditor: ReleaseEditor? = nil,
         isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
     ) -> ShotStage {
@@ -103,12 +122,14 @@ extension ShotScene {
                 playbackStore: boardPlayback(),
                 importScene: scene.fixture,
                 importSelection: scene.selection,
+                candidateRuntimes: scene.runtimes,
                 images: images,
                 // The boards' library syncs, so the pane offers where an
                 // import goes.
                 configStore: PreviewData.makeConfigStore(
                     libraryFullWidth: false,
                     castEnabled: true,
+                    discogsUsable: discogsUsable,
                     storage: PreviewData.previewStorage
                 ),
                 releaseEditor: releaseEditor,

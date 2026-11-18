@@ -13,8 +13,8 @@ extension ShotScenes {
     ///
     /// The Import section reads `importScene`'s store and lists, with
     /// `importSelection` as the selected rows (unless `importListSlot`
-    /// stands in, with its own), nothing in flight for any candidate, and
-    /// its covers from `images`; `configStore`, `releaseEditor`, `outbox`
+    /// stands in, with its own), what each candidate has in flight from
+    /// `candidateRuntimes`, and its covers from `images`; `configStore`, `releaseEditor`, `outbox`
     /// and `importPercents` stand in for the ones a shot of the Import
     /// section states.
     static func libraryWindow(
@@ -27,6 +27,7 @@ extension ShotScenes {
         importListSlot: ImportListSlot? = nil,
         importScene: ImportPreviewFixture = PreviewData.importTabScene(),
         importSelection: ImportSelection = ImportSelection(),
+        candidateRuntimes: [Data: BridgeCandidateRuntimeSnapshot] = [:],
         images: ImageStore? = nil,
         configStore: ConfigStore? = nil,
         releaseEditor: ReleaseEditor? = nil,
@@ -53,7 +54,7 @@ extension ShotScenes {
             )
             .environment(slot)
             .environment(slot.selection)
-            .environment(\.heldCandidateRuntimes, [:])
+            .environment(\.heldCandidateRuntimes, candidateRuntimes)
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())

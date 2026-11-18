@@ -449,6 +449,216 @@ extension PreviewData {
         )
     }
 
+    // MARK: - Copper Sky and Winter Kitchen
+
+    /// A folder no catalog has: the title and artist its files' tags give,
+    /// which the run's title search asked by, and the catalog number its rip
+    /// log states.
+    struct NotFoundFolder {
+        let folder: BoardFolder
+        let album: String
+        let artist: String
+        let catalogNumber: String
+    }
+
+    static let copperSky = NotFoundFolder(
+        folder: .copperSky,
+        album: "Copper Sky",
+        artist: "Odile Fen",
+        catalogNumber: "FR-12"
+    )
+
+    static let winterKitchen = NotFoundFolder(
+        folder: .winterKitchen,
+        album: "Winter Kitchen",
+        artist: "Odile Fen",
+        catalogNumber: "ODF-7"
+    )
+
+    /// The two sides each folder no catalog has holds, titled by their tags.
+    static let notFoundTracks = [
+        BoardTrack(file: "01 Side A.flac", title: "Side A", seconds: 1_284),
+        BoardTrack(file: "02 Side B.flac", title: "Side B", seconds: 1_342),
+    ]
+
+    /// `found`'s folder with the draft its files' tags give, on the pane as
+    /// the person left it in `session`.
+    @MainActor
+    static func notFoundCandidate(
+        _ found: NotFoundFolder,
+        session: BridgeCandidateSession
+    ) -> Candidate {
+        let edit = boardEdit(
+            title: found.album,
+            artist: found.artist,
+            year: "",
+            tracks: notFoundTracks.enumerated()
+                .map {
+                    BoardTrackRow(
+                        id: "\(found.folder.path)-\($0.offset)",
+                        title: $0.element.title,
+                        fileId: $0.element.file
+                    )
+                }
+        )
+        return paneCandidate(
+            folder: boardFolder(
+                found.folder,
+                files: boardFolderFiles(
+                    tracks: notFoundTracks,
+                    images: [found.album]
+                )
+            ),
+            metadataProvenance: .fileMetadata,
+            edit: edit,
+            mapping: BridgeMappingTable(
+                images: [boardImage("\(found.album).jpg")],
+                trackSides: boardTrackSides(notFoundTracks, edit: edit),
+                files: [],
+                untitledTrackCount: 0
+            ),
+            cover: boardCover(found.album),
+            session: session,
+            live: needsYou(.notFound)
+        )
+    }
+
+    /// The identify run that found nothing for `found`, asking `providers`:
+    /// the folder has no Disc ID and no barcode, and no provider matched its
+    /// catalog number or its title.
+    static func notFoundRun(
+        _ found: NotFoundFolder,
+        providers: [BridgeLookupCatalog]
+    ) -> BridgeIdentifyRun {
+        let noMatch = providers.map {
+            BridgeProviderCell(source: $0, lookup: .noMatch)
+        }
+        return BridgeIdentifyRun(
+            providers: providers,
+            discId: .absent,
+            barcode: .absent,
+            catalog: .numbers(
+                rows: [
+                    BridgeSignalValueRow(
+                        value: found.catalogNumber,
+                        excluded: false,
+                        cells: noMatch
+                    )
+                ],
+                candidates: []
+            ),
+            isrc: .absent,
+            search: .searched(
+                album: found.album,
+                artist: found.artist,
+                cells: noMatch
+            ),
+            readingArtwork: false
+        )
+    }
+
+    /// What `found`'s pane shows: identification found nothing asking
+    /// `providers`, and `search` is the typed search out for it, if any.
+    static func notFoundRuntime(
+        _ found: NotFoundFolder,
+        providers: [BridgeLookupCatalog],
+        search: BridgeCandidateSearch? = nil
+    ) -> BridgeCandidateRuntimeSnapshot {
+        BridgeCandidateRuntimeSnapshot(
+            identifyState: .state(
+                state: .notFoundAnywhere(
+                    run: notFoundRun(found, providers: providers)
+                )
+            ),
+            inFlight: search.map {
+                BridgeCandidateInFlight(import: nil, search: $0, signals: nil)
+            }
+        )
+    }
+
+    /// Copper Sky's typed search, as the sources answer it: MusicBrainz has
+    /// its album in two pressings, and Discogs has not answered.
+    static let copperSkySearch: BridgeCandidateSearch = {
+        func pressing(
+            _ year: Int32,
+            _ catalog: String,
+            _ id: String,
+            _ facts: BridgePressingFacts
+        ) -> BridgePressing {
+            BridgePressing(
+                releases: [
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: id,
+                        year: year,
+                        facts: facts,
+                        barcodes: [],
+                        sourceGroupId: "board-copper-sky"
+                    )
+                ],
+                sources: [.musicBrainz],
+                labels: [
+                    BridgeLabelLine(
+                        names: ["Fen Records"],
+                        catalogNumbers: [catalog]
+                    )
+                ],
+                pick: BridgePressingLink(
+                    record: BridgeLookupRef(catalog: .musicBrainz, key: id),
+                    partners: []
+                )
+            )
+        }
+        let group = BridgeReleaseGroup(
+            id: "board-copper-sky",
+            titles: [copperSky.album],
+            artists: [.named(copperSky.artist)],
+            labels: ["Fen Records"],
+            coverArt: nil,
+            sources: [
+                BridgeReleaseGroupSource(
+                    source: .musicBrainz,
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/board-copper-sky",
+                    albumLinksUnread: false
+                )
+            ],
+            sections: [
+                BridgePressingSection(
+                    album: nil,
+                    pressings: [
+                        pressing(
+                            1972,
+                            "FR-12",
+                            "board-copper-sky-lp",
+                            pressingFacts(country: "GB", media: media(.vinyl))
+                        ),
+                        pressing(
+                            1995,
+                            "FRCD-12",
+                            "board-copper-sky-cd",
+                            pressingFacts(
+                                media: media(.cd),
+                                discogsDetails: [.remastered]
+                            )
+                        ),
+                    ],
+                    narrowedOut: []
+                )
+            ]
+        )
+        return BridgeCandidateSearch(
+            query: .general(artist: copperSky.artist, album: copperSky.album),
+            unusableBarcode: nil,
+            sources: searchSources(
+                musicbrainz: .done(count: 2),
+                discogs: .searching
+            ),
+            groups: [group],
+            status: .searching
+        )
+    }()
+
     // MARK: - Skipped
 
     /// The empty folder as its read answers it: no images, no files.

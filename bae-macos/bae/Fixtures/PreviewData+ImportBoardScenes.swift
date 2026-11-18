@@ -45,14 +45,22 @@ extension PreviewData {
         case fieldRecordings
         /// untitled 07, with nothing read from its files.
         case untitled07
+        /// Copper Sky, which no catalog has, on Find online's Search with
+        /// its typed search out.
+        case copperSky
+        /// Winter Kitchen, which no catalog has, on Find online's
+        /// Automatic.
+        case winterKitchen
     }
 
     /// The store, lists, selection and streams of one import board: the
     /// counts, identify progress and imports running as the board shows
-    /// them, the opened folder's read in the store.
+    /// them, the opened folder's read in the store, and what it has in
+    /// flight.
     struct ImportBoardScene {
         let fixture: ImportPreviewFixture
         let selection: ImportSelection
+        let runtimes: [Data: BridgeCandidateRuntimeSnapshot]
         let importPercents: LatestStream<UInt32>
         let outbox: OutboxStore
     }
@@ -77,6 +85,49 @@ extension PreviewData {
         case .lowTideHours: lowTideHoursCandidate()
         case .fieldRecordings: fieldRecordingsCandidate()
         case .untitled07: untitledCandidate()
+        case .copperSky:
+            notFoundCandidate(
+                copperSky,
+                session: paneSession(
+                    presentation: .findOnline,
+                    section: .search,
+                    artist: copperSky.artist,
+                    album: copperSky.album
+                )
+            )
+        case .winterKitchen:
+            notFoundCandidate(
+                winterKitchen,
+                session: paneSession(presentation: .findOnline)
+            )
+        }
+    }
+
+    /// What the folder `board` opens has in flight, by its key: what
+    /// identification found for it, and its typed search. The library of
+    /// Winter Kitchen's board has no Discogs key, so its run asked
+    /// MusicBrainz alone.
+    static func boardRuntimes(
+        _ board: ImportBoard
+    ) -> [Data: BridgeCandidateRuntimeSnapshot] {
+        switch board {
+        case .found(_, .copperSky?):
+            [
+                BoardFolder.copperSky.key: notFoundRuntime(
+                    copperSky,
+                    providers: [.musicBrainz, .discogs],
+                    search: copperSkySearch
+                )
+            ]
+        case .found(_, .winterKitchen?):
+            [
+                BoardFolder.winterKitchen.key: notFoundRuntime(
+                    winterKitchen,
+                    providers: [.musicBrainz]
+                )
+            ]
+        case .found, .imported, .skipped:
+            [:]
         }
     }
 
@@ -179,6 +230,7 @@ extension PreviewData {
                 )
             ),
             selection: selection,
+            runtimes: boardRuntimes(board),
             importPercents: .importPercents(
                 holding: [BoardFolder.northbound.key: 60]
             ),

@@ -329,17 +329,21 @@ extension PreviewData {
         )
     }
 
-    /// An untouched session opened on `presentation`.
+    /// A session opened on `presentation`, with Find online on `section`
+    /// and `artist` and `album` typed in its search form.
     static func paneSession(
-        presentation: BridgeMetadataPresentation
+        presentation: BridgeMetadataPresentation,
+        section: BridgeFindOnlineSection = .automatic,
+        artist: String = "",
+        album: String = ""
     ) -> BridgeCandidateSession {
         BridgeCandidateSession(
             presentation: presentation,
-            findOnlineSection: .automatic,
+            findOnlineSection: section,
             search: BridgeSearchForm(
                 tab: .general,
-                artist: "",
-                album: "",
+                artist: artist,
+                album: album,
                 catalog: "",
                 barcode: ""
             ),
@@ -360,7 +364,7 @@ extension PreviewData {
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
-        presentation: BridgeMetadataPresentation = .draft,
+        session: BridgeCandidateSession = paneSession(presentation: .draft),
         placement: BridgeCandidatePanePlacement = .pending(
             folderCheck: nil,
             records: []
@@ -403,7 +407,7 @@ extension PreviewData {
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
-                        session: paneSession(presentation: presentation)
+                        session: session
                     )
                 )
             )
