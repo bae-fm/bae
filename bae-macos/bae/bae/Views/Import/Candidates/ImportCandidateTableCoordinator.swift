@@ -600,9 +600,9 @@ extension ImportCandidateTableCoordinator {
     }
 
     private func placeRow(at row: Int) -> ImportListPlace.Row {
-        guard let stableKey = list.idAt(row),
-            let candidate = list.row(of: stableKey)?.triageRow
-        else { return .atPosition }
+        guard let candidate = list.row(at: row)?.triageRow else {
+            return .atPosition
+        }
         return .candidate(candidateKey: candidate.candidateKey)
     }
 

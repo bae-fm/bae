@@ -461,34 +461,12 @@ extension PaginatedList {
         return delivered.rows.indices.contains(at) ? delivered.rows[at] : nil
     }
 
-    /// Returns the position of `id` in the loaded rows, or nil if not loaded.
-    public func position(of id: Row.ID) -> Int? {
-        guard let delivered,
-            let at = delivered.rows.firstIndex(where: { $0.id == id })
-        else { return nil }
-        return delivered.start + at
-    }
-
-    /// The row of `id` the list holds, or nil if the window doesn't hold it.
-    /// A row shown more than once is the same row at each place.
-    public func row(of id: Row.ID) -> Row? {
-        position(of: id).flatMap(row(at:))
-    }
-
     /// The artist heading whose albums include `position`.
     public func section(at position: Int) -> BridgeLibraryBrowseSection? {
         sections.first {
             position >= Int($0.firstPosition)
                 && position < Int($0.firstPosition + $0.albumCount)
         }
-    }
-
-    public func position(of id: Row.ID, in sectionId: String?) -> Int? {
-        guard let sectionId else { return position(of: id) }
-        return loadedEntries.first {
-            $0.id == id && section(at: $0.position)?.id == sectionId
-        }?
-        .position
     }
 
     /// Every held position with the id held there, in position order.

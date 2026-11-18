@@ -406,8 +406,8 @@ struct PaginatedListTests {
 
         probe.set(["a0000a"] + ids(0...199))
 
-        try await Wait.until { list.position(of: "a0100") == 101 }
-        #expect(list.idAt(101) == "a0100")
+        try await Wait.until { list.idAt(101) == "a0100" }
+        #expect(list.idAt(100) == "a0099")
         #expect(list.contentRevision > revision)
         for task in tasks { task.cancel() }
         list.cancel()

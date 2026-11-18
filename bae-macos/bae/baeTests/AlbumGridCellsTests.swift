@@ -23,17 +23,14 @@ struct AlbumGridCellsTests {
                 albumCount: 2
             ),
         ]
-        let loaded: [(position: Int, id: String)] = [
-            (0, "shared"), (1, "a"), (2, "b"), (3, "shared"), (4, "c"),
-        ]
+        let ids = ["shared", "a", "b", "shared", "c"]
         for columns in 1...5 {
             let cells = AlbumGridLayout(
                 totalCount: 5,
                 sections: sections,
                 columnCount: columns,
-                loaded: loaded,
-                openAlbumId: "shared",
-                openSectionId: "artist-b"
+                idAt: { ids[$0] },
+                open: AlbumGridOpenCard(albumId: "shared", position: 3)
             )
             let headings = cells.indices.filter {
                 if case .heading = cells[$0] { return true }
@@ -60,26 +57,33 @@ struct AlbumGridCellsTests {
                 cells.firstIndex(of: .detail(albumId: "shared"))
             )
             #expect(detail % columns == 0)
+            // The detail opens in the second artist's group, under the card
+            // opened there.
+            let second = try #require(
+                cells.firstIndex(
+                    of: .heading(sectionId: "artist-b", title: "Artist B")
+                )
+            )
+            #expect(detail > second)
         }
     }
 
     @Test("a collaboration has a distinct card identity in each artist grid")
     func collaborationIdentities() {
-        let loaded: [(position: Int, id: String)] = [
-            (0, "shared"), (1, "shared"),
-        ]
+        let idAt: (Int) -> String? = { _ in "shared" }
+        let open = AlbumGridOpenCard(albumId: "shared", position: 1)
         let first = AlbumGridCells(
             positions: 0..<1,
             columnCount: 2,
-            loaded: loaded,
-            openAlbumId: nil,
+            idAt: idAt,
+            open: open,
             sectionId: "artist-a"
         )
         let second = AlbumGridCells(
             positions: 1..<2,
             columnCount: 2,
-            loaded: loaded,
-            openAlbumId: "shared",
+            idAt: idAt,
+            open: open,
             sectionId: "artist-b"
         )
         #expect(first[0].id == .album("shared", sectionId: "artist-a"))
@@ -94,8 +98,8 @@ struct AlbumGridCellsTests {
         let cells = AlbumGridCells(
             positions: 5..<9,
             columnCount: 3,
-            loaded: loaded(0..<12),
-            openAlbumId: "a8"
+            idAt: loaded(0..<12),
+            open: open(8)
         )
         #expect(
             Array(cells.prefix(4)) == [
@@ -110,19 +114,22 @@ struct AlbumGridCellsTests {
         let other = AlbumGridCells(
             positions: 9..<12,
             columnCount: 3,
-            loaded: loaded(0..<12),
-            openAlbumId: "a8"
+            idAt: loaded(0..<12),
+            open: open(8)
         )
         #expect(other.count == 3)
     }
 }
 
 extension AlbumGridCellsTests {
-    private typealias Loaded = [(position: Int, id: String)]
+    /// Albums "a0", "a1", … at their own positions, held at `positions`.
+    private func loaded(_ positions: Range<Int>) -> (Int) -> String? {
+        { positions.contains($0) ? "a\($0)" : nil }
+    }
 
-    /// Albums "a0", "a1", … loaded at their own positions.
-    private func loaded(_ positions: Range<Int>) -> Loaded {
-        positions.map { (position: $0, id: "a\($0)") }
+    /// The card of album "a`position`", opened at its position.
+    private func open(_ position: Int) -> AlbumGridOpenCard {
+        AlbumGridOpenCard(albumId: "a\(position)", position: position)
     }
 
     private func ids(_ cells: AlbumGridCells) -> [AlbumGridCell.Identity] {
@@ -134,8 +141,8 @@ extension AlbumGridCellsTests {
         let cells = AlbumGridCells(
             totalCount: 5,
             columnCount: 3,
-            loaded: loaded(0..<3),
-            openAlbumId: nil
+            idAt: loaded(0..<3),
+            open: nil
         )
         #expect(
             Array(cells) == [
@@ -153,8 +160,8 @@ extension AlbumGridCellsTests {
         let cells = AlbumGridCells(
             totalCount: 7,
             columnCount: 3,
-            loaded: loaded(0..<7),
-            openAlbumId: "a4"
+            idAt: loaded(0..<7),
+            open: open(4)
         )
         #expect(
             Array(cells) == [
@@ -177,8 +184,8 @@ extension AlbumGridCellsTests {
         let cells = AlbumGridCells(
             totalCount: 5,
             columnCount: 3,
-            loaded: loaded(0..<5),
-            openAlbumId: "a4"
+            idAt: loaded(0..<5),
+            open: open(4)
         )
         #expect(
             Array(cells.dropFirst(5)) == [
@@ -199,14 +206,14 @@ extension AlbumGridCellsTests {
         let four = AlbumGridCells(
             totalCount: 10,
             columnCount: 4,
-            loaded: loaded(0..<10),
-            openAlbumId: "a5"
+            idAt: loaded(0..<10),
+            open: open(5)
         )
         let three = AlbumGridCells(
             totalCount: 10,
             columnCount: 3,
-            loaded: loaded(0..<10),
-            openAlbumId: "a5"
+            idAt: loaded(0..<10),
+            open: open(5)
         )
         let albums: (AlbumGridCells) -> [AlbumGridCell.Identity] = { cells in
             cells.map(\.id)
@@ -223,16 +230,19 @@ extension AlbumGridCellsTests {
         #expect(three.firstIndex(of: .detail(albumId: "a5")) == 6)
     }
 
-    @Test("an open album that is not loaded opens no detail")
-    func unloadedOpenAlbumHasNoDetail() {
+    @Test(
+        "an open card the window does not hold opens its detail under its row"
+    )
+    func unloadedOpenCardOpensItsDetail() {
         let cells = AlbumGridCells(
             totalCount: 6,
             columnCount: 3,
-            loaded: loaded(0..<3),
-            openAlbumId: "elsewhere"
+            idAt: loaded(0..<3),
+            open: AlbumGridOpenCard(albumId: "elsewhere", position: 4)
         )
-        #expect(cells.count == 6)
-        #expect(!cells.contains(.detail(albumId: "elsewhere")))
+        #expect(cells.count == 9)
+        #expect(cells.firstIndex(of: .detail(albumId: "elsewhere")) == 6)
+        #expect(cells[4] == .placeholder(position: 4))
     }
 
     @Test("positions past the total are not shown")
@@ -240,8 +250,8 @@ extension AlbumGridCellsTests {
         let cells = AlbumGridCells(
             totalCount: 2,
             columnCount: 2,
-            loaded: loaded(0..<4),
-            openAlbumId: "a3"
+            idAt: loaded(0..<4),
+            open: open(3)
         )
         #expect(
             Array(cells) == [
@@ -258,8 +268,8 @@ extension AlbumGridCellsTests {
                 let cells = AlbumGridCells(
                     totalCount: 9,
                     columnCount: columns,
-                    loaded: loaded(0..<9),
-                    openAlbumId: "a\(open)"
+                    idAt: loaded(0..<9),
+                    open: self.open(open)
                 )
                 #expect(Set(ids(cells)).count == cells.count)
                 let detail = cells.firstIndex(of: .detail(albumId: "a\(open)"))
@@ -275,14 +285,14 @@ extension AlbumGridCellsTests {
         let first = AlbumGridCells(
             totalCount: 9,
             columnCount: 3,
-            loaded: loaded(0..<9),
-            openAlbumId: "a3"
+            idAt: loaded(0..<9),
+            open: open(3)
         )
         let second = AlbumGridCells(
             totalCount: 9,
             columnCount: 3,
-            loaded: loaded(0..<9),
-            openAlbumId: "a5"
+            idAt: loaded(0..<9),
+            open: open(5)
         )
         #expect(ids(first) == ids(second))
         #expect(

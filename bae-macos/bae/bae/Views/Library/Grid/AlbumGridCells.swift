@@ -8,8 +8,7 @@ enum AlbumGridCell: Identifiable, Equatable {
     case sectionFiller(sectionId: String, index: Int)
     /// The album at `position` in the list.
     case album(position: Int, albumId: String, sectionId: String? = nil)
-    /// A position with no album to show: its page has not landed, or it
-    /// holds an album an earlier position in the same section already shows.
+    /// A position whose row the list's window does not hold.
     case placeholder(position: Int)
     /// The open album's detail, first in the row under that album's row and
     /// drawn across the whole row.
@@ -47,9 +46,16 @@ enum AlbumGridCell: Identifiable, Equatable {
     }
 }
 
+/// The card whose album's detail the grid shows: the album, at the list
+/// position of the card the person opened.
+struct AlbumGridOpenCard: Equatable {
+    let albumId: String
+    let position: Int
+}
+
 /// One sequence of slots for the whole lazy grid. Headings occupy full rows,
-/// and each artist starts a new album row. Only section boundaries and loaded
-/// albums are held; unloaded album slots are produced as they are requested.
+/// and each artist starts a new album row. Only section boundaries are held;
+/// each album slot reads the album at its position as it is requested.
 struct AlbumGridLayout: RandomAccessCollection {
     private struct Group {
         let heading: BridgeLibraryBrowseSection?
@@ -64,17 +70,16 @@ struct AlbumGridLayout: RandomAccessCollection {
         totalCount: Int,
         sections: [BridgeLibraryBrowseSection],
         columnCount: Int,
-        loaded: [(position: Int, id: String)],
-        openAlbumId: String?,
-        openSectionId: String?
+        idAt: @escaping (Int) -> String?,
+        open: AlbumGridOpenCard?
     ) {
         self.columnCount = columnCount
         if sections.isEmpty {
             let cells = AlbumGridCells(
                 totalCount: totalCount,
                 columnCount: columnCount,
-                loaded: loaded,
-                openAlbumId: openAlbumId
+                idAt: idAt,
+                open: open
             )
             groups = [Group(heading: nil, cells: cells, slots: 0..<cells.count)]
         }
@@ -87,9 +92,8 @@ struct AlbumGridLayout: RandomAccessCollection {
                         section.firstPosition
                     )..<Int(section.firstPosition + section.albumCount),
                     columnCount: columnCount,
-                    loaded: loaded,
-                    openAlbumId: openSectionId == section.id
-                        ? openAlbumId : nil,
+                    idAt: idAt,
+                    open: open,
                     sectionId: section.id
                 )
                 let count =
@@ -139,8 +143,8 @@ struct AlbumGridLayout: RandomAccessCollection {
 }
 
 /// The album grid's slots at one column count: every list position in order,
-/// with the open album's detail taking the whole row under the row that
-/// holds the album.
+/// each the album the list holds there, with the open card's detail taking
+/// the whole row under the row that holds the card.
 struct AlbumGridCells: RandomAccessCollection {
     private struct Expansion {
         let albumId: String
@@ -157,51 +161,44 @@ struct AlbumGridCells: RandomAccessCollection {
     private let totalCount: Int
     private let startPosition: Int
     private let sectionId: String?
-    /// The album each loaded position shows.
-    private let albumIds: [Int: String]
+    /// The album the list holds at a position, nil where its window holds no
+    /// row.
+    private let idAt: (Int) -> String?
     private let expansion: Expansion?
 
-    /// `loaded` is every loaded position with its album, in position order:
-    /// the rows of the list's one window, which holds each album once within
-    /// a section.
     init(
         totalCount: Int,
         columnCount: Int,
-        loaded: [(position: Int, id: String)],
-        openAlbumId: String?
+        idAt: @escaping (Int) -> String?,
+        open: AlbumGridOpenCard?
     ) {
         self.init(
             positions: 0..<totalCount,
             columnCount: columnCount,
-            loaded: loaded,
-            openAlbumId: openAlbumId
+            idAt: idAt,
+            open: open
         )
     }
 
+    /// The slots of the list's `positions`, with the detail of `open` when
+    /// its card is among them.
     init(
         positions: Range<Int>,
         columnCount: Int,
-        loaded: [(position: Int, id: String)],
-        openAlbumId: String?,
+        idAt: @escaping (Int) -> String?,
+        open: AlbumGridOpenCard?,
         sectionId: String? = nil
     ) {
         precondition(columnCount > 0, "the grid has at least one column")
         self.totalCount = positions.count
         self.startPosition = positions.lowerBound
         self.sectionId = sectionId
-        var albumIds: [Int: String] = [:]
-        var openPosition: Int?
-        for (position, albumId) in loaded where positions.contains(position) {
-            albumIds[position] = albumId
-            if albumId == openAlbumId {
-                openPosition = position - positions.lowerBound
-            }
-        }
-        self.albumIds = albumIds
-        guard let openAlbumId, let openPosition else {
+        self.idAt = idAt
+        guard let open, positions.contains(open.position) else {
             expansion = nil
             return
         }
+        let openPosition = open.position - positions.lowerBound
         let insertAt = Swift.min(
             (openPosition / columnCount + 1) * columnCount,
             totalCount
@@ -209,7 +206,7 @@ struct AlbumGridCells: RandomAccessCollection {
         let leadingFillers =
             (columnCount - insertAt % columnCount) % columnCount
         expansion = Expansion(
-            albumId: openAlbumId,
+            albumId: open.albumId,
             insertAt: insertAt,
             leadingFillers: leadingFillers,
             count: leadingFillers + columnCount
@@ -235,7 +232,7 @@ struct AlbumGridCells: RandomAccessCollection {
 
     /// The slot showing list position `position`.
     func cell(forPosition position: Int) -> AlbumGridCell {
-        albumIds[position]
+        idAt(position)
             .map {
                 .album(position: position, albumId: $0, sectionId: sectionId)
             }

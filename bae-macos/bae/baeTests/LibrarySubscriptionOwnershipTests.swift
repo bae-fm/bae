@@ -418,7 +418,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         try await Wait.until {
             session.albums.list?.count?.rows == 2
         }
-        session.albumSelection.setSelected("album-a", selected: true)
+        session.albumSelection.setSelected(
+            "album-a",
+            selected: true,
+            position: 0
+        )
         #expect(selectionProbe.requested.last == ["album-a"])
 
         pageProbe.emit(rows: [makeBridgeAlbum(id: "album-c")], total: 3)
@@ -438,8 +442,16 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             uiStore: UiStore()
         )
 
-        session.albumSelection.setSelected("album-a", selected: true)
-        session.albumSelection.setSelected("album-b", selected: true)
+        session.albumSelection.setSelected(
+            "album-a",
+            selected: true,
+            position: 0
+        )
+        session.albumSelection.setSelected(
+            "album-b",
+            selected: true,
+            position: 1
+        )
         selectionProbe.emit(
             requested: ["album-a", "album-b"],
             gone: ["album-a"]
@@ -461,9 +473,21 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             uiStore: UiStore()
         )
 
-        session.albumSelection.setSelected("album-a", selected: true)
-        session.albumSelection.setSelected("album-b", selected: true)
-        session.albumSelection.setSelected("album-a", selected: false)
+        session.albumSelection.setSelected(
+            "album-a",
+            selected: true,
+            position: 0
+        )
+        session.albumSelection.setSelected(
+            "album-b",
+            selected: true,
+            position: 1
+        )
+        session.albumSelection.setSelected(
+            "album-a",
+            selected: false,
+            position: 0
+        )
 
         #expect(selectionProbe.opened == 1)
         #expect(
@@ -483,7 +507,8 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         )
         weak var weakSession = session
 
-        session?.albumSelection.setSelected("album-a", selected: true)
+        session?.albumSelection
+            .setSelected("album-a", selected: true, position: 0)
         session = nil
         try await Wait.until { selectionProbe.cancelled }
 

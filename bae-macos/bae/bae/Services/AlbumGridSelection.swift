@@ -11,8 +11,12 @@ import Observation
 @MainActor
 @Observable
 final class AlbumGridSelection {
+    /// The card a shift-click extends from: its album, at the list position
+    /// it was clicked at, in its artist's group when the grid groups by
+    /// artist.
     struct Anchor {
         let albumId: String
+        let position: Int
         let sectionId: String?
     }
 
@@ -36,46 +40,59 @@ final class AlbumGridSelection {
         selectedIds.contains(id)
     }
 
-    /// Set the album's membership and anchor at the clicked appearance.
-    func setSelected(_ id: String, selected: Bool, sectionId: String? = nil) {
+    /// Set the album's membership and anchor at the clicked card, at list
+    /// position `position`.
+    func setSelected(
+        _ id: String,
+        selected: Bool,
+        position: Int,
+        sectionId: String? = nil
+    ) {
         if selected {
             selectedIds.insert(id)
         }
         else {
             selectedIds.remove(id)
         }
-        anchor = Anchor(albumId: id, sectionId: sectionId)
+        anchor = Anchor(albumId: id, position: position, sectionId: sectionId)
         onSelectionChanged(selectedIds)
     }
 
-    /// shift-click: union the contiguous range between the anchor and `targetId`
-    /// (in grid order) into the selection. Positions come from `position`; ids in
-    /// the range that aren't loaded (`idAt` returns nil) are skipped. The anchor is
-    /// unchanged. If the anchor no longer resolves — a sort swapped the list and
-    /// its segment isn't fetched — the clicked album is selected and anchored.
+    /// shift-click on the card of `targetId` at list position `position`:
+    /// union the contiguous range of positions between the anchor's and the
+    /// target's into the selection. Ids in the range that aren't loaded
+    /// (`idAt` returns nil) are skipped. The anchor is unchanged. With no
+    /// anchor, the clicked album is selected and anchored.
     func extendRange(
         to targetId: String,
-        targetPosition: Int? = nil,
-        targetSectionId: String? = nil,
-        position: (String) -> Int?,
+        position: Int,
+        sectionId: String? = nil,
         idAt: (Int) -> String?
     ) {
-        guard let anchor,
-            let anchorIndex = position(anchor.albumId),
-            let targetIndex = targetPosition ?? position(targetId)
-        else {
-            setSelected(targetId, selected: true, sectionId: targetSectionId)
+        guard let anchor else {
+            setSelected(
+                targetId,
+                selected: true,
+                position: position,
+                sectionId: sectionId
+            )
             return
         }
         for index in min(
-            anchorIndex,
-            targetIndex
-        )...max(anchorIndex, targetIndex) {
+            anchor.position,
+            position
+        )...max(anchor.position, position) {
             if let id = idAt(index) {
                 selectedIds.insert(id)
             }
         }
         onSelectionChanged(selectedIds)
+    }
+
+    /// Forget the anchor, keeping the selection: the list it was clicked in
+    /// has moved its rows, so its position no longer names its card.
+    func dropAnchor() {
+        anchor = nil
     }
 
     func clear() {
