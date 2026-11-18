@@ -410,6 +410,15 @@ task_types = [
     "TrackSink",
     "StreamingState",
     "ReadyReceiver",
+    # One decode of a sparse buffer: the reader FFmpeg reads the buffer
+    # through, the demuxer opened over it, the FFmpeg state the decode loop
+    # runs on, and the stage that hands each decoded frame to the decode's
+    # sink.
+    "StreamingAvioContext",
+    "BufferInput",
+    "BufferDecodeResources",
+    "SinkOutput",
+    "TrackOutput",
     # One walk of a release's linked documents, and one waiter's place in a rate
     # limiter's queue.
     "FetchDocuments",
@@ -942,11 +951,6 @@ OpenCalls = "LibrarySessions"
 # parts it holds that nothing else shares; a static holds what the process
 # shares. Each row is the owner's own construction.
 "bae-app/src/app_services.rs" = ["AppServices::new"]
-"bae-audio/src/avio.rs" = ["StreamingAvioContext::new"]
-"bae-audio/src/decode/output.rs" = [
-    "SinkOutput::new",
-    "TrackOutput::new",
-]
 "bae-audio/src/encode.rs" = [
     "StreamingEncoder::new",
     "StreamingEncoder::seekable",
