@@ -8,12 +8,6 @@
       [1, 2, 3, 4, 5].map(function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); }),
       props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 6, fontSize: '0.85em' } }, props.who) : null);
   }
-  // A person's picture: initials on a tint when there's no image.
-  function Avatar(props) {
-    var s = Number(props.size || 32), name = String(props.name || '?');
-    var ini = name.split(/\s+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
-    return props.image ? h(Artwork, { title: props.image, size: s, round: true }) : h('span', { className: 'bae-avatar', style: { width: s, height: s, fontSize: s * 0.4 } }, ini);
-  }
   // A row of a history or playlist list: when or position, cover, title, artist · album, who, length.
   function MacListRow(props) {
     return h('div', { className: cx('bae-m-lrow', props.selected && 'bae-m-lrow-selected') },

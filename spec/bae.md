@@ -3128,7 +3128,12 @@ editable by every member.
 | Rename yourself | the person | every device shows the new name on their profile (§5.4) |
 
 **People and devices.** Settings keeps the library's people on a page of their
-own, with two sections. *You* holds the person's name, with *Change…*, which
+own, with two sections. *You* holds the person's picture first: their image,
+or the initials of their name on a tint while they have none. On a Mac,
+*Choose…* opens the system's panel for picking an image, and *Remove*, shown
+while they have a picture, clears it; on Android, tapping the Picture row opens
+the system's photo picker, and a *Remove picture* row in red, shown while they
+have a picture, clears it. Then the person's name, with *Change…*, which
 renames their profile in a sheet that says everyone in the library sees the name
 and keeps the name as typed when the rename fails, with a danger notice,
 "Could not save the name.", and *Details* for the cause, but no retry button,
@@ -3142,8 +3147,8 @@ devices*: each of the person's devices, this one reading *This device* with no
 menu since a device leaves by removing the library from it, and each other
 device with a ⋯ menu (⋮ on Android) holding *Remove…*. On a Mac, *Add device…*
 is a plain button under the box, on the right; on Android *Add…* is the last
-row. *People* has one row for each other person, with their role and how many
-devices they have, and the open invites below them; on a Mac an admin's
+row. *People* has one row for each other person, led by their picture or initials,
+with their role and how many devices they have, and the open invites below them; on a Mac an admin's
 *Invite…* is a plain button under the box, on the right, and on Android *Invite*,
 with a +, is the last row of the People card, after the invites. An admin's row opens that person's
 page: their role, with *Make admin* or *Make member*, *Remove from library…* in

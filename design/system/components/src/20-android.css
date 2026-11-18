@@ -38,6 +38,7 @@
 .bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: 14px; color: var(--text-secondary); }
 .bae-a-row-icon { flex: none; fill: var(--text-secondary); }
 .bae-a-row-lead { flex: none; fill: var(--text-secondary); }
+.bae-a-row-lead-node { display: flex; }
 .bae-a-row-lead-action { fill: var(--accent); }
 
 .bae-a-step { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-section); padding: var(--space-section) var(--space-edge) var(--space-page); font-family: var(--font-android); }

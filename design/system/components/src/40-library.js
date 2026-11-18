@@ -13,6 +13,13 @@
     return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 
+  // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it).
+  function Avatar(props) {
+    var s = Number(props.size || 32), name = String(props.name || '?');
+    var ini = name.split(/\s+/).map(function (p) { return p[0]; }).join('').slice(0, 2).toUpperCase();
+    return props.image ? h(Artwork, { title: props.image, size: s, round: true }) : h('span', { className: 'bae-avatar', 'aria-hidden': true, style: { width: s, height: s, fontSize: s * 0.4 } }, ini);
+  }
+
   // A playlist's picture: the covers of its first four different releases in a 2×2 square, as playlists show on both platforms; with fewer than four, its first entry's cover; empty, the missing tile. `covers` lists the releases' titles in the playlist's order, each once. One cover alone would make a playlist look like that album, and two playlists that start on one album alike.
   function PlaylistPicture(props) {
     var covers = String(props.covers || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);

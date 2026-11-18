@@ -72,6 +72,8 @@
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
     return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected', props.off && 'bae-off'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], 'aria-expanded': trail.length ? null : press['aria-expanded'], onClick: props.onClick },
       props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
+      // `avatar`: a person's name, whose picture (`avatarImage`) or initials lead the row.
+      props.avatar != null ? h('span', { className: 'bae-a-row-lead bae-a-row-lead-node' }, h(Avatar, { name: props.avatar, image: props.avatarImage, size: 40 })) : null,
       lines,
       // `value`: the label's value at the row's far end, as MacRow's: “Joined · March 2026” in a member's details.
       props.value ? h('span', { className: 'bae-a-row-value' }, props.value) : null,

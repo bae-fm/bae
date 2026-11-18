@@ -48,6 +48,7 @@
 .bae-m-fieldrow-content .bae-m-btn { flex: none; height: var(--size-field); line-height: var(--size-field); border-radius: 8px; }
 .bae-m-row-action .bae-m-row-label { color: var(--accent); }
 .bae-m-row-destructive .bae-m-row-label { color: var(--danger); }
+.bae-m-row-lead { display: flex; flex: none; }
 .bae-m-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-row-strong { font-weight: 600; }
 .bae-m-row-title { display: flex; align-items: center; gap: 6px; }
