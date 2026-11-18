@@ -347,9 +347,11 @@ extension ImportCandidateTablePlaceTests {
             var items = (0..<80).map(Self.candidateItem)
             items[5] = Self.headerItem(5)
             await source.replaceItems(items)
+            // The window holds row 30 again once the new rows land.
             try await Wait.untilLaidOut(table) {
                 table.rect(ofRow: 5).height
                     == ImportCandidateTableLayout.headerRowHeight
+                    && slot.list?.idAt(30) != nil
             }
 
             #expect(slot.list?.idAt(30) == key)
