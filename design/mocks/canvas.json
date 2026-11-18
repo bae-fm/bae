@@ -2083,7 +2083,7 @@
    "y": 7652
   },
   "mac.settings.sync.every-state.dc.html": {
-   "h": 200,
+   "h": 240,
    "page": "library",
    "title": "macOS: Sync status: every state",
    "w": 484,
@@ -2924,7 +2924,7 @@
    "y": 7652
   },
   "android.settings.sync.every-state.dc.html": {
-   "h": 240,
+   "h": 290,
    "page": "library",
    "title": "Sync status: every state",
    "w": 412,
