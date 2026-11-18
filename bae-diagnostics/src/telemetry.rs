@@ -293,15 +293,15 @@ macro_rules! telemetry_events {
                 match self {
                     $(
                         Self::$variant { $( $field ),* } => {
-                            #[allow(unused_mut)]
-                            let mut map = serde_json::Map::new();
-                            $(
-                                map.insert(
-                                    stringify!($field).to_string(),
-                                    TelemetryValue::record($field),
-                                );
-                            )*
-                            map
+                            let fields: [(String, serde_json::Value); _] = [
+                                $(
+                                    (
+                                        stringify!($field).to_string(),
+                                        TelemetryValue::record($field),
+                                    ),
+                                )*
+                            ];
+                            fields.into_iter().collect()
                         }
                     )*
                 }

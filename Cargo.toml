@@ -59,6 +59,11 @@ large_enum_variant = "allow"
 let_underscore_must_use = "deny"
 # `.map_err(|_| ...)` discards the error it replaces, and with it the cause.
 map_err_ignore = "deny"
+# A lint mark is `#[expect(lint, reason = "...")]`: an `#[allow]` outlives the
+# code it excused, while an `#[expect]` whose lint no longer fires fails the
+# build, and the reason says why this code may do what the lint forbids.
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
 
 [workspace.dependencies]
 # Every dependency of every member is declared here, once: its version or
