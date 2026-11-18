@@ -101,9 +101,6 @@ releases. A phone browses, downloads and plays them.
 | Subsonic and MCP servers | yes | no |
 | Export and save files | yes | no |
 
-The phone builds leave the import pipeline, identification, catalog lookups
-and metadata editing out entirely (§11.2).
-
 The macOS app is the full desktop app. On Windows and Linux, bae-avalonia
 holds the desktop app's start-up, update and packaging machinery and one
 window; the desktop views are ported from the macOS app later. Opening it
@@ -112,8 +109,7 @@ over, logged, takes over when that copy is gone.
 
 The Android app is the full phone app. On iOS, bae-ios holds the phone app's
 start-up and release machinery and one screen; the phone views are rebuilt
-from the Android app later. Its launch starts telemetry, crash reporting,
-bae's directory, the host and the keychain, in that order. The screen shows
+from the Android app later. The screen shows
 the sheep, the bae wordmark, and either the step that stopped the launch with
 its error, or the libraries on this device by name, or why they couldn't be
 read. It opens no library, so nothing in the phone column runs there yet.
@@ -128,8 +124,8 @@ bae builds in two editions from one source:
   nothing proprietary to build or run. On iOS it works with a free personal
   signing identity; on Android it reads barcodes with ZXing.
 
-The difference is a set of build features (§10.3). Nothing at run time decides
-which edition a device is.
+The build decides which edition a device runs, and a device never switches
+editions while it runs.
 
 ---
 
@@ -172,35 +168,30 @@ release on two lines: its pressing (its own year when that differs from the
 album's, where it was released, its media and details, its audio and its
 length), and its labels, each with the catalog numbers it gives the pressing.
 
-The person picks which of an album's releases its page shows. The app passes
-core the id of the picked release when it reads the page. Core answers with
-that release while the album holds it and with the primary release otherwise,
-together with the release's place among the album's releases and whether it can
-become the primary release.
+The person picks which of an album's releases its page shows. The page shows
+the picked release while the album holds it, and the primary release otherwise.
 
 On macOS the album page's track list lays each side or disc out in two
-columns. Core says where a side's second column starts: after half its tracks,
-rounded up, when it has more than eight; a shorter side fills the first column
-alone.
+columns. A side's second column starts after half its tracks, rounded up, when
+the side has more than eight; a shorter side fills the first column alone.
 
 The album page's pressing line starts with the release's year only when it
 differs from the album's year shown above it (a 2001 reissue of a 1992 album
-says 2001; the 1992 original says nothing); core decides this once and hands
-the apps the year or nothing.
+says 2001; the 1992 original says nothing).
 
 On macOS the person picks several tracks of the album page's track list:
 cmd-click picks or unpicks a row, shift-click picks the rows from the last pick
-to the one clicked, and a plain click clears the picks. Core reads the rows a
-shift-click picks: the tracks from the last pick to the one clicked in the
-order their release lists them, or the clicked track alone when the last pick
-is not a track of the clicked track's release. A pick or a clear made while core
-reads those rows cancels the read. The page clears the picks when it shows
-another release or closes. The app tints a picked row and marks it as selected
-for screen readers. A row's menu acts on every pick when the row is among
-several, and on the row alone otherwise. For several it offers *Play N tracks*,
-*Play next*, *Add to queue* and *Add to playlist*. Each action hands core the
-picked ids in no order, and core puts the tracks in the order their release
-lists them (by release, then stored position), each once, in the same call.
+to the one clicked, and a plain click clears the picks. A shift-click picks the
+tracks from the last pick to the one clicked in the order their release lists
+them, or the clicked track alone when the last pick is not a track of the
+clicked track's release. A pick or a clear that the person makes before a
+shift-click's tracks show as picked cancels that shift-click. The page clears
+the picks when it shows another release or closes. The app tints a picked row
+and marks it as selected for screen readers. A row's menu acts on every pick
+when the row is among several, and on the row alone otherwise. For several it
+offers *Play N tracks*, *Play next*, *Add to queue* and *Add to playlist*. Each
+action takes the tracks in the order their release lists them (by release, then
+position), each once, whatever order the person picked them in.
 Play plays the tracks the library holds from the first as a list of tracks
 (§7.1), Play next and Add to queue put the tracks the library holds in Up next
 in that order, and Add to playlist appends the tracks to the playlist in that
@@ -211,11 +202,11 @@ holds.
 On macOS the person picks several albums in the album grid the same way:
 cmd-click picks or unpicks an album, shift-click picks the albums of the cards
 from the last pick's card to the one clicked, and a plain click clears the
-picks. Core reads the albums a shift-click picks, each once, from the grid's
-order under its sort and grouping, whether or not the grid has loaded their
-cards. Grouped by artist, each end is the card the person clicked, in its
-artist's group. A pick or a clear made while core reads those albums cancels
-the read.
+picks. A shift-click picks each album once, in the grid's order under its sort
+and grouping, including albums whose cards are off screen. Grouped by artist,
+each end is the card the person clicked, in its artist's group. A pick or a
+clear that the person makes before a shift-click's albums show as picked
+cancels that shift-click.
 
 Every import is its own release, so the library can hold one pressing twice:
 two folders of the same CD are two releases under one album (§2.7).
@@ -227,13 +218,13 @@ first in that order, ties broken by release id. So every album with a release
 has exactly one primary. A release joining an
 album goes after the album's others, so an album's first release stays its
 primary. "Set as primary release" moves a release before the album's others,
-and core refuses it for a release of another album. Moving or deleting a release
+and bae refuses it for a release of another album. Moving or deleting a release
 writes nothing else: the next release in the order is then the primary.
 
 A release with no stored name, year or media shows as "Release N", where N is
 its place among its album's releases in that order, counted from 1, ties broken
-by release id. The view `release_number_in_album` defines N, and the album page,
-the release page and the composer page's release rows all read it.
+by release id. The album page, the release page and the composer page's release
+rows all show the same N.
 
 Deleting a release deletes, in one write, its tracks and their places in the
 queue, its files and its cover (§4.2), and is refused for a release the library
@@ -243,9 +234,8 @@ whose last release goes, by a delete or by moving to another album, is deleted
 in the same write, with its credits and ratings (a release another device adds to
 that album meanwhile goes with it, as a cascade does, and no device keeps it); so is a work no track performs
 any more (§2.4) and an artist nothing credits any more (§2.3), each with what
-hangs on it. The write reads what it may empty before it changes anything and
-deletes those that nothing references at its end, so a save that takes a credit
-out and writes it again deletes nothing. Both
+hangs on it. A save that takes a credit out and writes it again deletes
+nothing. Both
 deletes ask first, saying that bae permanently deletes the release, or every
 release of the album, from the person's devices and the cloud, and keeps the
 original files in their folders. On macOS the
@@ -270,8 +260,7 @@ other credits, those besides that artist, printed as a line (none when that
 artist is its only credit). The artist list shows every artist an
 album's credits show, sorted by name or album count, ties going by name and
 then id. Under its name an artist's row, its page and its search result say how
-many albums credit it ("1 album", "3 albums"), in core's words for each
-language.
+many albums credit it ("1 album", "3 albums"), in the viewer's language.
 
 **Names order in the device's language.** Every list that sorts by a name
 (album titles and artists in the grid, the artist and composer lists, a
@@ -285,13 +274,12 @@ that differ only in case have different places, lowercase first. The device
 holds its language in one local row, set by the app (macOS: its first
 preferred language, Android: its locale) at launch and when its language
 changes, and a collation key of every listed name written in that
-language beside the name; lists order by the keys. The few short lists that
-keep no key column (playlists, people, cast receivers) compute the same key in
-the query, from the same language row, so a change of language reorders them
-too. A change of language, or
-of the collation data the keys were written with (checked as the library
-opens, before anything reads it), rewrites every key in one write, so a list is
-in one order or the other and never between them. The keys are device-local and
+language beside the name; lists order by the keys. A change of language
+reorders every list, the playlists, the people and the cast receivers among
+them. A change of language, or of the collation data the keys were written with
+(which bae checks when it opens the library, before any list shows), rewrites
+every key in one write, so a list is in one order or the other and never
+between them. The keys are device-local and
 are not synced; every reader of the library file on the device (the app, MCP and
 Subsonic) sees the one order.
 
@@ -377,22 +365,22 @@ them: a damaged image is stored as plain bytes, and a CUE sheet, a rip log and
 a playlist all as text. The scan reads a document's kind from its name: `.log`
 a rip log, `.accurip` an AccurateRip report, `.m3u` and `.m3u8` a playlist,
 `.txt` other text.
-A library release's re-identify reads its files as the role and kind each
-recorded, not from their names: its audio, its track sheets (parsed again from
-the file), its rip logs and its AccurateRip reports. Re-identify reads the
-audio by the facts its import stored. coven reads the sheets, logs and
-reports, and the images the artwork reader reads, from wherever it has each
-one: the original on this device, its cache or storage. When coven can't read
-one, such as an original that moved or changed, the reading of the release's
-Disc ID or artwork that needs it fails with coven's reason.
+Re-identifying a library release reads its files as the role and kind each
+recorded, not from their names: its audio, by the facts its import stored, its
+track sheets (parsed again from the file), its rip logs and its AccurateRip
+reports. It reads each sheet, log, report and image from wherever this device
+can get it: the original on this device, the device's cache or storage. When
+none of those can give a file, such as an original that moved or changed, the
+reading of the release's Disc ID or artwork that needs it fails with the
+reason.
 
 The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
 whole on export (§4.6).
 
-A release's detail carries the files no track plays from, by the rule the
-editor's Files section lists them by (§3.8): every file the scan did not read
-as audio a track plays from, in the release's file order.
+A release's detail lists the files no track plays from, as the editor's Files
+section does (§3.8): every file the scan did not read as audio a track plays
+from, in the release's file order.
 
 ### 2.3 Artists and credits
 
@@ -422,14 +410,12 @@ one artist twice keeps both credits. Every reader takes the whole list:
   library, MusicBrainz or Discogs id. A query matches
   anywhere inside a title or a name, ignoring case by Unicode's lowercase
   (accents still count: `ecrin` doesn't find `Écrin`), and each kind of result
-  comes in title or name order, ties going by id.
-  The search also says whether it found anything of any kind, which is what
-  the screens' no-results state reads, and counts the rows each section
-  lists, which is what decides whether the screens show that section.
+  comes in title or name order, ties going by id. A search that finds nothing
+  of any kind shows its no-results state, and a search screen leaves out each
+  section that found nothing.
 - A track shows its own credits, else its album's, wherever bae names a
   track's artists: its search row, its row in an album's detail, what plays,
-  the tags of a saved copy, and Subsonic's songs. One rule in the library's
-  reads decides it.
+  the tags of a saved copy, and Subsonic's songs.
 - Sorting albums by artist compares every credit's sort name (else its name)
   in list order, so an album by A comes before one by A and B, which comes
   before one by A and C. The storage table's artist column sorts the same way.
@@ -439,12 +425,11 @@ one artist twice keeps both credits. Every reader takes the whole list:
 **Credit lines.** A credit names an artist and, when another credit follows
 it, what the source prints between them: MusicBrainz's join phrase (" feat. ",
 " & "), Discogs's `join` (a comma as ", ", any other word or sign with a space
-either side). The last credit's join is never printed, and is not kept. Core
-keeps a line as names with typed joins, and never as one string where a
-viewer reads it. It recognizes " feat. ", " & ", " and ", " with " and " vs. "
-(any spacing and case; a comma or nothing is the plain join) and keeps any
-other join as the source wrote it. The apps word a recognized join from one
-catalog message each, in the viewer's language (a language that writes
+either side). The last credit's join is never printed, and is not kept. bae
+keeps a line as names with typed joins, never as one string. bae recognizes
+" feat. ", " & ", " and ", " with " and " vs. " (any spacing and case; a comma
+or nothing is the plain join) and keeps any other join as the source wrote it.
+The apps show a recognized join in the viewer's language (a language that writes
 "feat." in Latin letters, as Chinese does, says "feat."), show an
 unrecognized join as written, and join each run of plain names with their
 list formatter in the viewer's language ("A feat. B, C, and D"): the album
@@ -476,10 +461,9 @@ and renames or removes each in one write with every credit linking it:
 renamed, they print the new name; removed, the artist's own. Adding or
 renaming a name of an artist deleted or merged away meanwhile is refused. The
 artist field of an editor lists each found artist with its other names under it; picking
-one prints the artist by that name. That search is live for as long as the
-field is open: one read, moved to each text typed and to the part of the list
-on screen, so an artist added, renamed or given another name meanwhile shows
-as it is. Typing a name, or picking an artist for a tag credit that spelled it
+one prints the artist by that name. While the field is open, its list shows
+each artist as it is now, so an artist added, renamed or given another name
+meanwhile shows as it is. Typing a name, or picking an artist for a tag credit that spelled it
 differently, prints the artist's own name.
 
 Two artists are merged into one by any write that finds one catalog id on
@@ -523,11 +507,8 @@ several artists it leaves ambiguous. Each artist field (the album's artists,
 or a track's own) shows one badge for all its artists: Library when every
 artist is in the library, New when every one is new, how many are new, how
 many library artists its one credit could be, or how many of its credits
-are left to choose. The statement that reads a field's rows reads its badges
-too: SQL resolves each credit by the rules above and counts each field's
-artists with GROUP BY, and a picked artist is in the library. A test runs
-that resolution and the committing rule over the same libraries and requires
-the same answers.
+are left to choose. A picked artist counts as in the library. The badges
+always name the artists that importing or saving the draft would name.
 
 **Edge cases.**
 
@@ -632,11 +613,9 @@ than one medium, and the release with one such medium shows its tracks in one
 group with no heading. Each group carries its tracks' playing time. When the
 release has more than one group, each group shows its time beside the release's
 total. Each track carries its own credits (or the album's), the works it
-performs and the stars the person gave it. The release says whether any of its
-tracks performs a work. Its files come with the lists the page shows beside them
-(the images, the images a cover can be made from, the files no track plays
-from), their count and their total size, whether any file is one no track plays
-from, and whether any catalog describes the release.
+performs and the stars the person gave it. The detail lists the release's
+images, the images a cover can be made from and the files no track plays from,
+with the files' count and total size.
 
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track
@@ -648,7 +627,8 @@ and one artist in two roles is two rows. A row covering every track names no
 tracks. Rows go in the order of their first credit: the release's credits in
 the catalog's order, then each track's by track, then by the credit's order. A
 release with no credit has no row. On macOS the Credits are listed above the
-Works, which list each work a track performs in the track order, as the
+Works, which show only when a track of the release performs a work, and list
+each work a track performs in the track order, as the
 track's number, the work and its composers, and a click on a work opens its
 page; on Android a line under each track names the works it performs, a tap on it
 opens the work, and the Credits follow the tracks, each row a role at the start and
@@ -671,7 +651,7 @@ the artist it shows as. Each row counts the artist's works, the releases a
 track of which performs one of them, and the unlinked writing credits; the
 list sorts by name, works or releases, ties going by name, then id. Under its name a
 composer's row, its page and its search result say how many works it is
-credited on ("1 work", "3 works"), in core's words for each language.
+credited on ("1 work", "3 works"), in the viewer's language.
 
 **An artist's composer page** lists its works, then its release credits and
 its track credits in every role that none of the works it wrote links, each
@@ -689,15 +669,14 @@ without case, as the album grid's do. A work shows the cover of its first
 album by title, compared the same way, then by id, among the albums with a
 release that performs it: that album's primary release's cover when the release performs
 the work, otherwise that of the album's first release, in its order, that
-does. bae reads the page through one window, as
-it reads the lists (§9.2), and opens the first work it lists.
+does. Opening the page opens the first work it lists.
 
 **A work's page** lists its parts, in the work's order, then the releases
 that perform it, then their tracks that do. Releases go in the order the
 work's cover is picked by: by album title, compared without case, two albums
 sharing a title by id, each album's releases together in its order. Tracks go
-by their release in that order, then by place. The page's read counts each
-section's rows, and the page leaves out a section whose count is zero.
+by their release in that order, then by place. The page leaves out a section
+with no rows.
 
 ### 2.5 Catalog records
 
@@ -753,7 +732,7 @@ so one fact is one row.
   id, it keeps the id it has; row ids are never rewritten.
 - **A new artist or label given another id within its write.** A new artist
   or label takes its id from the catalog ids it holds once the write that
-  makes it has decided every credit or label, one step for both. A label
+  makes it has decided every credit or label. A label
   first named by its Discogs id alone, which a later label of the same
   release gives a MusicBrainz id, takes the MusicBrainz id's; an artist
   first credited by name alone, which a later credit of the write names with
