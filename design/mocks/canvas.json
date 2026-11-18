@@ -4450,6 +4450,22 @@
    "w": 412,
    "x": 2460,
    "y": 2876
+  },
+  "mac.settings.add-device.ended.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: Add device: the code has ended",
+   "w": 690,
+   "x": 4278,
+   "y": 20744
+  },
+  "android.settings.add-device.ended.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "Add device: the code has ended",
+   "w": 412,
+   "x": 3786,
+   "y": 20744
   }
  },
  "createdOnFiles": {
