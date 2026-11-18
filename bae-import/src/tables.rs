@@ -6,7 +6,6 @@
 
 mod album_link_rows;
 mod catalog_apply_steps;
-mod catalog_group_url;
 mod cover_gallery;
 mod cover_labels;
 mod downscaled_copies;
@@ -17,7 +16,6 @@ mod import_origin;
 pub(crate) mod import_state;
 mod layout_text;
 mod release_edit_session;
-mod release_group_cover;
 mod release_groupings;
 mod release_sheet_decisions;
 mod skipped_candidates;

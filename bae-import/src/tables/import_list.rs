@@ -102,8 +102,6 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &bae_store::SEARCH_PATTERN,
     &super::watched_path::FOLDER_BELOW,
     &super::watched_path::FOLDER_RELATIVE,
-    &super::catalog_group_url::CATALOG_GROUP_URL,
-    &super::release_group_cover::RELEASE_GROUP_COVER,
     &super::layout_text::SIDE_LETTERS,
     &super::layout_text::MEDIUM_IS_SIDED,
     &super::layout_text::LENGTHS_DISAGREE,
