@@ -20,28 +20,6 @@ impl ReleaseReads {
         Self { tables, catalogs }
     }
 
-    /// Returns what the import copied the library release `release_id` from
-    /// and what its audio is
-    /// ([`crate::extraction::release::resolve_release_identity`]), reading the
-    /// release's stored sheet bindings from the import's tables.
-    pub async fn library_release_identity(
-        &self,
-        records: &bae_records::Records,
-        diagnostics: &bae_diagnostics::Diagnostics,
-        release_id: &str,
-    ) -> Result<
-        crate::extraction::release::ReleaseIdentity,
-        crate::extraction::release::ReleaseIdentityError,
-    > {
-        crate::extraction::release::resolve_release_identity(
-            &self.tables,
-            records,
-            diagnostics,
-            release_id,
-        )
-        .await
-    }
-
     /// The release `release_ref` names, read to `depth`, from storage or
     /// fetched now. A stored release is fetched again only when that could
     /// add what its fetch missed at this depth: a complete read of a release

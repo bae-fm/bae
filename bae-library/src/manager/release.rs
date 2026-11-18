@@ -56,9 +56,8 @@ impl LibraryManager {
         &self,
         release_id: &str,
     ) -> Result<bae_catalogs::reading::ReadAudio, LibraryError> {
-        use bae_import::extraction::release::ReleaseIdentityError;
-        self.release_reads
-            .library_release_identity(&self.records, &self.diagnostics, release_id)
+        use bae_import::extraction::release::{resolve_release_identity, ReleaseIdentityError};
+        resolve_release_identity(&self.import_tables, &self.records, &self.diagnostics, release_id)
             .await
             .map_err(|error| match error {
                 ReleaseIdentityError::Database(error) => LibraryError::Database(error),

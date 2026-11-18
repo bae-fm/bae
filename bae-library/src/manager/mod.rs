@@ -811,7 +811,8 @@ pub struct LibraryManager {
     /// too.
     #[cfg(desktop)]
     release_reads: bae_import::ReleaseReads,
-    /// The import's tables, which hold each release editor's session.
+    /// The import's tables, which hold each release editor's session and
+    /// the sheet bindings a release's identity is read with.
     #[cfg(desktop)]
     import_tables: bae_import::tables::ImportTables,
     /// Where a test holds each run of a pin's query of which of its
