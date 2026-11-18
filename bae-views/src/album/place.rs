@@ -1,31 +1,16 @@
 //! Where an album's card is in the album grid: its position, and when the
 //! grid groups by artist, the artist whose group holds it. The grid reads it
-//! once to scroll to an album, and live to draw the open album's detail
-//! under the row that holds its card.
+//! live to draw the open album's detail under the row that holds its card,
+//! and to scroll a revealed album's card into view.
 
 use super::*;
 
 impl LibraryViews {
-    /// Where the album `album_id`'s card is in the grid under `sort`, flat
-    /// or grouped by artist: its card in the group of the artist `section`
-    /// when that group holds one, else its first card. `None` when the grid
-    /// shows no card of the album.
-    pub async fn album_place(
-        &self,
-        sort: &[AlbumSortCriterion],
-        album_id: &str,
-        group_by_artist: bool,
-        section: Option<&str>,
-    ) -> Result<Option<AlbumPlace>, DbError> {
-        let query = album_place_query(sort, group_by_artist);
-        let (album_id, section) = (album_id.to_string(), section.map(str::to_string));
-        self.store
-            .read(move |sql| album_place_on(&sql, &query, &album_id, section.as_deref()))
-            .await
-    }
-
-    /// Follow where the album `album_id`'s card is in the grid, as
-    /// [`Self::album_place`] reads it, again after each write that moves it.
+    /// Follow where the album `album_id`'s card is in the grid under
+    /// `sort`, flat or grouped by artist, again after each write that moves
+    /// it: its card in the group of the artist `section` when that group
+    /// holds one, else its first card. `None` when the grid shows no card of
+    /// the album.
     pub fn subscribe_album_place(
         &self,
         sort: &[AlbumSortCriterion],

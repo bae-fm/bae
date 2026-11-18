@@ -55,7 +55,6 @@ extension ShotScene {
             albumList: { _, _ in
                 .fixed(boardAlbums, answers: UnansweredCount())
             },
-            albumPlace: { _, albumId, _, _ in boardAlbumPlace(albumId) },
             albumPlaceReads: { _, albumId, _, _ in
                 .fixed(boardAlbumPlace(albumId))
             },

@@ -198,6 +198,23 @@ pub(super) async fn library() -> (Store, tempfile::TempDir) {
     (db, tmp)
 }
 
+/// Where core places the album `album_id`'s card under `sort`, as the
+/// grid's live read of it first answers.
+pub(super) async fn place_of(
+    views: &LibraryViews,
+    sort: &[AlbumSortCriterion],
+    album_id: &str,
+    group_by_artist: bool,
+    section: Option<&str>,
+) -> Option<crate::album::AlbumPlace> {
+    views
+        .subscribe_album_place(sort, album_id, group_by_artist, section)
+        .next_inline()
+        .await
+        .expect("the place's read stays open")
+        .unwrap()
+}
+
 pub(super) fn both_ways<F: Copy>(field: F) -> [(F, SortDirection); 2] {
     [(field, SortDirection::Ascending), (field, SortDirection::Descending)]
 }

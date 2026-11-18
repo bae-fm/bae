@@ -446,13 +446,6 @@ internal open class FakeAppHandle(
 
     override suspend fun addDevice(): BridgeAddDevice = unfaked("addDevice")
 
-    override suspend fun albumPlace(
-        sortCriteria: List<BridgeSortCriterion>,
-        albumId: String,
-        groupByArtist: Boolean,
-        sectionId: String?,
-    ): BridgeAlbumPlace? = unfaked("albumPlace")
-
     override fun subscribeAlbumPlace(
         sortCriteria: List<BridgeSortCriterion>,
         albumId: String,

@@ -293,3 +293,22 @@ struct AlbumGridRevealTests {
         #expect(stage.rowFrames["grid-300-t0"] != nil)
     }
 }
+
+extension AlbumGridRevealTests {
+    @Test("a reveal of an album the grid has no card of ends where it is")
+    func albumWithNoCardEndsReveal() async throws {
+        let stage = Stage()
+        let hosted = try await host(stage, preloaded: false)
+        defer { hosted.window.close() }
+        let top = try #require(hosted.scrollView).contentView.bounds.origin
+
+        hosted.uiStore.navigateToAlbum("no-such-album")
+        try await Wait.until { hosted.uiStore.pendingAlbumReveal == nil }
+        try await hosted.settle()
+
+        #expect(
+            try #require(hosted.scrollView).contentView.bounds.origin == top
+        )
+        #expect(hosted.uiStore.pendingTrackFlash == nil)
+    }
+}

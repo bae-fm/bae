@@ -5818,7 +5818,9 @@ Reads come two ways:
   grid also uses once the artist's group no longer holds the album. Where that
   card is, its position and its artist's group, is a live read of its own, so a
   write that moves the card, such as a new title under a title sort, moves the
-  detail with it. When rows come or go above the rows on screen, the
+  detail with it. Revealing an album opens it and scrolls to that card from the
+  same live read, so a write that moves the card while the reveal waits for
+  its rows sends the reveal to the card's new place. When rows come or go above the rows on screen, the
   window's position moves with them, and the app keeps the top row on screen
   where it was. A list's count is its own live query delivering its row count,
   which sizes the scroll view, and how many distinct items the rows show: the

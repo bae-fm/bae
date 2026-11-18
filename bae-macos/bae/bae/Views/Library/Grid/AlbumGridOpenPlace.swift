@@ -14,14 +14,14 @@ struct AlbumPlaceRequest: Equatable {
 
 /// Where core places the open album's card in the grid, read live: each
 /// write that moves the card moves the place, so the grid draws the album's
-/// detail under the row that holds the card.
+/// detail under the row that holds the card, and a reveal scrolls to it.
 @MainActor
 @Observable
 final class AlbumGridOpenPlace {
     /// The last place core answered, with the request it answers; nil before
-    /// the first answer, and when core places no such card.
+    /// the first answer. The place is nil when core places no such card.
     private(set) var answer:
-        (request: AlbumPlaceRequest, place: BridgeAlbumPlace)?
+        (request: AlbumPlaceRequest, place: BridgeAlbumPlace?)?
 
     /// Follow where core places `request`'s card until the calling task is
     /// cancelled. The place answered for the request before stays until the
@@ -40,7 +40,7 @@ final class AlbumGridOpenPlace {
             ),
             onValue: { [weak self] place in
                 guard let self else { return }
-                let answer = place.map { (request: request, place: $0) }
+                let answer = (request: request, place: place)
                 // The detail of an album that was not open opens as a click
                 // opens it; a moved card moves the open detail at once.
                 if self.answer?.request.albumId != request.albumId {

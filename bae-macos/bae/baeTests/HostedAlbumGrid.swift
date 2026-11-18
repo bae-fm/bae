@@ -51,9 +51,6 @@ struct HostedAlbumGrid {
         uiStore.selectAlbum(openAlbumId)
         let place = Self.place(in: albums, sections: sections)
         let library = Library(
-            albumPlace: { _, albumId, groupByArtist, _ in
-                place(albumId, groupByArtist)
-            },
             albumPlaceReads: { _, albumId, groupByArtist, _ in
                 .fixed(place(albumId, groupByArtist))
             }

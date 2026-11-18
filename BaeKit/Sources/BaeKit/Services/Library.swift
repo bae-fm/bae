@@ -12,17 +12,10 @@ public final class Library: Sendable, Observable {
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool)
             -> BridgeListQueries<BridgeAlbum>
     /// Where an album's card is in the album list under one sort and
-    /// grouping, read once: its card in the group of the artist `sectionId`
+    /// grouping, read live: its card in the group of the artist `sectionId`
     /// when that group holds one, else its first card; nil when the list
-    /// shows no card of the album.
-    public let albumPlace:
-        @Sendable (
-            _ sortCriteria: [BridgeSortCriterion], _ albumId: String,
-            _ groupByArtist: Bool, _ sectionId: String?
-        )
-            async throws -> BridgeAlbumPlace?
-    /// Where an album's card is in the album list, as `albumPlace` reads it,
-    /// read live: a new value each time a write moves the card.
+    /// shows no card of the album. A new value arrives each time a write
+    /// moves the card.
     public let albumPlaceReads:
         @Sendable (
             _ sortCriteria: [BridgeSortCriterion], _ albumId: String,
@@ -144,12 +137,6 @@ public final class Library: Sendable, Observable {
             -> BridgeListQueries<BridgeAlbum> = { _, _ in
                 fatalError("Library album list is not installed")
             },
-        albumPlace:
-            @escaping @Sendable ([BridgeSortCriterion], String, Bool, String?)
-            async throws
-            -> BridgeAlbumPlace? = { _, _, _, _ in
-                throw StubError.notImplemented
-            },
         albumPlaceReads:
             @escaping @Sendable ([BridgeSortCriterion], String, Bool, String?)
             -> PulledValues<BridgeAlbumPlace?> = { _, _, _, _ in
@@ -270,7 +257,6 @@ public final class Library: Sendable, Observable {
             -> Void = { _, _ in throw StubError.notImplemented }
     ) {
         self.albumList = albumList
-        self.albumPlace = albumPlace
         self.albumPlaceReads = albumPlaceReads
         self.albumsInBrowseOrder = albumsInBrowseOrder
         self.composerList = composerList
@@ -318,7 +304,6 @@ extension Library {
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
                 albumList: Self.albumList(handle),
-                albumPlace: Self.albumPlace(handle),
                 albumPlaceReads: Self.albumPlaceReads(handle),
                 albumsInBrowseOrder: Self.albumsInBrowseOrder(handle),
                 composerList: Self.composerList(handle),
@@ -408,24 +393,6 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable (BridgeStorageFilter, String) async throws -> [String] {
             { try await handle.storageIds(filter: $0, search: $1) }
-        }
-
-        /// Where an album's card is in the album list, read once through
-        /// `handle`.
-        private static func albumPlace(
-            _ handle: any AppHandleProtocol
-        )
-            -> @Sendable ([BridgeSortCriterion], String, Bool, String?)
-            async throws -> BridgeAlbumPlace?
-        {
-            {
-                try await handle.albumPlace(
-                    sortCriteria: $0,
-                    albumId: $1,
-                    groupByArtist: $2,
-                    sectionId: $3
-                )
-            }
         }
 
         /// Where an album's card is in the album list, read live through

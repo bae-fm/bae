@@ -33,7 +33,7 @@ enum LibraryBrowserMode: CaseIterable {
 /// nothing to replay. `seq` lets a consumer detect a new request even when
 /// `albumId` repeats (navigate to the same album twice in a row) and drives
 /// `.task(id:)` so SwiftUI restarts the reveal when a newer one arrives.
-struct PendingAlbumReveal {
+struct PendingAlbumReveal: Equatable {
     let albumId: String
     /// The track whose row the reveal scrolls into view and then flashes, or
     /// `nil` to show the album alone. The row exists only once the album's

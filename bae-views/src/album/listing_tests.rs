@@ -3,7 +3,7 @@
 //! read from an index.
 
 use crate::album::album_browse_order;
-use crate::tests::{assert_seeks_search, both_ways, key_at, library};
+use crate::tests::{assert_seeks_search, both_ways, key_at, library, place_of};
 use crate::*;
 use bae_records::test_fixtures::album_listing::*;
 use bae_records::test_fixtures::artists_apart::{
@@ -424,10 +424,14 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             assert!(albums.windows(2).all(|pair| pair[0].title > pair[1].title));
             for (position, album) in albums.iter().enumerate() {
                 assert_eq!(
-                    LibraryViews::new(db.clone())
-                        .album_place(&sort, &album.id, true, Some(&section.id))
-                        .await
-                        .unwrap(),
+                    place_of(
+                        &LibraryViews::new(db.clone()),
+                        &sort,
+                        &album.id,
+                        true,
+                        Some(&section.id)
+                    )
+                    .await,
                     Some(crate::album::AlbumPlace {
                         position: offset + position as u64,
                         section_id: Some(section.id.clone()),
@@ -546,7 +550,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     }
     assert_eq!(appearances.into_iter().collect::<BTreeSet<_>>(), [ARTIST_A, ARTIST_B].into());
     let views = LibraryViews::new(db.clone());
-    let first = views.album_place(&sort, album_id, true, None).await.unwrap();
+    let first = place_of(&views, &sort, album_id, true, None).await;
     assert_eq!(
         first.map(|place| place.position),
         rows.iter().position(|row| row.album.id == album_id).map(|i| i as u64)
@@ -554,7 +558,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     // Each of its artists' groups holds a card of the album, at its place in
     // that group.
     for section in sections.iter().filter(|section| [ARTIST_A, ARTIST_B].contains(&&*section.id)) {
-        let place = views.album_place(&sort, album_id, true, Some(&section.id)).await.unwrap();
+        let place = place_of(&views, &sort, album_id, true, Some(&section.id)).await;
         let place = place.expect("the album has a card in each of its artists' groups");
         assert_eq!(place.section_id.as_deref(), Some(section.id.as_str()));
         let start = section.first_position;
@@ -570,7 +574,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     assert_eq!((counts.albums, counts.rows), (5, 5));
     // B's group no longer holds a card of the album, so its place is its
     // first card, in A's group.
-    let place = views.album_place(&sort, album_id, true, Some(ARTIST_B)).await.unwrap();
+    let place = place_of(&views, &sort, album_id, true, Some(ARTIST_B)).await;
     assert_eq!(place.and_then(|place| place.section_id).as_deref(), Some(ARTIST_A));
 }
 

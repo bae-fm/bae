@@ -132,29 +132,6 @@ forward! { async this => {
             .map(crate::types::BridgeWorkDetail::from_core))
     }
 
-    /// Where `album_id`'s card is in the grid under the given sort, read
-    /// once: its card in the group of the artist `section_id` when that
-    /// group holds one, else its first card; `None` when the grid shows no
-    /// card of the album. Lets the grid hold the rows around the card and
-    /// scroll to it without holding them first.
-    fn album_place(
-        sort_criteria: Vec<BridgeSortCriterion>,
-        album_id: String,
-        group_by_artist: bool,
-        section_id: Option<String>,
-    ) -> Option<crate::types::BridgeAlbumPlace> {
-        let sort: Vec<bae_views::AlbumSortCriterion> = sort_criteria
-            .into_iter()
-            .map(BridgeSortCriterion::into_core)
-            .collect();
-        Ok(this
-            .services
-            .album_place(&sort, &album_id, group_by_artist, section_id.as_deref())
-            .await
-            .map_err(BridgeError::from)?
-            .map(crate::types::BridgeAlbumPlace::from_core))
-    }
-
     /// The albums of `album_ids` the grid lists, each once, in the grid's
     /// order under `sort_criteria` and `group_by_artist`: what an action on
     /// the grid's selection acts on, in that order.

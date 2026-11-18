@@ -3,6 +3,22 @@ use bae_store::SortDirection;
 use bae_views::{AlbumSortCriterion, AlbumSortField, LibraryViews};
 use time::{Duration, UtcDateTime};
 
+/// Where the flat grid under `sort` places the album `album_id`'s card, as
+/// the grid's live read of it first answers.
+async fn position_of(
+    db: &bae_store::Store,
+    sort: &[AlbumSortCriterion],
+    album_id: &str,
+) -> Option<u64> {
+    LibraryViews::new(db.clone())
+        .subscribe_album_place(sort, album_id, false, None)
+        .next_inline()
+        .await
+        .expect("the place's read stays open")
+        .unwrap()
+        .map(|place| place.position)
+}
+
 /// A test album and its one credit, inserted together.
 struct ListedAlbum {
     album: DbAlbum,
@@ -345,20 +361,12 @@ async fn test_album_index_matches_page_position() {
     assert_eq!(page.len(), titles.len());
 
     for (position, summary) in page.iter().enumerate() {
-        let index = LibraryViews::new(db.clone())
-            .album_place(&sort, &summary.id, false, None)
-            .await
-            .unwrap()
-            .map(|place| place.position);
+        let index = position_of(&db, &sort, &summary.id).await;
         assert_eq!(index, Some(position as u64), "album {}", summary.title);
     }
 
     // An id that isn't in the library has no position.
-    let missing = LibraryViews::new(db.clone())
-        .album_place(&sort, "no-such-album", false, None)
-        .await
-        .unwrap()
-        .map(|place| place.position);
+    let missing = position_of(&db, &sort, "no-such-album").await;
     assert_eq!(missing, None);
 }
 
@@ -377,11 +385,7 @@ async fn test_album_index_matches_page_position_default_sort() {
     // artist join — same path `get_album_page` takes for the default sort.
     let page = LibraryViews::new(db.clone()).get_album_page(&[], 0, 100).await.unwrap();
     for (position, summary) in page.iter().enumerate() {
-        let index = LibraryViews::new(db.clone())
-            .album_place(&[], &summary.id, false, None)
-            .await
-            .unwrap()
-            .map(|place| place.position);
+        let index = position_of(&db, &[], &summary.id).await;
         assert_eq!(index, Some(position as u64));
     }
 }
@@ -405,11 +409,7 @@ async fn test_album_index_matches_page_position_on_ties() {
     let page = LibraryViews::new(db.clone()).get_album_page(&sort, 0, 100).await.unwrap();
     assert_eq!(page.len(), 8);
     for (position, summary) in page.iter().enumerate() {
-        let index = LibraryViews::new(db.clone())
-            .album_place(&sort, &summary.id, false, None)
-            .await
-            .unwrap()
-            .map(|place| place.position);
+        let index = position_of(&db, &sort, &summary.id).await;
         assert_eq!(index, Some(position as u64), "album {}", summary.id);
     }
 }
