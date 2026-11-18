@@ -92,7 +92,7 @@ impl LibraryViews {
     }
 
     /// Follow one page of the rows of `artist_id`'s composer page: the rows
-    /// at the page's places.
+    /// from the one at the page's first place, read once.
     pub fn subscribe_composer_detail_page(
         &self,
         artist_id: &str,

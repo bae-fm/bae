@@ -7,8 +7,8 @@ use super::*;
 
 impl LibraryViews {
     /// Follow one page of the albums a search for `query` lists: the albums
-    /// at the page's places. No query (`None`) lists none; its page answers
-    /// with no rows.
+    /// from the one at the page's first place, read once. No query (`None`)
+    /// lists none; its page answers with no rows.
     pub fn subscribe_search_album_page(
         &self,
         query: Option<crate::LibrarySearchQuery>,
