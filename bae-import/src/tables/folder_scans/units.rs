@@ -8,6 +8,21 @@ use crate::folder_scanner::{CategorizedFiles, SheetBindingOffer};
 use crate::types::AudioFile;
 use crate::CandidateKey;
 
+/// The columns of a unit that plays a slice of a CUE sheet's audio, which a
+/// unit that plays a whole file leaves empty.
+struct SliceColumns<'a> {
+    /// The sheet the slice is a track of.
+    sheet_id: &'a str,
+    /// The slice's place among the sheet's playable tracks.
+    index: i64,
+    /// The slice's track's place among all of the sheet's tracks.
+    cue_position: i64,
+    /// The sample the slice starts at in its audio.
+    start: i64,
+    /// The sample the slice ends at, or `None` when it plays to the audio's end.
+    end: Option<i64>,
+}
+
 /// Write the units and sheet offers of `files`, the files of the candidate
 /// `candidate_path`. `insert_candidate_files` writes their file rows first,
 /// in the same write. A folder whose audio the scan has not read yet has no
@@ -29,8 +44,8 @@ pub(super) fn insert_units(
         let duration_ms = durations
             .duration_of(&track.file)
             .ok_or_else(|| DbError::unreadable("the length of an audio unit", &track.file))?;
-        let (file_kind, sheet_id, slice_index, cue_position, start, end) = match &track.file {
-            AudioFile::Standalone { .. } => ("standalone", None, None, None, None, None),
+        let (file_kind, slice) = match &track.file {
+            AudioFile::Standalone { .. } => ("standalone", None),
             AudioFile::SheetSlice { sheet_id, index, .. } => {
                 let sheet = carving
                     .iter()
@@ -52,16 +67,15 @@ pub(super) fn insert_units(
                 .map_err(|error| {
                     DbError::unreadable("a sample rate", (&audio.relative_path, error))
                 })?;
-                (
-                    "sheet_slice",
-                    Some(sheet_id.as_str()),
-                    Some(i64::from(*index)),
-                    Some(cue_position as i64),
-                    Some(to_i64(
+                let slice = SliceColumns {
+                    sheet_id,
+                    index: i64::from(*index),
+                    cue_position: cue_position as i64,
+                    start: to_i64(
                         crate::cue_sheet::cue_frames_to_samples(cue_track.start_cue_frames, rate),
                         "a slice's start",
-                    )?),
-                    cue_track
+                    )?,
+                    end: cue_track
                         .end_cue_frames
                         .map(|frames| {
                             to_i64(
@@ -70,7 +84,8 @@ pub(super) fn insert_units(
                             )
                         })
                         .transpose()?,
-                )
+                };
+                ("sheet_slice", Some(slice))
             }
         };
         sql.execute(
@@ -85,12 +100,12 @@ pub(super) fn insert_units(
                 position as i64,
                 file_kind,
                 track.file.file_id(),
-                sheet_id,
-                slice_index,
-                cue_position,
+                slice.as_ref().map(|slice| slice.sheet_id),
+                slice.as_ref().map(|slice| slice.index),
+                slice.as_ref().map(|slice| slice.cue_position),
                 to_i64(duration_ms, "an audio unit's length")?,
-                start,
-                end,
+                slice.as_ref().map(|slice| slice.start),
+                slice.as_ref().and_then(|slice| slice.end),
                 track.disc,
                 track.number.get(),
             ],
