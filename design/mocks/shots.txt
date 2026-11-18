@@ -22,7 +22,6 @@ android.library.albums.empty
 android.library.albums.failed
 android.library.albums.grouped
 android.library.albums.grouped-scrolled
-android.library.albums.later-page-failed
 android.library.albums.no-covers
 android.library.albums.scrolled
 android.library.artist

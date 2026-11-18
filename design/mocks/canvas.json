@@ -330,14 +330,6 @@
    "x": 492,
    "y": 5156
   },
-  "android.library.albums.later-page-failed.dc.html": {
-   "h": 916,
-   "page": "home",
-   "title": "Banner: a later page of albums failed",
-   "w": 412,
-   "x": 1476,
-   "y": 17292
-  },
   "android.playback.bar.values-failed.dc.html": {
    "h": 916,
    "page": "home",
@@ -6340,7 +6332,6 @@
   "android.errors.snackbar.retry.dc.html",
   "android.errors.snackbar.play-failed.dc.html",
   "android.errors.snackbar.bug.dc.html",
-  "android.library.albums.later-page-failed.dc.html",
   "android.playback.bar.values-failed.dc.html",
   "android.playback.queue.failed.dc.html",
   "android.activity.sheet.launch-problem.dc.html",

@@ -354,7 +354,6 @@ export declare function AndroidSegmentedButtons(props: { options: string; select
 export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
 export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string }): React.ReactElement;
 export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;
-export declare function AndroidErrorBanner(props: { message: string }): React.ReactElement;
 export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string; filter?: string; narrowed?: string; identifying?: number; importing?: boolean; scanning?: boolean; filtered?: boolean; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportGroupHeader(props: { name: string; closed?: boolean }): React.ReactElement;
 export declare function MacImportRow(props: { title?: string; artist?: string; folder?: string; cover?: string; noCover?: boolean; record?: boolean; badge?: string; badgeTone?: 'warning' | 'danger'; state?: 'identifyQueued' | 'identifying' | 'importQueued' | 'importing' | 'uploading'; step?: string; progress?: number; error?: string; grouped?: boolean; selected?: boolean }): React.ReactElement;
