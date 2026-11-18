@@ -161,11 +161,17 @@ fn read_header(row: &Row<'_>) -> rusqlite::Result<HeaderRow> {
     })
 }
 
-/// The header of the group of the row of a release, when it is a member of
-/// one.
-fn read_member_header(row: &Row<'_>) -> rusqlite::Result<Option<HeaderRow>> {
+/// A group member's columns: its group's header, and whether the list shows
+/// no member of the group after it.
+struct MemberRow {
+    header: HeaderRow,
+    last: bool,
+}
+
+/// The group of the row of a release, when it is a member of one.
+fn read_member(row: &Row<'_>) -> rusqlite::Result<Option<MemberRow>> {
     match row.get::<_, Option<RelativeFolder>>("header_folder")? {
-        Some(_) => read_header(row).map(Some),
+        Some(_) => Ok(Some(MemberRow { header: read_header(row)?, last: row.get("ends_group")? })),
         None => Ok(None),
     }
 }
@@ -202,11 +208,8 @@ struct ReleaseRows {
     facts: RuntimeFactColumns,
     /// What the scan read of a folder that failed validation.
     invalid: Option<folder_scans::InvalidColumns>,
-    /// The header of the group the release is listed under.
-    header: Option<HeaderRow>,
-    /// Whether the release is the last member the list shows of its group,
-    /// for a member of a group.
-    ends_group: Option<bool>,
+    /// The group the release is listed under, for a member of a group.
+    group: Option<MemberRow>,
     /// What the row shows past its placement.
     shown: ShownColumns,
 }
@@ -365,8 +368,7 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         },
         facts: RuntimeFactColumns::read(row, 25)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
-        header: read_member_header(row)?,
-        ends_group: row.get("ends_group")?,
+        group: read_member(row)?,
         shown: ShownColumns::read(row)?,
     })
 }
@@ -421,8 +423,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         block,
         failure,
         facts,
-        header,
-        ends_group,
+        group,
         shown,
         ..
     } = release;
@@ -482,14 +483,9 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     Ok(ImportListItem::Candidate {
         row,
         live: crate::CandidateLiveState::of(actions, facts, standing),
-        group: header
-            .map(|header| {
-                Ok::<_, DbError>(ImportGroupMember {
-                    header: group_header(header)?,
-                    last: ends_group.ok_or_else(|| {
-                        DbError::unreadable("whether a group member ends its group", "NULL")
-                    })?,
-                })
+        group: group
+            .map(|MemberRow { header, last }| {
+                Ok::<_, DbError>(ImportGroupMember { header: group_header(header)?, last })
             })
             .transpose()?,
     })
