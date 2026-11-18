@@ -75,7 +75,7 @@ const DIRECT_KEYS: &[&str] = &[
     // The Settings fix that offers Reset from cloud.
     "core.sync.reset_from_cloud",
     // The Settings fix that scans the person's new restore code.
-    "core.sync.scan_restore_code",
+    "core.sync.enter_restore_code",
     // The warning before restoring over this device's copy with a code.
     "core.sync.restore_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and

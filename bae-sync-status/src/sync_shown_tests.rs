@@ -168,7 +168,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         W::NewRestoreCode,
         T::Warning,
         Some(C::ScanNewRestoreCode),
-        Some(F::ScanRestoreCode),
+        Some(F::EnterRestoreCode),
     );
     check(
         by_pass(

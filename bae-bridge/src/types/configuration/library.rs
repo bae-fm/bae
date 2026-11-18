@@ -590,9 +590,9 @@ pub enum BridgeSyncFix {
     /// iCloud signs in from the system's settings.
     OpenSystemSettings,
     ResetDevice,
-    /// Scan the person's new restore code, after another of their devices
-    /// made it.
-    ScanRestoreCode,
+    /// Open the restore screen for the person's new restore code, after
+    /// another of their devices made it.
+    EnterRestoreCode,
     RemoveFromThisDevice,
     OpenInBrowser,
 }
@@ -742,7 +742,7 @@ impl BridgeSyncFix {
             F::EnterAccessKey => Self::EnterAccessKey,
             F::OpenSystemSettings => Self::OpenSystemSettings,
             F::ResetDevice => Self::ResetDevice,
-            F::ScanRestoreCode => Self::ScanRestoreCode,
+            F::EnterRestoreCode => Self::EnterRestoreCode,
             F::RemoveFromThisDevice => Self::RemoveFromThisDevice,
             F::OpenInBrowser => Self::OpenInBrowser,
         }

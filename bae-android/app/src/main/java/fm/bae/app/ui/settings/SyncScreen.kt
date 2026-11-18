@@ -126,7 +126,7 @@ private class PendingActionRunner(
                 signIn(BridgeCloudProvider.S3)
             }
 
-            BridgeSyncFix.ScanRestoreCode -> {
+            BridgeSyncFix.EnterRestoreCode -> {
                 actions.restoreFromCode()
             }
 
@@ -491,7 +491,7 @@ private fun syncFixLabel(fix: BridgeSyncFix): String? {
 
         BridgeSyncFix.ResetDevice -> context.coreString("core.sync.reset_from_cloud")
 
-        BridgeSyncFix.ScanRestoreCode -> context.coreString("core.sync.scan_restore_code")
+        BridgeSyncFix.EnterRestoreCode -> context.coreString("core.sync.enter_restore_code")
 
         BridgeSyncFix.RemoveFromThisDevice -> stringResource(R.string.sync_fix_remove)
 

@@ -117,9 +117,9 @@ pub enum SyncFix {
     /// iCloud signs in from the system's settings.
     OpenSystemSettings,
     ResetDevice,
-    /// Scan the person's new restore code, after another of their devices
-    /// made it.
-    ScanRestoreCode,
+    /// Open the restore screen for the person's new restore code, after
+    /// another of their devices made it.
+    EnterRestoreCode,
     RemoveFromThisDevice,
     OpenInBrowser,
 }
@@ -222,7 +222,7 @@ impl SyncStatusSnapshot {
             SyncState::NeedsReset { reason: ResetReason::MemberKeysReplaced { .. }, .. } => {
                 SyncShown::new(W::NewRestoreCode, T::Warning)
                     .because(SyncCauseLine::ScanNewRestoreCode)
-                    .fixed_by(SyncFix::ScanRestoreCode)
+                    .fixed_by(SyncFix::EnterRestoreCode)
             }
             SyncState::NeedsReset {
                 reason: ResetReason::Replaced | ResetReason::DeviceIdInUse,

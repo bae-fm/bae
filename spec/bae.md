@@ -4041,7 +4041,7 @@ storage* where the line names the place the library is kept.
   - New restore code, after another of the person's devices made a new
     restore code, naming that device: *You made the new code on your iPhone.* /
     *Scan the new restore code to restore the library on this Mac. The restore
-    discards any changes this Mac has not sent.*, with *Scan restore code…*.
+    discards any changes this Mac has not sent.*, with *Enter restore code…*.
     Sync stays stopped until the person scans the code, and the scan restores
     this device as a new device that takes its place (below).
   - Update needed: *Another device uses a newer bae.* / *Update this one to
@@ -4197,7 +4197,7 @@ storage, and its row offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
 in its place or the release anew if it left the queue (§4.3). Other records offer
-*Retry*, *Reconnect*, *Update…* or *Scan restore code…*. bae never asks for a storage
+*Retry*, *Reconnect*, *Update…* or *Restore with code*. bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
 ([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
@@ -4221,7 +4221,8 @@ offers nothing.
   replaced
   ([coven §12.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#123-replacing-a-members-keys)).
   So the state says, before the scan, that the restore discards them.
-  *Scan restore code…* opens the camera for the new code. bae checks first
+  *Enter restore code…* opens the restore screen, where the person pastes or scans
+  the new code, on the Mac and on Android. bae checks first
   that the code restores this library; another library's code, or an invite,
   changes nothing. coven then restores this device with the code: a new device
   loads the library beside this device's copy, takes its place once it has
