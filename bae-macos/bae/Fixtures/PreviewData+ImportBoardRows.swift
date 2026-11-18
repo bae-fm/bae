@@ -13,45 +13,32 @@ extension PreviewData {
         .revealFolder,
     ]
 
-    /// What a row's draft calls the release: its title, and the artist under
-    /// it.
-    struct BoardRelease {
-        let title: String
-        let artist: String
-    }
-
-    /// `folder`'s row, with a draft calling it `release` when there is one,
+    /// `folder`'s row, with the draft `summary` sums up when there is one,
     /// read from the MusicBrainz release `record` when there is one, else from
     /// the files' tags.
     static func boardRow(
         _ folder: BoardFolder,
-        release: BoardRelease? = nil,
+        summary: BridgeTriageMetadataSummary? = nil,
         record: String? = nil,
         placement: BridgeTriagePlacement = .pending,
         live: BridgeCandidateLiveState = triageLive(boardDraftActions),
         importStatus: BridgeTriageImportStatus? = nil,
         upload: BridgeUploadProgress? = nil
     ) -> BridgeTriageRow {
-        let summary = release.map {
-            BridgeTriageMetadataSummary(
-                albumTitle: $0.title,
-                albumArtists: .named($0.artist)
-            )
-        }
-        return triageRow(
+        triageRow(
             for: boardCandidate(folder),
             placement: placement,
             metadataSummary: summary,
-            cover: release.map { .local(file: previewArtFile($0.title)) },
+            cover: summary.map { .local(file: previewArtFile($0.albumTitle)) },
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: record.map {
                 .externalRelease(
                     record: BridgeLookupRef(catalog: .musicBrainz, key: $0)
                 )
-            } ?? (release == nil ? nil : .fileMetadata),
+            } ?? (summary == nil ? nil : .fileMetadata),
             reading: record.map { .identified(records: boardRecords($0)) }
-                ?? (release == nil ? .unidentified : .prefilled),
+                ?? (summary == nil ? .unidentified : .prefilled),
             live: live
         )
     }
@@ -110,9 +97,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .fieldRecordings,
-                    release: BoardRelease(
-                        title: "Field Recordings",
-                        artist: "Mara Quill"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Field Recordings",
+                        albumArtists: .named("Mara Quill")
                     ),
                     record: "board-field-recordings"
                 ),
@@ -138,9 +125,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .lowTideHours,
-                    release: BoardRelease(
-                        title: "Low Tide Hours",
-                        artist: "Mara Quill"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Low Tide Hours",
+                        albumArtists: .named("Mara Quill")
                     ),
                     record: "board-low-tide-hours",
                     live: needsYou(.matches(count: 3))
@@ -149,9 +136,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .copperSky,
-                    release: BoardRelease(
-                        title: "Copper Sky",
-                        artist: "Odile Fen"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Copper Sky",
+                        albumArtists: .named("Odile Fen")
                     ),
                     live: needsYou(.notFound)
                 )
@@ -162,9 +149,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .smallHours,
-                    release: BoardRelease(
-                        title: "Small Hours",
-                        artist: "Tomas Brell"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Small Hours",
+                        albumArtists: .named("Tomas Brell")
                     ),
                     live: triageLive(
                         [.skip, .revealFolder],
@@ -176,9 +163,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .winterKitchen,
-                    release: BoardRelease(
-                        title: "Winter Kitchen",
-                        artist: "Odile Fen"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Winter Kitchen",
+                        albumArtists: .named("Odile Fen")
                     ),
                     live: needsYou(.notFound)
                 )
@@ -196,9 +183,9 @@ extension PreviewData {
             case .importing:
                 boardRow(
                     .northbound,
-                    release: BoardRelease(
-                        title: "Northbound",
-                        artist: "Mara Quill"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Northbound",
+                        albumArtists: .named("Mara Quill")
                     ),
                     record: "board-northbound",
                     live: northboundImportingLive
@@ -206,9 +193,9 @@ extension PreviewData {
             case .identified:
                 boardRow(
                     .northbound,
-                    release: BoardRelease(
-                        title: "Northbound",
-                        artist: "Mara Quill"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Northbound",
+                        albumArtists: .named("Mara Quill")
                     ),
                     record: "board-northbound"
                 )
@@ -218,9 +205,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .saltAndCedar,
-                    release: BoardRelease(
-                        title: "Salt and Cedar",
-                        artist: "The Slow Orchards"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Salt and Cedar",
+                        albumArtists: .named("The Slow Orchards")
                     ),
                     record: "board-salt-and-cedar",
                     live: triageLive([], importStep: .preparing(step: .queued))
@@ -229,9 +216,9 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     .paperLanterns,
-                    release: BoardRelease(
-                        title: "Paper Lanterns",
-                        artist: "The Slow Orchards"
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Paper Lanterns",
+                        albumArtists: .named("The Slow Orchards")
                     ),
                     placement: .failed,
                     live: triageLive(
@@ -274,7 +261,10 @@ extension PreviewData {
             candidateItem(
                 boardRow(
                     folder,
-                    release: BoardRelease(title: title, artist: artist),
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: title,
+                        albumArtists: .named(artist)
+                    ),
                     record: "board-\(title)",
                     placement: .done,
                     live: triageLive([.revealFolder]),
