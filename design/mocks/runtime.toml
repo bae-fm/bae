@@ -3,10 +3,10 @@
 # does, and canvas_version is the publish where it was last read. The shot
 # check draws boards with a copy whose sha256 must match, and fails when it
 # doesn't.
-canvas = "https://claude.ai/artifact/FLmQghVJ24uoT5Ukpe92NR"
-canvas_version = "1795029913-45ea"
-type_release = "1795023340-5339"
+canvas = "https://claude.ai/artifact/59mGrccWpy4FtzYgdfvpvb"
+canvas_version = "1795034766-f50d"
+type_release = "1795031767-284a"
 runtime = "artifact-type/dc-runtime.js"
-runtime_sha256 = "33fa644a4c8b8adb1092a8011f87dece3ab9df655a07ca4a8a2219639841ec1d"
-published_at = "2026-11-18T19:25:13Z"
+runtime_sha256 = "c4929939a4fa0ff409afd395a75cd87a7a7412d26bf4cf34d7292a94c05ea482"
+published_at = "2026-11-18T20:46:06Z"
 published_by = "design session (Claude Code, for Dima)"
