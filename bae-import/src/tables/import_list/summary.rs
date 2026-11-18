@@ -23,9 +23,13 @@ pub(super) const TAB_COUNTS: &str = "SELECT COUNT(*) FILTER (WHERE tab = 'pendin
 
 /// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
 pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
-    let (pending, done, skipped) = sql.query_row(TAB_COUNTS, [], |row| {
+    tab_counts(sql.query_row(TAB_COUNTS, [], |row| {
         Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
-    })?;
+    })?)
+}
+
+/// The tab counts [`TAB_COUNTS`] selects, in its columns' order.
+fn tab_counts((pending, done, skipped): (i64, i64, i64)) -> Result<TriageTabCounts, DbError> {
     Ok(TriageTabCounts {
         pending: to_u32(pending, "the pending tab's count")?,
         done: to_u32(done, "the done tab's count")?,
@@ -97,47 +101,58 @@ pub(super) fn summary(sql: &SqlReadContext<'_>) -> Result<ImportQueueSummary, Db
 }
 
 /// How many items the list `request` shows holds, how many of its tab's
-/// entries its narrowing keeps, and every tab's count.
+/// entries its narrowing keeps, and every tab's count, in one statement: the
+/// tab counts beside the list's own counts, so a narrowed list's total is the
+/// tab bar's count of its tab.
 pub(super) fn count(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
 ) -> Result<ImportListCount, DbError> {
-    let tabs = tab_counts_on(sql)?;
-    let listed = listed(sql, request)?;
-    Ok(ImportListCount { rows: listed.total, narrowed: listed.narrowed, tabs })
+    let items = Items::new(request.clone());
+    let statement = format!(
+        "SELECT tabs.*, listed.items, listed.shown FROM ({TAB_COUNTS}) AS tabs, ({listed}) AS listed",
+        listed = listed(request),
+    );
+    let (tabs, rows, shown) = items
+        .query(sql, &statement, &[], |row| {
+            Ok((
+                (row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?),
+                row.get::<_, i64>(3)?,
+                row.get::<_, Option<i64>>(4)?,
+            ))
+        })?
+        .into_iter()
+        .next()
+        .expect("a count answers one row");
+    let tabs = tab_counts(tabs)?;
+    let narrowed = match shown {
+        Some(shown) => Some(NarrowedCount {
+            shown: to_u32(shown, "a list's narrowed count")?,
+            total: tabs.of(request.view.tab),
+        }),
+        None => None,
+    };
+    Ok(ImportListCount { rows: to_u64(rows, "a list's item count")?, narrowed, tabs })
 }
 
-/// How many items a list holds, and how many of its tab's releases its
-/// filters keep of how many the tab has, while they narrow it.
-pub(super) struct Listed {
-    pub(super) total: u64,
-    pub(super) narrowed: Option<NarrowedCount>,
-}
-
-/// What [`search_counts`] counts for a searching list: how many releases its
-/// filters keep, and how many items it holds.
-struct SearchCounts {
-    kept: i64,
-    items: i64,
-}
-
-/// The statement counting how many releases a searching list's filters keep,
-/// and how many items it holds, both over the rows its search finds, which
-/// are read once: the kept releases outside the groups it folds shut, and the
-/// headers among its items of the groups holding a kept release.
+/// The statement counting how many releases a searching list's filters keep
+/// (`shown`), and how many items it holds (`items`), both over the rows its
+/// search finds, which are read once: the kept releases outside the groups it
+/// folds shut, and the headers among its items of the groups holding a kept
+/// release.
 pub(super) fn search_counts(request: &ImportListRequest) -> String {
     format!(
         "WITH kept AS MATERIALIZED ( \
              SELECT m.watched_folder_path, m.group_folder, m.folded FROM {found} AS f \
              CROSS JOIN {matching} AS m ON m.entry = f.entry) \
-         SELECT (SELECT count(*) FROM kept), \
+         SELECT (SELECT count(*) FROM kept) AS shown, \
                 (SELECT count(*) FROM kept WHERE NOT folded) \
                 + (SELECT count(*) \
                    FROM (SELECT DISTINCT watched_folder_path, group_folder FROM kept \
                          WHERE group_folder IS NOT NULL) AS g \
                    CROSS JOIN {items} AS h \
                        ON h.watched_folder_path = g.watched_folder_path \
-                      AND h.item = 'group' AND h.key = g.group_folder)",
+                      AND h.item = 'group' AND h.key = g.group_folder) AS items",
         found = request.found(),
         matching = request.matching(),
         items = request.items(),
@@ -192,53 +207,24 @@ fn kept_items(request: &ImportListRequest) -> String {
     format!("SELECT ({kept}) - ({folded}) + ({headers})")
 }
 
-/// How many items the list shows — its releases its filters keep outside the
-/// groups it folds shut, and the header of each group holding one — and how
-/// many releases its filters keep. Without a search these are the kept
-/// counts; a search counts the rows it finds.
-pub(super) fn listed(
-    sql: &SqlReadContext<'_>,
-    request: &ImportListRequest,
-) -> Result<Listed, DbError> {
-    let items = Items::new(request.clone());
-    let count = |statement: &str| -> Result<i64, DbError> {
-        Ok(items
-            .query(sql, statement, &[], |row| row.get::<_, i64>(0))?
-            .into_iter()
-            .next()
-            .expect("a count answers one row"))
-    };
-    // How many entries the tab holds, which a narrowed count is of.
-    let tab_total =
-        || count("SELECT COUNT(*) FROM import_list_placement WHERE tab = :tab AND item <> 'group'");
-    let narrowed = |shown: i64| -> Result<NarrowedCount, DbError> {
-        Ok(NarrowedCount {
-            shown: to_u32(shown, "a list's narrowed count")?,
-            total: to_u32(tab_total()?, "a tab's count")?,
-        })
-    };
-    let total = |count: i64| to_u64(count, "a list's item count");
+/// The statement counting how many items the list shows (`items`) — its
+/// releases its filters keep outside the groups it folds shut, and the header
+/// of each group holding one — and how many releases its filters keep while
+/// they narrow it (`shown`), NULL while they don't. Without a search these
+/// are the kept counts; a search counts the rows it finds.
+fn listed(request: &ImportListRequest) -> String {
     if request.filters_text() {
-        let found = items
-            .query(sql, &search_counts(request), &[], |row| {
-                Ok(SearchCounts { kept: row.get(0)?, items: row.get(1)? })
-            })?
-            .into_iter()
-            .next()
-            .expect("a count answers one row");
-        return Ok(Listed { total: total(found.items)?, narrowed: Some(narrowed(found.kept)?) });
+        return search_counts(request);
     }
-    let held = match request.keeps_all() {
-        true => count("SELECT COUNT(*) FROM import_list_placement WHERE tab = :tab")?,
-        false => count(&kept_items(request))?,
+    let items = match request.keeps_all() {
+        true => "SELECT COUNT(*) FROM import_list_placement WHERE tab = :tab".to_string(),
+        false => kept_items(request),
     };
-    let narrowed = match request.narrows() {
-        true => Some(narrowed(count(
-            "SELECT COUNT(*) FROM import_list_placement WHERE pending_entry = :filter",
-        )?)?),
-        false => None,
+    let shown = match request.narrows() {
+        true => "SELECT COUNT(*) FROM import_list_placement WHERE pending_entry = :filter",
+        false => "SELECT NULL",
     };
-    Ok(Listed { total: total(held)?, narrowed })
+    format!("SELECT ({items}) AS items, ({shown}) AS shown")
 }
 
 /// The view that reveals the candidate at `key`: its tab, with the filters

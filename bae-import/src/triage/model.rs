@@ -208,6 +208,17 @@ pub struct TriageTabCounts {
     pub skipped: u32,
 }
 
+impl TriageTabCounts {
+    /// How many entries `tab` holds.
+    pub(crate) fn of(&self, tab: TriageTab) -> u32 {
+        match tab {
+            TriageTab::Pending => self.pending,
+            TriageTab::Done => self.done,
+            TriageTab::Skipped => self.skipped,
+        }
+    }
+}
+
 /// The release this device imported from the folder's files, or its stored
 /// import failure.
 #[derive(Debug, Clone, PartialEq)]
