@@ -158,36 +158,24 @@ fn pass_failure(failure: &coven::PassFailure) -> UiError {
             UiError::diagnostic(sync_failure_category(error), error)
         }
         coven::PassFailure::Blocked { slot, reason, error } => {
-            blocked_failure(slot, reason, error.as_deref())
+            waiting_failure(&coven::PendingSubject::Slot(*slot), reason, error.as_deref())
         }
     }
 }
 
-/// What a blocked slot shows the person: the error that blocked it, or with
-/// none, as for a device that opened already blocked, its reason.
-fn blocked_failure(
-    slot: &coven::Slot,
+/// What a condition coven holds work on shows the person: a blocked slot's,
+/// or a pending record's that names the sync state. It shows the error coven
+/// keeps for it, or with none, as for a device that opened already blocked or
+/// after the library reopens, the subject that waits and its reason.
+fn waiting_failure(
+    subject: &coven::PendingSubject,
     reason: &coven::PendingReason,
     error: Option<&str>,
 ) -> UiError {
     let category = bae_diagnostics::pending_reason_category(reason);
     match error {
         Some(error) => UiError::diagnostic(category, error),
-        None => UiError::diagnostic(category, format!("slot {slot:?} cannot apply: {reason:?}")),
-    }
-}
-
-/// What a pending record that names the sync state shows the person: the
-/// error coven keeps beside it, or with none, as after the library reopens,
-/// its reason.
-fn pending_failure(record: &coven::PendingRecord) -> UiError {
-    let category = bae_diagnostics::pending_reason_category(&record.reason);
-    match &record.cause {
-        Some(error) => UiError::diagnostic(category, error),
-        None => UiError::diagnostic(
-            category,
-            format!("{:?} waits: {:?}", record.subject, record.reason),
-        ),
+        None => UiError::diagnostic(category, format!("{subject:?} waits: {reason:?}")),
     }
 }
 
@@ -300,7 +288,13 @@ impl SyncStatusSnapshot {
         }
         let pass = match self.shown_cause()? {
             coven::SyncCause::Pass(pass) => pass,
-            coven::SyncCause::Pending(record) => return Some(pending_failure(record)),
+            coven::SyncCause::Pending(record) => {
+                return Some(waiting_failure(
+                    &record.subject,
+                    &record.reason,
+                    record.cause.as_deref(),
+                ))
+            }
         };
         match pass {
             coven::LastPass::Offline { error, .. } => Some(UiError::diagnostic(C::Network, error)),
@@ -308,7 +302,7 @@ impl SyncStatusSnapshot {
                 Some(UiError::diagnostic(status_failure_category(failure), error))
             }
             coven::LastPass::Blocked { slot, reason, error } => {
-                Some(blocked_failure(slot, reason, error.as_deref()))
+                Some(waiting_failure(&coven::PendingSubject::Slot(*slot), reason, error.as_deref()))
             }
             coven::LastPass::Synced => None,
         }
