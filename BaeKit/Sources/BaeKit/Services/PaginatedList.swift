@@ -84,11 +84,10 @@ where Row.ID: Sendable {
     private let queries: BridgeListQueries<Row>
     @ObservationIgnored
     private let onError: (any Error) -> Void
+    /// The view the list opened last, which delivers its rows; nil once
+    /// the list is cancelled.
     @ObservationIgnored
-    private var view: ListViewQuery<Row>?
-    @ObservationIgnored
-    private var viewDeliveries:
-        ScreenSubscription<PulledValues<ListViewDelivery<Row>>>?
+    private var view: OpenView<Row>?
     @ObservationIgnored
     private var countDeliveries:
         ScreenSubscription<PulledValues<BridgeListCount>>?
@@ -130,15 +129,24 @@ where Row.ID: Sendable {
     @ObservationIgnored
     private var firstReadAnswered = false
 
-    /// How many rows the screen fits, from its height and its row height;
-    /// nil until the screen sets it. The list opens its view with that many
-    /// rows on screen, and reports them before the screen holds any row.
+    /// How many rows the screen fits; nil until the screen measures itself
+    /// with `fit`. The list opens its view with that many rows on screen,
+    /// and reports them before the screen holds any row.
     @ObservationIgnored
-    public var screenRows: Int? {
+    public private(set) var screenRows: Int? {
         didSet {
             guard screenRows != oldValue else { return }
             report()
         }
+    }
+
+    /// Size the list's window to a screen `height` tall whose rows are
+    /// `rowHeight` tall, `columns` to a row: the rows the screen shows whole,
+    /// and one more row for the rows its edges cut. A screen not laid out
+    /// yet, with no height or no row height, sets nothing.
+    public func fit(height: CGFloat, rowHeight: CGFloat, columns: Int = 1) {
+        guard height > 0, rowHeight > 0, columns > 0 else { return }
+        screenRows = (Int(ceil(height / rowHeight)) + 1) * columns
     }
 
     public init(
@@ -231,8 +239,7 @@ where Row.ID: Sendable {
 
     public func cancel() {
         cancelled = true
-        viewDeliveries?.stop()
-        viewDeliveries = nil
+        view?.deliveries.stop()
         view = nil
         countDeliveries?.stop()
         countDeliveries = nil
@@ -282,18 +289,20 @@ where Row.ID: Sendable {
     /// another order never empties the screen while core reads the new
     /// window.
     private func openView(at rows: ClosedRange<Int>) {
-        viewDeliveries?.stop()
+        view?.deliveries.stop()
         firstAnswered = false
         reported = rows
-        let view = queries.view(
+        let query = queries.view(
             UInt64(rows.lowerBound),
             UInt64(rows.upperBound)
         )
-        self.view = view
-        viewDeliveries = ScreenSubscription(
-            view.values,
-            onValue: { [weak self] delivery in self?.take(delivery) },
-            onError: { [weak self] error in self?.failed(error) }
+        view = OpenView(
+            query: query,
+            deliveries: ScreenSubscription(
+                query.values,
+                onValue: { [weak self] delivery in self?.take(delivery) },
+                onError: { [weak self] error in self?.failed(error) }
+            )
         )
     }
 
@@ -340,7 +349,10 @@ where Row.ID: Sendable {
     private func report() {
         guard let view, visible != reported else { return }
         reported = visible
-        view.setVisible(UInt64(visible.lowerBound), UInt64(visible.upperBound))
+        view.query.setVisible(
+            UInt64(visible.lowerBound),
+            UInt64(visible.upperBound)
+        )
     }
 
     private func release(
@@ -493,6 +505,15 @@ extension PaginatedList {
                 (position: delivered.start + $0, id: $1.id)
             }
     }
+}
+
+/// A list's open view: the query the list reports the rows on screen to,
+/// and the subscription that delivers the query's rows.
+@MainActor
+private struct OpenView<Row: Identifiable & Sendable & Equatable>
+where Row.ID: Sendable {
+    let query: ListViewQuery<Row>
+    let deliveries: ScreenSubscription<PulledValues<ListViewDelivery<Row>>>
 }
 
 // MARK: - Row load identity

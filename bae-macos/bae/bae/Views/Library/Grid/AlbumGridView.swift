@@ -141,12 +141,20 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
             }
             // The list sizes its window from the slots the grid fits before
-            // any card arrives.
+            // any card arrives: every column of each row that fits.
             .onChange(
-                of: metrics.slotsFitting(height: geometry.size.height),
+                of: GridScreen(
+                    height: geometry.size.height,
+                    rowHeight: metrics.rowHeight,
+                    columns: metrics.columnCount
+                ),
                 initial: true
-            ) { _, slots in
-                list.screenRows = slots
+            ) { _, screen in
+                list.fit(
+                    height: screen.height,
+                    rowHeight: screen.rowHeight,
+                    columns: screen.columns
+                )
             }
             // A new column count re-lays every row before the scroll view
             // knows which slot was on top, so the grid names it.
@@ -220,6 +228,14 @@ struct AlbumGridView<ExpansionContent: View>: View {
 }
 
 /// The grid's columns at one available width.
+/// The grid's height, its row height and its columns, which size the list's
+/// window.
+private struct GridScreen: Equatable {
+    let height: CGFloat
+    let rowHeight: CGFloat
+    let columns: Int
+}
+
 private struct AlbumGridMetrics {
     /// The width a row spans: every column and the gaps between them.
     let rowWidth: CGFloat
@@ -243,12 +259,11 @@ private struct AlbumGridMetrics {
         )
     }
 
-    /// How many slots the grid shows at `height`: every column of each row
-    /// that fits, counting a row as tall as a card's cover, which is shorter
-    /// than the card, and one more row for the rows the edges cut.
-    func slotsFitting(height: CGFloat) -> Int {
-        let rowHeight = max(1, cardWidth + gridSpacing)
-        return (Int(ceil(max(0, height) / rowHeight)) + 1) * columnCount
+    /// The height the list counts a row of cards as when it sizes its
+    /// window: a card's cover and the gap under it, which is shorter than
+    /// the card.
+    var rowHeight: CGFloat {
+        cardWidth + gridSpacing
     }
 
     var columns: [GridItem] {

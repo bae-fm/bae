@@ -440,15 +440,11 @@ extension ImportCandidateTableCoordinator {
     private func holdRowsInView() {
         let count = rowCount
         if let tableView {
-            // The list sizes its window from the rows the table fits, and
-            // one more for the rows its edges cut.
-            list.screenRows =
-                Int(
-                    ceil(
-                        tableView.visibleRect.height
-                            / ImportCandidateTableLayout.rowHeight
-                    )
-                ) + 1
+            // The list sizes its window from the rows the table fits.
+            list.fit(
+                height: tableView.visibleRect.height,
+                rowHeight: ImportCandidateTableLayout.rowHeight
+            )
         }
         guard let tableView, count > 0 else {
             releaseHolds()

@@ -316,10 +316,11 @@ extension StorageTableView {
         /// Each row in view holds its page; a row leaving the view lets its
         /// hold go.
         func holdRowsInView() {
-            // The list sizes its window from the rows the table fits, and
-            // one more for the rows its edges cut.
-            list.screenRows =
-                Int(ceil(table.visibleRect.height / table.rowHeight)) + 1
+            // The list sizes its window from the rows the table fits.
+            list.fit(
+                height: table.visibleRect.height,
+                rowHeight: table.rowHeight
+            )
             let range = table.rows(in: table.visibleRect)
             let inView = Set(range.location..<(range.location + range.length))
             for (row, hold) in rowHolds where !inView.contains(row) {

@@ -45,12 +45,11 @@ public class PlaybackStore {
     /// replaced does not open a list.
     @ObservationIgnored
     private var upcomingOpening = 0
-    /// How many upcoming rows the queue panel fits, which sizes the upcoming
-    /// list's window; nil until the panel measures its height.
+    /// The queue panel's height and its rows' height, which size the
+    /// upcoming list's window; nil until the panel measures its height.
     @ObservationIgnored
-    public var upcomingScreenRows: Int? {
-        didSet { upcoming?.list.screenRows = upcomingScreenRows }
-    }
+    @MainActor
+    private var upcomingScreen: (height: CGFloat, rowHeight: CGFloat)?
 
     /// Where the playing track is, under its track id, for the native views
     /// that read it each display frame.
@@ -204,7 +203,12 @@ extension PlaybackStore {
                 self?.upcoming?.readFailure = DisplayError(error)
             }
         )
-        list.screenRows = upcomingScreenRows
+        if let upcomingScreen {
+            list.fit(
+                height: upcomingScreen.height,
+                rowHeight: upcomingScreen.rowHeight
+            )
+        }
         await list.loadInitial()
         guard upcomingOpening == opening, queueContext != nil else {
             list.cancel()
@@ -212,6 +216,14 @@ extension PlaybackStore {
         }
         upcoming?.list.cancel()
         upcoming = OpenUpcoming(list: list, shuffled: order)
+    }
+
+    /// The queue panel is `height` tall, its rows `rowHeight` tall: size the
+    /// upcoming list's window to the rows it fits.
+    @MainActor
+    public func fitUpcoming(height: CGFloat, rowHeight: CGFloat) {
+        upcomingScreen = (height, rowHeight)
+        upcoming?.list.fit(height: height, rowHeight: rowHeight)
     }
 
     /// Open the upcoming list again after a failure.

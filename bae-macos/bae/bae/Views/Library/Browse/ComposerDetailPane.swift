@@ -9,13 +9,10 @@ struct ComposerDetailPane: View {
     private var session
     @Environment(UiStore.self)
     private var uiStore
-    /// The page's height on screen.
+    /// The page's height on screen and its shortest row's, which size the
+    /// page's window.
     @State
-    private var height: CGFloat = 0
-    /// The height of the shortest page row the pane has drawn, placeholders
-    /// included.
-    @State
-    private var rowHeight: CGFloat?
+    private var fit = ListScreenFit()
 
     var body: some View {
         if session.detailSelection == .none {
@@ -99,11 +96,7 @@ struct ComposerDetailPane: View {
             .frame(maxWidth: 900, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onGeometryChange(for: CGFloat.self) {
-            $0.size.height
-        } action: {
-            height = $0
-        }
+        .measuresScreen(into: $fit)
         .reportsHeaderScroll(id: "composerDetail")
         // One surface step above the master list.
         .background(Theme.surface)
@@ -120,25 +113,11 @@ struct ComposerDetailPane: View {
                     .task(id: RowLoadID(epoch: rows.loadEpoch, index: index)) {
                         await rows.holdPage(containing: index)
                     }
-                    .onGeometryChange(for: CGFloat.self) {
-                        $0.size.height
-                    } action: {
-                        drawn in
-                        guard drawn > 0 else { return }
-                        rowHeight = min(rowHeight ?? drawn, drawn)
-                    }
+                    .measuresRow(into: $fit)
             }
         }
-        // The list sizes its window from the rows the page fits: its height
-        // over its shortest row, and one more for the rows the edges cut.
-        .onChange(of: screenRows, initial: true) { _, fits in
-            rows.screenRows = fits
-        }
-    }
-
-    private var screenRows: Int? {
-        guard let rowHeight, height > 0 else { return nil }
-        return Int(ceil(height / rowHeight)) + 1
+        // The list sizes its window from the rows the page fits.
+        .sizesWindow(of: rows, from: fit)
     }
 
     /// One row of the page, or a placeholder of a row's height until its
