@@ -335,8 +335,6 @@ impl LibraryManager {
     }
 }
 
-impl LibraryManager {}
-
 /// Cancels the storage setup a call runs when the call is dropped before it
 /// returns: see [`LibraryManager::heard_setup`].
 struct CancelSetupOnDrop<'a> {
