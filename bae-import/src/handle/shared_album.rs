@@ -55,15 +55,7 @@ impl ImportServiceHandle {
         let shared = cards.shared_album.ok_or_else(|| crate::ImportError::Internal {
             detail: format!("{candidate_key}'s lookup did not find several pressings of one album"),
         })?;
-        let lease = self.services.store.lease_one().await;
-        let files = candidate.files.clone();
-        let audio = self
-            .services
-            .diagnostics
-            .blocking("read a candidate's audio", move || {
-                crate::audio_layout::read_audio(&files, &lease)
-            })
-            .await??;
+        let audio = self.read_candidate_audio(&candidate.files).await?;
         // What picking each row would read, top-ranked first. A release that
         // fails to load, or cannot be read onto the folder's audio, fails the
         // whole, leaving the candidate as it was.

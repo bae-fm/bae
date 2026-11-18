@@ -100,6 +100,22 @@ impl ImportServiceHandle {
         })
     }
 
+    /// The candidate's audio, as a catalog release is read against it, from
+    /// `files`, the candidate's files as they stand.
+    pub(super) async fn read_candidate_audio(
+        &self,
+        files: &crate::folder_scanner::CategorizedFiles,
+    ) -> Result<bae_catalogs::reading::ReadAudio, crate::ImportError> {
+        let lease = self.services.store.lease_one().await;
+        let files = files.clone();
+        self.services
+            .diagnostics
+            .blocking("read a candidate's audio", move || {
+                crate::audio_layout::read_audio(&files, &lease)
+            })
+            .await?
+    }
+
     /// The handle over the started workers and the services they share.
     pub(super) fn new(
         worker: WorkerThread<crate::service::ImportWorkerMessage>,
