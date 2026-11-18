@@ -123,17 +123,7 @@ impl ReleaseTransfer {
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
         }
-
-        // A pin acts on files stored in the cloud.
-        let mut ready = true;
-        for file in &files {
-            let file = self.library_manager.release_file_ref(&file.id).await?;
-            ready &= matches!(file.place(), coven::FilePlace::Cloud { .. });
-        }
-        if !ready {
-            return Err(LibraryError::Storage("Cannot pin a local release".to_string()));
-        }
-
+        // coven's `prepare_pin` refuses a file that is not in the cloud.
         Ok(files.len() as u32)
     }
 
