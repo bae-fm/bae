@@ -41,3 +41,9 @@ struct SettingsWindowRoot: View {
         }
     }
 }
+
+/// A window's "No library loaded" placeholder.
+enum NoLibraryPlaceholder {
+    static let width: CGFloat = 300
+    static let height: CGFloat = 200
+}

@@ -45,8 +45,8 @@ struct StorageManagerView: View {
     private var runner: StorageActionRunner?
 
     /// The smallest window the list and its inspector fit.
-    fileprivate static let minimumWidth: CGFloat = 700
-    fileprivate static let minimumHeight: CGFloat = 400
+    static let minimumWidth: CGFloat = 700
+    static let minimumHeight: CGFloat = 400
 
     /// The file whose details the inspector opens on, for the release it
     /// first shows.
@@ -79,34 +79,11 @@ struct StorageManagerView: View {
             minWidth: Self.minimumWidth,
             minHeight: Self.minimumHeight
         )
-        .searchable(
-            text: $search,
-            placement: .toolbar,
-            prompt: Text("Filter")
+        .storageManagerToolbar(
+            filter: $filter,
+            search: $search,
+            inspectorPresented: $inspectorPresented
         )
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("Filter", selection: $filter) {
-                    Text("All").tag(BridgeStorageFilter.all)
-                    Text("Local").tag(BridgeStorageFilter.local)
-                    Text("Cloud").tag(BridgeStorageFilter.remote)
-                }
-                .pickerStyle(.segmented)
-                .accentFocusRing(cornerRadius: .infinity)
-                .labelsHidden()
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Toggle(isOn: $inspectorPresented) {
-                    Label("Inspector", systemImage: "sidebar.trailing")
-                        .labelStyle(.iconOnly)
-                }
-                .toggleStyle(.button)
-                .foregroundStyle(
-                    inspectorPresented ? Theme.accent : Color.secondary
-                )
-                .accentFocusRing(cornerRadius: .infinity)
-            }
-        }
         .onAppear {
             if runner == nil {
                 runner = StorageActionRunner(

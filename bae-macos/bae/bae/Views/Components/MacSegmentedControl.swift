@@ -2,7 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The pill of choices the design draws for a few exclusive options: a `tile`
-/// track 28 high, the chosen option on a raised fill.
+/// track 28 high, the chosen option on a raised fill. `off` dims the whole
+/// control while none of its options can be chosen.
 struct MacSegmentedControl: View {
     struct Segment: Equatable {
         let label: String
@@ -12,6 +13,7 @@ struct MacSegmentedControl: View {
     @Binding
     var selectedIndex: Int
     let segments: [Segment]
+    var off = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -49,5 +51,7 @@ struct MacSegmentedControl: View {
         .frame(height: ThemeSize.hitTarget)
         .background(Theme.tile, in: Capsule())
         .fixedSize()
+        .disabled(off)
+        .opacity(off ? ThemeOpacity.off : 1)
     }
 }

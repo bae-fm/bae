@@ -53,4 +53,15 @@ extension ShotScene {
             ) { store.storage != nil }
         },
     ]
+    /// The Storage Manager window (`mac.storage.window*`) with no library
+    /// open: its toolbar controls each off, over the message.
+    static let storageManagerScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.storage.window.no-library",
+            size: CGSize(width: 1_100, height: 660),
+            frame: .window(title: "Storage Manager")
+        ) {
+            ShotStage(StorageManagerNoLibrary())
+        }
+    ]
 }

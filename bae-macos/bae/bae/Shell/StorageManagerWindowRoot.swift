@@ -16,21 +16,31 @@ struct StorageManagerWindowRoot: View {
                 )
         }
         else {
-            ContentUnavailableView {
-                Text("No library loaded")
-            } description: {
-                Text("Open a library first")
-            }
-            .frame(
-                width: NoLibraryPlaceholder.width,
-                height: NoLibraryPlaceholder.height
-            )
+            StorageManagerNoLibrary()
         }
     }
 }
 
-/// A window's "No library loaded" placeholder.
-enum NoLibraryPlaceholder {
-    static let width: CGFloat = 300
-    static let height: CGFloat = 200
+/// The Storage Manager window with no library open: its toolbar controls,
+/// each off, over the message that says why.
+struct StorageManagerNoLibrary: View {
+    var body: some View {
+        ContentUnavailableView {
+            Text("No library loaded")
+        } description: {
+            Text("Open a library first")
+        }
+        .frame(
+            minWidth: StorageManagerView.minimumWidth,
+            maxWidth: .infinity,
+            minHeight: StorageManagerView.minimumHeight,
+            maxHeight: .infinity
+        )
+        .storageManagerToolbar(
+            filter: .constant(.all),
+            search: .constant(""),
+            inspectorPresented: .constant(false),
+            off: true
+        )
+    }
 }

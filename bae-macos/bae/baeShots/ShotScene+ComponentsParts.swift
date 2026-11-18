@@ -11,7 +11,42 @@ extension ShotScene {
         libraryHeadingScenes + matchCodeScenes + moreMenuScenes
         + noticeScenes + portFieldScenes + progressScenes
         + progressLineScenes + recordLinksScenes + sheetFooterScenes
-        + sortCriteriaScenes + spinnerScenes + stepScenes + itemScenes
+        + segmentedControlScenes + sortCriteriaScenes + spinnerScenes
+        + stepScenes + itemScenes
+
+    /// `MacSegmentedControl`: two choices, three, and off.
+    private static let segmentedControlScenes: [ShotScene] = [
+        component("mac.component.segmented-control.two-choices", height: 60) {
+            MacSegmentedControl(
+                selectedIndex: .constant(1),
+                segments: [
+                    .init(label: "In person", systemImage: nil),
+                    .init(label: "Send", systemImage: nil),
+                ]
+            )
+        },
+        component("mac.component.segmented-control.three-choices", height: 60) {
+            MacSegmentedControl(
+                selectedIndex: .constant(1),
+                segments: [
+                    .init(label: "Off", systemImage: nil),
+                    .init(label: "Only me", systemImage: nil),
+                    .init(label: "Everyone", systemImage: nil),
+                ]
+            )
+        },
+        component("mac.component.segmented-control.off", height: 60) {
+            MacSegmentedControl(
+                selectedIndex: .constant(1),
+                segments: [
+                    .init(label: "Off", systemImage: nil),
+                    .init(label: "Only me", systemImage: nil),
+                    .init(label: "Everyone", systemImage: nil),
+                ],
+                off: true
+            )
+        },
+    ]
 
     /// `MacLibraryHeading`, at the top of its list and scrolled.
     private static let libraryHeadingScenes: [ShotScene] = [
