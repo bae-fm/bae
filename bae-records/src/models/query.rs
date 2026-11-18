@@ -110,6 +110,24 @@ pub enum OtherDevice {
     Former { name: String, state: bae_store::FormerDeviceState },
 }
 
+impl OtherDevice {
+    /// The device named `name` that coven registers in `state`.
+    pub fn of(name: String, state: coven::DeviceState) -> Self {
+        match bae_store::FormerDeviceState::of(state) {
+            Some(state) => Self::Former { name, state },
+            None => Self::Active { name },
+        }
+    }
+
+    /// coven's state of the device.
+    pub fn state(&self) -> coven::DeviceState {
+        match self {
+            Self::Active { .. } => coven::DeviceState::Active,
+            Self::Former { state, .. } => state.device_state(),
+        }
+    }
+}
+
 /// The tracks of one side of a release, as its detail groups them: a run of
 /// tracks in playing order that sit on one side or disc.
 #[derive(Debug, Clone, PartialEq)]

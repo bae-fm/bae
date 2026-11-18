@@ -110,16 +110,20 @@ pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Member
                 Ok(FormerDevice {
                     id: device_id(row, first + 6, &id)?,
                     name,
-                    state: FormerDeviceState::of_state(&state).ok_or_else(|| {
-                        column_conversion_error(
-                            row,
-                            first + 6,
-                            format!("{state} is not a device state"),
-                        )
-                    })?,
+                    state: former_state(row, first + 6, &state)?,
                 })
             })
             .collect::<rusqlite::Result<_>>()?,
+    })
+}
+
+/// How a device in the list of former devices in `row`'s column `index`
+/// lost access, from coven's name of its `state`. The list's query keeps
+/// active devices out of it.
+fn former_state(row: &Row<'_>, index: usize, state: &str) -> rusqlite::Result<FormerDeviceState> {
+    let state = state.parse().map_err(|error| column_conversion_error(row, index, error))?;
+    FormerDeviceState::of(state).ok_or_else(|| {
+        column_conversion_error(row, index, "the list of former devices holds an active one")
     })
 }
 

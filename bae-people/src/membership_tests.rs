@@ -67,6 +67,38 @@ fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
     assert!(!by_member.active_devices[0].can_remove);
 }
 
+/// A member row reads each former device's state by coven's name of it, and
+/// fails on text that names no state of coven's.
+#[test]
+fn a_former_devices_state_reads_by_coven_s_name() {
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    let read = |former: &str| {
+        connection.query_row(
+            "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
+             NULL, NULL, '[]', ?1, 0, 2, 0",
+            [former],
+            |row| super::members::member_row(row, 0),
+        )
+    };
+    let member = read(r#"[["02","Old Phone","replaced"],["03","Tablet","removed"]]"#).unwrap();
+    assert_eq!(
+        member.former_devices,
+        [
+            FormerDevice {
+                id: coven::DeviceId(2),
+                name: "Old Phone".into(),
+                state: bae_store::FormerDeviceState::Replaced
+            },
+            FormerDevice {
+                id: coven::DeviceId(3),
+                name: "Tablet".into(),
+                state: bae_store::FormerDeviceState::Removed
+            },
+        ]
+    );
+    assert!(read(r#"[["02","Old Phone","lost"]]"#).is_err());
+}
+
 /// Each place's statement returns the changes of its own kinds, and every
 /// place's statement returns a change whose operation coven lists with a kind
 /// no place shows, so that reading that change fails wherever the person

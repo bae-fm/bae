@@ -7,22 +7,30 @@ use bae_store::FormerDeviceState;
 /// registration still says.
 #[test]
 fn the_other_device_follows_its_registration_and_its_person() {
+    use coven::DeviceState;
     let name = || "Device B".to_string();
-    assert_eq!(other_device(name(), "active", false), Some(OtherDevice::Active { name: name() }));
     assert_eq!(
-        other_device(name(), "removed", false),
-        Some(OtherDevice::Former { name: name(), state: FormerDeviceState::Removed })
+        other_device(name(), DeviceState::Active, false),
+        OtherDevice::Active { name: name() }
     );
     assert_eq!(
-        other_device(name(), "replaced", false),
-        Some(OtherDevice::Former { name: name(), state: FormerDeviceState::Replaced })
+        other_device(name(), DeviceState::Removed, false),
+        OtherDevice::Former { name: name(), state: FormerDeviceState::Removed }
     );
     assert_eq!(
-        other_device(name(), "active", true),
-        Some(OtherDevice::Former { name: name(), state: FormerDeviceState::Removed }),
+        other_device(name(), DeviceState::Replaced, false),
+        OtherDevice::Former { name: name(), state: FormerDeviceState::Replaced }
+    );
+    assert_eq!(
+        other_device(name(), DeviceState::Active, true),
+        OtherDevice::Former { name: name(), state: FormerDeviceState::Removed },
         "a removed person's devices are removed with them"
     );
-    assert_eq!(other_device(name(), "lost", false), None);
+    assert_eq!(
+        other_device(name(), DeviceState::Replaced, true),
+        OtherDevice::Former { name: name(), state: FormerDeviceState::Replaced },
+        "a replaced device stays replaced when its person is removed"
+    );
 }
 
 /// A read that names another device as the only one that holds a file names

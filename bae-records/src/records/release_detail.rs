@@ -312,13 +312,10 @@ fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<Othe
     else {
         return Ok(None);
     };
-    other_device(name, &state, member_removed != 0).map(Some).ok_or_else(|| {
-        bae_store::read::column_conversion_error(
-            row,
-            column,
-            format!("{state:?} is no state coven writes for a device"),
-        )
-    })
+    let state = state
+        .parse()
+        .map_err(|error| bae_store::read::column_conversion_error(row, column, error))?;
+    Ok(Some(other_device(name, state, member_removed != 0)))
 }
 
 /// Why bae could not name the device that a failed read of a release file
@@ -330,9 +327,6 @@ pub enum OtherDeviceError {
     /// (coven 17.3), so a read that names this device is a bug in coven.
     #[error("the read named this device, {0:?}, as the only one that holds the file")]
     ThisDevice(coven::DeviceId),
-    /// `coven_devices` records a state for the device that coven does not write.
-    #[error("device {device:?} has a state coven does not write: {state:?}")]
-    UnknownState { device: coven::DeviceId, state: String },
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -355,7 +349,7 @@ impl Records {
                     |row| {
                         Ok((
                             row.get::<_, String>("name")?,
-                            row.get::<_, String>("state")?,
+                            row.get::<_, coven::DeviceState>("state")?,
                             row.get::<_, bool>("removed")?,
                             row.get::<_, bool>("is_self")?,
                         ))
@@ -366,28 +360,20 @@ impl Records {
         if is_self {
             return Err(OtherDeviceError::ThisDevice(device));
         }
-        other_device(name, &state, member_removed)
-            .ok_or(OtherDeviceError::UnknownState { device, state })
+        Ok(other_device(name, state, member_removed))
     }
 }
 
 /// Another device named `name`, as coven's registration `state` of it reads:
 /// removed when its registration says so or its person was removed from the
-/// library (`member_removed`), replaced when it was reset. `None` for a state
-/// coven doesn't write.
-fn other_device(name: String, state: &str, member_removed: bool) -> Option<crate::OtherDevice> {
-    use crate::OtherDevice;
-    use bae_store::FormerDeviceState;
-    if let Some(state) = FormerDeviceState::of_state(state) {
-        return Some(OtherDevice::Former { name, state });
-    }
-    Some(match state {
-        "active" if member_removed => {
-            OtherDevice::Former { name, state: FormerDeviceState::Removed }
+/// library (`member_removed`), replaced when it was reset.
+fn other_device(name: String, state: coven::DeviceState, member_removed: bool) -> OtherDevice {
+    match OtherDevice::of(name, state) {
+        OtherDevice::Active { name } if member_removed => {
+            OtherDevice::Former { name, state: bae_store::FormerDeviceState::Removed }
         }
-        "active" => OtherDevice::Active { name },
-        _ => return None,
-    })
+        device => device,
+    }
 }
 
 #[cfg(test)]

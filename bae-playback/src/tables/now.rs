@@ -300,7 +300,7 @@ struct FailureColumns<'a> {
     problem: Option<&'static str>,
     detail: Option<&'a str>,
     device: Option<&'a str>,
-    device_state: Option<&'static str>,
+    device_state: Option<coven::DeviceState>,
 }
 
 impl<'a> FailureColumns<'a> {
@@ -315,11 +315,15 @@ impl<'a> FailureColumns<'a> {
         match reason {
             PlaybackErrorReason::SyncDisconnected => columns("sync_disconnected"),
             PlaybackErrorReason::OnOtherDevice(device) => {
-                let (name, state) = match device {
-                    bae_records::OtherDevice::Active { name } => (name, "active"),
-                    bae_records::OtherDevice::Former { name, state } => (name, state.state_text()),
+                let name = match device {
+                    bae_records::OtherDevice::Active { name }
+                    | bae_records::OtherDevice::Former { name, .. } => name,
                 };
-                Self { device: Some(name), device_state: Some(state), ..columns("on_other_device") }
+                Self {
+                    device: Some(name),
+                    device_state: Some(device.state()),
+                    ..columns("on_other_device")
+                }
             }
             PlaybackErrorReason::OriginalMissing => columns("original_missing"),
             PlaybackErrorReason::AudioOutput { problem } => Self {
@@ -453,14 +457,10 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReaso
         "sync_disconnected" => PlaybackErrorReason::SyncDisconnected,
         "on_other_device" => {
             let name: String = row.get("failure_device")?;
-            let state: String = row.get("failure_device_state")?;
-            PlaybackErrorReason::OnOtherDevice(match state.as_str() {
-                "active" => bae_records::OtherDevice::Active { name },
-                other => match bae_store::FormerDeviceState::of_state(other) {
-                    Some(state) => bae_records::OtherDevice::Former { name, state },
-                    None => return Err(unknown(row, "failure_device_state", other)),
-                },
-            })
+            PlaybackErrorReason::OnOtherDevice(bae_records::OtherDevice::of(
+                name,
+                row.get("failure_device_state")?,
+            ))
         }
         "original_missing" => PlaybackErrorReason::OriginalMissing,
         "audio_output" => {
