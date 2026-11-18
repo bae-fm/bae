@@ -28,6 +28,14 @@ fn profile_sql() -> String {
 }
 
 impl People {
+    /// The person this device records plays as: [`Self::own_person`], and
+    /// still this device's person after the library removed it, as the
+    /// removed device keeps its copy and keeps writing to it.
+    pub(super) async fn playing_person(&self) -> Result<Option<Person>, DbError> {
+        let statement = members_sql(IS_OWN_MEMBER, "");
+        Ok(self.inner.store.read(move |sql| Ok(people_on(&sql, &statement, [])?)).await?.pop())
+    }
+
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
@@ -233,10 +241,16 @@ fn avatar_columns(row: &Row<'_>, at: usize) -> rusqlite::Result<Option<Avatar>> 
 /// `name_sort`, so coven reruns it when the device's language changes. The
 /// members with no profile yet follow, and member id orders the rest.
 fn people_sql(narrowing: &str) -> String {
+    members_sql("NOT m.removed", narrowing)
+}
+
+/// [`people_sql`] over the members `condition` keeps, former ones included
+/// when it says so: a profile keeps its member id after the member's removal.
+fn members_sql(condition: &str, narrowing: &str) -> String {
     format!(
         "SELECT {profile}, {member} \
          FROM coven_members AS m LEFT JOIN ({PROFILES}) ON p.id = m.member \
-         WHERE NOT m.removed{narrowing} \
+         WHERE {condition}{narrowing} \
          ORDER BY p.id IS NULL, {name_key}, m.member",
         profile = profile_columns(),
         member = member_columns!(),

@@ -7,7 +7,8 @@ impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
     /// `None` when the setting is Off. A device with no person, or a person
     /// with no profile, is a bug: every registered member has a profile, so
-    /// the play is refused, never dropped.
+    /// the play is refused, never dropped. A device the library removed still
+    /// has its person, and records plays as them.
     pub async fn begin_play(
         &self,
         id: uuid::Uuid,
@@ -15,7 +16,7 @@ impl People {
         duration: Option<Duration>,
         started_at: UtcDateTime,
     ) -> Result<Option<HistoryPlay>, PlayRecordError> {
-        let person = self.own_person().await?.ok_or(PlayRecordError::NoPerson)?;
+        let person = self.playing_person().await?.ok_or(PlayRecordError::NoPerson)?;
         let crate::people::Person { profile, membership } = person;
         let profile = profile.ok_or(PlayRecordError::NoProfile(membership.id))?;
         let Some(audience) = profile.history_sharing.audience(profile.private_circle) else {
@@ -40,7 +41,7 @@ impl People {
             return Ok(false);
         }
         let entry = play.entry.clone();
-        if self.own_person().await?.map(|person| person.membership.id) != Some(entry.person) {
+        if self.playing_person().await?.map(|person| person.membership.id) != Some(entry.person) {
             return Err(PlayRecordError::PersonChanged(entry.person));
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
