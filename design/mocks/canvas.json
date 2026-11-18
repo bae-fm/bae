@@ -5937,14 +5937,6 @@
    "w": 240,
    "maxW": 3200
   },
-  "code-sync-more": {
-   "page": "library",
-   "size": 24,
-   "w": 460,
-   "x": 2310,
-   "y": 25888,
-   "text": "What the code needs for these boards:\n- No list of pending records: the Sync page has no Pending or Needs attention section. The status says what stops sync; a file's upload, pin, download or move shows on its release in Storage Manager; a change the person made shows in its change box; what only waits for coven to retry shows nowhere but Waiting to sync. Today the Mac's Sync settings (bae-macos/bae/bae/Views/Settings/Library/LibrarySettingsTab.swift:278), the Mac's Activity panel (bae-macos/bae/bae/Views/Chrome/ActivityList.swift:43) and Android's Sync screen (bae-android/app/src/main/java/fm/bae/app/ui/settings/SyncScreen.kt:357) list every record: bae needs a change that removes these lists. The two Sync boards here show the page without it, with Waiting for access in the status.\n- Setup undone: the warning notice with Details and Dismiss heads the page, over Not synced. The app's UndoneSetupLine already draws it.\n- Unreadable cloud home: a read of this device's own record that failed is a bug: the notice says so with Details only, and bae reports the bug. The app shows the notice; no Try again."
-  },
   "code-welcome-damaged-join": {
    "page": "welcome",
    "size": 24,
