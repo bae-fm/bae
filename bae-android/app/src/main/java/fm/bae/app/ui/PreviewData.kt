@@ -234,7 +234,7 @@ object PreviewData {
             failure =
                 if (needsAttention) {
                     BridgeException.Diagnostic(
-                        BridgeErrorCategory.Storage(BridgeStorageFailure.AUTHENTICATION),
+                        BridgeErrorCategory.Storage(BridgeStorageFailure.Authentication),
                         "Dropbox answered 401: expired_access_token",
                     )
                 } else {
