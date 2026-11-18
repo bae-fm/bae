@@ -264,6 +264,7 @@
     <string name="cast_turn_off_title">Kikapcsolod az átküldést?</string>
     <string name="cast_turn_off_message">Ezzel leáll az átküldés ide: %1$s.</string>
     <string name="cast_turn_off_confirm">Kikapcsolás</string>
+    <string name="cast_pin_field">PIN-kód</string>
     <string name="settings_casting">Átküldés</string>
     <string name="settings_enable_casting">Átküldés bekapcsolása</string>
     <string name="settings_casting_help">Cast-, AirPlay- és UPnP-vevőket keres a hálózatodon.</string>

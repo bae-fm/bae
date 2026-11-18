@@ -266,6 +266,7 @@
     <string name="cast_turn_off_title">Yayınlama kapatılsın mı?</string>
     <string name="cast_turn_off_message">Bu, %1$s cihazına yayınlamayı durdurur.</string>
     <string name="cast_turn_off_confirm">Kapat</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Yayınlama</string>
     <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>
     <string name="settings_casting_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarını tarar.</string>

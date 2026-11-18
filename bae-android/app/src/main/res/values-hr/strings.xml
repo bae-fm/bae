@@ -273,6 +273,7 @@
     <string name="cast_turn_off_title">Isključiti emitiranje?</string>
     <string name="cast_turn_off_message">Time će se prekinuti emitiranje na %1$s.</string>
     <string name="cast_turn_off_confirm">Isključi</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Emitiranje</string>
     <string name="settings_enable_casting">Omogući emitiranje</string>
     <string name="settings_casting_help">Traži Cast, AirPlay i UPnP prijamnike na vašoj mreži.</string>

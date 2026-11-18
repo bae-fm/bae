@@ -266,6 +266,7 @@
     <string name="cast_turn_off_title">Да се изключи ли предаването?</string>
     <string name="cast_turn_off_message">Това ще спре предаването към %1$s.</string>
     <string name="cast_turn_off_confirm">Изключване</string>
+    <string name="cast_pin_field">ПИН</string>
     <string name="settings_casting">Предаване</string>
     <string name="settings_enable_casting">Включване на предаването</string>
     <string name="settings_casting_help">Търси приемници Cast, AirPlay и UPnP в мрежата ви.</string>

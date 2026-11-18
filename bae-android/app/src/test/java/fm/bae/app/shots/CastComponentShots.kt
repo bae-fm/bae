@@ -1,7 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.components.AndroidPinField
+import fm.bae.app.ui.components.focusOnShow
 import fm.bae.app.ui.playback.AndroidCastRow
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRole
@@ -16,7 +19,7 @@ private fun receiver(
     kind: BridgeRendererKind,
 ) = BridgeCastReceiver(id = "id-$name", name = name, kind = kind, model = null, address = "192.168.1.42", takesVolume = true)
 
-/** The component shots of a cast receiver's row, as the cast picker lists it. */
+/** The component shots of a cast receiver's row, as the cast picker lists it, and of the field a receiver's PIN is typed in. */
 class CastComponentShots : BoardShot() {
     @Test
     fun androidComponentCastRowReceiver() =
@@ -52,4 +55,21 @@ class CastComponentShots : BoardShot() {
                 CastReceiverPlace.PICKER,
             )
         }
+
+    @Test
+    fun androidComponentPinFieldEmpty() = component("android.component.pin-field.empty") { AndroidPinField(4, "", {}) }
+
+    @Test
+    fun androidComponentPinFieldFocused() =
+        component("android.component.pin-field.focused") { AndroidPinField(4, "48", {}, Modifier.focusOnShow()) }
+
+    @Test
+    fun androidComponentPinFieldFilled() = component("android.component.pin-field.filled") { AndroidPinField(4, "4821", {}) }
+
+    @Test
+    fun androidComponentPinFieldError() =
+        component("android.component.pin-field.error") { AndroidPinField(4, "4821", {}, error = "That PIN did not match.") }
+
+    @Test
+    fun androidComponentPinFieldSixDigits() = component("android.component.pin-field.six-digits") { AndroidPinField(6, "482", {}) }
 }

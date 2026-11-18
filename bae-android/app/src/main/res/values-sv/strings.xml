@@ -264,6 +264,7 @@
     <string name="cast_turn_off_title">Stänga av castningen?</string>
     <string name="cast_turn_off_message">Detta stoppar castningen till %1$s.</string>
     <string name="cast_turn_off_confirm">Stäng av</string>
+    <string name="cast_pin_field">PIN-kod</string>
     <string name="settings_casting">Castar</string>
     <string name="settings_enable_casting">Slå på castning</string>
     <string name="settings_casting_help">Söker efter Cast-, AirPlay- och UPnP-mottagare i ditt nätverk.</string>

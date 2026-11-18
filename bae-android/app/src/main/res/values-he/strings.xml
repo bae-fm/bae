@@ -273,6 +273,7 @@
     <string name="cast_turn_off_title">לכבות את השידור?</string>
     <string name="cast_turn_off_message">פעולה זו תפסיק את השידור אל %1$s.</string>
     <string name="cast_turn_off_confirm">כבה</string>
+    <string name="cast_pin_field">קוד PIN</string>
     <string name="settings_casting">שידור</string>
     <string name="settings_enable_casting">הפעלת שידור</string>
     <string name="settings_casting_help">סורק את הרשת שלך אחר מקלטי Cast‏, AirPlay ו‑UPnP.</string>

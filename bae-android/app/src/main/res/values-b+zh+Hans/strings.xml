@@ -259,6 +259,7 @@
     <string name="cast_turn_off_title">要关闭投放吗？</string>
     <string name="cast_turn_off_message">这将停止投放到 %1$s。</string>
     <string name="cast_turn_off_confirm">关闭</string>
+    <string name="cast_pin_field">PIN 码</string>
     <string name="settings_casting">投放</string>
     <string name="settings_enable_casting">启用投放</string>
     <string name="settings_casting_help">在你的网络中搜索 Cast、AirPlay 和 UPnP 接收设备。</string>

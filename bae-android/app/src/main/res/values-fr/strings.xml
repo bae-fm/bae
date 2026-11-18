@@ -272,6 +272,7 @@
     <string name="cast_turn_off_title">Désactiver la diffusion ?</string>
     <string name="cast_turn_off_message">La diffusion vers %1$s sera interrompue.</string>
     <string name="cast_turn_off_confirm">Désactiver</string>
+    <string name="cast_pin_field">Code PIN</string>
     <string name="settings_casting">Diffusion</string>
     <string name="settings_enable_casting">Activer la diffusion</string>
     <string name="settings_casting_help">Recherche les récepteurs Cast, AirPlay et UPnP de votre réseau.</string>

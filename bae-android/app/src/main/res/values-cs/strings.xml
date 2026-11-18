@@ -280,6 +280,7 @@
     <string name="cast_turn_off_title">Vypnout odesílání?</string>
     <string name="cast_turn_off_message">Tím se ukončí odesílání do %1$s.</string>
     <string name="cast_turn_off_confirm">Vypnout</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Odesílání</string>
     <string name="settings_enable_casting">Povolit odesílání</string>
     <string name="settings_casting_help">Vyhledává přijímače Cast, AirPlay a UPnP ve vaší síti.</string>

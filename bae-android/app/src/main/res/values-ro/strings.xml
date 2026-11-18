@@ -271,6 +271,7 @@
     <string name="cast_turn_off_title">Oprești transmisia?</string>
     <string name="cast_turn_off_message">Aceasta va opri transmisia către %1$s.</string>
     <string name="cast_turn_off_confirm">Oprește</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Transmisie</string>
     <string name="settings_enable_casting">Activează transmisia</string>
     <string name="settings_casting_help">Caută receptoare Cast, AirPlay și UPnP în rețeaua ta.</string>

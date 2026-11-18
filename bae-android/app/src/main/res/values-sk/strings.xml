@@ -278,6 +278,7 @@
     <string name="cast_turn_off_title">Vypnúť prenášanie?</string>
     <string name="cast_turn_off_message">Týmto sa zastaví prenášanie do %1$s.</string>
     <string name="cast_turn_off_confirm">Vypnúť</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Prenášanie</string>
     <string name="settings_enable_casting">Zapnúť prenášanie</string>
     <string name="settings_casting_help">Vyhľadáva prijímače Cast, AirPlay a UPnP v tvojej sieti.</string>

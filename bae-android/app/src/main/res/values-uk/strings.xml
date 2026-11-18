@@ -280,6 +280,7 @@
     <string name="cast_turn_off_title">Вимкнути трансляцію?</string>
     <string name="cast_turn_off_message">Це припинить трансляцію на %1$s.</string>
     <string name="cast_turn_off_confirm">Вимкнути</string>
+    <string name="cast_pin_field">PIN-код</string>
     <string name="settings_casting">Трансляція</string>
     <string name="settings_enable_casting">Увімкнути трансляцію</string>
     <string name="settings_casting_help">Шукає приймачі Cast, AirPlay і UPnP у вашій мережі.</string>

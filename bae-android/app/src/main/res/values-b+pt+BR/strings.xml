@@ -272,6 +272,7 @@
     <string name="cast_turn_off_title">Desativar a transmissão?</string>
     <string name="cast_turn_off_message">Isso interromperá a transmissão para %1$s.</string>
     <string name="cast_turn_off_confirm">Desativar</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar a transmissão</string>
     <string name="settings_casting_help">Procura receptores Cast, AirPlay e UPnP na sua rede.</string>

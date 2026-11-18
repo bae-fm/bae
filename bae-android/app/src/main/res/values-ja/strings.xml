@@ -259,6 +259,7 @@
     <string name="cast_turn_off_title">キャストをオフにしますか？</string>
     <string name="cast_turn_off_message">%1$s へのキャストを停止します。</string>
     <string name="cast_turn_off_confirm">オフにする</string>
+    <string name="cast_pin_field">PINコード</string>
     <string name="settings_casting">キャスト</string>
     <string name="settings_enable_casting">キャストを有効にする</string>
     <string name="settings_casting_help">ネットワーク上の Cast、AirPlay、UPnP レシーバーを探します。</string>

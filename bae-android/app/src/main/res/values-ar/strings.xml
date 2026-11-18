@@ -294,6 +294,7 @@
     <string name="cast_turn_off_title">إيقاف الإرسال؟</string>
     <string name="cast_turn_off_message">سيؤدي هذا إلى إيقاف الإرسال إلى ‏%1$s.</string>
     <string name="cast_turn_off_confirm">إيقاف</string>
+    <string name="cast_pin_field">رمز PIN</string>
     <string name="settings_casting">الإرسال</string>
     <string name="settings_enable_casting">تفعيل الإرسال</string>
     <string name="settings_casting_help">يبحث عن أجهزة استقبال Cast وAirPlay وUPnP على شبكتك.</string>

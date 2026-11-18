@@ -264,6 +264,7 @@
     <string name="cast_turn_off_title">Απενεργοποίηση μετάδοσης;</string>
     <string name="cast_turn_off_message">Αυτό θα σταματήσει τη μετάδοση σε %1$s.</string>
     <string name="cast_turn_off_confirm">Απενεργοποίηση</string>
+    <string name="cast_pin_field">PIN</string>
     <string name="settings_casting">Μετάδοση</string>
     <string name="settings_enable_casting">Ενεργοποίηση μετάδοσης</string>
     <string name="settings_casting_help">Αναζήτηση δεκτών Cast, AirPlay και UPnP στο δίκτυό σας.</string>
