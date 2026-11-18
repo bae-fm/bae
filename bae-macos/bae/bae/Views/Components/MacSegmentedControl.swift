@@ -65,7 +65,7 @@ struct MacSegmentedControl: View {
         .frame(height: ThemeSize.hitTarget)
         .background(Theme.tile, in: Capsule())
         .fixedSize()
-        .disabled(off)
+        .allowsHitTesting(!off)
         .opacity(off ? ThemeOpacity.off : 1)
     }
 }

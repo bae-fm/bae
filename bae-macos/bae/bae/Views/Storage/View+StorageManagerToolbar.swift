@@ -12,62 +12,108 @@ extension View {
         inspectorPresented: Binding<Bool>,
         off: Bool = false
     ) -> some View {
-        searchable(
-            text: search,
-            placement: .toolbar,
-            prompt: Text("Filter")
-        )
-        .disabled(off)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                MacSegmentedControl(
-                    selectedIndex: Binding(
-                        get: {
-                            StorageFilterSegment.order.firstIndex(
-                                of: filter.wrappedValue
-                            ) ?? 0
-                        },
-                        set: {
-                            filter.wrappedValue = StorageFilterSegment.order[$0]
-                        }
-                    ),
-                    segments: [
-                        .init(
-                            label: String(localized: "All"),
-                            systemImage: nil
+        filterField(search, off: off)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    MacSegmentedControl(
+                        selectedIndex: Binding(
+                            get: {
+                                StorageFilterSegment.order.firstIndex(
+                                    of: filter.wrappedValue
+                                ) ?? 0
+                            },
+                            set: {
+                                filter.wrappedValue =
+                                    StorageFilterSegment.order[$0]
+                            }
                         ),
-                        .init(
-                            label: String(localized: "Local"),
-                            systemImage: nil
-                        ),
-                        .init(
-                            label: String(localized: "Cloud"),
-                            systemImage: nil
-                        ),
-                    ],
-                    off: off
-                )
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    inspectorPresented.wrappedValue.toggle()
-                } label: {
-                    Image(systemName: "sidebar.trailing")
-                        .themeIcon(.small)
-                        .frame(
-                            width: ThemeSize.hitTarget,
-                            height: ThemeSize.hitTarget
-                        )
+                        segments: [
+                            .init(
+                                label: String(localized: "All"),
+                                systemImage: nil
+                            ),
+                            .init(
+                                label: String(localized: "Local"),
+                                systemImage: nil
+                            ),
+                            .init(
+                                label: String(localized: "Cloud"),
+                                systemImage: nil
+                            ),
+                        ],
+                        off: off
+                    )
                 }
-                .buttonStyle(
-                    IconHoverButtonStyle(isOn: inspectorPresented.wrappedValue)
-                )
-                .accentFocusRing(cornerRadius: ThemeRadius.control)
-                .help("Inspector")
-                .accessibilityLabel(Text("Inspector"))
-                .disabled(off)
+                if off {
+                    ToolbarItem(placement: .primaryAction) {
+                        OffFilterField()
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        inspectorPresented.wrappedValue.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.trailing")
+                            .themeIcon(.small)
+                            .frame(
+                                width: ThemeSize.hitTarget,
+                                height: ThemeSize.hitTarget
+                            )
+                    }
+                    .buttonStyle(
+                        IconHoverButtonStyle(
+                            isOn: inspectorPresented.wrappedValue
+                        )
+                    )
+                    .accentFocusRing(cornerRadius: ThemeRadius.control)
+                    .help("Inspector")
+                    .accessibilityLabel(Text("Inspector"))
+                    .disabled(off)
+                }
             }
+    }
+}
+
+extension View {
+    /// The Filter field in the toolbar. With no library open the field is
+    /// off, which the toolbar draws as the words "Filter" (`OffFilterField`)
+    /// in place of a field that takes no text.
+    @ViewBuilder
+    fileprivate func filterField(_ search: Binding<String>, off: Bool)
+        -> some View
+    {
+        if off {
+            self
         }
+        else {
+            searchable(
+                text: search,
+                placement: .toolbar,
+                prompt: Text("Filter")
+            )
+        }
+    }
+}
+
+/// The Filter field while it is off: its magnifier and the word Filter on
+/// the field's fill, dimmed.
+private struct OffFilterField: View {
+    var body: some View {
+        HStack(spacing: ThemeSpace.related) {
+            Image(systemName: "magnifyingglass")
+                .themeIcon(.small)
+                .accessibilityHidden(true)
+            Text("Filter")
+                .themeText(.body)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, ThemeSpace.related)
+        .frame(width: 160, height: 24, alignment: .leading)
+        .background(
+            Theme.field,
+            in: RoundedRectangle(cornerRadius: ThemeRadius.field)
+        )
+        .opacity(ThemeOpacity.off)
     }
 }
 
