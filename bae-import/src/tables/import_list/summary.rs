@@ -49,23 +49,33 @@ fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
 /// Found's releases it holds: `all` holds every one and the others each hold
 /// those in their states. The person cannot choose an entry that holds no
 /// releases.
-pub(super) const FILTER_ENTRIES: &str = "WITH entries (position, entry) AS ( \
-         VALUES (1, 'needs_you'), (2, 'in_progress'), (3, 'identified'), (4, 'unmatched'), \
-                (5, 'not_looked_up')), \
-     held (entry, count) AS ( \
-         SELECT pending_entry, COUNT(*) FROM import_list_placement \
-         WHERE pending_entry IS NOT NULL GROUP BY pending_entry), \
-     counted (position, entry, count) AS ( \
-         SELECT 0, 'all', COALESCE(SUM(count), 0) FROM held \
-         UNION ALL \
-         SELECT e.position, e.entry, COALESCE(h.count, 0) FROM entries AS e \
-         LEFT JOIN held AS h ON h.entry = e.entry) \
-     SELECT entry, count, count > 0 FROM counted ORDER BY position";
+pub(super) fn filter_entries_sql() -> String {
+    let entries = PendingFilter::ENTRIES
+        .iter()
+        .enumerate()
+        .filter(|(_, filter)| **filter != PendingFilter::All)
+        .map(|(position, filter)| format!("({position}, '{}')", pending_filter_column(*filter)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let all = pending_filter_column(PendingFilter::All);
+    format!(
+        "WITH entries (position, entry) AS (VALUES {entries}), \
+         held (entry, count) AS ( \
+             SELECT pending_entry, COUNT(*) FROM import_list_placement \
+             WHERE pending_entry IS NOT NULL GROUP BY pending_entry), \
+         counted (position, entry, count) AS ( \
+             SELECT 0, '{all}', COALESCE(SUM(count), 0) FROM held \
+             UNION ALL \
+             SELECT e.position, e.entry, COALESCE(h.count, 0) FROM entries AS e \
+             LEFT JOIN held AS h ON h.entry = e.entry) \
+         SELECT entry, count, count > 0 FROM counted ORDER BY position"
+    )
+}
 
 /// How many of Found's releases each filter entry holds, in the menu's
 /// order.
 pub(super) fn filter_entries(sql: &SqlReadContext<'_>) -> Result<Vec<PendingFilterEntry>, DbError> {
-    sql.query(FILTER_ENTRIES, [], |row| {
+    sql.query(&filter_entries_sql(), [], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, bool>(2)?))
     })?
     .into_iter()

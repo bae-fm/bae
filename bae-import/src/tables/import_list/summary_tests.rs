@@ -605,7 +605,7 @@ async fn the_counts_are_counted_off_the_placements_indexes() {
     let plans = lib
         .db
         .read(|sql| {
-            [super::TAB_COUNTS, super::FILTER_ENTRIES]
+            [super::TAB_COUNTS.to_string(), super::filter_entries_sql()]
                 .into_iter()
                 .map(|statement| {
                     Ok(sql
