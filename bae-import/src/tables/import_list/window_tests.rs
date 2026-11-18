@@ -770,7 +770,7 @@ async fn a_done_row_reads_its_library_release() {
         .await
         .unwrap();
     let version = write_cover(&records, &release_id, "the library cover").await;
-    let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
+    let list = in_path_order(crate::TriageTab::Done);
     let whole = bae_store::ListWindow::top(50);
     let mut live = tables.subscribe_import_window(list.clone(), whole);
     let first = live.next_inline().await.expect("the query stays open").result.unwrap();
@@ -883,7 +883,7 @@ async fn a_done_row_reads_as_its_library_release_s_records_describe_it() {
     )
     .await;
 
-    let list = open_in_path_order(&lib.db, crate::TriageTab::Done).await;
+    let list = in_path_order(crate::TriageTab::Done);
     let read = crate::tables::ImportTables::new(lib.db.clone())
         .read_import_window(list.clone(), bae_store::ListWindow::top(50))
         .await
@@ -927,7 +927,7 @@ async fn a_folder_whose_release_is_deleted_lists_its_blank_draft_and_folder_cove
     )
     .await;
 
-    let list = open_in_path_order(&lib.db, crate::TriageTab::Pending).await;
+    let list = in_path_order(crate::TriageTab::Pending);
     let listed = tables.read_import_list_for_test(list.clone(), Vec::new()).await.unwrap();
     let row = listed
         .windows

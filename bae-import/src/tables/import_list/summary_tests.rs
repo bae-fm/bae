@@ -54,7 +54,7 @@ async fn a_list_counts_what_it_lists() {
             };
             let kept = releases(&lib.shown(view.clone()).await);
             for folded in [&[][..], &["A"][..], &["A", "B"][..]] {
-                let mut list = lib.open(view.clone()).await;
+                let mut list = ImportListRequest::of(view.clone());
                 for group in folded {
                     list = list.folding(lib.group_key(group));
                 }
@@ -357,7 +357,7 @@ async fn each_entry_counts_the_rows_it_holds() {
 async fn a_chosen_entry_holding_no_row_stays_chosen() {
     let lib = every_kind().await;
     running(&lib).await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::InProgress));
     assert_eq!(lib.read(&list).await.count.rows, 2);
     lib.run(lib.reopened()).await;
     let ended = lib.read(&list).await;
@@ -529,7 +529,7 @@ async fn a_candidate_position_counts_what_the_view_shows() {
             + lib.scan("Target/Release 1"),
     )
     .await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let target = lib.key("Target/Release 1");
     let open = tables.import_candidate_position(list.clone(), &target).await.unwrap();
     let list = list.folding(lib.group_key("Earlier"));
@@ -555,7 +555,7 @@ async fn a_candidate_position_counts_what_the_view_shows() {
 async fn the_list_count_carries_the_tab_counts() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let list = lib.open(view(TriageTab::Done)).await;
+    let list = ImportListRequest::of(view(TriageTab::Done));
     let mut live = tables.subscribe_import_count(list.clone());
     let none = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(none.tabs, crate::TriageTabCounts::default());

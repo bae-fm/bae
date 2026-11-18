@@ -81,7 +81,7 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     tables.add_watched_import_folder(root).await.unwrap();
     let candidate = scan_finished(&db, root, "release").await;
 
-    let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
+    let list = in_path_order(crate::TriageTab::Pending);
     let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let mut count = tables.subscribe_import_count(list.clone());
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
@@ -130,7 +130,7 @@ async fn a_moved_folder_stays_done() {
 
     let moved = scan_finished(&db, root, "renamed").await;
     assert_eq!(moved.files.content_hash(), imported.files.content_hash());
-    let list = open_in_path_order(&db, crate::TriageTab::Done).await;
+    let list = in_path_order(crate::TriageTab::Done);
     let read = tables.read_import_window(list.clone(), first(50)).await.unwrap();
     assert_eq!(candidate_names(&unkeyed(&read.rows)), vec!["renamed".to_string()]);
     assert_eq!(tables.load_tab_counts().await.unwrap().pending, 0);
@@ -147,7 +147,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
     let candidate = scan_finished(&db, root, "release").await;
     let release = imported_release(&db, &candidate).await;
 
-    let list = open_in_path_order(&db, crate::TriageTab::Done).await;
+    let list = in_path_order(crate::TriageTab::Done);
     let mut count = tables.subscribe_import_count(list.clone());
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
 
@@ -164,8 +164,10 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 async fn scanned_list(names: &[&str]) -> (Library, ImportListRequest) {
     let lib = Library::new().await;
     lib.run(scanned_with_states(&lib, names)).await;
-    let list =
-        lib.open(ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(
+        crate::TriageTab::Pending,
+        crate::ImportListOrder::PathAscending,
+    ));
     (lib, list)
 }
 
@@ -220,12 +222,10 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
 async fn searching_list(names: &[&str]) -> (Library, ImportListRequest) {
     let lib = Library::new().await;
     lib.run(scanned_with_states(&lib, names)).await;
-    let list = lib
-        .open(crate::ImportListView {
-            search: crate::SearchText::of("wanted"),
-            ..ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)
-        })
-        .await;
+    let list = ImportListRequest::of(crate::ImportListView {
+        search: crate::SearchText::of("wanted"),
+        ..ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)
+    });
     (lib, list)
 }
 
@@ -284,7 +284,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     }
     tables.finish_folder_scan(root, generation, None).await.unwrap();
 
-    let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
+    let list = in_path_order(crate::TriageTab::Pending);
     let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let mut count = tables.subscribe_import_count(list.clone());
     settled(&mut window).await;
@@ -311,7 +311,7 @@ async fn import_list_wakes_on_a_scan_item() {
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
-    let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
+    let list = in_path_order(crate::TriageTab::Pending);
     let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&unkeyed(&initial.rows)), vec!["first".to_string()]);
@@ -349,7 +349,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
         .await
         .unwrap();
 
-    let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
+    let list = in_path_order(crate::TriageTab::Pending);
     let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let mut count = tables.subscribe_import_count(list.clone());
     let mut scans = tables.subscribe_scanning_folders();

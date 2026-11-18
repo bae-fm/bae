@@ -47,7 +47,7 @@ async fn the_descending_order_reverses_the_whole_queue() {
 async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let lib = Library::new().await;
     lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2")).await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let list = list.folding(lib.group_key("Group"));
     let read = lib.read(&list).await;
     assert_eq!(sequence(&read), ["group Group"]);
@@ -142,7 +142,7 @@ async fn a_window_starting_inside_a_group_carries_its_header() {
     let lib = Library::new().await;
     lib.run(lib.scan("A/Disc 1") + lib.scan("A/Disc 2") + lib.scan("A/Disc 3") + lib.scan("Loose"))
         .await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let window = lib.window_at(&list, 2, 3).await;
     assert_eq!(
         items_sequence(&unkeyed(&window.rows)),
@@ -175,7 +175,7 @@ async fn a_folded_lists_members_name_their_header() {
             + lib.scan("Loose"),
     )
     .await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let list = list.folding(lib.group_key("A"));
     let read = lib.read(&list).await;
     assert_eq!(
@@ -231,7 +231,7 @@ async fn a_groups_last_member_says_it_ends_the_group() {
         ImportListOrder::PathAscending,
         ImportListOrder::PathDescending,
     ] {
-        let list = lib.open(ordered(TriageTab::Pending, order)).await;
+        let list = ImportListRequest::of(ordered(TriageTab::Pending, order));
         let items = items_of(&lib.read(&list).await);
         let keys = header_keys(&items);
         // A member ends its group when the row after it is not a member of
@@ -325,7 +325,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
             "candidate Seen",
         ]
     );
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     assert_eq!(
         tables.import_candidate_position(list.clone(), &lib.key("Single")).await.unwrap(),
         Some(4)
@@ -367,7 +367,7 @@ async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     lib.run(lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
     let filtered =
         ImportListView { search: crate::SearchText::of("Old"), ..view(TriageTab::Pending) };
-    let list = lib.open(filtered).await;
+    let list = ImportListRequest::of(filtered);
     assert_eq!(
         sequence(&lib.read(&list).await),
         ["group A", "candidate A/Old", "group B", "candidate B/Old"]
@@ -394,7 +394,7 @@ async fn positions_in_done_are_read_in_one_statement() {
     )
     .await;
     let tables = lib.tables();
-    let list = lib.open(view(TriageTab::Done)).await;
+    let list = ImportListRequest::of(view(TriageTab::Done));
     let log = lib.db.record_statements_for_test().await.unwrap();
     let key = tables.import_key_at(list.clone(), 2).await.unwrap().expect("the list has items");
     assert_eq!(log.take().len(), 1, "the key at the position");
@@ -411,7 +411,7 @@ async fn a_window_is_read_in_one_statement() {
     let lib = Library::new().await;
     lib.run(lib.scan("Group/One") + lib.scan("Group/Two") + lib.scan("Solo")).await;
     let tables = lib.tables();
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let inside = tables.import_key_at(list.clone(), 1).await.unwrap().expect("the list has items");
     let log = lib.db.record_statements_for_test().await.unwrap();
     let window = tables
@@ -429,12 +429,12 @@ async fn a_window_is_read_in_one_statement() {
 async fn a_jump_past_the_end_starts_at_the_last_item() {
     let lib = Library::new().await;
     lib.run(lib.scan("A") + lib.scan("B") + lib.scan("C")).await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let window = lib.window_at(&list, 5, 5).await;
     assert_eq!(items_sequence(&unkeyed(&window.rows)), ["candidate C"]);
     assert_eq!(lib.read(&list).await.count.rows, 3);
     let empty = Library::new().await;
-    let none = empty.open(view(TriageTab::Pending)).await;
+    let none = ImportListRequest::of(view(TriageTab::Pending));
     assert!(empty.tables().import_key_at(none, 0).await.unwrap().is_none());
 }
 
@@ -621,7 +621,7 @@ async fn every_order_reads_its_windows_off_its_index() {
         (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-            let list = lib.open(ordered(tab, order)).await;
+            let list = ImportListRequest::of(ordered(tab, order));
             let plans = tables.import_list_window_plans(list.clone()).await.unwrap();
             // Done's last part is its settled releases, read off the index;
             // its first, the handful still uploading, is sorted by queue.
@@ -661,8 +661,10 @@ async fn a_search_reads_the_rows_its_index_finds() {
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("Box/Wanted") + lib.scan("Loose")).await;
     for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-        let list =
-            lib.open(ImportListView { search: crate::SearchText::of("wanted"), ..view(tab) }).await;
+        let list = ImportListRequest::of(ImportListView {
+            search: crate::SearchText::of("wanted"),
+            ..view(tab)
+        });
         let plan = tables.import_list_search_plan(list).await.unwrap();
         assert!(
             plan.iter().any(|step| step.contains("VIRTUAL TABLE INDEX") && step.contains(":G")),
@@ -693,7 +695,7 @@ async fn found_reads_its_windows_off_its_runs() {
         (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for folded in [false, true] {
-            let mut list = lib.open(ordered(TriageTab::Pending, order)).await;
+            let mut list = ImportListRequest::of(ordered(TriageTab::Pending, order));
             if folded {
                 list = list.folding(lib.group_key("Box"));
             }

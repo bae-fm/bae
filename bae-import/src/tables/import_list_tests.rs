@@ -264,11 +264,6 @@ impl Library {
         .await;
     }
 
-    /// The request showing `view`, with no group folded.
-    pub(crate) async fn open(&self, view: ImportListView) -> ImportListRequest {
-        ImportListRequest::of(view)
-    }
-
     /// One read of `list` through one window over every item, with nothing
     /// selected. Found's items read in runs and read sorted must agree.
     pub(crate) async fn read(&self, list: &ImportListRequest) -> ImportListRead {
@@ -317,7 +312,7 @@ impl Library {
 
     /// One read of a list opened on `view`.
     pub(crate) async fn shown(&self, view: ImportListView) -> ImportListRead {
-        let list = self.open(view).await;
+        let list = ImportListRequest::of(view);
         self.read(&list).await
     }
 
@@ -657,8 +652,8 @@ impl ImportTables {
     }
 }
 
-/// A list opened on `tab` in path order.
-pub(crate) async fn open_in_path_order(_db: &Store, tab: crate::TriageTab) -> ImportListRequest {
+/// The request of a list on `tab` in path order.
+pub(crate) fn in_path_order(tab: crate::TriageTab) -> ImportListRequest {
     ImportListRequest::of(crate::ImportListView {
         tab,
         order: crate::ImportListOrder::PathAscending,

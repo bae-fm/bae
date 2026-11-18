@@ -59,7 +59,7 @@ async fn offer(
 #[tokio::test]
 async fn the_summary_reads_the_rows_at_its_keys_whatever_the_list_shows() {
     let lib = five_rows().await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::NotLookedUp));
     let selected = vec![lib.key("A"), lib.key("B")];
     let read = lib.read_selecting(&list, selected.clone()).await;
     assert_eq!(read.selection.count, 2);
@@ -79,7 +79,7 @@ async fn the_summary_reads_the_rows_at_its_keys_whatever_the_list_shows() {
 #[tokio::test]
 async fn a_selected_release_whose_import_lands_stays_in_the_summary() {
     let lib = five_rows().await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     imported_release(&lib.db, &lib.candidate("A")).await;
     let read = lib.read_selecting(&list, vec![lib.key("A")]).await;
     assert_eq!(read.selection.count, 1);
@@ -98,7 +98,7 @@ async fn a_selected_release_whose_import_lands_stays_in_the_summary() {
 #[tokio::test]
 async fn a_bulk_action_runs_over_the_keys_the_list_shows() {
     let lib = five_rows().await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::NotLookedUp));
     imported_release(&lib.db, &lib.candidate("A")).await;
     lib.run(lib.linked("B")).await;
     let selected = [lib.key("A"), lib.key("B"), lib.key("C"), lib.key("D")];
@@ -158,7 +158,7 @@ async fn folding_a_group_answers_the_selected_rows_it_hid() {
     let lib = Library::new().await;
     let tables = lib.tables();
     lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose")).await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::NotLookedUp)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::NotLookedUp));
     lib.run(lib.linked("Box/2")).await;
     let selected = vec![lib.key("Box/1"), lib.key("Box/2"), lib.key("Loose")];
     let folded = list.clone().folding(lib.group_key("Box"));
@@ -186,7 +186,7 @@ async fn folding_a_group_answers_the_selected_rows_it_hid() {
 async fn the_selected_rows_come_in_the_list_s_order() {
     let lib = five_rows().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathDescending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathDescending));
     let selected = tables
         .load_import_list_selected(
             list.clone(),
@@ -213,7 +213,7 @@ async fn a_folder_that_failed_validation_is_selected_and_offers_nothing() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan_as("Broken", "invalid")).await;
-    let list = lib.open(view(TriageTab::Skipped)).await;
+    let list = ImportListRequest::of(view(TriageTab::Skipped));
     let selected = all_keys(&lib, &list).await;
     let read = lib.read_selecting(&list, selected.clone()).await;
     assert_eq!(read.selection.count, 1);
@@ -240,7 +240,7 @@ async fn identify_is_offered_for_the_rows_no_lookup_is_stored_for() {
             + lib.verdict("C", "not_found", None),
     )
     .await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let identified = [lib.key("A"), lib.key("C")];
     assert_eq!(offer(&lib, &list, &identified, CandidateAction::Identify).await, None);
     let mixed = [lib.key("A"), lib.key("B"), lib.key("D"), lib.key("E")];
@@ -274,7 +274,7 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     )
     .await;
 
-    let identified = lib.open(under(TriageTab::Pending, PendingFilter::Identified)).await;
+    let identified = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::Identified));
     let all = all_keys(&lib, &identified).await;
     let mut imported = keys_running(&lib, &identified, &all, CandidateAction::Import).await;
     imported.sort();
@@ -284,7 +284,7 @@ async fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
         "selecting everything Identified shows takes every shown row and no hidden one"
     );
 
-    let everything = lib.open(view(TriageTab::Pending)).await;
+    let everything = ImportListRequest::of(view(TriageTab::Pending));
     let picked = [
         lib.key("Identified"),
         lib.key("Picked Among Several"),
@@ -316,7 +316,7 @@ async fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
             + lib.identifying("Tagged", "running"),
     )
     .await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::InProgress));
     let all = all_keys(&lib, &list).await;
     let read = lib.read_selecting(&list, all.clone()).await;
     assert_eq!(read.selection.count, 2, "the entry shows the rows being identified");
@@ -347,7 +347,7 @@ async fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
             + lib.import_failed("Failed Import"),
     )
     .await;
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::NeedsYou)).await;
+    let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::NeedsYou));
     let all = all_keys(&lib, &list).await;
     let sorted = |mut keys: Vec<crate::CandidateKey>| {
         keys.sort();
@@ -382,7 +382,7 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
             .await
             .unwrap();
     }
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let group = crate::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
         relative_folder: crate::RelativeFolder::test("Box"),
@@ -412,7 +412,7 @@ async fn a_release_written_again_keeps_its_selection_and_its_group_s_fold() {
 #[tokio::test]
 async fn a_release_gone_from_the_scan_names_no_row_until_it_is_back() {
     let lib = five_rows().await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let selected = vec![lib.key("A")];
     lib.run(lib.unscan("A")).await;
     assert_eq!(lib.read_selecting(&list, selected.clone()).await.selection.count, 0);
@@ -432,7 +432,7 @@ async fn a_release_gone_from_the_scan_names_no_row_until_it_is_back() {
 async fn select_all_takes_every_release_the_list_shows() {
     let lib = Library::new().await;
     lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let mut all = all_keys(&lib, &list).await;
     all.sort();
     let mut expected = vec![lib.key("A"), lib.key("Box/1"), lib.key("Box/2"), lib.key("C")];
@@ -450,7 +450,7 @@ async fn the_keys_between_two_rows_are_the_run_between_them() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("A") + lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("C")).await;
-    let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
+    let list = ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::PathAscending));
     let between = |from: &str, to: &str| {
         let (tables, list, from, to) = (tables.clone(), list.clone(), lib.key(from), lib.key(to));
         async move { tables.import_list_keys_between(list, from, to).await.unwrap() }
@@ -476,7 +476,7 @@ async fn the_keys_between_two_rows_are_the_run_between_them() {
 #[tokio::test]
 async fn combine_counts_the_selection_while_every_row_can_join() {
     let lib = five_rows().await;
-    let list = lib.open(view(TriageTab::Pending)).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending));
     let selected = [lib.key("A"), lib.key("B")];
     let combine =
         |count, enabled| Some(SelectionOffer { action: CandidateAction::Combine, count, enabled });
