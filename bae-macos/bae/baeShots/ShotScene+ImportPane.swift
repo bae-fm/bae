@@ -104,6 +104,13 @@ extension ShotScene {
                 importScene: scene.fixture,
                 importSelection: scene.selection,
                 images: images,
+                // The boards' library syncs, so the pane offers where an
+                // import goes.
+                configStore: PreviewData.makeConfigStore(
+                    libraryFullWidth: false,
+                    castEnabled: true,
+                    storage: PreviewData.previewStorage
+                ),
                 releaseEditor: releaseEditor,
                 outbox: scene.outbox,
                 importPercents: scene.importPercents,

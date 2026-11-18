@@ -14,9 +14,9 @@ extension ShotScenes {
     /// The Import section reads `importScene`'s store and lists, with
     /// `importSelection` as the selected rows (unless `importListSlot`
     /// stands in, with its own), nothing in flight for any candidate, and
-    /// its covers from `images`; `releaseEditor`, `outbox` and
-    /// `importPercents` stand in for the ones a shot of the Import section
-    /// states.
+    /// its covers from `images`; `configStore`, `releaseEditor`, `outbox`
+    /// and `importPercents` stand in for the ones a shot of the Import
+    /// section states.
     static func libraryWindow(
         uiStore: UiStore,
         backing: (library: Library, session: LibraryBrowseSession),
@@ -28,6 +28,7 @@ extension ShotScenes {
         importScene: ImportPreviewFixture = PreviewData.importTabScene(),
         importSelection: ImportSelection = ImportSelection(),
         images: ImageStore? = nil,
+        configStore: ConfigStore? = nil,
         releaseEditor: ReleaseEditor? = nil,
         outbox: OutboxStore? = nil,
         importPercents: LatestStream<UInt32>? = nil,
@@ -69,10 +70,11 @@ extension ShotScenes {
             // casting is on. Set before the album preview's own default,
             // since the environment nearest the content wins.
             .environment(
-                PreviewData.makeConfigStore(
-                    libraryFullWidth: false,
-                    castEnabled: true
-                )
+                configStore
+                    ?? PreviewData.makeConfigStore(
+                        libraryFullWidth: false,
+                        castEnabled: true
+                    )
             )
             .environmentIfGiven(images)
             .environmentIfGiven(releaseEditor)
