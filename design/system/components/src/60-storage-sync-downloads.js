@@ -71,16 +71,16 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as MacStorageChip draws it: one word, with no icon. At rest, Local, Pinned and Cloud are plain words, since every row has one; only the states the person must notice are chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
+  // The Storage column, as MacStorageChip draws it: one word, with no icon. At rest, Local, Pinned and Cloud are plain words, since every row has one; only the states the person must notice are chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back. `long`, for a release's Storage sheet (MacStorageBand), names what a waiting or moving change does, as everywhere but the column: Queued to upload, Queued to pin, Queued to move to This Mac, Moving to This Mac….
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
-      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : 'Moving';
+      var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : props.long ? 'Moving to This Mac…' : 'Moving';
       return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
     if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return chip('danger', 'Error');
-    if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return chip('activity', 'Queued');
+    if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return chip('activity', props.long ? { queued: 'Queued to pin', uploadQueued: 'Queued to upload', moveToThisDeviceQueued: 'Queued to move to This Mac' }[s] : 'Queued');
     if (s === 'uploadBlocked') return chip('warning', 'Waiting');
     return h('span', { className: 'bae-m-storeword' }, { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
   }

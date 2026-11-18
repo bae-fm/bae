@@ -330,7 +330,7 @@ export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cl
 export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
-export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'moveToThisDeviceFailed' | 'queued' | 'uploadQueued' | 'uploadBlocked' | 'moveToThisDeviceQueued'; progress?: number; file?: string }): React.ReactElement;
+export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'moveToThisDeviceFailed' | 'queued' | 'uploadQueued' | 'uploadBlocked' | 'moveToThisDeviceQueued'; progress?: number; file?: string; long?: boolean }): React.ReactElement;
 export declare function MacDownloadRow(props: { kind?: 'pin' | 'moveToThisDevice'; title?: string; detail?: string; ago?: string }): React.ReactElement;
 /** What bae keeps on this device, heading Settings → Storage: the total, one bar split by kind, a legend line per kind. parts: "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour. */
 export interface StorageUsageProps { total?: string; of?: string; parts?: string }
