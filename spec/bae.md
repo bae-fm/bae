@@ -1216,6 +1216,8 @@ how long one takes does not grow with how many candidates the queue holds.
 The pane reads each of its parts with a statement of its own. Each statement
 binds only the key and finds the candidate's scan row, and the content hash
 the scan stored, by that key, never by a value another statement returned.
+A scan that stores other folders writes none of the rows the pane reads, so
+coven reruns none of the pane's statements for it.
 The parts are the folder's files, with the track count and the audio summary
 that the statement computes over the scan's rows; whether the person skipped
 the candidate; the release this device imported from it; its current state

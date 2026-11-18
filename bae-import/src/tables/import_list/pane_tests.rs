@@ -494,6 +494,34 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     assert!(live.next_inline().await.expect("the query stays open").result.unwrap().is_none());
 }
 
+/// The pane reads only its candidate's rows, so coven reruns its read for a
+/// write to that candidate and for no write of another folder the scan finds,
+/// with its own files, state and draft.
+#[tokio::test]
+#[ignore = "coven narrows a table its statement compares a column of and joins to another source by the comparison alone, so the files statement reruns for another folder's audio file"]
+async fn a_scan_of_another_folder_leaves_the_pane_s_read_unmarked() {
+    let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let root = &crate::tables::watched_path::host_root("/music");
+    tables.add_watched_import_folder(root).await.unwrap();
+    let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
+    let folder = |name: &str| {
+        let key = crate::CandidateKey::folder(&folder_below(root, name));
+        (ScanItem::Valid(key_candidate(root, &key)), key)
+    };
+    let (shown, key) = folder("shown");
+    tables.save_folder_scan_item(root, generation, &shown).await.unwrap();
+    let mut live = tables.subscribe_import_candidate(Some(key.clone()));
+    live.next_inline().await.expect("the query stays open").result.unwrap().expect("listed");
+
+    let (other, _) = folder("other");
+    tables.save_folder_scan_item(root, generation, &other).await.unwrap();
+    assert!(!live.is_marked_for_rerun(), "the scan wrote none of the pane's candidate's rows");
+
+    tables.set_import_candidate_skipped(&key.test_folder(), true).await.unwrap();
+    assert!(live.is_marked_for_rerun(), "skipping the pane's candidate changes what it reads");
+}
+
 /// The import list shows a folder that failed validation under Skipped, with
 /// what its scan stored of it: the reason it failed, its tagged title and
 /// artist, and its cover image. The list selects it like any row, and the pane
