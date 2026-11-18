@@ -196,11 +196,6 @@ struct ReleaseRows {
     summary: Option<TriageMetadataSummary>,
     listed: ListedColumns,
     name: String,
-    /// Whether the candidate's state describes its current files, which is
-    /// when its draft, link, lookup and cover are its own.
-    imported: Option<ImportedRelease>,
-    /// The version of the imported release's library cover, if it has one.
-    library_cover: Option<String>,
     block: (Option<String>, Option<String>, Option<String>),
     failure: Option<crate::ImportFailureReason>,
     facts: RuntimeFactColumns,
@@ -208,21 +203,66 @@ struct ReleaseRows {
     invalid: Option<folder_scans::InvalidColumns>,
     /// The header of the group the release is listed under.
     header: Option<HeaderRow>,
-    /// How the imported release's upload stands.
-    upload: Option<UploadProgress>,
-    /// The catalogs the imported release's records name.
-    library_records: Vec<ReleaseRecord>,
-    /// What the imported release's records identify it as, as
-    /// [`release_records_kind_sql`] states it.
-    library_records_kind: Option<String>,
-    /// The records of what the candidate's link names, merged.
-    link_records: Option<String>,
-    /// The draft's source, the link and the cover, which are the
-    /// candidate's own only while its state describes its current files.
-    provenance: Option<StoredProvenance>,
-    link: Option<StoredReleaseLink>,
-    cover: Option<StoredCover>,
-    cover_versions: CoverVersionColumns,
+    /// What the row shows past its placement.
+    shown: ShownColumns,
+}
+
+/// The columns a release's row shows past its placement, by whether this
+/// device imported the release.
+enum ShownColumns {
+    /// A release this device imported, which shows the library release.
+    Imported {
+        release: ImportedRelease,
+        /// The version of the library release's cover, if it has one.
+        cover: Option<String>,
+        /// The catalogs the library release's records name.
+        records: Vec<ReleaseRecord>,
+        /// What the library release's records identify it as, as
+        /// [`release_records_kind_sql`] states it.
+        records_kind: Option<String>,
+        /// How the library release's upload stands.
+        upload: Option<UploadProgress>,
+    },
+    /// A release this device has not imported, which shows the candidate's
+    /// draft source, link and cover. They are the candidate's own only while
+    /// its state describes its current files.
+    Candidate {
+        /// The records of what the candidate's link names, merged.
+        link_records: Option<String>,
+        provenance: Option<StoredProvenance>,
+        link: Option<StoredReleaseLink>,
+        cover: Option<StoredCover>,
+        cover_versions: CoverVersionColumns,
+    },
+}
+
+impl ShownColumns {
+    fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(match row.get::<_, Option<String>>(18)? {
+            Some(release_id) => Self::Imported {
+                release: ImportedRelease { release_id, album_id: row.get(19)? },
+                cover: row.get("library_cover")?,
+                records: records_column(row, "library_records")?,
+                records_kind: row.get("library_records_kind")?,
+                upload: release_upload_progress_in_row(row)?,
+            },
+            None => Self::Candidate {
+                link_records: row.get("link_records")?,
+                provenance: read_provenance(row)?,
+                link: read_release_link(row)?,
+                cover: read_cover(row)?,
+                cover_versions: CoverVersionColumns::read(row)?,
+            },
+        })
+    }
+
+    /// The library release a release this device imported shows.
+    fn imported(&self) -> Option<&ImportedRelease> {
+        match self {
+            Self::Imported { release, .. } => Some(release),
+            Self::Candidate { .. } => None,
+        }
+    }
 }
 
 /// The statement's last part: each item of the range, a group's header or a
@@ -312,11 +352,6 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         summary,
         listed: ListedColumns::read(row, 5)?,
         name: row.get(15)?,
-        imported: match row.get::<_, Option<String>>(18)? {
-            Some(release_id) => Some(ImportedRelease { release_id, album_id: row.get(19)? }),
-            None => None,
-        },
-        library_cover: row.get("library_cover")?,
         block: (row.get(20)?, row.get(21)?, row.get(22)?),
         failure: match failed {
             true => Some(failure_reason_from_row(row)?),
@@ -325,17 +360,7 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         facts: RuntimeFactColumns::read(row, 25)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
         header: read_member_header(row)?,
-        upload: release_upload_progress_in_row(row)?,
-        library_records: match row.get::<_, Option<String>>("library_records")? {
-            Some(_) => records_column(row, "library_records")?,
-            None => Vec::new(),
-        },
-        library_records_kind: row.get("library_records_kind")?,
-        link_records: row.get("link_records")?,
-        provenance: read_provenance(row)?,
-        link: read_release_link(row)?,
-        cover: read_cover(row)?,
-        cover_versions: CoverVersionColumns::read(row)?,
+        shown: ShownColumns::read(row)?,
     })
 }
 
@@ -386,38 +411,30 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         summary,
         listed,
         name,
-        imported,
-        library_cover,
         block,
         failure,
         facts,
         header,
-        upload,
-        library_records,
-        library_records_kind,
-        link_records,
-        provenance,
-        link,
-        cover,
-        cover_versions,
+        shown,
         ..
     } = release;
     let ListedRelease { basis, actions, standing } = listed.listed(&key)?;
     let facts = facts.facts(&key)?;
     let (blocked, subject, holder) = block;
     let block = block_of(blocked, subject, holder)?;
-    let import_status = import_status_of(imported.as_ref(), block.as_ref(), failure.as_ref());
-    let shown = match imported.as_ref() {
+    let import_status = import_status_of(shown.imported(), block.as_ref(), failure.as_ref());
+    let shown = match shown {
         // A release this device imported reads the library release: its
-        // cover, and the catalogs its records name.
-        Some(imported) => ShownRows {
+        // cover, the catalogs its records name, and its upload.
+        ShownColumns::Imported { release, cover, records, records_kind, upload } => ShownRows {
             metadata_provenance: None,
             release_link: None,
-            reading: library_reading(library_records_kind.as_deref(), library_records)?,
-            cover: bae_records::cover_ref(&imported.release_id, library_cover)
+            reading: library_reading(records_kind.as_deref(), records)?,
+            cover: bae_records::cover_ref(&release.release_id, cover)
                 .map(|image| crate::CoverImageSource::Library { image }),
+            upload,
         },
-        None => {
+        ShownColumns::Candidate { link_records, provenance, link, cover, cover_versions } => {
             let release_link = link.map(StoredReleaseLink::link).transpose()?;
             let records = match link_records {
                 Some(json) => claimed_records_of_json(&json)?,
@@ -435,6 +452,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
                 reading: TriageReading::of(summary.as_ref(), release_link.as_ref(), records),
                 release_link,
                 cover,
+                upload: None,
             }
         }
     };
@@ -449,7 +467,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         metadata_summary: summary,
         cover: shown.cover,
         import_status,
-        upload: imported.and(upload),
+        upload: shown.upload,
         metadata_provenance: shown.metadata_provenance,
         release_link: shown.release_link,
     };
@@ -462,12 +480,13 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
 
 /// What a release's row shows past its placement: the candidate's draft
 /// source, link and cover, or for an imported release the library
-/// release's.
+/// release's, and its upload.
 struct ShownRows {
     metadata_provenance: Option<crate::MetadataProvenance>,
     release_link: Option<ReleaseLink>,
     reading: TriageReading,
     cover: Option<crate::CoverImageSource>,
+    upload: Option<UploadProgress>,
 }
 
 #[cfg(test)]
