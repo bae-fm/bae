@@ -471,6 +471,11 @@ async fn a_release_of_one_group_shows_no_group_time_and_its_credits_by_qualifier
         .unwrap();
 
     assert_eq!(detail.track_groups.len(), 1);
+    assert_eq!(
+        detail.track_groups[0].side,
+        bae_types::mediums::TrackSide::Flat,
+        "a one-disc release heads no disc"
+    );
     assert!(!detail.track_groups[0].shows_time);
     let rows: Vec<(CreditedAs, Vec<&str>, Vec<String>)> = detail
         .credits

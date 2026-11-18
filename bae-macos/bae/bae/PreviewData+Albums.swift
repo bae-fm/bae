@@ -267,7 +267,7 @@
         }
 
         /// The album the boards open in the library window: "Low Tide Hours"
-        /// by Mara Quill, one CD of ten tracks under a "Disc 1" heading, as
+        /// by Mara Quill, one CD of ten tracks under no disc heading, as
         /// the boards list them with their lengths.
         static func boardAlbumDetail() -> BridgeAlbumDetail {
             let tracks: [(String, UInt64)] = [
@@ -310,8 +310,8 @@
                 }
             release.trackGroups = [
                 BridgeTrackGroup(
-                    side: .disc(disc: 1),
-                    headerKey: "core.track.disc",
+                    side: .flat,
+                    headerKey: nil,
                     tracks: release.tracks,
                     totalDuration: groupDuration(release.tracks),
                     showsTime: false,
