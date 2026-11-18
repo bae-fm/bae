@@ -490,14 +490,14 @@ async fn play_tracks_leaves_out_a_track_the_library_lacks() {
 
 /// Picked tracks play in the order their release lists them, whatever order
 /// the picks came in, from the first the library holds; a pick the library
-/// lacks is left out and named.
+/// lacks is left out and not named.
 #[tokio::test]
 async fn picked_tracks_play_in_their_release_s_order() {
     let mut f = fixture(&[("r1", &["a1", "a2", "a3", "a4"])]).await;
     let missing = "6f9a1c2e-0b3d-4e5f-8a7b-9c0d1e2f3a4b".to_string();
     let mut picked: std::collections::BTreeSet<String> =
         f.ids(&["a4", "a2", "a3"]).into_iter().collect();
-    picked.insert(missing.clone());
+    picked.insert(missing);
 
     let filled = f
         .queue
@@ -512,7 +512,7 @@ async fn picked_tracks_play_in_their_release_s_order() {
         panic!("the picks play: {filled:?}");
     };
     assert_eq!(f.name(&current.track_id), "a2");
-    assert_eq!(left_out, crate::tables::LeftOut::Tracks(vec![missing]));
+    assert_eq!(left_out, crate::tables::LeftOut::Nothing);
     assert_eq!(f.context_order().await, names(&["a2", "a3", "a4"]));
 }
 

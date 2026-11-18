@@ -19,9 +19,9 @@ pub enum ContextFill {
     /// and of the source the queue names; a release named twice plays twice.
     Releases(Vec<String>),
     /// Tracks in the list's order, from where `start` says, counting the
-    /// list in that order. A track the library does not hold is left out; a
-    /// track a given list names twice plays twice. A picked list counts only
-    /// the tracks the library holds.
+    /// list in that order. A track a given list names twice plays twice, and
+    /// one the library does not hold is left out and named. A picked list
+    /// counts only the tracks the library holds and names none left out.
     Tracks { tracks: bae_records::TrackList, start: TracksStart },
     /// Every library track, shuffled.
     LibraryShuffled,
@@ -213,20 +213,22 @@ pub(super) fn fill_on(
             )
         }
         ContextFill::Tracks { tracks, start } => {
-            let named = tracks.ids_json();
-            let left_out: Vec<String> = sql.query(
-                "SELECT j.value FROM json_each(?) j \
-                 WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE id = j.value) \
-                 ORDER BY j.key",
-                [&named],
-                |row| row.get(0),
-            )?;
-            // A given list's start index counts every track it names; a
-            // picked list counts only the tracks the library holds, in the
-            // order their release lists them.
-            let reading = match tracks {
-                bae_records::TrackList::Given(_) => bae_records::TrackReading::Named,
-                bae_records::TrackList::Picked(_) => bae_records::TrackReading::Held,
+            // A given list's start index counts every track it names and the
+            // fill names the ones the library lacks. A picked list counts only
+            // the tracks the library holds, in the order their release lists
+            // them, and names none.
+            let (reading, left_out) = match &tracks {
+                bae_records::TrackList::Given(_) => (
+                    bae_records::TrackReading::Named,
+                    sql.query(
+                        "SELECT j.value FROM json_each(?) j \
+                         WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE id = j.value) \
+                         ORDER BY j.key",
+                        [tracks.ids_json()],
+                        |row| row.get::<_, String>(0),
+                    )?,
+                ),
+                bae_records::TrackList::Picked(_) => (bae_records::TrackReading::Held, Vec::new()),
             };
             let track_ids = tracks.ordered_on(sql, reading)?;
             if track_ids.is_empty() {

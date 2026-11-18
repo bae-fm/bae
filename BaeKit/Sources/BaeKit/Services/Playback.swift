@@ -36,9 +36,9 @@ public final class Playback: Sendable, Observable {
     public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
     /// Play the tracks a person picked, `trackIds` in no order: core plays
     /// them in the order their release lists them, from the first the
-    /// library holds. What the play did shows on the app's error surface
-    /// when it has a line: core leaves out any track the library no longer
-    /// holds, and the line says how many.
+    /// library holds, and says nothing of the picks the library lacks. What
+    /// the play did shows on the app's error surface when it has a line: none
+    /// of the picks is a track the library holds.
     public let playPickedTracks: @Sendable (_ trackIds: [String]) -> Void
     /// Play a playlist's tracks in its order, from the entry `startPositionId`
     /// names or from the first, or shuffled. What the play did shows on the app's error

@@ -137,9 +137,10 @@ pub(crate) enum PlaybackCommand {
         reply: PlayReply,
     },
     /// Play tracks as one context, in the list's order from the one at an
-    /// index, or shuffled. Tracks the library does not hold are left out and
-    /// named in the answer; a start index past the list or naming such a track
-    /// plays nothing, and so does a shuffled list holding none.
+    /// index, or shuffled. Tracks a given list names that the library does not
+    /// hold are left out and named in the answer; a picked list names none. A
+    /// start index past the list or naming such a track plays nothing, and so
+    /// does a shuffled list holding none.
     PlayTracks {
         tracks: bae_records::TrackList,
         start: TracksStart,

@@ -333,8 +333,8 @@ forward! { async this => {
     }
 
     /// Play the tracks a person picked, in the order their release lists
-    /// them, from the first the library holds. Picks the library lacks are
-    /// left out and named in the answer.
+    /// them, from the first the library holds. The answer says nothing of
+    /// picks the library lacks.
     fn play_picked_tracks(track_ids: Vec<String>) -> crate::types::BridgePlayOutcome {
         let played = this.services.playback_play_tracks(crate::from_app::picked(track_ids), bae_playback::tables::TracksStart::Index(0)).await?;
         Ok(crate::types::BridgePlayOutcome::from_core(played))
