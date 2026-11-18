@@ -464,53 +464,62 @@ impl StoredSharedAlbum {
 /// The cards of a verdict that [`verdict_cards_sql`] answered, with each
 /// row's agreements and notes.
 pub(super) fn verdict_cards_of(json: &str) -> Result<VerdictCards, DbError> {
-    let StoredVerdictCards { cards, narrowed_out_count, shared_album, decision, failure_lines } =
-        serde_json::from_str(json)
-            .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?;
-    let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
-    for card in &cards {
-        let rows = card
-            .sections
-            .iter()
-            .flat_map(|section| &section.pressings)
-            .chain(card.sections.iter().flat_map(|section| &section.narrowed_out));
-        for row in rows {
-            let stated = RowAgreements {
-                fields: row.agreed.agreements(),
-                notes: row
-                    .notes
-                    .iter()
-                    .map(|note| {
-                        Ok(Statement {
-                            value: note.note.clone(),
-                            catalogs: note
-                                .catalogs
-                                .iter()
-                                .map(|catalog| {
-                                    LookupCatalog::from_str(catalog).map_err(|_unknown| {
-                                        DbError::unreadable("a note's catalog", catalog)
+    serde_json::from_str::<StoredVerdictCards>(json)
+        .map_err(|error| DbError::unreadable_json("a verdict's stored cards", json, error))?
+        .cards()
+}
+
+impl StoredVerdictCards {
+    /// The cards these stored cards hold, with each row's agreements and
+    /// notes.
+    pub(super) fn cards(self) -> Result<VerdictCards, DbError> {
+        let StoredVerdictCards { cards, narrowed_out_count, shared_album, decision, failure_lines } =
+            self;
+        let mut agreements: Vec<(String, RowAgreements)> = Vec::new();
+        for card in &cards {
+            let rows = card
+                .sections
+                .iter()
+                .flat_map(|section| &section.pressings)
+                .chain(card.sections.iter().flat_map(|section| &section.narrowed_out));
+            for row in rows {
+                let stated = RowAgreements {
+                    fields: row.agreed.agreements(),
+                    notes: row
+                        .notes
+                        .iter()
+                        .map(|note| {
+                            Ok(Statement {
+                                value: note.note.clone(),
+                                catalogs: note
+                                    .catalogs
+                                    .iter()
+                                    .map(|catalog| {
+                                        LookupCatalog::from_str(catalog).map_err(|_unknown| {
+                                            DbError::unreadable("a note's catalog", catalog)
+                                        })
                                     })
-                                })
-                                .collect::<Result<_, DbError>>()?,
+                                    .collect::<Result<_, DbError>>()?,
+                            })
                         })
-                    })
-                    .collect::<Result<_, DbError>>()?,
-            };
-            for record in &row.records {
-                agreements.push((record.release_id.clone(), stated.clone()));
+                        .collect::<Result<_, DbError>>()?,
+                };
+                for record in &row.records {
+                    agreements.push((record.release_id.clone(), stated.clone()));
+                }
             }
         }
+        Ok(VerdictCards {
+            groups: groups_from(cards)?,
+            agreements,
+            narrowed_out_count,
+            shared_album: shared_album.map(StoredSharedAlbum::shared_album).transpose()?,
+            decision: decision.map(StoredDecision::decision).transpose()?,
+            failure_lines: failure_lines
+                .map(super::verdict_failure_rows::failure_lines_of)
+                .transpose()?,
+        })
     }
-    Ok(VerdictCards {
-        groups: groups_from(cards)?,
-        agreements,
-        narrowed_out_count,
-        shared_album: shared_album.map(StoredSharedAlbum::shared_album).transpose()?,
-        decision: decision.map(StoredDecision::decision).transpose()?,
-        failure_lines: failure_lines
-            .map(super::verdict_failure_rows::failure_lines_of)
-            .transpose()?,
-    })
 }
 
 /// One card as [`cards_sql`] answers it.

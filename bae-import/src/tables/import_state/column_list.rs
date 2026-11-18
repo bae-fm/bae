@@ -69,12 +69,3 @@ impl Columns for JsonColumns {
         })
     }
 }
-
-/// The text of a JSON value a statement nested: the text itself when it
-/// nested text, the value written out otherwise.
-pub(super) fn json_text(json: &Json) -> String {
-    match json {
-        Json::String(text) => text.clone(),
-        other => other.to_string(),
-    }
-}

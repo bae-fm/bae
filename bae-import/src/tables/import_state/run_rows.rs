@@ -15,7 +15,8 @@
 
 pub(super) const SQL: &str = include_str!("run_rows.sql");
 
-use super::column_list::{json_text, JsonColumns};
+use super::cards_read::StoredVerdictCards;
+use super::column_list::JsonColumns;
 use super::match_record::{match_record_sql, StoredRecord};
 use super::match_rows::StoredMatches;
 use super::search_rows::{search_in, search_object_sql};
@@ -41,7 +42,7 @@ struct StoredRun {
     run: i64,
     verdict: JsonColumns,
     signals: JsonColumns,
-    cards: serde_json::Value,
+    cards: StoredVerdictCards,
     matches: Vec<StoredRecord>,
 }
 
@@ -52,7 +53,7 @@ impl StoredRun {
         let verdict = read_verdict_row(&verdict)?.ok_or_else(|| {
             DbError::unreadable(format!("the verdict row of {key}'s run {run}"), None::<String>)
         })?;
-        let (outcome, cards) = outcome_and_cards(verdict, matches, &cards, &format!("run {run}"))?;
+        let (outcome, cards) = outcome_and_cards(verdict, matches, cards, &format!("run {run}"))?;
         let signals = read_signals(&signals)?.map(|stored| stored.signals()).transpose()?;
         let number = to_u64(run, &format!("{key}'s run number"))?;
         Ok((IdentifyRunId::of_number(number), PublishedRun { outcome, signals, cards }))
@@ -81,7 +82,7 @@ fn load_stored_verdict_on(
 fn outcome_and_cards(
     verdict: super::verdict_rows::VerdictRow,
     matches: Vec<StoredRecord>,
-    cards: &serde_json::Value,
+    cards: StoredVerdictCards,
     owner: &str,
 ) -> Result<(RunOutcome, bae_identify::VerdictCards), DbError> {
     let found = StoredMatches {
@@ -95,7 +96,7 @@ fn outcome_and_cards(
         RunOutcome::Running { .. } => true,
         RunOutcome::Answered(verdict) => verdict.findings().is_some(),
     }
-    .then(|| super::cards_read::verdict_cards_of(&json_text(cards)))
+    .then(|| cards.cards())
     .transpose()?
     .unwrap_or_default();
     Ok((outcome, cards))
