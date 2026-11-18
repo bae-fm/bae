@@ -16,6 +16,8 @@ check source-size *.astro,*.c,*.cc,*.cpp,*.cs,*.css,*.gradle,*.h,*.hpp,*.html,*.
 whole source-size-all scripts/check-source-file-size.py scripts/check-source-file-size.py
 check rust-visibility *.rs scripts/check-rust-visibility.sh {files}
 whole rust-visibility-all scripts/check-rust-visibility.sh scripts/check-rust-visibility.sh
+check whole-file-marks *.rs python3 scripts/check-whole-file-marks.py {files}
+whole whole-file-marks-all scripts/check-whole-file-marks.py,scripts/source_tokens.py python3 scripts/check-whole-file-marks.py
 check reqwest-errors *.rs scripts/check-reqwest-error-display.py {files}
 whole reqwest-errors-all scripts/check-reqwest-error-display.py scripts/check-reqwest-error-display.py
 check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {crates}
@@ -71,6 +73,7 @@ test coven-builder-boundary-test scripts/coven-builder-boundary.py,scripts/tests
 test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scripts/tests/keyed-value-stream-boundary-test.py python3 scripts/tests/keyed-value-stream-boundary-test.py
 test uniffi-boundary-test scripts/check-uniffi-runtime-boundary.py,scripts/tests/check-uniffi-runtime-boundary-test.py python3 scripts/tests/check-uniffi-runtime-boundary-test.py
 test screen-pulls-test scripts/check-screen-pulls.py,scripts/source_tokens.py,scripts/tests/check-screen-pulls-test.py python3 scripts/tests/check-screen-pulls-test.py
+test whole-file-marks-test scripts/check-whole-file-marks.py,scripts/source_tokens.py,scripts/tests/check-whole-file-marks-test.py python3 scripts/tests/check-whole-file-marks-test.py
 test no-ide-previews-test scripts/check-no-previews.py,scripts/source_tokens.py,scripts/tests/check-no-previews-test.py python3 scripts/tests/check-no-previews-test.py
 test loc-words-test scripts/loc-words.py,scripts/tests/loc-words-test.py python3 scripts/tests/loc-words-test.py
 test bundled-libraries-test scripts/check-bundled-libraries.py,scripts/tests/check-bundled-libraries-test.py python3 scripts/tests/check-bundled-libraries-test.py
