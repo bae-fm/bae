@@ -15,6 +15,8 @@ struct IconHoverButtonStyle: ButtonStyle {
     private struct Hovering: View {
         let configuration: Configuration
         let isOn: Bool
+        @Environment(\.isEnabled)
+        private var isEnabled
         @State
         private var hovering = false
 
@@ -23,17 +25,22 @@ struct IconHoverButtonStyle: ButtonStyle {
                 .foregroundStyle(
                     isOn
                         ? Theme.accent
-                        : hovering ? Theme.textPrimary : Color.secondary
+                        : hovering && isEnabled
+                            ? Theme.textPrimary : Color.secondary
                 )
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(
                             isOn
                                 ? Theme.accentSoft
-                                : hovering ? Theme.hover : Color.clear
+                                : hovering && isEnabled
+                                    ? Theme.hover : Color.clear
                         ),
                 )
-                .opacity(configuration.isPressed ? 0.6 : 1)
+                .opacity(
+                    isEnabled
+                        ? configuration.isPressed ? 0.6 : 1 : ThemeOpacity.off
+                )
                 .onHover { hovering = $0 }
         }
     }
