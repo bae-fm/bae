@@ -20,13 +20,48 @@ pub enum FileRow {
     Avatar,
 }
 
-/// The columns naming the row a coven view's `file.file` is the file of:
-/// the file's namespace, then a release file's release, name and album
-/// title, then a cover's album title. [`FILE_ROW_JOINS`] reads them.
-pub(super) const FILE_ROW_COLUMNS: &str = "named.namespace, named_file.release_id, \
-     named_file.original_filename, named_file_album.title, cover_album.title";
+/// The columns naming the release file a pending record is about: its
+/// release, its name and its album's title. A move's record names the release
+/// file of its original, and a file's record the release file of its file
+/// when the file's namespace is the release files'. The columns are `NULL`
+/// unless all three are present. This is the one place that rule lives: the
+/// pending rows' files and the failure's file both read these columns.
+pub(super) fn release_file_columns() -> ReleaseFileColumns {
+    use bae_records::synced::RELEASE_FILES_NAMESPACE;
+    let picked = |original: &str, named: &str| {
+        format!(
+            "CASE WHEN file.reason_kind = 'original' THEN {original} \
+             WHEN named.namespace = '{RELEASE_FILES_NAMESPACE}' THEN {named} END"
+        )
+    };
+    let id = picked("original_file.release_id", "named_file.release_id");
+    let name = picked("original_file.original_filename", "named_file.original_filename");
+    let album = picked("original_album.title", "named_file_album.title");
+    let present = format!("{id} IS NOT NULL AND {name} IS NOT NULL AND {album} IS NOT NULL");
+    let only_if_present = |column: String| format!("CASE WHEN {present} THEN {column} END");
+    ReleaseFileColumns {
+        release_id: only_if_present(id.clone()),
+        file_name: only_if_present(name.clone()),
+        album_title: only_if_present(album.clone()),
+    }
+}
 
-/// The joins [`FILE_ROW_COLUMNS`] reads, each by an index on the file the
+/// The SQL of [`release_file_columns`]' three columns.
+pub(super) struct ReleaseFileColumns {
+    pub(super) release_id: String,
+    pub(super) file_name: String,
+    pub(super) album_title: String,
+}
+
+/// The columns naming the row a coven view's `file.file` is the file of:
+/// the file's namespace, then the release file ([`release_file_columns`]),
+/// then a cover's album title. [`FILE_ROW_JOINS`] reads them.
+pub(super) fn file_row_columns() -> String {
+    let ReleaseFileColumns { release_id, file_name, album_title } = release_file_columns();
+    format!("named.namespace, {release_id}, {file_name}, {album_title}, cover_album.title")
+}
+
+/// The joins [`file_row_columns`] reads, each by an index on the file the
 /// row references. A cover is keyed by its release.
 pub(super) const FILE_ROW_JOINS: &str = "\
      LEFT JOIN coven_files AS named ON named.id = file.file \
@@ -37,7 +72,7 @@ pub(super) const FILE_ROW_JOINS: &str = "\
      LEFT JOIN releases AS cover_release ON cover_release.id = named_cover.id \
      LEFT JOIN albums AS cover_album ON cover_album.id = cover_release.album_id";
 
-/// [`FILE_ROW_COLUMNS`] as read, from column `first` on.
+/// [`file_row_columns`] as read, from column `first` on.
 pub(super) struct FileRowColumns {
     namespace: Option<String>,
     release_id: Option<String>,
@@ -55,6 +90,17 @@ impl FileRowColumns {
             file_album: row.get(first + 3)?,
             cover_album: row.get(first + 4)?,
         })
+    }
+
+    /// The release file a move's record names by its original, when the
+    /// columns hold one.
+    pub(super) fn original_release_file(self) -> Option<FileRow> {
+        match (self.release_id, self.file_name, self.file_album) {
+            (Some(release_id), Some(file_name), Some(album_title)) => {
+                Some(FileRow::ReleaseFile { release_id, file_name, album_title })
+            }
+            _ => None,
+        }
     }
 
     /// The row they name; `None` when the view names no file this device

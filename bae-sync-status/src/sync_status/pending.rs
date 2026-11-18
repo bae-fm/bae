@@ -4,7 +4,7 @@
 //! record is about, or for the release file whose original a move's record
 //! names, read in the status query's one statement.
 
-use super::file_row::{FileRowColumns, FILE_ROW_COLUMNS, FILE_ROW_JOINS};
+use super::file_row::{file_row_columns, release_file_columns, FileRowColumns, FILE_ROW_JOINS};
 use super::*;
 
 /// One pending record, read with the row its file is the file of.
@@ -20,11 +20,9 @@ pub struct PendingRow {
 }
 
 /// The pending record a row of the status query carries, as its columns
-/// hold it: the record, its cause, the columns naming its moved original's
-/// release file, then those naming its file's row.
+/// hold it: the record, its cause, then the columns naming its file's row.
 pub(super) struct PendingColumns {
     record: Option<coven::PendingRecord>,
-    original: (Option<String>, Option<String>, Option<String>),
     file: FileRowColumns,
 }
 
@@ -35,11 +33,7 @@ impl PendingColumns {
         if let Some(record) = &mut record {
             record.cause = row.get(first + 1)?;
         }
-        Ok(Self {
-            record,
-            original: (row.get(first + 2)?, row.get(first + 3)?, row.get(first + 4)?),
-            file: FileRowColumns::read(row, first + 5)?,
-        })
+        Ok(Self { record, file: FileRowColumns::read(row, first + 2)? })
     }
 
     /// The record with the row its file is the file of. `None` when the row
@@ -48,12 +42,8 @@ impl PendingColumns {
         let Some(record) = self.record else {
             return Ok(None);
         };
-        let file_row = match (&record.reason, self.original) {
-            (
-                coven::PendingReason::Original { .. },
-                (Some(release_id), Some(file_name), Some(album_title)),
-            ) => Some(FileRow::ReleaseFile { release_id, file_name, album_title }),
-            (coven::PendingReason::Original { .. }, _) => None,
+        let file_row = match record.reason {
+            coven::PendingReason::Original { .. } => self.file.original_release_file(),
             _ => self.file.file_row()?,
         };
         Ok(Some(PendingRow { record, file_row }))
@@ -61,21 +51,21 @@ impl PendingColumns {
 }
 
 /// The status query's columns for a pending record, in the order
-/// [`PendingColumns`] reads them: the record and its cause, then the
-/// original's and the file's.
+/// [`PendingColumns`] reads them: the record and its cause, then the file's.
 pub(super) fn pending_columns() -> String {
-    format!("file.record, file.cause, {ORIGINAL_COLUMNS}, {FILE_ROW_COLUMNS}")
+    format!("file.record, file.cause, {}", file_row_columns())
 }
 
 /// The status query's column for the name of the release file that the
-/// pending record named by `cause_subject` is about: the original of a
-/// move's record, or the file of any other file record. It is `NULL` when
-/// no pending record is the cause or no release file here is its file.
+/// pending record named by `cause_subject` is about: the same release file
+/// the pending list shows for that record. It is `NULL` when no pending
+/// record is the cause or the list shows no release file for it.
 pub(super) fn cause_file_column() -> String {
-    "MAX(CASE WHEN CAST(file.record AS TEXT)->'$.subject' = shown.cause_subject \
-         THEN CASE file.reason_kind WHEN 'original' THEN original_file.original_filename \
-             ELSE named_file.original_filename END END) OVER ()"
-        .to_string()
+    let file_name = release_file_columns().file_name;
+    format!(
+        "MAX(CASE WHEN CAST(file.record AS TEXT)->'$.subject' = shown.cause_subject \
+             THEN {file_name} END) OVER ()"
+    )
 }
 
 /// The joins [`pending_columns`] reads, after `coven_pending AS file`.
@@ -83,14 +73,7 @@ pub(super) fn pending_joins() -> String {
     format!("{FILE_ROW_JOINS} {ORIGINAL_JOINS}")
 }
 
-/// The columns naming the release file whose original a record names in
-/// `coven_pending.original_path`: the file's release, its name and its
-/// album's title. A move's record names its original there, as the path's
-/// bytes that `coven_user_files.path` holds.
-const ORIGINAL_COLUMNS: &str =
-    "original_file.release_id, original_file.original_filename, original_album.title";
-
-/// The joins [`ORIGINAL_COLUMNS`] reads, each by an index. More than one
+/// The joins the original release file's columns read, each by an index. More than one
 /// coven file can record the same original path, so the subquery picks the
 /// release file with the smallest id, and each record stays one row.
 const ORIGINAL_JOINS: &str = "\
