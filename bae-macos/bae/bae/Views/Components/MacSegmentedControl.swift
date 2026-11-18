@@ -44,8 +44,22 @@ struct MacSegmentedControl: View {
                 }
                 .buttonStyle(.plain)
                 .accentFocusRing(cornerRadius: .infinity)
-                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
+        }
+        // Assistive technology reads the control as the radio group it is,
+        // one radio button for each choice.
+        .accessibilityRepresentation {
+            Picker(selection: $selectedIndex) {
+                ForEach(Array(segments.enumerated()), id: \.offset) {
+                    index,
+                    segment in
+                    Text(verbatim: segment.label).tag(index)
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
         }
         .padding(3)
         .frame(height: ThemeSize.hitTarget)
