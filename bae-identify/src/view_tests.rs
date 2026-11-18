@@ -81,8 +81,38 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
     }
 }
 
+/// The ledger `state`'s run shows.
 fn run_of(state: IdentifyState) -> IdentifyRunView {
-    run_of_view(IdentifyStateView::from(state))
+    RunOutcome::of(&state)
+        .and_then(|outcome| outcome.ledger().cloned())
+        .unwrap_or_else(|| panic!("a state with a run to lay out, got {state:?}"))
+}
+
+/// What `state`'s findings fold into, judged against its text: the cards the
+/// run's or the verdict's write stores.
+fn judged(state: &IdentifyState) -> (Findings, JudgedFindings) {
+    let text = state.candidate_text();
+    match RunOutcome::of(state) {
+        Some(RunOutcome::Running { ledger, findings, track_count }) => {
+            let judged = JudgedFindings::of(&findings, Some(&ledger), &text, track_count);
+            (findings, judged)
+        }
+        Some(RunOutcome::Answered(TerminalVerdict::Found { findings, track_count, ledger })) => {
+            let judged = JudgedFindings::of(&findings, ledger.as_ref(), &text, track_count);
+            (findings, judged)
+        }
+        other => panic!("a run with findings, got {other:?}"),
+    }
+}
+
+/// What the folder's text agrees with about `release_id`, as `judged` holds
+/// it for `findings`.
+fn agreements_of(findings: &Findings, judged: &JudgedFindings, release_id: &str) -> Agreements {
+    let at = findings
+        .releases()
+        .position(|release| release.release_id == release_id)
+        .unwrap_or_else(|| panic!("the findings hold {release_id}"));
+    judged.agreements[at]
 }
 
 fn run_of_view(view: IdentifyStateView) -> IdentifyRunView {
@@ -110,16 +140,14 @@ fn cells(row: &SignalValueRow) -> Vec<&LookupView> {
 /// One provider's matches show, badged, while the other is still looking.
 #[test]
 fn a_landed_provider_s_matches_show_before_the_other_answers() {
-    let IdentifyStateView::Triangulating { groups, agreements, .. } =
-        IdentifyStateView::from(in_flight(context()))
-    else {
-        panic!("a run in flight");
-    };
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].sections[0].pressings[0].releases[0].release_id, "dg-1");
-    assert_eq!(agreements.len(), 1);
-    assert_eq!(agreements[0].0, "dg-1");
-    assert!(agreements[0].1.fields.barcode);
+    let (findings, judged) = judged(&in_flight(context()));
+    assert_eq!(judged.groups.len(), 1);
+    assert_eq!(judged.groups[0].sections[0].pressings[0].releases[0].release_id, "dg-1");
+    assert_eq!(findings.releases().count(), 1);
+    assert_eq!(
+        agreements_of(&findings, &judged, "dg-1"),
+        Agreements { barcode: true, ..Agreements::NONE }
+    );
 }
 
 /// A code left out is still a row, its cells saying it was left out, beside the
@@ -427,8 +455,8 @@ fn a_run_with_no_inputs_records_no_ledger() {
         blank,
     );
     assert!(matches!(
-        IdentifyStateView::from(settled),
-        IdentifyStateView::ManualOnly { run: None, .. }
+        RunOutcome::of(&settled),
+        Some(RunOutcome::Answered(TerminalVerdict::ManualOnly { ledger: None, .. }))
     ));
 }
 
@@ -446,7 +474,8 @@ fn a_manual_only_folder_with_catalog_numbers_offers_them() {
         SearchProgress::Skipped,
         context,
     );
-    let IdentifyStateView::ManualOnly { run: Some(run), .. } = IdentifyStateView::from(settled)
+    let Some(RunOutcome::Answered(TerminalVerdict::ManualOnly { ledger: Some(run), .. })) =
+        RunOutcome::of(&settled)
     else {
         panic!("a run with tiles");
     };
@@ -569,8 +598,11 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
         track_count: 9,
         ledger: Some(recorded_ledger()),
     };
-    let run =
-        run_of_view(crate::view::reference_resume(verdict, None, &crate::LookupChoices::default()));
+    let cards = VerdictCards {
+        decision: Some(FoundDecision::Picks("mb-1".to_string())),
+        ..VerdictCards::default()
+    };
+    let run = run_of_view(IdentifyStateView::of(RunOutcome::Answered(verdict), cards));
     assert_eq!(run, recorded_ledger());
     assert_eq!(run.providers, vec![MB, DG]);
     assert!(matches!(
@@ -589,7 +621,7 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
         ledger: None,
     };
     assert!(matches!(
-        crate::view::reference_resume(verdict, None, &crate::LookupChoices::default()),
+        IdentifyStateView::of(RunOutcome::Answered(verdict), VerdictCards::default()),
         IdentifyStateView::Failed { run: None, .. }
     ));
 }
@@ -634,11 +666,8 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         panic!("the signals agree on one release");
     };
     *ledger = Some(disc_id_ledger(&disc_answers));
-    let IdentifyStateView::Found { groups, agreements, narrowed_out_count, .. } =
-        IdentifyStateView::from(state)
-    else {
-        panic!("the signals agree on one release");
-    };
+    let (findings, judged) = judged(&state);
+    let groups = &judged.groups;
     assert_eq!(
         groups.iter().map(|group| group.id.as_str()).collect::<Vec<_>>(),
         vec!["g", "g-other"],
@@ -650,15 +679,11 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     };
     assert_eq!(rows(&groups[0].sections[0].pressings), vec!["mb-shared"]);
     assert_eq!(rows(&groups[0].sections[0].narrowed_out), vec!["mb-only"]);
-    assert_eq!(narrowed_out_count, 2);
     assert_eq!(groups[1].pressings().count(), 0);
     assert_eq!(rows(&groups[1].sections[0].narrowed_out), vec!["mb-other"]);
-    let only = agreements
-        .iter()
-        .find(|(release_id, _)| release_id == "mb-only")
-        .expect("a row set aside is badged");
-    assert!(only.1.fields.disc_id);
-    assert!(!only.1.fields.barcode);
+    let only = agreements_of(&findings, &judged, "mb-only");
+    assert!(only.disc_id, "a row set aside is badged");
+    assert!(!only.barcode);
 }
 
 /// When the disc ID and barcode name different releases, the disc ID's is
@@ -672,14 +697,16 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     context.disc.answers = vec![vec![result(MB, "mb-disc")]];
     context.barcode.results = vec![result(MB, "mb-barcode")];
 
-    let IdentifyStateView::Found { groups, narrowed_out_count, .. } =
-        IdentifyStateView::from(crate::state::re_derive_for_tests(context))
-    else {
-        panic!("both releases are offered");
-    };
-    assert_eq!(groups[0].pressings().count(), 1);
-    assert_eq!(groups[0].narrowed_out().count(), 1);
-    assert_eq!(narrowed_out_count, 1);
+    let (_, JudgedFindings { groups, .. }) = judged(&crate::state::re_derive_for_tests(context));
+    assert_eq!(groups.len(), 1);
+    assert_eq!(
+        groups[0].pressings().map(|row| row.lead().release_id.as_str()).collect::<Vec<_>>(),
+        vec!["mb-disc"]
+    );
+    assert_eq!(
+        groups[0].narrowed_out().map(|row| row.lead().release_id.as_str()).collect::<Vec<_>>(),
+        vec!["mb-barcode"]
+    );
 }
 
 // ── Why nothing was picked ──────────────────────────────────────────────────
@@ -704,12 +731,18 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         ledger: None,
     };
     let judged = |verdict: TerminalVerdict| {
-        let IdentifyStateView::Found { decision, .. } =
-            crate::view::reference_resume(verdict, None, &crate::LookupChoices::default())
-        else {
-            panic!("a found verdict resumes found");
+        let TerminalVerdict::Found { findings, track_count, .. } = verdict else {
+            panic!("a found verdict");
         };
-        (decision.pick().map(str::to_string), decision.folder_check().cloned())
+        match crate::unattended_pick(
+            &findings.matches,
+            &findings.pressings,
+            findings.medium_conflict,
+            track_count,
+        ) {
+            Ok(pick) => (Some(pick.records[0].release_id.clone()), None),
+            Err(declined) => (None, declined.folder_check()),
+        }
     };
     assert_eq!(
         judged(lone(bae_catalogs::search::SourceTracks::Nothing)),
@@ -721,8 +754,9 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
     );
 }
 
-/// The Notes badge is on the row the folder names by what only its notes
-/// write, and never on the row that ranking set aside for it.
+/// The ranking's notes point, which the Notes badge shows, goes to the
+/// release the folder names by what only its notes write, and never to the
+/// row that ranking set aside for it.
 #[test]
 fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
     let mut context = context();
@@ -746,31 +780,21 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
         &[],
     );
 
-    let IdentifyStateView::Found { agreements, .. } =
-        IdentifyStateView::from(crate::state::re_derive_for_tests(context))
-    else {
+    let IdentifyState::Found { findings, .. } = crate::state::re_derive_for_tests(context) else {
         panic!("the disc ID found both pressings");
     };
-    let notes = |release_id: &str| {
-        agreements
-            .iter()
-            .find(|(id, _)| id == release_id)
-            .map(|(_, row)| row.notes.clone())
-            .expect("every row is badged")
-    };
     assert_eq!(
-        notes("mb-beta"),
-        vec![crate::release_group::Statement {
-            value: "Made In Nordland By Plant Beta".to_string(),
-            catalogs: Vec::new(),
+        findings.named_notes,
+        vec![crate::NamedNote {
+            release: bae_catalogs::records::LookupRef::new(MB, "mb-beta"),
+            note: "Made In Nordland By Plant Beta".to_string(),
         }]
     );
-    assert!(notes("mb-alpha").is_empty());
 }
 
-/// The badge says what the ranking weighed: a word a look-alike's notes
-/// share cancels in the ranking, and the badge stays off once that row is
-/// left out as a look-alike.
+/// The Notes badge says what the ranking weighed: a word a look-alike's
+/// notes share cancels in the ranking, so the ranking's notes point goes to
+/// no release once that row is left out as a look-alike.
 #[test]
 fn the_notes_badge_reads_the_ranking_s_answer() {
     let mut context = context();
@@ -796,10 +820,8 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
         &[],
     );
 
-    let IdentifyStateView::Found { agreements, .. } =
-        IdentifyStateView::from(crate::state::re_derive_for_tests(context))
-    else {
+    let IdentifyState::Found { findings, .. } = crate::state::re_derive_for_tests(context) else {
         panic!("the disc ID found every pressing");
     };
-    assert!(agreements.iter().all(|(_, row)| row.notes.is_empty()));
+    assert!(findings.named_notes.is_empty());
 }

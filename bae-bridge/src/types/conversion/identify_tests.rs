@@ -41,8 +41,15 @@ fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
     }
 }
 
+/// `state` as a surface shows it, with no cards: these tests cross the run's
+/// ledger and how it ended.
+fn view_of(state: IdentifyState) -> bae_identify::IdentifyStateView {
+    let outcome = bae_identify::RunOutcome::of(&state).expect("a state with a run");
+    bae_identify::IdentifyStateView::of(outcome, bae_identify::VerdictCards::default())
+}
+
 fn run_of(state: IdentifyState) -> BridgeIdentifyRun {
-    match BridgeIdentifyState::from_view(bae_identify::IdentifyStateView::from(state), None) {
+    match BridgeIdentifyState::from_view(view_of(state), None) {
         BridgeIdentifyState::Triangulating { run, .. } => run,
         other => panic!("expected a run in flight, got {other:?}"),
     }
@@ -134,7 +141,7 @@ fn a_disc_id_nobody_looked_up_crosses_with_why() {
                 source_file: None,
             }],
         };
-        match BridgeIdentifyState::from_view(bae_identify::IdentifyStateView::from(state), None) {
+        match BridgeIdentifyState::from_view(view_of(state), None) {
             BridgeIdentifyState::Triangulating { run, .. } => match run.disc_id {
                 BridgeDiscIdStep::Read { discs } => discs,
                 other => panic!("expected read Disc IDs, got {other:?}"),
@@ -166,8 +173,7 @@ fn an_unread_sheet_crosses_with_the_audio_s_rate() {
     };
     context.origin.not_cd_rate = Some(96_000);
     context.disc.signal = DiscIdSignal::NotCdAudio;
-    match BridgeIdentifyState::from_view(bae_identify::IdentifyStateView::from(state), Some(96_000))
-    {
+    match BridgeIdentifyState::from_view(view_of(state), Some(96_000)) {
         BridgeIdentifyState::Triangulating { run, .. } => assert!(matches!(
             run.disc_id,
             BridgeDiscIdStep::NotCdAudio { sample_rate_hz: Some(96_000) }
@@ -187,7 +193,7 @@ fn a_run_bae_broke_crosses_as_an_error_with_its_text() {
     };
     let state = IdentifyState::Error { failure: failure.clone(), context };
     assert_eq!(
-        match BridgeIdentifyState::from_view(bae_identify::IdentifyStateView::from(state), None) {
+        match BridgeIdentifyState::from_view(view_of(state), None) {
             BridgeIdentifyState::Error { failure } => failure.detail,
             other => panic!("expected an error, got {other:?}"),
         },

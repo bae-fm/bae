@@ -123,17 +123,14 @@ async fn the_ledger_round_trips_every_cell_and_every_release_it_found() {
     let (read, listings) = stored_and_read(&verdict).await;
 
     assert_eq!(read, verdict);
-    // The Disc ID agreement is read from the stored ledger: the releases a
-    // disc ID's lookup found agree on it, and no other.
-    let bae_identify::IdentifyStateView::Failed { agreements, .. } =
-        bae_identify::view::reference_resume(
-            read.clone(),
-            None,
-            &bae_identify::LookupChoices::default(),
-        )
-    else {
-        panic!("a failed verdict resumes as Failed");
-    };
+    // The verdict's write judges the Disc ID agreement from its ledger: the
+    // releases a disc ID's lookup found agree on it, and no other.
+    let (db, hash, _tmp) = stored_verdict(&verdict).await;
+    let agreements = crate::tables::ImportTables::new(db.clone())
+        .load_verdict_cards(&hash)
+        .await
+        .unwrap()
+        .agreements;
     let by_disc_id = |id: &str| {
         agreements
             .iter()

@@ -115,8 +115,7 @@ fn one_provider_failing_the_search_leaves_the_other_s_matches_standing() {
 #[test]
 fn a_failed_search_stores_what_the_other_provider_found() {
     let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
-    let stored = signals(disc("d"), BarcodeSignal::Absent, &[]);
-    let (state, effects) = update(state, stored.clone());
+    let (state, effects) = update(state, signals(disc("d"), BarcodeSignal::Absent, &[]));
     assert!(matches!(effects.as_slice(), [Effect::LookupDiscid { .. }]));
     let (state, effects) = step(
         state,
@@ -160,10 +159,9 @@ fn a_failed_search_stores_what_the_other_provider_found() {
 
     let verdict = crate::TerminalVerdict::try_from(live.clone()).expect("a failed run is terminal");
     assert_eq!(verdict.findings(), Some(findings), "the stored failure keeps what Discogs found");
-    assert_eq!(
-        crate::view::reference_resume(verdict, Some(&stored), &crate::LookupChoices::default()),
-        crate::IdentifyStateView::from(live),
-        "the candidate opened later shows what the run showed"
+    assert!(
+        matches!(&verdict, crate::TerminalVerdict::Failed { failures: stored, .. } if stored == failures),
+        "and the failure beside it"
     );
 }
 
@@ -278,9 +276,7 @@ fn a_drafts_title_searches_without_its_bracketed_tails() {
 fn the_words_wait_while_the_identifiers_are_looked_up() {
     let state = started_searching(vec![MB], "Album Title", "Artist Name");
     let (state, _) = update(state, one_code("BAR"));
-    let crate::IdentifyStateView::Triangulating { run, .. } =
-        crate::IdentifyStateView::from(state.clone())
-    else {
+    let Some(crate::RunOutcome::Running { ledger: run, .. }) = crate::RunOutcome::of(&state) else {
         panic!("expected a running view, got {state:?}");
     };
     assert_eq!(
@@ -300,9 +296,7 @@ fn the_words_do_not_wait_once_an_identifier_has_found_something() {
     let state = started_searching(vec![MB, DG], "Album Title", "Artist Name");
     let (state, _) = update(state, one_code("BAR"));
     let (state, _) = step(state, barcode_matched(MB, "BAR", vec![pair("mb-1", Some("g-x"))]));
-    let crate::IdentifyStateView::Triangulating { run, .. } =
-        crate::IdentifyStateView::from(state.clone())
-    else {
+    let Some(crate::RunOutcome::Running { ledger: run, .. }) = crate::RunOutcome::of(&state) else {
         panic!("Discogs is still looking, so the run is too: {state:?}");
     };
     assert_eq!(run.search, crate::SearchStepView::NotNeeded);

@@ -6,7 +6,7 @@ use crate::state::tests::step;
 use crate::state::tests::*;
 use crate::state::*;
 use crate::IdentifyFailure;
-use crate::{IdentifyStateView, IsrcStepView, LookupView, NotAskedReason};
+use crate::{IsrcStepView, LookupView, NotAskedReason, RunOutcome};
 
 // The ISRC step: every code the audio's tags carry, asked of MusicBrainz in
 // one search.
@@ -39,8 +39,10 @@ fn the_tags_isrcs_are_asked_once_in_one_search() {
 fn a_run_without_musicbrainz_asks_nobody_about_the_isrcs() {
     let (state, effects) = update(started_with(vec![DG]), tagged(&["XX0000000001"]));
     assert!(effects.is_empty(), "{effects:?}");
-    let run = match IdentifyStateView::from(state) {
-        IdentifyStateView::ManualOnly { run, .. } => run.expect("the codes are laid out"),
+    let run = match RunOutcome::of(&state) {
+        Some(RunOutcome::Answered(crate::TerminalVerdict::ManualOnly { ledger, .. })) => {
+            ledger.expect("the codes are laid out")
+        }
         other => panic!("expected ManualOnly, got {other:?}"),
     };
     assert_eq!(
@@ -72,7 +74,7 @@ fn a_failed_isrc_search_fails_the_run() {
     ));
 
     let (state, _) = update(started(), one_code("012345678905"));
-    let IdentifyStateView::Triangulating { run, .. } = IdentifyStateView::from(state) else {
+    let Some(RunOutcome::Running { ledger: run, .. }) = RunOutcome::of(&state) else {
         panic!("expected Triangulating");
     };
     assert_eq!(run.isrc, IsrcStepView::Absent);

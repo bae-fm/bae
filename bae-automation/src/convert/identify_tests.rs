@@ -2,11 +2,13 @@
 
 use super::*;
 use bae_catalogs::search::MetadataResult;
+use bae_identify::release_group::{group_formed_rows, unranked, ReleaseGroup};
 use bae_identify::signals::{DiscIdSignal, SourcedValue};
 use bae_identify::state::{DiscIdEvidence, SignalsContext};
 use bae_identify::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupState, ProviderLookup,
-    ValueLookup,
+    Agreements, BarcodeProgress, CatalogProgress, DiscidProgress, FoundDecision, IdentifyState,
+    LookupState, ProviderLookup, RowAgreements, RunOutcome, TerminalVerdict, ValueLookup,
+    VerdictCards,
 };
 use bae_records::LibraryStatus;
 
@@ -46,20 +48,27 @@ fn empty_context() -> SignalsContext {
     }
 }
 
-/// The folder's text, carrying the barcode `code` and nothing else.
-fn text_carrying(code: &str) -> bae_identify::CandidateText {
-    bae_identify::CandidateText::of(&[], &[], &[SourcedValue::new(code.to_string())])
-}
-
-/// `state` as the automation surface shows it, each release it names
-/// read as not in the library.
-fn shown(state: IdentifyState) -> AutomationIdentifyState {
-    let view = bae_identify::IdentifyStateView::from(state);
+/// `outcome` with `cards`, the cards its rows stored, as the automation
+/// surface shows it, each release it names read as not in the library.
+fn shown(outcome: RunOutcome, cards: VerdictCards) -> AutomationIdentifyState {
+    let view = bae_identify::IdentifyStateView::of(outcome, cards);
     let statuses = library_checks(&view)
         .iter()
         .map(|check| LibraryStatus::absent(&check.release_id))
         .collect();
     automation_identify_state(view, statuses)
+}
+
+/// One card of `releases`, each its own row, in the order given.
+fn card_of(releases: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
+    let rows: Vec<u32> = (0..releases.len() as u32).collect();
+    group_formed_rows(unranked(releases), &rows, Vec::new(), &[], None)
+}
+
+/// The badges of the row of `release_id`: the fields the folder's text
+/// agrees with.
+fn badges(release_id: &str, fields: Agreements) -> (String, RowAgreements) {
+    (release_id.to_string(), RowAgreements { fields, notes: Vec::new() })
 }
 
 /// `result`, printing the barcode `code`.
@@ -103,26 +112,33 @@ fn found_state_aligns_agreements_and_pressings_by_release_id() {
         metadata_result("rel-1", "group-1"),
         printing(metadata_result("rel-2", "group-1"), "0123456789012"),
     ];
-    let state = IdentifyState::Found {
+    let outcome = RunOutcome::Answered(TerminalVerdict::Found {
         track_count: 12,
         findings: bae_identify::Findings {
             matches: matches.clone(),
             // Two pressings of one album: each release is its own row.
             pressings: vec![0, 1],
-            narrowed_out: Default::default(),
-            medium_conflict: None,
-            named_notes: Vec::new(),
+            ..Default::default()
         },
         ledger: Some(disc_id_ledger(&matches)),
-        context: SignalsContext { text: text_carrying("0123456789012"), ..empty_context() },
+    });
+    // The cards as the verdict's rows hold them: `rel-2` prints the folder's
+    // barcode as well, so its row is on top.
+    let cards = VerdictCards {
+        groups: card_of(vec![matches[1].clone(), matches[0].clone()]),
+        agreements: vec![
+            badges("rel-2", Agreements { disc_id: true, barcode: true, ..Agreements::NONE }),
+            badges("rel-1", Agreements { disc_id: true, ..Agreements::NONE }),
+        ],
+        decision: Some(FoundDecision::Declined(None)),
+        ..VerdictCards::default()
     };
 
-    let json = serde_json::to_value(shown(state)).unwrap();
+    let json = serde_json::to_value(shown(outcome, cards)).unwrap();
     assert_eq!(json["kind"], "found");
     let groups = json["groups"].as_array().unwrap();
     assert_eq!(groups.len(), 1, "both matches share one release group");
-    // `rel-2` prints the folder's barcode as well, so the rows come back
-    // with `rel-2` on top.
+    // The rows cross in the cards' order.
     let pressings = groups[0]["sections"][0]["pressings"].as_array().unwrap();
     assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-2");
     assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-1");
@@ -145,28 +161,33 @@ fn found_state_aligns_agreements_and_pressings_by_release_id() {
     by_release("library_statuses", "rel-2");
 }
 
-/// Signals that share no result settle as one `Found`, each release on its
-/// own card with its badges.
+/// A found verdict over several albums crosses with each release on its own
+/// card, in the cards' order, with its badges.
 #[test]
-fn disagreeing_signals_become_one_found_over_several_groups() {
-    let state = IdentifyState::Found {
+fn a_found_verdict_crosses_each_card_with_its_badges() {
+    let disc = metadata_result("rel-disc", "g-d");
+    let bar = printing(metadata_result("rel-bar", "g-b"), "0123456789012");
+    let outcome = RunOutcome::Answered(TerminalVerdict::Found {
         track_count: 9,
         findings: bae_identify::Findings {
-            matches: vec![
-                metadata_result("rel-disc", "g-d"),
-                printing(metadata_result("rel-bar", "g-b"), "0123456789012"),
-            ],
+            matches: vec![disc.clone(), bar.clone()],
             // One release each, so each is its own row.
             pressings: vec![0, 1],
-            narrowed_out: Default::default(),
-            medium_conflict: None,
-            named_notes: Vec::new(),
+            ..Default::default()
         },
-        ledger: Some(disc_id_ledger(&[metadata_result("rel-disc", "g-d")])),
-        context: SignalsContext { text: text_carrying("0123456789012"), ..empty_context() },
+        ledger: Some(disc_id_ledger(std::slice::from_ref(&disc))),
+    });
+    let cards = VerdictCards {
+        groups: [card_of(vec![disc]), card_of(vec![bar])].concat(),
+        agreements: vec![
+            badges("rel-disc", Agreements { disc_id: true, ..Agreements::NONE }),
+            badges("rel-bar", Agreements { barcode: true, ..Agreements::NONE }),
+        ],
+        decision: Some(FoundDecision::Declined(None)),
+        ..VerdictCards::default()
     };
 
-    let json = serde_json::to_value(shown(state)).unwrap();
+    let json = serde_json::to_value(shown(outcome, cards)).unwrap();
     assert_eq!(json["kind"], "found");
     let groups = json["groups"].as_array().unwrap();
     assert_eq!(groups.len(), 2, "the two releases are two release groups");
@@ -178,8 +199,8 @@ fn disagreeing_signals_become_one_found_over_several_groups() {
     assert_eq!(json["track_count"], 9);
 }
 
-/// A run in flight crosses as its ledger: one row per code, one cell per
-/// provider.
+/// A run in flight crosses as its ledger, one row per code and one cell per
+/// provider, beside the cards its rows hold so far.
 #[test]
 fn triangulating_lists_each_code_with_one_cell_per_provider() {
     let state = IdentifyState::Triangulating {
@@ -246,12 +267,18 @@ fn triangulating_lists_each_code_with_one_cell_per_provider() {
                 had_source: true,
                 ..Default::default()
             },
-            text: text_carrying("0123456789012"),
             ..empty_context()
         },
     };
+    let outcome = RunOutcome::of(&state).expect("a run in flight");
+    // Discogs's match is already on the list while MusicBrainz is out.
+    let cards = VerdictCards {
+        groups: card_of(vec![printing(metadata_result("rel-dg", "group-1"), "0123456789012")]),
+        agreements: vec![badges("rel-dg", Agreements { barcode: true, ..Agreements::NONE })],
+        ..VerdictCards::default()
+    };
 
-    let json = serde_json::to_value(shown(state)).unwrap();
+    let json = serde_json::to_value(shown(outcome, cards)).unwrap();
     assert_eq!(json["kind"], "triangulating");
     let run = &json["run"];
     assert_eq!(run["providers"], serde_json::json!(["music_brainz", "discogs"]));
@@ -276,7 +303,6 @@ fn triangulating_lists_each_code_with_one_cell_per_provider() {
     assert_eq!(rows[1]["cells"][0]["lookup"]["kind"], "looking_up");
     assert_eq!(rows[1]["cells"][1]["lookup"]["kind"], "no_match");
     assert_eq!(run["catalog"]["kind"], "none_found");
-    // Discogs's match is already on the list while MusicBrainz is out.
     let groups = json["groups"].as_array().unwrap();
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0]["sections"][0]["pressings"][0]["releases"][0]["release_id"], "rel-dg");

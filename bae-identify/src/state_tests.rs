@@ -99,18 +99,13 @@ pub(super) fn started_with(providers: Vec<LookupCatalog>) -> IdentifyState {
     state
 }
 
-/// The run's ledger as its view lays it out.
+/// The run's ledger as its rows hold it.
 pub(super) fn ledger_of(state: &IdentifyState) -> crate::IdentifyRunView {
-    match crate::IdentifyStateView::from(state.clone()) {
-        crate::IdentifyStateView::Triangulating { run, .. } => run,
-        crate::IdentifyStateView::Found { run, .. }
-        | crate::IdentifyStateView::NotFoundAnywhere { run }
-        | crate::IdentifyStateView::ManualOnly { run, .. }
-        | crate::IdentifyStateView::Failed { run, .. } => run.expect("the run recorded its ledger"),
-        crate::IdentifyStateView::Idle | crate::IdentifyStateView::Error { .. } => {
-            panic!("an idle or broken state lays out no run")
-        }
-    }
+    crate::RunOutcome::of(state)
+        .expect("an idle state lays out no run")
+        .ledger()
+        .cloned()
+        .expect("the run recorded its ledger")
 }
 
 /// A run started with `choices`, with the chosen numbers' lookups as effects.

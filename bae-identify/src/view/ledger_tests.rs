@@ -4,7 +4,8 @@
 use super::*;
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextLine, TextOrigin, TextSignal};
 use crate::view::tests::*;
-use crate::{Findings, LookupChoices, NarrowedOut, TerminalVerdict};
+use crate::view::JudgedFindings;
+use crate::{Findings, LookupChoices};
 use bae_catalogs::search::MetadataResult;
 
 /// A candidate's stored signals holding `lines` as its text, and the choices
@@ -53,36 +54,25 @@ fn pressing(
     }
 }
 
-/// A stored verdict read back against the candidate's text.
-fn resumed(
+/// A stored verdict's `matches` judged against the candidate's text: what
+/// the folder's text agrees with about each match, and the cards they fold
+/// into.
+fn judged(
     matches: Vec<MetadataResult>,
-    narrowed_out: Vec<MetadataResult>,
-    ledger: Option<IdentifyRunView>,
     (signals, choices): (Signals, LookupChoices),
-) -> IdentifyStateView {
-    let verdict = TerminalVerdict::Found {
-        findings: Findings {
-            // Rows formed the way a run forms them.
-            pressings: crate::release_group::form_rows(&matches),
-            matches,
-            narrowed_out: NarrowedOut {
-                pressings: crate::release_group::form_rows(&narrowed_out),
-                matches: narrowed_out,
-            },
-            medium_conflict: None,
-            named_notes: Vec::new(),
-        },
-        track_count: 9,
-        ledger,
+) -> JudgedFindings {
+    let findings = Findings {
+        // Rows formed the way a run forms them.
+        pressings: crate::release_group::form_rows(&matches),
+        matches,
+        ..Findings::default()
     };
-    crate::view::reference_resume(verdict, Some(&signals), &choices)
+    JudgedFindings::of(&findings, None, &CandidateText::of_stored(Some(&signals), &choices), 9)
 }
 
-fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
-    let IdentifyStateView::Found { groups, .. } = view else {
-        panic!("a settled verdict, got {view:?}");
-    };
-    groups
+fn card_ids(judged: &JudgedFindings) -> Vec<&str> {
+    judged
+        .groups
         .iter()
         .map(|group| group.sections[0].pressings[0].releases[0].release_id.as_str())
         .collect()
@@ -98,18 +88,13 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
             pressing("rel-b", "rg-b", None, Some("Label One"), Some(1976), Some("US")),
         ]
     };
-    let counted = resumed(matches(), Vec::new(), None, folder(lines, &[]));
-    let IdentifyStateView::Found { agreements, .. } = &counted else {
-        panic!("a settled verdict");
-    };
-    assert!(agreements.iter().any(|(id, a)| id == "rel-a" && a.fields.catalog));
+    // The agreements follow the matches: rel-a, then rel-b.
+    let counted = judged(matches(), folder(lines, &[]));
+    assert!(counted.agreements[0].catalog);
     assert_eq!(card_ids(&counted), vec!["rel-a", "rel-b"]);
 
-    let struck = resumed(matches(), Vec::new(), None, folder(lines, &["L1-16033"]));
-    let IdentifyStateView::Found { agreements, .. } = &struck else {
-        panic!("a settled verdict");
-    };
-    assert!(agreements.iter().any(|(id, a)| id == "rel-a" && !a.fields.catalog));
+    let struck = judged(matches(), folder(lines, &["L1-16033"]));
+    assert!(!struck.agreements[0].catalog);
     assert_eq!(card_ids(&struck), vec!["rel-b", "rel-a"]);
 }
 

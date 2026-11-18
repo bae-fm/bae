@@ -392,14 +392,10 @@ impl JudgedFindings {
 
 mod ledger;
 mod outcome;
-#[cfg(any(test, feature = "test-utils"))]
-mod reference;
 use ledger::{
     barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
 };
 pub use outcome::{PublishedRun, RunOutcome};
-#[cfg(any(test, feature = "test-utils"))]
-pub use reference::{reference_cards, reference_cards_of, reference_resume};
 
 /// The run as it stands, laid out as its ledger.
 pub(super) fn run_view(

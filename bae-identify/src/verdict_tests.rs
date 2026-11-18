@@ -5,7 +5,7 @@ use crate::state::{
     SearchProgress,
 };
 use crate::state::{LookupState, ProviderLookup, ValueLookup};
-use crate::view::{BarcodeStepView, IdentifyStateView, LookupView};
+use crate::view::{BarcodeStepView, LookupView};
 use crate::CatalogProgress;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::catalog::LookupCatalog;
@@ -123,11 +123,10 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
             }],
         },
     );
-    let IdentifyStateView::Found { run: Some(shown), .. } =
-        IdentifyStateView::from(settled.clone())
-    else {
+    let IdentifyState::Found { ledger: Some(shown), .. } = &settled else {
         panic!("the run found one release");
     };
+    let shown = shown.clone();
     let verdict = TerminalVerdict::try_from(settled).unwrap();
     let TerminalVerdict::Found { ledger, .. } = &verdict else {
         panic!("a found state stores as a found verdict");
