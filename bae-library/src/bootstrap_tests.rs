@@ -643,59 +643,64 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
 }
 
 /// A reset that stopped after its record finishes from what coven kept on the
-/// device, and the library opens as the reset device.
-#[tokio::test]
-async fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
-    let (store, device, _) = connected_library(&installation, &storage, "Household").await;
-    let builder = || {
-        bae_store::test_devices::test_builder(&installation)
-            .storage_connector(std::sync::Arc::new(storage.for_device()))
-    };
-    stop_once_recorded(
-        &installation,
-        reset_device(
+/// device, and the library opens as the reset device. The reset loads the
+/// store from storage, which needs a deeper stack than a test thread's.
+#[test]
+fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
+    bae_store::test_devices::on_device_runtime(async || {
+        let temp = tempfile::TempDir::new().unwrap();
+        let app_dir = AppDir::at(temp.path()).unwrap();
+        let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
+        let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+        let (store, device, _) = connected_library(&installation, &storage, "Household").await;
+        let builder = || {
+            bae_store::test_devices::test_builder(&installation)
+                .storage_connector(std::sync::Arc::new(storage.for_device()))
+        };
+        stop_once_recorded(
+            &installation,
+            reset_device(
+                builder(),
+                store,
+                "Replacement",
+                |_| {},
+                &bae_diagnostics::Diagnostics::noop(),
+            ),
+        )
+        .await;
+        let libraries = app_dir
+            .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+            .await
+            .unwrap()
+            .libraries;
+        assert!(
+            matches!(
+                libraries[..],
+                [bae_app_dir::LibraryInfo {
+                    state: bae_app_dir::LibraryState::ReplacementUnfinished(
+                        coven::ReplacedBy::Reset
+                    ),
+                    ..
+                }]
+            ),
+            "{libraries:?}"
+        );
+
+        let (_sender, cancel) = watch::channel(false);
+        let finished = super::resume_replacement(
             builder(),
             store,
-            "Replacement",
             |_| {},
+            &cancel,
             &bae_diagnostics::Diagnostics::noop(),
-        ),
-    )
-    .await;
-    let libraries = app_dir
-        .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
+        )
         .await
-        .unwrap()
-        .libraries;
-    assert!(
-        matches!(
-            libraries[..],
-            [bae_app_dir::LibraryInfo {
-                state: bae_app_dir::LibraryState::ReplacementUnfinished(coven::ReplacedBy::Reset),
-                ..
-            }]
-        ),
-        "{libraries:?}"
-    );
-
-    let (_sender, cancel) = watch::channel(false);
-    let finished = super::resume_replacement(
-        builder(),
-        store,
-        |_| {},
-        &cancel,
-        &bae_diagnostics::Diagnostics::noop(),
-    )
-    .await
-    .unwrap();
-    let reset = finished.device_id();
-    assert_ne!(reset, device);
-    finished.close().await.unwrap();
-    opens_as(builder(), store, reset).await;
+        .unwrap();
+        let reset = finished.device_id();
+        assert_ne!(reset, device);
+        finished.close().await.unwrap();
+        opens_as(builder(), store, reset).await;
+    });
 }
 
 /// A cancel stops finishing a restore, which coven honors, and not a
