@@ -4153,8 +4153,9 @@ A wait the person can't help, such as for another device to come online,
 offers nothing.
 
 - **A removed device.** When this device, or its person, was removed from the
-  library, its record says so in its own error line, "This device was removed
-  from the library.", and offers only the record's details. Resetting would
+  library, its sync state is Removed from the library, and the Activity panel
+  lists sync's failure as "This device was removed from the library.", with
+  its details behind the row. Resetting would
   register the device again under keys that no longer count, asking storage to
   take back a device the library removed. A phone whose join the library's
   history refused to admit, which only a faulty or hostile writer can cause,
