@@ -222,15 +222,12 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    Notice(
+                    LibraryFailedView(
                         title: String(localized: "Could not read your library"),
-                        advice: nil,
-                        error: error,
-                        look: .centered,
-                        action: error.retryAction {
-                            Task { await albumList.loadInitial() }
-                        }
-                    )
+                        error: error
+                    ) {
+                        Task { await albumList.loadInitial() }
+                    }
                 }
                 else if albumList.count?.rows == 0 {
                     LibraryEmptyState(title: "No albums")
