@@ -4,6 +4,7 @@
 )]
 
 use super::*;
+use crate::airplay::ap2_session::{run_pair_setup, Ap2Error, AP2_USER_AGENT, PAIR_SETUP_M1};
 use crate::airplay::fake_receiver::{serve_transient_pair_setup, SrpServer};
 use crate::airplay::rtsp::RtspConnection;
 use std::net::TcpListener;
@@ -72,11 +73,9 @@ fn reference_receiver_rejects_a_wrong_proof() {
     receiver.m4(&m3);
 }
 
-/// Both transient `/pair-setup` POSTs carry `X-Apple-HKP: 4`; the receiver
-/// answers 501 to one that doesn't, as pyatv's fake does and shairport-sync's
-/// handler reads nothing from.
-#[test]
-fn transient_pair_setup_sends_the_hkp_header() {
+/// Run a transient pair-setup with `user_agent` against the fake receiver,
+/// returning what the sender got and what the receiver ended with.
+fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<Vec<u8>, String>) {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
     let server = std::thread::spawn(move || {
@@ -85,11 +84,35 @@ fn transient_pair_setup_sends_the_hkp_header() {
         serve_transient_pair_setup(&mut reader, &mut stream)
     });
 
-    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
-    let key = crate::airplay::ap2_session::run_pair_setup(&mut conn)
-        .expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4");
+    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), user_agent).unwrap();
+    let sender = run_pair_setup(&mut conn);
+    (sender, server.join().unwrap())
+}
 
-    assert_eq!(server.join().unwrap().expect("the receiver read both POSTs"), key);
+/// Both transient `/pair-setup` POSTs carry `X-Apple-HKP: 4`; the receiver
+/// answers 501 to one that doesn't, as pyatv's fake does and shairport-sync's
+/// handler reads nothing from.
+#[test]
+fn transient_pair_setup_sends_the_hkp_header() {
+    let (sender, receiver) = pair_with_user_agent(AP2_USER_AGENT);
+    let key = sender.expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4");
+    assert_eq!(receiver.expect("the receiver read both POSTs"), key);
+}
+
+/// An OS 27 receiver answers 403 to the first request of a sender whose
+/// `User-Agent` is not an AirPlay sender's, such as `bae/1 (AirPlay 2)`, and
+/// pairs with one that sends bae's.
+#[test]
+fn an_os_27_receiver_pairs_only_with_an_airplay_senders_user_agent() {
+    let (sender, receiver) = pair_with_user_agent("bae/1 (AirPlay 2)");
+    assert!(
+        matches!(sender, Err(Ap2Error::Rejected { step: PAIR_SETUP_M1, status: 403 })),
+        "{sender:?}"
+    );
+    assert!(receiver.is_err(), "the receiver refused the first POST");
+
+    let (sender, receiver) = pair_with_user_agent(AP2_USER_AGENT);
+    assert_eq!(sender.expect("the receiver accepts bae's User-Agent"), receiver.unwrap());
 }
 
 fn error_reply(state: u8, code: u8) -> Vec<u8> {

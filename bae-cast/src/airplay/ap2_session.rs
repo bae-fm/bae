@@ -35,8 +35,13 @@ use super::tlv8::Tlv8;
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 
-/// The `User-Agent` of an AirPlay 2 session's connections.
-const AP2_USER_AGENT: &str = "bae/1 (AirPlay 2)";
+/// The `User-Agent` of an AirPlay 2 session's connections. HomePod and tvOS
+/// 27 answer 403 to a request whose `User-Agent` is not an AirPlay sender's
+/// (OwnTone issue 2042: `AirPlay/380.20.1` and `iTunes/12` pass, `AirPlay/1.0`
+/// and `owntone/29.3` do not), so bae sends the one OwnTone sends by default
+/// since that issue, which its reporters confirmed on OS 27 receivers. pyatv
+/// sends `AirPlay/550.10`.
+pub(crate) const AP2_USER_AGENT: &str = "AirPlay/999.0.0";
 
 /// The `step` of the rejection of the first transient pair-setup POST: a
 /// receiver that answers it with 470 wants a PIN.

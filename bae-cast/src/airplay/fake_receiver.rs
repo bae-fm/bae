@@ -18,7 +18,7 @@ use std::net::TcpStream;
 use num_bigint::BigUint;
 use sha2::{Digest, Sha512};
 
-use super::rtsp::read_request;
+use super::rtsp::{read_request, ParsedRequest};
 use super::srp::SrpGroup;
 use super::tlv8::{state, tlv_type, Tlv8};
 
@@ -119,6 +119,25 @@ impl SrpServer {
     }
 }
 
+/// The `User-Agent`s HomePod and Apple TV on OS 27 answered with 200 in
+/// OwnTone issue 2042 and its fix; they answered 403 to every other one tried.
+const ACCEPTED_USER_AGENTS: [&str; 3] = ["AirPlay/380.20.1", "AirPlay/999.0.0", "iTunes/12"];
+
+/// Answer `request` with 403, as HomePod and tvOS 27 do, unless its
+/// `User-Agent` is an AirPlay sender's. `step` names the request in the error.
+fn refuse_unless_airplay_sender(
+    request: &ParsedRequest,
+    writer: &mut TcpStream,
+    step: &str,
+) -> Result<(), String> {
+    let user_agent = request.header("User-Agent");
+    if user_agent.is_some_and(|agent| ACCEPTED_USER_AGENTS.contains(&agent)) {
+        return Ok(());
+    }
+    respond(writer, "403 Forbidden", request.cseq(), &[]);
+    Err(format!("{step} with User-Agent {user_agent:?}"))
+}
+
 /// Write one RTSP reply with `status_line` (`200 OK`) and `body`.
 pub(crate) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, body: &[u8]) {
     let mut out =
@@ -143,6 +162,7 @@ pub(crate) fn serve_transient_pair_setup(
             .map_err(|e| format!("reading {step}: {e}"))?
             .ok_or_else(|| format!("connection closed before {step}"))?;
         let cseq = request.cseq().to_string();
+        refuse_unless_airplay_sender(&request, writer, step)?;
         if request.header("X-Apple-HKP") != Some("4") {
             respond(writer, "501 Not Implemented", &cseq, &[]);
             return Err(format!("{step} without X-Apple-HKP: 4"));
