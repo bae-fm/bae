@@ -158,8 +158,11 @@ private struct PinEditor: NSViewRepresentable {
         }
 
         func controlTextDidChange(_ notification: Notification) {
+            // Only the field this coordinator is the delegate of sends it.
             guard let field = notification.object as? NSTextField else {
-                return
+                preconditionFailure(
+                    "A PIN edit came from \(notification.object.debugDescription)"
+                )
             }
             let typed = field.stringValue
             let kept = String(
