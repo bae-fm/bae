@@ -204,10 +204,6 @@ pub struct CastController {
     /// Held across one decision on whether to browse, setting read included,
     /// so the decision made last is made on the last change.
     browsing_decision: tokio::sync::Mutex<()>,
-    /// Whether browsing runs: asked for while casting was on, and neither
-    /// stopped nor turned off since. Changed under the discovery lock; a
-    /// renderer a host reports is taken only while it holds.
-    browsing: AtomicBool,
     /// How many casts and stops have been asked for. A cast is known by the
     /// count its ask made, and moves playback only while the count is still
     /// that: stopping casting, turning it off, or another cast counts past it
@@ -276,7 +272,6 @@ impl CastController {
             discovery: Mutex::new(discovery),
             browsing_asked: Mutex::new(HashSet::new()),
             browsing_decision: tokio::sync::Mutex::new(()),
-            browsing: AtomicBool::new(false),
             asked: tokio::sync::watch::Sender::new(0),
             server: Arc::new(Mutex::new(None)),
             serving,
@@ -473,17 +468,10 @@ impl CastController {
         self.with_discovery(|discovery| {
             if enabled && !self.browsing_asked().is_empty() {
                 discovery.start(&self.diagnostics);
-                self.browsing.store(true, Ordering::Release);
             } else {
-                self.stop_browsing(discovery);
+                discovery.stop();
             }
         });
-    }
-
-    /// End the browse, under the discovery lock.
-    fn stop_browsing(&self, discovery: &mut RendererDiscovery) {
-        self.browsing.store(false, Ordering::Release);
-        discovery.stop();
     }
 
     /// `asker` opened: browse for it. Idempotent, and a place that opens while
@@ -504,24 +492,20 @@ impl CastController {
         self.browsing_asked().remove(&asker);
         self.with_discovery(|discovery| {
             if self.browsing_asked().is_empty() {
-                self.stop_browsing(discovery);
+                discovery.stop();
             }
         });
     }
 
     /// Take a renderer service a test reports, as a host's browser would
-    /// resolve it. Refused while bae is not browsing, which it never is while
-    /// casting is off.
+    /// resolve it. The device source ignores it while bae is not browsing,
+    /// which it never is while casting is off.
     #[cfg(test)]
     pub fn renderer_found(&self, service: ReportedRenderer) {
         // Mapping a service runs over a TXT record as a network would hand
         // it over; one that panics is reported and skipped, and the panic
         // stays inside the lock's hold, so it poisons nothing.
         let reported = self.with_discovery(|discovery| {
-            if !self.browsing.load(Ordering::Acquire) {
-                debug!("reported renderer ignored: bae is not browsing");
-                return Ok(());
-            }
             caught_sync("take a reported renderer", || discovery.report(service))
         });
         if let Err(bug) = reported {
