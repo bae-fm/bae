@@ -24,9 +24,9 @@ Yellow notes beside a row name what the code needs.
 A canvas holds at most 512 files, so the boards are published as two
 canvases, split by page:
 
-- https://claude.ai/artifact/FLmQghVJ24uoT5Ukpe92NR: the welcome, settings,
+- https://claude.ai/artifact/59mGrccWpy4FtzYgdfvpvb: the welcome, settings,
   library, logo and shared pages.
-- https://claude.ai/artifact/UD1cAH7iWgr6927dGF2m4j: the home, loading,
+- https://claude.ai/artifact/3RJUquJJLzUx65cQD6QC4W: the home, loading,
   search, import, storage and explore pages.
 
 Each gets the boards on its pages and the part of `canvas.json` that places
