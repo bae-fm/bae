@@ -301,7 +301,12 @@ actor PreviewReleaseLibrary {
                 }
             },
             setPressingFact: { fact in
-                await session.change { $0.edit.pressing.facts.set(fact) }
+                await session.change {
+                    $0.edit.pressing.facts = bridgeApplyPressingFact(
+                        facts: $0.edit.pressing.facts,
+                        edit: fact
+                    )
+                }
             },
             setAlbumArtists: { assignments in
                 await session.change {
@@ -397,19 +402,5 @@ actor PreviewReleaseEditSession {
     private func endWait() {
         waiting?.resume(returning: nil)
         waiting = nil
-    }
-}
-
-extension BridgePressingFacts {
-    /// Put the value `fact` chooses in place of the one it edits, as the
-    /// preview release editor's draft takes it.
-    fileprivate mutating func set(_ fact: BridgePressingFactEdit) {
-        switch fact {
-        case .area(let area): self.area = area
-        case .media(let media): self.media = media
-        case .status(let status): self.status = status
-        case .packaging(let packaging): self.packaging = packaging
-        case .discogsDetails(let details): discogsDetails = details
-        }
     }
 }
