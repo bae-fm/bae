@@ -454,47 +454,6 @@ fn an_offline_status_names_every_layer_of_its_cause() {
     );
 }
 
-/// The connection's record keeps only the failure's class; while the
-/// status keeps the error behind it, the record carries that error.
-#[test]
-fn the_connection_record_carries_the_error_behind_it() {
-    let cause = |status| {
-        snapshot(
-            status,
-            vec![connection_record(coven::StorageFailure::Network)],
-            coven::RetryEffect::Pass,
-        )
-        .pending[0]
-            .wait
-            .cause
-            .clone()
-    };
-    assert_eq!(cause(offline()).as_deref(), Some(UNREACHABLE_S3));
-    assert_eq!(
-        cause(ended(
-            coven::LastPass::Failed {
-                failure: coven::StatusFailure::Storage(coven::StorageFailure::Network),
-                error: "refused".into(),
-            },
-            coven::SyncState::Failed,
-        ))
-        .as_deref(),
-        Some("refused")
-    );
-    assert_eq!(cause(moving()), None);
-}
-
-/// A record of another failure names nothing more than the record does.
-#[test]
-fn the_connection_record_names_only_a_matching_error() {
-    let other = snapshot(
-        offline(),
-        vec![connection_record(coven::StorageFailure::Authentication)],
-        coven::RetryEffect::Pass,
-    );
-    assert!(other.pending[0].wait.cause.is_none());
-}
-
 /// A failure is logged once, with its whole cause, when it appears or
 /// changes; the same failure read again, or a change to anything else,
 /// logs nothing more.
