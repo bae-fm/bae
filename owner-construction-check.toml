@@ -571,6 +571,9 @@ ExtractionWatch = "ExtractionService"
 # Where one pane tells the identification queue which candidate it shows,
 # held while the pane's read lives.
 ShownCandidate = "IdentificationHandle"
+# The screen's handle on one list's view: the rows on screen it sends the
+# view's task, and the window's rows the task sends back.
+ListViewHandle = "ListView"
 # One request a rate limiter let through, settled against the limiter.
 Admitted = "RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.
@@ -908,6 +911,8 @@ OpenCalls = "LibrarySessions"
     "ImportService::start_reading_tags_through",
     "ImportService::start_with",
 ]
+# Starts a list view's task with the list's reads; its handle stops it.
+"bae-app/src/app_services/list_reads.rs" = ["AppServices::open_list_view"]
 # Starts the identification queue's task; its handle stops it.
 "bae-import/src/handle/identification.rs" = [
     "ImportServiceHandle::start_identification_queue",
@@ -1854,9 +1859,8 @@ frozen = [
 ]
 allowed = [
     { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-bridge/src/screens/lists.rs", item = "ListViewSubscription::cancel", shape = "kept-state", count = 1, reason = "reads through `inner`, the `ListView` that holds the latest answer of its window's and its position's live queries and the rows on screen the app last reported, which a long list's view may hold" },
-    { path = "bae-bridge/src/screens/lists.rs", item = "ListViewSubscription::next", shape = "kept-state", count = 1, reason = "reads through `inner`, the `ListView` that holds the latest answer of its window's and its position's live queries and the rows on screen the app last reported, which a long list's view may hold" },
-    { path = "bae-views/src/list_view.rs", item = "ListView", shape = "kept-state", count = 1, reason = "keeps the rows on screen the app last reported (`visible`), the parameter core sizes and moves the window by; not rows" },
+    { path = "bae-views/src/list_view.rs", item = "State::take", shape = "kept-state", count = 4, reason = "keeps the latest answer of the window's live query and of its position's, when each answers the window last requested, which a long list's view may hold" },
+    { path = "bae-views/src/list_view.rs", item = "State::take_fresh", shape = "kept-state", count = 1, reason = "marks the latest answers of the window's and its position's live queries as sent; a flag over the answers a long list's view may hold, not rows" },
     { path = "bae-views/src/list_view.rs", item = "State::request", shape = "kept-state", count = 5, reason = "replaces the window the view asks for and drops the answers to the window before; the view holds only the latest answer of its window's and its position's live queries, which a long list's view may hold" },
     { path = "bae-views/src/list_view.rs", item = "wanted", shape = "aggregate", count = 1, reason = "counts the rows of the window's latest answer to find its last row and to tell a full window from one that reaches the list's end, which decides where core moves it; no count the screen shows" },
     { path = "bae-views/src/list_view.rs", item = "start_at", shape = "join", count = 1, reason = "takes the sort values of the row at one place in the window's latest answer, where the next window starts; one key of the window's own result, not a join of two reads" },

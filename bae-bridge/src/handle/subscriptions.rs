@@ -42,10 +42,7 @@ impl AppHandle {
             }
         };
         crate::screens::list_view(
-            bae_views::list_view::ListView::new(
-                reads,
-                bae_views::list_view::Visible::new(first, last),
-            ),
+            services.open_list_view(reads, bae_views::list_view::Visible::new(first, last)),
             self.runtime.clone(),
         )
     }

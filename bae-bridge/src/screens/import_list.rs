@@ -57,7 +57,7 @@ impl ImportList {
         last: u64,
     ) -> std::sync::Arc<crate::ListViewSubscription> {
         crate::screens::list_view(
-            bae_views::list_view::ListView::new(
+            self.services.open_list_view(
                 bae_app::import_list_reads(&self.inner),
                 bae_views::list_view::Visible::new(first, last),
             ),

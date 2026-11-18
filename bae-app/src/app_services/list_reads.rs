@@ -143,6 +143,33 @@ impl AppServices {
     }
 }
 
+impl AppServices {
+    /// Open the view of the list `reads` reads, with the rows `visible` on
+    /// screen: the view runs as a task of the library's, and the screen holds
+    /// the handle it returns. The view ends when the handle is cancelled or
+    /// dropped, or the library closes; its handle then answers that it was
+    /// cancelled. A library that has closed starts no view, and a view whose
+    /// task panics ends, the panic reported as a bug.
+    pub fn open_list_view(
+        &self,
+        reads: ListReads,
+        visible: bae_views::list_view::Visible,
+    ) -> bae_views::list_view::ListViewHandle {
+        let stop = bae_library::CancellationToken::new();
+        let (handle, run) = bae_views::list_view::ListView::open(reads, visible, stop.clone());
+        let on_panic = {
+            let stop = stop.clone();
+            move |_reported: bae_util::task_failure::Bug| stop.cancel()
+        };
+        // The only failure is a library that has closed, which starts
+        // nothing.
+        if self.inner.manager.spawn_stoppable_task("list view", stop, run, on_panic).is_err() {
+            handle.cancel();
+        }
+        handle
+    }
+}
+
 /// The reads one list's view opens: `window` opens its live window, from
 /// `services`; `position` opens the live position of a key; and `key_at`
 /// reads the key at a position once.

@@ -10,6 +10,10 @@
 //! hold, after a jump, core finds by offset once. The view holds the latest
 //! answer of the window's live query and of its position's, until each
 //! reruns, and nothing else.
+//!
+//! The view runs as a task of the owner that opens it ([`open`]), which
+//! holds the list's reads. The screen holds a [`ListViewHandle`]: it sends
+//! the rows on screen through it and receives the window's rows.
 
 use crate::{ListRows, ListWindowValue, LiveListPosition, LiveListWindow};
 use bae_store::list_windows::OrderKey;
@@ -17,6 +21,7 @@ use bae_store::live_query::LiveQueryError;
 use bae_store::ListWindow;
 use std::future::Future;
 use std::pin::Pin;
+use tokio::sync::{mpsc, watch};
 use tokio_util::sync::CancellationToken;
 
 /// The rows a screen shows: the positions of its first and last row on
@@ -119,24 +124,19 @@ fn start_at(position: u64, limit: u64, placed: Option<&Placed<'_>>) -> Move {
     }
 }
 
-/// What wakes the view: an answer of one of its reads, or other rows on
-/// screen.
+/// What wakes the view: an answer of one of its reads.
 enum Answer {
     Window(Result<ListWindowValue, LiveQueryError>),
     Position(Result<crate::ListPosition, LiveQueryError>),
-    Moved,
 }
 
 /// One list read for its screen: the window core keeps around the rows on
-/// screen, with the position of its first row.
+/// screen, with the position of its first row. The task [`ListView::open`]
+/// returns runs it; the screen's [`ListViewHandle`] reports the rows on
+/// screen and receives each value.
 pub struct ListView {
     reads: ListReads,
-    /// The rows on screen, as the screen last reported them.
-    visible: std::sync::Mutex<Visible>,
-    /// Wakes a waiting `next` when the screen reports other rows.
-    moved: tokio::sync::Notify,
-    cancellation: CancellationToken,
-    state: tokio::sync::Mutex<State>,
+    state: State,
 }
 
 /// The view's reads and the latest answer of each, for the window last
@@ -152,7 +152,7 @@ struct State {
     /// The position of `request`'s first row: 0 for the list's top, else
     /// the position's answer for its key.
     start: Option<u64>,
-    /// Whether `answer` and `start` changed since `next` last returned them.
+    /// Whether `answer` and `start` changed since the view last sent them.
     fresh: bool,
 }
 
@@ -161,6 +161,19 @@ impl State {
     fn placed(&self) -> Option<Placed<'_>> {
         let answer = self.answer.as_ref()?;
         Some(Placed { window: &answer.window, start: self.start?, keys: &answer.keys })
+    }
+
+    /// The window's rows with the position of its first row, once both
+    /// reads have answered since the view last sent them.
+    fn take_fresh(&mut self) -> Option<ListViewValue> {
+        if !self.fresh {
+            return None;
+        }
+        let (Some(answer), Some(start)) = (&self.answer, self.start) else {
+            return None;
+        };
+        self.fresh = false;
+        Some(ListViewValue { start, rows: answer.rows.clone() })
     }
 
     /// Ask for `window`: the window's read moves to it, and the position's
@@ -192,81 +205,39 @@ impl State {
         self.request = Some(window);
         Ok(())
     }
-}
 
-impl ListView {
-    /// The view of the list `reads` reads, with the rows `visible` on
-    /// screen. It opens its reads on the first `next`.
-    pub fn new(reads: ListReads, visible: Visible) -> Self {
-        Self {
-            reads,
-            visible: std::sync::Mutex::new(visible),
-            moved: tokio::sync::Notify::new(),
-            cancellation: CancellationToken::new(),
-            state: tokio::sync::Mutex::new(State::default()),
-        }
-    }
-
-    /// The screen shows the rows `visible` now.
-    pub fn set_visible(&self, visible: Visible) {
-        *self.visible.lock().expect("list view's rows on screen mutex poisoned") = visible;
-        self.moved.notify_one();
-    }
-
-    /// The window's rows with the position of its first row: the first once
-    /// both reads answer, then one each time either answers again. A failed
-    /// read is answered as its error, and the view goes on.
-    pub async fn next(&self) -> Result<ListViewValue, LiveQueryError> {
-        tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => Err(LiveQueryError::Cancelled),
-            value = self.place_and_read() => value,
-        }
-    }
-
-    async fn place_and_read(&self) -> Result<ListViewValue, LiveQueryError> {
-        let mut state = self.state.lock().await;
-        loop {
-            self.place(&mut state).await?;
-            if state.fresh {
-                if let (Some(answer), Some(start)) = (&state.answer, state.start) {
-                    let value = ListViewValue { start, rows: answer.rows.clone() };
-                    state.fresh = false;
-                    return Ok(value);
+    /// Keep `answer` when it answers the window last requested.
+    fn take(&mut self, answer: Answer) -> Result<(), LiveQueryError> {
+        match answer {
+            Answer::Window(answer) => {
+                let answer = answer?;
+                if self.request.as_ref() == Some(&answer.window) {
+                    self.answer = Some(answer);
+                    self.fresh = true;
                 }
             }
-            match self.answer_or_move(&state).await {
-                Answer::Window(answer) => {
-                    let answer = answer?;
-                    if state.request.as_ref() == Some(&answer.window) {
-                        state.answer = Some(answer);
-                        state.fresh = true;
-                    }
+            Answer::Position(position) => {
+                let position = position?;
+                let asked = self.request.as_ref().and_then(|request| request.from.as_ref());
+                if asked == Some(&position.key) {
+                    self.start = Some(position.rows_before);
+                    self.fresh = true;
                 }
-                Answer::Position(position) => {
-                    let position = position?;
-                    let asked = state.request.as_ref().and_then(|request| request.from.as_ref());
-                    if asked == Some(&position.key) {
-                        state.start = Some(position.rows_before);
-                        state.fresh = true;
-                    }
-                }
-                Answer::Moved => {}
             }
         }
+        Ok(())
     }
 
-    /// The next answer of the window's read or the position's, or the
-    /// screen reporting other rows, whichever comes first.
-    async fn answer_or_move(&self, state: &State) -> Answer {
+    /// The next answer of the window's read or the position's.
+    async fn answer(&self) -> Answer {
         let window = async {
-            match &state.window {
+            match &self.window {
                 Some(read) => read.next().await,
                 None => std::future::pending().await,
             }
         };
         let position = async {
-            match &state.position {
+            match &self.position {
                 Some(read) => read.next().await,
                 None => std::future::pending().await,
             }
@@ -274,19 +245,46 @@ impl ListView {
         tokio::select! {
             answer = window => Answer::Window(answer),
             position = position => Answer::Position(position),
-            () = self.moved.notified() => Answer::Moved,
         }
     }
 
-    /// Move the window where the rows on screen want it, once the window
-    /// last asked for has answered and been placed, or at once when there is
-    /// none yet.
-    async fn place(&self, state: &mut State) -> Result<(), LiveQueryError> {
-        let visible = *self.visible.lock().expect("list view's rows on screen mutex poisoned");
-        if state.request.is_some() && state.placed().is_none() {
+    /// End the view's reads.
+    async fn cancel(&self) {
+        if let Some(read) = &self.window {
+            read.cancel().await;
+        }
+        if let Some(read) = &self.position {
+            read.cancel().await;
+        }
+    }
+}
+
+impl ListView {
+    /// Open the view of the list `reads` reads, with the rows `visible` on
+    /// screen: the handle the screen holds, and the view's task, which its
+    /// owner runs until it returns or `stop` is cancelled. The handle's
+    /// `cancel` cancels `stop`.
+    pub fn open(
+        reads: ListReads,
+        visible: Visible,
+        stop: CancellationToken,
+    ) -> (ListViewHandle, impl Future<Output = ()> + Send + 'static) {
+        let (shown, watched) = watch::channel(visible);
+        let (sent, received) = mpsc::channel(1);
+        let view = ListView { reads, state: State::default() };
+        let handle =
+            ListViewHandle { visible: shown, values: tokio::sync::Mutex::new(received), stop };
+        (handle, view.run(watched, sent))
+    }
+
+    /// Move the window where the rows `visible` on screen want it, once the
+    /// window last asked for has answered and been placed, or at once when
+    /// there is none yet.
+    async fn place(&mut self, visible: Visible) -> Result<(), LiveQueryError> {
+        if self.state.request.is_some() && self.state.placed().is_none() {
             return Ok(());
         }
-        let window = match wanted(visible, state.placed()) {
+        let window = match wanted(visible, self.state.placed()) {
             Move::Stay => return Ok(()),
             Move::To(window) => window,
             Move::Jump { position, limit } => {
@@ -294,19 +292,90 @@ impl ListView {
                 ListWindow { from, limit }
             }
         };
-        state.request(&self.reads, window)
+        self.state.request(&self.reads, window)
     }
 
-    /// End the view's reads and settle a waiting `next`.
-    pub async fn cancel(&self) {
-        self.cancellation.cancel();
-        let state = self.state.lock().await;
-        if let Some(read) = &state.window {
-            read.cancel().await;
+    /// Keep the window around the rows on screen `visible` reports, and send
+    /// `values` the window's rows each time both reads have answered: the
+    /// first once both answer, then one each time either answers again. A
+    /// failed read is sent as its error, and the view goes on. A value the
+    /// screen has not taken yet gives way to a later one. The view ends its
+    /// reads and returns once the screen's handle is gone.
+    async fn run(
+        mut self,
+        mut visible: watch::Receiver<Visible>,
+        values: mpsc::Sender<Result<ListViewValue, LiveQueryError>>,
+    ) {
+        let mut unsent: Option<Result<ListViewValue, LiveQueryError>> = None;
+        loop {
+            let shown = *visible.borrow_and_update();
+            if let Err(error) = self.place(shown).await {
+                unsent = Some(Err(error));
+            }
+            if let Some(value) = self.state.take_fresh() {
+                unsent = Some(Ok(value));
+            }
+            tokio::select! {
+                biased;
+                changed = visible.changed() => {
+                    if changed.is_err() {
+                        break;
+                    }
+                }
+                permit = values.reserve(), if unsent.is_some() => {
+                    let Ok(permit) = permit else { break };
+                    if let Some(value) = unsent.take() {
+                        permit.send(value);
+                    }
+                }
+                answer = self.state.answer() => {
+                    if let Err(error) = self.state.take(answer) {
+                        unsent = Some(Err(error));
+                    }
+                }
+            }
         }
-        if let Some(read) = &state.position {
-            read.cancel().await;
+        self.state.cancel().await;
+    }
+}
+
+/// The screen's handle on one list's view: it reports the rows on screen,
+/// and receives the window's rows. Cancelling it, or dropping it, ends the
+/// view.
+pub struct ListViewHandle {
+    visible: watch::Sender<Visible>,
+    values: tokio::sync::Mutex<mpsc::Receiver<Result<ListViewValue, LiveQueryError>>>,
+    stop: CancellationToken,
+}
+
+impl ListViewHandle {
+    /// The screen shows the rows `visible` now.
+    pub fn set_visible(&self, visible: Visible) {
+        self.visible.send_replace(visible);
+    }
+
+    /// The window's rows with the position of its first row: the first once
+    /// both reads answer, then one each time either answers again. A failed
+    /// read is answered as its error. Once the view has ended, or the handle
+    /// is cancelled, the answer is that it was cancelled.
+    pub async fn next(&self) -> Result<ListViewValue, LiveQueryError> {
+        let mut values = self.values.lock().await;
+        tokio::select! {
+            biased;
+            () = self.stop.cancelled() => Err(LiveQueryError::Cancelled),
+            value = values.recv() => value.unwrap_or(Err(LiveQueryError::Cancelled)),
         }
+    }
+
+    /// End the view, and settle a waiting `next`.
+    pub fn cancel(&self) {
+        self.stop.cancel();
+    }
+}
+
+impl Drop for ListViewHandle {
+    fn drop(&mut self) {
+        self.stop.cancel();
     }
 }
 

@@ -6,15 +6,26 @@ use super::PulledRead;
 use crate::types::{
     BridgeError, BridgeList, BridgeListCount, BridgeListCountExtra, BridgeListRows, BridgeListView,
 };
-use bae_views::list_view::{ListView, ListViewValue, Visible};
+use bae_views::list_view::{ListViewHandle, ListViewValue, Visible};
 
-live_query_read!(ListView => ListViewValue);
+impl PulledRead for ListViewHandle {
+    type Value = ListViewValue;
+
+    async fn next(&self) -> Result<ListViewValue, BridgeError> {
+        ListViewHandle::next(self).await.map_err(BridgeError::from)
+    }
+
+    async fn cancel(&self) -> Result<(), BridgeError> {
+        ListViewHandle::cancel(self);
+        Ok(())
+    }
+}
 
 pulled_read! {
     /// One list's view, read live: the window core keeps around the rows on
     /// screen, with the position of its first row. `set_visible` tells core
     /// which rows the screen shows, and core moves and sizes the window.
-    ListViewSubscription: ListView => BridgeListView,
+    ListViewSubscription: ListViewHandle => BridgeListView,
     converted by BridgeListView::from_core,
     built by list_view
 }
