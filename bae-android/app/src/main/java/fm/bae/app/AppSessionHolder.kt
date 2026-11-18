@@ -550,22 +550,39 @@ object AppSessionHolder {
                 openPrepared(library, app.diagnostics, context, onScreen)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: BridgeException) {
+            } catch (e: BridgeOpenException) {
                 logger.error("opening the restored library failed", e)
-                val shown = context.displayError(e)
-                onScreen(
-                    if (shown == null) {
-                        openOrOnboarding()
-                    } else {
-                        AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
-                    },
-                )
+                showFailedBootstrappedOpen(context, e.failure, onScreen)
+                return
+            } catch (e: BridgeException) {
+                // The library opened, and reading its first values failed.
+                logger.error("opening the restored library failed", e)
+                showFailedBootstrappedOpen(context, e, onScreen)
                 return
             }
         refreshLibraries(app.host, context)
         notice?.let { session.messages.show(it) }
         session.messages.show(failure?.let(context::displayError))
         onScreen(AppScreen.LibraryOpen(session))
+    }
+
+    /**
+     * Show [failure], why opening what a bootstrap produced failed, or the library already open or onboarding when
+     * core says the failure has nothing to show.
+     */
+    private fun showFailedBootstrappedOpen(
+        context: Context,
+        failure: BridgeException,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        val shown = context.displayError(failure)
+        onScreen(
+            if (shown == null) {
+                openOrOnboarding()
+            } else {
+                AppScreen.Failed(ScreenFailure(FailedStep.LIBRARY_OPEN, shown))
+            },
+        )
     }
 
     private suspend fun openPrepared(

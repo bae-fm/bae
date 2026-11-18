@@ -112,7 +112,15 @@ impl BridgeHost {
             .diagnostics
             .blocking("start the new library", move || created.open(false))
             .await
-            .map_err(BridgeError::unfinished)??;
+            .map_err(BridgeError::unfinished)?
+            .map_err(|failed| match failed {
+                // The dev reset only reports why the new library didn't start.
+                crate::BridgeOpenError::ResetFromCloud { error }
+                | crate::BridgeOpenError::ReplacementUnfinished { error, .. }
+                | crate::BridgeOpenError::DeletionUnfinished { error }
+                | crate::BridgeOpenError::KeychainLocked { error }
+                | crate::BridgeOpenError::Failed { error } => error,
+            })?;
         let set_up = self.set_up_dev_library(&app, profile, steps).await;
         let closing = app.clone();
         let closed = self

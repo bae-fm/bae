@@ -191,13 +191,18 @@ impl OpenedLibrary {
     }
 
     /// Open the library on the store, which the library then owns. Once one
-    /// open has, the store is no longer this object's to open again.
-    pub fn open(&self, restore_playback: bool) -> Result<Arc<crate::AppHandle>, BridgeError> {
+    /// open has, the store is no longer this object's to open again. A failed
+    /// open returns the `BridgeOpenError` case that names what the app offers
+    /// next, as an open by id does.
+    pub fn open(
+        &self,
+        restore_playback: bool,
+    ) -> Result<Arc<crate::AppHandle>, crate::BridgeOpenError> {
         let mut held = self.handle.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let handle = held.as_ref().ok_or_else(|| {
-            BridgeError::from(bae_library::LibraryError::Internal(
+        let handle = held.as_ref().ok_or_else(|| crate::BridgeOpenError::Failed {
+            error: BridgeError::from(bae_library::LibraryError::Internal(
                 "this library was already opened".to_string(),
-            ))
+            )),
         })?;
         let opened = self.host.open_prepared(handle.clone(), restore_playback)?;
         *held = None;

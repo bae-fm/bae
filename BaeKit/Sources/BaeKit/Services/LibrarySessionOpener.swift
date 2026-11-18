@@ -106,28 +106,17 @@ public final class LibrarySessionOpener<
             catch is CancellationError {
                 onOutcome(.superseded)
             }
+            catch BridgeOpenError.KeychainLocked {
+                // Core fails every open, by id or of what a create, restore
+                // or reset returned, this way while the keychain is locked;
+                // the opener tries again once the person unlocks it.
+                onOutcome(.keychainLocked)
+            }
             catch {
-                if Self.keychainLocked(error) {
-                    onOutcome(.keychainLocked)
-                }
-                else {
-                    onOutcome(.failed(error))
-                }
+                onOutcome(.failed(error))
             }
         }
     }
 
     public func cancel() { slot.cancel() }
-
-    /// Whether `error` says the keychain is locked now, so the opener tries
-    /// again after the person unlocks the keychain. Core fails an open by id
-    /// as `BridgeOpenError.KeychainLocked`. Opening what a create, restore or
-    /// reset returned fails with a `BridgeError` whose category says so.
-    private static func keychainLocked(_ error: Error) -> Bool {
-        switch error {
-        case BridgeOpenError.KeychainLocked: true
-        case BridgeError.Diagnostic(.keyringLocked, _): true
-        default: false
-        }
-    }
 }

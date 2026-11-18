@@ -6191,7 +6191,8 @@ release's or track's id as UTF-8, or a candidate's key.
   keychain refused the library's key for now: the Mac shows the keychain
   screen and opens the library again once the person unlocks the keychain,
   and Android shows the failed open with *Retry*), or `Failed`. Each carries the
-  `BridgeError` it shows.
+  `BridgeError` it shows. Starting the library on the store a create, restore,
+  join or reset handed back fails with the same cases.
 - **Async calls** run on the library's own runtime. A Swift task cancelled
   mid-call cancels the Rust work it started. A call that panics fails with an
   internal error and is reported as a bug; one that must finish after its

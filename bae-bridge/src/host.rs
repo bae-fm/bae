@@ -45,23 +45,30 @@ impl Drop for BridgeHost {
 }
 
 impl BridgeHost {
+    /// Bootstrap the library on `handle`, a store a create, restore, join or
+    /// device reset left open. A bootstrap failure ships `app_start_failed`
+    /// before the error returns as the `BridgeOpenError` case that names what
+    /// the app offers next, as an open by id's does.
     pub(crate) fn open_prepared(
         self: &Arc<Self>,
         handle: coven::CovenHandle,
         restore: bool,
-    ) -> Result<Arc<crate::AppHandle>, BridgeError> {
-        self.opened(bae_app::bootstrap_prepared(
-            self.app_dir.clone(),
-            handle,
-            bae_playback::POSITION_REPORT_INTERVAL_MS,
-            restore,
-            bae_app::PlaybackOutput::System(self.audio_focus()),
-            self.diagnostics.clone(),
-            self.clock.clone(),
-            self.files.clone(),
-            self.ids.clone(),
-            start_handle(self.clone(), self.diagnostics.clone()),
-        ))
+    ) -> Result<Arc<crate::AppHandle>, BridgeOpenError> {
+        self.opened(
+            bae_app::bootstrap_prepared(
+                self.app_dir.clone(),
+                handle,
+                bae_playback::POSITION_REPORT_INTERVAL_MS,
+                restore,
+                bae_app::PlaybackOutput::System(self.audio_focus()),
+                self.diagnostics.clone(),
+                self.clock.clone(),
+                self.files.clone(),
+                self.ids.clone(),
+                start_handle(self.clone(), self.diagnostics.clone()),
+            )
+            .map_err(OpenFailure::Failed),
+        )
     }
 
     /// Bootstrap the library `library_id` with this host's sink, its open's
@@ -74,7 +81,7 @@ impl BridgeHost {
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
     ) -> Result<Arc<AppHandle>, BridgeOpenError> {
-        self.opened_registered(bootstrap(
+        self.opened(bootstrap(
             self.app_dir.clone(),
             library_id,
             bae_playback::POSITION_REPORT_INTERVAL_MS,
@@ -101,7 +108,7 @@ impl BridgeHost {
         restore_playback: bool,
         opening: &crate::BridgeLibraryOpening,
     ) -> Result<Arc<AppHandle>, BridgeOpenError> {
-        self.opened_registered(bae_app::bootstrap_on_fixture(
+        self.opened(bae_app::bootstrap_on_fixture(
             fixture,
             self.app_dir.clone(),
             library_id,
@@ -119,22 +126,10 @@ impl BridgeHost {
         ))
     }
 
-    /// The handle a bootstrap of a store already open built, or, after this
-    /// host ships `app_start_failed`, the bootstrap's failure.
+    /// The handle an open built, or, after this host ships
+    /// `app_start_failed`, the `BridgeOpenError` case for its failure that
+    /// names what the app offers next.
     fn opened(
-        &self,
-        bootstrapped: Result<AppHandle, BootstrapError>,
-    ) -> Result<Arc<AppHandle>, BridgeError> {
-        bootstrapped.map(Arc::new).map_err(|error| {
-            self.start_failed(&error);
-            bootstrap_error_to_bridge(error)
-        })
-    }
-
-    /// The handle an open of a registered library built, or, after this host
-    /// ships `app_start_failed`, the `BridgeOpenError` case for its failure
-    /// that names what the app offers next.
-    fn opened_registered(
         &self,
         bootstrapped: Result<AppHandle, OpenFailure>,
     ) -> Result<Arc<AppHandle>, BridgeOpenError> {
