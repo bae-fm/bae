@@ -546,6 +546,7 @@ fn produced_keys() -> Vec<String> {
         BridgeSetupStep::FinishingRemovals,
         BridgeSetupStep::RemovingLibraries,
         BridgeSetupStep::ForgettingRestoreCodes,
+        BridgeSetupStep::ForgettingDeviceSecrets,
         BridgeSetupStep::ClearingAppData,
         BridgeSetupStep::CreatingLibrary,
         BridgeSetupStep::SettingUpLibrary,

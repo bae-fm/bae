@@ -37,8 +37,9 @@ fn the_profile_crosses_with_its_bucket() {
     assert_eq!(read.sync_config.bucket, "bucket-name");
 }
 
-/// A dev reset removes every library, empties bae's directory, creates the
-/// profile's library and sets it up, writing each step as it starts; the
+/// A dev reset removes every library, deletes this device's secrets, empties
+/// bae's directory, creates the profile's library and sets it up, writing
+/// each step as it starts; the
 /// first failure, here storage that refuses the connection, stops it and is
 /// returned, with the new library closed. Storage's steps, as coven reports
 /// them, follow Connecting storage on the same stream.
@@ -60,6 +61,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             ))
             .unwrap();
     }
+    host.set_device_secret("a speaker", "its pairing");
     let stray = root.path().join(".bae").join("stray-file");
     std::fs::write(&stray, "left by an earlier run").unwrap();
     let setup = crate::BridgeLibrarySetup::new(host.clone());
@@ -98,6 +100,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             step(Step::FinishingRemovals, 0, 0),
             step(Step::RemovingLibraries, 0, 2),
             step(Step::RemovingLibraries, 1, 2),
+            step(Step::ForgettingDeviceSecrets, 0, 0),
             step(Step::ClearingAppData, 0, 0),
             step(Step::CreatingLibrary, 0, 0),
             step(Step::SettingUpLibrary, 0, 0),
@@ -113,6 +116,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             None,
         ]
     );
+    assert_eq!(host.device_secret("a speaker"), None, "the device's secrets went");
     assert!(!stray.exists(), "bae's directory was emptied");
     let libraries = caller.block_on(host.clone().list_libraries()).unwrap().libraries;
     assert_eq!(

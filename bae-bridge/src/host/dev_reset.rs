@@ -10,7 +10,8 @@ impl BridgeHost {
     /// before any library opens; returns the new library's id, for the app to
     /// open. Every library is removed from this device without opening it:
     /// its directory and its store keys go, and its saved restore code is
-    /// deleted. Then bae's directory is emptied, and the library is created,
+    /// deleted. Then this device's own secrets, its pairings with speakers,
+    /// are deleted, bae's directory is emptied, and the library is created,
     /// started, given the profile's preferences, connected to its storage and
     /// given the Discogs key, then closed. Each step is written into
     /// `setup`'s stream, counted where it can be; the first failure stops the
@@ -83,6 +84,12 @@ impl BridgeHost {
             tracing::info!(library = %store, "dev reset: deleting a saved restore code");
             self.forget_saved_restore_code_now(store).await?;
         }
+
+        steps.uncounted(Step::ForgettingDeviceSecrets);
+        tracing::info!("dev reset: deleting this device's secrets");
+        self.coven.delete_device_secrets().map_err(|error| {
+            BridgeError::categorized(bae_diagnostics::key_category(&error), error)
+        })?;
 
         steps.uncounted(Step::ClearingAppData);
         tracing::info!("dev reset: emptying bae's directory");

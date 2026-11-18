@@ -175,6 +175,7 @@ impl BridgeSetupStep {
             Self::FinishingRemovals => "core.library.setup_step.finishing_removals",
             Self::RemovingLibraries => "core.library.setup_step.removing_libraries",
             Self::ForgettingRestoreCodes => "core.library.setup_step.forgetting_restore_codes",
+            Self::ForgettingDeviceSecrets => "core.library.setup_step.forgetting_device_secrets",
             Self::ClearingAppData => "core.library.setup_step.clearing_app_data",
             Self::CreatingLibrary => "core.library.setup_step.creating_library",
             Self::SettingUpLibrary => "core.library.setup_step.setting_up_library",
@@ -193,6 +194,8 @@ pub enum BridgeSetupStep {
     RemovingLibraries,
     /// Deleting saved restore codes, counted by code.
     ForgettingRestoreCodes,
+    /// Deleting this device's own secrets, its pairings with speakers.
+    ForgettingDeviceSecrets,
     /// Deleting bae's own files on this device.
     ClearingAppData,
     /// Creating a library.

@@ -13,7 +13,8 @@ pub struct BridgeHost {
     /// at launch.
     diagnostics: Diagnostics,
     app_dir: bae_app_dir::AppDir,
-    /// This device's libraries as coven keeps them, under `app_dir`.
+    /// This device's libraries and its own secrets as coven keeps them,
+    /// under `app_dir`.
     coven: coven::Coven,
     /// The wall clock every library this host builds or opens reads, and the
     /// ids that clock times: one pair for the host and each of its libraries.
@@ -775,6 +776,19 @@ fn open_failure_to_bridge(failure: OpenFailure) -> BridgeOpenError {
         OpenFailure::Failed(error) => {
             BridgeOpenError::Failed { error: bootstrap_error_to_bridge(error) }
         }
+    }
+}
+
+/// This device's own secrets, as the dev reset's test sets one and reads it
+/// back.
+#[cfg(all(test, feature = "dev-reset", unix, desktop))]
+impl BridgeHost {
+    pub(crate) fn set_device_secret(&self, name: &str, value: &str) {
+        self.coven.set_device_secret(name, value).expect("the test keychain keeps it");
+    }
+
+    pub(crate) fn device_secret(&self, name: &str) -> Option<String> {
+        self.coven.device_secret(name).expect("the test keychain reads it")
     }
 }
 

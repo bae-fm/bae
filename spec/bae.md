@@ -5286,9 +5286,10 @@ report their steps the same way: a restore or a join reports where it stands
 checks next, loading, or the records it waits on), and creating a library
 reports its one step. The debug Mac app's dev reset reports finishing earlier
 removals, removing each library on this device (counted by library), deleting
-their saved restore codes (counted by code), deleting bae's files on this
-device, creating the profile's library, setting it up, and connecting it to
-its storage, and the first step that fails stops it. The apps show the step's
+their saved restore codes (counted by code), deleting this device's pairings
+with speakers, deleting bae's files on this device, creating the profile's
+library, setting it up, and connecting it to its storage, and the first step
+that fails stops it. The apps show the step's
 name over a bar, never a bare spinner: the bar fills as the step's units are
 done, and moves without a count for a step of no units and for each step of a
 storage setup other than loading.
