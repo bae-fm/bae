@@ -13,7 +13,7 @@ struct PreviewPickedRelease {
 }
 
 extension PreviewData {
-    private static let previewSourceAudioFormat = BridgeAudioFormat(
+    static let previewSourceAudioFormat = BridgeAudioFormat(
         codec: "FLAC",
         sampleRateHz: 44_100,
         bitsPerSample: 16,

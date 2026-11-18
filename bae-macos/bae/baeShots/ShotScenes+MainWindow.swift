@@ -10,6 +10,13 @@ extension ShotScenes {
     /// otherwise. The
     /// point of top padding keeps `ignoresSafeArea` from sliding the bar
     /// under the canvas's fake chrome.
+    ///
+    /// The Import section reads `importScene`'s store and lists, with
+    /// `importSelection` as the selected rows (unless `importListSlot`
+    /// stands in, with its own), nothing in flight for any candidate, and
+    /// its covers from `images`; `releaseEditor`, `outbox` and
+    /// `importPercents` stand in for the ones a shot of the Import section
+    /// states.
     static func libraryWindow(
         uiStore: UiStore,
         backing: (library: Library, session: LibraryBrowseSession),
@@ -18,11 +25,18 @@ extension ShotScenes {
         playbackStore: PlaybackStore = PlaybackStore(),
         castStore: CastStore = CastStore(),
         importListSlot: ImportListSlot? = nil,
+        importScene: ImportPreviewFixture = PreviewData.importTabScene(),
+        importSelection: ImportSelection = ImportSelection(),
+        images: ImageStore? = nil,
+        releaseEditor: ReleaseEditor? = nil,
+        outbox: OutboxStore? = nil,
+        importPercents: LatestStream<UInt32>? = nil,
         projections: LibraryProjectionStore? = nil,
         size: CGSize = CGSize(width: 1280, height: 800)
     ) -> some View {
-        let importScene = PreviewData.importTabScene()
-        let slot = importListSlot ?? importScene.slot(uiStore: uiStore)
+        let slot =
+            importListSlot
+            ?? importScene.slot(uiStore: uiStore, selection: importSelection)
         return MacMainWindowContainer()
             .environment(backing.library)
             .environment(backing.session)
@@ -38,6 +52,7 @@ extension ShotScenes {
             )
             .environment(slot)
             .environment(slot.selection)
+            .environment(\.heldCandidateRuntimes, [:])
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
@@ -59,10 +74,31 @@ extension ShotScenes {
                     castEnabled: true
                 )
             )
+            .environmentIfGiven(images)
+            .environmentIfGiven(releaseEditor)
+            .environmentIfGiven(outbox)
+            .environment(\.importPercents, importPercents)
             .albumDetailPreviewEnvironment()
             .mainWindowPreviewEnvironment()
             .padding(.top, 1)
             .frame(width: size.width, height: size.height)
             .windowBackground()
+    }
+}
+
+extension View {
+    /// `object` in the environment when a shot gives one; otherwise nothing
+    /// is set here, so the values an enclosing view or the preview
+    /// environment sets stay.
+    @ViewBuilder
+    fileprivate func environmentIfGiven<Object: AnyObject & Observable>(
+        _ object: Object?
+    ) -> some View {
+        if let object {
+            environment(object)
+        }
+        else {
+            self
+        }
     }
 }

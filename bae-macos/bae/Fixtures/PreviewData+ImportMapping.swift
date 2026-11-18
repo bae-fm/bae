@@ -336,17 +336,21 @@ extension PreviewData {
         )
     }
 
-    /// An untouched session opened on `presentation`.
+    /// A session opened on `presentation`, at `section` of Find online,
+    /// with `artist` and `album` typed in its general search.
     static func paneSession(
-        presentation: BridgeMetadataPresentation
+        presentation: BridgeMetadataPresentation,
+        section: BridgeFindOnlineSection = .automatic,
+        artist: String = "",
+        album: String = ""
     ) -> BridgeCandidateSession {
         BridgeCandidateSession(
             presentation: presentation,
-            findOnlineSection: .automatic,
+            findOnlineSection: section,
             search: BridgeSearchForm(
                 tab: .general,
-                artist: "",
-                album: "",
+                artist: artist,
+                album: album,
                 catalog: "",
                 barcode: ""
             ),
@@ -355,8 +359,9 @@ extension PreviewData {
     }
 
     /// A candidate as the per-candidate read answers for it: the folder,
-    /// where the queue places it, and everything the pane draws. The
-    /// pane holds none of it — this is the one value it renders from.
+    /// where the queue places it, what runs for it, and everything the pane
+    /// draws. The pane holds none of it — this is the one value it renders
+    /// from.
     @MainActor
     static func paneCandidate(
         folder: BridgeFolderCandidate,
@@ -366,41 +371,52 @@ extension PreviewData {
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
-        presentation: BridgeMetadataPresentation = .draft
+        presentation: BridgeMetadataPresentation = .draft,
+        session: BridgeCandidateSession? = nil,
+        placement: BridgeCandidatePanePlacement = .pending(
+            folderCheck: nil,
+            records: []
+        ),
+        live: BridgeCandidateLiveState? = nil,
+        importStatus: BridgeCandidateImportStatus? = nil,
+        libraryStatus: BridgeLibraryStatus? = nil,
+        albumArtistStanding: BridgeArtistFieldStanding? = nil
     ) -> Candidate {
         Candidate(
             detail: BridgeImportCandidateDetail(
                 candidate: folder,
                 partCount: 0,
                 actionable: true,
-                placement: .pending(folderCheck: nil, records: []),
-                live: BridgeCandidateLiveState(
-                    identifying: nil,
-                    import: nil,
-                    actions: (metadataProvenance == nil
-                        && edit.albumTitle.isEmpty ? [] : [.import])
-                        + [
-                            .identify, .resetToFileMetadata,
-                            .clearMetadata, .skip, .revealFolder,
-                        ],
-                    standing: .notLookedUp,
-                    badge: nil
-                ),
-                importStatus: nil,
+                placement: placement,
+                live: live
+                    ?? BridgeCandidateLiveState(
+                        identifying: nil,
+                        import: nil,
+                        actions: (metadataProvenance == nil
+                            && edit.albumTitle.isEmpty ? [] : [.import])
+                            + [
+                                .identify, .resetToFileMetadata,
+                                .clearMetadata, .skip, .revealFolder,
+                            ],
+                        standing: .notLookedUp,
+                        badge: nil
+                    ),
+                importStatus: importStatus,
                 signals: nil,
                 stage: .drafting(
                     draft: BridgeCandidateDraftPane(
-                        pickedLibraryStatus: nil,
+                        pickedLibraryStatus: libraryStatus,
                         album: .new,
                         metadataDraft: edit,
-                        albumArtistStanding: nil,
+                        albumArtistStanding: albumArtistStanding,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,
                         releaseLink: releaseLink,
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
-                        session: paneSession(presentation: presentation)
+                        session: session
+                            ?? paneSession(presentation: presentation)
                     )
                 )
             )
