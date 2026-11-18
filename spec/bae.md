@@ -3933,9 +3933,10 @@ attention*, one row each, a line between rows: the app's own problems (the
 sign-in settings it can't read; on macOS a library that failed to open while
 another stays open), each its title alone, saying what failed; a failure to read sync's state;
 sync's failure, with *Open sync settings*, which closes the panel and opens the
-Sync page. A file that can't move or a change that can't go out shows where the
-person can retry or cancel it, on its release in Storage Manager or in its
-change box, never in the panel. Nothing in the panel retries. A row shows no
+Sync page. A file that can't move shows where the person can retry or cancel it, on
+its release in Storage Manager, and a change that can't go out shows in its
+change box, which offers *Dismiss* once the change has ended and no retry,
+never in the panel. Nothing in the panel retries. A row shows no
 error: clicking it closes the panel and opens the alert with what to do and the
 causes (§9.6); on Android a tap closes the sheet and opens a dialog with the
 same words and causes. Each problem has an × that takes it out of the panel,
