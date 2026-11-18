@@ -203,17 +203,23 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
         pinnedStrip.forget()
     }
 
-    /// Tell the table the heights of the rows the list's view delivered: a
-    /// header's row is shorter than a release's, and a row's height is known
-    /// only once its page has landed. A row past the view's window keeps the
-    /// height the table last took for it until the window holds it again.
-    /// The row on top stays where it is on screen as the heights above it
-    /// change.
+    /// Tell the table of the rows the list's view delivered whose height in
+    /// the table is not the height their row needs: a header's row is
+    /// shorter than a release's, and a row's height is known only once its
+    /// page has landed. A row past the view's window keeps the height the
+    /// table last laid it out at until the window holds it again. The row on
+    /// top stays where it is on screen as the heights above it change.
     private func noteHeights(in tableView: ImportCandidateTableView) {
         guard let delivered = list.delivered else { return }
         let end = min(delivered.start + delivered.rows.count, rowCount)
-        guard delivered.start < end else { return }
-        let rows = IndexSet(integersIn: delivered.start..<end)
+        var rows = IndexSet()
+        for row in delivered.start..<max(delivered.start, end)
+        where tableView.rect(ofRow: row).height
+            != height(ofRow: row)
+        {
+            rows.insert(row)
+        }
+        guard !rows.isEmpty else { return }
         guard let clipView = scrollView?.contentView, let top = topRow else {
             tableView.noteHeightOfRows(withIndexesChanged: rows)
             return
@@ -323,6 +329,12 @@ extension ImportCandidateTableCoordinator {
     /// A header is its own, shorter height; every other row is one height,
     /// where the table would give a group row the shorter height itself.
     func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
+        height(ofRow: row)
+    }
+
+    /// The height the row at `row` needs: a header's, once its page has
+    /// landed, else a release's.
+    private func height(ofRow row: Int) -> CGFloat {
         if case .groupHeader = item(at: row) {
             return ImportCandidateTableLayout.headerRowHeight
         }
