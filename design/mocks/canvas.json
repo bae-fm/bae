@@ -3827,7 +3827,7 @@
    "x": 2820,
    "y": 21244
   },
-  "android.library.artist.merge.confirm.dc.html": {
+  "android.library.artist.merge-confirm.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Artist: merge, which name stays",
@@ -3859,7 +3859,7 @@
    "x": 6428,
    "y": 21244
   },
-  "mac.library.artist.merge.confirm.dc.html": {
+  "mac.library.artist.merge-confirm.dc.html": {
    "h": 760,
    "page": "home",
    "title": "macOS: Merge an artist: which name stays",
@@ -4283,7 +4283,7 @@
    "x": 1968,
    "y": 6828
   },
-  "mac.settings.sync.s3-replace-key.checking.dc.html": {
+  "mac.settings.sync.s3-replace-key-checking.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: S3, replace key, checking",
@@ -4291,7 +4291,7 @@
    "x": 11240,
    "y": 7652
   },
-  "mac.settings.sync.s3-replace-key.filled.dc.html": {
+  "mac.settings.sync.s3-replace-key-filled.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: S3, replace key, filled",
@@ -4307,7 +4307,7 @@
    "x": 11668,
    "y": 8652
   },
-  "mac.settings.sync.s3-replace-key.refused.dc.html": {
+  "mac.settings.sync.s3-replace-key-refused.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: S3, replace key, refused",
@@ -4315,7 +4315,7 @@
    "x": 12010,
    "y": 7652
   },
-  "android.settings.sync.s3-replace-key.filled.dc.html": {
+  "android.settings.sync.s3-replace-key-filled.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: S3, replace key, filled",
@@ -4331,7 +4331,7 @@
    "x": 12780,
    "y": 7652
   },
-  "mac.settings.sync.signed-out-s3.sign-in.dc.html": {
+  "mac.settings.sync.signed-out-s3-sign-in.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: signed out (S3), sign in",
@@ -4339,7 +4339,7 @@
    "x": 13550,
    "y": 7652
   },
-  "android.settings.sync.s3-replace-key.empty.dc.html": {
+  "android.settings.sync.s3-replace-key-empty.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: S3, replace key, empty",
@@ -4347,7 +4347,7 @@
    "x": 9700,
    "y": 8652
   },
-  "android.settings.sync.signed-out-s3.sign-in.dc.html": {
+  "android.settings.sync.signed-out-s3-sign-in.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: signed out (S3), sign in",
@@ -4355,7 +4355,7 @@
    "x": 12160,
    "y": 8652
   },
-  "android.settings.sync.s3-replace-key.refused.dc.html": {
+  "android.settings.sync.s3-replace-key-refused.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: S3, replace key, refused",
@@ -4371,7 +4371,7 @@
    "x": 540,
    "y": 2300
   },
-  "mac.settings.sync.s3-replace-key.empty.dc.html": {
+  "mac.settings.sync.s3-replace-key-empty.dc.html": {
    "h": 600,
    "page": "library",
    "title": "macOS: Sync: S3, replace key, empty",
@@ -4403,7 +4403,7 @@
    "x": 1270,
    "y": 2300
   },
-  "android.settings.sync.s3-replace-key.checking.dc.html": {
+  "android.settings.sync.s3-replace-key-checking.dc.html": {
    "h": 916,
    "page": "library",
    "title": "Sync: S3, replace key, checking",
@@ -6143,18 +6143,18 @@
   "mac.settings.sync.signed-out-dropbox.dc.html",
   "mac.settings.sync.signed-out-icloud.dc.html",
   "mac.settings.sync.signed-out-s3.dc.html",
-  "android.settings.sync.s3-replace-key.empty.dc.html",
-  "android.settings.sync.s3-replace-key.filled.dc.html",
-  "android.settings.sync.s3-replace-key.checking.dc.html",
-  "android.settings.sync.s3-replace-key.refused.dc.html",
+  "android.settings.sync.s3-replace-key-empty.dc.html",
+  "android.settings.sync.s3-replace-key-filled.dc.html",
+  "android.settings.sync.s3-replace-key-checking.dc.html",
+  "android.settings.sync.s3-replace-key-refused.dc.html",
   "android.settings.sync.s3-key-replaced.dc.html",
-  "android.settings.sync.signed-out-s3.sign-in.dc.html",
-  "mac.settings.sync.s3-replace-key.empty.dc.html",
-  "mac.settings.sync.s3-replace-key.filled.dc.html",
-  "mac.settings.sync.s3-replace-key.checking.dc.html",
-  "mac.settings.sync.s3-replace-key.refused.dc.html",
+  "android.settings.sync.signed-out-s3-sign-in.dc.html",
+  "mac.settings.sync.s3-replace-key-empty.dc.html",
+  "mac.settings.sync.s3-replace-key-filled.dc.html",
+  "mac.settings.sync.s3-replace-key-checking.dc.html",
+  "mac.settings.sync.s3-replace-key-refused.dc.html",
   "mac.settings.sync.s3-key-replaced.dc.html",
-  "mac.settings.sync.signed-out-s3.sign-in.dc.html",
+  "mac.settings.sync.signed-out-s3-sign-in.dc.html",
   "mac.parts.s3-key-fields.dc.html",
   "mac.parts.s3-cloud-home.dc.html",
   "android.parts.s3-key-fields.dc.html",
@@ -6512,11 +6512,11 @@
   "android.library.artist.menu.dc.html",
   "android.library.artist.edit.dc.html",
   "android.library.artist.merge.dc.html",
-  "android.library.artist.merge.confirm.dc.html",
+  "android.library.artist.merge-confirm.dc.html",
   "mac.library.artist.menu.dc.html",
   "mac.library.artist.edit.dc.html",
   "mac.library.artist.merge.dc.html",
-  "mac.library.artist.merge.confirm.dc.html",
+  "mac.library.artist.merge-confirm.dc.html",
   "mac.playlists.new-playlist.everyone.dc.html",
   "android.playlists.new-playlist.dc.html",
   "android.playlists.menu.dc.html",
