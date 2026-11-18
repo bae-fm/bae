@@ -2,8 +2,6 @@ use super::*;
 use crate::test_fixtures::labels::{add_label, label, library, placed, read_labels, stored_label};
 use bae_store::test_fixtures::{empty_db, fixed_now, row_count, temp_db_hearing_bugs};
 
-const AT: &str = "2026-01-15T12:00:00+00:00";
-
 fn artist(seed: &str, discogs: Option<&str>, musicbrainz: Option<&str>) -> DbArtist {
     DbArtist {
         id: bae_util::test_ids::test_uuid(seed),
@@ -35,7 +33,6 @@ async fn merge_artist(
                     discogs_artist_id: Some("discogs-1"),
                     musicbrainz_artist_id: Some("mb-1"),
                     sort_name: sort_name.as_deref(),
-                    at: AT,
                 },
             )
         })
@@ -235,7 +232,6 @@ async fn a_merge_chain_ending_at_the_absorbed_artist_ends_at_the_survivor() {
                 discogs_artist_id: Some("discogs-earlier"),
                 musicbrainz_artist_id: Some("mb-1"),
                 sort_name: None,
-                at: AT,
             },
         )
     })
@@ -374,7 +370,6 @@ async fn merge_label(store: &Store, survivor: &str, absorbed: &str) -> Result<()
                     absorbed: &absorbed,
                     discogs_label_id: Some("7190"),
                     musicbrainz_label_id: Some("mb-label"),
-                    at: AT,
                 },
             )
         })

@@ -16,8 +16,6 @@ pub(crate) struct ArtistMerge<'a> {
     pub musicbrainz_artist_id: Option<&'a str>,
     /// The sort name the survivor takes where it has none.
     pub sort_name: Option<&'a str>,
-    /// When the merge is recorded, as RFC 3339.
-    pub at: &'a str,
 }
 
 /// Merge `merge.absorbed` into `merge.survivor` inside the caller's write.
@@ -56,8 +54,8 @@ pub(crate) fn merge_artist_on(
         params![merge.survivor, merge.absorbed],
     )?;
     conn.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?1, ?2, ?3)",
-        params![merge.absorbed, merge.survivor, merge.at],
+        "INSERT INTO artist_merges (id, into_artist_id) VALUES (?1, ?2)",
+        params![merge.absorbed, merge.survivor],
     )?;
     Ok(())
 }
@@ -69,8 +67,6 @@ pub(crate) struct LabelMerge<'a> {
     pub absorbed: &'a str,
     pub discogs_label_id: Option<&'a str>,
     pub musicbrainz_label_id: Option<&'a str>,
-    /// When the merge is recorded, as RFC 3339.
-    pub at: &'a str,
 }
 
 /// Merge `merge.absorbed` into `merge.survivor` inside the caller's write.
@@ -90,8 +86,8 @@ pub(crate) fn merge_label_on(conn: &CovenWrite<'_>, merge: &LabelMerge<'_>) -> R
         params![merge.survivor, merge.absorbed],
     )?;
     conn.execute(
-        "INSERT INTO label_merges (id, into_label_id, created_at) VALUES (?1, ?2, ?3)",
-        params![merge.absorbed, merge.survivor, merge.at],
+        "INSERT INTO label_merges (id, into_label_id) VALUES (?1, ?2)",
+        params![merge.absorbed, merge.survivor],
     )?;
     Ok(())
 }

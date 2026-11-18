@@ -326,7 +326,6 @@ pub fn write_release_labels_on(
                 absorbed: &merge.absorbed.id,
                 discogs_label_id: merge.absorbed.discogs_label_id.as_deref(),
                 musicbrainz_label_id: merge.absorbed.musicbrainz_label_id.as_deref(),
-                at: write.now,
             },
         )?;
     }

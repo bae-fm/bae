@@ -37,7 +37,6 @@
 
 use super::catalog_match::*;
 use super::*;
-use bae_util::timestamp::StoredTimestamp as _;
 
 /// Why a write's credits cannot be written as the library stands. Nothing of
 /// the write landed.
@@ -102,8 +101,6 @@ pub struct ArtistIdMerge {
     /// The absorbed artist as this write leaves it, whose ids and sort name
     /// the survivor takes where it has none.
     pub absorbed: DbArtist,
-    /// When the credit that found the two was written.
-    pub at: UtcDateTime,
 }
 
 impl ResolvedArtists {
@@ -131,7 +128,6 @@ impl ResolvedArtists {
                     discogs_artist_id: merge.absorbed.discogs_artist_id.as_deref(),
                     musicbrainz_artist_id: merge.absorbed.musicbrainz_artist_id.as_deref(),
                     sort_name: merge.absorbed.sort_name.as_deref(),
-                    at: &merge.at.to_rfc3339(),
                 },
             )?;
         }
@@ -202,7 +198,7 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
                     Holder::Library(held) => {
                         let id = held.row.id.clone();
                         for absorbed in held.absorbed {
-                            merge_into(&mut merges, &mut ids, &id, absorbed, credit.created_at);
+                            merge_into(&mut merges, &mut ids, &id, absorbed);
                         }
                         let mut linked = held.row;
                         if let Some(folded) = &folded {
@@ -554,13 +550,12 @@ fn merge_into(
     ids: &mut [String],
     survivor: &str,
     absorbed: DbArtist,
-    at: UtcDateTime,
 ) {
     for id in ids.iter_mut().filter(|id| **id == absorbed.id) {
         *id = survivor.to_string();
     }
     if !merges.iter().any(|merge| merge.absorbed.id == absorbed.id) {
-        merges.push(ArtistIdMerge { survivor: survivor.to_string(), absorbed, at });
+        merges.push(ArtistIdMerge { survivor: survivor.to_string(), absorbed });
     }
 }
 

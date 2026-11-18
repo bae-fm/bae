@@ -40,7 +40,6 @@ CREATE TABLE IF NOT EXISTS artist_credits (
 CREATE TABLE IF NOT EXISTS artist_merges (
     id TEXT PRIMARY KEY,
     into_artist_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
     CHECK (id <> into_artist_id),
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE,
     FOREIGN KEY (into_artist_id) REFERENCES artists (id) ON DELETE CASCADE
@@ -318,7 +317,6 @@ CREATE INDEX IF NOT EXISTS idx_labels_discogs_id ON labels (discogs_label_id);
 CREATE TABLE IF NOT EXISTS label_merges (
     id TEXT PRIMARY KEY,
     into_label_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
     CHECK (id <> into_label_id),
     FOREIGN KEY (id) REFERENCES labels (id) ON DELETE CASCADE,
     FOREIGN KEY (into_label_id) REFERENCES labels (id) ON DELETE CASCADE
