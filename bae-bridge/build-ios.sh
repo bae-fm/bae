@@ -4,9 +4,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ./scripts/build-layout.sh
 
-# This script reads the staticlib it builds back out of the target dir, so it
-# owns that dir: a shared one can be rewritten by another checkout in between.
-export CARGO_TARGET_DIR="target-ios"
+# Every cargo build here goes in target-ios, the checkout's own folder for the
+# iOS bridge (.build-dirs), where this script reads the libraries back from.
+# The host tools build there too: run_host_cargo sets the macOS SDK and
+# deployment target, which cc-built dependencies watch, so building them in the
+# host target would rebuild what other builds compiled there.
+IOS_TARGET_DIR="target-ios"
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "Usage: $0 [--release]"
@@ -86,7 +89,7 @@ FFMPEG_DIR="$FFMPEG_DEVICE" \
 IPHONEOS_DEPLOYMENT_TARGET="$IOS_DEPLOYMENT_TARGET" \
 RUSTFLAGS="$IOS_RUSTFLAGS" \
 BINDGEN_EXTRA_CLANG_ARGS="--target=arm64-apple-ios16.0 -isysroot $DEVICE_SDK -I$FFMPEG_DEVICE/include" \
-./scripts/cargo.sh build $CARGO_FLAGS --target aarch64-apple-ios -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+./scripts/cargo.sh build $CARGO_FLAGS --target aarch64-apple-ios --target-dir "$IOS_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 
 echo "Building for iOS simulator (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 FFMPEG_DIR="$FFMPEG_SIM" \
@@ -94,7 +97,7 @@ IPHONEOS_DEPLOYMENT_TARGET="$IOS_DEPLOYMENT_TARGET" \
 RUSTFLAGS="$IOS_RUSTFLAGS" \
 SDKROOT="$SIM_SDK" \
 BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$SIM_SDK -target arm64-apple-ios16.0-simulator -I$FFMPEG_SIM/include" \
-./scripts/cargo.sh build $CARGO_FLAGS --target aarch64-apple-ios-sim -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+./scripts/cargo.sh build $CARGO_FLAGS --target aarch64-apple-ios-sim --target-dir "$IOS_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 
 # The Swift compilation conditions for the feature set, which project.yml
 # includes.
@@ -117,23 +120,23 @@ mkdir -p "$SWIFT_BINDINGS_DIR"
 rm -f "$COMPLETION_STAMP"
 # The generator is its own host-only package so this build doesn't compile
 # bae-library again.
-run_host_cargo build -p bae-uniffi-bindgen
-BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
+run_host_cargo build --target-dir "$IOS_TARGET_DIR" -p bae-uniffi-bindgen
+BINDGEN="$IOS_TARGET_DIR/debug/uniffi-bindgen"
 # Without --no-format the generator runs `swift format <file>`, which prints
 # the formatted file to stdout and leaves the file on disk as it was. The
 # generator discards that output, so formatting changes nothing and only costs
 # time.
 "$BINDGEN" generate \
-    --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
+    --library "$IOS_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
     --out-dir "$SWIFT_BINDINGS_DIR/" \
     --no-format
 
 echo "Generating localization String Catalog (Apple)..."
-run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
+run_host_cargo run -q --target-dir "$IOS_TARGET_DIR" -p bae-loc --bin loc-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 echo "Generating the theme (Apple)..."
-run_host_cargo run -q -p bae-theme --bin theme-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
+run_host_cargo run -q --target-dir "$IOS_TARGET_DIR" -p bae-theme --bin theme-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
 
 # The iOS app compiles against bindings matching the iOS xcframework, installed
 # as their own os(iOS)-gated file.
@@ -142,16 +145,16 @@ run_host_cargo run -q -p bae-theme --bin theme-gen -- emit --target apple --out-
 # A Rust staticlib doesn't carry its C dependencies, so the FFmpeg libs are
 # merged in and the app links only the xcframework. libswscale is not linked.
 echo "Merging FFmpeg static libs into the bridge lib..."
-DEVICE_MERGED="$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge_merged.a"
-SIM_MERGED="$CARGO_TARGET_DIR/aarch64-apple-ios-sim/$CARGO_PROFILE/libbae_bridge_merged.a"
+DEVICE_MERGED="$IOS_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge_merged.a"
+SIM_MERGED="$IOS_TARGET_DIR/aarch64-apple-ios-sim/$CARGO_PROFILE/libbae_bridge_merged.a"
 libtool -static -o "$DEVICE_MERGED" \
-    "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
+    "$IOS_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     "$FFMPEG_DEVICE/lib/libavcodec.a" \
     "$FFMPEG_DEVICE/lib/libavformat.a" \
     "$FFMPEG_DEVICE/lib/libavutil.a" \
     "$FFMPEG_DEVICE/lib/libswresample.a"
 libtool -static -o "$SIM_MERGED" \
-    "$CARGO_TARGET_DIR/aarch64-apple-ios-sim/$CARGO_PROFILE/libbae_bridge.a" \
+    "$IOS_TARGET_DIR/aarch64-apple-ios-sim/$CARGO_PROFILE/libbae_bridge.a" \
     "$FFMPEG_SIM/lib/libavcodec.a" \
     "$FFMPEG_SIM/lib/libavformat.a" \
     "$FFMPEG_SIM/lib/libavutil.a" \

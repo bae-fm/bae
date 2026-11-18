@@ -3,14 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# This script compiles the bridge and then reads the resulting staticlib back
-# out of the target dir to generate bindings from it, so it has to own the
-# directory it reads from. An inherited CARGO_TARGET_DIR can be shared with
-# other checkouts, and a concurrent build there rewrites the same artifact from
-# different sources between the build and the read — the generators then emit
-# bindings for a bridge nobody asked for, and it surfaces later as a Swift or
-# C# compile error nowhere near its cause. Local and unconditional on purpose.
-export CARGO_TARGET_DIR="target-linux"
+# The bridge builds in target-linux, where this script reads the library back
+# from to generate the bindings.
+LINUX_TARGET_DIR="target-linux"
 
 usage() {
     echo "Usage: $0 [--release]"
@@ -92,6 +87,7 @@ echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BA
 # Bindgen reads the same uniffi metadata from the cdylib.
 ./scripts/cargo.sh rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
+    --target-dir "$LINUX_TARGET_DIR" \
     -p bae-bridge \
     --lib \
     --features "$BAE_BRIDGE_FEATURES" \
@@ -100,8 +96,8 @@ echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BA
 # The uniffi C# bindings DllImport("uniffi_bae_bridge"); .NET's native probing
 # resolves that to libuniffi_bae_bridge.so on Linux, so the cdylib is copied to
 # that name.
-BRIDGE_SO="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/libbae_bridge.so"
-UNIFFI_BRIDGE_SO="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/libuniffi_bae_bridge.so"
+BRIDGE_SO="$LINUX_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/libbae_bridge.so"
+UNIFFI_BRIDGE_SO="$LINUX_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/libuniffi_bae_bridge.so"
 if [[ ! -f "$BRIDGE_SO" ]]; then
     echo "Expected shared library not found: $BRIDGE_SO" >&2
     exit 1

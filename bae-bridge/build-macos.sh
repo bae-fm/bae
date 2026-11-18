@@ -4,9 +4,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ./scripts/build-layout.sh
 
-# This script reads the libraries it builds back out of the target dir, so it
-# owns that dir: a shared one can be rewritten by another checkout in between.
-export CARGO_TARGET_DIR="target-macos"
+# Every cargo build here goes in target-macos, the checkout's own folder for
+# the macOS bridge (.build-dirs), where this script reads the libraries back
+# from. The host tools build there too: this script exports
+# MACOSX_DEPLOYMENT_TARGET (below), which cc-built dependencies watch, so
+# building them in the host target would rebuild what other builds compiled
+# there.
+MACOS_TARGET_DIR="target-macos"
 
 RUST_HOST="$(rustc -vV | sed -n 's/^host: //p')"
 MACOS_TARGET="aarch64-apple-darwin"
@@ -34,9 +38,9 @@ if [[ "${1:-}" == "--release" ]]; then
 fi
 
 if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
-    CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$CARGO_PROFILE"
+    CARGO_ARTIFACT_DIR="$MACOS_TARGET_DIR/$CARGO_PROFILE"
 else
-    CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"
+    CARGO_ARTIFACT_DIR="$MACOS_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"
 fi
 
 # FFMPEG_DIR defaults to .cargo/config.toml's bae-ffmpeg/dist.
@@ -100,12 +104,13 @@ fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
-    ./scripts/cargo.sh build $CARGO_FLAGS -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"
+    ./scripts/cargo.sh build $CARGO_FLAGS --target-dir "$MACOS_TARGET_DIR" -p bae-bridge --lib \
+        --features "$BAE_BRIDGE_FEATURES"
 else
-    ./scripts/cargo.sh build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
-        --lib --features "$BAE_BRIDGE_FEATURES"
+    ./scripts/cargo.sh build $CARGO_FLAGS --target "$MACOS_TARGET" --target-dir "$MACOS_TARGET_DIR" \
+        -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"
 fi
-./scripts/cargo.sh build $CARGO_FLAGS -p bae-uniffi-bindgen
+./scripts/cargo.sh build $CARGO_FLAGS --target-dir "$MACOS_TARGET_DIR" -p bae-uniffi-bindgen
 
 # The Swift compilation conditions for the feature set, which Signing.xcconfig
 # includes.
@@ -131,7 +136,7 @@ SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-macos"
 # staticlib's size.
 STATIC_LIB="$CARGO_ARTIFACT_DIR/libbae_bridge.a"
 DYLIB="$CARGO_ARTIFACT_DIR/libbae_bridge.dylib"
-BINDGEN="$CARGO_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"
+BINDGEN="$MACOS_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"
 INSTALLED_BINDINGS="BaeKit/Sources/BaeBridge/bae_bridge_macos.swift"
 XCFRAMEWORK="BaeKit/Frameworks/BaeBridgeFFI.xcframework"
 COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
@@ -167,7 +172,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     echo "Generating Swift bindings and the XCFramework's macOS slice..."
     rm -f "$COMPLETION_STAMP"
 
-    GENERATION_TMP="$(mktemp -d "$CARGO_TARGET_DIR/bridge-generation.XXXXXX")"
+    GENERATION_TMP="$(mktemp -d "$MACOS_TARGET_DIR/bridge-generation.XXXXXX")"
     trap 'rm -rf "$GENERATION_TMP" "$FEATURES_XCCONFIG_TMP"' EXIT
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
     mkdir -p "$GENERATED_BINDINGS"
@@ -205,11 +210,11 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
 fi
 
 echo "Generating localization String Catalog (Apple)..."
-./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-loc --bin loc-gen -- \
+./scripts/cargo.sh run -q $CARGO_FLAGS --target-dir "$MACOS_TARGET_DIR" -p bae-loc --bin loc-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 echo "Generating the theme (Apple)..."
-./scripts/cargo.sh run -q $CARGO_FLAGS -p bae-theme --bin theme-gen -- \
+./scripts/cargo.sh run -q $CARGO_FLAGS --target-dir "$MACOS_TARGET_DIR" -p bae-theme --bin theme-gen -- \
     emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
 
 echo ""

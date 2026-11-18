@@ -3,14 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# This script compiles the bridge and then reads the resulting staticlib back
-# out of the target dir to generate bindings from it, so it has to own the
-# directory it reads from. An inherited CARGO_TARGET_DIR can be shared with
-# other checkouts, and a concurrent build there rewrites the same artifact from
-# different sources between the build and the read — the generators then emit
-# bindings for a bridge nobody asked for, and it surfaces later as a Swift or
-# C# compile error nowhere near its cause. Local and unconditional on purpose.
-export CARGO_TARGET_DIR="target-windows"
+# The bridge builds in target-windows, where this script reads the library back
+# from to generate the bindings.
+WINDOWS_TARGET_DIR="target-windows"
 
 usage() {
     echo "Usage: $0 [--release]"
@@ -94,13 +89,14 @@ export CARGO_PROFILE_RELEASE_LTO=thin
 # leaves argfile compiles to rustc); with none, the build is uncached.
 RUSTC_WRAPPER="${RUSTC_WRAPPER-}" ./scripts/cargo.sh rustc $CARGO_FLAGS \
     --target "$BAE_BRIDGE_TARGET" \
+    --target-dir "$WINDOWS_TARGET_DIR" \
     -p bae-bridge \
     --lib \
     --features "$BAE_BRIDGE_FEATURES" \
     --crate-type cdylib
 
-BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.dll"
-UNIFFI_BRIDGE_DLL="$CARGO_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/uniffi_bae_bridge.dll"
+BRIDGE_DLL="$WINDOWS_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/bae_bridge.dll"
+UNIFFI_BRIDGE_DLL="$WINDOWS_TARGET_DIR/$BAE_BRIDGE_TARGET/$CARGO_PROFILE/uniffi_bae_bridge.dll"
 if [[ ! -f "$BRIDGE_DLL" ]]; then
     echo "Expected DLL not found: $BRIDGE_DLL" >&2
     exit 1
