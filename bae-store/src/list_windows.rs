@@ -411,17 +411,7 @@ impl ListOrder {
     /// expression `value_of(at)` reads: the conditions of the seeks that read
     /// the rows after that row, any of them.
     pub fn after_row(&self, value_of: impl Fn(usize) -> String) -> String {
-        let values = self
-            .terms
-            .iter()
-            .enumerate()
-            .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
-            .collect::<Vec<_>>();
-        self.seeks_from(&values, Side::After, false, false)
-            .iter()
-            .map(|seek| format!("({})", self.condition(seek)))
-            .collect::<Vec<_>>()
-            .join(" OR ")
+        self.rows_past(value_of, false)
     }
 
     /// The condition holding this order's rows to those at or after the row
@@ -430,23 +420,27 @@ impl ListOrder {
     /// `row` reads no row, the last term's value, never NULL for a row, is
     /// NULL, and the condition holds no row.
     fn page_condition(&self, row: &str) -> String {
+        let value_of = |at: usize| format!("(SELECT {} FROM ({row}))", key_column(at));
+        let last = value_of(self.terms.len() - 1);
+        format!("({last} IS NOT NULL AND ({}))", self.rows_past(value_of, true))
+    }
+
+    /// The condition holding this order's rows to those after the row whose
+    /// value of the order's term `at` the expression `value_of(at)` reads,
+    /// and to that row too when `inclusive`: the conditions of the seeks that
+    /// read those rows, any of them.
+    fn rows_past(&self, value_of: impl Fn(usize) -> String, inclusive: bool) -> String {
         let values = self
             .terms
             .iter()
             .enumerate()
-            .map(|(at, term)| KeyValue::Read {
-                expression: format!("(SELECT {} FROM ({row}))", key_column(at)),
-                nullable: term.nullable,
-            })
+            .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
             .collect::<Vec<_>>();
-        let last = values[values.len() - 1].sql().to_string();
-        let seeks = self
-            .seeks_from(&values, Side::After, true, false)
+        self.seeks_from(&values, Side::After, inclusive, false)
             .iter()
             .map(|seek| format!("({})", self.condition(seek)))
             .collect::<Vec<_>>()
-            .join(" OR ");
-        format!("({last} IS NOT NULL AND ({seeks}))")
+            .join(" OR ")
     }
 
     /// The ORDER BY clause `seek` reads this order's rows in.
