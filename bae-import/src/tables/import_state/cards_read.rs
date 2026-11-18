@@ -656,16 +656,20 @@ fn statements_of(stored: Vec<StoredStatement>) -> Result<Statements, DbError> {
             )?),
             "label_name" | "catalog_number" => {
                 // The layout write numbers a row's label lines from zero, in
-                // order.
-                while statements.labels.len() <= line {
-                    statements
-                        .labels
-                        .push(StatedLabelLine { names: Vec::new(), catalog_numbers: Vec::new() });
+                // order, and each line states a name or a catalog number, so
+                // the statements, read in line order, reach each line after
+                // the one before it.
+                let lines = &mut statements.labels;
+                if line == lines.len() {
+                    lines.push(StatedLabelLine { names: Vec::new(), catalog_numbers: Vec::new() });
                 }
+                let label = lines
+                    .get_mut(line)
+                    .ok_or_else(|| DbError::unreadable("a row's label line", line))?;
                 if fact == "label_name" {
-                    statements.labels[line].names.push(value);
+                    label.names.push(value);
                 } else {
-                    statements.labels[line].catalog_numbers.push(stated(value, &catalogs)?);
+                    label.catalog_numbers.push(stated(value, &catalogs)?);
                 }
             }
             "barcode" => statements.barcodes.push(stated(value, &catalogs)?),
@@ -783,3 +787,7 @@ pub(super) fn groups_from(cards: Vec<StoredCard>) -> Result<Vec<ReleaseGroup>, D
         })
         .collect()
 }
+
+#[cfg(test)]
+#[path = "cards_read_tests.rs"]
+mod tests;
