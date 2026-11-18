@@ -213,12 +213,16 @@ private struct CommittedTextEditor: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSTextField {
-        let field: NSTextField =
-            secret
-            ? SecureEditorField(
-                onEditingChange: onEditingChange(context.coordinator)
-            )
-            : EditorField(onEditingChange: onEditingChange(context.coordinator))
+        let reportEditing = onEditingChange(context.coordinator)
+        let field: NSTextField
+        if secret {
+            field = SecureEditorField(onEditingChange: reportEditing)
+        }
+        else {
+            let editor = EditingTextField()
+            editor.onEditingChange = reportEditing
+            field = editor
+        }
         field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = false
@@ -309,32 +313,8 @@ private struct CommittedTextEditor: NSViewRepresentable {
         }
     }
 
-    /// A text field that says when it gains and loses its field editor —
-    /// which is what "focused" is for a field a person types into.
-    final class EditorField: NSTextField, EditingField {
-        let onEditingChange: (Bool) -> Void
-
-        init(onEditingChange: @escaping (Bool) -> Void) {
-            self.onEditingChange = onEditingChange
-            super.init(frame: .zero)
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-        override func becomeFirstResponder() -> Bool {
-            let became = super.becomeFirstResponder()
-            if became { onEditingChange(true) }
-            return became
-        }
-
-        override func textDidEndEditing(_ notification: Notification) {
-            super.textDidEndEditing(notification)
-            onEditingChange(false)
-        }
-    }
-
-    /// The same, with the typed characters shown as dots.
+    /// A secure field that says what `EditingTextField` says, with the typed
+    /// characters shown as dots.
     final class SecureEditorField: NSSecureTextField, EditingField {
         let onEditingChange: (Bool) -> Void
 
@@ -356,17 +336,5 @@ private struct CommittedTextEditor: NSViewRepresentable {
             super.textDidEndEditing(notification)
             onEditingChange(false)
         }
-    }
-}
-
-/// A field that says when its field editor is the window's first responder.
-@MainActor
-private protocol EditingField: NSTextField {}
-
-extension EditingField {
-    /// Whether the field's editor is the window's first responder.
-    fileprivate var isEditing: Bool {
-        guard let editor = currentEditor() else { return false }
-        return window?.firstResponder === editor
     }
 }

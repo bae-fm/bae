@@ -109,16 +109,10 @@ struct SaveNameTokenField<Piece: SaveNamePiece>: NSViewRepresentable {
         return field
     }
 
-    /// A token field that says when it becomes the one being typed in, and
-    /// when it stops.
-    final class TokenField: NSTokenField {
+    /// A token field that says what `EditingTextField` says: when it becomes
+    /// the one being typed in, and when it stops.
+    final class TokenField: NSTokenField, EditingField {
         var onFocusChange: ((Bool) -> Void)?
-
-        /// Whether the field's editor is the window's first responder.
-        var isEditing: Bool {
-            guard let editor = currentEditor() else { return false }
-            return window?.firstResponder === editor
-        }
 
         override func becomeFirstResponder() -> Bool {
             let became = super.becomeFirstResponder()

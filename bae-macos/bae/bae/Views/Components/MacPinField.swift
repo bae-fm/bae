@@ -103,9 +103,10 @@ private struct PinEditor: NSViewRepresentable {
         Coordinator(self)
     }
 
-    func makeNSView(context: Context) -> PinEditorField {
+    func makeNSView(context: Context) -> EditingTextField {
         let coordinator = context.coordinator
-        let field = PinEditorField { [coordinator] editing in
+        let field = EditingTextField()
+        field.onEditingChange = { [coordinator] editing in
             // AppKit reports the focus while SwiftUI lays the field out.
             Task { @MainActor in
                 if coordinator.parent.focused != editing {
@@ -131,7 +132,7 @@ private struct PinEditor: NSViewRepresentable {
         return field
     }
 
-    func updateNSView(_ field: PinEditorField, context: Context) {
+    func updateNSView(_ field: EditingTextField, context: Context) {
         context.coordinator.parent = self
         field.isEnabled = context.environment.isEnabled
         if field.stringValue != text {
@@ -142,7 +143,7 @@ private struct PinEditor: NSViewRepresentable {
     /// Exactly the boxes' size.
     func sizeThatFits(
         _ proposal: ProposedViewSize,
-        nsView: PinEditorField,
+        nsView: EditingTextField,
         context: Context
     ) -> CGSize? {
         proposal.replacingUnspecifiedDimensions(by: .zero)
@@ -171,30 +172,5 @@ private struct PinEditor: NSViewRepresentable {
             if kept != typed { field.stringValue = kept }
             parent.text = kept
         }
-    }
-}
-
-/// A text field that says when it gains and loses its field editor, which is
-/// when the PIN field has the keyboard.
-private final class PinEditorField: FocusingTextField {
-    let onEditingChange: (Bool) -> Void
-
-    init(onEditingChange: @escaping (Bool) -> Void) {
-        self.onEditingChange = onEditingChange
-        super.init(frame: .zero)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-    override func becomeFirstResponder() -> Bool {
-        let became = super.becomeFirstResponder()
-        if became { onEditingChange(true) }
-        return became
-    }
-
-    override func textDidEndEditing(_ notification: Notification) {
-        super.textDidEndEditing(notification)
-        onEditingChange(false)
     }
 }

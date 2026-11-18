@@ -60,7 +60,7 @@ struct AutocompleteTextField: View {
 /// A bezeled text field that wears the board's focus ring in the accent the
 /// person chose while it is being edited: AppKit's own ring is drawn in the
 /// Mac's accent.
-private final class RingedTextField: FocusingTextField {
+private final class RingedTextField: EditingTextField {
     var ringColor: NSColor {
         get { ring.color }
         set {
@@ -71,20 +71,17 @@ private final class RingedTextField: FocusingTextField {
 
     private let ring = AccentFocusRingLayer(cornerRadius: ThemeRadius.chip)
 
-    override func becomeFirstResponder() -> Bool {
-        let became = super.becomeFirstResponder()
-        if became {
-            ring.shown = true
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        onEditingChange = { [weak self] editing in
+            guard let self else { return }
+            ring.shown = editing
             ring.update(in: self)
         }
-        return became
     }
 
-    override func textDidEndEditing(_ notification: Notification) {
-        super.textDidEndEditing(notification)
-        ring.shown = false
-        ring.update(in: self)
-    }
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not from a nib") }
 
     override func layout() {
         super.layout()
