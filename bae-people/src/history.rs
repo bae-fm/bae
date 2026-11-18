@@ -21,6 +21,17 @@ pub enum PlayRecordError {
     /// is: its person changed during the play. Nothing was written.
     #[error("the play began as {0:?}, whom this device no longer is")]
     PersonChanged(coven::MemberId),
+    /// This device is no person of the library, so no profile can hold the
+    /// play. A bug: a registered member always has a profile, and this
+    /// device has no way to play before it registers.
+    #[error(
+        "this device is no person of the library, so it has no profile to record a play under"
+    )]
+    NoPerson,
+    /// The member this device is has no profile. A bug: a member's profile
+    /// is written with their registration.
+    #[error("{0:?}, whom this device is, has no profile to record a play under")]
+    NoProfile(coven::MemberId),
     #[error(transparent)]
     Database(#[from] bae_store::DbError),
 }

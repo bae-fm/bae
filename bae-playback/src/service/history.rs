@@ -1,6 +1,6 @@
 use super::renderer::ObservedStatus;
 use super::*;
-use bae_people::history::HistoryPlay;
+use bae_people::history::{HistoryPlay, PlayRecordError};
 use std::time::Duration;
 
 pub(super) struct Listening {
@@ -103,6 +103,12 @@ impl PlaybackService {
         match self.people.begin_play(self.ids.new_id(), &track, duration, now).await {
             // The person keeps no listening history: nothing of this play is metered.
             Ok(None) => true,
+            // A bug: every registered member has a profile. It reaches the
+            // crash reporter, and the track plays without a history row.
+            Err(error @ (PlayRecordError::NoPerson | PlayRecordError::NoProfile(_))) => {
+                self.diagnostics.report_bug("begin a play's history row", &error);
+                true
+            }
             Ok(Some(play)) => {
                 let meter = if self.renderer.is_remote() {
                     ListeningMeter::Remote { position, reported_at: now }
@@ -381,7 +387,7 @@ impl PlaybackService {
 async fn persist(
     people: &bae_people::People,
     listening: &mut Listening,
-) -> Result<(), bae_people::history::PlayRecordError> {
+) -> Result<(), PlayRecordError> {
     if listening.play.qualifies()
         && listening.play.entry().played.as_millis() != listening.saved.as_millis()
     {

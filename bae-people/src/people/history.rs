@@ -5,21 +5,19 @@ use std::time::Duration;
 
 impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
-    /// `None` when the setting is Off, or when this device has no person with
-    /// a profile, such as one removed from the library: the play is not
-    /// recorded at all.
+    /// `None` when the setting is Off. A device with no person, or a person
+    /// with no profile, is a bug: every registered member has a profile, so
+    /// the play is refused, never dropped.
     pub async fn begin_play(
         &self,
         id: uuid::Uuid,
         track_id: &str,
         duration: Option<Duration>,
         started_at: UtcDateTime,
-    ) -> Result<Option<HistoryPlay>, DbError> {
-        let Some(crate::people::Person { profile: Some(profile), membership }) =
-            self.own_person().await?
-        else {
-            return Ok(None);
-        };
+    ) -> Result<Option<HistoryPlay>, PlayRecordError> {
+        let person = self.own_person().await?.ok_or(PlayRecordError::NoPerson)?;
+        let crate::people::Person { profile, membership } = person;
+        let profile = profile.ok_or(PlayRecordError::NoProfile(membership.id))?;
         let Some(audience) = profile.history_sharing.audience(profile.private_circle) else {
             return Ok(None);
         };
