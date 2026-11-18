@@ -221,20 +221,14 @@ pub(super) fn fill_on(
                 [&named],
                 |row| row.get(0),
             )?;
-            // A picked list plays the tracks the library holds, in the
+            // A given list's start index counts every track it names; a
+            // picked list counts only the tracks the library holds, in the
             // order their release lists them.
-            let track_ids = match tracks {
-                bae_records::TrackList::Given(track_ids) => track_ids,
-                bae_records::TrackList::Picked(_) => sql.query(
-                    &format!(
-                        "SELECT t.id FROM json_each(?) j JOIN tracks t ON t.id = j.value \
-                         ORDER BY {}",
-                        tracks.order_sql()
-                    ),
-                    [&named],
-                    |row| row.get(0),
-                )?,
+            let reading = match tracks {
+                bae_records::TrackList::Given(_) => bae_records::TrackReading::Named,
+                bae_records::TrackList::Picked(_) => bae_records::TrackReading::Held,
             };
+            let track_ids = tracks.ordered_on(sql, reading)?;
             if track_ids.is_empty() {
                 return Ok(ContextFilled::NoTracks);
             }

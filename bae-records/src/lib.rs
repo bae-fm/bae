@@ -26,7 +26,7 @@ pub use models::*;
 #[cfg(any(test, feature = "test-utils"))]
 pub use records::resolved_in_an_empty_library;
 pub use release_file_role::{DocumentKind, ReleaseFileRole};
-pub use track_list::TrackList;
+pub use track_list::{TrackList, TrackReading};
 // Only an import names its own artist credits from outside bae-records.
 pub use records::artist_credit_names::CreditNameError;
 pub use records::name_sort::SortLanguageError;

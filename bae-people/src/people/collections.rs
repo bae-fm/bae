@@ -66,7 +66,7 @@ impl People {
                     "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
                     params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
                 )?;
-                let track_ids = tracks.ordered_on(sql)?;
+                let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
                 assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
                 for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
                     sql.execute(
@@ -132,7 +132,7 @@ impl People {
         tracks: bae_records::TrackList,
     ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql| {
-            let track_ids = tracks.ordered_on(sql)?;
+            let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
             assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
             for (position, track) in positions.iter().zip(&track_ids) {
                 sql.execute("INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) SELECT ?1, ?2, ?3, COALESCE(MAX(position) + 1, 0) FROM playlist_entries WHERE playlist_id = ?1", params![playlist.to_string(), position.to_string(), track])?;

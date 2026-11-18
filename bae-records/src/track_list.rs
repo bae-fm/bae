@@ -16,6 +16,17 @@ pub enum TrackList {
     Picked(BTreeSet<String>),
 }
 
+/// Which of a list's tracks a read of it returns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrackReading {
+    /// Every track the list names, in its order. A picked track the library
+    /// lacks comes first, so a write that adds the tracks refuses it as it
+    /// refuses any track the library lacks.
+    Named,
+    /// Only the tracks the library holds, in the list's order.
+    Held,
+}
+
 /// A list in the order given.
 impl From<Vec<String>> for TrackList {
     fn from(ids: Vec<String>) -> Self {
@@ -36,16 +47,11 @@ impl TrackList {
 
     /// How many tracks the list names: a given list counts a track named
     /// twice twice, a picked list each pick once.
-    pub fn len(&self) -> usize {
+    pub fn track_count(&self) -> usize {
         match self {
             Self::Given(ids) => ids.len(),
             Self::Picked(ids) => ids.len(),
         }
-    }
-
-    /// Whether the list names no track.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 
     /// The list's ids as a JSON array, for `json_each`.
@@ -57,19 +63,26 @@ impl TrackList {
         .expect("track ids serialize as JSON")
     }
 
-    /// The list's ids in its order, read in `sql`. A picked id the library
-    /// lacks comes first, so a write that adds the tracks refuses it as it
-    /// refuses any track the library lacks.
-    pub fn ordered_on(&self, sql: &impl coven::SqlRead) -> Result<Vec<String>, DbError> {
-        match self {
-            Self::Given(ids) => Ok(ids.clone()),
-            Self::Picked(_) => Ok(sql.query(
+    /// The list's ids in its order, read in `sql`: every one it names, or
+    /// only those the library holds, as `reading` says.
+    pub fn ordered_on(
+        &self,
+        sql: &impl coven::SqlRead,
+        reading: TrackReading,
+    ) -> Result<Vec<String>, DbError> {
+        let statement = match (self, reading) {
+            (Self::Given(ids), TrackReading::Named) => return Ok(ids.clone()),
+            (Self::Picked(_), TrackReading::Named) => format!(
                 "SELECT j.value FROM json_each(?1) j LEFT JOIN tracks t ON t.id = j.value \
-                 ORDER BY t.id IS NOT NULL, t.release_id, t.position, t.id, j.value",
-                [self.ids_json()],
-                |row| row.get(0),
-            )?),
-        }
+                 ORDER BY t.id IS NOT NULL, {}, j.key",
+                self.order_sql()
+            ),
+            (_, TrackReading::Held) => format!(
+                "SELECT t.id FROM json_each(?1) j JOIN tracks t ON t.id = j.value ORDER BY {}",
+                self.order_sql()
+            ),
+        };
+        Ok(sql.query(&statement, [self.ids_json()], |row| row.get(0))?)
     }
 }
 

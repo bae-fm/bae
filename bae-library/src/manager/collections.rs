@@ -12,7 +12,7 @@ impl LibraryManager {
         tracks: impl Into<bae_records::TrackList>,
     ) -> Result<uuid::Uuid, CollectionError> {
         let tracks = tracks.into();
-        let positions = (0..tracks.len()).map(|_| self.ids.new_id()).collect();
+        let positions = (0..tracks.track_count()).map(|_| self.ids.new_id()).collect();
         let playlist = self
             .people
             .create_playlist(self.ids.new_id(), name, sharing, positions, tracks)
@@ -38,7 +38,7 @@ impl LibraryManager {
         tracks: impl Into<bae_records::TrackList>,
     ) -> Result<(), CollectionError> {
         let tracks = tracks.into();
-        let positions = (0..tracks.len()).map(|_| self.ids.new_id()).collect();
+        let positions = (0..tracks.track_count()).map(|_| self.ids.new_id()).collect();
         self.people.append_playlist_entries(playlist, positions, tracks).await
     }
 }
