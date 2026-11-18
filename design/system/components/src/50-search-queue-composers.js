@@ -132,11 +132,10 @@
     return h('div', { className: 'bae-m-work' }, h('div', { className: 'bae-m-work-title' }, props.title), props.children);
   }
   function MacHairline() { return h('div', { className: 'bae-m-hairline' }); }
-  // `tone` puts that tone's glyph, muted, above the title, as a failed view's label image; the children are the actions, in a row under the text.
+  // The children are the actions, in a row under the text. No glyph sits above the title: the title says it.
   function MacContentUnavailable(props) {
     var actions = React.Children.toArray(props.children).filter(Boolean);
     return h('div', { className: 'bae-m-cu' },
-      props.tone ? h(StatusGlyph, { tone: props.tone, set: 'mac', muted: true, size: 40, className: 'bae-m-cu-glyph' }) : null,
       h('div', { className: 'bae-m-cu-title' }, props.title),
       props.description ? h('div', { className: 'bae-m-cu-desc' }, props.description) : null,
       actions.length ? h('div', { className: 'bae-m-cu-actions' }, actions) : null);
