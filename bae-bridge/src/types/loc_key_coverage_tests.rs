@@ -51,6 +51,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.access_key.unused_invite",
     "core.invite.cancel_confirm.title",
     "core.invite.cancel_confirm.keep",
+    // The words of the Sync page's Reconnect fix and of signing in to
+    // storage again.
+    "core.pending.action.reconnect",
+    "core.pending.action.sign_in",
     // The Activity panel.
     "core.activity.title",
     "core.activity.attention",
@@ -470,21 +474,6 @@ fn produced_keys() -> Vec<String> {
     ] {
         keys.push(reason.key().to_string());
     }
-    for action in [
-        BridgePendingAction::Wait,
-        BridgePendingAction::UpdateApp,
-        BridgePendingAction::SignIn { provider: BridgeCloudProvider::Dropbox },
-        BridgePendingAction::Reconnect,
-        BridgePendingAction::RestoreFile,
-        BridgePendingAction::RetryOperation { id: 1 },
-        BridgePendingAction::RetryDownload { release_id: "release".to_string() },
-        BridgePendingAction::CancelUpload { id: 1 },
-        BridgePendingAction::RestoreFromCode,
-        BridgePendingAction::Review,
-    ] {
-        keys.extend(action.key().map(str::to_string));
-    }
-    assert!(BridgePendingAction::Wait.key().is_none());
     for status in [
         BridgeSyncStatusWord::NotSynced,
         BridgeSyncStatusWord::SettingUpStorage,

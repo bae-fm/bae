@@ -59,8 +59,6 @@ public final class Sync: Sendable, Observable {
     public let setMaxConcurrentUploads: @Sendable (UInt32) async throws -> Void
     /// The requests that ask sync to run now, none of which waits for it.
     public let nudges: SyncNudges
-    /// What a pending record's action asks core to do.
-    public let pendingActions: SyncPendingActions
 
     public init(
         saveSyncConfig:
@@ -148,8 +146,7 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (UInt32) async throws -> Void = { _ in
                 throw StubError.notImplemented
             },
-        nudges: SyncNudges = SyncNudges(),
-        pendingActions: SyncPendingActions = SyncPendingActions()
+        nudges: SyncNudges = SyncNudges()
     ) {
         self.saveSyncConfig = saveSyncConfig
         self.followStorageSetup = followStorageSetup
@@ -176,7 +173,6 @@ public final class Sync: Sendable, Observable {
         self.reconnectSync = reconnectSync
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
         self.nudges = nudges
-        self.pendingActions = pendingActions
     }
 
     /// The production wiring over the open library's handle; a storage
@@ -236,8 +232,7 @@ public final class Sync: Sendable, Observable {
             setMaxConcurrentUploads: {
                 try await handle.setMaxConcurrentUploads(n: $0)
             },
-            nudges: SyncNudges(handle: handle),
-            pendingActions: SyncPendingActions(handle: handle)
+            nudges: SyncNudges(handle: handle)
         )
     }
 
@@ -271,45 +266,6 @@ public struct SyncNudges: Sendable {
         self.init(
             triggerSync: { handle.triggerSync() },
             retryNow: { try await handle.retryNow() }
-        )
-    }
-}
-
-/// What a pending record's action asks core to do, by the action.
-public struct SyncPendingActions: Sendable {
-    /// Retry one of coven's failed operations.
-    public let retryOperation: @Sendable (Int64) async throws -> Void
-    /// Pin a release again, as a failed pin's record offers.
-    public let retryDownload: @Sendable (String) async throws -> Void
-    /// End a release's failed move to the cloud, as its record offers: the
-    /// release stays on this device only, as it was.
-    public let cancelFailedMove: @Sendable (Int64) async throws -> Void
-
-    public init(
-        retryOperation: @escaping @Sendable (Int64) async throws -> Void = {
-            _ in throw StubError.notImplemented
-        },
-        retryDownload: @escaping @Sendable (String) async throws -> Void = {
-            _ in throw StubError.notImplemented
-        },
-        cancelFailedMove: @escaping @Sendable (Int64) async throws -> Void = {
-            _ in throw StubError.notImplemented
-        }
-    ) {
-        self.retryOperation = retryOperation
-        self.retryDownload = retryDownload
-        self.cancelFailedMove = cancelFailedMove
-    }
-
-    public init(handle: any AppHandleProtocol) {
-        self.init(
-            retryOperation: { try await handle.retryPendingOperation(id: $0) },
-            retryDownload: {
-                try await handle.queuePinReleases(releaseIds: [$0])
-            },
-            cancelFailedMove: {
-                try await handle.cancelFailedReleaseMove(id: $0)
-            }
         )
     }
 }

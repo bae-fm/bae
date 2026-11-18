@@ -118,13 +118,6 @@ impl Store {
         self.inner.handle.sync_often(interval)
     }
 
-    pub async fn retry_pending_operation(
-        &self,
-        operation: coven::OperationId,
-    ) -> Result<(), coven::OperationError> {
-        self.reported(self.inner.handle.retry_pending_operation(operation).await)
-    }
-
     pub async fn start_sync(&self) -> Result<(), coven::SyncError> {
         self.reported(self.inner.handle.start_sync().await)
     }

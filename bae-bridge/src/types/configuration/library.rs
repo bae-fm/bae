@@ -455,8 +455,6 @@ pub struct BridgeSyncStatusSnapshot {
     /// The top block of the Sync page: the state in words, its color, its
     /// cause and its fix, and when sync last finished.
     pub shown: BridgeSyncShown,
-    /// What coven waits on, each with the action the person can take.
-    pub pending: Vec<crate::types::BridgePendingRecord>,
     /// A storage setup runs: a setup screen's, or one past its point of no
     /// return that sync's connection finishes after a relaunch.
     pub setup_running: bool,
@@ -480,12 +478,11 @@ impl BridgeSyncStatusSnapshot {
         let shown = BridgeSyncShown::from_core(snapshot.shown());
         let bae_sync_status::SyncStatusSnapshot {
             coven: _,
-            pending,
+            pending: _,
             error: _,
             retry_effect: _,
             storage_setup,
             location: _,
-            failure_recorded: _,
             attention_count: _,
             cause_file: _,
         } = snapshot;
@@ -499,15 +496,7 @@ impl BridgeSyncStatusSnapshot {
             }
             Some(bae_sync_status::StorageSetupState::Running) | None => None,
         };
-        Self {
-            shown,
-            setup_running,
-            undone_setup,
-            pending: pending
-                .into_iter()
-                .map(crate::types::BridgePendingRecord::from_core)
-                .collect(),
-        }
+        Self { shown, setup_running, undone_setup }
     }
 }
 

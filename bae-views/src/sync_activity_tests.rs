@@ -30,7 +30,6 @@ fn status() -> SyncStatusSnapshot {
         storage_setup: None,
         error: None,
         location: None,
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     }
@@ -42,7 +41,7 @@ fn a_settled_library_is_quiet() {
     let activity = SyncActivity::new(&status(), &idle_uploads(), &idle_downloads());
     assert!(!activity.moving);
     assert!(!activity.held());
-    assert!(!activity.needs_attention());
+    assert_eq!(activity.failure, None);
     assert_eq!(
         (activity.uploads, activity.pins, activity.moving_to_this_device),
         (None, None, None)
@@ -280,38 +279,12 @@ fn a_hold_without_its_line_or_a_line_without_a_hold_is_not_held() {
     assert!(!SyncActivity::new(&status(), &waiting, &pins_waiting).held());
 }
 
-/// A sync failure or a pending record that needs the person marks the
-/// indicator.
-#[test]
-fn failures_and_pending_records_need_attention() {
-    let mut failed = status();
-    failed.coven.state = named(
-        coven::LastPass::Offline {
-            failure: coven::StorageFailure::Network,
-            error: "unreachable".into(),
-        },
-        coven::SyncState::Offline,
-    );
-    let new = |status: &SyncStatusSnapshot| activity(status);
-    assert!(new(&failed).needs_attention());
-    let mut waiting = status();
-    waiting.pending = vec![PendingItem::before_open(coven::PendingRecord::new(
-        coven::PendingSubject::Connection,
-        coven::PendingReason::NoStorage,
-    ))];
-    waiting.attention_count = 1;
-    assert!(new(&waiting).needs_attention());
-}
-
 /// The text coven keeps for an S3 failure the provider answered.
 const ANSWERED_S3: &str = "S3 answered HTTP 503";
 
-/// A pass storage refused, as the status keeps it.
-fn refused(failure: coven::StorageFailure) -> coven::LastPass {
-    coven::LastPass::Failed {
-        failure: coven::StatusFailure::Storage(failure),
-        error: ANSWERED_S3.into(),
-    }
+/// A storage failure the provider answered with `ANSWERED_S3`.
+fn answered(failure: coven::StorageFailure) -> coven::PendingReason {
+    coven::PendingReason::Storage { provider: coven::CloudProvider::S3, failure, answered: true }
 }
 
 /// coven's sync state named by the last pass `pass`, as `state` names it.
@@ -319,116 +292,96 @@ fn named(pass: coven::LastPass, state: Names) -> coven::SyncState {
     state(coven::SyncCause::Pass(pass))
 }
 
-fn pending(record: coven::PendingRecord) -> Vec<PendingItem> {
-    vec![PendingItem::before_open(record)]
-}
-
-fn connection(failure: coven::StorageFailure) -> coven::PendingRecord {
-    coven::PendingRecord::new(
-        coven::PendingSubject::Connection,
-        coven::PendingReason::Storage {
-            provider: coven::CloudProvider::S3,
-            failure,
-            answered: true,
-        },
-    )
-}
-
 fn activity(status: &SyncStatusSnapshot) -> SyncActivity {
     SyncActivity::new(status, &idle_uploads(), &idle_downloads())
 }
 
-/// A pass that fails on the connection leaves coven's record of that
-/// failure: the list shows the record, which names what failed and what the
-/// person can do, and not the same failure again as a second line.
+/// Every state a failure names shows as sync's failure, whatever named it:
+/// a pass that failed or went offline, a blocked slot with or without the
+/// error that blocked it, coven's own failed operation, a pending record, or
+/// another copy of this device.
 #[test]
-fn a_failed_connection_shows_once_as_its_record() {
-    let cases: [(coven::LastPass, Names); 2] = [
-        (refused(coven::StorageFailure::Protocol), coven::SyncState::Failed),
-        (
-            coven::LastPass::Offline {
-                failure: coven::StorageFailure::Protocol,
-                error: ANSWERED_S3.into(),
-            },
-            coven::SyncState::Offline,
-        ),
-    ];
-    for (failure, state) in cases {
-        let mut failed = status();
-        failed.coven.state = named(failure, state);
-        failed.pending = pending(connection(coven::StorageFailure::Protocol));
-        failed.failure_recorded = true;
-        failed.attention_count = 1;
-        let shown = activity(&failed);
-        assert_eq!(shown.failure, None, "{:?}", failed.coven);
-        assert!(shown.needs_attention());
-        assert_eq!(shown.attention.len(), 1);
-    }
-}
-
-/// A blocked slot and coven's own failed operation each have their record
-/// in the list, which shows the failure the status holds.
-#[test]
-fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
-    let reason = coven::PendingReason::Storage {
-        provider: coven::CloudProvider::S3,
-        failure: coven::StorageFailure::Protocol,
-        answered: true,
-    };
-    let mut blocked = status();
-    blocked.coven.state = named(
-        coven::LastPass::Blocked {
-            slot: coven::Slot::new(3).unwrap(),
-            reason: reason.clone(),
-            error: Some(ANSWERED_S3.into()),
-        },
-        coven::SyncState::Failed,
-    );
-    blocked.pending = pending(coven::PendingRecord::new(
-        coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
-        reason.clone(),
-    ));
-    blocked.failure_recorded = true;
-    assert_eq!(activity(&blocked).failure, None);
-
+fn every_failed_state_shows_its_failure() {
+    let slot = coven::Slot::new(3).unwrap();
     let operation = coven::PendingRecord::new(
         coven::PendingSubject::Operation {
             id: coven::OperationId(5),
             kind: coven::OperationKind::Invite,
         },
-        reason,
+        answered(coven::StorageFailure::Protocol),
     );
-    let mut failed = status();
-    failed.coven.state = named(
-        coven::LastPass::Failed {
-            failure: coven::StatusFailure::Operation(operation.clone()),
-            error: "the invite failed".into(),
+    let states = [
+        named(
+            coven::LastPass::Failed {
+                failure: coven::StatusFailure::Storage(coven::StorageFailure::Protocol),
+                error: ANSWERED_S3.into(),
+            },
+            coven::SyncState::Failed,
+        ),
+        named(
+            coven::LastPass::Offline {
+                failure: coven::StorageFailure::Network,
+                error: "unreachable".into(),
+            },
+            coven::SyncState::Offline,
+        ),
+        named(
+            coven::LastPass::Blocked {
+                slot,
+                reason: answered(coven::StorageFailure::Protocol),
+                error: Some(ANSWERED_S3.into()),
+            },
+            coven::SyncState::Failed,
+        ),
+        named(
+            coven::LastPass::Blocked {
+                slot,
+                reason: answered(coven::StorageFailure::Protocol),
+                error: None,
+            },
+            coven::SyncState::Failed,
+        ),
+        named(
+            coven::LastPass::Failed {
+                failure: coven::StatusFailure::Operation(operation),
+                error: "the invite failed".into(),
+            },
+            coven::SyncState::Failed,
+        ),
+        coven::SyncState::NoAccess(coven::SyncCause::Pending(coven::PendingRecord::new(
+            coven::PendingSubject::Connection,
+            answered(coven::StorageFailure::PermissionDenied),
+        ))),
+        coven::SyncState::NeedsReset {
+            reason: coven::ResetReason::Replaced,
+            unsent: coven::UnsentWork { writes: 0, files: 0 },
         },
-        coven::SyncState::Failed,
-    );
-    failed.pending = pending(operation);
-    failed.failure_recorded = true;
-    assert_eq!(activity(&failed).failure, None);
+    ];
+    for state in states {
+        let mut failed = status();
+        failed.coven.state = state;
+        assert!(activity(&failed).failure.is_some(), "{:?}", failed.coven.state);
+    }
 }
 
-/// A failure no record shows is the list's line: another copy of this
-/// device, which coven records nothing for, beside an older connection
-/// record; or a storage failure another failure's record stands for.
+/// A pending record that names the state shows the error coven keeps beside
+/// it, in the category of its reason.
 #[test]
-fn a_failure_no_record_shows_is_its_own_line() {
-    let mut copied = status();
-    copied.coven.state = coven::SyncState::NeedsReset {
-        reason: coven::ResetReason::Replaced,
-        unsent: coven::UnsentWork { writes: 0, files: 0 },
-    };
-    copied.pending = pending(connection(coven::StorageFailure::Network));
-    assert!(activity(&copied).failure.is_some());
-
-    let mut unrecorded = status();
-    unrecorded.coven.state =
-        named(refused(coven::StorageFailure::Protocol), coven::SyncState::Failed);
-    unrecorded.pending = pending(connection(coven::StorageFailure::Network));
-    assert!(activity(&unrecorded).failure.is_some());
+fn a_pending_records_failure_shows_its_error() {
+    let mut record = coven::PendingRecord::new(
+        coven::PendingSubject::Connection,
+        answered(coven::StorageFailure::Authentication),
+    );
+    record.cause = Some(ANSWERED_S3.into());
+    let mut failed = status();
+    failed.coven.state = coven::SyncState::NoAccess(coven::SyncCause::Pending(record));
+    assert_eq!(
+        activity(&failed).failure,
+        Some(UiError::diagnostic(
+            bae_diagnostics::storage_category(coven::StorageFailure::Authentication),
+            ANSWERED_S3,
+        ))
+    );
 }
 
 /// The activity as one read of `store` finds it.

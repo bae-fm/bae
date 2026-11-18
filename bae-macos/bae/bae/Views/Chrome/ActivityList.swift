@@ -13,8 +13,7 @@ struct ActivityList: View {
     let app: [AppProblem]
     @Binding
     var dismissed: Set<ActivityProblemID>
-    /// Opens the sync settings, where each record that needs the person
-    /// offers its action.
+    /// Opens the sync settings, where sync's failure is fixed.
     let onOpenSettings: () -> Void
     /// Opens the Storage Manager, where each transfer is listed.
     let onOpenStorageManager: () -> Void
@@ -38,16 +37,6 @@ struct ActivityList: View {
                     ForEach(problems.shown, id: \.self) { id in
                         problem(id)
                             .settingsRowInset(0)
-                    }
-                    if let activity, activity.attentionCount > 0 {
-                        PendingRecordsView(
-                            records: activity.attention,
-                            perform: nil
-                        )
-                        Button(
-                            localizedCoreString("core.activity.open_settings"),
-                            action: onOpenSettings
-                        )
                     }
                 }
                 .padding(.top, Self.sectionGap)

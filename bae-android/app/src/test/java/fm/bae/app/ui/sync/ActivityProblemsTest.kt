@@ -3,7 +3,6 @@ package fm.bae.app.ui.sync
 import fm.bae.app.DisplayError
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
-import fm.bae.app.ui.PreviewData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -45,16 +44,11 @@ class ActivityProblemsTest {
     }
 
     @Test
-    fun needsAttentionEndsWhenEveryListedProblemIsDismissedUnlessARecordIsListed() {
+    fun needsAttentionEndsWhenEveryListedProblemIsDismissed() {
         val everything = setOf(ActivityProblemId.SIGN_IN_SETTINGS, ActivityProblemId.SYNC_FAILURE)
 
         assertFalse(activityProblems(listOf(signIn), failed(), null, everything).needsAttention)
         assertTrue(activityProblems(listOf(signIn), failed(), null, emptySet()).needsAttention)
-        assertTrue(
-            "a pending record has no dismissal",
-            activityProblems(emptyList(), PreviewData.syncActivity(needsAttention = true), null, everything)
-                .needsAttention,
-        )
     }
 
     @Test
@@ -79,10 +73,7 @@ class ActivityProblemsTest {
         BridgeSyncActivity(
             moving = false,
             held = false,
-            needsAttention = false,
             failure = null,
-            attention = emptyList(),
-            attentionCount = 0u,
             syncing = false,
             uploads = null,
             pins = null,

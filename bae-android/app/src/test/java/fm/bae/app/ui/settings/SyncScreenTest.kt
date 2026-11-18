@@ -11,7 +11,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.data.SyncStatusStore
@@ -24,12 +23,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibraryClosing
-import uniffi.bae_bridge.BridgeMessage
-import uniffi.bae_bridge.BridgePendingAction
-import uniffi.bae_bridge.BridgePendingReason
-import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
@@ -38,7 +32,7 @@ import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 
-/** The Sync page runs its status's fix and each action of what sync waits on as the library's storage takes it. */
+/** The Sync page runs its status's fix as the library's storage takes it. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35])
 class SyncScreenTest {
@@ -46,8 +40,8 @@ class SyncScreenTest {
     val compose = createComposeRule()
 
     /**
-     * An S3 library's Sign In asks for a new access key for its bucket, as Settings does for a device that lost its
-     * key, and never runs a provider's account sign-in, which an S3 bucket has none of.
+     * An S3 library's Enter access key asks for a new access key for its bucket, as Settings does for a device that
+     * lost its key, and never runs a provider's account sign-in, which an S3 bucket has none of.
      */
     @Test
     fun anS3SignInAsksForANewAccessKey() {
@@ -62,12 +56,10 @@ class SyncScreenTest {
         status.apply(
             BridgeSyncStatusSnapshot(
                 shown = keyNotAccepted,
-                pending = listOf(s3SignIn()),
                 setupRunning = false,
                 undoneSetup = null,
             ),
             NoErrorDisplays,
-            BugReports(),
         )
         compose.setContent {
             TestTheme {
@@ -77,40 +69,12 @@ class SyncScreenTest {
             }
         }
 
-        // The list of what sync waits on sits below the storage section, past the test screen's height.
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Sign in"))
-        compose.onNodeWithText("Sign in").performClick()
+        compose.onNodeWithText("Enter access key").performClick()
 
         compose
             .onNodeWithText("This library is stored in an S3-compatible bucket. Enter the access key you use for it.")
             .assertExists()
         compose.onNodeWithText("This library needs cloud sign-in, which isn't configured on this build.").assertDoesNotExist()
-    }
-
-    /** A tap on a pending row opens what is behind its reason; the row's action is its own button. */
-    @Test
-    fun aTapOnAPendingRowOpensItsDetails() {
-        var ran: BridgePendingAction? = null
-        val record =
-            BridgePendingRecord(
-                subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
-                reason =
-                    BridgePendingReason(
-                        key = "core.pending.reason.storage",
-                        detail = "request failed: connection refused",
-                        causes = emptyList(),
-                    ),
-                action = BridgePendingAction.Reconnect,
-                actionKey = "core.pending.action.reconnect",
-                sendsFiles = false,
-            )
-        compose.setContent { TestTheme { PendingSection(records = listOf(record), onAction = { ran = it }) } }
-
-        compose.onNodeWithText("Tap a row to see what happened.").assertExists()
-        compose.onNodeWithText("Cloud request failed").performClick()
-        compose.onNodeWithText("request failed: connection refused").assertExists()
-
-        assertEquals(null, ran)
     }
 
     /** A full disk is worded for a phone: "This device", not "this Mac". */
@@ -137,12 +101,10 @@ class SyncScreenTest {
                         fix = null,
                         lastSynced = null,
                     ),
-                pending = emptyList(),
                 setupRunning = false,
                 undoneSetup = null,
             ),
             NoErrorDisplays,
-            BugReports(),
         )
         compose.setContent {
             TestTheme {
@@ -184,12 +146,10 @@ class SyncScreenTest {
                         fix = BridgeSyncFix.EnterRestoreCode,
                         lastSynced = null,
                     ),
-                pending = emptyList(),
                 setupRunning = false,
                 undoneSetup = null,
             ),
             NoErrorDisplays,
-            BugReports(),
         )
         compose.setContent {
             TestTheme {
@@ -262,15 +222,6 @@ class SyncScreenTest {
             cause = null,
             fix = BridgeSyncFix.EnterAccessKey,
             lastSynced = null,
-        )
-
-    private fun s3SignIn() =
-        BridgePendingRecord(
-            subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
-            reason = BridgePendingReason(key = "core.pending.reason.provider_pending", detail = null, causes = emptyList()),
-            action = BridgePendingAction.SignIn(BridgeCloudProvider.S3),
-            actionKey = "core.pending.action.sign_in",
-            sendsFiles = false,
         )
 
     private fun actions(onRestoreFromCode: () -> Unit = {}) =

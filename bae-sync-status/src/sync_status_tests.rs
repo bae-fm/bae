@@ -27,7 +27,6 @@ pub(crate) fn read(
         retry_effect,
         storage_setup: None,
         location: None,
-        failure_recorded: false,
     }
 }
 
@@ -468,12 +467,11 @@ fn a_new_sync_failure_is_logged_once() {
     assert_eq!(*category, bae_diagnostics::UiErrorCategory::Network);
     assert_eq!(detail, UNREACHABLE_S3);
     assert_eq!(failed.failure_to_log(Some(&failed)), None);
-    let mut listed = snapshot(
+    let listed = snapshot(
         offline(),
         vec![connection_record(coven::StorageFailure::Network)],
         coven::RetryEffect::Pass,
     );
-    listed.failure_recorded = true;
     assert_eq!(listed.failure_to_log(Some(&failed)), None);
     assert_eq!(syncing.failure_to_log(Some(&failed)), None);
     assert!(failed.failure_to_log(None).is_some());
@@ -481,7 +479,7 @@ fn a_new_sync_failure_is_logged_once() {
 
 /// A blocked slot that names coven's sync state surfaces the error that
 /// blocked it, in the class of its reason; a device that opened already
-/// blocked has no error to show.
+/// blocked has no error, and shows its reason in that class instead.
 #[test]
 fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
     let blocked = |error: Option<&str>| {
@@ -504,18 +502,44 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
             detail: UNREACHABLE_S3.to_string(),
         })
     );
-    assert_eq!(blocked(None).failure(), None);
+    let Some(UiError::Diagnostic { category, .. }) = blocked(None).failure() else {
+        panic!("a slot blocked since before the library opened shows its reason");
+    };
+    assert_eq!(
+        category,
+        bae_diagnostics::UiErrorCategory::Storage(coven::StorageFailure::QuotaExceeded)
+    );
 }
 
-/// A state a pending record names shows no failure of its own beside the
-/// records: the record shows it.
+/// A removed device shows the removal as its failure.
 #[test]
-fn a_state_a_record_names_shows_no_failure_of_its_own() {
-    let removed = record(coven::PendingReason::Removed(coven::Removal::Device));
-    let mut status = snapshot(removed_state(), vec![removed], coven::RetryEffect::Pass);
-    status.failure_recorded = true;
-    assert_eq!(status.shown_failure(), None);
+fn a_removed_device_shows_its_removal_as_its_failure() {
+    let status = alone(removed_state());
+    assert_eq!(
+        status.failure(),
+        Some(UiError::diagnostic(
+            bae_diagnostics::UiErrorCategory::DeviceRemoved,
+            removal_text(coven::Removal::Device),
+        ))
+    );
     assert_eq!(status.shown().status, SyncStatusWord::RemovedFromTheLibrary);
+}
+
+/// A state a pending record names shows the error coven keeps beside the
+/// record, and bae doesn't log it again: coven logged it as it recorded it.
+#[test]
+fn a_state_a_record_names_shows_its_records_error() {
+    let mut record = connection_record(coven::StorageFailure::Network);
+    record.cause = Some(UNREACHABLE_S3.into());
+    let status = alone(coven::SyncState::Offline(coven::SyncCause::Pending(record)));
+    assert_eq!(
+        status.failure(),
+        Some(UiError::diagnostic(
+            bae_diagnostics::storage_category(coven::StorageFailure::Network),
+            UNREACHABLE_S3,
+        ))
+    );
+    assert_eq!(status.failure_to_log(Some(&alone(moving()))), None);
 }
 
 /// coven logs the error that blocked a slot itself, so it isn't logged

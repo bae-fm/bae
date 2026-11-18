@@ -9,9 +9,6 @@ struct ActivityProblems: Equatable {
     let listed: [ActivityProblemID]
     /// The listed problems the person hasn't dismissed.
     let shown: [ActivityProblemID]
-    /// Pending records are listed. They have no ×, so they are never
-    /// dismissed.
-    let recordsListed: Bool
 
     init(
         app: [AppProblem],
@@ -32,10 +29,9 @@ struct ActivityProblems: Equatable {
         }
         self.listed = listed
         shown = listed.filter { !dismissed.contains($0) }
-        recordsListed = (activity?.attentionCount ?? 0) > 0
     }
 
     var needsAttention: Bool {
-        !shown.isEmpty || recordsListed
+        !shown.isEmpty
     }
 }

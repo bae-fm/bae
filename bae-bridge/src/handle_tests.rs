@@ -599,7 +599,6 @@ fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     };
@@ -632,7 +631,6 @@ fn a_healthy_sync_status_crosses_as_synced() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(dropbox_location()),
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     };
@@ -657,7 +655,6 @@ fn a_storage_setup_crosses_undone_or_running() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: Some(storage_setup),
         location: None,
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     };
@@ -699,7 +696,6 @@ fn a_failed_start_crosses_offering_reconnect() {
         retry_effect: coven::RetryEffect::NotSyncing,
         storage_setup: None,
         location: Some(s3_location()),
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     };
@@ -711,7 +707,7 @@ fn a_failed_start_crosses_offering_reconnect() {
 }
 
 /// A pass the provider failed crosses as sync failed with the provider's
-/// error told as it told it, and the pending record beside it.
+/// error told as it told it.
 #[test]
 fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
     let failure = coven::StorageFailure::Protocol;
@@ -724,25 +720,16 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
             })),
             last_synced: Some(std::time::UNIX_EPOCH),
         },
-        pending: vec![bae_sync_status::PendingItem::before_open(coven::PendingRecord::new(
-            coven::PendingSubject::Connection,
-            coven::PendingReason::Storage {
-                provider: coven::CloudProvider::S3,
-                failure,
-                answered: true,
-            },
-        ))],
+        pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        failure_recorded: true,
-        attention_count: 1,
+        attention_count: 0,
         cause_file: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert_eq!(bridge.pending.len(), 1);
     let Some(crate::types::BridgeSyncCause::Message { message, .. }) = bridge.shown.cause else {
         panic!("a failure says why in a catalog message");
     };

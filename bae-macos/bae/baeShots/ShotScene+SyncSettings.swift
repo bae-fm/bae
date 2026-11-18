@@ -5,11 +5,11 @@ import SwiftUI
 
 extension ShotScene {
     /// The Sync page's boards (`mac.settings.sync.*`) that show what sync
-    /// waits on or why its cloud home isn't shown: the pending records as
-    /// rows, the setup that ended undone, a cloud home that couldn't be
-    /// read, and the restore code shown. Each shows the whole Settings
-    /// window, as the boards draw it: the sidebar with Library chosen, and
-    /// the page over the Library pane.
+    /// waits on or why its cloud home isn't shown: sync waiting, the setup
+    /// that ended undone, a cloud home that couldn't be read, and the
+    /// restore code shown. Each shows the whole Settings window, as the
+    /// boards draw it: the sidebar with Library chosen, and the page over the
+    /// Library pane.
     static let syncSettingsScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.sync.pending",
@@ -28,52 +28,7 @@ extension ShotScene {
                         cause: nil,
                         fix: nil,
                         lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
-                    ),
-                    pending: [
-                        BridgePendingRecord(
-                            subject: BridgeMessage(
-                                key: "core.pending.subject.release_file",
-                                args: [
-                                    BridgeMessageArg(
-                                        name: "file",
-                                        value: "03 Second Floor.flac"
-                                    ),
-                                    BridgeMessageArg(
-                                        name: "album",
-                                        value: "Paper Lanterns"
-                                    ),
-                                ]
-                            ),
-                            reason: BridgePendingReason(
-                                key: "core.pending.reason.file_changed",
-                                detail:
-                                    "the file changed after it was imported",
-                                causes: []
-                            ),
-                            action: .restoreFile,
-                            actionKey: "core.pending.action.restore_file",
-                            sendsFiles: true
-                        ),
-                        BridgePendingRecord(
-                            subject: BridgeMessage(
-                                key: "core.pending.subject.cover",
-                                args: [
-                                    BridgeMessageArg(
-                                        name: "album",
-                                        value: "Low Tide Hours"
-                                    )
-                                ]
-                            ),
-                            reason: BridgePendingReason(
-                                key: "core.pending.reason.storage",
-                                detail: "request failed: connection refused",
-                                causes: []
-                            ),
-                            action: .retryOperation(id: 7),
-                            actionKey: "core.pending.action.retry",
-                            sendsFiles: true
-                        ),
-                    ]
+                    )
                 )
             )
         },
@@ -121,7 +76,6 @@ extension ShotScene {
 private func syncSettingsWindow(
     _ fixture: LibrarySettingsTabPreviewFixture,
     shown: BridgeSyncShown,
-    pending: [BridgePendingRecord] = [],
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
@@ -129,12 +83,10 @@ private func syncSettingsWindow(
 ) -> some View {
     SettingsWindowShot(
         shown: shown,
-        pending: pending,
         undoneSetup: undoneSetup,
         page: syncSettingsPagePreview(
             fixture,
             shown: shown,
-            pending: pending,
             undoneSetup: undoneSetup,
             restoreCode: restoreCode
         )
@@ -160,7 +112,6 @@ func peopleSettingsWindow(
         alert,
         over: SettingsWindowShot(
             shown: .fixtureSynced,
-            pending: [],
             undoneSetup: nil,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(

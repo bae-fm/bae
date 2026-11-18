@@ -869,18 +869,10 @@ internal open class FakeAppHandle(
         unfaked("retryOutbox")
     }
 
-    override suspend fun retryPendingOperation(id: Long) {
-        unfaked("retryPendingOperation")
-    }
-
     override fun cancelStorageSetup(): BridgeSetupCancellation = unfaked("cancelStorageSetup")
 
     override suspend fun dismissUndoneStorageSetup(operation: Long) {
         unfaked("dismissUndoneStorageSetup")
-    }
-
-    override suspend fun cancelFailedReleaseMove(id: Long) {
-        unfaked("cancelFailedReleaseMove")
     }
 
     override suspend fun setUnmeteredOnly(unmeteredOnly: Boolean) {

@@ -52,7 +52,6 @@ func librarySettingsTabPreview(
         SyncStatusStore(
             snapshot: BridgeSyncStatusSnapshot(
                 shown: shown,
-                pending: [],
                 setupRunning: false,
                 undoneSetup: nil
             )
@@ -64,13 +63,12 @@ func librarySettingsTabPreview(
 }
 
 /// The Sync page over `fixture`'s library, its sync as `shown` says, with
-/// what coven waits on and a storage setup that ended undone, when given,
+/// a storage setup that ended undone, when given,
 /// and its restore code masked unless `restoreCode` says otherwise.
 @MainActor
 func syncSettingsPagePreview(
     _ fixture: LibrarySettingsTabPreviewFixture,
     shown: BridgeSyncShown,
-    pending: [BridgePendingRecord] = [],
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
@@ -80,7 +78,6 @@ func syncSettingsPagePreview(
     let status = SyncStatusStore(
         snapshot: BridgeSyncStatusSnapshot(
             shown: shown,
-            pending: pending,
             setupRunning: false,
             undoneSetup: undoneSetup
         )

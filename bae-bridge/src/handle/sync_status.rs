@@ -73,15 +73,6 @@ forward! { async this => {
         ))
     }
 
-    /// End a release's failed move to the cloud, `id`, as its pending
-    /// record offers (`BridgePendingAction::CancelUpload`): the release stays
-    /// on this device only, as it was.
-    fn cancel_failed_release_move(id: i64) -> () {
-        Ok(this
-            .services
-            .cancel_failed_release_move(coven::MoveId(id))
-            .await?)
-    }
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure
     /// reaches the caller and is recorded as the sync-status error the failure
@@ -98,18 +89,6 @@ forward! { async this => {
     fn dismiss_undone_storage_setup(operation: i64) -> () {
         this.services
             .dismiss_undone_storage_setup(coven::OperationId(operation))
-            .await
-            .map_err(BridgeError::from)
-    }
-
-    /// Hand one operation from `BridgeSyncStatusSnapshot::pending` back to the
-    /// sync loop, which revalidates it and runs a cycle. `id` is the one carried
-    /// on that operation. The operation leaves the list on the next status the
-    /// UI receives; an operation whose cause still stands simply blocks again,
-    /// and an id that names nothing blocked fails here.
-    fn retry_pending_operation(id: i64) -> () {
-        this.services
-            .retry_pending_operation(coven::OperationId(id))
             .await
             .map_err(BridgeError::from)
     }

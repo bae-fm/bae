@@ -1,12 +1,10 @@
 package fm.bae.app.data
 
-import fm.bae.app.BugReports
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
@@ -38,27 +36,14 @@ class SyncStatusStore {
     private val _line = MutableStateFlow<SyncLine>(SyncLine.Checking)
     val line: StateFlow<SyncLine> = _line.asStateFlow()
 
-    /** What coven is waiting on, each with the action the person can take on it; none until the status is read. */
-    private val _pending = MutableStateFlow<List<BridgePendingRecord>?>(null)
-    val pending: StateFlow<List<BridgePendingRecord>?> = _pending.asStateFlow()
-
-    /** Whether the last read held a record a phone can't have: a bug, reported, and kept out of [pending]. */
-    private val _recordsDropped = MutableStateFlow(false)
-    val recordsDropped: StateFlow<Boolean> = _recordsDropped.asStateFlow()
-    private val phoneRecords = PhonePendingRecords()
-
     private val _undoneSetup = MutableStateFlow<UndoneSetup?>(null)
     val undoneSetup: StateFlow<UndoneSetup?> = _undoneSetup.asStateFlow()
 
     fun apply(
         status: BridgeSyncStatusSnapshot,
         errors: ErrorDisplays,
-        bugs: BugReports,
     ) {
         _line.value = SyncLine.Read(status.shown)
-        val taken = phoneRecords.take(status.pending, "list the pending records", bugs::reportShownInPlace)
-        _pending.value = taken.listed
-        _recordsDropped.value = taken.onlyAMacHas.isNotEmpty()
         _undoneSetup.value =
             status.undoneSetup?.let { undone ->
                 errors.display(undone.error)?.let { shown -> UndoneSetup(undone.operation, shown) }

@@ -828,17 +828,6 @@ impl AppServices {
     // The sync status, each value read from its tables in one go.
     delegate_values!(subscribe_sync_status => subscribe_sync_status() -> bae_sync_status::SyncStatusSnapshot);
 
-    delegate_lib!(store, retry_pending_operation => retry_pending_operation(id: coven::OperationId) -> ());
-
-    /// End a release's failed move to the cloud, `id`, as its pending
-    /// record offers: the release stays on this device only, as it was.
-    pub async fn cancel_failed_release_move(
-        &self,
-        id: coven::MoveId,
-    ) -> Result<(), bae_library::LibraryError> {
-        self.inner.manager.cancel_failed_release_move(id).await
-    }
-
     // Everything sync is doing, for the activity indicator: each value read
     // in one go.
     pub fn subscribe_sync_activity(
@@ -847,7 +836,6 @@ impl AppServices {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_sync_activity())
     }
 
-    delegate_lib!(store, pending => pending() -> Vec<coven::PendingRecord>);
     delegate_lib!(store, library_name => store_name() -> String);
     pub fn subscribe_library_name(&self) -> bae_store::live_query::LiveValues<String> {
         self.inner.manager.values_until_closed(self.inner.store.subscribe_store_name())

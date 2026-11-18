@@ -515,27 +515,27 @@ async fn fail_a_pass(
     failed
 }
 
-/// Storage that can't be reached shows once, as the connection's pending
-/// record: the query finds the record that holds the failure the state names,
-/// and the status then shows no failure of its own beside it.
+/// Storage that can't be reached shows as sync's failure, in the network's
+/// class.
 #[tokio::test]
-async fn an_unreachable_storage_shows_once_as_its_connection_record() {
+async fn an_unreachable_storage_shows_as_syncs_failure() {
     let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
     let failed =
         fail_a_pass(&manager, next_request_fails(coven::StorageFailure::Network, None), |value| {
             matches!(value.shown_pass(), Some(coven::LastPass::Offline { .. }))
         })
         .await;
-    assert!(failed.failure_recorded);
-    assert_eq!(failed.attention_count, 1);
-    assert_eq!(failed.shown_failure(), None);
+    let Some(bae_diagnostics::UiError::Diagnostic { category, .. }) = failed.failure() else {
+        panic!("an offline pass is sync's failure");
+    };
+    assert_eq!(category, bae_diagnostics::UiErrorCategory::Network);
     manager.library.manager().close().await.unwrap();
 }
 
-/// A device stopped at a slot only a newer app reads shows that failure
-/// once, as the slot's pending record.
+/// A device stopped at a slot only a newer app reads shows that as sync's
+/// failure.
 #[test]
-fn a_blocked_slot_shows_once_as_its_slot_record() {
+fn a_blocked_slot_shows_as_syncs_failure() {
     crate::test_libraries::run_two_device_test(async |devices| {
         let manager = devices.a().manager();
         let album = create_test_album();
@@ -559,12 +559,10 @@ fn a_blocked_slot_shows_once_as_its_slot_record() {
         b.wait_until("the second device stopping for the update", || async {
             let status = b.manager().sync_status().await.unwrap();
             matches!(status.shown_pass(), Some(coven::LastPass::Blocked { .. }))
-                && status.failure_recorded
         })
         .await;
         let status = b.manager().sync_status().await.unwrap();
-        assert_eq!(status.shown_failure(), None);
-        assert!(status.attention_count >= 1);
+        assert!(status.failure().is_some());
     });
 }
 

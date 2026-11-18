@@ -8,7 +8,6 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
-import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -17,6 +16,8 @@ import uniffi.bae_bridge.BridgeDownloadQueueActivity
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFormerDevice
 import uniffi.bae_bridge.BridgeFormerDeviceState
@@ -34,11 +35,7 @@ import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgePauseBoundary
-import uniffi.bae_bridge.BridgePendingAction
-import uniffi.bae_bridge.BridgePendingReason
-import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
@@ -50,6 +47,7 @@ import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSidePausePrompt
+import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
@@ -227,29 +225,21 @@ object PreviewData {
             state = state,
         )
 
-    /** A library mid-sync: releases uploading and pinning and, when [needsAttention], a record
-     *  that needs signing in. */
+    /** A library mid-sync: releases uploading and pinning and, when [needsAttention], sync failing until the person
+     *  signs in again. */
     fun syncActivity(needsAttention: Boolean): BridgeSyncActivity =
         BridgeSyncActivity(
             moving = true,
             held = false,
-            needsAttention = needsAttention,
-            failure = null,
-            attention =
+            failure =
                 if (needsAttention) {
-                    listOf(
-                        BridgePendingRecord(
-                            subject = BridgeMessage(key = "core.pending.subject.connection", args = emptyList()),
-                            reason = BridgePendingReason("core.pending.reason.storage", null, emptyList()),
-                            action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
-                            actionKey = "core.pending.action.sign_in",
-                            sendsFiles = false,
-                        ),
+                    BridgeException.Diagnostic(
+                        BridgeErrorCategory.Storage(BridgeStorageFailure.AUTHENTICATION),
+                        "Dropbox answered 401: expired_access_token",
                     )
                 } else {
-                    emptyList()
+                    null
                 },
-            attentionCount = if (needsAttention) 1u else 0u,
             syncing = true,
             uploads =
                 BridgeUploadQueueActivity(

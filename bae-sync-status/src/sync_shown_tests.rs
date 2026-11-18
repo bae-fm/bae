@@ -60,7 +60,6 @@ fn shown_on_location(location: coven::StorageConfig, state: coven::SyncState) ->
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(location),
-        failure_recorded: false,
         attention_count: 0,
         cause_file: None,
     }
@@ -338,7 +337,6 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(location_on(coven::CloudProvider::Dropbox)),
-        failure_recorded: false,
         attention_count: 1,
         cause_file: Some("Cover.jpg".into()),
     }

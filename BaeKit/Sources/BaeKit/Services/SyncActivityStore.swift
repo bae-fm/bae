@@ -38,7 +38,8 @@ public final class SyncActivityStore {
 #if DEBUG
     extension SyncActivityStore {
         /// A library mid-sync for shots: releases uploading and pinning,
-        /// and a record that needs signing in again.
+        /// and, when `needsAttention`, sync failing until the person signs
+        /// in again.
         public static func preview(
             needsAttention: Bool = true
         ) -> SyncActivityStore {
@@ -54,10 +55,7 @@ public final class SyncActivityStore {
             BridgeSyncActivity(
                 moving: true,
                 held: false,
-                needsAttention: needsAttention,
-                failure: nil,
-                attention: needsAttention ? [previewSignIn] : [],
-                attentionCount: needsAttention ? 1 : 0,
+                failure: needsAttention ? previewSignedOut : nil,
                 syncing: true,
                 uploads: BridgeUploadQueueActivity(
                     batch: BridgeTransferBatch(done: 1, total: 2),
@@ -77,20 +75,10 @@ public final class SyncActivityStore {
             )
         }
 
-        /// Dropbox asking to be signed in to again.
-        private static let previewSignIn = BridgePendingRecord(
-            subject: BridgeMessage(
-                key: "core.pending.subject.connection",
-                args: []
-            ),
-            reason: BridgePendingReason(
-                key: "core.pending.reason.storage",
-                detail: nil,
-                causes: []
-            ),
-            action: .signIn(provider: .dropbox),
-            actionKey: "core.pending.action.sign_in",
-            sendsFiles: false
+        /// Storage refusing this device's sign-in.
+        private static let previewSignedOut = BridgeError.Diagnostic(
+            category: .storage(failure: .authentication),
+            detail: "Dropbox answered 401: expired_access_token"
         )
     }
 #endif

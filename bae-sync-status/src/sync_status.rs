@@ -66,13 +66,6 @@ pub struct SyncStatusSnapshot {
     /// The location recorded on this device, with its account and folder
     /// labels, while one is.
     pub location: Option<coven::StorageConfig>,
-    /// A pending record shows the failure the state names: coven records a
-    /// failed pass's condition beside it, such as the connection's when
-    /// storage refused the pass or couldn't be reached, a blocked slot's, and
-    /// that of its own operation whose last attempt failed. The record names
-    /// what failed and what the person can do, so the same failure again on a
-    /// line of its own reads as a second problem.
-    pub failure_recorded: bool,
     /// How many pending records `pending` lists.
     pub attention_count: u32,
     /// The name of the release file on this device that the pending record
@@ -192,6 +185,20 @@ fn blocked_failure(
     }
 }
 
+/// What a pending record that names the sync state shows the person: the
+/// error coven keeps beside it, or with none, as after the library reopens,
+/// its reason.
+fn pending_failure(record: &coven::PendingRecord) -> UiError {
+    let category = bae_diagnostics::pending_reason_category(&record.reason);
+    match &record.cause {
+        Some(error) => UiError::diagnostic(category, error),
+        None => UiError::diagnostic(
+            category,
+            format!("{:?} waits: {:?}", record.subject, record.reason),
+        ),
+    }
+}
+
 impl SyncStatusSnapshot {
     /// The status of a library that isn't open, from coven's read of its
     /// closed store: sync doesn't run, and what an open library reads from
@@ -205,7 +212,6 @@ impl SyncStatusSnapshot {
             retry_effect: coven::RetryEffect::NotSyncing,
             storage_setup: None,
             location,
-            failure_recorded: false,
             attention_count: 0,
             cause_file: None,
         }
@@ -254,6 +260,15 @@ impl SyncStatusSnapshot {
     /// offline, or a failure the pass met. A synced or moving state, or one
     /// a pending record names, has no pass behind it.
     pub fn shown_pass(&self) -> Option<&coven::LastPass> {
+        match self.shown_cause()? {
+            coven::SyncCause::Pass(pass) => Some(pass),
+            coven::SyncCause::Pending(_) => None,
+        }
+    }
+
+    /// What names coven's sync state, while a failure names it: how the last
+    /// pass ended, or a pending record. A synced or moving state has none.
+    fn shown_cause(&self) -> Option<&coven::SyncCause> {
         use coven::SyncState as S;
         let cause = match &self.coven.state {
             S::Offline(cause)
@@ -273,24 +288,12 @@ impl SyncStatusSnapshot {
             | S::Synced
             | S::SignedOut { cause: None, .. } => return None,
         };
-        match cause {
-            coven::SyncCause::Pass(pass) => Some(pass),
-            coven::SyncCause::Pending(_) => None,
-        }
+        Some(cause)
     }
 
-    /// The failure the status line and the activity list show beside the
-    /// pending records: the last pass's, unless one of them shows it
-    /// already.
-    /// That record names what failed and what the person can do; the same
-    /// failure again on a line of its own reads as a second problem.
-    pub fn shown_failure(&self) -> Option<UiError> {
-        if self.error.is_none() && self.failure_recorded {
-            return None;
-        }
-        self.failure()
-    }
-
+    /// The failure the Activity panel lists as sync's: why this device's last
+    /// start failed, a removed device or one that needs a reset, or what
+    /// names a failed state, the last pass or a pending record.
     pub fn failure(&self) -> Option<UiError> {
         if let Some(error) = &self.error {
             return Some(error.clone());
@@ -305,17 +308,19 @@ impl SyncStatusSnapshot {
             }
             _ => {}
         }
-        match self.shown_pass()? {
+        let pass = match self.shown_cause()? {
+            coven::SyncCause::Pass(pass) => pass,
+            coven::SyncCause::Pending(record) => return Some(pending_failure(record)),
+        };
+        match pass {
             coven::LastPass::Offline { error, .. } => Some(UiError::diagnostic(C::Network, error)),
             coven::LastPass::Failed { failure, error } => {
                 Some(UiError::diagnostic(status_failure_category(failure), error))
             }
-            // A device that opened already blocked has only the slot's
-            // reason, which its pending record shows.
-            coven::LastPass::Blocked { slot, reason, error: Some(error) } => {
-                Some(blocked_failure(slot, reason, Some(error)))
+            coven::LastPass::Blocked { slot, reason, error } => {
+                Some(blocked_failure(slot, reason, error.as_deref()))
             }
-            coven::LastPass::Blocked { error: None, .. } | coven::LastPass::Synced => None,
+            coven::LastPass::Synced => None,
         }
     }
 
@@ -341,18 +346,22 @@ impl SyncStatusSnapshot {
     }
 
     /// The failure, unless coven logs it itself: coven logs the error that
-    /// blocked a slot and each failed attempt of its own operations, once per
-    /// change, so logging them here would repeat its line.
+    /// blocked a slot, each failed attempt of its own operations and each
+    /// pending record's error, once per change, so logging them here would
+    /// repeat its line.
     fn failure_coven_does_not_log(&self) -> Option<UiError> {
         let logged_by_coven = self.error.is_none()
             && matches!(
-                self.shown_pass(),
+                self.shown_cause(),
                 Some(
-                    coven::LastPass::Blocked { .. }
-                        | coven::LastPass::Failed {
-                            failure: coven::StatusFailure::Operation(_),
-                            ..
-                        }
+                    coven::SyncCause::Pending(_)
+                        | coven::SyncCause::Pass(
+                            coven::LastPass::Blocked { .. }
+                                | coven::LastPass::Failed {
+                                    failure: coven::StatusFailure::Operation(_),
+                                    ..
+                                }
+                        )
                 )
             );
         if logged_by_coven {

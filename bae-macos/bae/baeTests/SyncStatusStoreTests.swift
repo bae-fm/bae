@@ -53,17 +53,15 @@ struct SyncStatusStoreTests {
     }
 
     /// Before the status is first read the page shows nothing in its block,
-    /// never that the library is synced, and the list waits.
+    /// never that the library is synced.
     @MainActor
     @Test("the state is absent until the status is read")
     func theStateIsAbsentUntilTheStatusIsRead() {
         let sync = SyncStatusStore()
         #expect(sync.shown == nil)
         #expect(!sync.unreadable)
-        #expect(sync.pending == nil)
         sync.apply(status(.fixtureSynced))
         #expect(sync.shown?.status == .synced)
-        #expect(sync.pending == [])
     }
 
     /// A read that fails withdraws the state with the snapshot it came from,
@@ -86,40 +84,6 @@ struct SyncStatusStoreTests {
         sync.apply(status(.fixtureSynced))
         #expect(sync.shown?.status == .synced)
         #expect(!sync.unreadable)
-    }
-
-    /// A connected library with something coven waits on reaches the list
-    /// that offers its action, whatever state the page names.
-    @MainActor
-    @Test("a pending record reaches the list")
-    func pendingRecordReachesTheList() throws {
-        let record = BridgePendingRecord(
-            subject: BridgeMessage(
-                key: "core.pending.operation.invite",
-                args: []
-            ),
-            reason: BridgePendingReason(
-                key: "core.pending.reason.failed",
-                detail: nil,
-                causes: []
-            ),
-            action: .retryOperation(id: 7),
-            actionKey: "core.pending.action.retry",
-            sendsFiles: false
-        )
-        let sync = SyncStatusStore()
-
-        sync.apply(
-            BridgeSyncStatusSnapshot(
-                shown: .fixtureSynced,
-                pending: [record],
-                setupRunning: false,
-                undoneSetup: nil
-            )
-        )
-
-        let first = try #require(sync.pending?.first)
-        #expect(first.action == .retryOperation(id: 7))
     }
 
     /// The state's words, cause and last sync are core's, in the person's
@@ -179,7 +143,6 @@ struct SyncStatusStoreTests {
     private func status(_ shown: BridgeSyncShown) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             shown: shown,
-            pending: [],
             setupRunning: false,
             undoneSetup: nil
         )

@@ -174,14 +174,14 @@ class OpenLibrary internal constructor(
             ScreenSubscription(
                 appHandle.subscribeSyncStatus().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { value -> stores.syncStatus.apply(value, runtime.errors, bugs) },
+                onValue = { value -> stores.syncStatus.apply(value, runtime.errors) },
                 onError = { error -> subscriptionFailed("sync status", error)?.let { stores.syncStatus.fail() } },
             )
         screenSubscriptions +=
             ScreenSubscription(
                 appHandle.subscribeSyncActivity().let { pulled(it::next, it::cancel) },
                 scope,
-                onValue = { value -> stores.syncActivity.apply(value, bugs) },
+                onValue = stores.syncActivity::apply,
                 onError = { error -> subscriptionFailed("sync activity", error)?.let(stores.syncActivity::fail) },
             )
         streamFeeds +=

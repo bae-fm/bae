@@ -85,10 +85,7 @@ class SyncPullsTest {
         BridgeSyncActivity(
             moving = uploads != null,
             held = false,
-            needsAttention = false,
             failure = null,
-            attention = emptyList(),
-            attentionCount = 0u,
             syncing = false,
             uploads = uploads,
             pins = null,
@@ -109,7 +106,6 @@ class SyncPullsTest {
                 fix = null,
                 lastSynced = null,
             ),
-        pending = emptyList(),
         setupRunning = false,
         undoneSetup = null,
     )

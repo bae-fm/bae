@@ -446,8 +446,6 @@
     <string name="admin_change_approve">%1$s beengedése</string>
     <string name="sync_status">Állapot</string>
     <string name="sync_last_synced">Utolsó szinkronizálás: %1$s</string>
-    <string name="sync_pending">Függőben</string>
-    <string name="sync_pending_tap">Koppintson egy sorra, hogy lássa, mi történt.</string>
     <string name="sync_cloud_home">Felhőotthon</string>
     <string name="sync_fix_update">Frissítés</string>
     <string name="sync_fix_sign_in">Bejelentkezés: %1$s</string>

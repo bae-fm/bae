@@ -11,16 +11,9 @@ pub struct BridgeSyncActivity {
     /// A queue is held and no bytes move: the indicator shows a pause
     /// symbol, and that queue's line says what holds it.
     pub held: bool,
-    /// Something needs the person: the indicator shows a warning, and the
-    /// panel leads with it.
-    pub needs_attention: bool,
-    /// The sync failure the status line shows, such as being offline.
+    /// Sync's failure, such as being offline: the panel lists it under
+    /// Needs attention, and the indicator shows a warning while it does.
     pub failure: Option<super::BridgeError>,
-    /// The pending records that need the person.
-    pub attention: Vec<super::BridgePendingRecord>,
-    /// How many records `attention` lists, as the sync status query counts
-    /// them. The apps decide from it whether any record is listed.
-    pub attention_count: u32,
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded. The panel's Syncing changes line shows while it is.
     pub syncing: bool,
@@ -35,12 +28,9 @@ pub struct BridgeSyncActivity {
 
 impl BridgeSyncActivity {
     pub(crate) fn from_core(activity: bae_views::SyncActivity) -> Self {
-        let needs_attention = activity.needs_attention();
         let held = activity.held();
         let bae_views::SyncActivity {
             failure,
-            attention,
-            attention_count,
             syncing,
             moving,
             uploads,
@@ -50,10 +40,7 @@ impl BridgeSyncActivity {
         Self {
             moving,
             held,
-            needs_attention,
             failure: failure.map(super::BridgeError::from_core),
-            attention: attention.into_iter().map(super::BridgePendingRecord::from_core).collect(),
-            attention_count,
             syncing,
             uploads: uploads.map(BridgeUploadQueueActivity::from_core),
             pins: pins.map(BridgeDownloadQueueActivity::from_core),

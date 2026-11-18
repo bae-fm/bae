@@ -37,12 +37,10 @@ import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetails
 import fm.bae.app.ui.components.ErrorDetailsDialog
@@ -53,7 +51,6 @@ import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeActivityLine
-import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSyncActivity
 
 /**
@@ -209,7 +206,6 @@ internal fun AndroidActivity(
                 NeedsAttention(
                     problems = problems,
                     app = app,
-                    activity = activity,
                     failure = words.failure,
                     error = error,
                     onDismissProblem = onDismissProblem,
@@ -228,13 +224,12 @@ internal fun AndroidActivity(
 
 /**
  * The label, then a row for each problem not dismissed with a line between rows, the lines inset
- * to start where the words do, and the pending records after them.
+ * to start where the words do.
  */
 @Composable
 private fun NeedsAttention(
     problems: ActivityProblems,
     app: List<AppProblem>,
-    activity: BridgeSyncActivity?,
     failure: DisplayError?,
     error: DisplayError?,
     onDismissProblem: (ActivityProblemId) -> Unit,
@@ -257,9 +252,6 @@ private fun NeedsAttention(
                     onOpenSettings = onOpenSettings,
                 )
             }
-        }
-        if (activity != null && activity.attentionCount > 0u) {
-            PendingRecords(activity.attention, onOpenSettings)
         }
     }
 }
@@ -312,29 +304,6 @@ private fun ProblemRow(
                 onOpenDetails = onOpenDetails,
                 buttons = NoticeButtons.BELOW,
             )
-        }
-    }
-}
-
-/** The records sync can't send until the person acts, each its subject and why, then the way to act. */
-@Composable
-private fun PendingRecords(
-    records: List<BridgePendingRecord>,
-    onOpenSettings: () -> Unit,
-) {
-    val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        records.forEach { record ->
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
-                Text(text = context.coreString(record.subject), style = ThemeText.strong.style)
-                AndroidNotice(
-                    error = DisplayError(context.coreString(record.reason.key), record.reason.detail),
-                    tone = StatusTone.WARNING,
-                )
-            }
-        }
-        AndroidButton(kind = ButtonKind.TEXT, onClick = onOpenSettings) {
-            Text(context.coreString("core.activity.open_settings"))
         }
     }
 }

@@ -1,56 +1,7 @@
-//! These tests check what the pending list and the release's storage row
-//! show when a move fails because an original file changed, and what Cancel
-//! does then.
+//! These tests check what the release's storage row shows when a move fails
+//! because an original file changed, and what Cancel does then.
 
 use super::*;
-
-/// An original that changes before its upload fails its release's move: the
-/// pending list names the file and offers Cancel upload, which ends the move,
-/// and the release stays on this device only.
-#[tokio::test]
-async fn a_changed_original_fails_the_move_until_its_upload_is_cancelled() {
-    let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
-    std::fs::write(temp.path().join("changed/a.flac"), b"changed after the move").unwrap();
-    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
-    manager.library.manager().start().unwrap();
-    let mut values = manager.library.manager().subscribe_sync_status();
-    let listed = pending_list_until(&mut values, |items| {
-        items.iter().any(|item| {
-            matches!(item.wait.action, bae_sync_status::PendingAction::CancelUpload { .. })
-        })
-    })
-    .await;
-    let item = listed
-        .iter()
-        .find(|item| {
-            matches!(item.wait.action, bae_sync_status::PendingAction::CancelUpload { .. })
-        })
-        .unwrap();
-    assert_eq!(
-        item.subject,
-        bae_sync_status::PendingSubjectName::ReleaseFile {
-            file_name: "a.flac".into(),
-            album_title: "Test Album".into(),
-        }
-    );
-    let bae_sync_status::PendingAction::CancelUpload { id } = item.wait.action.clone() else {
-        unreachable!("found by its action");
-    };
-    manager.library.manager().cancel_failed_release_move(id).await.unwrap();
-    for file in release_files(manager.library.manager(), &release.id).await {
-        assert!(!file.stored, "the release stays on this device");
-    }
-    assert_eq!(
-        manager.library.manager().count_pending_uploads_for_release(&release.id).await.unwrap(),
-        0
-    );
-    pending_list_until(&mut values, |items| {
-        !items.iter().any(|item| {
-            matches!(item.wait.action, bae_sync_status::PendingAction::CancelUpload { .. })
-        })
-    })
-    .await;
-}
 
 /// When a move fails because an original changed, the release's storage row
 /// shows Move failed with the file's name, and the row sorts first. The

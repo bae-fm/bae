@@ -1,57 +1,32 @@
 import SwiftUI
-import os.log
 
-private let logger = Logger.bae("PendingRecordsView")
-
-/// What coven is waiting on, one row per pending record: what it is about
-/// over the reason, in plain words, with its diagnostic behind Details and the
-/// record's action beside it wherever the person can act. Without `perform`
-/// the list only informs, as while a library is still being restored.
+/// What coven is waiting on while a library is restored or joined, one row
+/// per pending record: what it is about over the reason, in plain words, with
+/// its diagnostic behind Details.
 public struct PendingRecordsView: View {
     public let records: [BridgePendingRecord]
-    public let perform: ((BridgePendingRecord) async throws -> Void)?
 
-    public init(
-        records: [BridgePendingRecord],
-        perform: ((BridgePendingRecord) async throws -> Void)?
-    ) {
+    public init(records: [BridgePendingRecord]) {
         self.records = records
-        self.perform = perform
     }
 
     public var body: some View {
         ForEach(records, id: \.self) { record in
-            PendingRecordRow(record: record, perform: perform)
+            PendingRecordRow(record: record)
         }
     }
 }
 
-/// One row of a Settings list: the subject over the reason, with Details and
-/// the record's action at the right.
+/// One row: the subject over the reason, with Details at the right.
 private struct PendingRecordRow: View {
     let record: BridgePendingRecord
-    let perform: ((BridgePendingRecord) async throws -> Void)?
 
-    @State
-    private var task: Task<Void, Never>?
-    @State
-    private var error: DisplayError?
     #if canImport(AppKit)
         private var showErrorDetails = ErrorDetailsOpener()
     #endif
 
-    init(
-        record: BridgePendingRecord,
-        perform: ((BridgePendingRecord) async throws -> Void)?
-    ) {
+    init(record: BridgePendingRecord) {
         self.record = record
-        self.perform = perform
-    }
-
-    /// The action's label, when the person can act on this record here.
-    private var actionTitle: String? {
-        guard perform != nil, let key = record.actionKey else { return nil }
-        return localizedCoreString(key)
     }
 
     private var reason: DisplayError {
@@ -62,57 +37,25 @@ private struct PendingRecordRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.group) {
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text(record.subject.localizedLine)
-                        .themeText(.strong)
-                    Text(reason.line)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                buttons
+        HStack(spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                Text(record.subject.localizedLine)
+                    .themeText(.strong)
+                Text(reason.line)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
             }
-            if let error {
-                Notice(error: error)
-            }
-        }
-        #if canImport(AppKit)
-            .errorDetailsAlert(showErrorDetails.presented)
-        #endif
-        .onDisappear { task?.cancel() }
-    }
-
-    @ViewBuilder
-    private var buttons: some View {
-        HStack(spacing: ThemeSpace.related) {
+            .frame(maxWidth: .infinity, alignment: .leading)
             #if canImport(AppKit)
                 if let details = ErrorDetails(error: reason) {
                     Button("Details") { showErrorDetails(details) }
                         .buttonStyle(.accentBorderless)
+                        .fixedSize()
                 }
             #endif
-            if let actionTitle {
-                Button(actionTitle) { run() }
-                    .disabled(task != nil)
-            }
         }
-        .fixedSize()
-    }
-
-    private func run() {
-        guard let perform else {
-            preconditionFailure("an action shows only with a perform closure")
-        }
-        error = nil
-        task = Task {
-            defer { task = nil }
-            do { try await perform(record) }
-            catch is CancellationError {
-                logger.debug("pending action cancelled as its row closed")
-            }
-            catch { self.error = DisplayError(error) }
-        }
+        #if canImport(AppKit)
+            .errorDetailsAlert(showErrorDetails.presented)
+        #endif
     }
 }

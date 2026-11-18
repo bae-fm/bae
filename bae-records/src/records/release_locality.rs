@@ -30,16 +30,4 @@ impl Records {
             })
             .await
     }
-
-    /// End the failed move `id`, whose original changed before its upload,
-    /// as its pending record offers: coven retires it, and every file of it
-    /// stays on this device only, as it was before it moved.
-    pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), DbError> {
-        self.store
-            .call_sql(move |sql| {
-                sql.cancel_move(id)?;
-                Ok(())
-            })
-            .await
-    }
 }

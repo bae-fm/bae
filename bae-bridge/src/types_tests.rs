@@ -698,8 +698,7 @@ fn a_pending_record_with_its_error_crosses_with_that_error_as_its_details() {
 }
 
 /// A record crosses with its labels as catalog keys: a release file's subject
-/// with its file name and album title as the message's arguments, and the
-/// action's key beside the action.
+/// with its file name and album title as the message's arguments.
 #[test]
 fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
     let record = BridgePendingRecord::from_core(bae_sync_status::PendingItem {
@@ -712,7 +711,6 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
             cause: None,
             action: bae_sync_status::PendingAction::RestoreFile,
         },
-        record_subject: coven::PendingSubject::Connection,
     });
     assert_eq!(
         record.subject,
@@ -725,7 +723,6 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
         }
     );
     assert_eq!(record.reason.key, "core.pending.reason.paused");
-    assert_eq!(record.action_key.as_deref(), Some("core.pending.action.restore_file"));
 
     let waiting = BridgePendingRecord::from_core(bae_sync_status::PendingItem {
         subject: bae_sync_status::PendingSubjectName::Snapshot,
@@ -734,13 +731,11 @@ fn a_pending_record_crosses_with_its_labels_as_catalog_messages() {
             cause: None,
             action: bae_sync_status::PendingAction::Wait,
         },
-        record_subject: coven::PendingSubject::Connection,
     });
     assert_eq!(
         waiting.subject,
         BridgeMessage { key: "core.pending.subject.snapshot".into(), args: Vec::new() }
     );
-    assert_eq!(waiting.action_key, None);
 }
 
 /// A preview target crosses with its file's name, which the preview shows.

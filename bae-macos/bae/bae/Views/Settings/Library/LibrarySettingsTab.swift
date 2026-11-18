@@ -189,8 +189,7 @@ struct LibrarySettingsTab: View {
 }
 
 /// The Sync page: the state sync is in, with its cause, its fix and when it
-/// last finished, then where the library is stored, its restore code and what
-/// sync waits on.
+/// last finished, then where the library is stored and its restore code.
 private struct SyncSettingsPage: View {
     let restoreCode: RestoreCodeReveal
     let onResetDevice: () -> Void
@@ -239,11 +238,6 @@ private struct SyncSettingsPage: View {
                 LibraryRestoreCodeSection(
                     reveal: restoreCode,
                     location: location
-                )
-                SyncPendingList(
-                    location: location,
-                    onRestoreFromCode: onRestoreFromCode,
-                    onCheckForUpdates: onCheckForUpdates
                 )
             }
         }

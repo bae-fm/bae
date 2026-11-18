@@ -96,7 +96,6 @@ struct SyncStatusSubscriptionTests {
 
         let synced = BridgeSyncStatusSnapshot(
             shown: .fixtureSynced,
-            pending: [],
             setupRunning: false,
             undoneSetup: nil
         )
@@ -135,10 +134,7 @@ struct SyncActivitySubscriptionTests {
         BridgeSyncActivity(
             moving: sending != nil,
             held: false,
-            needsAttention: false,
             failure: nil,
-            attention: [],
-            attentionCount: 0,
             syncing: false,
             uploads: sending.map {
                 BridgeUploadQueueActivity(

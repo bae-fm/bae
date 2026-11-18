@@ -5,8 +5,7 @@
 //!
 //! The joined columns are coven's sync state and when sync last finished,
 //! what a retry would do, the recorded location, why this
-//! device's last start failed, where its storage setup stands, whether a
-//! pending record already shows the failure the state names, how many
+//! device's last start failed, where its storage setup stands, how many
 //! records are pending, and the name of the file the failure's pending
 //! record is about.
 
@@ -15,52 +14,10 @@ use super::start_failure::{StartFailureColumns, START_FAILURE_COLUMNS};
 use super::storage_setup::{storage_setup_columns, StorageSetupColumns, UNDONE_SETUP_JOIN};
 use super::*;
 
-/// The sync state's pass, when the state is named by how the last pass ended:
-/// offline, or a failure the pass met. A pending record names every other
-/// state, or none does.
-const SHOWN_PASS: &str = "CASE sync.state \
-     WHEN 'offline' THEN sync.detail->'$.Offline.Pass' \
-     WHEN 'offline_with_unsent_changes' THEN sync.detail->'$.OfflineWithUnsentChanges.Pass' \
-     WHEN 'signed_out' THEN sync.detail->'$.SignedOut.cause.Pass' \
-     WHEN 'no_access' THEN sync.detail->'$.NoAccess.Pass' \
-     WHEN 'storage_full' THEN sync.detail->'$.StorageFull.Pass' \
-     WHEN 'folder_missing' THEN sync.detail->'$.FolderMissing.Pass' \
-     WHEN 'clock_wrong' THEN sync.detail->'$.ClockWrong.Pass' \
-     WHEN 'update_needed' THEN sync.detail->'$.UpdateNeeded.Pass' \
-     WHEN 'failed' THEN sync.detail->'$.Failed.Pass' \
-     END";
-
 /// The subject of the pending record the state names as its cause, when the
 /// state is a failure a pending record names.
 const CAUSE_SUBJECT: &str =
     "CASE sync.state WHEN 'failed' THEN sync.detail->'$.Failed.Pending.record.subject' END";
-
-/// Whether a pending record shows the failure `state` shows: a removed
-/// device or one whose keys another device replaced shows its failure from
-/// the record of that reason. Any other failure is the last pass's, which
-/// coven records beside it: the connection's condition when storage refused
-/// the pass or couldn't be reached, a blocked slot's, and that of the
-/// operation whose last attempt failed.
-const FAILURE_RECORDED: &str = "CASE \
-     WHEN state.state = 'removed' THEN EXISTS ( \
-         SELECT 1 FROM coven_pending AS held WHERE held.reason_kind = 'removed') \
-     WHEN json_type(state.detail, '$.NeedsReset.reason.MemberKeysReplaced') IS NOT NULL THEN EXISTS ( \
-         SELECT 1 FROM coven_pending AS held WHERE held.reason_kind = 'member_keys_replaced') \
-     WHEN state.pass IS NULL THEN 0 \
-     ELSE EXISTS ( \
-         SELECT 1 FROM coven_pending AS held \
-         WHERE (held.subject_kind = 'connection' AND held.reason_kind = 'storage' \
-                 AND CAST(held.record AS TEXT)->'$.reason.Storage.failure' \
-                     = coalesce(state.pass->'$.Offline.failure', \
-                         state.pass->'$.Failed.failure.Storage')) \
-             OR (held.subject_kind = 'slot' \
-                 AND CAST(held.record AS TEXT)->'$.reason' = state.pass->'$.Blocked.reason') \
-             OR (held.subject_kind = 'operation' \
-                 AND CAST(held.record AS TEXT)->'$.subject.Operation.kind' \
-                     = state.pass->'$.Failed.failure.Operation.subject.Operation.kind' \
-                 AND CAST(held.record AS TEXT)->'$.reason' \
-                     = state.pass->'$.Failed.failure.Operation.reason')) \
-     END";
 
 /// The statement, with its columns in the order [`StatusColumns::read`] reads
 /// them. `coven_sync_state` is a live query's own: coven runs a query that
@@ -75,14 +32,11 @@ pub(crate) fn status_query() -> String {
     format!(
         "SELECT shown.detail, shown.last_synced, retry.effect, retry.cooling_until, \
              status.location, {start_failure}, {setup}, \
-             shown.failure_recorded, \
              COUNT(file.position) OVER () AS attention_count, \
              {cause_file} AS cause_file, \
              {pending} \
-         FROM (SELECT state.*, {FAILURE_RECORDED} AS failure_recorded \
-             FROM (SELECT sync.*, {SHOWN_PASS} AS pass, {CAUSE_SUBJECT} AS cause_subject \
-                 FROM coven_sync_state AS sync) AS state \
-             ) AS shown \
+         FROM (SELECT sync.*, {CAUSE_SUBJECT} AS cause_subject \
+             FROM coven_sync_state AS sync) AS shown \
          JOIN coven_sync_status AS status \
          JOIN coven_retry_effect AS retry \
          LEFT JOIN sync_start_failure AS failure \
@@ -102,7 +56,6 @@ struct StatusColumns {
     location: Option<coven::StorageConfig>,
     start_failure: StartFailureColumns,
     storage_setup: StorageSetupColumns,
-    failure_recorded: bool,
     attention_count: u32,
     cause_file: Option<String>,
 }
@@ -117,7 +70,6 @@ impl StatusColumns {
             location: row.get(4)?,
             start_failure: StartFailureColumns::read(row, 5)?,
             storage_setup: StorageSetupColumns::read(row, 11)?,
-            failure_recorded: row.get("failure_recorded")?,
             attention_count: bae_store::read::count_column(row, "attention_count")?,
             cause_file: row.get("cause_file")?,
         })
@@ -129,7 +81,7 @@ impl StatusColumns {
 type StatusRow = (StatusColumns, PendingColumns);
 
 fn read_row(row: &Row<'_>) -> rusqlite::Result<StatusRow> {
-    Ok((StatusColumns::read(row)?, PendingColumns::read(row, 17)?))
+    Ok((StatusColumns::read(row)?, PendingColumns::read(row, 16)?))
 }
 
 /// The sync status as one read of the library sees it.
@@ -155,7 +107,6 @@ fn snapshot_of(rows: Vec<StatusRow>) -> Result<SyncStatusSnapshot, DbError> {
         location,
         start_failure,
         storage_setup,
-        failure_recorded,
         attention_count,
         cause_file,
     } = status.ok_or_else(|| DbError::unreadable("coven_sync_state", "no row"))?;
@@ -169,7 +120,6 @@ fn snapshot_of(rows: Vec<StatusRow>) -> Result<SyncStatusSnapshot, DbError> {
         retry_effect: coven::RetryEffect::from_columns(&effect, cooling_until)?,
         storage_setup: storage_setup.state()?,
         location,
-        failure_recorded,
         attention_count,
         cause_file,
     })

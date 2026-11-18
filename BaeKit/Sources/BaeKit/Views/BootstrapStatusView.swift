@@ -28,7 +28,7 @@ public struct BootstrapStatusView: View {
         case .pending(let records):
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 progress("Waiting…")
-                PendingRecordsView(records: records, perform: nil)
+                PendingRecordsView(records: records)
             }
         }
     }

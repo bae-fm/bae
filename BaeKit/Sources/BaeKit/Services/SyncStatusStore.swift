@@ -23,8 +23,6 @@ public final class SyncStatusStore {
         default: false
         }
     }
-    /// What coven is waiting on; nil until the status is first read.
-    public var pending: [BridgePendingRecord]? { snapshot?.pending }
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {
         self.snapshot = snapshot
         readError = nil

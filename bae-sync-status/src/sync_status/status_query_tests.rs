@@ -14,7 +14,6 @@ async fn a_library_with_nothing_recorded_reads_as_not_synced() {
     assert_eq!(status.error, None);
     assert_eq!(status.storage_setup, None);
     assert_eq!(status.retry_effect, coven::RetryEffect::NotSyncing);
-    assert!(!status.failure_recorded);
 }
 
 /// A bare library whose storage is connected, so that the sync state follows
@@ -47,10 +46,10 @@ fn status_of(connection: &rusqlite::Connection) -> SyncStatusSnapshot {
     snapshot_of(rows).unwrap()
 }
 
-/// A failed operation shows in a pending record of its own kind and reason,
-/// and only that record shows it.
+/// A pass that failed on coven's own operation reads as a failed state,
+/// with the operation's failure as sync's.
 #[test]
-fn a_record_of_the_failed_operation_shows_a_failed_pass() {
+fn a_failed_operation_reads_as_a_failed_pass() {
     let connection = connected_library();
     let invite = coven::record_invite(
         &connection,
@@ -72,21 +71,13 @@ fn a_record_of_the_failed_operation_shows_a_failed_pass() {
     coven::record_last_pass(&connection, &failed(&record)).unwrap();
     let status = status_of(&connection);
     assert!(matches!(status.coven.state, coven::SyncState::Failed(_)));
-    assert_eq!(status.attention_count, 1);
-    assert!(status.failure_recorded);
-
-    // The pass failed on another reason than the record holds.
-    let other = coven::PendingRecord::new(
-        record.subject.clone(),
-        coven::PendingReason::Removed(coven::Removal::Device),
-    );
-    coven::record_last_pass(&connection, &failed(&other)).unwrap();
-    assert!(!status_of(&connection).failure_recorded);
+    assert!(status.failure().is_some());
 }
 
-/// A removed device shows its failure from the record of its removal.
+/// A record of this device's removal reads as a removed device, with the
+/// removal as sync's failure.
 #[test]
-fn a_record_of_a_removal_shows_a_removed_device() {
+fn a_record_of_a_removal_reads_as_a_removed_device() {
     let connection = connected_library();
     let record = coven::PendingRecord::new(
         coven::PendingSubject::Connection,
@@ -100,14 +91,13 @@ fn a_record_of_a_removal_shows_a_removed_device() {
     .unwrap();
     let status = status_of(&connection);
     assert!(matches!(status.coven.state, coven::SyncState::Removed { .. }));
-    assert_eq!(status.attention_count, 1);
-    assert!(status.failure_recorded);
+    assert!(status.failure().is_some());
 }
 
-/// A member whose keys another installation replaced shows its failure from
-/// the record of that reason.
+/// A record of the member's keys another installation replaced reads as the
+/// reset the state needs, with that as sync's failure.
 #[test]
-fn a_record_of_replaced_member_keys_shows_the_reset_the_state_needs() {
+fn a_record_of_replaced_member_keys_reads_as_the_reset_the_state_needs() {
     let connection = connected_library();
     let record = coven::PendingRecord::new(
         coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
@@ -118,8 +108,7 @@ fn a_record_of_replaced_member_keys_shows_the_reset_the_state_needs() {
     coven::record_pending(&connection, &record).unwrap();
     let status = status_of(&connection);
     assert!(matches!(status.coven.state, coven::SyncState::NeedsReset { .. }));
-    assert_eq!(status.attention_count, 1);
-    assert!(status.failure_recorded);
+    assert!(status.failure().is_some());
 }
 
 /// A failed state that a pending record names reads that record's subject,

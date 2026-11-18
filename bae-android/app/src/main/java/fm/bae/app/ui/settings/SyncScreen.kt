@@ -51,8 +51,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgePendingAction
-import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeSaveSyncConfig
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
@@ -72,10 +70,10 @@ private val FIX_PADDING =
 private val LAST_SYNCED_PADDING = PaddingValues(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = 14.dp)
 
 /**
- * Runs the action a pending record offers. Restoring with the person's code
+ * Runs the fix a sync state offers. Restoring with the person's code
  * closes the library for the restore screen.
  */
-private class PendingActionRunner(
+private class SyncFixRunner(
     private val session: OpenLibrary,
     private val actions: SessionActions,
     private val context: Context,
@@ -171,57 +169,18 @@ private class PendingActionRunner(
         }
     }
 
-    fun run(action: BridgePendingAction) {
-        val handle = session.appHandle
-        when (action) {
-            BridgePendingAction.Wait, BridgePendingAction.RestoreFile, BridgePendingAction.Review -> {
-                error("$action offers nothing to run")
-            }
-
-            BridgePendingAction.UpdateApp -> {
-                error = openStoreListing(context)
-            }
-
-            is BridgePendingAction.SignIn -> {
-                signIn(action.provider)
-            }
-
-            BridgePendingAction.Reconnect -> {
-                perform("reconnect sync") { handle.reconnectSync() }
-            }
-
-            is BridgePendingAction.RetryOperation -> {
-                perform("retry pending operation ${action.id}") { handle.retryPendingOperation(action.id) }
-            }
-
-            is BridgePendingAction.RetryDownload -> {
-                perform("pin ${action.releaseId} again") { handle.queuePinReleases(listOf(action.releaseId)) }
-            }
-
-            is BridgePendingAction.CancelUpload -> {
-                perform("cancel the failed upload ${action.id}") {
-                    handle.cancelFailedReleaseMove(action.id)
-                }
-            }
-
-            BridgePendingAction.RestoreFromCode -> {
-                actions.restoreFromCode()
-            }
-        }
-    }
-
     /**
      * Sign in to the library's storage again: a new access key for an S3 bucket, which the key dialog asks for, or
      * the provider's sign-in.
      */
     private fun signIn(provider: BridgeCloudProvider) {
         if (provider == BridgeCloudProvider.S3) {
-            // A record that doesn't match the location is a bug; the screen's scope reports a throw.
+            // A fix that doesn't match the location is a bug; the screen's scope reports a throw.
             scope.launch {
                 val location = session.configStore.config.value.storage
                 askingForKey =
                     checkNotNull(location as? BridgeStorageLocation.S3) {
-                        "an S3 sign-in record under the storage location $location"
+                        "an S3 sign-in fix under the storage location $location"
                     }
             }
             return
@@ -255,9 +214,7 @@ private class PendingActionRunner(
 
 /**
  * The Sync page: the state sync is in, with its cause, its fix and when sync last finished; then the library's
- * storage; then everything sync waits on, in plain words, each with its action where the person can act: sign in,
- * retry, resume uploads, restore with the person's code. A wait the person can't help offers nothing; its diagnostic
- * details stay behind Details.
+ * storage and its restore code.
  */
 @Composable
 internal fun SyncScreen(
@@ -265,12 +222,10 @@ internal fun SyncScreen(
     actions: SessionActions,
     onBack: () -> Unit,
 ) {
-    val pending by session.syncStatusStore.pending.collectAsState()
-    val recordsDropped by session.syncStatusStore.recordsDropped.collectAsState()
     val line by session.syncStatusStore.line.collectAsState()
     val context = LocalContext.current
     val scope = rememberScreenScope()
-    val runner = remember(session) { PendingActionRunner(session, actions, context, scope) }
+    val runner = remember(session) { SyncFixRunner(session, actions, context, scope) }
     val config by session.configStore.config.collectAsState()
     val location = config.storage
 
@@ -291,8 +246,6 @@ internal fun SyncScreen(
         },
         location = location,
         restoreCode = restoreCode.state,
-        pending = pending,
-        recordsDropped = recordsDropped,
         onBack = onBack,
         onFix = runner::runFix,
         onShowRestoreCode = restoreCode::show,
@@ -300,15 +253,13 @@ internal fun SyncScreen(
         onPrintRestoreCode = { code ->
             locationLabel?.let { label -> printRestoreCode(context, RestoreCodePage.of(context, code, label)) }
         },
-        onPendingAction = runner::run,
     )
     SyncDialogs(runner = runner, actions = actions)
 }
 
 /**
  * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed actions, then the
- * library's [location] with its restore code, then what sync waits on in [pending]; [recordsDropped] says a
- * record a phone can't have was left out of it and reported.
+ * library's [location] with its restore code.
  */
 @Composable
 internal fun AndroidSettingsSync(
@@ -316,14 +267,11 @@ internal fun AndroidSettingsSync(
     notices: @Composable ColumnScope.() -> Unit,
     location: BridgeStorageLocation?,
     restoreCode: RestoreCodeState,
-    pending: List<BridgePendingRecord>?,
-    recordsDropped: Boolean,
     onBack: () -> Unit,
     onFix: (BridgeSyncFix) -> Unit,
     onShowRestoreCode: () -> Unit,
     onHideRestoreCode: () -> Unit,
     onPrintRestoreCode: (String) -> Unit,
-    onPendingAction: (BridgePendingAction) -> Unit,
 ) {
     AndroidScreen(title = stringResource(R.string.settings_sync), onBack = onBack, modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -344,10 +292,6 @@ internal fun AndroidSettingsSync(
                         onPrint = onPrintRestoreCode,
                     )
                 }
-            }
-            // What is waiting is a local read; nothing shows until it lands.
-            pending?.takeIf { it.isNotEmpty() || recordsDropped }?.let { records ->
-                item { PendingSection(records = records, onAction = onPendingAction, recordsDropped = recordsDropped) }
             }
         }
     }
@@ -384,10 +328,10 @@ private fun UndoneSetupNotice(session: OpenLibrary) {
     error?.let { AndroidNotice(it) }
 }
 
-/** The dialogs a fix or a pending action opens. */
+/** The dialogs a fix opens. */
 @Composable
 private fun SyncDialogs(
-    runner: PendingActionRunner,
+    runner: SyncFixRunner,
     actions: SessionActions,
 ) {
     runner.askingForKey?.let { place ->

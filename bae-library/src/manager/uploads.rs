@@ -107,13 +107,6 @@ impl LibraryManager {
         moves.into_iter().try_for_each(|(_, moved)| moved.map(|_| ()))
     }
 
-    /// End a release's failed move to the cloud, `id`, as its pending
-    /// record offers: coven retires the move, and the release stays on this
-    /// device only, playing from its originals.
-    pub async fn cancel_failed_release_move(&self, id: coven::MoveId) -> Result<(), LibraryError> {
-        Ok(self.records.cancel_failed_release_move(id).await?)
-    }
-
     /// Test-only observability: how many upload entries a release's files still have
     /// queued (zero means every cloud copy is confirmed durable).
     #[cfg(any(test, feature = "test-utils"))]

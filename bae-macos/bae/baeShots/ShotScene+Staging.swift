@@ -77,7 +77,6 @@ enum OverWindow {
 /// badges read.
 struct SettingsWindowShot<Page: View>: View {
     let shown: BridgeSyncShown
-    let pending: [BridgePendingRecord]
     let undoneSetup: BridgeUndoneStorageSetup?
     let page: Page
 
@@ -88,12 +87,10 @@ struct SettingsWindowShot<Page: View>: View {
     init(
         tab: SettingsTab = .library,
         shown: BridgeSyncShown = .fixtureSynced,
-        pending: [BridgePendingRecord] = [],
         undoneSetup: BridgeUndoneStorageSetup? = nil,
         page: Page
     ) {
         self.shown = shown
-        self.pending = pending
         self.undoneSetup = undoneSetup
         self.page = page
         _selection = State(initialValue: tab)
@@ -108,7 +105,6 @@ struct SettingsWindowShot<Page: View>: View {
                 SyncStatusStore(
                     snapshot: BridgeSyncStatusSnapshot(
                         shown: shown,
-                        pending: pending,
                         setupRunning: false,
                         undoneSetup: undoneSetup
                     )

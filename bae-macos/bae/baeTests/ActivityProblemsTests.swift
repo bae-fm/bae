@@ -51,19 +51,6 @@ struct ActivityProblemsTests {
         #expect(!problems.needsAttention)
     }
 
-    @Test("a listed record needs attention however much is dismissed")
-    func recordKeepsAttention() {
-        let problems = ActivityProblems(
-            app: [signIn],
-            activity: .preview(needsAttention: true),
-            error: nil,
-            subsonic: .off,
-            dismissed: [.signInSettings]
-        )
-        #expect(problems.recordsListed)
-        #expect(problems.needsAttention)
-    }
-
     @Test("a new kind of problem needs attention after the rest are dismissed")
     func newKindNeedsAttention() {
         let dismissed: Set<ActivityProblemID> = [.signInSettings]

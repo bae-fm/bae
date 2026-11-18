@@ -4093,21 +4093,7 @@ where it happens, and what only waits for coven to retry shows nowhere but the
 status's Waiting to sync.
 
 A failed start never shows beside the state that a later start or storage
-setup brought. The Activity panel (above) lists each thing
-coven is waiting on, one of its pending
-records
-([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
-in plain words, in the order they arose, with an action wherever the person
-can act. A change of this device's that waits for the data it changes to be
-updated to this version of bae says that, not that it waits for earlier
-changes. A record whose condition changes keeps its place. The error behind
-a record opens from its notice's *Details* (§9.6), to copy: its text names
-every cause below it, with secrets and URLs already cut by coven. A record
-read after the library reopens has no details and offers none. A retry that
-fails for the same reason leaves its record as it was and shows the error it
-met. The connection's record holds the error of the pass that failed on the
-connection. The details are never the record's internal debug text. This list
-replaces any banner of blocked work: there is one place to look.
+setup brought.
 
 **Signing in again to the recorded storage.** A device has no way to drop its
 storage sign-in and stay in the library: removing the library from the device
@@ -4162,8 +4148,7 @@ retries the upload. A file that changed instead stops its release's move to
 storage, and its row offers *Cancel upload*, which ends the move and
 leaves every file of the release on this device only (§4.2). A pin the download queue couldn't
 finish offers *Retry*, which queues the release's pin again, the failed entry
-in its place or the release anew if it left the queue (§4.3). Other records offer
-*Retry*, *Reconnect*, *Update…* or *Restore with code*. bae never asks for a storage
+in its place or the release anew if it left the queue (§4.3). bae never asks for a storage
 administrator's credentials: the person makes and deletes S3 access keys in the
 provider's console, and no record asks them to delete one
 ([coven §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
@@ -4220,10 +4205,7 @@ it has. While Android removes a release's download, its control says so.
   sync stopped with storage set up on this device, and the apps show it
   where core offers it: a running loop retries a failed pass by itself, and
   with no storage set up on this device there is nothing to start, so signing
-  in again to the recorded storage is the way back instead. A pending record
-  waiting for storage offers *Reconnect* as well, which connects again, or
-  ends the running loop's backoffs and runs the next cycle now when already
-  connected. A start that breaks on a
+  in again to the recorded storage is the way back instead. A start that breaks on a
   bug is reported as one and shows on the line the same way. Why the start
   failed is a row of this device's (`sync_start_failure`), kept until a
   start gets under way, whether a reconnect's or that of a storage setup such

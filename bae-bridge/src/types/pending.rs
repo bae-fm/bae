@@ -1,35 +1,20 @@
 use super::{BridgeCloudProvider, BridgeMessage, BridgeMessageArg};
 
-/// One thing coven is waiting on: what it is about, why, and what the person
-/// can do about it.
+/// One thing coven is waiting on while a library is restored or joined:
+/// what it is about, and why.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingRecord {
     /// What the record is about: a file by its name and album, anything else
     /// by what it is.
     pub subject: BridgeMessage,
     pub reason: BridgePendingReason,
-    pub action: BridgePendingAction,
-    /// The action's catalog key; none for `Wait`, which offers nothing to do.
-    pub action_key: Option<String>,
-    /// Whether the record is this device sending files to the cloud: an upload
-    /// or a move. A phone sends no release files or covers, so a phone that
-    /// receives such a record has a bug.
-    pub sends_files: bool,
 }
 
 impl BridgePendingRecord {
     pub(crate) fn from_core(item: bae_sync_status::PendingItem) -> Self {
-        let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
-        let sends_files = matches!(
-            item.record_subject,
-            coven::PendingSubject::Upload { .. } | coven::PendingSubject::Move { .. }
-        );
         Self {
             subject: subject_message(item.subject),
-            reason,
-            action_key: action.key().map(str::to_string),
-            action,
-            sends_files,
+            reason: BridgePendingReason::from_core(item.wait.reason, item.wait.cause),
         }
     }
 }
@@ -197,24 +182,6 @@ impl PendingReasonKind {
             R::Removed => "core.pending.reason.removed",
             R::MemberKeysReplaced => "core.pending.reason.member_keys_replaced",
         }
-    }
-}
-
-impl BridgePendingAction {
-    /// The action's catalog key; `Wait` offers nothing to do and has none.
-    pub(crate) fn key(&self) -> Option<&'static str> {
-        use BridgePendingAction as A;
-        Some(match self {
-            A::Wait => return None,
-            A::UpdateApp => "core.pending.action.update_app",
-            A::SignIn { .. } => "core.pending.action.sign_in",
-            A::Reconnect => "core.pending.action.reconnect",
-            A::RestoreFile => "core.pending.action.restore_file",
-            A::RetryOperation { .. } | A::RetryDownload { .. } => "core.pending.action.retry",
-            A::CancelUpload { .. } => "core.pending.action.cancel_upload",
-            A::RestoreFromCode => "core.pending.action.restore_from_code",
-            A::Review => "core.pending.action.review",
-        })
     }
 }
 

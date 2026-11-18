@@ -5,22 +5,18 @@ use super::*;
 use bae_diagnostics::UiError;
 use bae_records::records::query::RELEASE_STORAGE_PINNED;
 use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT_COLUMNS};
-use bae_sync_status::{PendingItem, SyncStatusSnapshot};
+use bae_sync_status::SyncStatusSnapshot;
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
-/// What sync is doing now: the work that needs the person and the transfer
-/// lines, each counting the releases of its batch. Each line's bar is not
-/// part of it: the bar changes with each part a provider confirms or a
-/// download receives, and travels on the Activity bars' stream.
+/// What sync is doing now: sync's failure and the transfer lines, each
+/// counting the releases of its batch. Each line's bar is not part of it:
+/// the bar changes with each part a provider confirms or a download
+/// receives, and travels on the Activity bars' stream.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncActivity {
-    /// The sync failure the status line shows, such as being offline,
-    /// unless a pending record in `attention` shows it already.
+    /// Sync's failure, such as being offline, which the panel lists under
+    /// Needs attention.
     pub failure: Option<UiError>,
-    /// The pending records that need the person.
-    pub attention: Vec<PendingItem>,
-    /// How many records `attention` lists, as the query counts them.
-    pub attention_count: u32,
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded.
     pub syncing: bool,
@@ -125,9 +121,7 @@ impl SyncActivity {
             batch.holding().map(|batch| DownloadQueueActivity { batch, wait: downloads.queue.wait })
         };
         Self {
-            failure: status.shown_failure(),
-            attention: status.pending.clone(),
-            attention_count: status.attention_count,
+            failure: status.failure(),
             syncing: status.syncing(),
             moving: uploads.sending > 0 || downloads.queue.total.active > 0,
             uploads: uploads
@@ -137,12 +131,6 @@ impl SyncActivity {
             pins: download_line(downloads.pins),
             moving_to_this_device: download_line(downloads.moving_to_this_device),
         }
-    }
-
-    /// Something needs the person: sync failed, or a pending record waits
-    /// on them. The indicator shows a warning while it does.
-    pub fn needs_attention(&self) -> bool {
-        self.failure.is_some() || self.attention_count > 0
     }
 
     /// A queue is held and no bytes move: a line shows what holds its queue
@@ -165,7 +153,7 @@ impl SyncActivity {
 pub(crate) mod tests;
 
 /// The activity as one read sees it: the queues' counts, and the sync status
-/// the activity takes its failure, records and state from.
+/// the activity takes its failure and state from.
 fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae_store::DbError> {
     let uploads = upload_queue_counts_on(sql)?;
     let downloads = download_queue_counts_on(sql)?;
