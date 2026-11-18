@@ -471,7 +471,6 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         watched_folder_path,
         actionable: basis.actionable,
         placement: basis.placement,
-        action_basis: basis,
         reading: shown.reading,
         metadata_summary: summary,
         cover: shown.cover,

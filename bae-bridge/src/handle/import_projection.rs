@@ -212,9 +212,6 @@ impl crate::types::BridgeTriageRow {
             watched_folder_path,
             actionable,
             placement,
-            // What the row's commands are decided from, which `live` already
-            // decided.
-            action_basis: _,
             metadata_summary,
             cover,
             import_status,

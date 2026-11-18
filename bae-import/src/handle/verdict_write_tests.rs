@@ -496,11 +496,13 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     let mut identifying = 0;
     let answered = loop {
         let snapshot = next_page(&list).await;
-        let (row, live) = page_rows(&snapshot).remove(&key).expect("the row stays on Found");
+        let (_, live) = page_rows(&snapshot).remove(&key).expect("the row stays on Found");
         if live.facts.identifying() {
             assert!(
-                row.action_basis.lookup.is_none(),
-                "a delivery shows the stored verdict beside the run still going: {live:?}"
+                live.actions.contains(&crate::CandidateAction::CancelIdentification)
+                    && !live.actions.contains(&crate::CandidateAction::RetryIdentification),
+                "a delivery offers a stored verdict's commands beside the run still going: \
+                 {live:?}"
             );
             identifying += 1;
             continue;
@@ -508,8 +510,9 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
         if identifying == 0 {
             continue;
         }
-        assert!(
-            row.action_basis.lookup.is_some(),
+        assert_ne!(
+            live.standing,
+            Some(crate::PendingStanding::NotLookedUp),
             "a delivery shows the row neither identifying nor answered: {live:?}"
         );
         break live;

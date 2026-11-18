@@ -275,8 +275,11 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
             crate::ImportListItem::GroupHeader(crate::ImportGroupHeader { group, .. }) => {
                 headers.push((group.name.clone(), group.combinable));
             }
-            crate::ImportListItem::Candidate { row, .. } => {
-                rows.push((row.folder_name.clone(), row.action_basis.separable));
+            crate::ImportListItem::Candidate { row, live, .. } => {
+                rows.push((
+                    row.folder_name.clone(),
+                    live.actions.contains(&crate::CandidateAction::Separate),
+                ));
             }
             _ => {}
         }

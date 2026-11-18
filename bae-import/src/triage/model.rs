@@ -142,8 +142,6 @@ pub struct TriageRow {
     pub watched_folder_path: std::path::PathBuf,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// What the row's commands are decided from in the tables.
-    pub action_basis: CandidateActionBasis,
     pub metadata_summary: Option<TriageMetadataSummary>,
     /// The cover the row draws: the candidate's chosen one, or for a release
     /// this device imported, the library release's.
