@@ -2960,14 +2960,14 @@ to household on Friday; what he played before Friday stays in his circle.
 Moving old plays would publish what he played in private, and switching back
 couldn't take from the household what its devices have already read. A new
 profile starts private. A play is recorded only as the person it began as:
-once this device is no longer that person, such as one removed from the
-library during the play, saving it is refused.
+once this device is a different person, saving it is refused.
 
-**Plays without a profile.** A device's person has their profile from the
+**Plays on a removed device.** A device's person has their profile from the
 moment the device registers (§5.4), and before that the device holds none of
-the library's rows, so it has nothing to play. A play that begins on a device
-that is no longer anyone in the library, such as one removed from it, records
-nothing, as *Off* does.
+the library's rows, so it has nothing to play. A device removed from the
+library keeps its copy and keeps writing to it, plays included: each play is a
+`history` row under its person's profile, as on any device. The row stays on
+that device, which no longer syncs.
 
 **Playlists.** A playlist belongs to the person who made it, and is private or
 household, each playlist on its own. Its entries are rows keyed by the playlist
