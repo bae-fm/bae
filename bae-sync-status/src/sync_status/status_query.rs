@@ -13,7 +13,6 @@ use super::pending::{pending_columns, pending_joins, PendingColumns};
 use super::start_failure::{StartFailureColumns, START_FAILURE_COLUMNS};
 use super::storage_setup::{storage_setup_columns, StorageSetupColumns, UNDONE_SETUP_JOIN};
 use super::*;
-use std::time::{Duration, SystemTime};
 
 /// The sync state's pass, when the state is named by how the last pass ended:
 /// offline, or a failure the pass met. A pending record names every other
@@ -114,33 +113,21 @@ impl StatusColumns {
     }
 }
 
-/// The time `millis` milliseconds past the Unix epoch name, as coven's
-/// tables store a time.
-fn stored_time(column: &str, millis: i64) -> Result<SystemTime, DbError> {
-    u64::try_from(millis)
-        .ok()
-        .and_then(|millis| SystemTime::UNIX_EPOCH.checked_add(Duration::from_millis(millis)))
-        .ok_or_else(|| DbError::unreadable(column, millis))
-}
+/// One row of the statement: the columns of the whole status and those of a
+/// pending record.
+type StatusRow = (StatusColumns, PendingColumns);
 
-/// What a retry would do, as `coven_retry_effect` names it.
-fn retry_effect(effect: &str, cooling_until: Option<i64>) -> Result<coven::RetryEffect, DbError> {
-    Ok(match (effect, cooling_until) {
-        ("pass", None) => coven::RetryEffect::Pass,
-        ("cooling_down", Some(until)) => {
-            coven::RetryEffect::CoolingDown { until: stored_time("cooling_until", until)? }
-        }
-        ("failed", _) => coven::RetryEffect::Failed,
-        ("not_syncing", None) => coven::RetryEffect::NotSyncing,
-        _ => return Err(DbError::unreadable("coven_retry_effect.effect", (effect, cooling_until))),
-    })
+fn read_row(row: &Row<'_>) -> rusqlite::Result<StatusRow> {
+    Ok((StatusColumns::read(row)?, PendingColumns::read(row, 16)?))
 }
 
 /// The sync status as one read of the library sees it.
 pub fn sync_status_on(sql: &SqlReadContext<'_>) -> Result<SyncStatusSnapshot, DbError> {
-    let rows = sql.query(&status_query(), [], |row| {
-        Ok((StatusColumns::read(row)?, PendingColumns::read(row, 16)?))
-    })?;
+    snapshot_of(sql.query(&status_query(), [], read_row)?)
+}
+
+/// The sync status the statement's rows give.
+fn snapshot_of(rows: Vec<StatusRow>) -> Result<SyncStatusSnapshot, DbError> {
     let mut status = None;
     let mut pending = Vec::new();
     for (columns, record) in rows {
@@ -163,13 +150,11 @@ pub fn sync_status_on(sql: &SqlReadContext<'_>) -> Result<SyncStatusSnapshot, Db
     Ok(SyncStatusSnapshot {
         coven: coven::SyncStatus {
             state,
-            last_synced: last_synced
-                .map(|millis| stored_time("coven_sync_status.last_synced", millis))
-                .transpose()?,
+            last_synced: last_synced.map(coven::stored_time).transpose()?,
         },
         pending,
         error: start_failure.error()?,
-        retry_effect: retry_effect(&effect, cooling_until)?,
+        retry_effect: coven::RetryEffect::from_columns(&effect, cooling_until)?,
         storage_setup: storage_setup.state()?,
         location,
         failure_recorded,
