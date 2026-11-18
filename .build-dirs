@@ -60,3 +60,7 @@ bae-avalonia/obj                      1G   lane mac
 bae-avalonia/bin                      1G   lane mac
 bae-avalonia/bae-avalonia.Tests/obj   1G   lane mac
 bae-avalonia/bae-avalonia.Tests/bin   1G   lane mac
+# scripts/owner-construction-check.sh installs one checker per coven revision
+# into ~/.cache/owner-construction-check; builds deletes the versions no
+# checkout's script names.
+installed owner-construction-check scripts/owner-construction-check.sh
