@@ -139,7 +139,8 @@ internal fun PickerFailures(
             AndroidNotice(
                 title = stringResource(R.string.cast_refused_title, receiver),
                 advice = failure.error.line,
-                error = failure.error,
+                // Details only for a fault core names beyond the line, which the notice shows already.
+                error = failure.error.takeIf { it.detail != null },
                 modifier = modifier,
                 look = NoticeLook.QUIET,
             )
