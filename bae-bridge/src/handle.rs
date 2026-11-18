@@ -347,7 +347,7 @@ impl AppHandle {
         let cast = bae_cast::CastController::start(
             services.clone(),
             runtime.handle().clone(),
-            bae_cast::renderer::RendererDiscovery::for_host(),
+            bae_cast::renderer::RendererDiscovery::builtin(),
             ids,
             diagnostics.clone(),
         );

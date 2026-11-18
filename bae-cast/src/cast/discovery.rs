@@ -146,8 +146,8 @@ fn snapshot(by_fullname: &HashMap<String, RendererDevice>) -> Vec<RendererDevice
 }
 
 /// One entry per device id: the same Cast device seen on several addresses or
-/// service instances collapses to one. Shared with the reported-discovery path,
-/// which merges services the host's browser found the same way.
+/// service instances collapses to one. Shared with the device source the
+/// controller's tests report services to.
 pub(crate) fn dedupe_by_id<'a>(
     devices: impl Iterator<Item = &'a RendererDevice>,
 ) -> Vec<RendererDevice> {

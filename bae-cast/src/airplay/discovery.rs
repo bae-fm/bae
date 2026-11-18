@@ -300,8 +300,7 @@ fn snapshot(table: &DeviceTable) -> Vec<AirPlayDevice> {
 /// RAOP port or encryption, so it is not offered. Whichever is chosen, the
 /// receiver keeps the strictest access its advertisements state, since `acl`
 /// and `act` are stated on the AirPlay advertisement only. Shared with the
-/// reported-discovery path, which merges services the host's browser found the
-/// same way.
+/// device source the controller's tests report services to.
 pub(crate) fn dedupe_by_id<'a>(
     devices: impl Iterator<Item = &'a AirPlayDevice>,
 ) -> Vec<AirPlayDevice> {

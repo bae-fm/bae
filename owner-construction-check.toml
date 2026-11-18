@@ -1013,9 +1013,6 @@ OpenCalls = "LibrarySessions"
 ]
 "bae-cast/src/renderer/discovery.rs" = [
     "RendererDiscovery::builtin",
-    "RendererDiscovery::for_host",
-    "RendererDiscovery::reported",
-    "ReportedDiscovery::new",
     "BuiltinDiscovery::new",
 ]
 "bae-cast/src/renderer/published_devices.rs" = ["PublishedDevices::new"]

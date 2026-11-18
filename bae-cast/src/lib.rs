@@ -53,9 +53,11 @@ use airplay_cast::{airplay_pairing_failure, build_airplay_sink, CastPairing};
 use cast::{CastChannel, CastClient};
 pub use cast_error::CastError;
 use dlna::DlnaChannel;
-use renderer::{
-    RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType, ReportedRenderer,
-};
+#[cfg(test)]
+use renderer::discovery::reported::ReportedRenderer;
+#[cfg(test)]
+use renderer::RendererServiceType;
+use renderer::{RendererConnection, RendererDevice, RendererDiscovery};
 
 /// Where the ephemeral server listens, and the address its URLs name.
 #[derive(Debug, Clone, Copy)]
@@ -189,8 +191,8 @@ pub struct CastController {
     /// nothing keeps it alive.
     tasks: Mutex<Vec<ReportedTask>>,
     services: AppServices,
-    /// Where the picker's devices come from: bae's own browsing, or the services
-    /// a host's browser reports in. Chosen once, per host. The picker reads
+    /// Where the picker's devices come from: bae's own browsing, or in tests
+    /// the services a test reports. The picker reads
     /// them from the library's `cast_receiver` table, which the device list
     /// writer keeps.
     discovery: Mutex<RendererDiscovery>,
@@ -507,12 +509,13 @@ impl CastController {
         });
     }
 
-    /// Take a renderer service a host's browser resolved, on the hosts that
-    /// browse for bae rather than letting it read the network itself. Refused
-    /// while bae is not browsing, which it never is while casting is off.
+    /// Take a renderer service a test reports, as a host's browser would
+    /// resolve it. Refused while bae is not browsing, which it never is while
+    /// casting is off.
+    #[cfg(test)]
     pub fn renderer_found(&self, service: ReportedRenderer) {
-        // Mapping a service runs over what a host browser read off the
-        // network; one that panics is reported and skipped, and the panic
+        // Mapping a service runs over a TXT record as a network would hand
+        // it over; one that panics is reported and skipped, and the panic
         // stays inside the lock's hold, so it poisons nothing.
         let reported = self.with_discovery(|discovery| {
             if !self.browsing.load(Ordering::Acquire) {
@@ -526,7 +529,8 @@ impl CastController {
         }
     }
 
-    /// Drop a renderer service a host's browser no longer sees.
+    /// Drop a renderer service a test reported.
+    #[cfg(test)]
     pub fn renderer_lost(&self, service_type: RendererServiceType, instance_name: &str) {
         self.with_discovery(|discovery| discovery.forget(service_type, instance_name));
     }

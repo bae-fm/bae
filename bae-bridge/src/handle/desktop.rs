@@ -38,22 +38,6 @@ forward! {
             this.cast.stop_discovery(asker.into_core());
         }
 
-        /// Take a renderer service the host's own browser resolved. Only hosts that
-        /// browse on bae's behalf call this; where bae reads the network itself, its
-        /// own discovery fills the list.
-        fn renderer_found(service: crate::types::BridgeReportedRenderer) {
-            this.cast.renderer_found(service.into_core());
-        }
-
-        /// Drop a renderer service the host's browser no longer sees.
-        fn renderer_lost(
-            service_type: crate::types::BridgeRendererServiceType,
-            instance_name: String,
-        ) {
-            this.cast
-                .renderer_lost(service_type.into_core(), &instance_name);
-        }
-
         /// Stop casting and return playback to local output.
         fn stop_casting() {
             this.cast.stop_casting();
@@ -64,16 +48,6 @@ forward! {
 #[cfg(feature = "cast")]
 #[uniffi::export]
 impl AppHandle {
-    /// The service types a host that browses on bae's behalf must browse for,
-    /// paired with the tag to report each result under. A constant of
-    /// bae-cast's, not a call into this handle.
-    pub fn get_renderer_service_types(&self) -> Vec<crate::types::BridgeRendererService> {
-        bae_cast::renderer::RENDERER_SERVICE_TYPES
-            .into_iter()
-            .map(crate::types::BridgeRendererService::from_core)
-            .collect()
-    }
-
     /// The receivers the cast picker lists, the cast-to receiver apart from
     /// the rest, which are by name: the first list at once, then one after
     /// each change discovery finds or playback moving to or off a receiver.

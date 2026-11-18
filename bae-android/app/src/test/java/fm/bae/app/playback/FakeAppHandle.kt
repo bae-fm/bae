@@ -51,10 +51,7 @@ import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeQueueLane
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
-import uniffi.bae_bridge.BridgeRendererService
-import uniffi.bae_bridge.BridgeRendererServiceType
 import uniffi.bae_bridge.BridgeRepeatMode
-import uniffi.bae_bridge.BridgeReportedRenderer
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSaveFilenamePiece
 import uniffi.bae_bridge.BridgeSaveFolderPiece
@@ -692,19 +689,6 @@ internal open class FakeAppHandle(
 
     override suspend fun castTo(deviceId: String) {
         unfaked("castTo")
-    }
-
-    override fun getRendererServiceTypes(): List<BridgeRendererService> = unfaked("getRendererServiceTypes")
-
-    override fun rendererFound(service: BridgeReportedRenderer) {
-        unfaked("rendererFound")
-    }
-
-    override fun rendererLost(
-        serviceType: BridgeRendererServiceType,
-        instanceName: String,
-    ) {
-        unfaked("rendererLost")
     }
 
     override suspend fun setCastEnabled(enabled: Boolean) {

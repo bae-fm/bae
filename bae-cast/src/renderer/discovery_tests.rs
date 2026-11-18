@@ -1,3 +1,4 @@
+use super::reported::ReportedRenderer;
 use super::*;
 use crate::renderer::RendererConnection;
 use bae_playback::renderer::RendererKind;

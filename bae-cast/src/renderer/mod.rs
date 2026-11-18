@@ -3,8 +3,7 @@
 //!
 //! Each protocol module (`crate::cast`, `crate::dlna`, `crate::airplay`)
 //! maps what its devices advertise to a [`RendererDevice`]; [`discovery`] runs
-//! their browses side by side, or takes the services a host's browser reports,
-//! and merges them into the one [`device`] list. A device carries the
+//! their browses side by side and merges them into the one [`device`] list. A device carries the
 //! flavor-specific [`RendererConnection`] the cast controller connects to.
 
 pub mod device;
@@ -13,7 +12,5 @@ pub(crate) mod protocol_discovery;
 pub(crate) mod published_devices;
 
 pub use device::{RendererConnection, RendererDevice};
-pub use discovery::{
-    RendererDiscovery, RendererServiceType, ReportedRenderer, RENDERER_SERVICE_TYPES,
-};
+pub use discovery::{RendererDiscovery, RendererServiceType};
 pub use published_devices::DeviceListWatch;

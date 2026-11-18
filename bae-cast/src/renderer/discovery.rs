@@ -1,37 +1,20 @@
 //! Where the device picker's list comes from.
 //!
-//! bae finds renderers two ways, and a host runs exactly one of them:
-//!
-//! - [`BuiltinDiscovery`] — bae browses the network itself: mDNS for Cast and
-//!   AirPlay, SSDP for UPnP. This is what desktop and Android run.
-//! - [`ReportedDiscovery`] — the host's own service browser finds the services
-//!   and reports each one here. iOS runs this, because joining a multicast group
-//!   from the app's own socket needs an entitlement Apple grants by application,
-//!   while the system's Bonjour browser needs only a declared service list. It
-//!   covers the DNS-SD flavors only, so a host on this path sees Cast and
-//!   AirPlay receivers and no UPnP ones (UPnP is found by SSDP, which is the
-//!   same multicast bae may not send).
-//!
-//! Both publish the same merged [`RendererDevice`] list through a
-//! `PublishedDevices` and are started and stopped with the picker's visibility.
-//! The mapping from an advertised service to a device — TXT record parsing and
-//! all — is the same code on both paths (`crate::cast::discovery`,
-//! `crate::airplay::discovery`); only who reads the network differs.
+//! bae browses the network itself ([`BuiltinDiscovery`]): mDNS for Cast and
+//! AirPlay, SSDP for UPnP, and it merges the three lists into one
+//! [`RendererDevice`] list, started and stopped with the picker's visibility.
+//! Tests run the cast controller over [`reported::ReportedDiscovery`] instead,
+//! which takes services a test hands it and holds no socket; it maps each one
+//! through the same code bae's own browse uses (`crate::cast::discovery`,
+//! `crate::airplay::discovery`).
 
-use std::collections::HashMap;
-use std::net::IpAddr;
-
-use tracing::debug;
-
-use crate::airplay::discovery::{AirPlayDevice, AirPlayService};
 use crate::airplay::AirPlayDiscovery;
 use crate::cast::CastDiscovery;
 use crate::dlna::DlnaDiscovery;
-use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::RendererDevice;
 
-/// A DNS-SD service type a renderer advertises itself on. Names which mapping a
-/// reported service goes through, and which type a host browser must browse.
+/// A DNS-SD service type a renderer advertises itself on, which decides how
+/// bae reads its TXT record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RendererServiceType {
     /// Google Cast receivers.
@@ -42,22 +25,7 @@ pub enum RendererServiceType {
     Raop,
 }
 
-/// Every service type a renderer is found on. A host that browses for bae walks
-/// this list rather than naming service types itself.
-pub const RENDERER_SERVICE_TYPES: [RendererServiceType; 3] =
-    [RendererServiceType::GoogleCast, RendererServiceType::AirPlay, RendererServiceType::Raop];
-
 impl RendererServiceType {
-    /// The DNS-SD service type to browse, without a domain — the form a host
-    /// browser and an app's declared-services list take.
-    pub fn dns_sd_type(self) -> &'static str {
-        match self {
-            Self::GoogleCast => "_googlecast._tcp",
-            Self::AirPlay => "_airplay._tcp",
-            Self::Raop => "_raop._tcp",
-        }
-    }
-
     /// The fully-qualified type bae's own mDNS browse subscribes to.
     pub(crate) fn mdns_service_type(self) -> &'static str {
         match self {
@@ -66,24 +34,6 @@ impl RendererServiceType {
             Self::Raop => "_raop._tcp.local.",
         }
     }
-}
-
-/// One service a host browser resolved, as it comes off the wire: the service
-/// type it was found on, the instance name it advertises, where it answers, and
-/// its TXT record. Turning this into a [`RendererDevice`] — which key names the
-/// device, which names it, what its TXT bits mean — happens here, not in the
-/// host.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReportedRenderer {
-    pub service_type: RendererServiceType,
-    /// The service instance name (`Living Room`), which is also the identity a
-    /// later [`ReportedDiscovery::forget`] names.
-    pub instance_name: String,
-    /// The resolved address, in text form as the host's resolver renders it.
-    pub addr: String,
-    pub port: u16,
-    /// The service's TXT record. Keys are matched case-insensitively.
-    pub txt: HashMap<String, String>,
 }
 
 /// bae's own network browsing: the three protocol discoveries running side by
@@ -105,174 +55,18 @@ impl BuiltinDiscovery {
     }
 }
 
-/// One resolved service, at the type its mapping produced.
-#[derive(Debug, Clone)]
-enum ReportedEntry {
-    Cast(RendererDevice),
-    AirPlay(AirPlayDevice),
-}
-
-/// The devices a host browser has reported. Holds no socket of its own: the host
-/// finds the services and pushes each one in.
-pub struct ReportedDiscovery {
-    devices: PublishedDevices,
-    /// What the host has reported this browse, keyed by service type and
-    /// instance name — the identity it reports a loss by. `None` while not
-    /// browsing, so a report outside a browse accumulates nothing.
-    reported: Option<HashMap<(RendererServiceType, String), ReportedEntry>>,
-}
-
-impl ReportedDiscovery {
-    pub fn new() -> Self {
-        Self { devices: PublishedDevices::new(), reported: None }
-    }
-
-    /// Follow the live device list.
-    pub fn subscribe(&self) -> crate::renderer::DeviceListWatch {
-        self.devices.subscribe()
-    }
-
-    /// The current device list snapshot.
-    pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices.current()
-    }
-
-    /// Whether a browse is live right now. For tests that assert browsing is (or
-    /// is not) running.
-    #[cfg(test)]
-    pub fn is_browsing(&self) -> bool {
-        self.reported.is_some()
-    }
-
-    /// Begin browsing. Idempotent: a second call while already browsing is a
-    /// no-op. A fresh browse starts from nothing, so nothing opens on what a
-    /// previous one found.
-    pub fn start(&mut self) {
-        if self.reported.is_some() {
-            return;
-        }
-        self.reported = Some(HashMap::new());
-        self.devices.clear();
-    }
-
-    /// Stop browsing: later reports accumulate nothing. The last published
-    /// device list is kept.
-    pub fn stop(&mut self) {
-        self.reported = None;
-    }
-
-    /// Take a service the host resolved. Ignored when the host reports outside a
-    /// browse, and when the service carries too little to reach or name the
-    /// device.
-    pub fn report(&mut self, service: ReportedRenderer) {
-        let Some(reported) = self.reported.as_mut() else {
-            debug!("reported discovery: ignoring {} while not browsing", service.instance_name);
-            return;
-        };
-        let key = (service.service_type, service.instance_name.clone());
-        let Some(entry) = map_reported(&service) else {
-            debug!("reported discovery: ignoring unusable service {}", service.instance_name);
-            return;
-        };
-        reported.insert(key, entry);
-        self.devices.publish(snapshot(reported));
-    }
-
-    /// Drop a service the host's browser no longer sees.
-    pub fn forget(&mut self, service_type: RendererServiceType, instance_name: &str) {
-        let Some(reported) = self.reported.as_mut() else {
-            return;
-        };
-        if reported.remove(&(service_type, instance_name.to_string())).is_none() {
-            return;
-        }
-        self.devices.publish(snapshot(reported));
-    }
-}
-
-/// Map a reported service through the same code bae's own browse uses, or `None`
-/// when it lacks what's needed to reach and name the device.
-fn map_reported(service: &ReportedRenderer) -> Option<ReportedEntry> {
-    let addr: IpAddr = service
-        .addr
-        .parse()
-        .map_err(|e| {
-            debug!(
-                "reported discovery: unparseable address {} for {}: {e}",
-                service.addr, service.instance_name
-            );
-        })
-        .ok()?;
-    let txt: HashMap<String, String> =
-        service.txt.iter().map(|(k, v)| (k.to_ascii_lowercase(), v.clone())).collect();
-    match service.service_type {
-        RendererServiceType::GoogleCast => crate::cast::discovery::map_device(
-            &service.instance_name,
-            service.port,
-            std::iter::once(addr),
-            txt.get("id").map(String::as_str),
-            txt.get("fn").map(String::as_str),
-            txt.get("md").map(String::as_str),
-        )
-        .map(ReportedEntry::Cast),
-        RendererServiceType::AirPlay => map_airplay(AirPlayService::AirPlay, service, addr, &txt),
-        RendererServiceType::Raop => map_airplay(AirPlayService::Raop, service, addr, &txt),
-    }
-}
-
-/// A reported AirPlay or RAOP service, mapped by the code bae's own browse uses.
-fn map_airplay(
-    airplay: AirPlayService,
-    service: &ReportedRenderer,
-    addr: IpAddr,
-    txt: &HashMap<String, String>,
-) -> Option<ReportedEntry> {
-    crate::airplay::discovery::map_device(
-        airplay,
-        &service.instance_name,
-        service.port,
-        std::iter::once(addr),
-        txt,
-    )
-    .map(ReportedEntry::AirPlay)
-}
-
-/// The merged picker list: Cast devices collapsed by device id, AirPlay
-/// receivers collapsed by receiver id (a receiver reported on both AirPlay
-/// service types is one entry), sorted by name for a stable picker.
-fn snapshot(
-    reported: &HashMap<(RendererServiceType, String), ReportedEntry>,
-) -> Vec<RendererDevice> {
-    let cast = reported.values().filter_map(|entry| match entry {
-        ReportedEntry::Cast(device) => Some(device),
-        ReportedEntry::AirPlay(_) => None,
-    });
-    let airplay = reported.values().filter_map(|entry| match entry {
-        ReportedEntry::AirPlay(device) => Some(device),
-        ReportedEntry::Cast(_) => None,
-    });
-    let mut devices = crate::cast::discovery::dedupe_by_id(cast);
-    devices.extend(
-        crate::airplay::discovery::dedupe_by_id(airplay)
-            .iter()
-            .map(AirPlayDevice::to_renderer_device),
-    );
-    sort_for_picker(&mut devices);
-    devices
-}
-
 /// One entry per device, sorted by name with the id breaking ties, so the picker
 /// order is stable across requeries.
 pub(crate) fn sort_for_picker(devices: &mut [RendererDevice]) {
     devices.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
 }
 
-/// The picker's device source. A host builds the one it can run
-/// ([`RendererDiscovery::for_host`]) and everything above it — the cast
-/// controller, the bridge, the picker — is the same on every platform.
+/// The picker's device source: bae's own browse, or in tests the services a
+/// test reports.
 pub enum RendererDiscovery {
     Builtin(BuiltinDiscovery),
-    Reported(ReportedDiscovery),
+    #[cfg(test)]
+    Reported(reported::ReportedDiscovery),
 }
 
 impl RendererDiscovery {
@@ -281,24 +75,10 @@ impl RendererDiscovery {
         Self::Builtin(BuiltinDiscovery::new())
     }
 
-    /// The host's browser finds the services and reports them in.
+    /// A test's device source, which lists the services the test reports.
+    #[cfg(test)]
     pub fn reported() -> Self {
-        Self::Reported(ReportedDiscovery::new())
-    }
-
-    /// The discovery this host can run. bae browses the network itself
-    /// everywhere except iOS, where an app socket may not join a multicast group
-    /// without an entitlement Apple grants by application; there the system's
-    /// Bonjour browser finds the services and the app reports them in.
-    pub fn for_host() -> Self {
-        #[cfg(target_os = "ios")]
-        {
-            Self::reported()
-        }
-        #[cfg(not(target_os = "ios"))]
-        {
-            Self::builtin()
-        }
+        Self::Reported(reported::ReportedDiscovery::new())
     }
 
     /// Every list to watch for changes — one per underlying browse — so a caller
@@ -310,6 +90,7 @@ impl RendererDiscovery {
                 builtin.dlna.subscribe(),
                 builtin.airplay.subscribe(),
             ],
+            #[cfg(test)]
             Self::Reported(reported) => vec![reported.subscribe()],
         }
     }
@@ -323,6 +104,7 @@ impl RendererDiscovery {
                 builtin.dlna.start(diagnostics);
                 builtin.airplay.start(diagnostics);
             }
+            #[cfg(test)]
             Self::Reported(reported) => reported.start(),
         }
     }
@@ -336,6 +118,7 @@ impl RendererDiscovery {
                 builtin.dlna.stop();
                 builtin.airplay.stop();
             }
+            #[cfg(test)]
             Self::Reported(reported) => reported.stop(),
         }
     }
@@ -350,33 +133,33 @@ impl RendererDiscovery {
                 sort_for_picker(&mut devices);
                 devices
             }
+            #[cfg(test)]
             Self::Reported(reported) => reported.devices(),
         }
     }
 
-    /// Take a service a host browser resolved. Only the reported path has a host
-    /// browser; a builtin one reads the network itself and has nothing to do
-    /// with a report.
-    pub fn report(&mut self, service: ReportedRenderer) {
+    /// Take a service a test reports. bae's own browse reads the network
+    /// itself and takes no report.
+    #[cfg(test)]
+    pub fn report(&mut self, service: reported::ReportedRenderer) {
         match self {
-            Self::Builtin(_) => debug!(
-                "ignoring reported renderer {}: this host browses the network itself",
-                service.instance_name
-            ),
+            Self::Builtin(_) => panic!("bae's own browse takes no reported service"),
             Self::Reported(reported) => reported.report(service),
         }
     }
 
-    /// Drop a service a host browser no longer sees.
+    /// Drop a service a test reported.
+    #[cfg(test)]
     pub fn forget(&mut self, service_type: RendererServiceType, instance_name: &str) {
         match self {
-            Self::Builtin(_) => debug!(
-                "ignoring lost renderer {instance_name}: this host browses the network itself"
-            ),
+            Self::Builtin(_) => panic!("bae's own browse takes no reported service"),
             Self::Reported(reported) => reported.forget(service_type, instance_name),
         }
     }
 }
+
+#[cfg(test)]
+pub(crate) mod reported;
 
 #[cfg(test)]
 #[path = "discovery_tests.rs"]
