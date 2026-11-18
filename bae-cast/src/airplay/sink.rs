@@ -102,6 +102,8 @@ pub(crate) struct Ap2Sink {
     airplay_port: u16,
     /// The clock the receiver requires, decided from its features — PTP or NTP.
     timing: TimingProtocol,
+    /// The name each session's pairing gives this device.
+    client_name: String,
     /// Where the session's ids come from.
     ids: coven::IdSourceRef,
     /// What the session's stream threads run under, so one that panics fails
@@ -114,10 +116,11 @@ impl Ap2Sink {
         receiver: IpAddr,
         airplay_port: u16,
         timing: TimingProtocol,
+        client_name: String,
         ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, airplay_port, timing, ids, diagnostics }
+        Self { receiver, airplay_port, timing, client_name, ids, diagnostics }
     }
 }
 
@@ -132,6 +135,7 @@ impl AirPlaySink for Ap2Sink {
             &self.diagnostics,
             self.receiver,
             self.airplay_port,
+            &self.client_name,
             PcmFeed::new(source, wake),
             failed,
             self.timing,

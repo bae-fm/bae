@@ -175,7 +175,8 @@ pub(crate) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, bod
 
 /// Serve a transient pair-setup (M1 to M4) on `reader`/`writer` the way
 /// shairport-sync does: each POST must carry `X-Apple-HKP: 4`, else the
-/// receiver answers 501 and the pairing fails here. Returns the SRP key both
+/// receiver answers 501 and the pairing fails here. Each must also name the
+/// sender in `X-Apple-Client-Name`, as tvOS 27 needs. Returns the SRP key both
 /// sides now hold.
 pub(crate) fn serve_transient_pair_setup(
     reader: &mut impl std::io::BufRead,
@@ -191,6 +192,10 @@ pub(crate) fn serve_transient_pair_setup(
         if request.header("X-Apple-HKP") != Some("4") {
             respond(writer, "501 Not Implemented", &cseq, &[]);
             return Err(format!("{step} without X-Apple-HKP: 4"));
+        }
+        if request.header("X-Apple-Client-Name").is_none_or(str::is_empty) {
+            respond(writer, "400 Bad Request", &cseq, &[]);
+            return Err(format!("{step} without X-Apple-Client-Name"));
         }
         let reply = if step == "M1" { srp.m2() } else { srp.m4(&request.body) };
         respond(writer, "200 OK", &cseq, &reply);
@@ -344,9 +349,19 @@ impl CodeSetupServer {
     }
 
     /// M4: the server proof, or Authentication when the sender's code is
-    /// another one.
-    pub(crate) fn m4(&mut self, m3_body: &[u8]) -> Vec<u8> {
-        self.srp.answer_m3(m3_body).unwrap_or_else(|| error_reply(state::M4, AUTHENTICATION))
+    /// another one, with `retry_delay` seconds to wait when it is set, as
+    /// HomePod OS 27 answers.
+    pub(crate) fn m4(&mut self, m3_body: &[u8], retry_delay: Option<u8>) -> Vec<u8> {
+        self.srp.answer_m3(m3_body).unwrap_or_else(|| {
+            let refusal = Tlv8::new()
+                .push_u8(tlv_type::STATE, state::M4)
+                .push_u8(tlv_type::ERROR, AUTHENTICATION);
+            match retry_delay {
+                Some(seconds) => refusal.push_u8(tlv_type::RETRY_DELAY, seconds),
+                None => refusal,
+            }
+            .encode()
+        })
     }
 
     /// Open the sender's M5, check its signature, and answer M6 with this
@@ -483,13 +498,18 @@ pub(crate) enum ReceiverCode {
 
 /// A receiver that pairs by code and pair-verifies the controllers it paired
 /// with, over the requests one connection carries. Every request must carry
-/// `X-Apple-HKP: 3`.
+/// `X-Apple-HKP: 3` and name the sender in `X-Apple-Client-Name`, without
+/// which tvOS 27 shows no PIN.
 pub(crate) struct CodeReceiver {
     pub(crate) identity: ReceiverIdentity,
     code: ReceiverCode,
     /// How many PINs it has shown.
     pins_shown: usize,
+    /// The sender's name it showed beside the last PIN.
+    pub(crate) pin_shown_beside: Option<String>,
     pub(crate) refusal: Option<CodeRefusal>,
+    /// The seconds a wrong code's Authentication asks the sender to wait.
+    pub(crate) retry_delay: Option<u8>,
     /// The controllers it paired with, which pair-verify accepts.
     pub(crate) paired: Vec<PairedController>,
     /// The URI of each request, in order.
@@ -514,7 +534,9 @@ impl CodeReceiver {
             identity: ReceiverIdentity::new(),
             code,
             pins_shown: 0,
+            pin_shown_beside: None,
             refusal: None,
+            retry_delay: None,
             paired: Vec::new(),
             requests: Vec::new(),
             setup: None,
@@ -532,6 +554,11 @@ impl CodeReceiver {
         while let Some(request) = read_request(reader).unwrap() {
             self.requests.push(request.uri.clone());
             assert_eq!(request.header("X-Apple-HKP"), Some("3"), "{} carries HKP 3", request.uri);
+            assert!(
+                request.header("X-Apple-Client-Name").is_some_and(|name| !name.is_empty()),
+                "{} names the sender",
+                request.uri
+            );
             let (status, body, verified) = self.answer(&request);
             respond(writer, status, request.cseq(), &body);
             if let Some(shared) = verified {
@@ -551,6 +578,7 @@ impl CodeReceiver {
                     "a password takes no PIN start"
                 );
                 self.pins_shown += 1;
+                self.pin_shown_beside = request.header("X-Apple-Client-Name").map(String::from);
                 (OK, Vec::new(), None)
             }
             "/pair-setup" => match step() {
@@ -565,7 +593,9 @@ impl CodeReceiver {
                     self.setup = Some(setup);
                     (OK, m2, None)
                 }
-                Some(state::M3) => (OK, self.setup.as_mut().unwrap().m4(&request.body), None),
+                Some(state::M3) => {
+                    (OK, self.setup.as_mut().unwrap().m4(&request.body, self.retry_delay), None)
+                }
                 Some(state::M5) => {
                     let (m6, paired) = self.setup.take().unwrap().m6(&request.body);
                     if let Some(paired) = paired {

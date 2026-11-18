@@ -130,6 +130,19 @@ async fn this_device(device: &TestDevice) -> ActiveDevice {
         .expect("the device is registered")
 }
 
+/// This device's name is the one its own registration has, as Your devices
+/// lists it.
+#[test]
+fn this_device_is_named_as_your_devices_lists_it() {
+    run_library_test(async |library| {
+        let first = library.first();
+        assert_eq!(
+            first.membership().this_device_name().await.unwrap(),
+            this_device(first).await.name
+        );
+    });
+}
+
 /// Robin renames the library on her laptop while it is offline. The rename
 /// is listed as waiting, and the name stays; once the laptop syncs it is
 /// done and the library has the name. Dismissing it before then is refused;

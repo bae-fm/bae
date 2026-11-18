@@ -444,6 +444,7 @@ fn an_unreadable_airplay_advertisement_is_refused() {
     let Err(error) = build_airplay_sink(
         &ids(),
         &Diagnostics::noop(),
+        "Kitchen Mac",
         "10.0.0.7".parse().unwrap(),
         7000,
         &Err(unreadable.clone()),
@@ -469,6 +470,7 @@ fn an_airplay2_receiver_without_bit_48_and_without_flags_is_not_refused() {
     let sink = build_airplay_sink(
         &ids(),
         &Diagnostics::noop(),
+        "Kitchen Mac",
         "10.0.0.7".parse().unwrap(),
         7000,
         &capabilities,

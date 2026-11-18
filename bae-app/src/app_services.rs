@@ -543,6 +543,7 @@ impl AppServices {
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
     delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());
     delegate_values!(subscribe_members => subscribe_members() -> bae_people::membership::Members);
+    delegate_async!(membership, this_device_name => this_device_name() -> Result<String, bae_store::DbError>);
     delegate_sync!(manager, hold_invite_screen_sync => hold_invite_screen_sync() -> coven::SyncOftenGuard);
     delegate_async!(manager, add_device => add_device() -> Result<bae_library::sync::membership::AddingDevice, bae_library::LibraryError>);
     delegate_values!(follow_add_device => follow_add_device(pairing: coven::AddDeviceId) -> Option<coven::AddDeviceStatus>);

@@ -360,6 +360,7 @@ fn run_full_ap2_session(
         &bae_diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
+        "Kitchen Mac",
         crate::airplay::stream::PcmFeed::new(
             Box::new(FixedSource { packets_left: 5 }),
             bae_playback::airplay_output::PcmWake::unattached(),

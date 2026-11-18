@@ -577,10 +577,21 @@ impl CastController {
         // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
         // it to playback, which keeps decoding locally. No ephemeral server needed.
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
-            let (sink, pairing) =
-                build_airplay_sink(&self.ids, &self.diagnostics, *addr, *port, capabilities)?;
+            // The receiver shows this name to the person beside it.
+            let client_name =
+                self.services.this_device_name().await.map_err(CastError::DeviceName)?;
+            let (sink, pairing) = build_airplay_sink(
+                &self.ids,
+                &self.diagnostics,
+                &client_name,
+                *addr,
+                *port,
+                capabilities,
+            )?;
             match pairing {
-                CastPairing::Transient => self.pair_with_airplay2(*addr, *port).await?,
+                CastPairing::Transient => {
+                    self.pair_with_airplay2(*addr, *port, client_name).await?
+                }
                 CastPairing::Nothing => {}
             }
             return self.hand_over(number, || {
@@ -594,11 +605,16 @@ impl CastController {
     /// Pair with an AirPlay 2 receiver once, off the runtime, before playback
     /// moves to it. The pairing runs to its end even when this cast is called
     /// off meanwhile; its connection closes either way.
-    async fn pair_with_airplay2(&self, addr: std::net::IpAddr, port: u16) -> Result<(), CastError> {
+    async fn pair_with_airplay2(
+        &self,
+        addr: std::net::IpAddr,
+        port: u16,
+        client_name: String,
+    ) -> Result<(), CastError> {
         let paired = self
             .diagnostics
             .blocking("pair with an AirPlay 2 receiver", move || {
-                airplay::ap2_session::pair_once(addr, port)
+                airplay::ap2_session::pair_once(addr, port, &client_name)
             })
             .await
             .map_err(CastError::Internal)?;

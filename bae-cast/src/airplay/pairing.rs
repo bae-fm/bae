@@ -291,8 +291,11 @@ impl CodePairing {
             return Err(PairingError::WrongState);
         };
         let tlv = Tlv8::decode(response_body)?;
+        let retry_after_seconds = retry_delay(&tlv)?;
         check_no_error(&tlv).map_err(|error| match error {
-            PairingError::Receiver(HomeKitError::Authentication) => PairingError::WrongCode,
+            PairingError::Receiver(HomeKitError::Authentication) => {
+                PairingError::WrongCode { retry_after_seconds }
+            }
             other => other,
         })?;
         let srp_key = read_m4(&client, &tlv)?;
@@ -384,9 +387,11 @@ pub(crate) enum PairingError {
     /// The receiver returned an Error TLV.
     #[error("receiver refused pairing: {0}")]
     Receiver(HomeKitError),
-    /// The receiver didn't take the PIN or password it was given.
+    /// The receiver didn't take the PIN or password it was given. A receiver
+    /// may state how long to wait before the next try (HomePod OS 27 does);
+    /// a pair-setup sent sooner gets BackOff.
     #[error("the receiver did not accept the code")]
-    WrongCode,
+    WrongCode { retry_after_seconds: Option<u64> },
     /// The receiver no longer knows the identity bae kept for it: it refused
     /// pair-verify, or it answered as another identity than the one it paired
     /// as, which a receiver that was reset does.
@@ -442,20 +447,9 @@ impl HomeKitError {
         Ok(match code {
             0x01 => HomeKitError::Unknown,
             0x02 => HomeKitError::Authentication,
-            0x03 => {
-                let delay = reply
-                    .get(tlv_type::RETRY_DELAY)
-                    .ok_or(PairingError::MissingField("retry delay"))?;
-                let bytes: [u8; 8] = {
-                    let mut padded = [0u8; 8];
-                    let low = padded
-                        .get_mut(..delay.len())
-                        .ok_or(PairingError::InvalidField("retry delay length"))?;
-                    low.copy_from_slice(delay);
-                    padded
-                };
-                HomeKitError::BackOff { seconds: u64::from_le_bytes(bytes) }
-            }
+            0x03 => HomeKitError::BackOff {
+                seconds: retry_delay(reply)?.ok_or(PairingError::MissingField("retry delay"))?,
+            },
             0x04 => HomeKitError::MaxPeers,
             0x05 => HomeKitError::MaxTries,
             0x06 => HomeKitError::Unavailable,
@@ -463,6 +457,21 @@ impl HomeKitError {
             other => HomeKitError::Other(other),
         })
     }
+}
+
+/// The seconds `reply`'s RetryDelay item asks the sender to wait, which a
+/// BackOff always states and a wrong code's Authentication may state; `None`
+/// when it has none.
+fn retry_delay(reply: &Tlv8) -> Result<Option<u64>, PairingError> {
+    let Some(delay) = reply.get(tlv_type::RETRY_DELAY) else {
+        return Ok(None);
+    };
+    let mut padded = [0u8; 8];
+    padded
+        .get_mut(..delay.len())
+        .ok_or(PairingError::InvalidField("retry delay length"))?
+        .copy_from_slice(delay);
+    Ok(Some(u64::from_le_bytes(padded)))
 }
 
 impl From<SrpError> for PairingError {

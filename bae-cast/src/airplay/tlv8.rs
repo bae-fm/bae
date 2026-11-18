@@ -31,8 +31,9 @@ pub(crate) mod tlv_type {
     pub(crate) const STATE: u8 = 0x06;
     /// A receiver-reported error (`kTLVType_Error`).
     pub(crate) const ERROR: u8 = 0x07;
-    /// The seconds a receiver asks the sender to wait after a BackOff error,
-    /// little-endian (`kTLVType_RetryDelay`).
+    /// The seconds a receiver asks the sender to wait before its next try,
+    /// little-endian (`kTLVType_RetryDelay`): with a BackOff error, and with
+    /// the Authentication error a wrong code gets.
     pub(crate) const RETRY_DELAY: u8 = 0x08;
     /// An Ed25519 signature (`kTLVType_Signature`).
     pub(crate) const SIGNATURE: u8 = 0x0A;

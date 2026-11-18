@@ -15,7 +15,15 @@ impl Membership {
     pub fn subscribe_members(&self) -> coven::LiveQuery<Members, bae_store::DbError> {
         self.store.subscribe(|sql| Ok(membership_on(&sql)?))
     }
+
+    /// This device's name, as Your devices lists it.
+    pub async fn this_device_name(&self) -> Result<String, DbError> {
+        self.store.read(|sql| Ok(sql.query_row(THIS_DEVICE_NAME, [], |row| row.get(0))?)).await
+    }
 }
+
+/// The name of this device's own registration.
+const THIS_DEVICE_NAME: &str = "SELECT name FROM coven_devices WHERE is_self AND state = 'active'";
 
 /// Whether the member using this device is an admin, as SQL.
 macro_rules! self_is_admin {

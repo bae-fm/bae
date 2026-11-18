@@ -71,6 +71,10 @@ pub enum CastError {
     /// Whether casting is on couldn't be read.
     #[error("couldn't read whether casting is on: {0}")]
     Setting(bae_store::DbError),
+    /// This device's name, which an AirPlay receiver shows while it pairs,
+    /// couldn't be read.
+    #[error("couldn't read this device's name: {0}")]
+    DeviceName(bae_store::DbError),
     /// Casting stopped, or was turned off, or another cast started, while
     /// this one connected. Playback stayed where it was.
     #[error("the cast was called off before it started")]
@@ -81,7 +85,7 @@ impl CastError {
     /// The class a surface words this failure in. An AirPlay receiver the
     /// sender can't drive, that plays only from some people, or whose settings
     /// can't be read, has its own line;
-    /// a setting that couldn't be read is the library's database; anything
+    /// a setting or name that couldn't be read is the library's database; anything
     /// else is a fault the person can only report.
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
@@ -98,7 +102,9 @@ impl CastError {
             Self::AirPlayAdminsOnly => C::AirPlayAdminsOnly,
             Self::AirPlayOwnerOnly => C::AirPlayOwnerOnly,
             Self::AirPlayUnreadableSettings(_) => C::AirPlayUnreadableSettings,
-            Self::Setting(error) => bae_diagnostics::database_category(error),
+            Self::Setting(error) | Self::DeviceName(error) => {
+                bae_diagnostics::database_category(error)
+            }
             Self::Disabled
             | Self::DeviceNotFound
             | Self::Connect(_)

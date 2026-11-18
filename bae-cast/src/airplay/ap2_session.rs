@@ -357,10 +357,15 @@ pub(crate) struct Ap2SetupParams {
 
 /// Pair with the receiver once on a connection of its own, which closes when
 /// this returns: what a cast learns about the receiver before playback moves.
-/// Every session start pairs again on its own connection.
-pub(crate) fn pair_once(receiver: IpAddr, airplay_port: u16) -> Result<(), Ap2Error> {
+/// Every session start pairs again on its own connection. `client_name` names
+/// this device to the receiver.
+pub(crate) fn pair_once(
+    receiver: IpAddr,
+    airplay_port: u16,
+    client_name: &str,
+) -> Result<(), Ap2Error> {
     let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
-    run_transient_pair_setup(&mut conn)?;
+    run_transient_pair_setup(&mut conn, client_name)?;
     Ok(())
 }
 
@@ -406,12 +411,15 @@ pub(crate) struct Ap2Session {
 }
 
 impl Ap2Session {
-    /// Connect to an AirPlay 2 receiver, run transient pair-setup, drive the encrypted SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and
-    /// start streaming `feed` as ChaCha-encrypted audio.
+    /// Connect to an AirPlay 2 receiver, run transient pair-setup naming this
+    /// device `client_name`, drive the encrypted
+    /// SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and start streaming
+    /// `feed` as ChaCha-encrypted audio.
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         airplay_port: u16,
+        client_name: &str,
         feed: PcmFeed,
         failed: AirPlayFailed,
         timing: super::airplay2::TimingProtocol,
@@ -423,7 +431,7 @@ impl Ap2Session {
         let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
         let local_ip = conn.local_addr();
 
-        let shared = run_transient_pair_setup(&mut conn)?;
+        let shared = run_transient_pair_setup(&mut conn, client_name)?;
 
         // Bind the timing/control sockets before SETUP so their ports are announced.
         let sockets = StreamSockets::bind()?;

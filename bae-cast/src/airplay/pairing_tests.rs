@@ -86,7 +86,7 @@ fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<
     });
 
     let mut conn = RtspConnection::connect(addr.ip(), addr.port(), user_agent).unwrap();
-    let sender = run_transient_pair_setup(&mut conn);
+    let sender = run_transient_pair_setup(&mut conn, "Kitchen Mac");
     (sender, server.join().unwrap())
 }
 
@@ -96,7 +96,7 @@ fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<
 #[test]
 fn transient_pair_setup_sends_the_hkp_header() {
     let (sender, receiver) = pair_with_user_agent(AP2_USER_AGENT);
-    let key = sender.expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4");
+    let key = sender.expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4 and a name");
     assert_eq!(receiver.expect("the receiver read both POSTs"), key);
 }
 

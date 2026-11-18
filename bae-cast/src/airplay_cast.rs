@@ -31,11 +31,12 @@ pub(crate) enum CastPairing {
 /// plays only from people in its home, its home's admins or its owner, one that
 /// asks for a PIN, a password or device verification, or one offering only
 /// encryption the sender can't provide. An AirPlay 2 receiver that asks for
-/// nothing pairs transiently, whatever its feature bits. RAOP receivers pick
-/// unencrypted when offered, else RSA-AES.
+/// nothing pairs transiently, whatever its feature bits, naming this device
+/// `client_name`. RAOP receivers pick unencrypted when offered, else RSA-AES.
 pub(crate) fn build_airplay_sink(
     ids: &coven::IdSourceRef,
     diagnostics: &Diagnostics,
+    client_name: &str,
     addr: std::net::IpAddr,
     port: u16,
     capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
@@ -57,6 +58,7 @@ pub(crate) fn build_airplay_sink(
                     port,
                     // The receiver's features decide whether it requires PTP or accepts NTP.
                     TimingProtocol::from_features(capabilities.features),
+                    client_name.to_string(),
                     ids.clone(),
                     diagnostics.clone(),
                 )),
