@@ -542,26 +542,27 @@ fn a_session_start_on_a_receiver_that_forgot_this_device_names_it() {
     assert_eq!(server.join().unwrap(), Served::Closed);
 }
 
-/// The Digest answer a receiver with `password` expects for a `method`
-/// request to `uri`, computed here apart from the sender's.
-fn expected_digest(password: &str, method: &str, uri: &str) -> String {
-    use md5::{Digest, Md5};
-    let md5 = |text: String| hex::encode(Md5::digest(text.as_bytes()));
-    let credentials = md5(format!(":airplay:{password}"));
-    let request = md5(format!("{method}:{uri}"));
-    let response = md5(format!("{credentials}:9a4b3c:{request}"));
-    format!(
-        r#"Digest username="", realm="airplay", nonce="9a4b3c", uri="{uri}", response="{response}""#
-    )
+/// The Digest answer a receiver with the password `hunter2` takes for a
+/// `method` request to `rtsp://x/1`, after its challenge (realm `airplay`,
+/// nonce `9a4b3c`): fixed values, their MD5s computed apart from bae's code
+/// (Python's hashlib).
+fn accepted_digest(method: &str) -> Option<String> {
+    let response = match method {
+        "SETRATEANCHORTIME" => "da64caf8cf5a38b15b6b0111bdb08a6c",
+        "TEARDOWN" => "63ffa8fa35320ce80aed5535504c816f",
+        _ => return None,
+    };
+    Some(format!(
+        r#"Digest username="", realm="airplay", nonce="9a4b3c", uri="rtsp://x/1", response="{response}""#
+    ))
 }
 
-/// Serve `requests` encrypted requests the way a receiver with `password`
-/// does: a request without the right Digest answer gets a 401 challenge.
-/// Returns each request's method and whether the receiver took it.
+/// Serve `requests` encrypted requests the way a receiver with the password
+/// `hunter2` does: a request without the right Digest answer gets a 401
+/// challenge. Returns each request's method and whether the receiver took it.
 fn serve_digest_receiver(
     listener: TcpListener,
     shared: [u8; 32],
-    password: &'static str,
     requests: usize,
 ) -> std::thread::JoinHandle<Vec<(String, bool)>> {
     std::thread::spawn(move || {
@@ -574,7 +575,7 @@ fn serve_digest_receiver(
         for _ in 0..requests {
             let (method, cseq, _, authorization) =
                 read_encrypted_request(&mut reader, &mut channel);
-            let took = authorization == Some(expected_digest(password, &method, "rtsp://x/1"));
+            let took = authorization.is_some() && authorization == accepted_digest(&method);
             let response = if took {
                 build_response(&cseq, &[])
             } else {
@@ -601,7 +602,7 @@ fn a_digest_challenge_is_answered_with_the_password_on_every_later_request() {
     let shared = [0x33u8; 32];
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
-    let server = serve_digest_receiver(listener, shared, "hunter2", 3);
+    let server = serve_digest_receiver(listener, shared, 3);
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control =
@@ -627,7 +628,7 @@ fn a_refused_password_is_the_pairing_lost() {
     let shared = [0x33u8; 32];
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
-    let server = serve_digest_receiver(listener, shared, "hunter2", 2);
+    let server = serve_digest_receiver(listener, shared, 2);
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control =
@@ -644,7 +645,7 @@ fn a_401_without_a_password_is_the_request_refused() {
     let shared = [0x33u8; 32];
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
-    let server = serve_digest_receiver(listener, shared, "hunter2", 1);
+    let server = serve_digest_receiver(listener, shared, 1);
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
