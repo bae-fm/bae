@@ -6,11 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
@@ -22,7 +24,9 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeStorageLocation
 
 private val logger = BaeLogger("bae.SyncStorageRows")
@@ -30,15 +34,37 @@ private val logger = BaeLogger("bae.SyncStorageRows")
 /**
  * The library's storage: its provider, then for S3 the endpoint, region and bucket it names, and for Dropbox and
  * OneDrive the signed-in account and the folder coven recorded, then Open in browser, which opens the folder's page
- * at the provider. A row shows a name or isn't there.
+ * at the provider. A row shows a name or isn't there. On S3 the card ends with the id of the access key the library
+ * records for the person, [access], and Replace key, which calls [onReplaceKey]; under the card, [saved] is the line
+ * after a saved key, which [onDismissSaved] dismisses.
  */
 @Composable
-internal fun StorageSection(location: BridgeStorageLocation) {
+internal fun StorageSection(
+    location: BridgeStorageLocation,
+    access: BridgeMemberAccess?,
+    saved: S3KeyReplacement.Saved?,
+    onReplaceKey: () -> Unit,
+    onDismissSaved: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_cloud_home))
         AndroidCard {
             StorageRows(location)
+            if (location is BridgeStorageLocation.S3 && access is BridgeMemberAccess.S3AccessKey) {
+                AndroidRow(title = stringResource(R.string.s3_access_key_id), subtitle = access.accessKeyId)
+                AndroidRow(title = stringResource(R.string.s3_replace_key), onClick = onReplaceKey)
+            }
             storageFolder(location)?.let { OpenFolderRow(it) }
+        }
+        saved?.let { line ->
+            AndroidNotice(
+                title = stringResource(R.string.s3_key_saved),
+                advice = line.oldKey?.let { stringResource(R.string.s3_key_delete_old, it) },
+                error = null,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                tone = StatusTone.INFO,
+                onDismiss = onDismissSaved,
+            )
         }
     }
 }

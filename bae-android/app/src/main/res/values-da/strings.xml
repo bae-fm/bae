@@ -314,8 +314,8 @@
     <string name="onboarding_code_invalid">Det er hverken en gendannelseskode eller en invitation.</string>
     <string name="onboarding_restore_title">Gendan dit bibliotek</string>
     <string name="onboarding_s3_key_explanation">Dette bibliotek ligger i en S3-kompatibel bucket. Indtast den adgangsnøgle, du bruger til den.</string>
-    <string name="onboarding_s3_key_title">S3-nøgle</string>
-    <string name="onboarding_s3_key_prompt">Indtast legitimationsoplysningerne til S3-bucketen.</string>
+    <string name="s3_key_title">S3-nøgle</string>
+    <string name="onboarding_s3_key_prompt">Indtast legitimationsoplysningerne til dit S3-lager.</string>
     <string name="s3_access_key_id">Adgangsnøgle-id</string>
     <string name="s3_secret_access_key">Hemmelig adgangsnøgle</string>
     <string name="onboarding_restore_action">Gendan</string>
@@ -449,7 +449,6 @@
     <string name="sync_cloud_home">Skyhjem</string>
     <string name="sync_fix_update">Opdater</string>
     <string name="sync_fix_sign_in">Log ind på %1$s</string>
-    <string name="sync_fix_enter_key">Indtast adgangsnøgle</string>
     <string name="sync_fix_remove">Fjern fra denne enhed</string>
     <string name="sync_cause_disk_full">Denne enhed er løbet tør for plads. Frigør noget, så prøver bae igen.</string>
     <string name="sync_cause_keys_unreadable">bae kunne ikke læse sine gemte nøgler på denne enhed.</string>
@@ -518,4 +517,12 @@
     <string name="file_kind_other">Fil</string>
     <string name="set_primary_release">Angiv som primær udgivelse</string>
     <string name="sync_cause_changes_stay">Dine ændringer bliver på denne enhed.</string>
+    <string name="s3_replace_key">Udskift nøgle</string>
+    <string name="s3_key_message">Indtast en nøgle, der kan bruge dette biblioteks S3-lager.</string>
+    <string name="s3_key_checking">Kontrollerer nøglen…</string>
+    <string name="s3_key_refused_title">Nøglen kunne ikke bruges</string>
+    <string name="s3_key_refused">S3-lageret accepterer ikke denne adgangsnøgle.</string>
+    <string name="s3_key_saved">Den nye S3-nøgle er gemt.</string>
+    <string name="s3_key_delete_old">Slet den gamle nøgle, %1$s, i din S3-udbyders konsol.</string>
+    <string name="sync_fix_sign_in_s3">Log ind på S3</string>
 </resources>

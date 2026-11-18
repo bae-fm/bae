@@ -344,8 +344,8 @@
     <string name="onboarding_code_invalid">هذا ليس رمز استرداد ولا دعوة.</string>
     <string name="onboarding_restore_title">استعادة مكتبتك</string>
     <string name="onboarding_s3_key_explanation">هذه المكتبة مخزّنة في حاوية متوافقة مع S3. أدخل مفتاح الوصول الذي تستخدمه لها.</string>
-    <string name="onboarding_s3_key_title">مفتاح S3</string>
-    <string name="onboarding_s3_key_prompt">أدخل بيانات اعتماد حاوية S3.</string>
+    <string name="s3_key_title">مفتاح S3</string>
+    <string name="onboarding_s3_key_prompt">أدخل بيانات اعتماد تخزين S3 الخاص بك.</string>
     <string name="s3_access_key_id">معرّف مفتاح الوصول</string>
     <string name="s3_secret_access_key">مفتاح الوصول السري</string>
     <string name="onboarding_restore_action">استعادة</string>
@@ -483,7 +483,6 @@
     <string name="sync_cloud_home">المنزل السحابي</string>
     <string name="sync_fix_update">تحديث</string>
     <string name="sync_fix_sign_in">تسجيل الدخول إلى %1$s</string>
-    <string name="sync_fix_enter_key">إدخال مفتاح الوصول</string>
     <string name="sync_fix_remove">إزالة من هذا الجهاز</string>
     <string name="sync_cause_disk_full">نفدت المساحة على هذا الجهاز. أفرِغ بعضها وسيعيد bae المحاولة.</string>
     <string name="sync_cause_keys_unreadable">تعذّر على bae قراءة مفاتيحه المحفوظة على هذا الجهاز.</string>
@@ -556,4 +555,12 @@
     <string name="file_kind_other">ملف</string>
     <string name="set_primary_release">تعيين كإصدار رئيسي</string>
     <string name="sync_cause_changes_stay">تبقى تغييراتك على هذا الجهاز.</string>
+    <string name="s3_replace_key">استبدال المفتاح</string>
+    <string name="s3_key_message">أدخل مفتاحًا يمكنه استخدام تخزين S3 لهذه المكتبة.</string>
+    <string name="s3_key_checking">جارٍ التحقق من المفتاح…</string>
+    <string name="s3_key_refused_title">تعذّر استخدام هذا المفتاح</string>
+    <string name="s3_key_refused">لا يقبل تخزين S3 مفتاح الوصول هذا.</string>
+    <string name="s3_key_saved">تم حفظ مفتاح S3 الجديد.</string>
+    <string name="s3_key_delete_old">احذف المفتاح القديم %1$s من وحدة تحكم مزوّد S3.</string>
+    <string name="sync_fix_sign_in_s3">تسجيل الدخول إلى S3</string>
 </resources>

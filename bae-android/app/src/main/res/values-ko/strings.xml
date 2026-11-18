@@ -309,8 +309,8 @@
     <string name="onboarding_code_invalid">복원 코드나 초대가 아닙니다.</string>
     <string name="onboarding_restore_title">라이브러리 복원</string>
     <string name="onboarding_s3_key_explanation">이 라이브러리는 S3 호환 버킷에 저장되어 있습니다. 이 버킷에 사용하는 액세스 키를 입력하세요.</string>
-    <string name="onboarding_s3_key_title">S3 키</string>
-    <string name="onboarding_s3_key_prompt">S3 버킷의 자격 증명을 입력하세요.</string>
+    <string name="s3_key_title">S3 키</string>
+    <string name="onboarding_s3_key_prompt">S3 스토리지의 자격 증명을 입력하세요.</string>
     <string name="s3_access_key_id">액세스 키 ID</string>
     <string name="s3_secret_access_key">보안 액세스 키</string>
     <string name="onboarding_restore_action">복원</string>
@@ -443,7 +443,6 @@
     <string name="sync_cloud_home">클라우드 홈</string>
     <string name="sync_fix_update">업데이트</string>
     <string name="sync_fix_sign_in">%1$s에 로그인</string>
-    <string name="sync_fix_enter_key">액세스 키 입력</string>
     <string name="sync_fix_remove">이 기기에서 제거</string>
     <string name="sync_cause_disk_full">이 기기의 저장 공간이 부족합니다. 공간을 확보하면 bae가 다시 시도합니다.</string>
     <string name="sync_cause_keys_unreadable">bae가 이 기기에 저장된 키를 읽지 못했습니다.</string>
@@ -511,4 +510,12 @@
     <string name="file_kind_other">파일</string>
     <string name="set_primary_release">기본 릴리스로 설정</string>
     <string name="sync_cause_changes_stay">변경 사항은 이 기기에 남아 있습니다.</string>
+    <string name="s3_replace_key">키 교체</string>
+    <string name="s3_key_message">이 라이브러리의 S3 스토리지를 사용할 수 있는 키를 입력하세요.</string>
+    <string name="s3_key_checking">키 확인 중…</string>
+    <string name="s3_key_refused_title">이 키를 사용할 수 없음</string>
+    <string name="s3_key_refused">S3 스토리지에서 이 액세스 키를 받아들이지 않습니다.</string>
+    <string name="s3_key_saved">새 S3 키를 저장했습니다.</string>
+    <string name="s3_key_delete_old">S3 제공업체의 콘솔에서 이전 키 %1$s을(를) 삭제하세요.</string>
+    <string name="sync_fix_sign_in_s3">S3에 로그인</string>
 </resources>

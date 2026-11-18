@@ -120,7 +120,7 @@ internal fun S3KeyDialog(
 ) {
     AndroidDialog(
         onDismissRequest = onBack,
-        title = stringResource(R.string.onboarding_s3_key_title),
+        title = stringResource(R.string.s3_key_title),
         message = stringResource(R.string.onboarding_s3_key_prompt),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {

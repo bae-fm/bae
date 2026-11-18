@@ -314,8 +314,8 @@
     <string name="onboarding_code_invalid">Det här är varken en återställningskod eller en inbjudan.</string>
     <string name="onboarding_restore_title">Återställ ditt bibliotek</string>
     <string name="onboarding_s3_key_explanation">Det här biblioteket ligger i en S3-kompatibel bucket. Ange åtkomstnyckeln du använder för den.</string>
-    <string name="onboarding_s3_key_title">S3-nyckel</string>
-    <string name="onboarding_s3_key_prompt">Ange inloggningsuppgifterna för S3-bucketen.</string>
+    <string name="s3_key_title">S3-nyckel</string>
+    <string name="onboarding_s3_key_prompt">Ange inloggningsuppgifterna för din S3-lagring.</string>
     <string name="s3_access_key_id">Åtkomstnyckel-ID</string>
     <string name="s3_secret_access_key">Hemlig åtkomstnyckel</string>
     <string name="onboarding_restore_action">Återställ</string>
@@ -449,7 +449,6 @@
     <string name="sync_cloud_home">Molnhem</string>
     <string name="sync_fix_update">Uppdatera</string>
     <string name="sync_fix_sign_in">Logga in på %1$s</string>
-    <string name="sync_fix_enter_key">Ange åtkomstnyckel</string>
     <string name="sync_fix_remove">Ta bort från den här enheten</string>
     <string name="sync_cause_disk_full">Den här enheten har slut på utrymme. Frigör lite så försöker bae igen.</string>
     <string name="sync_cause_keys_unreadable">bae kunde inte läsa sina sparade nycklar på den här enheten.</string>
@@ -518,4 +517,12 @@
     <string name="file_kind_other">Fil</string>
     <string name="set_primary_release">Ange som primär utgåva</string>
     <string name="sync_cause_changes_stay">Dina ändringar stannar på den här enheten.</string>
+    <string name="s3_replace_key">Byt nyckel</string>
+    <string name="s3_key_message">Ange en nyckel som kan använda det här bibliotekets S3-lagring.</string>
+    <string name="s3_key_checking">Kontrollerar nyckeln…</string>
+    <string name="s3_key_refused_title">Det gick inte att använda nyckeln</string>
+    <string name="s3_key_refused">S3-lagringen godtar inte den här åtkomstnyckeln.</string>
+    <string name="s3_key_saved">Den nya S3-nyckeln är sparad.</string>
+    <string name="s3_key_delete_old">Radera den gamla nyckeln, %1$s, i konsolen hos din S3-leverantör.</string>
+    <string name="sync_fix_sign_in_s3">Logga in på S3</string>
 </resources>

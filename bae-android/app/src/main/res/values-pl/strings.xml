@@ -330,8 +330,8 @@
     <string name="onboarding_code_invalid">To nie jest kod przywracania ani zaproszenie.</string>
     <string name="onboarding_restore_title">Przywróć swoją bibliotekę</string>
     <string name="onboarding_s3_key_explanation">Ta biblioteka jest przechowywana w zasobniku zgodnym z S3. Wpisz klucz dostępu, którego do niego używasz.</string>
-    <string name="onboarding_s3_key_title">Klucz S3</string>
-    <string name="onboarding_s3_key_prompt">Wpisz dane uwierzytelniające do zasobnika S3.</string>
+    <string name="s3_key_title">Klucz S3</string>
+    <string name="onboarding_s3_key_prompt">Wpisz dane uwierzytelniające do swojego magazynu S3.</string>
     <string name="s3_access_key_id">Identyfikator klucza dostępu</string>
     <string name="s3_secret_access_key">Tajny klucz dostępu</string>
     <string name="onboarding_restore_action">Przywróć</string>
@@ -467,7 +467,6 @@
     <string name="sync_cloud_home">Dom w chmurze</string>
     <string name="sync_fix_update">Zaktualizuj</string>
     <string name="sync_fix_sign_in">Zaloguj się do %1$s</string>
-    <string name="sync_fix_enter_key">Wprowadź klucz dostępu</string>
     <string name="sync_fix_remove">Usuń z tego urządzenia</string>
     <string name="sync_cause_disk_full">Na tym urządzeniu brakuje miejsca. Zwolnij trochę, a bae spróbuje ponownie.</string>
     <string name="sync_cause_keys_unreadable">bae nie mógł odczytać zapisanych kluczy na tym urządzeniu.</string>
@@ -538,4 +537,12 @@
     <string name="file_kind_other">Plik</string>
     <string name="set_primary_release">Ustaw jako wydanie główne</string>
     <string name="sync_cause_changes_stay">Twoje zmiany pozostają na tym urządzeniu.</string>
+    <string name="s3_replace_key">Zastąp klucz</string>
+    <string name="s3_key_message">Wpisz klucz, który może korzystać z magazynu S3 tej biblioteki.</string>
+    <string name="s3_key_checking">Sprawdzanie klucza…</string>
+    <string name="s3_key_refused_title">Nie można użyć tego klucza</string>
+    <string name="s3_key_refused">Magazyn S3 nie akceptuje tego klucza dostępu.</string>
+    <string name="s3_key_saved">Zapisano nowy klucz S3.</string>
+    <string name="s3_key_delete_old">Usuń stary klucz %1$s w konsoli swojego dostawcy S3.</string>
+    <string name="sync_fix_sign_in_s3">Zaloguj się do S3</string>
 </resources>

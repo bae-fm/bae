@@ -51,7 +51,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeLibrarySetup
-import uniffi.bae_bridge.BridgeSaveSyncConfig
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncFix
@@ -84,8 +84,13 @@ private class SyncFixRunner(
     /** Runs the reconnect a sign-in asks for, with its steps while it runs. */
     val signIns = StorageSetupRunner(context, session, scope, onError = { error = it })
 
-    /** The S3 location a new access key is being asked for; null while none is. */
-    var askingForKey by mutableStateOf<BridgeStorageLocation.S3?>(null)
+    /** The S3 key dialog, which an S3 sign-in opens as Replace key does. */
+    val keyReplacement =
+        S3KeyReplacement(
+            scope = scope,
+            useAccessKey = session.appHandle::useAccessKey,
+            display = session.errors::display,
+        )
 
     /** The reset the person is shown the warning of; null while none is. */
     var resetting by mutableStateOf<PreparedReset?>(null)
@@ -121,7 +126,7 @@ private class SyncFixRunner(
             }
 
             BridgeSyncFix.EnterAccessKey -> {
-                signIn(BridgeCloudProvider.S3)
+                keyReplacement.open()
             }
 
             BridgeSyncFix.EnterRestoreCode -> {
@@ -170,19 +175,12 @@ private class SyncFixRunner(
     }
 
     /**
-     * Sign in to the library's storage again: a new access key for an S3 bucket, which the key dialog asks for, or
-     * the provider's sign-in.
+     * Sign in to the library's storage again: a new S3 key, which the S3 key dialog asks for, or the provider's
+     * sign-in.
      */
     private fun signIn(provider: BridgeCloudProvider) {
         if (provider == BridgeCloudProvider.S3) {
-            // A fix that doesn't match the location is a bug; the screen's scope reports a throw.
-            scope.launch {
-                val location = session.configStore.config.value.storage
-                askingForKey =
-                    checkNotNull(location as? BridgeStorageLocation.S3) {
-                        "an S3 sign-in fix under the storage location $location"
-                    }
-            }
+            keyReplacement.open()
             return
         }
         val providers = actions.oauthProviders
@@ -192,14 +190,6 @@ private class SyncFixRunner(
             setUp("sign in to $provider again") { setup ->
                 providers.signInAgain(session.appHandle, setup)
             }
-        }
-    }
-
-    /** Connect the library's location again with the access key [config] carries. */
-    fun signInWithKey(config: BridgeSaveSyncConfig) {
-        askingForKey = null
-        setUp("sign in to S3 with a new access key") { setup ->
-            session.appHandle.saveSyncConfig(config, setup)
         }
     }
 
@@ -245,6 +235,10 @@ internal fun SyncScreen(
             runner.error?.let { AndroidNotice(it) }
         },
         location = location,
+        access = config.storageAccess,
+        keySaved = runner.keyReplacement.saved,
+        onReplaceKey = runner.keyReplacement::open,
+        onDismissKeySaved = runner.keyReplacement::dismissSaved,
         restoreCode = restoreCode.state,
         onBack = onBack,
         onFix = runner::runFix,
@@ -259,13 +253,18 @@ internal fun SyncScreen(
 
 /**
  * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed actions, then the
- * library's [location] with its restore code.
+ * library's [location] with the access key the library records for the person, [access], and its restore code.
+ * [keySaved] is the line after a saved S3 key, which [onDismissKeySaved] dismisses; Replace key calls [onReplaceKey].
  */
 @Composable
 internal fun AndroidSettingsSync(
     line: SyncLine,
     notices: @Composable ColumnScope.() -> Unit,
     location: BridgeStorageLocation?,
+    access: BridgeMemberAccess?,
+    keySaved: S3KeyReplacement.Saved?,
+    onReplaceKey: () -> Unit,
+    onDismissKeySaved: () -> Unit,
     restoreCode: RestoreCodeState,
     onBack: () -> Unit,
     onFix: (BridgeSyncFix) -> Unit,
@@ -282,7 +281,15 @@ internal fun AndroidSettingsSync(
             item { SyncStatusBlock(line = line, onFix = onFix) }
             item { Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related), content = notices) }
             location?.let { place ->
-                item { StorageSection(place) }
+                item {
+                    StorageSection(
+                        location = place,
+                        access = access,
+                        saved = keySaved,
+                        onReplaceKey = onReplaceKey,
+                        onDismissSaved = onDismissKeySaved,
+                    )
+                }
                 item {
                     RestoreCodeSectionContent(
                         needsS3Key = place is BridgeStorageLocation.S3,
@@ -334,11 +341,11 @@ private fun SyncDialogs(
     runner: SyncFixRunner,
     actions: SessionActions,
 ) {
-    runner.askingForKey?.let { place ->
+    runner.keyReplacement.sheet?.let { sheet ->
         S3KeyDialog(
-            location = place,
-            onSignIn = runner::signInWithKey,
-            onDismiss = { runner.askingForKey = null },
+            sheet = sheet,
+            onSave = runner.keyReplacement::save,
+            onCancel = runner.keyReplacement::cancel,
         )
     }
     runner.resetting?.let { prepared ->
@@ -431,7 +438,7 @@ private fun syncFixLabel(fix: BridgeSyncFix): String? {
 
         is BridgeSyncFix.SignIn -> stringResource(R.string.sync_fix_sign_in, cloudProviderLabel(fix.provider))
 
-        BridgeSyncFix.EnterAccessKey -> stringResource(R.string.sync_fix_enter_key)
+        BridgeSyncFix.EnterAccessKey -> stringResource(R.string.sync_fix_sign_in_s3)
 
         BridgeSyncFix.ResetDevice -> context.coreString("core.sync.reset_from_cloud")
 

@@ -309,8 +309,8 @@
     <string name="onboarding_code_invalid">这不是恢复码，也不是邀请。</string>
     <string name="onboarding_restore_title">恢复你的库</string>
     <string name="onboarding_s3_key_explanation">此库存储在兼容 S3 的存储桶中。请输入你用于该存储桶的访问密钥。</string>
-    <string name="onboarding_s3_key_title">S3 密钥</string>
-    <string name="onboarding_s3_key_prompt">请输入 S3 存储桶的凭据。</string>
+    <string name="s3_key_title">S3 密钥</string>
+    <string name="onboarding_s3_key_prompt">请输入你的 S3 存储的凭据。</string>
     <string name="s3_access_key_id">访问密钥 ID</string>
     <string name="s3_secret_access_key">私有访问密钥</string>
     <string name="onboarding_restore_action">恢复</string>
@@ -443,7 +443,6 @@
     <string name="sync_cloud_home">云端家园</string>
     <string name="sync_fix_update">更新</string>
     <string name="sync_fix_sign_in">登录 %1$s</string>
-    <string name="sync_fix_enter_key">输入访问密钥</string>
     <string name="sync_fix_remove">从此设备移除</string>
     <string name="sync_cause_disk_full">此设备空间不足。释放一些空间后，bae 会重试。</string>
     <string name="sync_cause_keys_unreadable">bae 无法读取此设备上保存的密钥。</string>
@@ -511,4 +510,12 @@
     <string name="file_kind_other">文件</string>
     <string name="set_primary_release">设为主版本</string>
     <string name="sync_cause_changes_stay">你的更改会保留在此设备上。</string>
+    <string name="s3_replace_key">替换密钥</string>
+    <string name="s3_key_message">请输入可以使用此库 S3 存储的密钥。</string>
+    <string name="s3_key_checking">正在检查密钥…</string>
+    <string name="s3_key_refused_title">无法使用此密钥</string>
+    <string name="s3_key_refused">S3 存储不接受此访问密钥。</string>
+    <string name="s3_key_saved">已保存新的 S3 密钥。</string>
+    <string name="s3_key_delete_old">请在 S3 提供商的控制台中删除旧密钥 %1$s。</string>
+    <string name="sync_fix_sign_in_s3">登录 S3</string>
 </resources>

@@ -322,8 +322,8 @@
     <string name="onboarding_code_invalid">Questo non è un codice di ripristino né un invito.</string>
     <string name="onboarding_restore_title">Ripristina la tua libreria</string>
     <string name="onboarding_s3_key_explanation">Questa libreria è archiviata in un bucket compatibile con S3. Inserisci la chiave di accesso che usi per esso.</string>
-    <string name="onboarding_s3_key_title">Chiave S3</string>
-    <string name="onboarding_s3_key_prompt">Inserisci le credenziali per il bucket S3.</string>
+    <string name="s3_key_title">Chiave S3</string>
+    <string name="onboarding_s3_key_prompt">Inserisci le credenziali per la tua archiviazione S3.</string>
     <string name="s3_access_key_id">ID chiave di accesso</string>
     <string name="s3_secret_access_key">Chiave di accesso segreta</string>
     <string name="onboarding_restore_action">Ripristina</string>
@@ -457,7 +457,6 @@
     <string name="sync_cloud_home">Casa nel cloud</string>
     <string name="sync_fix_update">Aggiorna</string>
     <string name="sync_fix_sign_in">Accedi a %1$s</string>
-    <string name="sync_fix_enter_key">Inserisci chiave di accesso</string>
     <string name="sync_fix_remove">Rimuovi da questo dispositivo</string>
     <string name="sync_cause_disk_full">Questo dispositivo ha esaurito lo spazio. Liberane un po’ e bae riproverà.</string>
     <string name="sync_cause_keys_unreadable">bae non è riuscito a leggere le chiavi salvate su questo dispositivo.</string>
@@ -527,4 +526,12 @@
     <string name="file_kind_other">File</string>
     <string name="set_primary_release">Imposta come pubblicazione principale</string>
     <string name="sync_cause_changes_stay">Le tue modifiche restano su questo dispositivo.</string>
+    <string name="s3_replace_key">Sostituisci chiave</string>
+    <string name="s3_key_message">Inserisci una chiave che possa usare l’archiviazione S3 di questa libreria.</string>
+    <string name="s3_key_checking">Verifica della chiave…</string>
+    <string name="s3_key_refused_title">Impossibile usare questa chiave</string>
+    <string name="s3_key_refused">L’archiviazione S3 non accetta questa chiave di accesso.</string>
+    <string name="s3_key_saved">La nuova chiave S3 è stata salvata.</string>
+    <string name="s3_key_delete_old">Elimina la vecchia chiave, %1$s, nella console del tuo fornitore S3.</string>
+    <string name="sync_fix_sign_in_s3">Accedi a S3</string>
 </resources>

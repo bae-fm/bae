@@ -330,8 +330,8 @@
     <string name="onboarding_code_invalid">Toto není kód pro obnovení ani pozvánka.</string>
     <string name="onboarding_restore_title">Obnovit knihovnu</string>
     <string name="onboarding_s3_key_explanation">Tato knihovna je uložena v bucketu kompatibilním s S3. Zadejte přístupový klíč, který pro něj používáte.</string>
-    <string name="onboarding_s3_key_title">Klíč S3</string>
-    <string name="onboarding_s3_key_prompt">Zadejte přihlašovací údaje k bucketu S3.</string>
+    <string name="s3_key_title">Klíč S3</string>
+    <string name="onboarding_s3_key_prompt">Zadejte přihlašovací údaje ke svému úložišti S3.</string>
     <string name="s3_access_key_id">ID přístupového klíče</string>
     <string name="s3_secret_access_key">Tajný přístupový klíč</string>
     <string name="onboarding_restore_action">Obnovit</string>
@@ -467,7 +467,6 @@
     <string name="sync_cloud_home">Cloudový domov</string>
     <string name="sync_fix_update">Aktualizovat</string>
     <string name="sync_fix_sign_in">Přihlásit se k %1$s</string>
-    <string name="sync_fix_enter_key">Zadat přístupový klíč</string>
     <string name="sync_fix_remove">Odebrat z tohoto zařízení</string>
     <string name="sync_cause_disk_full">Na tomto zařízení došlo místo. Uvolněte trochu a bae to zkusí znovu.</string>
     <string name="sync_cause_keys_unreadable">bae nemohl na tomto zařízení přečíst své uložené klíče.</string>
@@ -538,4 +537,12 @@
     <string name="file_kind_other">Soubor</string>
     <string name="set_primary_release">Nastavit jako primární vydání</string>
     <string name="sync_cause_changes_stay">Vaše změny zůstanou na tomto zařízení.</string>
+    <string name="s3_replace_key">Nahradit klíč</string>
+    <string name="s3_key_message">Zadejte klíč, který může používat úložiště S3 této knihovny.</string>
+    <string name="s3_key_checking">Kontrola klíče…</string>
+    <string name="s3_key_refused_title">Tento klíč nelze použít</string>
+    <string name="s3_key_refused">Úložiště S3 tento přístupový klíč nepřijímá.</string>
+    <string name="s3_key_saved">Nový klíč S3 je uložen.</string>
+    <string name="s3_key_delete_old">Starý klíč %1$s smažte v konzoli svého poskytovatele S3.</string>
+    <string name="sync_fix_sign_in_s3">Přihlásit se k S3</string>
 </resources>

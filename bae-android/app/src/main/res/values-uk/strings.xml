@@ -330,8 +330,8 @@
     <string name="onboarding_code_invalid">Це не код відновлення і не запрошення.</string>
     <string name="onboarding_restore_title">Відновлення бібліотеки</string>
     <string name="onboarding_s3_key_explanation">Ця бібліотека зберігається в S3-сумісному бакеті. Введіть ключ доступу, який ви для нього використовуєте.</string>
-    <string name="onboarding_s3_key_title">Ключ S3</string>
-    <string name="onboarding_s3_key_prompt">Введіть облікові дані для S3-бакета.</string>
+    <string name="s3_key_title">Ключ S3</string>
+    <string name="onboarding_s3_key_prompt">Введіть облікові дані для свого сховища S3.</string>
     <string name="s3_access_key_id">ID ключа доступу</string>
     <string name="s3_secret_access_key">Секретний ключ доступу</string>
     <string name="onboarding_restore_action">Відновити</string>
@@ -467,7 +467,6 @@
     <string name="sync_cloud_home">Хмарний дім</string>
     <string name="sync_fix_update">Оновити</string>
     <string name="sync_fix_sign_in">Увійти в %1$s</string>
-    <string name="sync_fix_enter_key">Ввести ключ доступу</string>
     <string name="sync_fix_remove">Вилучити з цього пристрою</string>
     <string name="sync_cause_disk_full">На цьому пристрої закінчилося місце. Звільніть трохи, і bae повторить спробу.</string>
     <string name="sync_cause_keys_unreadable">bae не зміг прочитати збережені ключі на цьому пристрої.</string>
@@ -538,4 +537,12 @@
     <string name="file_kind_other">Файл</string>
     <string name="set_primary_release">Зробити основним релізом</string>
     <string name="sync_cause_changes_stay">Ваші зміни залишаються на цьому пристрої.</string>
+    <string name="s3_replace_key">Замінити ключ</string>
+    <string name="s3_key_message">Введіть ключ, який може використовувати сховище S3 цієї бібліотеки.</string>
+    <string name="s3_key_checking">Перевірка ключа…</string>
+    <string name="s3_key_refused_title">Не вдалося використати цей ключ</string>
+    <string name="s3_key_refused">Сховище S3 не приймає цей ключ доступу.</string>
+    <string name="s3_key_saved">Новий ключ S3 збережено.</string>
+    <string name="s3_key_delete_old">Видаліть старий ключ %1$s у консолі свого постачальника S3.</string>
+    <string name="sync_fix_sign_in_s3">Увійти в S3</string>
 </resources>

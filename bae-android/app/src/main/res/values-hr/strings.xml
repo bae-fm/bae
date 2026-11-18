@@ -323,8 +323,8 @@
     <string name="onboarding_code_invalid">Ovo nije kod za vraćanje ni pozivnica.</string>
     <string name="onboarding_restore_title">Vraćanje fonoteke</string>
     <string name="onboarding_s3_key_explanation">Ova je fonoteka pohranjena u S3-kompatibilnom bucketu. Unesite pristupni ključ koji za njega koristite.</string>
-    <string name="onboarding_s3_key_title">S3 ključ</string>
-    <string name="onboarding_s3_key_prompt">Unesite vjerodajnice za S3 bucket.</string>
+    <string name="s3_key_title">S3 ključ</string>
+    <string name="onboarding_s3_key_prompt">Unesite vjerodajnice za svoju S3 pohranu.</string>
     <string name="s3_access_key_id">ID pristupnog ključa</string>
     <string name="s3_secret_access_key">Tajni pristupni ključ</string>
     <string name="onboarding_restore_action">Vrati</string>
@@ -459,7 +459,6 @@
     <string name="sync_cloud_home">Dom u oblaku</string>
     <string name="sync_fix_update">Ažuriraj</string>
     <string name="sync_fix_sign_in">Prijava na %1$s</string>
-    <string name="sync_fix_enter_key">Unesi pristupni ključ</string>
     <string name="sync_fix_remove">Ukloni s ovog uređaja</string>
     <string name="sync_cause_disk_full">Na ovom uređaju je ponestalo prostora. Oslobodite malo i bae će pokušati ponovno.</string>
     <string name="sync_cause_keys_unreadable">bae nije mogao pročitati svoje spremljene ključeve na ovom uređaju.</string>
@@ -529,4 +528,12 @@
     <string name="file_kind_other">Datoteka</string>
     <string name="set_primary_release">Postavi kao primarno izdanje</string>
     <string name="sync_cause_changes_stay">Vaše promjene ostaju na ovom uređaju.</string>
+    <string name="s3_replace_key">Zamijeni ključ</string>
+    <string name="s3_key_message">Unesite ključ koji može koristiti S3 pohranu ove knjižnice.</string>
+    <string name="s3_key_checking">Provjera ključa…</string>
+    <string name="s3_key_refused_title">Ovaj ključ nije moguće koristiti</string>
+    <string name="s3_key_refused">S3 pohrana ne prihvaća ovaj pristupni ključ.</string>
+    <string name="s3_key_saved">Novi S3 ključ je spremljen.</string>
+    <string name="s3_key_delete_old">Izbrišite stari ključ %1$s u konzoli svog S3 pružatelja.</string>
+    <string name="sync_fix_sign_in_s3">Prijava na S3</string>
 </resources>

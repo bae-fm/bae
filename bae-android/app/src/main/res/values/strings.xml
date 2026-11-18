@@ -363,8 +363,8 @@
     <string name="onboarding_code_invalid">This is not a restore code or an invite.</string>
     <string name="onboarding_restore_title">Restore your library</string>
     <string name="onboarding_s3_key_explanation">This library is stored in an S3-compatible bucket. Enter the access key you use for it.</string>
-    <string name="onboarding_s3_key_title">S3 key</string>
-    <string name="onboarding_s3_key_prompt">Enter your credentials for the S3 bucket.</string>
+    <string name="s3_key_title">S3 key</string>
+    <string name="onboarding_s3_key_prompt">Enter your credentials for your S3 storage.</string>
     <string name="s3_access_key_id">Access key ID</string>
     <string name="s3_secret_access_key">Secret access key</string>
     <string name="onboarding_restore_action">Restore</string>
@@ -510,7 +510,6 @@
     <string name="sync_cloud_home">Cloud home</string>
     <string name="sync_fix_update">Update</string>
     <string name="sync_fix_sign_in">Sign in to %1$s</string>
-    <string name="sync_fix_enter_key">Enter access key</string>
     <string name="sync_fix_remove">Remove from this device</string>
     <string name="sync_cause_disk_full">This device is out of space. Free some up and bae will try again.</string>
     <string name="sync_cause_keys_unreadable">bae could not read its saved keys on this device.</string>
@@ -580,4 +579,12 @@
     <string name="file_kind_other">File</string>
     <string name="set_primary_release">Set as primary release</string>
     <string name="sync_cause_changes_stay">Your changes stay on this device.</string>
+    <string name="s3_replace_key">Replace key</string>
+    <string name="s3_key_message">Enter a key that can use this library’s S3 storage.</string>
+    <string name="s3_key_checking">Checking the key…</string>
+    <string name="s3_key_refused_title">Could not use this key</string>
+    <string name="s3_key_refused">S3 storage does not accept this access key.</string>
+    <string name="s3_key_saved">Saved the new S3 key.</string>
+    <string name="s3_key_delete_old">Delete the old key, %1$s, in your S3 provider’s console.</string>
+    <string name="sync_fix_sign_in_s3">Sign in to S3</string>
 </resources>

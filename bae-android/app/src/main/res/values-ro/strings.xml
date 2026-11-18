@@ -321,8 +321,8 @@
     <string name="onboarding_code_invalid">Acesta nu este un cod de restaurare sau o invitație.</string>
     <string name="onboarding_restore_title">Restaurează-ți biblioteca</string>
     <string name="onboarding_s3_key_explanation">Această bibliotecă este stocată într-un bucket compatibil S3. Introdu cheia de acces pe care o folosești pentru el.</string>
-    <string name="onboarding_s3_key_title">Cheie S3</string>
-    <string name="onboarding_s3_key_prompt">Introdu datele de autentificare pentru bucketul S3.</string>
+    <string name="s3_key_title">Cheie S3</string>
+    <string name="onboarding_s3_key_prompt">Introdu datele de autentificare pentru stocarea ta S3.</string>
     <string name="s3_access_key_id">ID cheie de acces</string>
     <string name="s3_secret_access_key">Cheie de acces secretă</string>
     <string name="onboarding_restore_action">Restaurează</string>
@@ -457,7 +457,6 @@
     <string name="sync_cloud_home">Casa din cloud</string>
     <string name="sync_fix_update">Actualizează</string>
     <string name="sync_fix_sign_in">Conectează-te la %1$s</string>
-    <string name="sync_fix_enter_key">Introdu cheia de acces</string>
     <string name="sync_fix_remove">Elimină de pe acest dispozitiv</string>
     <string name="sync_cause_disk_full">Acest dispozitiv a rămas fără spațiu. Eliberează puțin și bae va încerca din nou.</string>
     <string name="sync_cause_keys_unreadable">bae nu a putut citi cheile salvate pe acest dispozitiv.</string>
@@ -527,4 +526,12 @@
     <string name="file_kind_other">Fișier</string>
     <string name="set_primary_release">Setează ca ediție principală</string>
     <string name="sync_cause_changes_stay">Modificările tale rămân pe acest dispozitiv.</string>
+    <string name="s3_replace_key">Înlocuiește cheia</string>
+    <string name="s3_key_message">Introdu o cheie care poate folosi stocarea S3 a acestei biblioteci.</string>
+    <string name="s3_key_checking">Se verifică cheia…</string>
+    <string name="s3_key_refused_title">Cheia nu a putut fi folosită</string>
+    <string name="s3_key_refused">Stocarea S3 nu acceptă această cheie de acces.</string>
+    <string name="s3_key_saved">Noua cheie S3 a fost salvată.</string>
+    <string name="s3_key_delete_old">Șterge cheia veche, %1$s, din consola furnizorului tău S3.</string>
+    <string name="sync_fix_sign_in_s3">Conectează-te la S3</string>
 </resources>

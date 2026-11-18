@@ -4,10 +4,12 @@ import androidx.compose.runtime.Composable
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.settings.AndroidSettingsSync
 import fm.bae.app.ui.settings.RestoreCodeState
+import fm.bae.app.ui.settings.S3KeyReplacement
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
@@ -41,9 +43,16 @@ class SettingsSyncShots : BoardShot() {
             )
         }
 
-    /** Sync over an S3 bucket, synced. */
+    /** Sync over an S3 bucket, synced, with the key the library records for the person. */
     @Test
     fun androidSettingsSyncS3() = shot("android.settings.sync.s3") { Sync(synced, s3) }
+
+    /** The line after a saved S3 key, naming the old key to delete. */
+    @Test
+    fun androidSettingsSyncS3KeyReplaced() =
+        shot("android.settings.sync.s3-key-replaced") {
+            Sync(synced, s3, key = "AKIA4EXAMPLENEW", keySaved = S3KeyReplacement.Saved("AKIA4EXAMPLEOLD"))
+        }
 
     /** Sync over a Dropbox folder after Dropbox signed this device out. */
     @Test
@@ -63,7 +72,7 @@ class SettingsSyncShots : BoardShot() {
             )
         }
 
-    /** Sync over an S3 bucket whose key was not accepted. */
+    /** Sync over an S3 bucket whose storage refuses the key. */
     @Test
     fun androidSettingsSyncSignedOutS3() =
         shot("android.settings.sync.signed-out-s3") {
@@ -94,16 +103,23 @@ private val folder =
 
 private val s3 = BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)
 
+/** The Sync page over [location], an S3 library recording [key] for the person, with [keySaved]'s line under it. */
 @Composable
 private fun Sync(
     line: SyncLine,
     location: BridgeStorageLocation,
     restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
+    key: String = "AKIA4EXAMPLEOLD",
+    keySaved: S3KeyReplacement.Saved? = null,
 ) = ScreenScene {
     AndroidSettingsSync(
         line = line,
         notices = {},
         location = location,
+        access = BridgeMemberAccess.S3AccessKey(key),
+        keySaved = keySaved,
+        onReplaceKey = {},
+        onDismissKeySaved = {},
         restoreCode = restoreCode,
         onBack = {},
         onFix = {},

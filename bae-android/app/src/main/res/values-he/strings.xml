@@ -323,8 +323,8 @@
     <string name="onboarding_code_invalid">זה לא קוד שחזור וגם לא הזמנה.</string>
     <string name="onboarding_restore_title">שחזור הספרייה שלך</string>
     <string name="onboarding_s3_key_explanation">הספרייה הזו מאוחסנת בדלי תואם S3. הזן את מפתח הגישה שבו אתה משתמש עבורו.</string>
-    <string name="onboarding_s3_key_title">מפתח S3</string>
-    <string name="onboarding_s3_key_prompt">הזן את פרטי הגישה לדלי S3.</string>
+    <string name="s3_key_title">מפתח S3</string>
+    <string name="onboarding_s3_key_prompt">הזן את פרטי הגישה לאחסון S3 שלך.</string>
     <string name="s3_access_key_id">מזהה מפתח גישה</string>
     <string name="s3_secret_access_key">מפתח גישה סודי</string>
     <string name="onboarding_restore_action">שחזור</string>
@@ -459,7 +459,6 @@
     <string name="sync_cloud_home">הבית בענן</string>
     <string name="sync_fix_update">עדכן</string>
     <string name="sync_fix_sign_in">היכנס ל-%1$s</string>
-    <string name="sync_fix_enter_key">הזן מפתח גישה</string>
     <string name="sync_fix_remove">הסר ממכשיר זה</string>
     <string name="sync_cause_disk_full">במכשיר הזה נגמר המקום. פנה קצת מקום ו-bae ינסה שוב.</string>
     <string name="sync_cause_keys_unreadable">bae לא הצליח לקרוא את המפתחות ששמר במכשיר הזה.</string>
@@ -529,4 +528,12 @@
     <string name="file_kind_other">קובץ</string>
     <string name="set_primary_release">הגדר כמהדורה ראשית</string>
     <string name="sync_cause_changes_stay">השינויים שלך נשארים במכשיר הזה.</string>
+    <string name="s3_replace_key">החלפת מפתח</string>
+    <string name="s3_key_message">הזן מפתח שיכול להשתמש באחסון S3 של הספרייה הזו.</string>
+    <string name="s3_key_checking">בודק את המפתח…</string>
+    <string name="s3_key_refused_title">לא ניתן להשתמש במפתח הזה</string>
+    <string name="s3_key_refused">אחסון S3 לא מקבל את מפתח הגישה הזה.</string>
+    <string name="s3_key_saved">מפתח ה-S3 החדש נשמר.</string>
+    <string name="s3_key_delete_old">מחק את המפתח הישן, %1$s, במסוף של ספק ה-S3 שלך.</string>
+    <string name="sync_fix_sign_in_s3">היכנס ל-S3</string>
 </resources>

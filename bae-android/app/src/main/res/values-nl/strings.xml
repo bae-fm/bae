@@ -316,8 +316,8 @@
     <string name="onboarding_code_invalid">Dit is geen herstelcode en geen uitnodiging.</string>
     <string name="onboarding_restore_title">Je bibliotheek herstellen</string>
     <string name="onboarding_s3_key_explanation">Deze bibliotheek staat in een S3-compatibele bucket. Voer de toegangssleutel in die je ervoor gebruikt.</string>
-    <string name="onboarding_s3_key_title">S3-sleutel</string>
-    <string name="onboarding_s3_key_prompt">Voer de inloggegevens voor de S3-bucket in.</string>
+    <string name="s3_key_title">S3-sleutel</string>
+    <string name="onboarding_s3_key_prompt">Voer de inloggegevens voor je S3-opslag in.</string>
     <string name="s3_access_key_id">Toegangssleutel-ID</string>
     <string name="s3_secret_access_key">Geheime toegangssleutel</string>
     <string name="onboarding_restore_action">Herstellen</string>
@@ -451,7 +451,6 @@
     <string name="sync_cloud_home">Cloudthuis</string>
     <string name="sync_fix_update">Bijwerken</string>
     <string name="sync_fix_sign_in">Aanmelden bij %1$s</string>
-    <string name="sync_fix_enter_key">Toegangssleutel invoeren</string>
     <string name="sync_fix_remove">Verwijderen van dit apparaat</string>
     <string name="sync_cause_disk_full">Dit apparaat heeft geen ruimte meer. Maak wat vrij en bae probeert het opnieuw.</string>
     <string name="sync_cause_keys_unreadable">bae kon zijn opgeslagen sleutels op dit apparaat niet lezen.</string>
@@ -520,4 +519,12 @@
     <string name="file_kind_other">Bestand</string>
     <string name="set_primary_release">Instellen als primaire release</string>
     <string name="sync_cause_changes_stay">Je wijzigingen blijven op dit apparaat.</string>
+    <string name="s3_replace_key">Sleutel vervangen</string>
+    <string name="s3_key_message">Voer een sleutel in die de S3-opslag van deze bibliotheek kan gebruiken.</string>
+    <string name="s3_key_checking">Sleutel controleren…</string>
+    <string name="s3_key_refused_title">Deze sleutel kan niet worden gebruikt</string>
+    <string name="s3_key_refused">De S3-opslag accepteert deze toegangssleutel niet.</string>
+    <string name="s3_key_saved">De nieuwe S3-sleutel is opgeslagen.</string>
+    <string name="s3_key_delete_old">Verwijder de oude sleutel, %1$s, in de console van je S3-aanbieder.</string>
+    <string name="sync_fix_sign_in_s3">Aanmelden bij S3</string>
 </resources>

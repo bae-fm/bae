@@ -316,8 +316,8 @@
     <string name="onboarding_code_invalid">Това не е код за възстановяване или покана.</string>
     <string name="onboarding_restore_title">Възстановяване на библиотеката ви</string>
     <string name="onboarding_s3_key_explanation">Тази библиотека се съхранява в S3-съвместим bucket. Въведете ключа за достъп, който използвате за него.</string>
-    <string name="onboarding_s3_key_title">S3 ключ</string>
-    <string name="onboarding_s3_key_prompt">Въведете данните за достъп до S3 bucket.</string>
+    <string name="s3_key_title">S3 ключ</string>
+    <string name="onboarding_s3_key_prompt">Въведете данните за достъп до вашето хранилище S3.</string>
     <string name="s3_access_key_id">ID на ключа за достъп</string>
     <string name="s3_secret_access_key">Таен ключ за достъп</string>
     <string name="onboarding_restore_action">Възстановяване</string>
@@ -451,7 +451,6 @@
     <string name="sync_cloud_home">Облачен дом</string>
     <string name="sync_fix_update">Актуализиране</string>
     <string name="sync_fix_sign_in">Влизане в %1$s</string>
-    <string name="sync_fix_enter_key">Въвеждане на ключ за достъп</string>
     <string name="sync_fix_remove">Премахване от това устройство</string>
     <string name="sync_cause_disk_full">На това устройство свърши мястото. Освободете малко и bae ще опита отново.</string>
     <string name="sync_cause_keys_unreadable">bae не успя да прочете запазените си ключове на това устройство.</string>
@@ -520,4 +519,12 @@
     <string name="file_kind_other">Файл</string>
     <string name="set_primary_release">Задаване като основно издание</string>
     <string name="sync_cause_changes_stay">Промените ви остават на това устройство.</string>
+    <string name="s3_replace_key">Замяна на ключа</string>
+    <string name="s3_key_message">Въведете ключ, който има достъп до хранилището S3 на тази библиотека.</string>
+    <string name="s3_key_checking">Ключът се проверява…</string>
+    <string name="s3_key_refused_title">Този ключ не може да се използва</string>
+    <string name="s3_key_refused">Хранилището S3 не приема този ключ за достъп.</string>
+    <string name="s3_key_saved">Новият ключ за S3 е запазен.</string>
+    <string name="s3_key_delete_old">Изтрийте стария ключ %1$s в конзолата на доставчика на S3.</string>
+    <string name="sync_fix_sign_in_s3">Влизане в S3</string>
 </resources>

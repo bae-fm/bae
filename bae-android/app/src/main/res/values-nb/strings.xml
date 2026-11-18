@@ -314,8 +314,8 @@
     <string name="onboarding_code_invalid">Dette er verken en gjenopprettingskode eller en invitasjon.</string>
     <string name="onboarding_restore_title">Gjenopprett biblioteket ditt</string>
     <string name="onboarding_s3_key_explanation">Dette biblioteket ligger i en S3-kompatibel bøtte. Skriv inn tilgangsnøkkelen du bruker for den.</string>
-    <string name="onboarding_s3_key_title">S3-nøkkel</string>
-    <string name="onboarding_s3_key_prompt">Skriv inn legitimasjonen for S3-bøtten.</string>
+    <string name="s3_key_title">S3-nøkkel</string>
+    <string name="onboarding_s3_key_prompt">Skriv inn legitimasjonen for S3-lagringen din.</string>
     <string name="s3_access_key_id">Tilgangsnøkkel-ID</string>
     <string name="s3_secret_access_key">Hemmelig tilgangsnøkkel</string>
     <string name="onboarding_restore_action">Gjenopprett</string>
@@ -449,7 +449,6 @@
     <string name="sync_cloud_home">Skyhjem</string>
     <string name="sync_fix_update">Oppdater</string>
     <string name="sync_fix_sign_in">Logg inn på %1$s</string>
-    <string name="sync_fix_enter_key">Skriv inn tilgangsnøkkel</string>
     <string name="sync_fix_remove">Fjern fra denne enheten</string>
     <string name="sync_cause_disk_full">Denne enheten er tom for plass. Frigjør litt, så prøver bae igjen.</string>
     <string name="sync_cause_keys_unreadable">bae kunne ikke lese de lagrede nøklene sine på denne enheten.</string>
@@ -518,4 +517,12 @@
     <string name="file_kind_other">Fil</string>
     <string name="set_primary_release">Angi som primær utgivelse</string>
     <string name="sync_cause_changes_stay">Endringene dine blir på denne enheten.</string>
+    <string name="s3_replace_key">Bytt nøkkel</string>
+    <string name="s3_key_message">Skriv inn en nøkkel som kan bruke S3-lagringen til dette biblioteket.</string>
+    <string name="s3_key_checking">Sjekker nøkkelen…</string>
+    <string name="s3_key_refused_title">Kunne ikke bruke denne nøkkelen</string>
+    <string name="s3_key_refused">S3-lagringen godtar ikke denne tilgangsnøkkelen.</string>
+    <string name="s3_key_saved">Den nye S3-nøkkelen er lagret.</string>
+    <string name="s3_key_delete_old">Slett den gamle nøkkelen, %1$s, i konsollen til S3-leverandøren din.</string>
+    <string name="sync_fix_sign_in_s3">Logg inn på S3</string>
 </resources>

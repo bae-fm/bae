@@ -314,8 +314,8 @@
     <string name="onboarding_code_invalid">Αυτό δεν είναι κωδικός επαναφοράς ούτε πρόσκληση.</string>
     <string name="onboarding_restore_title">Επαναφορά της βιβλιοθήκης σας</string>
     <string name="onboarding_s3_key_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη σε bucket συμβατό με S3. Εισαγάγετε το κλειδί πρόσβασης που χρησιμοποιείτε για αυτό.</string>
-    <string name="onboarding_s3_key_title">Κλειδί S3</string>
-    <string name="onboarding_s3_key_prompt">Εισαγάγετε τα διαπιστευτήρια για το bucket S3.</string>
+    <string name="s3_key_title">Κλειδί S3</string>
+    <string name="onboarding_s3_key_prompt">Εισαγάγετε τα διαπιστευτήρια για τον αποθηκευτικό σας χώρο S3.</string>
     <string name="s3_access_key_id">Αναγνωριστικό κλειδιού πρόσβασης</string>
     <string name="s3_secret_access_key">Μυστικό κλειδί πρόσβασης</string>
     <string name="onboarding_restore_action">Επαναφορά</string>
@@ -449,7 +449,6 @@
     <string name="sync_cloud_home">Σπίτι στο cloud</string>
     <string name="sync_fix_update">Ενημέρωση</string>
     <string name="sync_fix_sign_in">Σύνδεση στο %1$s</string>
-    <string name="sync_fix_enter_key">Εισαγωγή κλειδιού πρόσβασης</string>
     <string name="sync_fix_remove">Αφαίρεση από αυτή τη συσκευή</string>
     <string name="sync_cause_disk_full">Η συσκευή δεν έχει άλλο χώρο. Ελευθερώστε λίγο και το bae θα δοκιμάσει ξανά.</string>
     <string name="sync_cause_keys_unreadable">Το bae δεν μπόρεσε να διαβάσει τα αποθηκευμένα κλειδιά του σε αυτή τη συσκευή.</string>
@@ -518,4 +517,12 @@
     <string name="file_kind_other">Αρχείο</string>
     <string name="set_primary_release">Ορισμός ως κύρια κυκλοφορία</string>
     <string name="sync_cause_changes_stay">Οι αλλαγές σας παραμένουν σε αυτή τη συσκευή.</string>
+    <string name="s3_replace_key">Αντικατάσταση κλειδιού</string>
+    <string name="s3_key_message">Εισαγάγετε ένα κλειδί που μπορεί να χρησιμοποιήσει τον αποθηκευτικό χώρο S3 αυτής της βιβλιοθήκης.</string>
+    <string name="s3_key_checking">Έλεγχος του κλειδιού…</string>
+    <string name="s3_key_refused_title">Δεν ήταν δυνατή η χρήση αυτού του κλειδιού</string>
+    <string name="s3_key_refused">Ο αποθηκευτικός χώρος S3 δεν δέχεται αυτό το κλειδί πρόσβασης.</string>
+    <string name="s3_key_saved">Το νέο κλειδί S3 αποθηκεύτηκε.</string>
+    <string name="s3_key_delete_old">Διαγράψτε το παλιό κλειδί, %1$s, στην κονσόλα του παρόχου S3.</string>
+    <string name="sync_fix_sign_in_s3">Σύνδεση στο S3</string>
 </resources>

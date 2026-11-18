@@ -322,8 +322,8 @@
     <string name="onboarding_code_invalid">Ce n’est ni un code de restauration ni une invitation.</string>
     <string name="onboarding_restore_title">Restaurer votre bibliothèque</string>
     <string name="onboarding_s3_key_explanation">Cette bibliothèque est stockée dans un bucket compatible S3. Saisissez la clé d’accès que vous utilisez pour celui-ci.</string>
-    <string name="onboarding_s3_key_title">Clé S3</string>
-    <string name="onboarding_s3_key_prompt">Saisissez vos identifiants pour le bucket S3.</string>
+    <string name="s3_key_title">Clé S3</string>
+    <string name="onboarding_s3_key_prompt">Saisissez vos identifiants pour votre stockage S3.</string>
     <string name="s3_access_key_id">ID de clé d’accès</string>
     <string name="s3_secret_access_key">Clé d’accès secrète</string>
     <string name="onboarding_restore_action">Restaurer</string>
@@ -457,7 +457,6 @@
     <string name="sync_cloud_home">Espace cloud</string>
     <string name="sync_fix_update">Mettre à jour</string>
     <string name="sync_fix_sign_in">Se connecter à %1$s</string>
-    <string name="sync_fix_enter_key">Saisir la clé d’accès</string>
     <string name="sync_fix_remove">Retirer de cet appareil</string>
     <string name="sync_cause_disk_full">Cet appareil n’a plus d’espace. Libérez-en et bae réessaiera.</string>
     <string name="sync_cause_keys_unreadable">bae n’a pas pu lire ses clés enregistrées sur cet appareil.</string>
@@ -527,4 +526,12 @@
     <string name="file_kind_other">Fichier</string>
     <string name="set_primary_release">Définir comme édition principale</string>
     <string name="sync_cause_changes_stay">Vos modifications restent sur cet appareil.</string>
+    <string name="s3_replace_key">Remplacer la clé</string>
+    <string name="s3_key_message">Saisissez une clé qui peut utiliser le stockage S3 de cette bibliothèque.</string>
+    <string name="s3_key_checking">Vérification de la clé…</string>
+    <string name="s3_key_refused_title">Impossible d’utiliser cette clé</string>
+    <string name="s3_key_refused">Le stockage S3 n’accepte pas cette clé d’accès.</string>
+    <string name="s3_key_saved">La nouvelle clé S3 est enregistrée.</string>
+    <string name="s3_key_delete_old">Supprimez l’ancienne clé, %1$s, dans la console de votre fournisseur S3.</string>
+    <string name="sync_fix_sign_in_s3">Se connecter à S3</string>
 </resources>

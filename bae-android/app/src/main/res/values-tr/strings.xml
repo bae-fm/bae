@@ -316,8 +316,8 @@
     <string name="onboarding_code_invalid">Bu bir geri yükleme kodu ya da davet değil.</string>
     <string name="onboarding_restore_title">Kitaplığınızı geri yükleyin</string>
     <string name="onboarding_s3_key_explanation">Bu kitaplık S3 uyumlu bir kovada depolanıyor. Bunun için kullandığınız erişim anahtarını girin.</string>
-    <string name="onboarding_s3_key_title">S3 anahtarı</string>
-    <string name="onboarding_s3_key_prompt">S3 kovası için kimlik bilgilerinizi girin.</string>
+    <string name="s3_key_title">S3 anahtarı</string>
+    <string name="onboarding_s3_key_prompt">S3 depolamanız için kimlik bilgilerinizi girin.</string>
     <string name="s3_access_key_id">Erişim anahtarı kimliği</string>
     <string name="s3_secret_access_key">Gizli erişim anahtarı</string>
     <string name="onboarding_restore_action">Geri yükle</string>
@@ -451,7 +451,6 @@
     <string name="sync_cloud_home">Bulut evi</string>
     <string name="sync_fix_update">Güncelle</string>
     <string name="sync_fix_sign_in">%1$s hesabında oturum aç</string>
-    <string name="sync_fix_enter_key">Erişim anahtarı gir</string>
     <string name="sync_fix_remove">Bu cihazdan kaldır</string>
     <string name="sync_cause_disk_full">Bu cihazın yeri kalmadı. Biraz yer açın, bae yeniden deneyecek.</string>
     <string name="sync_cause_keys_unreadable">bae, bu cihazda kayıtlı anahtarlarını okuyamadı.</string>
@@ -520,4 +519,12 @@
     <string name="file_kind_other">Dosya</string>
     <string name="set_primary_release">Birincil yayın olarak ayarla</string>
     <string name="sync_cause_changes_stay">Değişiklikleriniz bu cihazda kalır.</string>
+    <string name="s3_replace_key">Anahtarı değiştir</string>
+    <string name="s3_key_message">Bu kitaplığın S3 depolamasını kullanabilen bir anahtar girin.</string>
+    <string name="s3_key_checking">Anahtar denetleniyor…</string>
+    <string name="s3_key_refused_title">Bu anahtar kullanılamadı</string>
+    <string name="s3_key_refused">S3 depolama bu erişim anahtarını kabul etmiyor.</string>
+    <string name="s3_key_saved">Yeni S3 anahtarı kaydedildi.</string>
+    <string name="s3_key_delete_old">Eski anahtarı (%1$s) S3 sağlayıcınızın konsolunda silin.</string>
+    <string name="sync_fix_sign_in_s3">S3 hesabında oturum aç</string>
 </resources>
