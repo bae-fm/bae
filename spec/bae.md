@@ -2484,7 +2484,8 @@ at a local release's track points at a row every device can read
 Where a file is changes in coven's own record of it, with no change to a row
 of bae's, so the release's storage row (`release_storage`) follows coven's `coven_files`, which also
 gives each file's size, and the pending record of a failed move in `coven_pending`, which names the
-original that changed; `coven_moves` says which of the release's files are in that move (Appendix B).
+original that changed; `coven_moves` says which of the release's files are in that move and that
+coven failed it (Appendix B).
 
 A release's cover is bound (§4.1), so it reaches other devices with the
 release, local or not: the write that imports the release, or sets its cover,

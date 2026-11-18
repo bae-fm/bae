@@ -62,9 +62,8 @@ BEGIN
             JOIN coven_pending pending ON pending.move = moves.move
             JOIN coven_user_files original
                 ON original.file = f.file AND original.path = pending.original_path
-            WHERE f.release_id = r.id AND pending.reason_kind = 'original'
-              AND json_extract(CAST(pending.record AS TEXT),
-                               '$.reason.Original.failure') = 'Changed'
+            WHERE f.release_id = r.id AND moves.state = 'failed'
+              AND pending.reason_kind = 'original'
             ORDER BY f.id LIMIT 1)
     FROM releases r
     WHERE r.id = NEW.release_id
@@ -204,6 +203,14 @@ END;
 -- the refresh reads a pending record only for a move that lists the file.
 -- When no release file names the file, the trigger changes no row.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_moved AFTER INSERT ON coven_moves
+BEGIN
+    INSERT INTO release_storage_refresh (release_id)
+    SELECT release_id FROM release_files WHERE file = NEW.file;
+END;
+
+-- A move's failure changes its files' state in coven_moves, in the
+-- transaction that fails it.
+CREATE TRIGGER IF NOT EXISTS release_storage_move_failed AFTER UPDATE OF state ON coven_moves
 BEGIN
     INSERT INTO release_storage_refresh (release_id)
     SELECT release_id FROM release_files WHERE file = NEW.file;
