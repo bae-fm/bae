@@ -432,10 +432,7 @@ impl crate::airplay_output::AirPlaySink for PairingLostSink {
         _wake: crate::airplay_output::PcmWake,
         _failed: crate::airplay_output::AirPlayFailed,
     ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
-        Err(AudioError::AirPlayPairingLost(crate::NamedReceiver {
-            id: test_device().id,
-            name: test_device().name,
-        }))
+        Err(AudioError::AirPlayPairingLost(test_device()))
     }
 }
 
@@ -478,9 +475,7 @@ async fn a_receiver_that_forgot_this_device_ends_airplay_and_names_the_receiver(
     assert_eq!(
         reasons,
         [crate::PlaybackErrorReason::AudioOutput {
-            problem: crate::AudioOutputProblem::AirPlayPairingLost {
-                receiver: crate::NamedReceiver { id: test_device().id, name: test_device().name },
-            },
+            problem: crate::AudioOutputProblem::AirPlayPairingLost { receiver: test_device() },
         }]
     );
 }

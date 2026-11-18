@@ -13,7 +13,8 @@ use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::{
     AirPlayControlError, AirPlayFailed, AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake,
 };
-use bae_playback::{AudioError, NamedReceiver};
+use bae_playback::renderer::CastReceiver;
+use bae_playback::AudioError;
 
 use super::airplay2::TimingProtocol;
 use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
@@ -108,9 +109,9 @@ pub(crate) struct Ap2Sink {
     client_name: String,
     /// How each session proves bae to the receiver.
     auth: Ap2Auth,
-    /// The receiver as a failure names it, when it no longer accepts this
-    /// device.
-    named: NamedReceiver,
+    /// The receiver as playback knows it, which a failure names when the
+    /// receiver no longer accepts this device.
+    device: CastReceiver,
     /// Where the session's ids come from.
     ids: coven::IdSourceRef,
     /// What the session's stream threads run under, so one that panics fails
@@ -125,11 +126,11 @@ impl Ap2Sink {
         timing: TimingProtocol,
         client_name: String,
         auth: Ap2Auth,
-        named: NamedReceiver,
+        device: CastReceiver,
         ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, airplay_port, timing, client_name, auth, named, ids, diagnostics }
+        Self { receiver, airplay_port, timing, client_name, auth, device, ids, diagnostics }
     }
 }
 
@@ -156,7 +157,7 @@ impl AirPlaySink for Ap2Sink {
             // The receiver no longer accepts the pairing bae kept: casting to
             // it again pairs anew.
             Ap2Error::Pairing(PairingError::PairingLost) => {
-                AudioError::AirPlayPairingLost(self.named.clone())
+                AudioError::AirPlayPairingLost(self.device.clone())
             }
             error => AudioError::AirPlayRefused(error.to_string()),
         })?;

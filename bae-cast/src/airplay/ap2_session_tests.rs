@@ -510,14 +510,21 @@ fn a_session_start_on_a_receiver_that_forgot_this_device_names_it() {
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         receiver.serve(&mut reader, &mut stream)
     });
-    let named = bae_playback::NamedReceiver { id: "AA01".to_string(), name: "Kitchen".to_string() };
+    let device = bae_playback::renderer::CastReceiver {
+        id: "AA01".to_string(),
+        name: "Kitchen".to_string(),
+        kind: bae_playback::renderer::RendererKind::AirPlay,
+        model: None,
+        address: addr.ip().to_string(),
+        takes_volume: true,
+    };
     let sink = crate::airplay::sink::Ap2Sink::new(
         addr.ip(),
         addr.port(),
         crate::airplay::airplay2::TimingProtocol::Ntp,
         "Kitchen Mac".to_string(),
         Ap2Auth::Verify(kept),
-        named.clone(),
+        device.clone(),
         Arc::new(coven::SequentialIds::new()),
         bae_diagnostics::Diagnostics::noop(),
     );
@@ -529,7 +536,7 @@ fn a_session_start_on_a_receiver_that_forgot_this_device_names_it() {
         panic!("a receiver that forgot this device starts no session");
     };
     assert!(
-        matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == named),
+        matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == device),
         "{error}"
     );
     assert_eq!(server.join().unwrap(), Served::Closed);

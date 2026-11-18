@@ -75,9 +75,7 @@ pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::ContextSource;
 pub use error::read_failure_reason;
 pub use error::PlaybackError;
-pub use error_reason::{
-    AudioOutputProblem, NamedReceiver, PlaybackDiagnostic, PlaybackErrorReason,
-};
+pub use error_reason::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 pub use now_playing::{
     NowPlayingDisplay, NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay,
 };

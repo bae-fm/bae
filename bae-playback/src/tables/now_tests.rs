@@ -153,9 +153,25 @@ async fn each_change_reads_back_as_written() {
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::AirPlayRefused },
         PlaybackErrorReason::AudioOutput {
             problem: AudioOutputProblem::AirPlayPairingLost {
-                receiver: crate::NamedReceiver {
+                receiver: CastReceiver {
                     id: "58:55:CA:1A:2B:3C".to_string(),
                     name: "Kitchen".to_string(),
+                    kind: RendererKind::AirPlay,
+                    model: Some("AudioAccessory5,1".to_string()),
+                    address: "192.168.1.9".to_string(),
+                    takes_volume: true,
+                },
+            },
+        },
+        PlaybackErrorReason::AudioOutput {
+            problem: AudioOutputProblem::AirPlayPairingLost {
+                receiver: CastReceiver {
+                    id: "AA01".to_string(),
+                    name: "Office".to_string(),
+                    kind: RendererKind::AirPlay,
+                    model: None,
+                    address: "192.168.1.10".to_string(),
+                    takes_volume: false,
                 },
             },
         },
@@ -343,17 +359,22 @@ async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
 #[tokio::test]
 async fn the_schema_names_a_receiver_only_for_a_lost_pairing() {
     let (db, _tmp, _tracks) = release_db(1).await;
+    let receiver = "failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen', \
+         failure_receiver_kind = 'airplay', failure_receiver_address = '192.168.1.9', \
+         failure_receiver_takes_volume = 1";
+    let lost_sql = "UPDATE playback_now SET failure = 'audio_output', \
+         failure_problem = 'airplay_pairing_lost'";
+    let refused_sql = "UPDATE playback_now SET failure = 'audio_output', \
+         failure_problem = 'airplay_refused'";
     for sql in [
-        "UPDATE playback_now SET failure = 'audio_output', \
-             failure_problem = 'airplay_pairing_lost'",
-        "UPDATE playback_now SET failure = 'audio_output', \
-             failure_problem = 'airplay_pairing_lost', failure_receiver_id = 'AA01'",
-        "UPDATE playback_now SET failure = 'audio_output', \
-             failure_problem = 'airplay_pairing_lost', failure_receiver_name = 'Kitchen'",
-        "UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_refused', \
-             failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen'",
+        lost_sql.to_string(),
+        format!("{lost_sql}, failure_receiver_id = 'AA01'"),
+        format!("{lost_sql}, failure_receiver_name = 'Kitchen'"),
+        format!("{lost_sql}, {}", receiver.replace(", failure_receiver_takes_volume = 1", "")),
+        format!("{refused_sql}, {receiver}"),
+        format!("{refused_sql}, failure_receiver_model = 'AudioAccessory5,1'"),
     ] {
-        let statement = sql.to_string();
+        let statement = sql.clone();
         let refused = db
             .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
             .await

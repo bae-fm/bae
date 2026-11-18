@@ -118,6 +118,7 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                     ("ended", Some(device), Some(detail.as_str()))
                 }
             };
+            let device = ReceiverValues::of(device);
             sql.execute(
                 "UPDATE playback_now SET remote = ?, cast_receiver_id = ?, \
                      cast_receiver_name = ?, cast_receiver_kind = ?, \
@@ -125,12 +126,12 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                      cast_receiver_takes_volume = ?, remote_end_detail = ?",
                 params![
                     kind,
-                    device.map(|device| device.id.as_str()),
-                    device.map(|device| device.name.as_str()),
-                    device.map(|device| kind_column(device.kind)),
-                    device.and_then(|device| device.model.as_deref()),
-                    device.map(|device| device.address.as_str()),
-                    device.map(|device| device.takes_volume),
+                    device.id,
+                    device.name,
+                    device.kind,
+                    device.model,
+                    device.address,
+                    device.takes_volume,
                     detail,
                 ],
             )?;
@@ -163,18 +164,25 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
         }
         PlaybackChange::Failed(reason) => {
             let columns = FailureColumns::of(reason);
+            let receiver = ReceiverValues::of(columns.receiver);
             sql.execute(
                 "UPDATE playback_now SET failure = ?, failure_problem = ?, failure_detail = ?, \
                      failure_device = ?, failure_device_state = ?, \
-                     failure_receiver_id = ?, failure_receiver_name = ?",
+                     failure_receiver_id = ?, failure_receiver_name = ?, \
+                     failure_receiver_kind = ?, failure_receiver_model = ?, \
+                     failure_receiver_address = ?, failure_receiver_takes_volume = ?",
                 params![
                     columns.failure,
                     columns.problem,
                     columns.detail,
                     columns.device,
                     columns.device_state,
-                    columns.receiver.map(|receiver| &receiver.id),
-                    columns.receiver.map(|receiver| &receiver.name),
+                    receiver.id,
+                    receiver.name,
+                    receiver.kind,
+                    receiver.model,
+                    receiver.address,
+                    receiver.takes_volume,
                 ],
             )?;
         }
@@ -186,7 +194,9 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
 const CLEAR_FAILURE: &str = "UPDATE playback_now \
      SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
          failure_device = NULL, failure_device_state = NULL, \
-         failure_receiver_id = NULL, failure_receiver_name = NULL \
+         failure_receiver_id = NULL, failure_receiver_name = NULL, \
+         failure_receiver_kind = NULL, failure_receiver_model = NULL, \
+         failure_receiver_address = NULL, failure_receiver_takes_volume = NULL \
      WHERE failure IS NOT NULL";
 
 /// The person dismissed the failure notice: clear the failure the row holds,
@@ -213,7 +223,9 @@ pub(super) fn reset_playback_now_on(
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
              failure_device = NULL, failure_device_state = NULL, \
-             failure_receiver_id = NULL, failure_receiver_name = NULL",
+             failure_receiver_id = NULL, failure_receiver_name = NULL, \
+             failure_receiver_kind = NULL, failure_receiver_model = NULL, \
+             failure_receiver_address = NULL, failure_receiver_takes_volume = NULL",
         [],
     )?;
     if !keep_level {
@@ -306,8 +318,63 @@ struct FailureColumns<'a> {
     detail: Option<&'a str>,
     device: Option<&'a str>,
     device_state: Option<coven::DeviceState>,
-    receiver: Option<&'a crate::NamedReceiver>,
+    receiver: Option<&'a CastReceiver>,
 }
+
+/// A receiver's values in the order a row's receiver columns hold them (id,
+/// name, kind, model, address, whether it takes a volume), all NULL for none.
+struct ReceiverValues<'a> {
+    id: Option<&'a str>,
+    name: Option<&'a str>,
+    kind: Option<&'static str>,
+    model: Option<&'a str>,
+    address: Option<&'a str>,
+    takes_volume: Option<bool>,
+}
+
+impl<'a> ReceiverValues<'a> {
+    fn of(receiver: Option<&'a CastReceiver>) -> Self {
+        ReceiverValues {
+            id: receiver.map(|receiver| receiver.id.as_str()),
+            name: receiver.map(|receiver| receiver.name.as_str()),
+            kind: receiver.map(|receiver| kind_column(receiver.kind)),
+            model: receiver.and_then(|receiver| receiver.model.as_deref()),
+            address: receiver.map(|receiver| receiver.address.as_str()),
+            takes_volume: receiver.map(|receiver| receiver.takes_volume),
+        }
+    }
+}
+
+/// The columns a row names a receiver in: the one playback is on, or the one
+/// a failure names.
+pub(crate) struct ReceiverColumns {
+    id: &'static str,
+    name: &'static str,
+    kind: &'static str,
+    model: &'static str,
+    address: &'static str,
+    takes_volume: &'static str,
+}
+
+/// The receiver playback is on, or lost the link to.
+pub(crate) const CAST_RECEIVER: ReceiverColumns = ReceiverColumns {
+    id: "cast_receiver_id",
+    name: "cast_receiver_name",
+    kind: "cast_receiver_kind",
+    model: "cast_receiver_model",
+    address: "cast_receiver_address",
+    takes_volume: "cast_receiver_takes_volume",
+};
+
+/// The receiver that no longer accepts this device.
+const FAILURE_RECEIVER: ReceiverColumns = ReceiverColumns {
+    id: "failure_receiver_id",
+    name: "failure_receiver_name",
+    kind: "failure_receiver_kind",
+    model: "failure_receiver_model",
+    address: "failure_receiver_address",
+    takes_volume: "failure_receiver_takes_volume",
+};
 
 impl<'a> FailureColumns<'a> {
     fn of(reason: &'a PlaybackErrorReason) -> Self {
@@ -418,16 +485,18 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
     })
 }
 
-/// The receiver a row playback is on, or lost the link to, names in its
-/// `cast_receiver_*` columns.
-pub(crate) fn remote_receiver_from_row(row: &Row<'_>) -> rusqlite::Result<CastReceiver> {
+/// The receiver a row names in `columns`.
+pub(crate) fn receiver_from_row(
+    row: &Row<'_>,
+    columns: &ReceiverColumns,
+) -> rusqlite::Result<CastReceiver> {
     Ok(CastReceiver {
-        id: row.get("cast_receiver_id")?,
-        name: row.get("cast_receiver_name")?,
-        kind: kind_from_column(row, "cast_receiver_kind")?,
-        model: row.get("cast_receiver_model")?,
-        address: row.get("cast_receiver_address")?,
-        takes_volume: row.get("cast_receiver_takes_volume")?,
+        id: row.get(columns.id)?,
+        name: row.get(columns.name)?,
+        kind: kind_from_column(row, columns.kind)?,
+        model: row.get(columns.model)?,
+        address: row.get(columns.address)?,
+        takes_volume: row.get(columns.takes_volume)?,
     })
 }
 
@@ -436,7 +505,7 @@ fn remote_from_row(row: &Row<'_>) -> rusqlite::Result<RemotePlayback> {
     if remote == "local" {
         return Ok(RemotePlayback::Local);
     }
-    let device = remote_receiver_from_row(row)?;
+    let device = receiver_from_row(row, &CAST_RECEIVER)?;
     Ok(match remote.as_str() {
         "on" => RemotePlayback::On(device),
         "ended" => RemotePlayback::Ended { device, detail: row.get("remote_end_detail")? },
@@ -485,10 +554,7 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReaso
                     "unsupported_format" => AudioOutputProblem::UnsupportedFormat,
                     "airplay_refused" => AudioOutputProblem::AirPlayRefused,
                     "airplay_pairing_lost" => AudioOutputProblem::AirPlayPairingLost {
-                        receiver: crate::NamedReceiver {
-                            id: row.get("failure_receiver_id")?,
-                            name: row.get("failure_receiver_name")?,
-                        },
+                        receiver: receiver_from_row(row, &FAILURE_RECEIVER)?,
                     },
                     other => return Err(unknown(row, "failure_problem", other)),
                 },

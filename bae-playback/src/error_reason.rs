@@ -47,15 +47,7 @@ pub enum AudioOutputProblem {
     AirPlayRefused,
     /// The AirPlay speaker no longer knows this device: it forgot the pairing
     /// bae kept for it. Casting to `receiver` again pairs anew.
-    AirPlayPairingLost { receiver: NamedReceiver },
-}
-
-/// A receiver as a failure names it: the id a cast to it again takes, and the
-/// name the person knows it by.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NamedReceiver {
-    pub id: String,
-    pub name: String,
+    AirPlayPairingLost { receiver: crate::renderer::CastReceiver },
 }
 
 impl PlaybackErrorReason {

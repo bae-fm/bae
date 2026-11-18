@@ -399,7 +399,7 @@ pub enum AudioError {
     /// The AirPlay speaker no longer knows this device: it refused the
     /// pairing bae kept for it.
     #[error("the AirPlay speaker {} no longer accepts this device", .0.name)]
-    AirPlayPairingLost(crate::NamedReceiver),
+    AirPlayPairingLost(crate::renderer::CastReceiver),
     /// Anything else: a failure bae didn't expect from its own audio path.
     #[error("{0}")]
     Unexpected(String),

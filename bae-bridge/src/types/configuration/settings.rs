@@ -545,9 +545,9 @@ impl BridgeAudioOutputProblem {
             AudioOutputProblem::DeviceUnavailable => Self::DeviceUnavailable,
             AudioOutputProblem::UnsupportedFormat => Self::UnsupportedFormat,
             AudioOutputProblem::AirPlayRefused => Self::AirPlayRefused,
-            AudioOutputProblem::AirPlayPairingLost {
-                receiver: bae_playback::NamedReceiver { id, name },
-            } => Self::AirPlayPairingLost { receiver_id: id, receiver_name: name },
+            AudioOutputProblem::AirPlayPairingLost { receiver } => {
+                Self::AirPlayPairingLost { receiver_id: receiver.id, receiver_name: receiver.name }
+            }
         }
     }
 }

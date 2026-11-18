@@ -2,8 +2,15 @@ use super::*;
 use crate::AudioError;
 use crate::{AudioOutputProblem, PlaybackErrorReason};
 
-fn kitchen() -> crate::NamedReceiver {
-    crate::NamedReceiver { id: "58:55:CA:1A:2B:3C".to_string(), name: "Kitchen".to_string() }
+fn kitchen() -> crate::renderer::CastReceiver {
+    crate::renderer::CastReceiver {
+        id: "58:55:CA:1A:2B:3C".to_string(),
+        name: "Kitchen".to_string(),
+        kind: crate::renderer::RendererKind::AirPlay,
+        model: None,
+        address: "192.168.1.9".to_string(),
+        takes_volume: true,
+    }
 }
 
 /// A device's or a speaker's problem reaches the person by name and is no

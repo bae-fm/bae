@@ -4,7 +4,7 @@
 
 use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::AirPlaySink;
-use bae_playback::NamedReceiver;
+use bae_playback::renderer::CastReceiver;
 
 use crate::airplay::airplay2::TimingProtocol;
 use crate::airplay::ap2_pairing::PAIR_SETUP_M1;
@@ -38,7 +38,7 @@ pub(crate) fn build_airplay_sink(
     ids: &coven::IdSourceRef,
     diagnostics: &Diagnostics,
     client_name: &str,
-    named: NamedReceiver,
+    device: CastReceiver,
     addr: std::net::IpAddr,
     port: u16,
     capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
@@ -62,7 +62,7 @@ pub(crate) fn build_airplay_sink(
                     TimingProtocol::from_features(capabilities.features),
                     client_name.to_string(),
                     Ap2Auth::Transient,
-                    named,
+                    device,
                     ids.clone(),
                     diagnostics.clone(),
                 )),

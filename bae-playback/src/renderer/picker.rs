@@ -19,7 +19,7 @@ use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 
 use super::receiver::{CastReceiver, RendererKind};
-use crate::tables::remote_receiver_from_row;
+use crate::tables::{receiver_from_row, CAST_RECEIVER};
 
 /// What the picker and the Casting page list: the receiver playback is cast
 /// to, listed while a new search hasn't found it again, and every other
@@ -68,7 +68,7 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
                     cast_receiver_takes_volume \
                FROM playback_now WHERE remote = 'on'",
             [],
-            remote_receiver_from_row,
+            |row| receiver_from_row(row, &CAST_RECEIVER),
         )
         .optional()?;
     let found = sql.query(

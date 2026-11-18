@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- the failure notice: a reason the person can act on, the other device a
     -- release's audio is on (by its name, and whether it is still in the
     -- library, removed, or replaced), the AirPlay receiver that no longer
-    -- accepts this device (its id and name), or bae's own or the renderer's
+    -- accepts this device (named as the cast_receiver_* columns name one,
+    -- so Pair again… casts to it), or bae's own or the renderer's
     -- failure with its untranslated detail. Playback writes a later failure
     -- over the earlier one.
     failure         TEXT CHECK (failure IN (
@@ -68,6 +69,10 @@ CREATE TABLE IF NOT EXISTS playback_now (
     failure_device_state TEXT CHECK (failure_device_state IN ('active', 'removed', 'replaced')),
     failure_receiver_id   TEXT,
     failure_receiver_name TEXT,
+    failure_receiver_kind TEXT CHECK (failure_receiver_kind IN ('cast', 'dlna', 'airplay')),
+    failure_receiver_model TEXT,
+    failure_receiver_address TEXT,
+    failure_receiver_takes_volume INTEGER CHECK (failure_receiver_takes_volume IN (0, 1)),
     CHECK ((state = 'stopped') = (track_id IS NULL)),
     CHECK ((state = 'loading') = (prepared IS NOT NULL)),
     CHECK ((state = 'loading') = (waits_on_storage IS NOT NULL)),
@@ -93,7 +98,11 @@ CREATE TABLE IF NOT EXISTS playback_now (
     CHECK ((failure IS 'on_other_device') = (failure_device IS NOT NULL)
         AND (failure IS 'on_other_device') = (failure_device_state IS NOT NULL)),
     CHECK ((failure_problem IS 'airplay_pairing_lost') = (failure_receiver_id IS NOT NULL)
-        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_name IS NOT NULL))
+        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_name IS NOT NULL)
+        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_kind IS NOT NULL)
+        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_address IS NOT NULL)
+        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_takes_volume IS NOT NULL)
+        AND (failure_problem IS 'airplay_pairing_lost' OR failure_receiver_model IS NULL))
 ) STRICT;
 
 INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview)

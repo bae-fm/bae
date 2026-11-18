@@ -580,13 +580,11 @@ impl CastController {
             // The receiver shows this name to the person beside it.
             let client_name =
                 self.services.this_device_name().await.map_err(CastError::DeviceName)?;
-            let named =
-                bae_playback::NamedReceiver { id: device.id.clone(), name: device.name.clone() };
             let (sink, pairing) = build_airplay_sink(
                 &self.ids,
                 &self.diagnostics,
                 &client_name,
-                named,
+                device.receiver(),
                 *addr,
                 *port,
                 capabilities,

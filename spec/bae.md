@@ -5417,8 +5417,8 @@ track, its phase and whether its load waits on storage, the volume, the mute,
 where playback is going (a receiver by its id, name, kind, model, address and
 whether it takes a volume), the preview, and why playback last failed, until
 it next plays or the person dismisses the failure notice. A failure because an
-AirPlay speaker no longer accepts this device names that speaker by its id and
-name, which Pair again… casts to. Starting playback with the library resets
+AirPlay speaker no longer accepts this device names that speaker as a
+receiver is named above, and Pair again… casts to it. Starting playback with the library resets
 the row to stopped, keeping the volume and mute only when it resumes what it
 played. A track the library no longer holds shows as a
 removed track (§7.1).
