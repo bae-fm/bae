@@ -1,7 +1,8 @@
-//! `design/shots.toml`: the pairs confirmed against their boards. An entry
+//! `design/shots.toml`: the pairs checked against their boards. An entry
 //! holds the hash of the board and of the shot (its element list and the
-//! pixels of its picture) it was confirmed with, and the warnings it was
-//! confirmed with. A pair whose two hashes equal its entry is skipped.
+//! pixels of its picture) it was checked with, and the findings and warnings
+//! the check gave. A pair whose two hashes equal its entry is skipped, and
+//! its recorded findings stand in for a new check.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -12,10 +13,9 @@ pub const FILE: &str = "design/shots.toml";
 /// The record a run's results make, written beside its shots.
 pub const RESULTS: &str = "record.toml";
 
-const HEADER: &str =
-    "# Written by `bae-shots record`: the pairs of a shot and its board confirmed \
-together, each with the hash of the board and of the shot, and the warnings it was confirmed \
-with. Do not edit by hand.\n\n";
+const HEADER: &str = "# Written by `bae-shots record`: the pairs of a shot and its board checked \
+together, each with the hash of the board and of the shot, and the findings and warnings the \
+check gave. Do not edit by hand.\n\n";
 
 #[derive(Debug, thiserror::Error)]
 pub enum RecordError {
@@ -38,7 +38,10 @@ pub struct Entry {
     pub board: String,
     /// The hash of the element list file and the picture's decoded pixels.
     pub shot: String,
-    /// The warnings the pair was confirmed with.
+    /// The findings the check gave the pair: the sentences of what the shot
+    /// lacks or adds against the board. A pair with none agrees with its board.
+    pub findings: Vec<String>,
+    /// The warnings the check gave the pair.
     pub warnings: Vec<String>,
 }
 
@@ -46,7 +49,7 @@ pub struct Entry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Standing {
     /// The record's entry has both hashes.
-    Confirmed,
+    Unchanged,
     /// The record has an entry, with other hashes.
     Changed,
     /// The record has no entry.
@@ -134,21 +137,16 @@ impl Record {
         self.entries.keys()
     }
 
-    /// Records the pair `board` as confirmed with `entry`.
-    pub fn confirm(&mut self, board: &str, entry: Entry) {
+    /// Records the check of the pair `board` as `entry`.
+    pub fn set(&mut self, board: &str, entry: Entry) {
         self.entries.insert(board.to_string(), entry);
-    }
-
-    /// Drops the entry of `board`.
-    pub fn forget(&mut self, board: &str) {
-        self.entries.remove(board);
     }
 
     /// Where the pair of `board` with these hashes stands.
     pub fn standing(&self, board: &str, board_hash: &str, shot_hash: &str) -> Standing {
         match self.get(board) {
             None => Standing::New,
-            Some(e) if e.board == board_hash && e.shot == shot_hash => Standing::Confirmed,
+            Some(e) if e.board == board_hash && e.shot == shot_hash => Standing::Unchanged,
             Some(_) => Standing::Changed,
         }
     }

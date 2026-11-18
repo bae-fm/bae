@@ -71,6 +71,7 @@ fn outcome(dir: &Path, words: &str) -> Outcome {
         ],
         skipped: vec![Skipped {
             name: Name::parse("mac.welcome.c").unwrap(),
+            findings: Vec::new(),
             warnings: vec!["“Theme” moved 3 pt down in the shot".to_string()],
             against_base: None,
         }],

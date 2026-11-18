@@ -10,9 +10,14 @@ fn hashes(pairs: &[(&str, &str)]) -> BTreeMap<Name, String> {
 
 fn record_with(board: &str, board_hash: &str, shot_hash: &str) -> Record {
     let mut record = Record::default();
-    record.confirm(
+    record.set(
         board,
-        Entry { board: board_hash.into(), shot: shot_hash.into(), warnings: Vec::new() },
+        Entry {
+            board: board_hash.into(),
+            shot: shot_hash.into(),
+            findings: Vec::new(),
+            warnings: Vec::new(),
+        },
     );
     record
 }
@@ -60,7 +65,7 @@ fn a_pair_with_no_entry_is_checked() {
 #[test]
 fn a_pair_is_new_against_a_base_that_lacks_it_and_changed_against_one_that_differs() {
     let base = record_with("mac.welcome.a", "b", "s");
-    assert_eq!(base.standing("mac.welcome.a", "b", "s"), Standing::Confirmed);
+    assert_eq!(base.standing("mac.welcome.a", "b", "s"), Standing::Unchanged);
     assert_eq!(base.standing("mac.welcome.a", "b2", "s"), Standing::Changed);
     assert_eq!(base.standing("mac.welcome.b", "b", "s"), Standing::New);
 }
@@ -118,7 +123,7 @@ fn outcome_with_finding(gate: Gate, base_empty: bool, against_base: Option<Stand
 
 #[test]
 fn a_pair_with_a_finding_fails_a_run_that_gates_every_pair() {
-    for standing in [None, Some(Standing::Confirmed), Some(Standing::New)] {
+    for standing in [None, Some(Standing::Unchanged), Some(Standing::New)] {
         assert!(!outcome_with_finding(Gate::EveryPair, false, standing).passed());
     }
 }
@@ -134,7 +139,7 @@ fn a_new_or_changed_pair_with_a_finding_fails_a_local_run() {
 
 #[test]
 fn a_pair_confirmed_against_the_base_with_a_finding_is_only_listed_by_a_local_run() {
-    let outcome = outcome_with_finding(Gate::NewOrChanged, false, Some(Standing::Confirmed));
+    let outcome = outcome_with_finding(Gate::NewOrChanged, false, Some(Standing::Unchanged));
     assert!(outcome.passed());
     assert_eq!(outcome.listed().count(), 1);
 }
@@ -148,7 +153,7 @@ fn a_base_with_no_record_gates_no_pair_of_a_local_run() {
 
 #[test]
 fn a_problem_fails_a_local_run() {
-    let mut outcome = outcome_with_finding(Gate::NewOrChanged, false, Some(Standing::Confirmed));
+    let mut outcome = outcome_with_finding(Gate::NewOrChanged, false, Some(Standing::Unchanged));
     outcome.problems.push(Problem { name: "x".into(), declared: true, sentence: "s".into() });
     assert!(!outcome.passed());
 }
@@ -157,4 +162,34 @@ fn a_problem_fails_a_local_run() {
 fn an_empty_record_has_no_entries() {
     assert!(Record::default().is_empty());
     assert!(!record_with("mac.welcome.a", "b", "s").is_empty());
+}
+
+fn skipped_with_finding(against_base: Option<Standing>) -> Skipped {
+    Skipped {
+        name: name("mac.welcome.a"),
+        findings: vec!["Shot is missing the button “Set up”".to_string()],
+        warnings: Vec::new(),
+        against_base,
+    }
+}
+
+#[test]
+fn a_skipped_pair_with_a_recorded_finding_fails_a_run_that_gates_every_pair() {
+    let mut outcome = outcome_with_finding(Gate::EveryPair, false, None);
+    outcome.checked.clear();
+    assert!(outcome.passed());
+    outcome.skipped.push(skipped_with_finding(None));
+    assert!(!outcome.passed());
+    assert_eq!(outcome.failing_skipped().count(), 1);
+}
+
+#[test]
+fn a_skipped_pair_unchanged_against_the_base_is_only_listed_by_a_local_run() {
+    let mut outcome = outcome_with_finding(Gate::NewOrChanged, false, None);
+    outcome.checked.clear();
+    outcome.skipped.push(skipped_with_finding(Some(Standing::Unchanged)));
+    assert!(outcome.passed());
+    assert_eq!(outcome.listed_skipped().count(), 1);
+    outcome.skipped[0].against_base = Some(Standing::Changed);
+    assert!(!outcome.passed());
 }

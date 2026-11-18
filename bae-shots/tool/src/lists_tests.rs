@@ -6,7 +6,12 @@ fn name(text: &str) -> Name {
 }
 
 fn entry(board: &str) -> Entry {
-    Entry { board: board.to_string(), shot: "s".to_string(), warnings: Vec::new() }
+    Entry {
+        board: board.to_string(),
+        shot: "s".to_string(),
+        findings: Vec::new(),
+        warnings: Vec::new(),
+    }
 }
 
 #[test]
@@ -21,8 +26,8 @@ fn a_ready_board_no_shot_is_declared_for_is_to_build() {
 fn a_shot_whose_board_changed_since_it_was_confirmed_is_to_update() {
     let declared = [name("mac.welcome.a"), name("mac.welcome.b"), name("mac.welcome.c")];
     let mut record = Record::default();
-    record.confirm("mac.welcome.a", entry("old"));
-    record.confirm("mac.welcome.b", entry("same"));
+    record.set("mac.welcome.a", entry("old"));
+    record.set("mac.welcome.b", entry("same"));
     let hashes = BTreeMap::from([
         (name("mac.welcome.a"), "new".to_string()),
         (name("mac.welcome.b"), "same".to_string()),

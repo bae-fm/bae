@@ -28,9 +28,9 @@ pub(crate) struct Verification<'a> {
     pub(crate) out: &'a Path,
     /// The branch whose record the pairs are marked new or changed against.
     pub(crate) base: Option<&'a str>,
-    /// Where to write the record this run's results make (the pairs that
-    /// passed confirmed, the failing ones dropped). Never the repository's
-    /// record: only `bae-shots record` writes that.
+    /// Where to write the record this run's results make: every pair checked,
+    /// with its findings and warnings. Never the repository's record: only
+    /// `bae-shots record` writes that.
     pub(crate) results: Option<&'a Path>,
     /// Which pairs' findings fail the run.
     pub(crate) gate: Gate,
@@ -68,7 +68,9 @@ pub(crate) struct Checked {
 /// One pair the record skipped.
 pub(crate) struct Skipped {
     pub(crate) name: Name,
-    /// The warnings it was confirmed with.
+    /// The findings the record holds for it: the check it skips found them.
+    pub(crate) findings: Vec<String>,
+    /// The warnings the record holds for it.
     pub(crate) warnings: Vec<String>,
     pub(crate) against_base: Option<Standing>,
 }
@@ -89,15 +91,23 @@ pub(crate) struct Outcome {
 }
 
 impl Outcome {
-    /// Whether the pair's findings fail the run.
-    fn gated(&self, pair: &Checked) -> bool {
-        !pair.findings.is_empty()
+    /// Whether a pair's findings fail the run.
+    fn gates(&self, has_findings: bool, against_base: Option<Standing>) -> bool {
+        has_findings
             && match self.gate {
                 Gate::EveryPair => true,
                 Gate::NewOrChanged => {
-                    matches!(pair.against_base, Some(Standing::New | Standing::Changed))
+                    matches!(against_base, Some(Standing::New | Standing::Changed))
                 }
             }
+    }
+
+    fn gated(&self, pair: &Checked) -> bool {
+        self.gates(!pair.findings.is_empty(), pair.against_base)
+    }
+
+    fn gated_skip(&self, pair: &Skipped) -> bool {
+        self.gates(!pair.findings.is_empty(), pair.against_base)
     }
 
     /// The pairs whose findings fail the run.
@@ -110,15 +120,28 @@ impl Outcome {
         self.checked.iter().filter(|c| !c.findings.is_empty() && !self.gated(c))
     }
 
-    /// Whether nothing fails: no gated finding, no shot or record entry
-    /// without a board.
+    /// The skipped pairs whose recorded findings fail the run.
+    pub(crate) fn failing_skipped(&self) -> impl Iterator<Item = &Skipped> {
+        self.skipped.iter().filter(|s| self.gated_skip(s))
+    }
+
+    /// The skipped pairs with recorded findings that are listed and do not
+    /// fail the run.
+    pub(crate) fn listed_skipped(&self) -> impl Iterator<Item = &Skipped> {
+        self.skipped.iter().filter(|s| !s.findings.is_empty() && !self.gated_skip(s))
+    }
+
+    /// Whether nothing fails: no gated finding, checked now or recorded, and
+    /// no shot or record entry without a board.
     pub(crate) fn passed(&self) -> bool {
-        self.problems.is_empty() && self.failing().next().is_none()
+        self.problems.is_empty()
+            && self.failing().next().is_none()
+            && self.failing_skipped().next().is_none()
     }
 }
 
-/// Splits `names` into the pairs the record confirms with these hashes and
-/// the pairs to check.
+/// Splits `names` into the pairs whose record entry has these hashes and the
+/// pairs to check.
 pub(crate) fn partition(
     names: &[Name],
     board_hashes: &BTreeMap<Name, String>,
@@ -127,7 +150,7 @@ pub(crate) fn partition(
 ) -> (Vec<Name>, Vec<Name>) {
     names.iter().cloned().partition(|name| {
         record.standing(&name.to_string(), &board_hashes[name], &shot_hashes[name])
-            == Standing::Confirmed
+            == Standing::Unchanged
     })
 }
 
@@ -212,28 +235,30 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
     if let Some(results_path) = job.results {
         let mut results = record.clone();
         for pair in &checked {
-            let board = pair.name.to_string();
-            if pair.findings.is_empty() {
-                results.confirm(
-                    &board,
-                    Entry {
-                        board: board_hashes[&pair.name].clone(),
-                        shot: shot_hashes[&pair.name].clone(),
-                        warnings: pair.warnings.iter().map(Warning::sentence).collect(),
-                    },
-                );
-            } else {
-                results.forget(&board);
-            }
+            results.set(
+                &pair.name.to_string(),
+                Entry {
+                    board: board_hashes[&pair.name].clone(),
+                    shot: shot_hashes[&pair.name].clone(),
+                    findings: pair.findings.iter().map(Finding::sentence).collect(),
+                    warnings: pair.warnings.iter().map(Warning::sentence).collect(),
+                },
+            );
         }
+        std::fs::create_dir_all(job.out)
+            .map_err(|e| format!("cannot prepare {}: {e}", job.out.display()))?;
         results.save(results_path).map_err(|e| e.to_string())?;
     }
     let skipped = confirmed
         .into_iter()
-        .map(|name| Skipped {
-            warnings: record.get(&name.to_string()).map(|e| e.warnings.clone()).unwrap_or_default(),
-            against_base: standing(&name),
-            name,
+        .map(|name| {
+            let entry = record.get(&name.to_string());
+            Skipped {
+                findings: entry.map(|e| e.findings.clone()).unwrap_or_default(),
+                warnings: entry.map(|e| e.warnings.clone()).unwrap_or_default(),
+                against_base: standing(&name),
+                name,
+            }
         })
         .collect();
     let ready = design::ready_boards(root).map_err(|e| e.to_string())?;
@@ -258,7 +283,7 @@ fn mark(standing: Option<Standing>) -> &'static str {
     match standing {
         Some(Standing::New) => " (new against the base)",
         Some(Standing::Changed) => " (changed against the base)",
-        Some(Standing::Confirmed) | None => "",
+        Some(Standing::Unchanged) | None => "",
     }
 }
 
@@ -288,7 +313,21 @@ pub(crate) fn print(outcome: &Outcome) {
             eprintln!("{}{}: warning: {}", pair.name, mark(pair.against_base), warning.sentence());
         }
     }
-    for pair in &outcome.skipped {
+    for (label, pairs) in [
+        ("FAIL ", outcome.failing_skipped().collect::<Vec<_>>()),
+        ("listed, does not fail the run: ", outcome.listed_skipped().collect()),
+    ] {
+        for pair in pairs {
+            for finding in &pair.findings {
+                eprintln!(
+                    "{label}{}{}: {finding} (from the record)",
+                    pair.name,
+                    mark(pair.against_base)
+                );
+            }
+        }
+    }
+    for pair in outcome.skipped.iter().filter(|s| s.findings.is_empty()) {
         eprintln!("{}{}: confirmed", pair.name, mark(pair.against_base));
         for warning in &pair.warnings {
             eprintln!("{}: confirmed with the warning: {warning}", pair.name);
@@ -312,17 +351,29 @@ pub(crate) fn print(outcome: &Outcome) {
     summarize(outcome);
 }
 
-fn names_of<'a>(pairs: impl Iterator<Item = &'a Checked>) -> String {
-    pairs.map(|c| c.name.to_string()).collect::<Vec<_>>().join(", ")
+fn names_of<'a>(pairs: impl Iterator<Item = &'a Name>) -> String {
+    pairs.map(Name::to_string).collect::<Vec<_>>().join(", ")
 }
 
 /// Says plainly which pairs fail the run and which have findings that are
 /// only listed.
 fn summarize(outcome: &Outcome) {
-    let failing = outcome.failing().count();
-    let listed = outcome.listed().count();
-    if failing > 0 {
-        eprintln!("bae-shots: {failing} pair(s) fail the run: {}", names_of(outcome.failing()));
+    let failing: Vec<&Name> = outcome
+        .failing()
+        .map(|c| &c.name)
+        .chain(outcome.failing_skipped().map(|s| &s.name))
+        .collect();
+    let listed: Vec<&Name> = outcome
+        .listed()
+        .map(|c| &c.name)
+        .chain(outcome.listed_skipped().map(|s| &s.name))
+        .collect();
+    if !failing.is_empty() {
+        eprintln!(
+            "bae-shots: {} pair(s) fail the run: {}",
+            failing.len(),
+            names_of(failing.iter().copied())
+        );
     }
     if !outcome.problems.is_empty() {
         eprintln!(
@@ -330,15 +381,16 @@ fn summarize(outcome: &Outcome) {
             outcome.problems.len()
         );
     }
-    if listed > 0 {
+    if !listed.is_empty() {
         let why = if outcome.base_empty {
             "the base has no record, so no pair is new or changed against it"
         } else {
             "they are neither new nor changed against the base"
         };
         eprintln!(
-            "bae-shots: {listed} pair(s) have findings that are only listed ({why}): {}",
-            names_of(outcome.listed())
+            "bae-shots: {} pair(s) have findings that are only listed ({why}): {}",
+            listed.len(),
+            names_of(listed.iter().copied())
         );
     }
     if outcome.passed() {

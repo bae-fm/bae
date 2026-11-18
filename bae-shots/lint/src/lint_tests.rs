@@ -69,11 +69,12 @@ fn a_record_entry_needs_its_board_too() {
     let entry = || crate::record::Entry {
         board: "b".to_string(),
         shot: "s".to_string(),
+        findings: Vec::new(),
         warnings: Vec::new(),
     };
-    record.confirm("mac.welcome.libraries", entry());
-    record.confirm("mac.welcome.gone", entry());
-    record.confirm("not a name", entry());
+    record.set("mac.welcome.libraries", entry());
+    record.set("mac.welcome.gone", entry());
+    record.set("not a name", entry());
     let found = problems(root.path(), &[], &record);
     assert_eq!(found.len(), 2, "{found:?}");
     assert!(found.iter().all(|p| !p.declared));
