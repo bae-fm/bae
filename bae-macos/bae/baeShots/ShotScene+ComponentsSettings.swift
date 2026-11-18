@@ -222,12 +222,14 @@ extension ShotScene {
                 state: .failed(error: "The network connection was lost.")
             )
             return DownloadRow(
-                op: op,
-                transfer: .pin(
-                    PreviewData.downloadStore()
-                        .downloadProgress(forRelease: op.releaseId)
+                entry: .download(
+                    op,
+                    transfer: .pin(
+                        PreviewData.downloadStore()
+                            .downloadProgress(forRelease: op.releaseId)
+                    ),
+                    onRetry: {}
                 ),
-                onRetry: {},
                 onCancel: {}
             )
         }

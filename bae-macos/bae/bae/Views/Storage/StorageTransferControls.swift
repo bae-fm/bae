@@ -48,23 +48,27 @@ struct StorageTransferControls: View {
             // A failed download: the row says why and offers its retry and
             // its cancel.
             DownloadRow(
-                op: operation,
-                transfer: operation.kind == .pin
-                    ? .pin(
-                        downloadStore.downloadProgress(
-                            forRelease: operation.releaseId
+                entry: .download(
+                    operation,
+                    transfer: operation.kind == .pin
+                        ? .pin(
+                            downloadStore.downloadProgress(
+                                forRelease: operation.releaseId
+                            )
                         )
-                    )
-                    : .moveToThisDevice(
-                        downloadStore.moveToThisDeviceProgress(
-                            forRelease: operation.releaseId
-                        )
-                    ),
-                onRetry: {
-                    run {
-                        try await downloads.retryDownload(operation.releaseId)
+                        : .moveToThisDevice(
+                            downloadStore.moveToThisDeviceProgress(
+                                forRelease: operation.releaseId
+                            )
+                        ),
+                    onRetry: {
+                        run {
+                            try await downloads.retryDownload(
+                                operation.releaseId
+                            )
+                        }
                     }
-                },
+                ),
                 onCancel: {
                     run {
                         try await downloads.cancelDownload(operation.releaseId)
@@ -105,11 +109,13 @@ struct StorageTransferControls: View {
         _ upload: BridgeReleaseUpload
     ) -> some View {
         if let missing = upload.missing {
-            UploadWaitingRow(
-                title: title,
-                fileCount: fileCount,
-                totalSize: totalSize,
-                missing: missing
+            DownloadRow(
+                entry: .uploadWaiting(
+                    title: title,
+                    fileCount: fileCount,
+                    totalSize: totalSize,
+                    missing: missing
+                )
             ) {
                 run { try await sync.cancelReleaseTransition(releaseId) }
             }
