@@ -23,6 +23,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ComposerDetailRowsPageStore
+import fm.bae.app.data.ListPageState
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.displayError
 import fm.bae.app.metadataText
@@ -155,7 +156,7 @@ private fun ComposerDetailContent(
                 missing = detail.composer.image == null,
             )
         }
-        val failure = rows.error
+        val failure = (rows.state as? ListPageState.Failed)?.error
         if (failure != null) {
             item {
                 AndroidNotice(

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.BrowserPageState
+import fm.bae.app.data.ListPageState
 import fm.bae.app.data.PageError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -37,7 +38,7 @@ import kotlinx.coroutines.launch
 
 /**
  * A library browse tab's body: pull-to-refresh over a failed read in the rows' place, nothing
- * while the first read runs, empty message (with the [emptyAction] under it,
+ * until the list's count returns, empty message (with the [emptyAction] under it,
  * when the list has one) or rows, each inside a scrollable so the pull reaches
  * [PullToRefreshBox]. The pull retries sync, and its spinner stays, over the
  * sync status line that says what sync is doing, until the pass the retry ran
@@ -64,7 +65,6 @@ internal fun LibraryPageContent(
             }
         }
     }
-    val pageError = page.error
     val state = rememberPullToRefreshState()
     PullToRefreshBox(
         isRefreshing = refreshing,
@@ -80,22 +80,22 @@ internal fun LibraryPageContent(
             )
         },
     ) {
-        when {
-            pageError != null -> {
-                LibraryReadFailed(pageError)
+        when (val shown = page.state) {
+            is ListPageState.Failed -> {
+                LibraryReadFailed(shown.error)
             }
 
-            // The first window is a local read, so the screen shows nothing until the read returns.
-            page.loading && !page.hasRows -> {
+            // The count is a local read, so the screen shows nothing until it returns.
+            ListPageState.Waiting -> {
                 ListPlaceholder {}
             }
 
-            page.totalCount == 0 -> {
-                ListPlaceholder { EmptyList(emptyMessage, emptyAction) }
-            }
-
-            else -> {
-                rows()
+            is ListPageState.Counted -> {
+                if (shown.rows == 0) {
+                    ListPlaceholder { EmptyList(emptyMessage, emptyAction) }
+                } else {
+                    rows()
+                }
             }
         }
     }

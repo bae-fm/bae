@@ -28,6 +28,7 @@ import fm.bae.app.R
 import fm.bae.app.countLabelsText
 import fm.bae.app.data.DownloadPageStore
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.ListPageState
 import fm.bae.app.data.LiveValue
 import fm.bae.app.factSeparator
 import fm.bae.app.queueWaitText
@@ -125,7 +126,7 @@ internal fun AndroidStoragePinning(
 
 /**
  * The queue's rows, or why there are none: the counts failing, a read of
- * the rows failing, an empty queue; nothing while the first rows load.
+ * the rows failing, an empty queue; nothing until the rows' count returns.
  */
 @Composable
 private fun BoxScope.DownloadsBody(
@@ -134,7 +135,7 @@ private fun BoxScope.DownloadsBody(
     summary: String,
     page: DownloadPageStore,
 ) {
-    val pageError = page.error
+    val shown = page.state
     when {
         state is LiveValue.Failed -> {
             AndroidNotice(
@@ -143,18 +144,18 @@ private fun BoxScope.DownloadsBody(
             )
         }
 
-        pageError != null -> {
+        shown is ListPageState.Failed -> {
             AndroidNotice(
-                error = pageError.error,
+                error = shown.error.error,
                 look = NoticeLook.CENTERED,
-                action = pageError.error.retryAction(onClick = pageError.onRetry),
+                action = shown.error.error.retryAction(onClick = shown.error.onRetry),
             )
         }
 
-        // The first window is a local read, so the screen shows nothing until the read returns.
-        page.loading && !page.hasRows -> {}
+        // The count is a local read, so the screen shows nothing until it returns.
+        shown == ListPageState.Waiting -> {}
 
-        page.totalCount == 0 -> {
+        shown == ListPageState.Counted(0) -> {
             DownloadsEmpty(modifier = Modifier.align(Alignment.Center))
         }
 

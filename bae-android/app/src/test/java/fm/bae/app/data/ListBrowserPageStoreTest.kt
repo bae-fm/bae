@@ -53,8 +53,9 @@ class ListBrowserPageStoreTest {
         albums: List<BridgeAlbum>,
         failure: BridgeException? = null,
         errors: ErrorDisplays = NoErrorDisplays,
+        deliverImmediately: Boolean = true,
     ): Fixture {
-        val list = FakeAlbumList(albums, windowFailure = failure)
+        val list = FakeAlbumList(albums, deliverImmediately = deliverImmediately, windowFailure = failure)
         val handle = FakeAppHandle(albumList = list)
         val store =
             AlbumPageStore(
@@ -69,6 +70,30 @@ class ListBrowserPageStoreTest {
     }
 
     private val readFailed = BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed")
+
+    /** The failure the page draws in its rows' place, while it draws one. */
+    private val AlbumPageStore.failure: PageError? get() = (state as? ListPageState.Failed)?.error
+
+    /** The page waits for its count, then draws from the count alone, with the rows the view has not read yet unread. */
+    @Test
+    fun thePageWaitsForItsCountThenDrawsFromIt() {
+        val fixture = open(albums(ids(0..29)), deliverImmediately = false)
+        assertEquals(ListPageState.Waiting, fixture.store.state)
+
+        fixture.list.emitCount()
+        fixture.idle()
+
+        assertEquals(ListPageState.Counted(30), fixture.store.state)
+        assertNull(fixture.store.rowAt(0))
+    }
+
+    /** A list whose count answers none is empty, whatever its view holds. */
+    @Test
+    fun aListWhoseCountIsNoneIsEmpty() {
+        val fixture = open(emptyList())
+
+        assertEquals(ListPageState.Counted(0), fixture.store.state)
+    }
 
     /** The store opens the list's view with as many rows on screen as the screen fits, before any row arrives. */
     @Test
@@ -163,7 +188,7 @@ class ListBrowserPageStoreTest {
 
         assertEquals(
             "Could not load your library.",
-            fixture.store.error
+            fixture.store.failure
                 ?.error
                 ?.line,
         )
@@ -173,7 +198,7 @@ class ListBrowserPageStoreTest {
         fixture.list.changed()
         fixture.idle()
 
-        assertNull(fixture.store.error)
+        assertNull(fixture.store.failure)
         assertEquals(ids(0..29), fixture.ids(0..29))
     }
 
@@ -185,12 +210,12 @@ class ListBrowserPageStoreTest {
         fixture.list.countFailure = readFailed
         fixture.list.changed()
         fixture.idle()
-        assertNotNull(fixture.store.error)
+        assertNotNull(fixture.store.failure)
 
         fixture.list.countFailure = null
         fixture.list.emitCount()
         fixture.idle()
-        assertNull(fixture.store.error)
+        assertNull(fixture.store.failure)
     }
 
     @Test
@@ -199,7 +224,7 @@ class ListBrowserPageStoreTest {
 
         assertEquals(
             "Could not load your library.",
-            fixture.store.error
+            fixture.store.failure
                 ?.error
                 ?.line,
         )
@@ -221,7 +246,7 @@ class ListBrowserPageStoreTest {
 
         assertEquals(
             false,
-            fixture.store.error
+            fixture.store.failure
                 ?.error
                 ?.offersRetry,
         )

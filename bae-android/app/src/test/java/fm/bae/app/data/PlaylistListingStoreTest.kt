@@ -34,16 +34,17 @@ class PlaylistListingStoreTest {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
         )
 
+    /** The failure the view draws in its rows' place, while it draws one. */
+    private val PlaylistListingStore.failure: PageError? get() = (state as? ListPageState.Failed)?.error
+
     @Test
     fun theListingIsHeldFromItsFirstValueAndFollowsEachNewOne() {
         store.activate()
-        assertTrue(store.loading)
-        assertFalse(store.hasRows)
+        assertEquals(ListPageState.Waiting, store.state)
 
         reads.single().emit(BridgeFixtures.playlistListing(listOf(BridgeFixtures.playlistSummary("a"))))
         shadowOf(Looper.getMainLooper()).idle()
-        assertFalse(store.loading)
-        assertEquals(1, store.totalCount)
+        assertEquals(ListPageState.Counted(1), store.state)
 
         reads.single().emit(
             BridgeFixtures.playlistListing(
@@ -51,8 +52,7 @@ class PlaylistListingStoreTest {
             ),
         )
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(2, store.totalCount)
-        assertTrue(store.hasRows)
+        assertEquals(ListPageState.Counted(2), store.state)
     }
 
     @Test
@@ -61,9 +61,7 @@ class PlaylistListingStoreTest {
         reads.single().emit(BridgeFixtures.playlistListing(listed = emptyList()))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertFalse(store.loading)
-        assertFalse(store.hasRows)
-        assertEquals(0, store.totalCount)
+        assertEquals(ListPageState.Counted(0), store.state)
     }
 
     @Test
@@ -72,12 +70,11 @@ class PlaylistListingStoreTest {
         reads.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals("Could not load your library.", store.error?.error?.line)
-        assertFalse(store.loading)
+        assertEquals("Could not load your library.", store.failure?.error?.line)
         assertFalse("a failed read leaves its read open", reads.single().cancelled)
 
-        store.error!!.onRetry()
-        assertNull(store.error)
+        store.failure!!.onRetry()
+        assertEquals(ListPageState.Waiting, store.state)
         assertEquals(2, reads.size)
         reads.last().emit(BridgeFixtures.playlistListing())
         shadowOf(Looper.getMainLooper()).idle()
@@ -98,8 +95,7 @@ class PlaylistListingStoreTest {
 
         reads.single().emit(BridgeFixtures.playlistListing(listOf(BridgeFixtures.playlistSummary("a"))))
         shadowOf(Looper.getMainLooper()).idle()
-        assertNull(store.error)
-        assertEquals(1, store.totalCount)
+        assertEquals(ListPageState.Counted(1), store.state)
     }
 
     @Test
@@ -113,7 +109,7 @@ class PlaylistListingStoreTest {
 
         assertTrue(reads.single().cancelled)
         assertNull(store.listing)
-        assertTrue(store.loading)
+        assertEquals(ListPageState.Waiting, store.state)
     }
 
     private class RecordingRead : PulledSubscription<BridgePlaylistListing> {

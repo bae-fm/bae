@@ -29,26 +29,23 @@ internal class PlaylistListingStore(
     /** The value the read last delivered; null until the first and after a failure. */
     var listing by mutableStateOf<BridgePlaylistListing?>(null)
         private set
-    override var loading by mutableStateOf(true)
+    override var state by mutableStateOf<ListPageState>(ListPageState.Waiting)
         private set
-    override var error by mutableStateOf<PageError?>(null)
-        private set
-    override val hasRows: Boolean get() = totalCount > 0
-    override val totalCount: Int get() = listing?.total?.toInt() ?: 0
+
+    /** How many playlists the listing last said there are; 0 until it answers and after it fails. */
+    val totalCount: Int get() = listing?.total?.toInt() ?: 0
     private var deliveries: ScreenSubscription<BridgePlaylistListing>? = null
 
     fun activate() {
         if (deliveries != null) return
-        loading = true
-        error = null
+        state = ListPageState.Waiting
         deliveries =
             ScreenSubscription(
                 open(),
                 scope,
                 onValue = { value ->
                     listing = value
-                    loading = false
-                    error = null
+                    state = ListPageState.Counted(value.total.toInt())
                 },
                 onError = ::fail,
             )
@@ -58,8 +55,7 @@ internal class PlaylistListingStore(
         deliveries?.stop()
         deliveries = null
         listing = null
-        loading = true
-        error = null
+        state = ListPageState.Waiting
     }
 
     private fun retry() {
@@ -70,7 +66,7 @@ internal class PlaylistListingStore(
     private fun fail(value: BridgeException) {
         logger.error("playlists read failed", value)
         listing = null
-        loading = false
-        error = PageError(appContext.getString(R.string.library_load_failed), value, errors, ::retry)
+        val headline = appContext.getString(R.string.library_load_failed)
+        state = ListPageState.Failed(PageError(headline, value, errors, ::retry))
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.ListPageState
 import fm.bae.app.data.PlaylistListingStore
 import fm.bae.app.factsLine
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -102,7 +103,7 @@ private fun PlaylistTargets(
     val context = LocalContext.current
     val playlists = session.browserPages.playlists
     val listing = playlists.listing
-    val loadError = playlists.error
+    val loadError = (playlists.state as? ListPageState.Failed)?.error
     when {
         listing != null -> {
             listing.addTargets.forEach { playlist ->

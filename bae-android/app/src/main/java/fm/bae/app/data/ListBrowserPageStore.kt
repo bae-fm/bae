@@ -37,18 +37,26 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
      * rows on screen, before any row arrives.
      */
     var screenRows = 1
-    override val totalCount: Int
+
+    /** How many rows the list's count last said it has; 0 until it answers and after it fails. */
+    val totalCount: Int
         get() =
             reader
                 ?.count
                 ?.answer
                 ?.rows
                 ?.toInt() ?: 0
-    override var loading by mutableStateOf(true)
-        private set
-    override var error by mutableStateOf<PageError?>(null)
-        private set
-    override val hasRows: Boolean get() = firstReadReturned && totalCount > 0
+
+    /** The failure of a read whose latest answer is one; null while every read's latest answer is a value. */
+    private var error by mutableStateOf<PageError?>(null)
+
+    /** A failed read, else the list's count once it answers, else waiting for it. */
+    override val state: ListPageState
+        get() {
+            error?.let { return ListPageState.Failed(it) }
+            val count = reader?.count?.answer ?: return ListPageState.Waiting
+            return ListPageState.Counted(count.rows.toInt())
+        }
 
     /** Whether the album grid's count says the grid groups its rows by artist; other lists never do. */
     val grouped: Boolean get() = (reader?.count?.answer?.extra as? BridgeListCountExtra.AlbumGrid)?.grouped == true
@@ -64,9 +72,6 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
     private var generation = 0
     private var sectionDeliveries: ScreenSubscription<List<BridgeLibraryBrowseSection>>? = null
 
-    /** Whether the list's count and its view have both returned since [activate]. */
-    private var firstReadReturned by mutableStateOf(false)
-
     /** The row at [index], or null when the view's window doesn't hold it. */
     fun rowAt(index: Int): Row? = reader?.rowAt(index)
 
@@ -74,9 +79,7 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         if (active && this.parameter == parameter) return
         close()
         sectionsRead = null
-        loading = true
         error = null
-        firstReadReturned = false
         this.parameter = parameter
         active = true
         generation++
@@ -137,10 +140,6 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         if (openedGeneration != generation || !active) return
         val list = reader ?: return
         if (list.failure == null && sectionsRead !is LiveQueryState.Failed) error = null
-        if (list.answered) {
-            firstReadReturned = true
-            loading = false
-        }
     }
 
     /** A failed read stands in place of the rows; the reads go on, and [retry] opens them again. */
@@ -150,7 +149,6 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
     ) {
         if (openedGeneration != generation || !active) return
         logger.error("browser page query failed", value)
-        loading = false
         error = PageError(appContext.getString(loadFailed), value, errors, ::retry)
     }
 

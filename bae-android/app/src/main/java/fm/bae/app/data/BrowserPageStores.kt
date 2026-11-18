@@ -41,16 +41,25 @@ internal class PageError(
     )
 }
 
-/** What a library list's body draws its states from: the read still running, its failure, and how much it holds. */
+/** What a library list's body draws, from its reads' latest answers. */
+internal sealed interface ListPageState {
+    /** The list's count has not answered yet. */
+    data object Waiting : ListPageState
+
+    /** A read failed, and its failure stands in the rows' place until the read answers again. */
+    data class Failed(
+        val error: PageError,
+    ) : ListPageState
+
+    /** The list's count answered: the list has [rows] rows, and none means it is empty. */
+    data class Counted(
+        val rows: Int,
+    ) : ListPageState
+}
+
+/** A library list whose body draws its [state]. */
 internal interface BrowserPageState {
-    val loading: Boolean
-    val error: PageError?
-
-    /** Whether the list's first read has returned and its count query says the list has rows. */
-    val hasRows: Boolean
-
-    /** How many rows the list has. */
-    val totalCount: Int
+    val state: ListPageState
 }
 
 internal data class AlbumBrowseParameters(
