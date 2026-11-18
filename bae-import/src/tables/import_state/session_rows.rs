@@ -106,7 +106,8 @@ fn edit_column(reason: EditValidationError) -> &'static str {
 }
 
 /// How a failure's class is stored: its name, and for a class that carries a
-/// reason or counts, each after a dot.
+/// reason, counts or a receiver's name, each after a dot. A receiver's name
+/// comes last, since it may hold dots itself.
 fn category_column(category: UiErrorCategory) -> String {
     use UiErrorCategory as C;
     let class = category.class().name();
@@ -117,7 +118,16 @@ fn category_column(category: UiErrorCategory) -> String {
         C::TiedMediums { mediums } => {
             format!("{class}.{}", mediums.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
         }
-        C::AirPlayBackOff { seconds } => format!("{class}.{seconds}"),
+        C::AirPlayBackOff { receiver, seconds } => format!("{class}.{seconds}.{receiver}"),
+        C::AirPlayPairingFailed { receiver }
+        | C::AirPlayLockedOut { receiver }
+        | C::AirPlayBusy { receiver }
+        | C::AirPlayNotPairing { receiver }
+        | C::AirPlayFull { receiver }
+        | C::AirPlayUnreachable { receiver }
+        | C::AirPlayHomeOnly { receiver }
+        | C::AirPlayAdminsOnly { receiver }
+        | C::AirPlayOwnerOnly { receiver } => format!("{class}.{receiver}"),
         C::GroupingBlocked(reason) => format!("{class}.{}", block_column(reason)),
         C::InvalidEdit(reason) => format!("{class}.{}", edit_column(reason)),
         C::Storage(failure) | C::S3VersioningUnknown(failure) => {
@@ -255,9 +265,22 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
                 .map(|medium| medium.parse().map_err(|error| unreadable_because(&error)))
                 .collect::<Result<_, _>>()?,
         },
-        K::AirPlayBackOff => C::AirPlayBackOff {
-            seconds: stored.parse().map_err(|error| unreadable_because(&error))?,
-        },
+        K::AirPlayBackOff => {
+            let (seconds, receiver) = stored.split_once('.').ok_or_else(unreadable)?;
+            C::AirPlayBackOff {
+                receiver: receiver.to_owned(),
+                seconds: seconds.parse().map_err(|error| unreadable_because(&error))?,
+            }
+        }
+        K::AirPlayPairingFailed => C::AirPlayPairingFailed { receiver: stored.to_owned() },
+        K::AirPlayLockedOut => C::AirPlayLockedOut { receiver: stored.to_owned() },
+        K::AirPlayBusy => C::AirPlayBusy { receiver: stored.to_owned() },
+        K::AirPlayNotPairing => C::AirPlayNotPairing { receiver: stored.to_owned() },
+        K::AirPlayFull => C::AirPlayFull { receiver: stored.to_owned() },
+        K::AirPlayUnreachable => C::AirPlayUnreachable { receiver: stored.to_owned() },
+        K::AirPlayHomeOnly => C::AirPlayHomeOnly { receiver: stored.to_owned() },
+        K::AirPlayAdminsOnly => C::AirPlayAdminsOnly { receiver: stored.to_owned() },
+        K::AirPlayOwnerOnly => C::AirPlayOwnerOnly { receiver: stored.to_owned() },
         K::MetadataTrackCount => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
             C::MetadataTrackCount {

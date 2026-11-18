@@ -351,16 +351,16 @@ impl UiErrorCategory {
             Self::StoreOwnerAccount => K::StoreOwnerAccount,
             Self::Renderer => K::Renderer,
             Self::AirPlayUnsupported => K::AirPlayUnsupported,
-            Self::AirPlayPairingFailed => K::AirPlayPairingFailed,
-            Self::AirPlayLockedOut => K::AirPlayLockedOut,
-            Self::AirPlayBusy => K::AirPlayBusy,
+            Self::AirPlayPairingFailed { .. } => K::AirPlayPairingFailed,
+            Self::AirPlayLockedOut { .. } => K::AirPlayLockedOut,
+            Self::AirPlayBusy { .. } => K::AirPlayBusy,
             Self::AirPlayBackOff { .. } => K::AirPlayBackOff,
-            Self::AirPlayNotPairing => K::AirPlayNotPairing,
-            Self::AirPlayFull => K::AirPlayFull,
-            Self::AirPlayUnreachable => K::AirPlayUnreachable,
-            Self::AirPlayHomeOnly => K::AirPlayHomeOnly,
-            Self::AirPlayAdminsOnly => K::AirPlayAdminsOnly,
-            Self::AirPlayOwnerOnly => K::AirPlayOwnerOnly,
+            Self::AirPlayNotPairing { .. } => K::AirPlayNotPairing,
+            Self::AirPlayFull { .. } => K::AirPlayFull,
+            Self::AirPlayUnreachable { .. } => K::AirPlayUnreachable,
+            Self::AirPlayHomeOnly { .. } => K::AirPlayHomeOnly,
+            Self::AirPlayAdminsOnly { .. } => K::AirPlayAdminsOnly,
+            Self::AirPlayOwnerOnly { .. } => K::AirPlayOwnerOnly,
             Self::AirPlayUnreadableSettings => K::AirPlayUnreadableSettings,
             Self::ReplacementUnfinished(_) => K::ReplacementUnfinished,
             Self::RestoreRegistered => K::RestoreRegistered,
@@ -374,7 +374,7 @@ impl UiErrorCategory {
     }
 
     /// The category of `class` when the class carries nothing more, or
-    /// `None` for a class that carries a reason or counts.
+    /// `None` for a class that carries a reason, counts or a receiver.
     pub fn plain(class: UiErrorClass) -> Option<Self> {
         use UiErrorClass as K;
         Some(match class {
@@ -412,15 +412,6 @@ impl UiErrorCategory {
             K::StoreOwnerAccount => Self::StoreOwnerAccount,
             K::Renderer => Self::Renderer,
             K::AirPlayUnsupported => Self::AirPlayUnsupported,
-            K::AirPlayPairingFailed => Self::AirPlayPairingFailed,
-            K::AirPlayLockedOut => Self::AirPlayLockedOut,
-            K::AirPlayBusy => Self::AirPlayBusy,
-            K::AirPlayNotPairing => Self::AirPlayNotPairing,
-            K::AirPlayFull => Self::AirPlayFull,
-            K::AirPlayUnreachable => Self::AirPlayUnreachable,
-            K::AirPlayHomeOnly => Self::AirPlayHomeOnly,
-            K::AirPlayAdminsOnly => Self::AirPlayAdminsOnly,
-            K::AirPlayOwnerOnly => Self::AirPlayOwnerOnly,
             K::AirPlayUnreadableSettings => Self::AirPlayUnreadableSettings,
             K::RestoreRegistered => Self::RestoreRegistered,
             K::MemberKeysReplaced => Self::MemberKeysReplaced,
@@ -436,7 +427,16 @@ impl UiErrorCategory {
             | K::StorageCheck
             | K::S3VersioningUnknown
             | K::S3VersioningUnsupported
+            | K::AirPlayPairingFailed
+            | K::AirPlayLockedOut
+            | K::AirPlayBusy
             | K::AirPlayBackOff
+            | K::AirPlayNotPairing
+            | K::AirPlayFull
+            | K::AirPlayUnreachable
+            | K::AirPlayHomeOnly
+            | K::AirPlayAdminsOnly
+            | K::AirPlayOwnerOnly
             | K::ReplacementUnfinished
             | K::UnfinishedInstallationUnreadable => return None,
         })

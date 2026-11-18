@@ -20,7 +20,7 @@ use super::tlv8::{tlv_type, Tlv8};
 pub(crate) const PAIR_SETUP_M1: &str = "/pair-setup M1";
 const PAIR_SETUP_M3: &str = "/pair-setup M3";
 const PAIR_SETUP_M5: &str = "/pair-setup M5";
-const PAIR_PIN_START: &str = "/pair-pin-start";
+pub(crate) const PAIR_PIN_START: &str = "/pair-pin-start";
 const PAIR_VERIFY_M1: &str = "/pair-verify M1";
 const PAIR_VERIFY_M3: &str = "/pair-verify M3";
 

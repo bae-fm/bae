@@ -42,6 +42,10 @@ STREAM_FILE = "bae-bridge/src/keyed_values.rs"
 # The callback interfaces the bridge may declare: platform services core
 # calls, none of which carries a value a screen shows.
 ALLOWED_CALLBACKS = {
+    "AirPlayCodePromptCallback": (
+        "a cast asks the person for the PIN or password an AirPlay receiver "
+        "wants, and sends the answer to the receiver"
+    ),
     "ArtworkAnalyzerCallback": (
         "identification asks the platform's image analyzer for the barcodes "
         "and text on a cover, and uses the answer itself"

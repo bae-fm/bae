@@ -117,35 +117,57 @@ pub enum BridgeErrorCategory {
     GroupingBlocked {
         reason: BridgeGroupingBlock,
     },
-    /// An AirPlay receiver can't be driven — it asks for a PIN or a password,
-    /// or offers only audio encryption the sender doesn't implement.
+    /// An AirPlay receiver can't be driven: an AirPlay 1 receiver asks for
+    /// device verification or a password, or a receiver offers only audio
+    /// encryption the sender doesn't implement.
     AirPlayUnsupported,
     /// An AirPlay receiver refused to pair, for a reason it gave or a reply
-    /// that didn't check out.
-    AirPlayPairingFailed,
+    /// that didn't check out. This and the refusals after it carry the
+    /// receiver's name, which their lines take as `receiver`.
+    AirPlayPairingFailed {
+        receiver: String,
+    },
     /// An AirPlay receiver saw too many failed pairing attempts and refuses
     /// more until it is reset.
-    AirPlayLockedOut,
+    AirPlayLockedOut {
+        receiver: String,
+    },
     /// An AirPlay receiver is pairing with another device.
-    AirPlayBusy,
+    AirPlayBusy {
+        receiver: String,
+    },
     /// An AirPlay receiver asks to wait this many seconds before another
-    /// try; the line takes the wait, formatted for the locale.
+    /// try; the line takes the receiver's name, then the wait, formatted for
+    /// the locale.
     AirPlayBackOff {
+        receiver: String,
         seconds: u64,
     },
     /// An AirPlay receiver isn't accepting new pairings.
-    AirPlayNotPairing,
+    AirPlayNotPairing {
+        receiver: String,
+    },
     /// An AirPlay receiver is paired with as many devices as it allows.
-    AirPlayFull,
+    AirPlayFull {
+        receiver: String,
+    },
     /// An AirPlay receiver couldn't be reached: the connection failed, timed
     /// out, or dropped while pairing.
-    AirPlayUnreachable,
+    AirPlayUnreachable {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from people in its home.
-    AirPlayHomeOnly,
+    AirPlayHomeOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from its home's admins.
-    AirPlayAdminsOnly,
+    AirPlayAdminsOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from the account it is set up with.
-    AirPlayOwnerOnly,
+    AirPlayOwnerOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver advertises a setting bae can't read (a features or
     /// status-flags value that isn't hex, or no features value at all), so
     /// how to connect to it can't be decided.
@@ -259,16 +281,18 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             }
         },
         BridgeErrorCategory::AirPlayUnsupported => "core.error.category.airplay_unsupported",
-        BridgeErrorCategory::AirPlayPairingFailed => "core.error.category.airplay_pairing_failed",
-        BridgeErrorCategory::AirPlayLockedOut => "core.error.category.airplay_locked_out",
-        BridgeErrorCategory::AirPlayBusy => "core.error.category.airplay_busy",
+        BridgeErrorCategory::AirPlayPairingFailed { .. } => {
+            "core.error.category.airplay_pairing_failed"
+        }
+        BridgeErrorCategory::AirPlayLockedOut { .. } => "core.error.category.airplay_locked_out",
+        BridgeErrorCategory::AirPlayBusy { .. } => "core.error.category.airplay_busy",
         BridgeErrorCategory::AirPlayBackOff { .. } => "core.error.category.airplay_back_off",
-        BridgeErrorCategory::AirPlayNotPairing => "core.error.category.airplay_not_pairing",
-        BridgeErrorCategory::AirPlayFull => "core.error.category.airplay_full",
-        BridgeErrorCategory::AirPlayUnreachable => "core.error.category.airplay_unreachable",
-        BridgeErrorCategory::AirPlayHomeOnly => "core.error.category.airplay_home_only",
-        BridgeErrorCategory::AirPlayAdminsOnly => "core.error.category.airplay_admins_only",
-        BridgeErrorCategory::AirPlayOwnerOnly => "core.error.category.airplay_owner_only",
+        BridgeErrorCategory::AirPlayNotPairing { .. } => "core.error.category.airplay_not_pairing",
+        BridgeErrorCategory::AirPlayFull { .. } => "core.error.category.airplay_full",
+        BridgeErrorCategory::AirPlayUnreachable { .. } => "core.error.category.airplay_unreachable",
+        BridgeErrorCategory::AirPlayHomeOnly { .. } => "core.error.category.airplay_home_only",
+        BridgeErrorCategory::AirPlayAdminsOnly { .. } => "core.error.category.airplay_admins_only",
+        BridgeErrorCategory::AirPlayOwnerOnly { .. } => "core.error.category.airplay_owner_only",
         BridgeErrorCategory::AirPlayUnreadableSettings => {
             "core.error.category.airplay_unreadable_settings"
         }
@@ -344,16 +368,16 @@ mirror_enum! {
         StoreOwnerAccount,
         Renderer,
         AirPlayUnsupported,
-        AirPlayPairingFailed,
-        AirPlayLockedOut,
-        AirPlayBusy,
-        AirPlayBackOff { seconds },
-        AirPlayNotPairing,
-        AirPlayFull,
-        AirPlayUnreachable,
-        AirPlayHomeOnly,
-        AirPlayAdminsOnly,
-        AirPlayOwnerOnly,
+        AirPlayPairingFailed { receiver },
+        AirPlayLockedOut { receiver },
+        AirPlayBusy { receiver },
+        AirPlayBackOff { receiver, seconds },
+        AirPlayNotPairing { receiver },
+        AirPlayFull { receiver },
+        AirPlayUnreachable { receiver },
+        AirPlayHomeOnly { receiver },
+        AirPlayAdminsOnly { receiver },
+        AirPlayOwnerOnly { receiver },
         AirPlayUnreadableSettings,
         ReplacementUnfinished(by: (BridgeReplacedBy)),
         RestoreRegistered,

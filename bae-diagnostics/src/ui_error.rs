@@ -133,34 +133,55 @@ pub enum UiErrorCategory {
     /// The device playback was sent to (Cast, DLNA) refused a command — a load,
     /// a play, a seek — while the link to it stayed up.
     Renderer,
-    /// An AirPlay receiver can't be driven: it asks for a PIN or a password, or
-    /// offers audio encryption the sender doesn't implement.
+    /// An AirPlay receiver can't be driven: an AirPlay 1 receiver asks for
+    /// device verification or a password, or a receiver offers only audio
+    /// encryption the sender doesn't implement.
     AirPlayUnsupported,
     /// An AirPlay receiver refused to pair, for a reason it gave or a reply
-    /// that didn't check out.
-    AirPlayPairingFailed,
+    /// that didn't check out. This and the refusals after it carry the
+    /// receiver's name as discovery found it, which their lines name.
+    AirPlayPairingFailed {
+        receiver: String,
+    },
     /// An AirPlay receiver saw too many failed pairing attempts and refuses
     /// more until it is reset.
-    AirPlayLockedOut,
+    AirPlayLockedOut {
+        receiver: String,
+    },
     /// An AirPlay receiver is pairing with another device.
-    AirPlayBusy,
+    AirPlayBusy {
+        receiver: String,
+    },
     /// An AirPlay receiver asks to wait this many seconds before another try.
     AirPlayBackOff {
+        receiver: String,
         seconds: u64,
     },
     /// An AirPlay receiver isn't accepting new pairings.
-    AirPlayNotPairing,
+    AirPlayNotPairing {
+        receiver: String,
+    },
     /// An AirPlay receiver is paired with as many devices as it allows.
-    AirPlayFull,
+    AirPlayFull {
+        receiver: String,
+    },
     /// An AirPlay receiver couldn't be reached: the connection failed, timed
     /// out, or dropped while pairing.
-    AirPlayUnreachable,
+    AirPlayUnreachable {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from people in its home.
-    AirPlayHomeOnly,
+    AirPlayHomeOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from its home's admins.
-    AirPlayAdminsOnly,
+    AirPlayAdminsOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver plays only from the account it is set up with.
-    AirPlayOwnerOnly,
+    AirPlayOwnerOnly {
+        receiver: String,
+    },
     /// An AirPlay receiver advertises a setting bae can't read, so how to
     /// connect to it can't be decided.
     AirPlayUnreadableSettings,

@@ -42,6 +42,7 @@ import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeDiagnosticsInterface
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.bridgeErrorRefusingReceiver
 
 private val logger = BaeLogger("bae.OpenLibrary")
 
@@ -98,7 +99,9 @@ class OpenLibrary internal constructor(
         CastStart(
             scope = runtime.scope,
             castTo = cast::castTo,
-            failureOf = { runtime.errors.display(it) },
+            failureOf = { e ->
+                runtime.errors.display(e)?.let { CastStart.Failure(it, refusedBy = bridgeErrorRefusingReceiver(e)) }
+            },
             pickerOpen = { cast.pickerOpen },
             tell = { messages.show(it) },
         )

@@ -64,11 +64,21 @@ impl AppHandle {
 forward! {
     #[cfg(feature = "cast")]
     async this => {
-        /// Cast playback to the device with `device_id`. A cast called off
-        /// while it connects, by stopping casting, turning it off or another
-        /// cast, ends as a cancellation, which no surface shows.
-        fn cast_to(device_id: String) -> () {
-            this.cast.cast_to(&device_id).await.map_err(|error| match error {
+        /// Cast playback to the device with `device_id`. An AirPlay receiver
+        /// that wants a PIN or a password gets the code the person enters into
+        /// `prompt`'s sheet. A cast called off while it connects, by stopping
+        /// casting, turning it off, another cast or the app cancelling this
+        /// call, ends as a cancellation, which no surface shows, and closes a
+        /// sheet still open.
+        fn cast_to(
+            device_id: String,
+            prompt: Box<dyn crate::AirPlayCodePromptCallback>,
+        ) -> () {
+            let prompt = std::sync::Arc::new(crate::airplay_prompt::NativeCodePrompt::new(
+                prompt,
+                this.diagnostics.clone(),
+            ));
+            this.cast.cast_to(&device_id, prompt).await.map_err(|error| match error {
                 bae_cast::CastError::CalledOff => BridgeError::Cancelled,
                 error => BridgeError::categorized(error.category(), error),
             })

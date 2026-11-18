@@ -25,14 +25,24 @@ extension BridgeErrorCategory {
                 }
             )
             return String(format: line, locale: Locale.current, discs)
-        case .airPlayBackOff(let seconds):
+        case .airPlayBackOff(let receiver, let seconds):
             // The wait the receiver asked for, as a length of time in the
             // current locale ("30 seconds", "2 minutes").
             let wait = Duration.seconds(Int64(clamping: seconds))
                 .formatted(
                     .units(allowed: [.hours, .minutes, .seconds], width: .wide)
                 )
-            return String(format: line, locale: Locale.current, wait)
+            return String(format: line, locale: Locale.current, receiver, wait)
+        case .airPlayPairingFailed(let receiver),
+            .airPlayLockedOut(let receiver),
+            .airPlayBusy(let receiver),
+            .airPlayNotPairing(let receiver),
+            .airPlayFull(let receiver),
+            .airPlayUnreachable(let receiver),
+            .airPlayHomeOnly(let receiver),
+            .airPlayAdminsOnly(let receiver),
+            .airPlayOwnerOnly(let receiver):
+            return String(format: line, locale: Locale.current, receiver)
         default:
             return line
         }

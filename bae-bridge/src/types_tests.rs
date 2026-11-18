@@ -825,3 +825,20 @@ fn an_error_shows_its_detail_only_when_it_adds_to_the_line() {
         BridgeError::NotFound { entity: BridgeEntityKind::Library, id: "library-1".into() };
     assert_eq!(bridge_error_shown_detail(&missing), None);
 }
+
+/// A failure names the receiver that refused this device only for an AirPlay
+/// receiver's refusal, which an app titles with the receiver's name.
+#[test]
+fn only_a_receivers_refusal_names_the_receiver() {
+    let refused = BridgeError::diagnostic(
+        BridgeErrorCategory::AirPlayBackOff { receiver: "Kitchen".into(), seconds: 30 },
+        "Kitchen asks to wait 30 seconds before another try",
+    );
+    assert_eq!(bridge_error_refusing_receiver(&refused).as_deref(), Some("Kitchen"));
+    let unsupported = BridgeError::diagnostic(
+        BridgeErrorCategory::AirPlayUnsupported,
+        "this AirPlay receiver requires an encryption the sender can't provide",
+    );
+    assert_eq!(bridge_error_refusing_receiver(&unsupported), None);
+    assert_eq!(bridge_error_refusing_receiver(&BridgeError::Cancelled), None);
+}

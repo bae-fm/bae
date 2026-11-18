@@ -170,16 +170,16 @@ impl From<bae_diagnostics::UiError> for AutomationError {
             | UiErrorCategory::Renderer
             | UiErrorCategory::AirPlayUnsupported
             | UiErrorCategory::AirPlayUnreadableSettings
-            | UiErrorCategory::AirPlayPairingFailed
-            | UiErrorCategory::AirPlayLockedOut
-            | UiErrorCategory::AirPlayBusy
+            | UiErrorCategory::AirPlayPairingFailed { .. }
+            | UiErrorCategory::AirPlayLockedOut { .. }
+            | UiErrorCategory::AirPlayBusy { .. }
             | UiErrorCategory::AirPlayBackOff { .. }
-            | UiErrorCategory::AirPlayNotPairing
-            | UiErrorCategory::AirPlayFull
-            | UiErrorCategory::AirPlayUnreachable
-            | UiErrorCategory::AirPlayHomeOnly
-            | UiErrorCategory::AirPlayAdminsOnly
-            | UiErrorCategory::AirPlayOwnerOnly
+            | UiErrorCategory::AirPlayNotPairing { .. }
+            | UiErrorCategory::AirPlayFull { .. }
+            | UiErrorCategory::AirPlayUnreachable { .. }
+            | UiErrorCategory::AirPlayHomeOnly { .. }
+            | UiErrorCategory::AirPlayAdminsOnly { .. }
+            | UiErrorCategory::AirPlayOwnerOnly { .. }
             | UiErrorCategory::ReplacementUnfinished(_)
             | UiErrorCategory::RestoreRegistered
             | UiErrorCategory::MemberKeysReplaced

@@ -602,9 +602,13 @@ OpenCalls = "LibrarySessions"
     "bootstrap_inner",
     "open_library",
 ]
-# The platform hands its artwork analyzer in once at launch; the adapter is
+# The platform hands its artwork analyzer in once at launch, and the sheet
+# that asks for an AirPlay receiver's code with each cast; each adapter is
 # built where it arrives.
-"bae-bridge/src/handle/desktop.rs" = ["AppHandle::register_artwork_analyzer"]
+"bae-bridge/src/handle/desktop.rs" = [
+    "AppHandle::register_artwork_analyzer",
+    "AppHandle::cast_to",
+]
 # The app makes a cancel for each call it may stop while the call runs, and
 # the call takes the cancel's signal with the guard that sends it when the
 # call's future drops.
@@ -779,6 +783,7 @@ OpenCalls = "LibrarySessions"
 "bae-audio/src/stream_wake.rs" = ["StreamWake::new"]
 "bae-audio/src/test_reads.rs" = ["COUNTS"]
 "bae-audio/src/track_stream.rs" = ["StreamingState::new"]
+"bae-bridge/src/airplay_prompt.rs" = ["NativeCodePrompt::new"]
 "bae-bridge/src/audio_focus.rs" = ["PlatformAudioFocus::new"]
 "bae-bridge/src/handle.rs" = [
     "AppHandle::start",

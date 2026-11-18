@@ -96,7 +96,8 @@ fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<
 #[test]
 fn transient_pair_setup_sends_the_hkp_header() {
     let (sender, receiver) = pair_with_user_agent(AP2_USER_AGENT);
-    let key = sender.expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4 and a name");
+    let key =
+        sender.expect("the receiver accepts a pair-setup that carries X-Apple-HKP: 4 and a name");
     assert_eq!(receiver.expect("the receiver read both POSTs"), key);
 }
 

@@ -4,6 +4,7 @@ import fm.bae.app.BridgeFixtures
 import kotlinx.coroutines.awaitCancellation
 import uniffi.bae_bridge.AddDeviceStatusSubscription
 import uniffi.bae_bridge.AdminChangesSubscription
+import uniffi.bae_bridge.AirPlayCodePromptCallback
 import uniffi.bae_bridge.AlbumDetailSubscription
 import uniffi.bae_bridge.AlbumPlaceSubscription
 import uniffi.bae_bridge.AlbumSectionsSubscription
@@ -693,7 +694,10 @@ internal open class FakeAppHandle(
         unfaked("unlockStoreKey")
     }
 
-    override suspend fun castTo(deviceId: String) {
+    override suspend fun castTo(
+        deviceId: String,
+        prompt: AirPlayCodePromptCallback,
+    ) {
         unfaked("castTo")
     }
 

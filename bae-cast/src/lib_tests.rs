@@ -4,7 +4,8 @@
 )]
 
 use super::*;
-use crate::airplay::{AirPlayCapabilities, UnreadableSetting};
+use crate::airplay::UnreadableSetting;
+use crate::airplay_cast::airplay_pairing_failure;
 use bae_util::audio_container::AudioContainer;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -25,7 +26,7 @@ fn browsing(controller: &CastController) -> bool {
 
 /// Ask `controller` to browse for the picker, and wait until the ask is
 /// decided: browsing starts once the setting is read.
-fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastController>) {
+pub(crate) fn start_discovery(runtime: &tokio::runtime::Runtime, controller: &Arc<CastController>) {
     start_discovery_for(runtime, controller, BrowsingFor::Picker);
 }
 
@@ -42,7 +43,7 @@ fn start_discovery_for(
 }
 
 /// Write the casting setting, and wait until the controller has applied it.
-fn set_casting(
+pub(crate) fn set_casting(
     runtime: &tokio::runtime::Runtime,
     controller: &CastController,
     services: &AppServices,
@@ -58,7 +59,7 @@ fn set_casting(
 /// A controller over a fresh library, on the runtime it returns, serving
 /// casts on loopback. The `TempDir` owns that library's files, so it must
 /// outlive the controller.
-fn test_controller(
+pub(crate) fn test_controller(
     discovery: RendererDiscovery,
 ) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir) {
     let (runtime, services, tmp) = bae_app::test_services::runtime_with_services();
@@ -68,9 +69,29 @@ fn test_controller(
         discovery,
         ServingNetwork::Loopback,
         ids(),
+        device_secrets(&tmp),
         Diagnostics::noop(),
     );
     (runtime, controller, services, tmp)
+}
+
+/// This device's keychain for a test: in memory, under `tmp`.
+fn device_secrets(tmp: &tempfile::TempDir) -> coven::Coven {
+    coven::Coven::in_memory(tmp.path().join("device"))
+}
+
+/// The prompt of a cast that asks for no code: asking fails the test.
+struct NoCodeAsked;
+
+#[async_trait::async_trait]
+impl CodePrompt for NoCodeAsked {
+    async fn code(&self, request: CodeRequest) -> Result<String, bae_util::task_failure::Bug> {
+        panic!("the cast asked for a code: {request:?}")
+    }
+}
+
+fn no_code() -> Arc<dyn CodePrompt> {
+    Arc::new(NoCodeAsked)
 }
 
 /// A loopback port nothing listens on: bound to take a free port from the
@@ -112,7 +133,10 @@ fn discovery_and_casting_follow_the_cast_setting() {
     start_discovery(&runtime, &controller);
     assert!(!browsing(&controller), "casting is off: nothing may browse");
     assert!(
-        matches!(runtime.block_on(controller.cast_to("some-device")), Err(CastError::Disabled)),
+        matches!(
+            runtime.block_on(controller.cast_to("some-device", no_code())),
+            Err(CastError::Disabled)
+        ),
         "casting is off: a session must be refused"
     );
 
@@ -122,7 +146,7 @@ fn discovery_and_casting_follow_the_cast_setting() {
     // No device was reported, so the request reaches the device lookup and
     // fails there rather than at the gate.
     assert!(matches!(
-        runtime.block_on(controller.cast_to("some-device")),
+        runtime.block_on(controller.cast_to("some-device", no_code())),
         Err(CastError::DeviceNotFound)
     ));
 
@@ -256,7 +280,7 @@ fn reported_devices_follow_the_host_browser_and_the_cast_setting() {
 
     // Casting to a reported device reaches the real connect, which the
     // loopback port refuses, rather than stopping at the gate.
-    let cast = runtime.block_on(controller.cast_to("cast-2"));
+    let cast = runtime.block_on(controller.cast_to("cast-2", no_code()));
     assert!(matches!(cast, Err(CastError::Connect(_))), "{cast:?}");
 }
 
@@ -305,7 +329,7 @@ fn cast_in_background(
     device_id: &'static str,
 ) -> tokio::task::JoinHandle<Result<(), CastError>> {
     let controller = controller.clone();
-    runtime.spawn(async move { controller.cast_to(device_id).await })
+    runtime.spawn(async move { controller.cast_to(device_id, no_code()).await })
 }
 
 /// What the cast `call` ended with, once the receiver it was connecting to
@@ -361,7 +385,7 @@ fn a_newer_cast_calls_off_the_one_still_connecting() {
     let first = cast_in_background(&runtime, &controller, "cast-1");
     let connection = receiver.connecting();
 
-    let second = runtime.block_on(controller.cast_to("cast-2"));
+    let second = runtime.block_on(controller.cast_to("cast-2", no_code()));
     assert!(matches!(second, Err(CastError::Connect(_))), "{second:?}");
 
     let first = ended_after_letting_go(&runtime, first, connection);
@@ -439,59 +463,36 @@ fn ids() -> coven::IdSourceRef {
 /// connection is attempted, with the setting named in the error.
 #[test]
 fn an_unreadable_airplay_advertisement_is_refused() {
+    let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
+    set_casting(&runtime, &controller, &services, true);
+    start_discovery(&runtime, &controller);
+    // A port that refuses connections: a cast that connected would fail
+    // otherwise.
+    controller.renderer_found(reported_airplay2_service(
+        "AA01",
+        refusing_loopback_port(),
+        "garbage",
+    ));
+    let error = runtime
+        .block_on(controller.cast_to("AA01", no_code()))
+        .expect_err("an unreadable advertisement builds no sink");
     let unreadable =
         UnreadableSetting { key: "features".to_string(), raw: Some("garbage".to_string()) };
-    let Err(error) = build_airplay_sink(
-        &ids(),
-        &Diagnostics::noop(),
-        "Kitchen Mac",
-        bae_playback::renderer::CastReceiver {
-            id: "AA01".to_string(),
-            name: "Kitchen".to_string(),
-            kind: bae_playback::renderer::RendererKind::AirPlay,
-            model: None,
-            address: "10.0.0.7".to_string(),
-            takes_volume: true,
-        },
-        "10.0.0.7".parse().unwrap(),
-        7000,
-        &Err(unreadable.clone()),
-    ) else {
-        panic!("an unreadable advertisement builds no sink");
-    };
     assert!(
-        matches!(&error, CastError::AirPlayUnreadableSettings(setting) if *setting == unreadable)
+        matches!(&error, CastError::AirPlayUnreadableSettings(setting) if *setting == unreadable),
+        "{error:?}"
     );
     assert!(error.to_string().contains("\"garbage\""));
 }
 
 /// An AirPlay 2 receiver that advertises no status flags pairs with the
-/// password-less transient pairing whatever its other feature bits, so it is
-/// not refused before any connection is attempted.
+/// password-less transient pairing whatever its other feature bits.
 #[test]
-fn an_airplay2_receiver_without_bit_48_and_without_flags_is_not_refused() {
+fn an_airplay2_receiver_without_bit_48_and_without_flags_pairs_transiently() {
     // Unified media control (bit 38) without CoreUtils pairing (bit 48).
-    let capabilities = AirPlayCapabilities::from_txt(
-        RendererServiceType::AirPlay,
-        &std::collections::HashMap::from([("features".to_string(), "0x0,0x40".to_string())]),
-    );
-    let sink = build_airplay_sink(
-        &ids(),
-        &Diagnostics::noop(),
-        "Kitchen Mac",
-        bae_playback::renderer::CastReceiver {
-            id: "AA01".to_string(),
-            name: "Kitchen".to_string(),
-            kind: bae_playback::renderer::RendererKind::AirPlay,
-            model: None,
-            address: "10.0.0.7".to_string(),
-            takes_volume: true,
-        },
-        "10.0.0.7".parse().unwrap(),
-        7000,
-        &capabilities,
-    );
-    assert!(sink.is_ok(), "{:?}", sink.err());
+    let (cast, _, _runtime) =
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::Complete, "0x0,0x40");
+    cast.expect("the receiver paired transiently");
 }
 
 /// A receiver whose AirPlay advertisement says it plays only from people in its
@@ -506,13 +507,9 @@ fn a_restricted_receiver_is_refused_without_connecting() {
     // `Connect`, not with its access refusal.
     let port = refusing_loopback_port();
     for (id, restriction, expected) in [
-        ("AA01", ("acl", "1"), "this AirPlay receiver plays only from people in its home"),
-        ("AA02", ("acl", "2"), "this AirPlay receiver plays only from its home's admins"),
-        (
-            "AA03",
-            ("act", "2"),
-            "this AirPlay receiver plays only from the account it is set up with",
-        ),
+        ("AA01", ("acl", "1"), "AA01 plays only from people in its home"),
+        ("AA02", ("acl", "2"), "AA02 plays only from its home's admins"),
+        ("AA03", ("act", "2"), "AA03 plays only from the account it is set up with"),
     ] {
         controller.renderer_found(ReportedRenderer {
             service_type: RendererServiceType::AirPlay,
@@ -524,21 +521,22 @@ fn a_restricted_receiver_is_refused_without_connecting() {
                 .map(|(k, v)| (k.to_string(), v.to_string()))
                 .collect(),
         });
-        let error =
-            runtime.block_on(controller.cast_to(id)).expect_err("a restricted receiver is refused");
+        let error = runtime
+            .block_on(controller.cast_to(id, no_code()))
+            .expect_err("a restricted receiver is refused");
         assert_eq!(error.to_string(), expected);
     }
 }
 
-/// An AirPlay 2 service a host browser reports at `127.0.0.1:port`, asking for
-/// nothing before pairing.
-fn reported_airplay2_service(id: &str, port: u16) -> ReportedRenderer {
+/// An AirPlay 2 service a host browser reports at `127.0.0.1:port` with
+/// `features`, asking for nothing before pairing.
+fn reported_airplay2_service(id: &str, port: u16, features: &str) -> ReportedRenderer {
     ReportedRenderer {
         service_type: RendererServiceType::AirPlay,
         instance_name: id.to_string(),
         addr: "127.0.0.1".to_string(),
         port,
-        txt: [("deviceid", id), ("features", "0x0,0x10000")]
+        txt: [("deviceid", id), ("features", features)]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect(),
@@ -550,48 +548,47 @@ fn reported_airplay2_service(id: &str, port: u16) -> ReportedRenderer {
 /// to before it started.
 fn cast_to_scripted_airplay2(
     script: airplay::fake_receiver::PairSetupScript,
+    features: &str,
 ) -> (Result<(), CastError>, bae_playback::PlaybackProgressFeed, tokio::runtime::Runtime) {
     let (runtime, controller, services, _tmp) = test_controller(RendererDiscovery::reported());
     set_casting(&runtime, &controller, &services, true);
     start_discovery(&runtime, &controller);
     let port = airplay::fake_receiver::listen_for_pair_setup(script);
-    controller.renderer_found(reported_airplay2_service("AA01", port));
+    controller.renderer_found(reported_airplay2_service("AA01", port, features));
     let progress = services.subscribe_playback_progress();
-    let cast = runtime.block_on(controller.cast_to("AA01"));
+    let cast = runtime.block_on(controller.cast_to("AA01", no_code()));
     (cast, progress, runtime)
-}
-
-/// A 470 to the first pair-setup step is a receiver asking for a PIN, said
-/// where the cast was asked for and not as a playback failure later.
-#[test]
-fn a_470_to_the_first_pairing_step_is_a_receiver_that_needs_a_pin() {
-    let (cast, _, _runtime) =
-        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::RefuseM1With470);
-    assert!(matches!(cast, Err(CastError::AirPlayPinRequired)), "{cast:?}");
 }
 
 /// A receiver pairing with another device says so.
 #[test]
 fn a_receiver_busy_pairing_with_another_device_says_it_is_busy() {
-    let (cast, _, _runtime) =
-        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::ErrorInM2(0x07));
-    assert!(matches!(cast, Err(CastError::AirPlayBusy)), "{cast:?}");
+    let (cast, _, _runtime) = cast_to_scripted_airplay2(
+        airplay::fake_receiver::PairSetupScript::ErrorInM2(0x07),
+        "0x0,0x10000",
+    );
+    assert!(
+        matches!(&cast, Err(CastError::AirPlayBusy { receiver }) if receiver == "AA01"),
+        "{cast:?}"
+    );
 }
 
 /// A receiver that takes the connection and closes it mid-pairing is one bae
 /// couldn't reach, not one that refused.
 #[test]
 fn a_receiver_that_closes_the_connection_mid_pairing_is_unreachable() {
-    let (cast, _, _runtime) =
-        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::DropAfterM2);
-    assert!(matches!(cast, Err(CastError::AirPlayUnreachable(_))), "{cast:?}");
+    let (cast, _, _runtime) = cast_to_scripted_airplay2(
+        airplay::fake_receiver::PairSetupScript::DropAfterM2,
+        "0x0,0x10000",
+    );
+    assert!(matches!(cast, Err(CastError::AirPlayUnreachable { .. })), "{cast:?}");
 }
 
 /// A receiver that answers every pairing step is handed to playback.
 #[test]
 fn a_receiver_that_pairs_is_handed_to_playback() {
     let (cast, mut progress, runtime) =
-        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::Complete);
+        cast_to_scripted_airplay2(airplay::fake_receiver::PairSetupScript::Complete, "0x0,0x10000");
     cast.expect("the receiver paired");
     runtime.block_on(async {
         tokio::time::timeout(HANG_GUARD, async {
@@ -617,30 +614,37 @@ fn every_pairing_refusal_has_its_own_cast_error() {
     use crate::airplay::ap2_session::Ap2Error;
     use crate::airplay::pairing::{HomeKitError, PairingError};
     let refused = |error: HomeKitError| {
-        airplay_pairing_failure(Ap2Error::Pairing(PairingError::Receiver(error)))
+        airplay_pairing_failure(Ap2Error::Pairing(PairingError::Receiver(error)), "Kitchen")
     };
-    assert!(matches!(refused(HomeKitError::MaxTries), CastError::AirPlayLockedOut));
-    assert!(matches!(refused(HomeKitError::Busy), CastError::AirPlayBusy));
+    assert!(matches!(refused(HomeKitError::MaxTries), CastError::AirPlayLockedOut { .. }));
+    assert!(matches!(refused(HomeKitError::Busy), CastError::AirPlayBusy { .. }));
     assert!(matches!(
         refused(HomeKitError::BackOff { seconds: 30 }),
-        CastError::AirPlayBackOff { seconds: 30 }
+        CastError::AirPlayBackOff { seconds: 30, .. }
     ));
-    assert!(matches!(refused(HomeKitError::Unavailable), CastError::AirPlayNotPairing));
-    assert!(matches!(refused(HomeKitError::MaxPeers), CastError::AirPlayFull));
+    assert!(matches!(refused(HomeKitError::Unavailable), CastError::AirPlayNotPairing { .. }));
+    assert!(matches!(
+        refused(HomeKitError::MaxPeers),
+        CastError::AirPlayFull { receiver } if receiver == "Kitchen"
+    ));
     for error in [HomeKitError::Unknown, HomeKitError::Authentication, HomeKitError::Other(9)] {
-        assert!(matches!(refused(error), CastError::AirPlayPairingFailed(_)), "{error:?}");
+        assert!(matches!(refused(error), CastError::AirPlayPairingFailed { .. }), "{error:?}");
     }
 
     // A reply that doesn't check out is a failed pairing.
-    let malformed =
-        airplay_pairing_failure(Ap2Error::Pairing(PairingError::InvalidField("salt length")));
-    assert!(matches!(malformed, CastError::AirPlayPairingFailed(_)), "{malformed:?}");
+    let malformed = airplay_pairing_failure(
+        Ap2Error::Pairing(PairingError::InvalidField("salt length")),
+        "Kitchen",
+    );
+    assert!(matches!(malformed, CastError::AirPlayPairingFailed { .. }), "{malformed:?}");
 
     // A step refused with a status and no HomeKit error names the POST.
-    let rejected =
-        airplay_pairing_failure(Ap2Error::Rejected { step: "/pair-setup M3", status: 500 });
+    let rejected = airplay_pairing_failure(
+        Ap2Error::Rejected { step: "/pair-setup M3", status: 500 },
+        "Kitchen",
+    );
     assert!(
-        matches!(&rejected, CastError::AirPlayPairingFailed(detail) if detail.contains("/pair-setup M3") && detail.contains("500")),
+        matches!(&rejected, CastError::AirPlayPairingFailed { detail, .. } if detail.contains("/pair-setup M3") && detail.contains("500")),
         "{rejected:?}"
     );
 
@@ -650,8 +654,9 @@ fn every_pairing_refusal_has_its_own_cast_error() {
         std::io::ErrorKind::TimedOut,
         std::io::ErrorKind::UnexpectedEof,
     ] {
-        let unreachable = airplay_pairing_failure(Ap2Error::Io(std::io::Error::from(kind)));
-        assert!(matches!(unreachable, CastError::AirPlayUnreachable(_)), "{kind:?}");
+        let unreachable =
+            airplay_pairing_failure(Ap2Error::Io(std::io::Error::from(kind)), "Kitchen");
+        assert!(matches!(unreachable, CastError::AirPlayUnreachable { .. }), "{kind:?}");
     }
 }
 
@@ -831,10 +836,12 @@ struct CastToFake {
     first_load: serde_json::Value,
     _controller: Arc<CastController>,
     _library: bae_library::test_libraries::TestLibrary,
+    _device: tempfile::TempDir,
 }
 
 fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
+    let device = tempfile::tempdir().expect("a folder for this device's keychain");
     let (library, imported) = runtime
         .block_on(bae_library::test_libraries::imported_release_setup(
             bae_catalogs::test_releases::discogs_test_release(
@@ -859,6 +866,7 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
         RendererDiscovery::reported(),
         ServingNetwork::Loopback,
         ids(),
+        device_secrets(&device),
         Diagnostics::noop(),
     );
     set_casting(&runtime, &controller, &services, true);
@@ -866,7 +874,9 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
     let (mut fake, port) = runtime.block_on(cast::fake_receiver::FakeReceiver::serve_tls(true));
     controller.renderer_found(reported_cast_service("Kitchen", "cast-1", port));
 
-    runtime.block_on(controller.cast_to("cast-1")).expect("the receiver launches its app");
+    runtime
+        .block_on(controller.cast_to("cast-1", no_code()))
+        .expect("the receiver launches its app");
     runtime
         .block_on(services.playback_play_release(imported.release_id.clone(), None, false))
         .expect("the release plays");
@@ -881,6 +891,7 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
         first_load,
         _controller: controller,
         _library: library,
+        _device: device,
     }
 }
 

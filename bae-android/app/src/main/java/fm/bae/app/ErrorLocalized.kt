@@ -14,6 +14,7 @@ import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.bridgeErrorLineKey
+import uniffi.bae_bridge.bridgeErrorRefusingReceiver
 import uniffi.bae_bridge.bridgeErrorRetryCanHelp
 import uniffi.bae_bridge.bridgeErrorShownDetail
 import uniffi.bae_bridge.bridgePlayOutcomeKey
@@ -61,7 +62,27 @@ fun Context.localizedLine(error: BridgeException): String? =
             }
 
             is BridgeErrorCategory.AirPlayBackOff -> {
-                coreString(key, mapOf("duration" to waitText(category.seconds.toLong(), currentLocale())))
+                coreString(
+                    key,
+                    mapOf(
+                        "receiver" to category.receiver,
+                        "duration" to waitText(category.seconds.toLong(), currentLocale()),
+                    ),
+                )
+            }
+
+            is BridgeErrorCategory.AirPlayPairingFailed,
+            is BridgeErrorCategory.AirPlayLockedOut,
+            is BridgeErrorCategory.AirPlayBusy,
+            is BridgeErrorCategory.AirPlayNotPairing,
+            is BridgeErrorCategory.AirPlayFull,
+            is BridgeErrorCategory.AirPlayUnreachable,
+            is BridgeErrorCategory.AirPlayHomeOnly,
+            is BridgeErrorCategory.AirPlayAdminsOnly,
+            is BridgeErrorCategory.AirPlayOwnerOnly,
+            -> {
+                val receiver = requireNotNull(bridgeErrorRefusingReceiver(error)) { "a refusal names its receiver" }
+                coreString(key, mapOf("receiver" to receiver))
             }
 
             else -> {

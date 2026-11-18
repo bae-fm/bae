@@ -823,6 +823,8 @@ pub(crate) fn start_handle(
             diagnostics,
             #[cfg(feature = "cast")]
             host.ids.clone(),
+            #[cfg(feature = "cast")]
+            host.coven.clone(),
             host,
             record,
         )

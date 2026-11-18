@@ -382,16 +382,16 @@ fn produced_keys() -> Vec<String> {
             reason: BridgeGroupingBlock::FolderFilesDownloading,
         },
         BridgeErrorCategory::AirPlayUnsupported,
-        BridgeErrorCategory::AirPlayPairingFailed,
-        BridgeErrorCategory::AirPlayLockedOut,
-        BridgeErrorCategory::AirPlayBusy,
-        BridgeErrorCategory::AirPlayBackOff { seconds: 30 },
-        BridgeErrorCategory::AirPlayNotPairing,
-        BridgeErrorCategory::AirPlayFull,
-        BridgeErrorCategory::AirPlayUnreachable,
-        BridgeErrorCategory::AirPlayHomeOnly,
-        BridgeErrorCategory::AirPlayAdminsOnly,
-        BridgeErrorCategory::AirPlayOwnerOnly,
+        BridgeErrorCategory::AirPlayPairingFailed { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayLockedOut { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayBusy { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayBackOff { receiver: "Kitchen".into(), seconds: 30 },
+        BridgeErrorCategory::AirPlayNotPairing { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayFull { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayUnreachable { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayHomeOnly { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayAdminsOnly { receiver: "Kitchen".into() },
+        BridgeErrorCategory::AirPlayOwnerOnly { receiver: "Kitchen".into() },
         BridgeErrorCategory::AirPlayUnreadableSettings,
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Reset },
         BridgeErrorCategory::ReplacementUnfinished { by: BridgeReplacedBy::Restore },
@@ -651,6 +651,26 @@ fn produced_keys() -> Vec<String> {
         BridgeTermLabel::Verbatim { text: "12\"".to_string() }
     );
 
+    // bridge_airplay_code_message_key and bridge_airplay_code_field_key, over
+    // every request.
+    #[cfg(feature = "cast")]
+    for code in [BridgeAirPlayCode::Pin { digits: 4 }, BridgeAirPlayCode::Password] {
+        for why in [
+            BridgeAirPlayCodeAsked::FirstPairing,
+            BridgeAirPlayCodeAsked::EveryCast,
+            BridgeAirPlayCodeAsked::PairingLost,
+        ] {
+            for last_try in [
+                None,
+                Some(BridgeAirPlayCodeRefused::WrongCode),
+                Some(BridgeAirPlayCodeRefused::WrongShape),
+            ] {
+                let request = BridgeAirPlayCodeRequest { code, why, last_try };
+                keys.push(bridge_airplay_code_message_key(request));
+                keys.extend(bridge_airplay_code_field_key(request));
+            }
+        }
+    }
     keys
 }
 
@@ -776,8 +796,14 @@ fn playback_error_reason_lines() -> Vec<BridgeMessage> {
         },
         BridgePlaybackErrorReason::AudioOutput {
             problem: BridgeAudioOutputProblem::AirPlayPairingLost {
-                receiver_id: "58:55:CA:1A:2B:3C".to_string(),
-                receiver_name: name(),
+                receiver: BridgeCastReceiver {
+                    id: "5855CA1A2B3C".to_string(),
+                    name: name(),
+                    kind: BridgeRendererKind::AirPlay,
+                    model: None,
+                    address: "192.168.1.40".to_string(),
+                    takes_volume: true,
+                },
             },
         },
     ]

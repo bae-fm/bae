@@ -46,9 +46,9 @@ impl UiErrorCategory {
             | Self::Membership
             // A receiver done pairing with another device, one whose asked
             // wait has passed, or one that can be reached again.
-            | Self::AirPlayBusy
+            | Self::AirPlayBusy { .. }
             | Self::AirPlayBackOff { .. }
-            | Self::AirPlayUnreachable => true,
+            | Self::AirPlayUnreachable { .. } => true,
             // Refused, damaged, or a bug: the same call fails the same way.
             Self::Database
             | Self::DatabaseDamaged
@@ -91,13 +91,13 @@ impl UiErrorCategory {
             | Self::Renderer
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
-            | Self::AirPlayPairingFailed
-            | Self::AirPlayLockedOut
-            | Self::AirPlayNotPairing
-            | Self::AirPlayFull
-            | Self::AirPlayHomeOnly
-            | Self::AirPlayAdminsOnly
-            | Self::AirPlayOwnerOnly
+            | Self::AirPlayPairingFailed { .. }
+            | Self::AirPlayLockedOut { .. }
+            | Self::AirPlayNotPairing { .. }
+            | Self::AirPlayFull { .. }
+            | Self::AirPlayHomeOnly { .. }
+            | Self::AirPlayAdminsOnly { .. }
+            | Self::AirPlayOwnerOnly { .. }
             // The storage location or bucket as it is, and the keychain or
             // Block Store as this build and phone have them.
             | Self::S3VersioningUnsupported(_)

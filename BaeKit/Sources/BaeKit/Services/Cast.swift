@@ -9,8 +9,13 @@ public final class Cast: Sendable, Observable {
     public let startDiscovery: @Sendable (_ asker: BridgeBrowsingFor) -> Void
     /// `asker` closed. Browsing ends with the last place open.
     public let stopDiscovery: @Sendable (_ asker: BridgeBrowsingFor) -> Void
-    /// Switch playback to the device with this id.
-    public let castTo: @Sendable (_ deviceId: String) async throws -> Void
+    /// Switch playback to the device with this id, asking `prompt` for the
+    /// code an AirPlay receiver wants.
+    public let castTo:
+        @Sendable (
+            _ deviceId: String,
+            _ prompt: any AirPlayCodePromptCallback
+        ) async throws -> Void
     /// Stop casting and return playback to local output.
     public let stopCasting: @Sendable () -> Void
     /// Whether casting is available at all. Turning it off is what stops
@@ -27,7 +32,9 @@ public final class Cast: Sendable, Observable {
         },
         stopDiscovery: @escaping @Sendable (BridgeBrowsingFor) -> Void = { _ in
         },
-        castTo: @escaping @Sendable (String) async throws -> Void = { _ in },
+        castTo:
+            @escaping @Sendable (String, any AirPlayCodePromptCallback)
+            async throws -> Void = { _, _ in },
         stopCasting: @escaping @Sendable () -> Void = {},
         setEnabled: @escaping @Sendable (Bool) async throws -> Void = { _ in },
         setTranscodeFormat:
@@ -46,7 +53,7 @@ public final class Cast: Sendable, Observable {
         self.init(
             startDiscovery: { handle.startCastDiscovery(asker: $0) },
             stopDiscovery: { handle.stopCastDiscovery(asker: $0) },
-            castTo: { try await handle.castTo(deviceId: $0) },
+            castTo: { try await handle.castTo(deviceId: $0, prompt: $1) },
             stopCasting: { handle.stopCasting() },
             setEnabled: { try await handle.setCastEnabled(enabled: $0) },
             setTranscodeFormat: {

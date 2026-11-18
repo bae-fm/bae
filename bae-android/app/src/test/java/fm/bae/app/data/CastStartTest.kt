@@ -5,6 +5,7 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
@@ -14,6 +15,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeAirPlayCode
+import uniffi.bae_bridge.BridgeAirPlayCodeAsked
+import uniffi.bae_bridge.BridgeAirPlayCodeRefused
+import uniffi.bae_bridge.BridgeAirPlayCodeRequest
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
@@ -47,8 +52,8 @@ class CastStartTest {
     private fun failingStart(pickerOpen: Boolean) =
         CastStart(
             scope = scope,
-            castTo = { throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "unreachable") },
-            failureOf = { DisplayError("Couldn't reach it", null) },
+            castTo = { _, _ -> throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "unreachable") },
+            failureOf = { CastStart.Failure(DisplayError("Couldn't reach it", null), refusedBy = null) },
             pickerOpen = { pickerOpen },
             tell = { told += it },
         )
@@ -60,7 +65,13 @@ class CastStartTest {
         start.cast(kitchen)
 
         assertNull(start.connecting.value)
-        assertEquals("Couldn't reach it", start.failure.value?.line)
+        assertEquals(
+            "Couldn't reach it",
+            start.failure.value
+                ?.error
+                ?.line,
+        )
+        assertNull(start.failure.value?.refusedBy)
         assertEquals(emptyList<DisplayError>(), told)
         assertNull(start.started.value)
     }
@@ -93,7 +104,7 @@ class CastStartTest {
         val start =
             CastStart(
                 scope = scope,
-                castTo = { id ->
+                castTo = { id, _ ->
                     if (id == "kitchen") waiting.await()
                     reached += id
                 },
@@ -119,7 +130,7 @@ class CastStartTest {
         val start =
             CastStart(
                 scope = scope,
-                castTo = { waiting.await() },
+                castTo = { _, _ -> waiting.await() },
                 failureOf = { null },
                 pickerOpen = { true },
                 tell = { told += it },
@@ -133,5 +144,86 @@ class CastStartTest {
 
         assertTrue(start.didStart(firstPickerAsked))
         assertFalse(start.didStart(secondPickerAsked))
+    }
+
+    private val pinRequest =
+        BridgeAirPlayCodeRequest(
+            code = BridgeAirPlayCode.Pin(digits = 4u),
+            why = BridgeAirPlayCodeAsked.FIRST_PAIRING,
+            lastTry = null,
+        )
+
+    @Test
+    fun aReceiversAskOpensTheDialogAndPairHandsBackTheCode() {
+        val entered = mutableListOf<String>()
+        val wrong = pinRequest.copy(lastTry = BridgeAirPlayCodeRefused.WRONG_CODE)
+        val finish = CompletableDeferred<Unit>()
+        val start =
+            CastStart(
+                scope = scope,
+                castTo = { _, prompt ->
+                    entered += prompt.code(pinRequest)
+                    entered += prompt.code(wrong)
+                    finish.await()
+                },
+                failureOf = { null },
+                pickerOpen = { true },
+                tell = { told += it },
+            )
+
+        start.cast(kitchen)
+        assertEquals(pinRequest, start.codeSheet.value?.request)
+        assertFalse(start.codeSheet.value!!.pairing)
+
+        start.pair("0482")
+        assertEquals(wrong, start.codeSheet.value?.request)
+        assertFalse(start.codeSheet.value!!.pairing)
+        start.pair("1234")
+        assertTrue(start.codeSheet.value!!.pairing)
+        assertEquals(listOf("0482", "1234"), entered)
+
+        finish.complete(Unit)
+        assertNull(start.codeSheet.value)
+        assertNull(start.connecting.value)
+    }
+
+    @Test
+    fun cancelClosesTheDialogAndCallsTheCastOff() {
+        val start =
+            CastStart(
+                scope = scope,
+                castTo = { _, prompt ->
+                    prompt.code(pinRequest)
+                    awaitCancellation()
+                },
+                failureOf = { null },
+                pickerOpen = { true },
+                tell = { told += it },
+            )
+
+        val asked = start.cast(kitchen)
+        start.cancelCode()
+
+        assertNull(start.codeSheet.value)
+        assertNull(start.connecting.value)
+        assertFalse(start.didStart(asked))
+    }
+
+    @Test
+    fun aReceiversRefusalKeepsTheReceiverForThePickersTitle() {
+        val start =
+            CastStart(
+                scope = scope,
+                castTo = { _, _ ->
+                    throw BridgeException.Diagnostic(BridgeErrorCategory.AirPlayLockedOut("Kitchen"), "locked")
+                },
+                failureOf = { CastStart.Failure(DisplayError("Kitchen refuses more PIN attempts.", null), refusedBy = "Kitchen") },
+                pickerOpen = { true },
+                tell = { told += it },
+            )
+
+        start.cast(kitchen)
+
+        assertEquals("Kitchen", start.failure.value?.refusedBy)
     }
 }

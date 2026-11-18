@@ -59,16 +59,16 @@ impl UiErrorCategory {
             | Self::Renderer
             | Self::AirPlayUnsupported
             | Self::AirPlayUnreadableSettings
-            | Self::AirPlayPairingFailed
-            | Self::AirPlayLockedOut
-            | Self::AirPlayBusy
+            | Self::AirPlayPairingFailed { .. }
+            | Self::AirPlayLockedOut { .. }
+            | Self::AirPlayBusy { .. }
             | Self::AirPlayBackOff { .. }
-            | Self::AirPlayNotPairing
-            | Self::AirPlayFull
-            | Self::AirPlayUnreachable
-            | Self::AirPlayHomeOnly
-            | Self::AirPlayAdminsOnly
-            | Self::AirPlayOwnerOnly
+            | Self::AirPlayNotPairing { .. }
+            | Self::AirPlayFull { .. }
+            | Self::AirPlayUnreachable { .. }
+            | Self::AirPlayHomeOnly { .. }
+            | Self::AirPlayAdminsOnly { .. }
+            | Self::AirPlayOwnerOnly { .. }
             | Self::S3VersioningUnsupported(..)
             | Self::StorageLocationChangeUnsupported
             | Self::Keyring

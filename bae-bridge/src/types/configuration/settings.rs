@@ -344,6 +344,30 @@ pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
     }
 }
 
+/// The AirPlay receiver that `error` says refused this device, by the name
+/// discovery found it under, or `None` for every other failure: an app titles
+/// a cast's failure with the receiver's name only for these.
+#[uniffi::export]
+pub fn bridge_error_refusing_receiver(error: &BridgeError) -> Option<String> {
+    use BridgeErrorCategory as C;
+    let BridgeError::Diagnostic { category, .. } = error else {
+        return None;
+    };
+    match category {
+        C::AirPlayPairingFailed { receiver }
+        | C::AirPlayLockedOut { receiver }
+        | C::AirPlayBusy { receiver }
+        | C::AirPlayBackOff { receiver, .. }
+        | C::AirPlayNotPairing { receiver }
+        | C::AirPlayFull { receiver }
+        | C::AirPlayUnreachable { receiver }
+        | C::AirPlayHomeOnly { receiver }
+        | C::AirPlayAdminsOnly { receiver }
+        | C::AirPlayOwnerOnly { receiver } => Some(receiver.clone()),
+        _ => None,
+    }
+}
+
 /// What kept the audio output from starting. Mirrors
 /// `bae_playback::AudioOutputProblem`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -354,10 +378,9 @@ pub enum BridgeAudioOutputProblem {
     UnsupportedFormat,
     /// The AirPlay speaker couldn't be reached or didn't accept the session.
     AirPlayRefused,
-    /// The AirPlay speaker no longer knows this device. `receiver_id` is the
-    /// id a cast to it again takes (Pair again…), and `receiver_name` the
-    /// name the person knows it by.
-    AirPlayPairingLost { receiver_id: String, receiver_name: String },
+    /// The AirPlay speaker no longer knows this device. `receiver` is the
+    /// speaker a cast to it again goes to (Pair again…).
+    AirPlayPairingLost { receiver: BridgeCastReceiver },
 }
 
 /// The line for the actionable `BridgePlaybackErrorReason` variants, or
@@ -546,7 +569,7 @@ impl BridgeAudioOutputProblem {
             AudioOutputProblem::UnsupportedFormat => Self::UnsupportedFormat,
             AudioOutputProblem::AirPlayRefused => Self::AirPlayRefused,
             AudioOutputProblem::AirPlayPairingLost { receiver } => {
-                Self::AirPlayPairingLost { receiver_id: receiver.id, receiver_name: receiver.name }
+                Self::AirPlayPairingLost { receiver: BridgeCastReceiver::from_core(receiver) }
             }
         }
     }

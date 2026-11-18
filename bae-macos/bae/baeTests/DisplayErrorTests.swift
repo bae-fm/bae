@@ -43,13 +43,21 @@ struct DisplayErrorTests {
         #expect(BridgeError.Cancelled.unreadableInstallationLibraryId == nil)
     }
 
-    /// The line for a receiver that asks to wait carries the wait it asked for,
-    /// written as a length of time in the current locale, never as the
-    /// catalog's unfilled placeholder.
-    @Test("an AirPlay back-off line names the wait the receiver asked for")
+    /// The line for a receiver that asks to wait names the receiver and
+    /// carries the wait it asked for, written as a length of time in the
+    /// current locale, never as the catalog's unfilled placeholder.
+    @Test(
+        "an AirPlay back-off line names the receiver and the wait it asked for"
+    )
     func backOffLineNamesTheWait() {
-        let line = BridgeErrorCategory.airPlayBackOff(seconds: 30).localizedLine
+        let line =
+            BridgeErrorCategory.airPlayBackOff(
+                receiver: "Kitchen",
+                seconds: 30
+            )
+            .localizedLine
 
+        #expect(line.hasPrefix("Kitchen"))
         #expect(line.contains("30"))
         #expect(!line.contains("%"))
         #expect(!line.contains("{"))

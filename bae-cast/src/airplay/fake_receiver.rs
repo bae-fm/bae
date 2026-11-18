@@ -34,6 +34,8 @@ const USERNAME: &[u8] = b"Pair-Setup";
 const TRANSIENT_PIN: &[u8] = b"3939";
 /// HomeKit's Authentication error code.
 const AUTHENTICATION: u8 = 0x02;
+/// HomeKit's BackOff error code.
+const BACK_OFF: u8 = 0x03;
 
 /// The SRP server half of a pair-setup.
 pub(crate) struct SrpServer {
@@ -208,8 +210,6 @@ pub(crate) enum PairSetupScript {
     /// Run the whole transient pair-setup, then hold the connection until the
     /// sender closes it.
     Complete,
-    /// Answer M1 with HTTP 470, as receivers that want a PIN do.
-    RefuseM1With470,
     /// Answer M1 with HTTP 200 and this Error TLV code.
     ErrorInM2(u8),
     /// Answer M1 with M2, then close the connection when M3 arrives.
@@ -231,10 +231,6 @@ pub(crate) fn listen_for_pair_setup(script: PairSetupScript) -> u16 {
                 let mut rest = Vec::new();
                 std::io::Read::read_to_end(&mut reader, &mut rest).ok();
             }
-            PairSetupScript::RefuseM1With470 => {
-                let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
-                respond(&mut stream, "470 Connection Authorization Required", m1.cseq(), &[]);
-            }
             PairSetupScript::ErrorInM2(code) => {
                 let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
                 let body = Tlv8::new()
@@ -251,6 +247,26 @@ pub(crate) fn listen_for_pair_setup(script: PairSetupScript) -> u16 {
         }
     });
     port
+}
+
+/// Listen on a loopback port and serve every connection a sender opens with
+/// `receiver`, one after another on one thread, for as long as the test
+/// runs. Returns the port and the receiver, which the test reads.
+pub(crate) fn listen_for_code_pairing(
+    receiver: CodeReceiver,
+) -> (u16, std::sync::Arc<std::sync::Mutex<CodeReceiver>>) {
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
+    let port = listener.local_addr().expect("read the bound port").port();
+    let receiver = std::sync::Arc::new(std::sync::Mutex::new(receiver));
+    let serving = receiver.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let mut stream = stream.expect("the sender connects");
+            let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+            serving.lock().unwrap().serve(&mut reader, &mut stream);
+        }
+    });
+    (port, receiver)
 }
 
 /// HKDF-SHA512 of `ikm` under `salt` and `info`, 32 bytes: HAP's derivation,
@@ -478,6 +494,9 @@ impl VerifyServer {
 /// What a scripted receiver that pairs by code refuses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CodeRefusal {
+    /// Answer `/pair-pin-start` with HTTP 400, as a Mac whose AirPlay
+    /// Receiver plays only for its current user does.
+    PinStart400,
     /// Answer a code pair-setup's M1 with this HomeKit error.
     SetupM2(u8),
     /// Answer pair-verify's M1 with HTTP 470.
@@ -528,6 +547,9 @@ pub(crate) struct CodeReceiver {
     pub(crate) paired: Vec<PairedController>,
     /// The URI of each request, in order.
     pub(crate) requests: Vec<String>,
+    /// When a pair-setup may start again after a wrong code with a retry
+    /// delay; one that starts sooner gets BackOff.
+    not_before: Option<std::time::Instant>,
     setup: Option<CodeSetupServer>,
     verify: Option<VerifyServer>,
 }
@@ -551,13 +573,21 @@ impl CodeReceiver {
             retry_delay: None,
             paired: Vec::new(),
             requests: Vec::new(),
+            not_before: None,
             setup: None,
             verify: None,
         }
     }
 
+    /// Forget every controller it paired with, as a receiver that was reset
+    /// does.
+    pub(crate) fn forget_paired(&mut self) {
+        self.paired.clear();
+    }
+
     /// Serve pairing requests on one connection until the sender closes it
-    /// or a pair-verify finishes.
+    /// or a pair-verify finishes. A transient pair-setup gets 470: this
+    /// receiver asks for a code.
     pub(crate) fn serve(
         &mut self,
         reader: &mut impl std::io::BufRead,
@@ -565,6 +595,10 @@ impl CodeReceiver {
     ) -> Served {
         while let Some(request) = read_request(reader).unwrap() {
             self.requests.push(request.uri.clone());
+            if request.header("X-Apple-HKP") == Some("4") {
+                respond(writer, "470 Connection Authorization Required", request.cseq(), &[]);
+                continue;
+            }
             assert_eq!(request.header("X-Apple-HKP"), Some("3"), "{} carries HKP 3", request.uri);
             assert!(
                 request.header("X-Apple-Client-Name").is_some_and(|name| !name.is_empty()),
@@ -585,6 +619,9 @@ impl CodeReceiver {
         let step = || Tlv8::decode(&request.body).unwrap().get_u8(tlv_type::STATE);
         match request.uri.as_str() {
             "/pair-pin-start" => {
+                if self.refusal == Some(CodeRefusal::PinStart400) {
+                    return ("400 Bad Request", Vec::new(), None);
+                }
                 let ReceiverCode::Pins { shown, shown_beside, .. } = &mut self.code else {
                     panic!("a password takes no PIN start");
                 };
@@ -599,13 +636,32 @@ impl CodeReceiver {
                     if let Some(CodeRefusal::SetupM2(code)) = self.refusal {
                         return (OK, error_reply(state::M2, code), None);
                     }
+                    if self
+                        .not_before
+                        .is_some_and(|not_before| std::time::Instant::now() < not_before)
+                    {
+                        let back_off = Tlv8::new()
+                            .push_u8(tlv_type::STATE, state::M2)
+                            .push_u8(tlv_type::ERROR, BACK_OFF)
+                            .push_u8(tlv_type::RETRY_DELAY, self.retry_delay.unwrap_or(1))
+                            .encode();
+                        return (OK, back_off, None);
+                    }
                     let setup = CodeSetupServer::new(self.current_code(), self.identity.clone());
                     let m2 = setup.m2();
                     self.setup = Some(setup);
                     (OK, m2, None)
                 }
                 Some(state::M3) => {
-                    (OK, self.setup.as_mut().unwrap().m4(&request.body, self.retry_delay), None)
+                    let m4 = self.setup.as_mut().unwrap().m4(&request.body, self.retry_delay);
+                    let refused = Tlv8::decode(&m4).unwrap().get_u8(tlv_type::ERROR).is_some();
+                    if let (true, Some(seconds)) = (refused, self.retry_delay) {
+                        self.not_before = Some(
+                            std::time::Instant::now()
+                                + std::time::Duration::from_secs(seconds.into()),
+                        );
+                    }
+                    (OK, m4, None)
                 }
                 Some(state::M5) => {
                     let (m6, paired) = self.setup.take().unwrap().m6(&request.body);

@@ -94,8 +94,13 @@ rand_core = { workspace = true }
 # the X25519 exchange each pair-verify keys a session from.
 ed25519-dalek = { workspace = true }
 x25519-dalek = { workspace = true }
-# The id source the AirPlay 2 SETUP's session and group ids come from.
+# The id source the AirPlay 2 SETUP's session and group ids and the pairing
+# identifiers come from, and this device's keychain entries that keep its
+# pairings with AirPlay receivers.
 coven = { workspace = true }
+# The prompt a cast asks for an AirPlay receiver's code through, which the
+# bridge answers from the app.
+async-trait = { workspace = true }
 
 [dev-dependencies]
 # The async tests of bae's Cast client.

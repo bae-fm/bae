@@ -9,21 +9,24 @@
 //! as the host's bug; the caller answers with its own failure value, so a
 //! host throw never unwinds through core.
 
-use bae_util::task_failure::{caught_sync, Bug};
+use bae_util::task_failure::Bug;
 
 /// Make the host call `call`. A throw comes back as the failure of
-/// `operation`, handed to `bug` to report first.
+/// `operation`, handed to `bug` to report first. Only a phone's host answers
+/// at once: its audio focus.
+#[cfg(any(test, not(desktop)))]
 pub(crate) fn host_call<T>(
     bug: impl FnOnce(Bug) -> Bug,
     operation: &'static str,
     call: impl FnOnce() -> T,
 ) -> Result<T, Bug> {
-    caught_sync(operation, call).map_err(bug)
+    bae_util::task_failure::caught_sync(operation, call).map_err(bug)
 }
 
 /// [`host_call`] for a host method that answers later: the native sign-in
-/// sheet, which only a phone's host presents.
-#[cfg(any(test, all(feature = "oauth-providers", not(desktop))))]
+/// sheet, which only a phone's host presents, and the sheet that asks for an
+/// AirPlay receiver's code.
+#[cfg(any(test, all(feature = "oauth-providers", not(desktop)), feature = "cast"))]
 pub(crate) async fn host_call_async<T>(
     bug: impl FnOnce(Bug) -> Bug,
     operation: &'static str,

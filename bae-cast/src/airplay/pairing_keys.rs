@@ -6,7 +6,16 @@
 //! bae-cast owns this text's format. Whoever keeps it stores the string by
 //! name and never reads inside it.
 
+use rand::RngCore;
+
 use super::pairing::{public_key, ED25519_PUBLIC_KEY_LEN};
+
+/// The name of the keychain entry in which this device keeps its pairing
+/// with the receiver `receiver_id` (its MAC, capitals, no colons): one entry
+/// per receiver, so replacing one pairing touches no other.
+pub(crate) fn pairing_secret_name(receiver_id: &str) -> String {
+    format!("airplay-pairing:{receiver_id}")
+}
 
 /// Who bae is to one receiver: the pairing identifier it introduced itself
 /// with and the seed of the Ed25519 key it signs with. Each receiver gets an
@@ -17,6 +26,16 @@ pub(crate) struct ControllerIdentity {
     pub(crate) id: String,
     /// The 32-byte seed of bae's Ed25519 key for this receiver.
     pub(crate) seed: [u8; 32],
+}
+
+impl ControllerIdentity {
+    /// A new identity for one receiver: an identifier from `ids`, a UUID's
+    /// text in capitals as pyatv makes one, and a random seed.
+    pub(crate) fn new(ids: &dyn coven::IdSource) -> Self {
+        let mut seed = [0u8; 32];
+        rand::rng().fill_bytes(&mut seed);
+        ControllerIdentity { id: ids.new_id().to_string().to_uppercase(), seed }
+    }
 }
 
 /// The seed is a secret: debug output names the identifier and the public

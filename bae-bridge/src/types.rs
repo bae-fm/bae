@@ -1,4 +1,6 @@
 mod admin_change;
+#[cfg(feature = "cast")]
+mod airplay_code;
 mod album_page;
 mod configuration;
 #[cfg(desktop)]
@@ -33,6 +35,8 @@ mod storage_inspector;
 mod sync_activity;
 
 pub use admin_change::*;
+#[cfg(feature = "cast")]
+pub use airplay_code::*;
 pub use album_page::*;
 pub use configuration::*;
 #[cfg(desktop)]

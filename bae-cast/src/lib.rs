@@ -20,6 +20,7 @@ mod airplay;
 mod airplay_cast;
 mod cast;
 mod cast_error;
+mod code_prompt;
 mod dlna;
 pub mod renderer;
 #[cfg(test)]
@@ -49,9 +50,9 @@ use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
-use airplay_cast::{airplay_pairing_failure, build_airplay_sink, CastPairing};
 use cast::{CastChannel, CastClient};
 pub use cast_error::CastError;
+pub use code_prompt::{CodeAsked, CodeKind, CodePrompt, CodeRefused, CodeRequest};
 use dlna::DlnaChannel;
 #[cfg(test)]
 use renderer::discovery::reported::ReportedRenderer;
@@ -214,8 +215,12 @@ pub struct CastController {
     server: Arc<Mutex<Option<EphemeralServer>>>,
     /// Where that server listens.
     serving: ServingNetwork,
-    /// Where an AirPlay session's ids come from.
+    /// Where an AirPlay session's ids, and the identifier bae pairs with a
+    /// receiver as, come from.
     ids: coven::IdSourceRef,
+    /// This device's keychain entries, which keep its pairings with AirPlay
+    /// receivers for every library on it.
+    device_secrets: coven::Coven,
     /// What casting's background work — the server, the watchers, the
     /// discovery readers and the AirPlay stream threads — runs under, so a
     /// panic in it ends what it served.
@@ -244,15 +249,25 @@ impl CastController {
     /// Build the controller over a host's device source and start the background
     /// tasks it needs: the device-list writer that lists the devices for the picker,
     /// the follower that tracks the playback service's session status, and the
-    /// watcher that applies the `cast_enabled` setting.
+    /// watcher that applies the `cast_enabled` setting. `device_secrets` is
+    /// where this device keeps its pairings with AirPlay receivers.
     pub fn start(
         services: AppServices,
         runtime: Handle,
         discovery: RendererDiscovery,
         ids: coven::IdSourceRef,
+        device_secrets: coven::Coven,
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
-        Self::start_serving_on(services, runtime, discovery, ServingNetwork::Lan, ids, diagnostics)
+        Self::start_serving_on(
+            services,
+            runtime,
+            discovery,
+            ServingNetwork::Lan,
+            ids,
+            device_secrets,
+            diagnostics,
+        )
     }
 
     /// [`Self::start`], with the ephemeral server on `serving`.
@@ -262,6 +277,7 @@ impl CastController {
         discovery: RendererDiscovery,
         serving: ServingNetwork,
         ids: coven::IdSourceRef,
+        device_secrets: coven::Coven,
         diagnostics: Diagnostics,
     ) -> Arc<Self> {
         let receivers = discovery.subscribe();
@@ -276,6 +292,7 @@ impl CastController {
             server: Arc::new(Mutex::new(None)),
             serving,
             ids,
+            device_secrets,
             diagnostics,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
@@ -528,11 +545,17 @@ impl CastController {
     /// Play to the device named by `device_id`: build its control channel from
     /// the device's connection (Cast or UPnP), ensure the ephemeral server is
     /// serving, and hand the playback service the channel plus the media source
-    /// the device fetches each track through. Calls off the cast asked for
-    /// before it; stopping casting, turning it off, or a newer cast calls this
-    /// one off while it connects, and it ends with [`CastError::CalledOff`]
+    /// the device fetches each track through. An AirPlay receiver that wants
+    /// a PIN or a password gets the code the person enters into `prompt`.
+    /// Calls off the cast asked for before it; stopping casting, turning it
+    /// off, or a newer cast calls this one off while it connects, which drops
+    /// a prompt still waiting, and it ends with [`CastError::CalledOff`]
     /// without moving playback.
-    pub async fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
+    pub async fn cast_to(
+        &self,
+        device_id: &str,
+        prompt: Arc<dyn CodePrompt>,
+    ) -> Result<(), CastError> {
         let mut asked = self.asked.subscribe();
         let mut number = 0;
         self.asked.send_modify(|count| {
@@ -542,7 +565,7 @@ impl CastController {
         tokio::select! {
             biased;
             _ = asked.wait_for(|count| *count != number) => Err(CastError::CalledOff),
-            started = self.connect_and_hand_over(device_id, number) => started,
+            started = self.connect_and_hand_over(device_id, number, prompt) => started,
         }
     }
 
@@ -564,7 +587,12 @@ impl CastController {
         }
     }
 
-    async fn connect_and_hand_over(&self, device_id: &str, number: u64) -> Result<(), CastError> {
+    async fn connect_and_hand_over(
+        &self,
+        device_id: &str,
+        number: u64,
+        prompt: Arc<dyn CodePrompt>,
+    ) -> Result<(), CastError> {
         if !self.enabled().await? {
             return Err(CastError::Disabled);
         }
@@ -574,57 +602,14 @@ impl CastController {
             .find(|device| device.id == device_id)
             .ok_or(CastError::DeviceNotFound)?;
 
-        // AirPlay is not a fetch-a-URL renderer: build the push-audio sink and hand
-        // it to playback, which keeps decoding locally. No ephemeral server needed.
+        // AirPlay is not a fetch-a-URL renderer.
         if let RendererConnection::AirPlay { addr, port, capabilities } = &device.connection {
-            // The receiver shows this name to the person beside it.
-            let client_name =
-                self.services.this_device_name().await.map_err(CastError::DeviceName)?;
-            let (sink, pairing) = build_airplay_sink(
-                &self.ids,
-                &self.diagnostics,
-                &client_name,
-                device.receiver(),
-                *addr,
-                *port,
-                capabilities,
-            )?;
-            match pairing {
-                CastPairing::Transient => {
-                    self.pair_with_airplay2(*addr, *port, client_name).await?
-                }
-                CastPairing::Nothing => {}
-            }
-            return self.hand_over(number, || {
-                self.services.playback_play_on_airplay(sink, device.receiver());
-            });
+            return self
+                .play_on_airplay(device.receiver(), *addr, *port, capabilities, prompt, number)
+                .await;
         }
 
         self.start_fetch_renderer(device, number).await
-    }
-
-    /// Pair with an AirPlay 2 receiver once, off the runtime, before playback
-    /// moves to it. The pairing runs to its end even when this cast is called
-    /// off meanwhile; its connection closes either way.
-    async fn pair_with_airplay2(
-        &self,
-        addr: std::net::IpAddr,
-        port: u16,
-        client_name: String,
-    ) -> Result<(), CastError> {
-        let paired = self
-            .diagnostics
-            .blocking("pair with an AirPlay 2 receiver", move || {
-                airplay::ap2_session::pair_once(
-                    addr,
-                    port,
-                    &client_name,
-                    &airplay::ap2_session::Ap2Auth::Transient,
-                )
-            })
-            .await
-            .map_err(CastError::Internal)?;
-        paired.map_err(airplay_pairing_failure)
     }
 
     /// Build the control channel for a device, and name its flavor, which

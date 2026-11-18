@@ -2,6 +2,7 @@ package fm.bae.app.data
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import uniffi.bae_bridge.AirPlayCodePromptCallback
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
@@ -52,8 +53,11 @@ class Cast(
         }
     }
 
-    /** Switch playback to the device with this id. */
-    suspend fun castTo(deviceId: String) = appHandle.castTo(deviceId)
+    /** Switch playback to the device with this id, asking [prompt] for the code an AirPlay receiver wants. */
+    suspend fun castTo(
+        deviceId: String,
+        prompt: AirPlayCodePromptCallback,
+    ) = appHandle.castTo(deviceId, prompt)
 
     /** Stop casting and return playback to local output. */
     fun stopCasting() = appHandle.stopCasting()

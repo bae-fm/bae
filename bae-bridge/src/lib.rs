@@ -3,6 +3,8 @@ uniffi::setup_scaffolding!();
 #[macro_use]
 extern crate bae_mirror;
 
+#[cfg(feature = "cast")]
+mod airplay_prompt;
 mod app_dir;
 #[cfg(any(test, not(desktop)))]
 mod audio_focus;
@@ -13,8 +15,9 @@ mod dev_reset;
 mod from_app;
 mod handle;
 mod host;
-// Only a phone calls into its host: its audio focus and sign-in presenter.
-#[cfg(any(test, not(desktop)))]
+// A phone calls into its host for its audio focus and sign-in presenter, and
+// every casting host for the code an AirPlay receiver asks for.
+#[cfg(any(test, not(desktop), feature = "cast"))]
 mod host_calls;
 mod init;
 mod keyed_values;
@@ -26,6 +29,8 @@ mod setup;
 mod signals;
 mod types;
 
+#[cfg(feature = "cast")]
+pub use airplay_prompt::*;
 pub use app_dir::*;
 #[cfg(any(test, not(desktop)))]
 pub use audio_focus::*;

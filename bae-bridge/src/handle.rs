@@ -305,12 +305,14 @@ impl AppHandle {
     /// Start the handle over a library `host` opened. `diagnostics` is where
     /// a panic in the handle's operations, its deliveries to the host, and
     /// casting's background work is reported; `ids` is where a cast
-    /// session's ids come from.
+    /// session's ids come from, and `device_secrets` where this device keeps
+    /// its pairings with AirPlay receivers.
     pub(crate) fn start(
         services: AppServices,
         runtime: tokio::runtime::Runtime,
         diagnostics: bae_diagnostics::Diagnostics,
         #[cfg(feature = "cast")] ids: coven::IdSourceRef,
+        #[cfg(feature = "cast")] device_secrets: coven::Coven,
         host: std::sync::Arc<crate::BridgeHost>,
         record: crate::OpenRecord,
     ) -> Result<Self, bae_app::BootstrapError> {
@@ -349,6 +351,7 @@ impl AppHandle {
             runtime.handle().clone(),
             bae_cast::renderer::RendererDiscovery::builtin(),
             ids,
+            device_secrets,
             diagnostics.clone(),
         );
 

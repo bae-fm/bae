@@ -100,7 +100,7 @@ private fun CastPickerSheet(
     }
 
     AndroidSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
-        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
+        PickerFailures(endedFailure = endedFailure, castFailure = castFailure?.error)
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,
             receivers = receivers,

@@ -4912,8 +4912,11 @@ it shows now." under "That PIN did not match." (a password says "That
 password did not work." under its field), since a wrong PIN makes the receiver
 show a new one. bae never tries again by itself. While bae pairs, the field is
 off, "Pairing…" shows under it with a spinner, Pair is off and Cancel still
-works. bae refuses a code of the wrong shape before it connects, with "Enter the
-4-digit PIN." or "Enter the password." under the field.
+works. When the receiver answers a wrong code with a wait before the next
+try, the sheet takes the next code at once, and bae sends it when the wait
+ends, with "Pairing…" showing until then. bae refuses a code of the wrong
+shape before it connects, with "Enter the 4-digit PIN." or "Enter the
+password." under the field.
 
 A receiver that refuses fails the cast with a line that says what is wrong and
 what to do. macOS shows it in an alert titled "Could not cast to" and the
@@ -4925,8 +4928,8 @@ snackbar otherwise. The lines are:
   it, then cast again."
 - busy pairing with another device: "Kitchen is pairing with another device.
   Cast again when it is done."
-- asking to wait a stated time (bae doesn't wait or try again itself): "Kitchen
-  asks to wait 30 seconds before another try. Cast again after that."
+- asking to wait a stated time before another cast: "Kitchen asks to wait 30
+  seconds before another try. Cast again after that."
 - not accepting new pairings: "Kitchen is not accepting new pairings. Allow
   pairing on it, then cast again."
 - paired with as many devices as it allows: "Kitchen is paired with as many
@@ -4947,7 +4950,22 @@ device with the playback error "The AirPlay speaker no longer accepts this
 device.": on macOS in an alert titled "Could not cast", with Pair again… and
 Cancel, and on Android in a snackbar with Pair again…. Pair again… casts to the
 speaker again, which opens the pairing sheet. A receiver that answers the first pairing step
-with HTTP 470 asks for a PIN.
+with HTTP 470 asks for a PIN. A Mac whose AirPlay Receiver plays only for its
+current user refuses to show a PIN, and bae says it plays only from the
+account that set it up.
+
+bae keeps its pairing with a receiver that asks for a PIN once, or for a
+password, in this device's keychain, one entry per receiver, for every
+library on the device: later casts to the receiver pair with it and ask
+nothing. For a receiver with a password, bae keeps the password beside the
+pairing, since the receiver asks for it again on each connection. When the
+receiver no longer accepts the kept pairing, bae asks for the code with "no
+longer knows this device", and the new pairing replaces the kept one once the
+receiver accepts it. A PIN that a receiver asks for on every cast covers every
+connection bae makes to it during that cast, and bae keeps nothing of it
+after. Once bae sends the code, the pairing and the keychain write run to
+their end even when the cast is called off meanwhile, and a write the
+keychain refuses fails the cast.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.

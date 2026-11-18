@@ -414,10 +414,6 @@ pub(crate) enum Ap2Auth {
     /// kept.
     Transient,
     /// Pair-verify with what a pairing by code kept.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "a cast reaches kept pairings only once it asks for codes")
-    )]
     Verify(KeptPairing),
 }
 

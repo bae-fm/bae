@@ -43,17 +43,22 @@ fn a_grouping_block_is_worth_retrying_only_while_a_download_runs() {
 #[test]
 fn an_airplay_receiver_is_worth_retrying_only_when_the_cause_ends_by_itself() {
     use UiErrorCategory as C;
-    for category in [C::AirPlayBusy, C::AirPlayBackOff { seconds: 30 }, C::AirPlayUnreachable] {
+    let receiver = || "Kitchen".to_string();
+    for category in [
+        C::AirPlayBusy { receiver: receiver() },
+        C::AirPlayBackOff { receiver: receiver(), seconds: 30 },
+        C::AirPlayUnreachable { receiver: receiver() },
+    ] {
         assert!(category.retry_can_help(), "{category:?}");
     }
     for category in [
-        C::AirPlayPairingFailed,
-        C::AirPlayLockedOut,
-        C::AirPlayNotPairing,
-        C::AirPlayFull,
-        C::AirPlayHomeOnly,
-        C::AirPlayAdminsOnly,
-        C::AirPlayOwnerOnly,
+        C::AirPlayPairingFailed { receiver: receiver() },
+        C::AirPlayLockedOut { receiver: receiver() },
+        C::AirPlayNotPairing { receiver: receiver() },
+        C::AirPlayFull { receiver: receiver() },
+        C::AirPlayHomeOnly { receiver: receiver() },
+        C::AirPlayAdminsOnly { receiver: receiver() },
+        C::AirPlayOwnerOnly { receiver: receiver() },
     ] {
         assert!(!category.retry_can_help(), "{category:?}");
     }
