@@ -39,13 +39,7 @@ impl LibraryManager {
 
     /// The sync status now, as [`Self::subscribe_sync_status`] makes each.
     pub async fn sync_status(&self) -> Result<bae_sync_status::SyncStatusSnapshot, LibraryError> {
-        Ok(self
-            .store
-            .read_with_sync_state(
-                bae_sync_status::sync_status_rows_on,
-                bae_sync_status::SyncStatusSnapshot::read,
-            )
-            .await?)
+        Ok(self.store.read(|sql| bae_sync_status::sync_status_on(&sql)).await?)
     }
 
     /// Returns once coven's sync state says another installation uses this

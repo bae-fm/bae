@@ -302,30 +302,51 @@ impl StoredColumns {
     }
 }
 
-/// Why the last attempt to start sync failed, while that stands.
-pub(super) fn start_failure_on(sql: &SqlReadContext<'_>) -> Result<Option<UiError>, DbError> {
-    let row = sql
-        .query_row(
-            "SELECT category, storage_failure, required_access, \
-             size_bytes, limit_bytes, detail FROM sync_start_failure",
-            [],
-            |row| {
-                Ok((
-                    StoredColumns {
-                        category: row.get(0)?,
-                        storage_failure: row.get(1)?,
-                        required_access: row.get(2)?,
-                        size_bytes: row.get(3)?,
-                        limit_bytes: row.get(4)?,
-                    },
-                    row.get::<_, String>(5)?,
-                ))
-            },
-        )
-        .optional()?;
-    row.map(|(columns, detail)| Ok(UiError::Diagnostic { category: columns.category()?, detail }))
-        .transpose()
+/// The columns of `sync_start_failure`'s row as the status query reads them:
+/// the class's columns, then the failure's text. Each is NULL when no failed
+/// start stands.
+pub(super) struct StartFailureColumns {
+    stored: Option<StoredColumns>,
+    detail: Option<String>,
 }
+
+impl StartFailureColumns {
+    /// The columns of the table's row: category, storage failure, required
+    /// access, size, limit, then detail, from column `first`.
+    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+        let category: Option<String> = row.get(first)?;
+        let stored = category
+            .map(|category| {
+                Ok::<_, rusqlite::Error>(StoredColumns {
+                    category,
+                    storage_failure: row.get(first + 1)?,
+                    required_access: row.get(first + 2)?,
+                    size_bytes: row.get(first + 3)?,
+                    limit_bytes: row.get(first + 4)?,
+                })
+            })
+            .transpose()?;
+        Ok(Self { stored, detail: row.get(first + 5)? })
+    }
+
+    /// Why the last attempt to start sync failed, while that stands.
+    pub(super) fn error(self) -> Result<Option<UiError>, DbError> {
+        match (self.stored, self.detail) {
+            (Some(columns), Some(detail)) => {
+                Ok(Some(UiError::Diagnostic { category: columns.category()?, detail }))
+            }
+            (None, None) => Ok(None),
+            (stored, detail) => {
+                Err(unnamed("detail", &format!("{:?}", (stored.is_some(), detail))))
+            }
+        }
+    }
+}
+
+/// The columns the status query reads of `sync_start_failure`, in the order
+/// [`StartFailureColumns`] reads them.
+pub(super) const START_FAILURE_COLUMNS: &str = "failure.category, failure.storage_failure, \
+     failure.required_access, failure.size_bytes, failure.limit_bytes, failure.detail";
 
 impl SyncStatus {
     /// Record why starting sync failed.

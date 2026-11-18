@@ -5,7 +5,7 @@ use super::*;
 use bae_diagnostics::UiError;
 use bae_records::records::query::RELEASE_STORAGE_PINNED;
 use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT_COLUMNS};
-use bae_sync_status::{PendingItem, SyncStatusRows, SyncStatusSnapshot};
+use bae_sync_status::{PendingItem, SyncStatusSnapshot};
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
 /// What sync is doing now: the work that needs the person and the transfer
@@ -19,6 +19,8 @@ pub struct SyncActivity {
     pub failure: Option<UiError>,
     /// The pending records that need the person.
     pub attention: Vec<PendingItem>,
+    /// How many records `attention` lists, as the query counts them.
+    pub attention_count: u32,
     /// coven's sync state is syncing: a pass is moving, or a file is being
     /// sent or downloaded.
     pub syncing: bool,
@@ -125,6 +127,7 @@ impl SyncActivity {
         Self {
             failure: status.shown_failure(),
             attention: status.pending.clone(),
+            attention_count: status.attention_count,
             syncing: status.syncing(),
             moving: uploads.sending > 0 || downloads.queue.total.active > 0,
             uploads: uploads
@@ -139,7 +142,7 @@ impl SyncActivity {
     /// Something needs the person: sync failed, or a pending record waits
     /// on them. The indicator shows a warning while it does.
     pub fn needs_attention(&self) -> bool {
-        self.failure.is_some() || !self.attention.is_empty()
+        self.failure.is_some() || self.attention_count > 0
     }
 
     /// A queue is held and no bytes move: a line shows what holds its queue
@@ -160,31 +163,13 @@ impl SyncActivity {
 #[path = "sync_activity_tests.rs"]
 pub(crate) mod tests;
 
-/// What the activity reads of the library's tables in one go, beside
-/// coven's sync state: what the upload and download queues hold and the sync
-/// status's rows.
-#[derive(Debug, Clone, PartialEq)]
-pub struct SyncActivityRows {
-    uploads: UploadQueueCounts,
-    downloads: DownloadQueueCounts,
-    status: SyncStatusRows,
-}
-
-/// The activity's rows as one read sees them: the queues are read first,
-/// since the retry effect's read takes the read whole.
-fn sync_activity_rows_on(
-    sql: coven::SqlReadContext<'_>,
-) -> Result<SyncActivityRows, bae_store::DbError> {
-    let uploads = upload_queue_counts_on(&sql)?;
-    let downloads = download_queue_counts_on(&sql)?;
-    let status = bae_sync_status::sync_status_rows_on(sql)?;
-    Ok(SyncActivityRows { uploads, downloads, status })
-}
-
-/// The activity from coven's sync state and the rows read beside it.
-fn sync_activity(state: coven::SyncStatus, rows: SyncActivityRows) -> SyncActivity {
-    let SyncActivityRows { uploads, downloads, status } = rows;
-    SyncActivity::new(&SyncStatusSnapshot::read(state, status), &uploads, &downloads)
+/// The activity as one read sees it: the queues' counts, and the sync status
+/// the activity takes its failure, records and state from.
+fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae_store::DbError> {
+    let uploads = upload_queue_counts_on(sql)?;
+    let downloads = download_queue_counts_on(sql)?;
+    let status = bae_sync_status::sync_status_on(sql)?;
+    Ok(SyncActivity::new(&status, &uploads, &downloads))
 }
 
 /// The SQL creating the Uploading line's batch and its number, and the
@@ -289,12 +274,14 @@ fn transfer_batch_in_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TransferBa
 }
 
 impl LibraryViews {
-    /// Follow everything sync is doing: coven's sync state beside one read
-    /// of the library's rows, each value made from the latest of both. Bytes
-    /// moving change none of what it reads, so they send nothing.
+    /// Follow everything sync is doing: one live query of coven's sync state
+    /// joined to the library's rows. Bytes moving change none of what it
+    /// reads, so they send nothing.
     pub fn subscribe_sync_activity(
         &self,
-    ) -> bae_store::WithSyncState<SyncActivityRows, crate::SyncActivity> {
-        self.store.with_sync_state(sync_activity_rows_on, sync_activity)
+    ) -> bae_store::live_results::LiveResults<
+        coven::LiveQuery<crate::SyncActivity, bae_store::DbError>,
+    > {
+        self.store.results(self.store.subscribe(|sql| sync_activity_on(&sql)))
     }
 }

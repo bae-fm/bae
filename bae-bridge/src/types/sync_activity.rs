@@ -37,6 +37,7 @@ impl BridgeSyncActivity {
         let bae_views::SyncActivity {
             failure,
             attention,
+            attention_count: _,
             syncing,
             moving,
             uploads,

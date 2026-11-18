@@ -6,26 +6,9 @@ use super::*;
 use coven::Storage as _;
 use std::sync::Arc;
 
-/// An undone setup's line, whatever its detail.
-fn undone() -> SetupRow {
-    SetupRow::Undone(UiError::diagnostic(UiErrorCategory::StorageSetupUndone, "offline"))
-}
-
 #[test]
-fn a_setup_with_no_outcome_runs_and_names_where_setup_stands() {
-    use coven::OperationId as Id;
+fn a_setup_with_no_outcome_runs() {
     assert_eq!(SetupRow::of(None).unwrap(), SetupRow::Running);
-    let rows = vec![(Id(1), undone()), (Id(2), SetupRow::Running), (Id(3), undone())];
-    assert_eq!(standing(rows), Some(StorageSetupState::Running));
-}
-
-#[test]
-fn the_newest_undone_setup_shows_and_settled_ones_show_nothing() {
-    use coven::OperationId as Id;
-    let rows = vec![(Id(1), undone()), (Id(2), undone()), (Id(3), SetupRow::Settled)];
-    assert!(matches!(standing(rows), Some(StorageSetupState::Undone { operation: Id(2), .. })));
-    assert_eq!(standing(vec![(Id(1), SetupRow::Settled)]), None);
-    assert_eq!(standing(Vec::new()), None);
 }
 
 #[test]
@@ -89,7 +72,7 @@ async fn set_up(
 }
 
 async fn state(store: &Store) -> Option<StorageSetupState> {
-    store.read(|sql| storage_setup_on(&sql)).await.unwrap()
+    store.read(|sql| sync_status_on(&sql)).await.unwrap().storage_setup
 }
 
 /// The storage setups `coven_operations` lists, oldest first.

@@ -1,8 +1,8 @@
 //! coven's pending records (coven §19.1) as the sync status lists them: each
-//! record from coven's `coven_pending` view, with the error behind it when
+//! record from coven's `coven_pending` table, with the error behind it when
 //! coven keeps one, beside what the library holds for the row a file's
 //! record is about, or for the release file whose original a move's record
-//! names, all read in one statement.
+//! names, read in the status query's one statement.
 
 use super::file_row::{FileRowColumns, FILE_ROW_COLUMNS, FILE_ROW_JOINS};
 use super::*;
@@ -19,42 +19,57 @@ pub struct PendingRow {
     pub file_row: Option<FileRow>,
 }
 
-/// Every pending record with the row its file is the file of, in the order
-/// the records arose.
-pub(super) fn pending_rows_on(sql: &SqlReadContext<'_>) -> Result<Vec<PendingRow>, DbError> {
-    let rows = sql.query(&pending_rows_query(), [], |row| {
-        let mut record = row.get::<_, coven::PendingRecord>(0)?;
-        record.cause = row.get(1)?;
-        let original = (
-            row.get::<_, Option<String>>(2)?,
-            row.get::<_, Option<String>>(3)?,
-            row.get::<_, Option<String>>(4)?,
-        );
-        Ok((record, original, FileRowColumns::read(row, 5)?))
-    })?;
-    rows.into_iter()
-        .map(|(record, original, columns)| {
-            let file_row = match (&record.reason, original) {
-                (
-                    coven::PendingReason::Original { .. },
-                    (Some(release_id), Some(file_name), Some(album_title)),
-                ) => Some(FileRow::ReleaseFile { release_id, file_name, album_title }),
-                (coven::PendingReason::Original { .. }, _) => None,
-                _ => columns.file_row()?,
-            };
-            Ok(PendingRow { record, file_row })
-        })
-        .collect()
+/// The pending record a row of the status query carries, as its columns
+/// hold it: the record, its cause, the columns naming its moved original's
+/// release file, then those naming its file's row.
+pub(super) struct PendingColumns {
+    record: Option<coven::PendingRecord>,
+    original: (Option<String>, Option<String>, Option<String>),
+    file: FileRowColumns,
 }
 
-/// Every pending record with the columns naming its moved original's release
-/// file, then the columns naming its file's row.
-pub(super) fn pending_rows_query() -> String {
-    format!(
-        "SELECT file.record, file.cause, {ORIGINAL_COLUMNS}, {FILE_ROW_COLUMNS} \
-         FROM coven_pending AS file {FILE_ROW_JOINS} {ORIGINAL_JOINS} \
-         ORDER BY file.position"
-    )
+impl PendingColumns {
+    /// Read the columns from `first` on.
+    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+        let mut record = row.get::<_, Option<coven::PendingRecord>>(first)?;
+        if let Some(record) = &mut record {
+            record.cause = row.get(first + 1)?;
+        }
+        Ok(Self {
+            record,
+            original: (row.get(first + 2)?, row.get(first + 3)?, row.get(first + 4)?),
+            file: FileRowColumns::read(row, first + 5)?,
+        })
+    }
+
+    /// The record with the row its file is the file of. `None` when the row
+    /// carries no record, as the one row of a status with nothing pending.
+    pub(super) fn row(self) -> Result<Option<PendingRow>, DbError> {
+        let Some(record) = self.record else {
+            return Ok(None);
+        };
+        let file_row = match (&record.reason, self.original) {
+            (
+                coven::PendingReason::Original { .. },
+                (Some(release_id), Some(file_name), Some(album_title)),
+            ) => Some(FileRow::ReleaseFile { release_id, file_name, album_title }),
+            (coven::PendingReason::Original { .. }, _) => None,
+            _ => self.file.file_row()?,
+        };
+        Ok(Some(PendingRow { record, file_row }))
+    }
+}
+
+/// The status query's columns for a pending record, in the order
+/// [`PendingColumns`] reads them: the record and its cause, then the
+/// original's and the file's.
+pub(super) fn pending_columns() -> String {
+    format!("file.record, file.cause, {ORIGINAL_COLUMNS}, {FILE_ROW_COLUMNS}")
+}
+
+/// The joins [`pending_columns`] reads, after `coven_pending AS file`.
+pub(super) fn pending_joins() -> String {
+    format!("{FILE_ROW_JOINS} {ORIGINAL_JOINS}")
 }
 
 /// The columns naming the release file whose original a record names in

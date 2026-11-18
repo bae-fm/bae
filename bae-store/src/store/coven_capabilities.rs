@@ -1,7 +1,6 @@
 use crate::store::Store;
 use crate::DbError;
 use coven::SqlReadContext;
-use std::sync::Arc;
 
 /// Whether the person paused uploads, as coven's one row says.
 pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
@@ -81,34 +80,6 @@ impl Store {
         self.inner.handle.subscribe(|sql| Ok(coven::SyncStatus::read(sql)?))
     }
 
-    /// coven's sync state followed beside the read `rows` of the library's
-    /// tables, each pair made into one value by `make`, the rows read after
-    /// the state they are put with.
-    pub fn with_sync_state<F, R, T>(
-        &self,
-        rows: F,
-        make: fn(coven::SyncStatus, R) -> T,
-    ) -> crate::WithSyncState<R, T>
-    where
-        F: Fn(SqlReadContext<'_>) -> Result<R, DbError> + Send + Sync + 'static,
-        R: Clone + PartialEq + Send + 'static,
-        T: Clone + PartialEq + Send + 'static,
-    {
-        let rows: crate::with_sync_state::RowsRead<R> = Arc::new(rows);
-        let changes = {
-            let rows = Arc::clone(&rows);
-            self.inner.handle.subscribe(move |sql| rows(sql))
-        };
-        crate::WithSyncState::new(
-            self.inner.handle.clone(),
-            self.subscribe_coven_sync_status(),
-            changes,
-            rows,
-            make,
-            self.inner.bugs.clone(),
-        )
-    }
-
     /// One read of the store, failing with the closure's own error.
     pub async fn read_coven<R, E>(
         &self,
@@ -119,23 +90,6 @@ impl Store {
         E: From<coven::DbError> + coven::task::CarriesBug + Send + 'static,
     {
         self.reported(self.inner.handle.read(read).await)
-    }
-
-    /// coven's sync state now beside one read `rows` of the library's
-    /// tables made after it, made into one value by `make`, as
-    /// [`Self::with_sync_state`] makes each.
-    pub async fn read_with_sync_state<F, R, T>(
-        &self,
-        rows: F,
-        make: fn(coven::SyncStatus, R) -> T,
-    ) -> Result<T, DbError>
-    where
-        F: FnOnce(SqlReadContext<'_>) -> Result<R, DbError> + Send + 'static,
-        R: Send + 'static,
-    {
-        let state = self.reported(self.inner.handle.sync_status().await)?;
-        let rows = self.reported(self.inner.handle.read(rows).await)?;
-        Ok(make(state, rows))
     }
 
     /// Stop the sync loop: returns once the running pass and transfers have

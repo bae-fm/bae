@@ -13,7 +13,7 @@ fn failure(category: C) -> UiError {
 
 /// The failed start the store reads back.
 async fn read_back(store: &Store) -> Option<UiError> {
-    store.read(|sql| start_failure_on(&sql)).await.unwrap()
+    store.read(|sql| sync_status_on(&sql)).await.unwrap().error
 }
 
 /// Every class a start can fail in, and every storage reason with each

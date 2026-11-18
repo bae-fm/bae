@@ -14,19 +14,20 @@ pub(crate) fn read(
     retry_effect: coven::RetryEffect,
     error: Option<UiError>,
 ) -> SyncStatusSnapshot {
-    SyncStatusSnapshot::read(
-        coven::SyncStatus { state, last_synced: None },
-        SyncStatusRows {
-            pending: records
-                .into_iter()
-                .map(|record| PendingItem::listed(PendingRow { record, file_row: None }))
-                .collect(),
-            start_failure: error,
-            retry_effect,
-            storage_setup: None,
-            location: None,
-        },
-    )
+    let pending: Vec<PendingItem> = records
+        .into_iter()
+        .map(|record| PendingItem::listed(PendingRow { record, file_row: None }))
+        .collect();
+    SyncStatusSnapshot {
+        coven: coven::SyncStatus { state, last_synced: None },
+        attention_count: u32::try_from(pending.len()).unwrap(),
+        pending,
+        error,
+        retry_effect,
+        storage_setup: None,
+        location: None,
+        failure_recorded: false,
+    }
 }
 
 /// coven's sync state, the pending records read beside it, and coven's
@@ -466,11 +467,12 @@ fn a_new_sync_failure_is_logged_once() {
     assert_eq!(*category, bae_diagnostics::UiErrorCategory::Network);
     assert_eq!(detail, UNREACHABLE_S3);
     assert_eq!(failed.failure_to_log(Some(&failed)), None);
-    let listed = snapshot(
+    let mut listed = snapshot(
         offline(),
         vec![connection_record(coven::StorageFailure::Network)],
         coven::RetryEffect::Pass,
     );
+    listed.failure_recorded = true;
     assert_eq!(listed.failure_to_log(Some(&failed)), None);
     assert_eq!(syncing.failure_to_log(Some(&failed)), None);
     assert!(failed.failure_to_log(None).is_some());
@@ -509,7 +511,8 @@ fn a_blocked_slot_surfaces_the_error_that_blocked_it() {
 #[test]
 fn a_state_a_record_names_shows_no_failure_of_its_own() {
     let removed = record(coven::PendingReason::Removed(coven::Removal::Device));
-    let status = snapshot(removed_state(), vec![removed], coven::RetryEffect::Pass);
+    let mut status = snapshot(removed_state(), vec![removed], coven::RetryEffect::Pass);
+    status.failure_recorded = true;
     assert_eq!(status.shown_failure(), None);
     assert_eq!(status.shown().status, SyncStatusWord::RemovedFromTheLibrary);
 }

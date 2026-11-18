@@ -45,8 +45,6 @@ mod test_sources;
 pub use test_sources::TestSources;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
-mod with_sync_state;
-pub use with_sync_state::WithSyncState;
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

@@ -55,8 +55,8 @@ pub use storage_browse::{
     ReleaseQueueRun, StorageQueues, StorageSelection, StorageSoleRelease, UploadQueueRun,
 };
 pub use sync_activity::{
-    DownloadQueueActivity, DownloadQueueCounts, SyncActivity, SyncActivityRows, TransferBatch,
-    UploadQueueActivity, UploadQueueCounts,
+    DownloadQueueActivity, DownloadQueueCounts, SyncActivity, TransferBatch, UploadQueueActivity,
+    UploadQueueCounts,
 };
 
 pub use album::{AlbumCounts, AlbumDetailProjection, LibrarySearchProjection};

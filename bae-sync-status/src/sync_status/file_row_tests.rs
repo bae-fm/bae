@@ -1,7 +1,7 @@
 //! The pending list names each file's row, and each move's original, by
 //! index, whatever the size of the library.
 
-use crate::sync_status::pending::pending_rows_query;
+use crate::sync_status::status_query::status_query;
 use bae_store::Store;
 
 /// The plan SQLite chooses for `statement`, one detail line per step.
@@ -18,7 +18,7 @@ async fn plan(store: &Store, statement: String) -> Vec<String> {
 #[tokio::test]
 async fn the_pending_list_finds_each_row_by_index() {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
-    let plan = plan(&db, pending_rows_query()).await;
+    let plan = plan(&db, status_query()).await;
     for alias in [
         "named",
         "named_file",
@@ -39,9 +39,8 @@ async fn the_pending_list_finds_each_row_by_index() {
             "{alias} is not searched by index in {plan:?}"
         );
     }
-    // Inside a subquery, SQLite names the table of a view by the view's own
-    // alias and not by this query's. The test checks the lookup of an
-    // original's path by checking that no step scans a table but coven_pending.
-    let scans: Vec<&String> = plan.iter().filter(|step| step.starts_with("SCAN")).collect();
-    assert_eq!(scans, ["SCAN file USING INDEX _coven_pending_files"], "{plan:?}");
+    // The pending records are read once, in one scan: the statement finds
+    // everything else from them by index.
+    let scans: Vec<&String> = plan.iter().filter(|step| step.starts_with("SCAN file")).collect();
+    assert_eq!(scans, ["SCAN file LEFT-JOIN"], "{plan:?}");
 }

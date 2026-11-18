@@ -515,6 +515,23 @@ async fn fail_a_pass(
     failed
 }
 
+/// Storage that can't be reached shows once, as the connection's pending
+/// record: the query finds the record that holds the failure the state names,
+/// and the status then shows no failure of its own beside it.
+#[tokio::test]
+async fn an_unreachable_storage_shows_once_as_its_connection_record() {
+    let (manager, _temp_dir, _clock) = library_on_a_stopped_clock().await;
+    let failed =
+        fail_a_pass(&manager, next_request_fails(coven::StorageFailure::Network, None), |value| {
+            matches!(value.shown_pass(), Some(coven::LastPass::Offline { .. }))
+        })
+        .await;
+    assert!(failed.failure_recorded);
+    assert_eq!(failed.attention_count, 1);
+    assert_eq!(failed.shown_failure(), None);
+    manager.library.manager().close().await.unwrap();
+}
+
 /// Each failure coven retries by itself is retried by a pass at once, which
 /// syncs: storage unreachable, a server error, throttling without a cooldown, a conflict, an expired upload session. A
 /// missing object fails no pass here: the pass reads it as absent.

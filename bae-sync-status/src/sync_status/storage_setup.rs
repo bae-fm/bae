@@ -96,36 +96,54 @@ impl SetupRow {
     }
 }
 
-/// Where this device's storage setup stands: running while any setup
-/// runs, or else the newest setup that ended undone, or `None`.
-pub(super) fn storage_setup_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<Option<StorageSetupState>, DbError> {
-    let rows = sql.query(
-        "SELECT operation, outcome FROM coven_operations \
-         WHERE kind = 'StorageSetup' ORDER BY operation",
-        [],
-        |row| {
-            Ok((coven::OperationId(row.get(0)?), row.get::<_, Option<coven::OperationOutcome>>(1)?))
-        },
-    )?;
-    let rows = rows
-        .into_iter()
-        .map(|(operation, outcome)| Ok((operation, SetupRow::of(outcome)?)))
-        .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(standing(rows))
+/// The columns the status query reads of this device's storage setups: whether
+/// one runs, then the newest one that ended undone, which it reads only for
+/// when none runs.
+pub(super) const STORAGE_SETUP_COLUMNS: &str = "EXISTS (SELECT 1 FROM coven_operations AS setup \
+     WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NULL) AS setup_running, \
+     undone.operation, undone.outcome";
+
+/// The newest storage setup that ended undone, which [`STORAGE_SETUP_COLUMNS`]
+/// reads from: coven names how an operation ended in `outcome_kind`.
+pub(super) const UNDONE_SETUP_JOIN: &str = "LEFT JOIN (SELECT operation, outcome \
+     FROM coven_operations \
+     WHERE kind = 'StorageSetup' AND outcome_kind IN ('undone', 'rejected') \
+     ORDER BY operation DESC LIMIT 1) AS undone";
+
+/// [`STORAGE_SETUP_COLUMNS`] as read, from column `first` on.
+pub(super) struct StorageSetupColumns {
+    running: bool,
+    undone: Option<(coven::OperationId, Option<coven::OperationOutcome>)>,
 }
 
-/// Where setup stands from its rows, oldest first: running while any
-/// runs, or else the newest that ended undone.
-fn standing(rows: Vec<(coven::OperationId, SetupRow)>) -> Option<StorageSetupState> {
-    if rows.iter().any(|(_, row)| *row == SetupRow::Running) {
-        return Some(StorageSetupState::Running);
+impl StorageSetupColumns {
+    pub(super) fn read(row: &Row<'_>, first: usize) -> rusqlite::Result<Self> {
+        let undone = row
+            .get::<_, Option<i64>>(first + 1)?
+            .map(|operation| {
+                Ok::<_, rusqlite::Error>((coven::OperationId(operation), row.get(first + 2)?))
+            })
+            .transpose()?;
+        Ok(Self { running: row.get(first)?, undone })
     }
-    rows.into_iter().rev().find_map(|(operation, row)| match row {
-        SetupRow::Undone(why) => Some(StorageSetupState::Undone { operation, why }),
-        SetupRow::Running | SetupRow::Settled => None,
-    })
+
+    /// Where this device's storage setup stands: running while any setup
+    /// runs, or else the newest setup that ended undone, or `None`.
+    pub(super) fn state(self) -> Result<Option<StorageSetupState>, DbError> {
+        if self.running {
+            return Ok(Some(StorageSetupState::Running));
+        }
+        let Some((operation, outcome)) = self.undone else {
+            return Ok(None);
+        };
+        match SetupRow::of(outcome)? {
+            SetupRow::Undone(why) => Ok(Some(StorageSetupState::Undone { operation, why })),
+            row @ (SetupRow::Running | SetupRow::Settled) => Err(DbError::unreadable(
+                "coven_operations.outcome of the newest undone storage setup",
+                row,
+            )),
+        }
+    }
 }
 
 /// Which ended setups a write acknowledges.
@@ -142,11 +160,16 @@ impl SyncStatus {
     /// opens, before any setup call, it is one past its point of no return,
     /// which only sync's connection finishes.
     pub async fn storage_setup_running(&self) -> Result<bool, DbError> {
-        Ok(self
-            .store
-            .read(|sql| storage_setup_on(&sql))
-            .await?
-            .is_some_and(|state| state == StorageSetupState::Running))
+        self.store
+            .read(|sql| {
+                Ok(sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM coven_operations \
+                     WHERE kind = 'StorageSetup' AND outcome IS NULL)",
+                    [],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
     }
 
     /// A storage setup call begins: every ended setup leaves

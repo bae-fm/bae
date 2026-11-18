@@ -1,6 +1,6 @@
 use crate::sync_shown::{SyncCauseLine, SyncFix, SyncShown, SyncStatusWord, SyncTone};
 use crate::sync_status::tests::*;
-use crate::sync_status::{StorageSetupState, SyncStatusRows, SyncStatusSnapshot};
+use crate::sync_status::{StorageSetupState, SyncStatusSnapshot};
 use crate::{FileRow, PendingItem, PendingRow};
 use bae_diagnostics::UiError;
 
@@ -53,16 +53,16 @@ fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShow
 
 /// The top block for `state` in a library at `location`, as [`shown_on`].
 fn shown_on_location(location: coven::StorageConfig, state: coven::SyncState) -> SyncShown {
-    SyncStatusSnapshot::read(
-        coven::SyncStatus { state, last_synced: Some(finished()) },
-        SyncStatusRows {
-            pending: Vec::new(),
-            start_failure: None,
-            retry_effect: coven::RetryEffect::Pass,
-            storage_setup: None,
-            location: Some(location),
-        },
-    )
+    SyncStatusSnapshot {
+        coven: coven::SyncStatus { state, last_synced: Some(finished()) },
+        pending: Vec::new(),
+        error: None,
+        retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
+        location: Some(location),
+        failure_recorded: false,
+        attention_count: 0,
+    }
     .shown()
 }
 
@@ -320,26 +320,26 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
         object: coven::ObjectId(uuid::Uuid::from_u128(5)),
     };
     let record = coven::PendingRecord::new(subject, reason);
-    SyncStatusSnapshot::read(
-        coven::SyncStatus {
+    SyncStatusSnapshot {
+        coven: coven::SyncStatus {
             state: named_by(record.clone(), coven::SyncState::Failed),
             last_synced: None,
         },
-        SyncStatusRows {
-            pending: vec![PendingItem::listed(PendingRow {
-                record,
-                file_row: Some(FileRow::ReleaseFile {
-                    release_id: "release".into(),
-                    file_name: "Cover.jpg".into(),
-                    album_title: "Album".into(),
-                }),
-            })],
-            start_failure: None,
-            retry_effect: coven::RetryEffect::Pass,
-            storage_setup: None,
-            location: Some(location_on(coven::CloudProvider::Dropbox)),
-        },
-    )
+        pending: vec![PendingItem::listed(PendingRow {
+            record,
+            file_row: Some(FileRow::ReleaseFile {
+                release_id: "release".into(),
+                file_name: "Cover.jpg".into(),
+                album_title: "Album".into(),
+            }),
+        })],
+        error: None,
+        retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
+        location: Some(location_on(coven::CloudProvider::Dropbox)),
+        failure_recorded: false,
+        attention_count: 1,
+    }
 }
 
 /// A file that can't be uploaded is named by the row on this device that

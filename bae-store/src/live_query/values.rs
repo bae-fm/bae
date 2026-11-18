@@ -11,8 +11,7 @@ pub type NextValue<'a, T> = std::pin::Pin<
     Box<dyn std::future::Future<Output = Option<Result<T, crate::DbError>>> + Send + 'a>,
 >;
 
-/// What a surface pulls values from: a coven live query, or coven's sync
-/// state beside one ([`crate::WithSyncState`]).
+/// What a surface pulls values from: a coven live query.
 pub trait LiveSource<T>: Send {
     /// The next value, a failed read, or `None` once the source has ended
     /// with its store.
@@ -30,10 +29,8 @@ where
     }
 }
 
-/// What [`LiveValues`] pulls values from: a live source, or a coven live
-/// query, whose results it takes through [`LiveResults`]. Each live source
-/// implements it by boxing itself: one implementation over every live source
-/// would overlap the one for coven's live query.
+/// What [`LiveValues`] pulls values from: a coven live query, whose results
+/// it takes through [`LiveResults`].
 pub trait IntoLiveSource<T> {
     /// The source, reporting a panic around a coven run to `bugs`.
     fn into_live_source(self, bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<T>>;
@@ -49,20 +46,12 @@ where
     }
 }
 
-impl<R, T> LiveSource<T> for crate::WithSyncState<R, T>
+/// A coven live query's results that the store already took through
+/// [`LiveResults`], which holds the bug sink its panics go to.
+impl<T, E> IntoLiveSource<T> for LiveResults<coven::LiveQuery<T, E>>
 where
-    R: Clone + PartialEq + Send + 'static,
     T: Clone + PartialEq + Send + 'static,
-{
-    fn next(&mut self) -> NextValue<'_, T> {
-        Box::pin(crate::WithSyncState::next(self))
-    }
-}
-
-impl<R, T> IntoLiveSource<T> for crate::WithSyncState<R, T>
-where
-    R: Clone + PartialEq + Send + 'static,
-    T: Clone + PartialEq + Send + 'static,
+    E: From<coven::DbError> + coven::task::CarriesBug + Into<crate::DbError> + Send + 'static,
 {
     fn into_live_source(self, _bugs: coven::task::BugSinkRef) -> Box<dyn LiveSource<T>> {
         Box::new(self)

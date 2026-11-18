@@ -30,6 +30,8 @@ fn status() -> SyncStatusSnapshot {
         storage_setup: None,
         error: None,
         location: None,
+        failure_recorded: false,
+        attention_count: 0,
     }
 }
 
@@ -296,6 +298,7 @@ fn failures_and_pending_records_need_attention() {
         coven::PendingSubject::Connection,
         coven::PendingReason::NoStorage,
     ))];
+    waiting.attention_count = 1;
     assert!(new(&waiting).needs_attention());
 }
 
@@ -353,6 +356,8 @@ fn a_failed_connection_shows_once_as_its_record() {
         let mut failed = status();
         failed.coven.state = named(failure, state);
         failed.pending = pending(connection(coven::StorageFailure::Protocol));
+        failed.failure_recorded = true;
+        failed.attention_count = 1;
         let shown = activity(&failed);
         assert_eq!(shown.failure, None, "{:?}", failed.coven);
         assert!(shown.needs_attention());
@@ -382,6 +387,7 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
         coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
         reason.clone(),
     ));
+    blocked.failure_recorded = true;
     assert_eq!(activity(&blocked).failure, None);
 
     let operation = coven::PendingRecord::new(
@@ -400,6 +406,7 @@ fn a_blocked_slot_or_failed_operation_shows_once_as_its_record() {
         coven::SyncState::Failed,
     );
     failed.pending = pending(operation);
+    failed.failure_recorded = true;
     assert_eq!(activity(&failed).failure, None);
 }
 

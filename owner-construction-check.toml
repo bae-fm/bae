@@ -301,7 +301,6 @@ task_types = [
     "LiveDetail",
     "LiveImportCandidate",
     "LiveValues",
-    "WithSyncState",
     "CancellableLiveQuery",
     # One live query's results for an async reader, for as long as it reads.
     "LiveResults",
@@ -1722,7 +1721,7 @@ tables = [
 [read_shapes]
 rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
 read_types = ["SqlRead", "SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
-live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "LiveResults", "CancellableLiveQuery", "LiveRead", "LiveValues", "WithSyncState"]
+live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "LiveResults", "CancellableLiveQuery", "LiveRead", "LiveValues"]
 request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
 value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "KeyedValueStream"]
 kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64"]
@@ -1733,7 +1732,6 @@ plumbing = [
     "bae-store/src/store.rs",
     "bae-store/src/store_read.rs",
     "bae-store/src/store/coven_capabilities.rs",
-    "bae-store/src/with_sync_state.rs",
 ]
 frozen = [
     { path = "bae-app/src/live_reads/import_candidate.rs", item = "LiveImportCandidate", shape = "kept-state", count = 1, finding = "`LiveImportCandidate` keeps `shown`, which holds `Mutex` state, beside its live query (found by the check)" },
@@ -1844,8 +1842,6 @@ frozen = [
     { path = "bae-records/src/records/files.rs", item = "release_files_kept_on", shape = "group", count = 1, finding = "`release_files_kept_on` returns a `BTreeMap` (found by the check)" },
     { path = "bae-records/src/records/track.rs", item = "Records::filter_existing_track_ids", shape = "query-per-row", count = 1, finding = "`Records::filter_existing_track_ids` runs SQL with `query` once for each row (found by the check)" },
     { path = "bae-store/src/list_windows.rs", item = "from_seeks", shape = "aggregate", count = 1, finding = "counts the rows the earlier seeks read (`len`) to ask the next seek for the rest of the limit" },
-    { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::failure_recorded", shape = "pick", count = 3, finding = "tests the pending rows for a removal, a key replacement or a failed pass with `any`" },
-    { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "length-branch", count = 3, finding = "merges two label lines only when both state names and catalog numbers (`is_empty`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "pick", count = 2, finding = "groups a release's label rows into lines, finding each row's line by name or catalog numbers with `find`" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "same_numbers", shape = "filter", count = 1, finding = "keeps the catalog numbers of a label line that have a key (`filter_map`)" },

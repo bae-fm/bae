@@ -440,18 +440,14 @@ impl LibraryManager {
         }
     }
 
-    /// Follow the sync status: coven's sync state beside one read of the
-    /// sync status's rows, each value made from the latest of both.
+    /// Follow the sync status: one live query that joins coven's sync state
+    /// to the library's rows.
     pub fn subscribe_sync_status(
         &self,
-    ) -> bae_store::WithSyncState<
-        bae_sync_status::SyncStatusRows,
-        bae_sync_status::SyncStatusSnapshot,
+    ) -> bae_store::live_results::LiveResults<
+        coven::LiveQuery<bae_sync_status::SyncStatusSnapshot, bae_store::DbError>,
     > {
-        self.store.with_sync_state(
-            bae_sync_status::sync_status_rows_on,
-            bae_sync_status::SyncStatusSnapshot::read,
-        )
+        self.store.results(self.store.subscribe(|sql| bae_sync_status::sync_status_on(&sql)))
     }
 
     /// How far and how fast each release with files being sent goes, and

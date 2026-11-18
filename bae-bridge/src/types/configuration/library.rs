@@ -485,6 +485,8 @@ impl BridgeSyncStatusSnapshot {
             retry_effect: _,
             storage_setup,
             location: _,
+            failure_recorded: _,
+            attention_count: _,
         } = snapshot;
         let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);
         let undone_setup = match storage_setup {
