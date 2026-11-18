@@ -53,7 +53,6 @@ words bae puts on screen, and what each means, are in [words.md](words.md).
 - [Appendix C. Settings](#appendix-c-settings)
 - [Appendix D. Subsonic endpoints](#appendix-d-subsonic-endpoints)
 - [Appendix E. MCP tools](#appendix-e-mcp-tools)
-- [Appendix F. Bridge types](#appendix-f-bridge-types)
 - [Appendix G. Errors and states](#appendix-g-errors-and-states)
 - [Appendix H. Catalogs and vocabularies](#appendix-h-catalogs-and-vocabularies)
 
@@ -5678,43 +5677,17 @@ and bae-cast connects each device and hands playback the channel or sink.
 ## Appendix A. Schema
 
 The schema is one migration, which coven applies as migration 1: each
-crate's parts of it, in crate order, each part a domain's SQL files beside its
-code. bae-library assembles it from bae-catalogs' part, the catalog image cache's
-(`bae-catalogs/src/remote_image/cache.sql`), bae-records' parts, under
-`bae-records/src/`: the records' (`records.sql`), the device's sort
-language's (`records/name_sort.sql`) and release storage's (`release_storage.sql`),
-bae-people's, under `bae-people/src/`: the people's
-(`people.sql`) and membership's (`membership.sql`), bae-sync-status's,
-`bae-sync-status/src/sync_status.sql`, bae-preferences' (`bae-preferences/src/row.sql`), bae-playback's, under
-`bae-playback/src/`: the queue's (`tables/queue.sql`), what playback is doing
-(`tables/now.sql`), where it is (`tables/timeline.sql`) and the cast
-picker's (`renderer/picker.sql`) and, on a desktop,
-bae-import's, under `bae-import/src/tables/`: the watched folders'
-(`watched_folders.sql`), the skipped candidates' (`skipped_candidates.sql`),
-the folder scans' (`folder_scans.sql`), the release groupings'
-(`release_groupings.sql`), the candidate state's (the `.sql` files beside the
-row files in `import_state/`), the source releases' (`source_releases.sql`,
-`source_releases/tracklist.sql` and `album_link_rows.sql`), the import origin's
-(`import_origin.sql`) and the import list's (`import_list/`), then
-bae-transfers', under `bae-transfers/src/`: the transfer queues'
-(`queued_releases/tables.sql`), and bae-views',
-under `bae-views/src/`: the album grid's (`album/listing.sql`), the artist
-list's (`artist.sql`), the composer list's (`composer.sql`), a composer's
-page's (`composer_detail.sql`), the Storage manager's (`storage.sql`), library
-search's (`search.sql`) and the rewrite of the name keys (`name_keys.sql`). A part runs
-after the parts creating the tables its triggers fire on. Every table is
-`STRICT`. "Syncs" means coven syncs its rows (Appendix B); every other table
-stays on the device.
+domain's part of it, in order, each part running after the parts creating the
+tables its triggers fire on. Every table is `STRICT`. "Syncs" means coven
+syncs its rows (Appendix B); every other table stays on the device.
 A phone's library holds no import tables: they never sync (§6.1), and a phone
 imports nothing (§1.1). A phone's library holds the catalog image cache's
-table, which stays empty there, because the Storage page's query sums it
-(§4.7).
+table, which stays empty there (§4.7).
 
 A list is stored as rows, one per item, when its items have an identity of
 their own, when a query filters, sorts, joins, counts or indexes them, or when
 they are edited one at a time: a release's labels, barcodes and media are
-rows, and so are a failed verdict's lookup failures, which the pane's
-statement filters by the ledger's cells. A list that is only ever set whole
+rows, and so are a failed verdict's lookup failures. A list that is only ever set whole
 and read whole is one JSON value in one column: a release's Discogs details,
 a draft's media, a queued save's preset. coven merges a synced row cell by
 cell, so a synced JSON list is one cell, set whole by its editor.
@@ -5730,19 +5703,7 @@ It also gives coven the function `bae_catalog_rank`, a catalog's place in the
 order surfaces list catalogs (MusicBrainz, Discogs, then the rest by name),
 which indexes order records by, and bae's other SQL functions; each is
 deterministic, with a version that works the same way. Each part of the
-schema declares the functions and the collation its SQL names, and the store
-registers each once.
-
-Each connection coven opens to a library keeps a page cache of up to 64 MiB on
-desktop and 16 MiB on phones, against SQLite's default of 2 MiB. A cache holds
-only the pages its connection has read, so a small library uses no more than
-its size; a large one keeps more of its indexes in memory, which a play from a
-library-sized list writes to across their whole width. coven opens six such
-connections to a library (its writer, the one that checkpoints the WAL, and
-four readers), so at most 384 MiB on desktop and 96 MiB on a phone go to these
-caches, reached only by a library larger than that whose every connection has
-read that much of it. The three connections to coven's own input database
-keep SQLite's default.
+schema declares the functions and the collation its SQL names.
 
 ### A.1 The library (bae-records)
 
@@ -5784,7 +5745,7 @@ Beside them, device-local tables:
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `label_shown_as` | label, keyed by the label: the label it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and the name of the file whose original failed a move of it, from the move's pending record, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and the name of the file whose original failed a move of it, from the move's pending record, with an index of the releases uploading in queue order (§3.2) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 
 What the library lists, bae-views' part, kept by its triggers:
@@ -5800,7 +5761,7 @@ What the library lists, bae-views' part, kept by its triggers:
 | `album_artist_link` | album the grid shows and artist its credits show: the album's title key, year and date added from its `album_listing` row, with an index for each sort of an artist's albums in the grid grouped by artist |
 | `artist_listing` | artist the artist list shows (§2.1): its name, the sort keys of its name and of its sort name (else name) and how many shown albums credit it, with an index for each of the list's sorts and the grid's grouping |
 | `release_listing` | release, keyed by the release: what the Storage manager (§4.2) sorts and filters it by — its album's title key and credit key, its media, when it was added, and from its `release_storage` row its files' count and size, whether they are uploaded and how many are pinned and queued — with an index for each sort, alone and under the uploaded filter; whether the download queue holds it waiting or downloading, and whether it holds it failed; whether a move of it failed; and where it sorts by storage, worked out from those: a failed download or move, uploading, pinning (a download in the queue), local, pinned, in storage only |
-| `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts; whether it is done is read from its `release_storage` row |
+| `upload_batch` | release with files queued to upload since none had any, which the Activity panel's Uploading line counts (§6.4) |
 | `album_search`, `track_search`, `work_search`, `artist_search`, `artist_credit_search` | album title, track title, work title, artist name and sort name, or other printed name, lowercased, in an FTS5 trigram index library search (§2.3) matches against, beside the searched row's key; a track's or a work's results order by the title of the row itself |
 | `album_search_entry`, `track_search_entry`, `work_search_entry`, `artist_search_entry`, `artist_credit_search_entry` | searched row, keyed by its own key: the integer its search row is found by |
 
@@ -5824,9 +5785,6 @@ one of its files references a coven file that coven records as stored.
 All sync (§5), except `local_history`, `profile_request` and
 `admin_operations`.
 
-These are people's tables (`people.sql`) except `admin_operations`, which is
-membership's (`membership.sql`).
-
 | Table | One row per |
 |---|---|
 | `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), and the coven file of their avatar (`avatar_id`), with an index by it |
@@ -5836,7 +5794,7 @@ membership's (`membership.sql`).
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
 | `local_history` | play on this device before the person had a profile: track, when it started, how much was played (§5.3) |
 | `admin_operations` | admin change this device asked for, while coven lists its operation: keyed by that operation, the library's new name, the person and their new role, the person removed, the device removed, or the person an approval lets in with the name their invite gave them (§5.6) |
-| `profile_request` | the profile this device's person asked for while their private circle is made, at most one: the circle's operation in `coven_operations`, the circle and the name (§5.4) |
+| `profile_request` | the profile this device's person asked for while their private circle is made, at most one: the circle's coven operation, the circle and the name (§5.4) |
 
 ### A.3 Playback
 
@@ -5850,12 +5808,6 @@ membership's (`membership.sql`).
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on from there, and whether playback started the track's line at a seek (§9.4) |
 | `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 
-A play's fill, Clear up next, Clear playing from and the emptying as a library
-opens without resuming are bulk writes: plain SQLite on these device-local
-tables, with no record kept of each row changed, so emptying a lane of a whole
-library takes one step. After each, every screen following a table it changed
-reads it again once.
-
 ### A.4 Watched folders and scans
 
 | Table | Holds |
@@ -5864,9 +5816,9 @@ reads it again once.
 | `release_grouping`, `release_grouping_member` | folders read as one release, or kept apart, and by whom (§3.1) |
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
-| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1); the scans' progress reads every watched folder in order, by the index of their positions, with its root when a scan has stored one, and a scan's progress counts the folders its root's current generation holds from the candidates themselves, by an index of them |
-| `folder_scan_held`, `folder_scan_alert_shown` | what the folder scan coordinator holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
-| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why bae can't import it (which the scan also writes with its files), with an index on each watched folder's candidates by the folder each reads its files from, by which a scan's write finds the candidates reading any of its files, so it costs the same however many the watched folder holds; each file by its name in the release and its path, a BLOB of coven's bytes for it |
+| `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1) |
+| `folder_scan_held`, `folder_scan_alert_shown` | what bae holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
+| `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why bae can't import it (which the scan also writes with its files), with an index on each watched folder's candidates by the folder each reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |
 | `scan_sidecar`, `scan_sidecar_file` | files under a folder no release owns, each unique by its path |
@@ -5876,9 +5828,7 @@ reads it again once.
 Every folder path and candidate key in these tables, and in A.5 and A.7, is a
 BLOB: a path as coven's bytes for it, a folder below a watched folder as its
 names' bytes joined by `/` (empty for the watched folder), a candidate key as
-its folder's path bytes or `grouping:` and an id. SQL shows one with
-`coven_path_text`; ranges below a folder are compared as bytes, each bound
-cast back to a BLOB after `||`.
+its folder's path bytes or `grouping:` and an id.
 
 ### A.5 Import candidates
 
@@ -5886,16 +5836,16 @@ Keyed by the candidate's content hash.
 
 | Table | Holds |
 |---|---|
-| `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, whose decisions a scan reads before it walks, and one on the folders they were found in, whose candidates a watched folder's removal forgets by the range of folders below it |
-| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). Each draft write also stores whether the draft is blank and whether it would import; the pane and the list read those stored values and judge nothing again. Every state of a folder this device did not import holds a draft row: the scan writes the blank one, and the write that deletes this device's release of the folder writes it again, from the folder's stored audio units; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
+| `import_candidate_state`, `import_candidate_folder` | the candidate, its revisions, and where it was found, with an index on the candidates a file decision was made for, and one on the folders they were found in |
+| `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). Each draft row also holds whether the draft is blank and whether it would import. Every state of a folder this device did not import holds a draft row: the scan writes the blank one, and the write that deletes this device's release of the folder writes it again, from the folder's stored audio units; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with its role, qualifiers and the name its catalog printed |
 | `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
-| `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; reading a candidate whose cover names a file or embedded artwork its scan did not store fails as a damaged row; the pane and the list row read a stored cover the same way and draw the same image; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes, which the slot fetches when it draws |
+| `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; a cover that names a file or embedded artwork its scan did not store is a damaged row; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
-| `import_candidate_claimed_record`, `import_candidate_offered_cover` | what the link claims (§3.5, §3.7): the records its claimed releases describe it by, merged, or a linked album's albums; and the covers a linked pressing offers the picker, in order. The write that stores the link stores them, and a write that stores a claimed release again or changes the albums kept for a claimed release's album stores them again. They go with the link |
+| `import_candidate_claimed_record`, `import_candidate_offered_cover` | what the link claims (§3.5, §3.7): the records its claimed releases describe it by, merged, or a linked album's albums; and the covers a linked pressing offers the picker, in order. They follow each later store of a claimed release or change to the albums kept for its album, and go with the link |
 | `import_candidate_session` | where the pane was, and its last failure |
 | `import_candidate_failure` | why the last import failed |
 
@@ -5903,11 +5853,11 @@ Beside them, keyed by the candidate's key as the import list names it:
 
 | Table | Holds |
 |---|---|
-| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (drafting the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it or to start (what a run starts from, or whether an answer is stored already, could not be read), for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). Each change is a write its owner waits for — the queue admitting and letting go, the run starting, answering and ending, each step of the import, written before the worker starts it — and a change that cannot be written fails what asked for it; a change no one waits on is reported as a bug. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. The import list, the pane and the per-candidate runtime read it with the rows, so each row's state (§3.2) and the filter's counts come from one read; the count of imports in flight the list's chrome draws is its rows an import holds, counted by the import counts' own live query. A panic while composing the runtime's read ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. How far through its step an import is, is not stored; what each run published is `import_identify_run`'s. No row outlives the process: the table is emptied as the library opens |
-| `import_catalog_apply_step` | the network read each running apply of a catalog release waits on, by the id the library's handle gave the apply when an import pick or the release editor started it. The step is reading a release from its catalog or fetching the cover from the catalog that offers it, with that catalog. The apply writes the row as the read starts and deletes it as the read ends, so a row exists only while its read runs; when bae stops an apply before its read ends, a task deletes the apply's row, and reports a delete that fails as a bug. A step replaces any step the row holds, and a write of the row that fails fails the apply with its error. The pick's row and the release editor's line read it through the apply's live query. No apply outlives the process: the import service empties the table as the library opens |
-| `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws, read by the import counts' own live query: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
-| `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, each stored in the write of the state the run reached from them. Its pane and the release editor's search draw the run from these rows, its rows judged against the text of those signals; the write that stores the rows also stores their judgement, and one statement returns the cards, so neither the pane nor the editor judges the rows when it reads them. A folder candidate's run has its rows only while its standing names the run: its first state is written in the write that starts it, a later one only while the standing still names it, and the write that moves the standing off the run deletes them, so no read finds a run the standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. A candidate's runtime read joins, in one statement, the run its standing names, or for a re-identify session, which has no standing, picks its latest run in flight, else its latest answer, with ORDER BY and LIMIT 1. The runtime read takes the candidate's stored verdict from the statements and conversion that the candidate's pane read uses, so both reads show one verdict the same way. The read returns the identify state the pane and the release editor's search show: the queue's wait or the run's state while identification does something for the key, else the identify state that bae builds from its stored verdict, else Idle. The apps draw the state the read returns and never choose between states themselves. Every row a run owns goes with its row here, and the table is emptied as the library opens |
-| `import_candidate_search`, `import_candidate_search_source`, `import_candidate_search_pick`, `import_candidate_search_pick_album` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). Each answer, pick and switch lays the whole list of the search's releases out again in its own write, and stores each release's pressing row, its card and its place among its row's records, the text of each card and what each row lists (A.6), and that write also stores what the grouping rules decide for each card: its place among the cards (the card with the best row first), its sections (one for each album where it holds two albums of one catalog), the place of each row in its section (by the year its lead record states), its cover and the catalogs it names. The pane reads the search's cards from those rows in one statement, with whether the library holds each row's lead release. The same statement counts the releases each part returned and decides where the search stands: searching while a part is, else failed when a part failed, else no matches when a part answered and no part returned a release, else found. bae writes each catalog's answer in a write of its own, and only to a part still searching, of the search bae asked it for: a new search for the key replaces the row on a run number never used again, so bae writes nothing for an answer to the replaced search, a second answer, or one for a part switched off. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list stores what its documents state its album is on the other catalog, and the write lays the list out with every pick together: each MusicBrainz row holds the album bae works out for its group from every pick and the list; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
+| `import_candidate_standing` | where a candidate something is running for stands, and the only place that is held: its identification queued, running, writing its answer (drafting the pressing it picked unattended first, and whether Import was asked of that answer) or failed to write it or to start (what a run starts from, or whether an answer is stored already, could not be read), for the files it names; its import at the step it has reached: queued for the worker, validating its source files, fetching artist pictures, reading files, measuring loudness, or finalizing (writing its release). A change that cannot be written fails what asked for it. A candidate's identification ends in the write that removes the candidate, reads it with other files or combines it into another release, so a folder removed and found again starts with none, and in the write of a person's decision about it — a pick, its files' tags, a cleared draft, a linked album, a skip — or of an import's claim, so no read sees the decision beside the identification it answers. A second import of a candidate is refused while one stands. A panic while bae works out a candidate's state ends the app, after reporting it as a bug, since what the list shows could no longer be trusted. A stored verdict ends the run it answers in its own transaction, a release ends its import in its own, and a failed import's failure ends it in the failure's. What each run published is `import_identify_run`'s. No row outlives the process: the table is emptied as the library opens |
+| `import_catalog_apply_step` | the network read each running apply of a catalog release (an import pick's or the release editor's) waits on: reading a release from its catalog or fetching the cover from the catalog that offers it, with that catalog. A row exists only while its read runs, and a write of the row that fails fails the apply with its error. No apply outlives the process, so the table is emptied as the library opens |
+| `import_identification_batch` | the identifications counted as one batch for the count the list's chrome draws: each candidate admitted since the batch opened, and whether its identification has ended. Each change to an identification moves it in that change's own write; the batch's rows go once every one has ended, and the table is emptied as the library opens |
+| `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, and how its rows stand against the text of those signals. A folder candidate's run has its rows only while its standing names the run, so no candidate shows a run its standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. The pane and the release editor's search show the queue's wait or the run's state while identification does something for the key (for a re-identify session, its latest run in flight, else its latest answer), else the state of the candidate's stored verdict, else Idle, and show a verdict the same way in both. Every row a run owns goes with its row here, and the table is emptied as the library opens |
+| `import_candidate_search`, `import_candidate_search_source`, `import_candidate_search_pick`, `import_candidate_search_pick_album` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). Each answer, pick and switch lays the whole list of the search's releases out again in its own write, and stores each release's pressing row, its card and its place among its row's records, the text of each card and what each row lists (A.6), and that write also stores what the grouping rules decide for each card: its place among the cards (the card with the best row first), its sections (one for each album where it holds two albums of one catalog), the place of each row in its section (by the year its lead record states), its cover and the catalogs it names. The search stands searching while a part is, else failed when a part failed, else no matches when a part answered and no part returned a release, else found. bae writes each catalog's answer in a write of its own, and only to a part still searching, of the search bae asked it for: a new search for the key replaces the row on a run number never used again, so bae writes nothing for an answer to the replaced search, a second answer, or one for a part switched off. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list stores what its documents state its album is on the other catalog, and the write lays the list out with every pick together: each MusicBrainz row holds the album bae works out for its group from every pick and the list; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
 
 The tables below hold each release editor's session (§3.8). Each session is
 one row of `release_edit_session` on one library release, and deleting the
@@ -5929,9 +5879,8 @@ refuses a change to a session whose rows are gone. A save's one write
 writes the release and then the session again from the release as the save
 wrote it, under the same id; Cancel writes the session again from the release as it
 is now, in a write of its own. Closing the editor deletes its session's
-rows: bae hands the delete to a task, and reports a delete that fails as a
-bug. No session outlives the process: the import service empties the
-tables as the library opens.
+rows, and a delete that fails is reported as a bug. No session outlives the process, so the tables are emptied as the
+library opens.
 
 Beside them, keyed by the release an import made:
 
@@ -5947,25 +5896,24 @@ Beside them, keyed by the release an import made:
 |---|---|
 | `import_candidate_signals`, `import_candidate_signal_value`, `import_candidate_text_line` | the clues read off a candidate (§3.3), or those a run in flight last read (A.5) |
 | `import_candidate_lookup_choices`, `import_candidate_chosen_catalog`, `import_candidate_discounted_catalog`, `import_candidate_excluded_barcode` | what the person let the lookups use |
-| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict. Owned by a candidate's files, or by a run in flight (A.5), whose row may be `running`; this table, its matches and its ledger rows name their owner the same way. For a found verdict, the write that stores it also stores what it decides (§3.5): the release it picks, or why it picks none (the folder's files rule out the medium of every release found, it found nothing that fits, it found several pressings, it could not read a record in full, or bae cannot check the tracklist). The import list, the pane's cards statement and the pane's opening on the draft all read that stored decision |
-| `import_candidate_verdict_failure` | the lookups a failed verdict's run could not get answered, in the order it sent them: the clue or fetch (a Disc ID, a barcode, a catalog number, the title search, the ISRCs, an offered row's pressing, the picked release's cover), the catalog that failed it, and how it failed. The pane says in lines of their own the ones no failed cell of the verdict's ledger shows, chosen in its cards statement: every one where the pane offers no releases; under offered releases, the failed fetches of the picked release, and each other lookup once as a line saying the list is missing its results, which the statement picks out and lists without repeats |
-| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A search's release states its pressing row, its card (the list place of the card's first release), its place among its row's records, the section of the card its row shows in and the row's place in that section; a ledger cell's release states the same for the cell's own list. A release a verdict or run lists also states which of its fields the folder's text agrees with (Disc ID, barcode, catalog number, label, year, country, album title, album artist), which the write that stores the verdict, the signals or the discounted numbers works out and writes, and states its card and place the same way. A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), as that release is stored now |
-| `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from. The pane reads each answered cell's cards from the layout stored with it, in the one statement that reads the ledger |
-| `import_candidate_card_list`, `import_candidate_card`, `import_candidate_card_text`, `import_candidate_row_statement` | what the card rules decided for a list of releases, which the write that groups the list stores in place of what the list held: the list itself, as its owner's own list or the list of one cell of its owner's ledger; each card's place among the list's cards, the id that names it, the release whose cover it shows, the years its releases state, the catalogs it names and, for a card that holds two albums of one catalog, each section's album; the titles, artists and labels each card names; and what each row lists where its records state a fact (years, label lines with their catalog numbers, barcodes, areas, media), each value once with the catalogs that state it where the records differ. A typed search's list and each ledger cell's list have them |
+| `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; how each clue stood in the run it laid out; a medium conflict. Owned by a candidate's files, or by a run in flight (A.5), whose row may be `running`; this table, its matches and its ledger rows name their owner the same way. For a found verdict, the write that stores it also stores what it decides (§3.5): the release it picks, or why it picks none (the folder's files rule out the medium of every release found, it found nothing that fits, it found several pressings, it could not read a record in full, or bae cannot check the tracklist). |
+| `import_candidate_verdict_failure` | the lookups a failed verdict's run could not get answered, in the order it sent them: the clue or fetch (a Disc ID, a barcode, a catalog number, the title search, the ISRCs, an offered row's pressing, the picked release's cover), the catalog that failed it, and how it failed. The pane says in lines of their own the ones no failed cell of the verdict's ledger shows: every one where the pane offers no releases; under offered releases, the failed fetches of the picked release, and each other lookup once as a line saying the list is missing its results, without repeats |
+| `import_candidate_match` and its `_label`, `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, once: the ones it offers, the ones set aside, and the ones a lookup found that neither lists, with the pressing row of a listed one; each label with the catalog ids the lookup gave it. A typed search's releases are rows too, owned by the search and each under the catalog part that returned it, held only while that part stands answered (A.5). A search's release states its pressing row, its card (the list place of the card's first release), its place among its row's records, the section of the card its row shows in and the row's place in that section; a ledger cell's release states the same for the cell's own list. A release a verdict or run lists also states which of its fields the folder's text agrees with (Disc ID, barcode, catalog number, label, year, country, album title, album artist), and states its card and place the same way. A match's album's first year is not kept: it is read from the stored catalog release the match names (A.8), as that release is stored now |
+| `import_candidate_lookup_value`, `import_candidate_lookup`, `import_candidate_lookup_release` | the run's rows (each Disc ID, barcode and catalog number, the ISRCs, the title search), each row's lookups by catalog with what each answered, and the releases each found, as the match rows holding them; a release a Disc ID's lookup found is what its Disc ID agreement is read from |
+| `import_candidate_card_list`, `import_candidate_card`, `import_candidate_card_text`, `import_candidate_row_statement` | what the card rules decided for a list of releases: the list itself, as its owner's own list or the list of one cell of its owner's ledger; each card's place among the list's cards, the id that names it, the release whose cover it shows, the years its releases state, the catalogs it names and, for a card that holds two albums of one catalog, each section's album; the titles, artists and labels each card names; and what each row lists where its records state a fact (years, label lines with their catalog numbers, barcodes, areas, media), each value once with the catalogs that state it where the records differ. A typed search's list and each ledger cell's list have them |
 | `import_candidate_lookup_provider`, `import_candidate_lookup_isrc`, `import_candidate_lookup_offered_catalog` | the catalogs the run asked, the ISRCs it looked up, and the catalog numbers it offered to pick |
 
 ### A.7 The import list
 
 | Table | Holds |
 |---|---|
-| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Each is worked out from the tables above, which no index reaches, so triggers write it in the same write that changes any of them: no read sees it behind its tables. One index per order, holding Imported's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's, read off the group's members newest first: placing a member writes its own row and its header's and reads no other member, however large the group |
-| `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row: what the list's search finds its rows by (§3.2) |
+| `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Triggers write it in the same write that changes any table it comes from, so it never lags behind them. One index per order, holding Imported's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's |
+| `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row (§3.2) |
 | `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
 | `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
 
-No list outlives the process that opened it: the import service empties
-`import_list` and the tables hanging off it as the library opens, with the
-standings.
+No list outlives the process that opened it, so `import_list` and the tables
+hanging off it are emptied as the library opens, with the standings.
 
 ### A.8 Catalog releases
 
@@ -6033,13 +5981,13 @@ Never synced (§4.7).
 
 ## Appendix B. Synced tables
 
-The table below lists each schema part's synced tables: records' (`bae_records::synced`), people's (`bae_people::synced`) and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
+The table below lists the synced tables: the library's, the people's and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, whether the reference is trailing or
-bound (§6.3), and the namespace its files are in. No schema part declares `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
+bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
 `import_candidate_standing`, `import_identification_batch`,
 `import_identify_run` and `import_catalog_apply_step` among them, or the
 transfer queues (A.9), so they never sync.
@@ -6091,14 +6039,13 @@ device-local `preferences` table, with its save formats as rows of
 `save_filename_token` and `save_folder_token`. They are never synced. A copy of the library new
 to this device — created, added from another device, joined, or restored or
 reset over this device's copy — starts at the defaults below; nothing carries
-the settings of a copy it replaces. Each setter writes the row in one write,
-and what a setting decides reads the row when it acts: playback as it loads a
-track or reaches a side's end, an import as it starts, an identification run
+the settings of a copy it replaces. Each change writes the row in one write,
+and a setting takes effect when what it decides next acts: playback as it
+loads a track or reaches a side's end, an import as it starts, an identification run
 as it starts and as it settles, casting as the picker or its settings page
 opens, as the setting changes, or as a cast starts,
 the MCP and Subsonic servers as the row changes, and the store's transfer
-limits as the library opens and as either limit changes. The settings screens
-pull the row with the library's id and directory from a live query. The schema
+limits as the library opens and as either limit changes. The schema
 refuses what no setter writes: a last-used format that names no format, two
 formats of one name, a format its codec can't write, a name pattern piece
 that is not exactly one of a value and typed text, or is typed text of
@@ -6140,9 +6087,8 @@ constant rate (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256 and
 between lossless codecs and its bitrate between lossy ones when the new one
 offers it; otherwise it starts at the source's depth, or MP3 at 320, AAC at
 256 and Opus at 192 kbps, and a name still as it was made follows the new
-codec. A format the person adds starts as core makes it: FLAC at the
-source's depth, named "FLAC" or the first free "FLAC (n)". Its files'
-extension comes from core too. A name pattern is an ordered list of pieces,
+codec. A format the person adds starts as FLAC at the source's depth, named
+"FLAC" or the first free "FLAC (n)". A name pattern is an ordered list of pieces,
 each a value or typed text. The file pattern's values are title, artist,
 album, album year, release year, track number, disc number and track total;
 the folder pattern's are artist, album, album year, release year, label and
@@ -6248,50 +6194,19 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 
 ---
 
-## Appendix F. Bridge types
-
-The `Bridge*` types live in `bae-bridge/src/types/`, by area:
-
-| File | Types for |
-|---|---|
-| `library_playback.rs` | albums, releases, tracks, files, audio formats, covers and galleries, records, catalogs, cloud providers, libraries |
-| `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue, sync status and pending records |
-| `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, storage setup |
-| `configuration/settings.rs` | sorting, restore codes, people and devices, save presets, errors |
-| `playback_values.rs` | the playing track, position, side-pause prompt, media controls, preview |
-| `events_and_transfers.rs` | the artwork reader, uploads, downloads, exports and saves |
-| `editing.rs` | release detail and edits, artist credits, the mapping table, edit validation |
-| `pressing.rs` | pressing facts: area, media, labels, status, packaging, Discogs details |
-| `storage_inspector.rs` | the storage inspector's files and transfers |
-| `device_storage.rs` | what this device keeps: its parts, the cache limit and its choices |
-| `live_results.rs` | windows and sections of live lists |
-| `import/candidate.rs`, `import/grouping.rs` | watched folders, candidate files, CUE binding, import steps, grouped folders |
-| `import/identify.rs` | clues, lookups, the run's ledger, identify state |
-| `import/list.rs` | the import list, its filter, and the candidate pane and its commands |
-| `import/search.rs` | catalog search results, pressings and album cards |
-| `import/triage.rs` | candidate rows, states, badges, selection, matched pressings |
-| `cover.rs` | catalog cover galleries |
-| `personal.rs` | profiles, ratings and playlists |
-
-The `import` and `cover` types, and the conversions in `conversion/`, exist
-only in desktop builds.
-
----
-
 ## Appendix G. Errors and states
 
 ### G.1 Error categories
 
-A `BridgeError` is `Cancelled` (show nothing), `ShuttingDown` (the runtime the
-call ran on is ending with the process: show nothing, and a reader of a
-subscription or stream stops pulling), `NotFound` (a library), or `Diagnostic`
-with one of these categories and a detail:
+A failure is a cancellation (bae shows nothing), the app ending (bae shows
+nothing), a library that isn't there, or one of these categories with a
+detail:
 
 | Category | The person |
 |---|---|
 | `Database`, `Config`, `Internal` | reports it |
 | `DatabaseBusy` | asks again: the library's database was busy with other work, or what the call read changed under it |
-| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; a failed open with it on a library that has storage fails as `ResetFromCloud` and offers Reset from cloud (§6.4) |
+| `DatabaseDamaged` | can't go on with this device's copy: the library's database file is damaged, or holds a value nothing writes; a failed open with it on a library that has storage offers Reset from cloud (§6.4) |
 | `SyncUpdateRequired` | updates the app |
 | `DeviceResetRequired` | resets the device (§6.4): when another installation replaced this one or the member's keys changed, bae asks first and shows the reset's warning; when another installation uses this device's id and this copy is the one behind, bae resets at once without asking |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
@@ -6390,7 +6305,8 @@ MusicBrainz covers come from the Cover Art Archive.
 - **Medium:** CD, SACD, DVD, HD DVD, Blu-ray, vinyl, shellac, acetate, cassette,
   DCC, DAT, cartridge, reel-to-reel, digital, MiniDisc, LaserDisc, CDV, Video CD,
   video tape, flash memory, floppy, cylinder, DualDisc, VinylDisc, DVDplus, and
-  more in `crate::pressing::Medium`.
+  the other carrier families MusicBrainz's and Discogs's format lists name,
+  each format a person would call a different object.
 - **Area:** an ISO 3166-1 country code, or a named region no code covers.
 - **Discogs details:** what Discogs states about a pressing that no other
   field holds.
