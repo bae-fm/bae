@@ -59,10 +59,10 @@ extension View {
 }
 
 // periphery:ignore
-/// What restarts the list's take of a pending reveal: a new request, or the
-/// list it scrolls coming into existence under one already waiting.
-private struct PendingRevealID: Hashable {
-    let seq: Int?
+/// What starts a requested reveal: the request, and the list it scrolls
+/// coming into existence under one already waiting.
+private struct RequestedRevealStart: Hashable {
+    let candidateKey: Data?
     let listLoaded: Bool
 }
 
@@ -103,6 +103,12 @@ struct MacImportSidebarContainer: View {
 
     @Environment(UiStore.self)
     private var uiStore
+    /// The candidate a navigation asked the list to show, taken from
+    /// `UiStore.importCandidateReveals` and waiting for the list to exist.
+    @State
+    private var requestedReveal: Data?
+    /// The reveal on its way: from a request, once the list exists, or from
+    /// the identification progress line.
     @State
     private var revealOperation: ImportCandidateRevealOperation?
     /// The positions reveals land on, which the table scrolls to.
@@ -200,20 +206,23 @@ struct MacImportSidebarContainer: View {
         .onDisappear {
             cancelReveal()
         }
+        .onReceive(uiStore.importCandidateReveals.requests) { candidateKey in
+            requestedReveal = candidateKey
+        }
         .task(
-            id: PendingRevealID(
-                seq: uiStore.pendingImportCandidateReveal?.seq,
+            id: RequestedRevealStart(
+                candidateKey: requestedReveal,
                 listLoaded: listSlot.list != nil
             )
         ) {
-            // A reveal taken before the list exists would be lost.
-            guard listSlot.list != nil,
-                let request = uiStore.pendingImportCandidateReveal
+            // A reveal started before the list exists would be lost.
+            guard listSlot.list != nil, let candidateKey = requestedReveal
             else { return }
-            // Once taken, the person's next action cancels it.
-            uiStore.consumeImportCandidateReveal(seq: request.seq)
+            // The reveal goes on its way, where the person's next action
+            // cancels it.
+            requestedReveal = nil
             startReveal {
-                try await listSlot.revealCandidate(request.candidateKey)
+                try await listSlot.revealCandidate(candidateKey)
             }
         }
     }

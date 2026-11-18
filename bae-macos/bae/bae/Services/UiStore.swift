@@ -40,14 +40,14 @@ struct LibraryNavigationRequest {
     let seq: Int
 }
 
-/// A pending "show this import candidate" command, consumed exactly once by
-/// the import candidate list. Durable, not a stream: a producer outside the
-/// import tab — a folder chosen from the library — records it before the list
-/// that scrolls to it is mounted. `candidateKey` is the row scrolled to and
-/// selected alone once it is there. `seq` lets a repeat request run again.
-struct PendingImportCandidateReveal {
-    let candidateKey: Data
-    let seq: Int
+/// A request to show an album in the album grid, by a navigation such as Go
+/// to Now Playing rather than a click on its card, and the track in it whose
+/// row to show, if any.
+struct AlbumReveal: Equatable, Sendable {
+    let albumId: String
+    /// The track whose row the grid scrolls into view and then flashes, or
+    /// `nil` for the album alone.
+    let trackId: String?
 }
 
 // MARK: - UiStore
@@ -70,7 +70,7 @@ class UiStore: @unchecked Sendable {
     /// The requests to show an album in the album grid, which the grid takes
     /// as they come.
     @ObservationIgnored
-    let albumReveals = AlbumRevealRequests()
+    let albumReveals = HeldRequests<AlbumReveal>()
     /// The track whose row flashes, sent once the grid has shown the row a
     /// reveal names, so the flash is seen where the row is.
     @ObservationIgnored
@@ -90,11 +90,10 @@ class UiStore: @unchecked Sendable {
 
     // ── Import candidate list ───────────────────────────────────────────
 
-    /// The pending candidate-list reveal, or `nil` before any or once the list
-    /// has taken it. Durable until consumed — see
-    /// `PendingImportCandidateReveal`.
-    private(set) var pendingImportCandidateReveal: PendingImportCandidateReveal?
-    private var importCandidateRevealSeq = 0
+    /// The requests to show an import candidate in the candidate list, by
+    /// its key, which the list takes as they come.
+    @ObservationIgnored
+    let importCandidateReveals = HeldRequests<Data>()
 
     /// The candidate list sidebar's active tab and filters. UI-originated
     /// session state — surviving a remount so the sidebar doesn't reset to its
@@ -179,19 +178,7 @@ class UiStore: @unchecked Sendable {
     /// wherever the list places it.
     func navigateToImportCandidate(_ candidateKey: Data) {
         activeSection = .importing
-        importCandidateRevealSeq += 1
-        pendingImportCandidateReveal = PendingImportCandidateReveal(
-            candidateKey: candidateKey,
-            seq: importCandidateRevealSeq
-        )
-    }
-
-    /// Clear the pending candidate-list reveal once the list has taken it. A
-    /// no-op if a newer request already superseded it.
-    func consumeImportCandidateReveal(seq: Int) {
-        if pendingImportCandidateReveal?.seq == seq {
-            pendingImportCandidateReveal = nil
-        }
+        importCandidateReveals.send(candidateKey)
     }
 
     func navigateToArtist(_ artistId: String) {

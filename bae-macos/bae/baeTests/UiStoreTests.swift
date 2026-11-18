@@ -198,32 +198,33 @@ struct UiStoreLibraryBrowserModeTests {
     }
 }
 
-@MainActor
-@Suite("AlbumRevealRequests")
-struct AlbumRevealRequestsTests {
-    private let first = AlbumReveal(albumId: "album-1", trackId: "track-7")
-    private let second = AlbumReveal(albumId: "album-2", trackId: nil)
+/// What one listener to held requests has received so far.
+final class RequestListener<Request> {
+    private(set) var received: [Request] = []
+    private var subscription: AnyCancellable?
 
-    /// What one listener has received so far.
-    private final class Listener {
-        var received: [AlbumReveal] = []
-        private var subscription: AnyCancellable?
-
-        init(_ requests: AlbumRevealRequests) {
-            subscription = requests.requests.sink { [unowned self] in
-                received.append($0)
-                Wait.happened()
-            }
-        }
-
-        func stop() {
-            subscription?.cancel()
+    init(_ requests: HeldRequests<Request>) {
+        subscription = requests.requests.sink { [unowned self] in
+            received.append($0)
+            Wait.happened()
         }
     }
 
+    func stop() {
+        subscription?.cancel()
+    }
+}
+
+@MainActor
+@Suite("HeldRequests")
+struct HeldRequestsTests {
+    private typealias Listener = RequestListener<AlbumReveal>
+    private let first = AlbumReveal(albumId: "album-1", trackId: "track-7")
+    private let second = AlbumReveal(albumId: "album-2", trackId: nil)
+
     @Test("a listener gets each request as it comes")
     func listenerGetsRequests() async throws {
-        let requests = AlbumRevealRequests()
+        let requests = HeldRequests<AlbumReveal>()
         let listener = Listener(requests)
         defer { listener.stop() }
 
@@ -237,7 +238,7 @@ struct AlbumRevealRequestsTests {
         "the latest request sent with no listener goes to the next one, once"
     )
     func waitingRequestGoesToNextListenerOnce() async throws {
-        let requests = AlbumRevealRequests()
+        let requests = HeldRequests<AlbumReveal>()
         requests.send(first)
         requests.send(second)
 
@@ -256,7 +257,7 @@ struct AlbumRevealRequestsTests {
 
     @Test("a request sent once every listener stopped waits for the next")
     func requestAfterListenerStopsWaits() async throws {
-        let requests = AlbumRevealRequests()
+        let requests = HeldRequests<AlbumReveal>()
         let stopped = Listener(requests)
         stopped.stop()
 
