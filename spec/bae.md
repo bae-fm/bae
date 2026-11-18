@@ -2449,9 +2449,10 @@ A release with any audio file on another device only cannot play here, and
 names that device in the album and release views: "On Ana's Mac". bae names the
 device that alone holds the audio file with the lowest file id among the
 release's audio files that another device alone holds. The view
-`release_audio_elsewhere` joins coven's registration of each device in
-`coven_devices` to coven's record of each file, and the query that reads the
-release reads the view. The album and release
+`release_audio_elsewhere` reads which audio files coven says this device
+can't read (`coven_file_reads`) and joins coven's registration of the device
+that holds each in `coven_devices`, and the query that reads the release reads
+the view. The album and release
 views stop showing the line once coven records the file in storage, and show
 the device's new state when a member removes the device. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
