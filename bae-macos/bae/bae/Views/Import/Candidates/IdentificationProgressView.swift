@@ -68,6 +68,7 @@ struct IdentificationProgressIndicator: View {
         }
         .buttonStyle(.accentPlain)
         .help("Identifying")
+        .accessibilityLabel(Text("Identifying"))
         .macPopover(isPresented: $lineShown, arrowEdge: .bottom) {
             IdentificationProgressView(
                 identified: identified,
@@ -176,6 +177,7 @@ struct FolderScanProgressIndicator: View {
         }
         .buttonStyle(.accentPlain)
         .help(localizedCoreString("ui.import.scan.activity"))
+        .accessibilityLabel(localizedCoreString("ui.import.scan.activity"))
         .macPopover(isPresented: $detailsShown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 ForEach(folders, id: \.folder.path) { scan in

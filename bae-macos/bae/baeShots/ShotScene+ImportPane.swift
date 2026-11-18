@@ -118,7 +118,9 @@ extension ShotScene {
             ShotScenes.libraryWindow(
                 uiStore: uiStore,
                 backing: boardLibraryBacking(uiStore: uiStore),
-                needsAttention: false,
+                // The boards draw no sync activity, so nothing moves and
+                // the bar shows no Activity button.
+                syncActivity: SyncActivityStore(),
                 playbackStore: boardPlayback(),
                 importScene: scene.fixture,
                 importSelection: scene.selection,
