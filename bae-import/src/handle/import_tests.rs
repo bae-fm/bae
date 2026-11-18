@@ -12,9 +12,8 @@ use crate::handle::tests::*;
 use crate::identification::tests::*;
 use crate::service::artist_pictures::tests::{large_picture, picked_discogs_release};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
-use bae_catalogs::test_releases::seed_mb_release_with_works;
+use bae_catalogs::test_releases::mb_release_with_works;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
-use bae_catalogs::test_releases::seed_two_track_mb_release;
 use bae_catalogs::test_releases::two_track_mb_release_json;
 use bae_util::test_channels::HANG_GUARD;
 
@@ -84,62 +83,68 @@ async fn a_refused_start_whose_candidate_changed_meanwhile_files_no_bug_report()
     assert_eq!(bugs.reports(), Vec::new());
 }
 
-/// What the import writes is the draft: storing the release again after it
-/// was applied, its tracklist and credits changed by its editors, changes
-/// nothing the candidate imports (B2).
+/// What the import writes is the draft: the import's own read storing the
+/// release again after it was applied, its tracklist and credits changed by
+/// its editors, changes nothing the candidate imports (B2).
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
-    let fakes = FakeCatalogs::offline();
-    let StoredCandidate { handle, candidate, key, tmp: _tmp, .. } =
-        stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    let tables = handle.services.tables.clone();
-    seed_mb_release_with_works(
-        &fakes,
+    // The pick offers the group's album address, which the archive holds no
+    // image at.
+    let archive = bae_util::http::serve_not_found().await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let StoredCandidate { handle, key, tmp: _tmp, .. } =
+        stored_candidate_with(fakes.providers(), http).await;
+    let in_group = |mut release: serde_json::Value| {
+        release["release-group"] = serde_json::json!({ "id": "edited-group" });
+        release.to_string()
+    };
+    // MusicBrainz answers the release but not its release group yet, so the
+    // pick's read of the group fails.
+    fakes.seed_musicbrainz_release(
         "edited-release",
-        "edited-release",
-        &["First Track", "Second Track"],
-        &[1_000, 1_000],
+        in_group(mb_release_with_works(
+            "edited-release",
+            "edited-release",
+            &["First Track", "Second Track"],
+            &[1_000, 1_000],
+        )),
     );
     pick_mb(&handle, &key, "edited-release").await;
-    let hash = candidate.files.content_hash();
-    let applied = stored_draft(&handle, &hash).await;
 
-    // The catalog's editors retitle the tracks and credit other composers;
-    // the release is fetched and stored again over the copy applied.
-    seed_mb_release_with_works(
-        &fakes,
+    // The catalog's editors retitle the tracks and credit other composers,
+    // and the group now answers. The import reads the release again in
+    // full and stores that read over the copy applied.
+    fakes.seed_musicbrainz_release(
         "edited-release",
-        "changed",
-        &["Changed One", "Changed Two"],
-        &[1_000, 1_000],
+        in_group(mb_release_with_works(
+            "edited-release",
+            "changed",
+            &["Changed One", "Changed Two"],
+            &[1_000, 1_000],
+        )),
     );
-    let edited = bae_catalogs::records::LookupRef::new(
-        bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-        "edited-release",
+    fakes.seed_musicbrainz_release_group(
+        "edited-group",
+        serde_json::json!({
+            "id": "edited-group",
+            "relations": [{ "url": { "resource": "https://www.allmusic.com/album/mw333" } }],
+        })
+        .to_string(),
     );
-    let payloads = handle
-        .services
-        .catalogs
-        .session()
-        .await
-        .unwrap()
-        .fetch_payloads(
-            &edited,
-            bae_catalogs::payloads::ReadDepth::Complete,
-            bae_catalogs::rate_limiter::CallClass::REQUESTED,
-        )
-        .await
-        .unwrap();
-    tables.save_source_release(&payloads.extract().unwrap()).await.unwrap();
-    assert_eq!(stored_draft(&handle, &hash).await, applied);
-
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _album_id) =
         await_import_outcome(&mut events, &import_id).await.expect("the import completes");
     let written = handle.services.records.track_sources_for_test(&release_id).await.unwrap();
+    let records = handle.services.records.get_release_records(&release_id).await.unwrap();
     shut_down(handle).await;
 
+    assert!(
+        records.iter().any(|record| record.catalog() == bae_catalogs::catalog::Catalog::AllMusic
+            && record.key() == "mw333"),
+        "the import stored and committed its own read: {records:?}"
+    );
     assert_eq!(
         written,
         [
@@ -529,11 +534,9 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     let partner = "refetched-partner-release";
     let group = "refetched-partner-group";
     seed_two_track_discogs_release(&fakes, primary);
-    seed_two_track_mb_release(&fakes, partner, group);
-    let group_json = |allmusic: &str| {
-        serde_json::json!({"id":group,"relations":[{"url":{"resource":format!("https://www.allmusic.com/album/{allmusic}")}}]}).to_string()
-    };
-    fakes.seed_musicbrainz_release_group(group, group_json("mw111"));
+    // MusicBrainz answers the partner's release but not its release group
+    // yet, so the pick's read of the group fails.
+    fakes.seed_musicbrainz_release(partner, two_track_mb_release_json(partner, group));
     handle
         .select_candidate_release(
             key.clone(),
@@ -551,30 +554,13 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         )
         .await
         .unwrap();
-    // The partner is fetched again after the pick, and its album now names
-    // another album on AllMusic: a pick references its releases rather than
-    // copying them, so the import commits what the partner says now.
-    handle
-        .services
-        .tables
-        .save_source_release(
-            &bae_catalogs::payloads::ReleasePayloads::for_test(
-                bae_catalogs::records::LookupRef::new(
-                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-                    partner,
-                ),
-                two_track_mb_release_json(partner, group),
-                vec![bae_catalogs::records::SourcePayload::new(
-                    bae_catalogs::records::PayloadSource::MusicBrainzReleaseGroup,
-                    group,
-                    group_json("mw222"),
-                )],
-            )
-            .extract()
-            .unwrap(),
-        )
-        .await
-        .unwrap();
+    // The group now answers, naming its album on AllMusic. The import reads
+    // the partner again in full, stores the fuller read, which stores what
+    // the link claims again, and commits the claims as stored now.
+    fakes.seed_musicbrainz_release_group(
+        group,
+        serde_json::json!({"id":group,"relations":[{"url":{"resource":"https://www.allmusic.com/album/mw222"}}]}).to_string(),
+    );
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();

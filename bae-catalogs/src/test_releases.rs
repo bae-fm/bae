@@ -283,6 +283,20 @@ pub fn seed_mb_release_with_works(
     titles: &[&str],
     lengths_ms: &[u64],
 ) {
+    fakes.seed_musicbrainz_release(
+        release_id,
+        mb_release_with_works(release_id, credits, titles, lengths_ms).to_string(),
+    );
+}
+
+/// The release endpoint's document for [`seed_mb_release_with_works`]'s
+/// release.
+pub fn mb_release_with_works(
+    release_id: &str,
+    credits: &str,
+    titles: &[&str],
+    lengths_ms: &[u64],
+) -> serde_json::Value {
     let tracks: Vec<_> = titles
         .iter()
         .zip(lengths_ms)
@@ -317,20 +331,16 @@ pub fn seed_mb_release_with_works(
             })
         })
         .collect();
-    fakes.seed_musicbrainz_release(
-        release_id,
-        serde_json::json!({
-            "id": release_id,
-            "title": "Album Title",
-            "artist-credit": [{
-                "name": "Artist Name",
-                "artist": { "id": "mb-artist-1", "name": "Artist Name" },
-            }],
-            "media": [{ "format": "CD", "tracks": tracks }],
-            "cover-art-archive": { "front": false, "darkened": false },
-        })
-        .to_string(),
-    );
+    serde_json::json!({
+        "id": release_id,
+        "title": "Album Title",
+        "artist-credit": [{
+            "name": "Artist Name",
+            "artist": { "id": "mb-artist-1", "name": "Artist Name" },
+        }],
+        "media": [{ "format": "CD", "tracks": tracks }],
+        "cover-art-archive": { "front": false, "darkened": false },
+    })
 }
 
 /// A two-track Discogs release with no master, seeded into the release cache.

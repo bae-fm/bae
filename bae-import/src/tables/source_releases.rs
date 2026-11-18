@@ -835,10 +835,27 @@ impl ImportTables {
 
     /// Store `release` with no row naming it, which only a test's setup
     /// does: every other write stores a release in the write that names it.
+    /// Panics when a link claims the release: what the link claims is stored
+    /// from it, and only the writes that store it again keep that current.
     #[cfg(test)]
     pub async fn save_source_release(&self, release: &SourceRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.store.call(move |sql| replace_source_release_on(sql, &release)).await
+        self.store
+            .call(move |sql| {
+                let catalog = release.release.catalog.as_str();
+                let key = release.release.key.as_str();
+                let claimed = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM import_candidate_release_link \
+                                    WHERE source = ?1 AND release_id = ?2) \
+                         OR EXISTS (SELECT 1 FROM import_candidate_release_link_partner \
+                                    WHERE source = ?1 AND release_id = ?2)",
+                    params![catalog, key],
+                    |row| row.get::<_, bool>(0),
+                )?;
+                assert!(!claimed, "{:?} is claimed by a link", release.release);
+                replace_source_release_on(sql, &release)
+            })
+            .await
     }
 }
 

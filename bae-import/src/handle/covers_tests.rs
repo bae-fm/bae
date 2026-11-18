@@ -135,37 +135,60 @@ async fn linking_the_album_offers_no_catalog_cover() {
     shut_down(handle).await;
 }
 
-/// The offer is read from the stored release as it stands, so a later
-/// fetch that stored another image shows it.
+/// The offer is stored with the link from its releases as stored, so a pick
+/// that stores the release again from a fuller read offers what it holds now.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_offers_what_it_holds_now() {
-    let (handle, _tmp, key, _hash) = picked_with_front("refetched-release").await;
-    let tables = handle.services.tables.clone();
-    let record = bae_catalogs::records::LookupRef::new(
-        bae_catalogs::catalog::LookupCatalog::MusicBrainz,
-        "refetched-release".to_string(),
-    );
-    let mut stored = handle
+    let archive = bae_util::http::serve_not_found().await;
+    let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
+    let fakes = FakeCatalogs::over(http.clone());
+    let (handle, _tmp, key, _hash) = pane_fixture_with(fakes.providers(), http).await;
+    handle
         .services
-        .tables
-        .load_source_release(&record)
+        .catalogs
+        .store_discogs_key("test-discogs-token", bae_preferences::DiscogsValidation::Valid)
         .await
-        .unwrap()
-        .expect("the pick stored its release");
-    stored.covers.release.push(bae_catalogs::remote_image::RemoteCover {
-        image: bae_catalogs::remote_image::RemoteImageSet::original(
-            "https://images.example/back.jpg".to_string(),
-        ),
-        label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
-        source: bae_catalogs::catalog::Catalog::MusicBrainz,
-        standing: bae_catalogs::remote_image::CoverStanding::Stated,
-    });
-    tables.save_source_release(&stored).await.unwrap();
+        .unwrap();
+    // The release links a Discogs release that Discogs does not answer yet,
+    // so the pick's read of it fails.
+    let release_id = "refetched-release";
+    let mut release: serde_json::Value = serde_json::from_str(
+        &bae_catalogs::test_releases::two_track_mb_release_json(release_id, ""),
+    )
+    .unwrap();
+    release["release-group"] = serde_json::Value::Null;
+    release["cover-art-archive"]["front"] = true.into();
+    release["relations"] =
+        serde_json::json!([{ "url": { "resource": "https://www.discogs.com/release/5555" } }]);
+    fakes.seed_musicbrainz_release(release_id, release.to_string());
+    pick(&handle, &key, release_id).await;
+    assert_eq!(remote_offered(&handle, &key).await, [front_of(release_id)]);
+
+    // Discogs now answers with the linked release's image, and the person
+    // picks the release again, which reads it again.
+    fakes.seed_discogs_release(
+        "5555",
+        serde_json::json!({
+            "id": 5555,
+            "title": "Album Title",
+            "images": [{ "type": "primary", "uri": "https://images.example/back.jpg" }],
+        })
+        .to_string(),
+    );
+    pick(&handle, &key, release_id).await;
+
     assert_eq!(
-        offered(&handle, &key).await,
-        [front_of("refetched-release"), "https://images.example/back.jpg".to_string()]
+        remote_offered(&handle, &key).await,
+        [front_of(release_id), "https://images.example/back.jpg".to_string()]
     );
     shut_down(handle).await;
+}
+
+/// The addresses of every catalog's covers the candidate's picker offers, in
+/// order.
+async fn remote_offered(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Vec<String> {
+    let gallery = candidate_gallery(handle, key, crate::CoverFilter::All).await;
+    section(&gallery.remote).expect("the picker shows the catalogs' covers under all").1
 }
 
 #[tokio::test(flavor = "multi_thread")]
