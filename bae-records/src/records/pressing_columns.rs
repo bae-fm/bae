@@ -79,9 +79,9 @@ pub(super) fn release_labels_sql(release_id: &str) -> String {
                  'name', shown.name, 'catalog_number', placed.catalog_number) \
                  ORDER BY placed.position) \
           FROM release_labels placed \
-          LEFT JOIN labels shown ON shown.id = {shown} \
-          WHERE placed.release_id = {release_id})",
-        shown = super::label_resolution::shown_label_id("placed.label_id"),
+          LEFT JOIN label_shown_as shown_as ON shown_as.label_id = placed.label_id \
+          LEFT JOIN labels shown ON shown.id = shown_as.shown_label_id \
+          WHERE placed.release_id = {release_id})"
     )
 }
 

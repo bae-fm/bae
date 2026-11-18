@@ -171,10 +171,10 @@ impl CatalogRow for LabelRow {
         Ok(sql.query(
             &format!(
                 "SELECT l.* FROM labels l WHERE l.id IN ( \
-                     SELECT {} FROM labels named \
+                     SELECT shown.shown_label_id FROM labels named \
+                     JOIN label_shown_as shown ON shown.label_id = named.id \
                      WHERE named.{column} = ?1 OR named.id = ?2) \
                  ORDER BY l.id",
-                shown_label_id("named.id")
             ),
             params![catalog_id, identity],
             LabelRow::from_row,
@@ -195,15 +195,6 @@ impl CatalogCredit for ReleaseLabel {
     fn by_musicbrainz_alone(&self) -> Self {
         self.clone().with_ids(self.musicbrainz_label_id().map(str::to_string), None)
     }
-}
-
-/// The SQL of the label `label_id` shows as: the end of its merge chain, else
-/// itself.
-pub fn shown_label_id(label_id: &str) -> String {
-    format!(
-        "COALESCE((SELECT survivor_id FROM merged_label_survivors \
-                   WHERE label_id = {label_id}), {label_id})"
-    )
 }
 
 /// The labels one write decides: the new ones it inserts, the existing ones
@@ -339,12 +330,10 @@ fn labels_named_on<Q: coven::SqlRead>(
     release_id: &str,
 ) -> Result<Vec<(String, String)>, DbError> {
     Ok(sql.query(
-        &format!(
-            "SELECT shown.name, shown.id FROM release_labels named \
-             JOIN labels shown ON shown.id = {} \
-             WHERE named.release_id = ? ORDER BY named.position",
-            shown_label_id("named.label_id")
-        ),
+        "SELECT shown.name, shown.id FROM release_labels named \
+         JOIN label_shown_as shown_as ON shown_as.label_id = named.label_id \
+         JOIN labels shown ON shown.id = shown_as.shown_label_id \
+         WHERE named.release_id = ? ORDER BY named.position",
         [release_id],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )?)
@@ -405,7 +394,7 @@ fn resolve_label_on(
             let named: Vec<LabelRow> = tx
                 .query(
                     "SELECT * FROM labels WHERE name_key = ? \
-                       AND id NOT IN (SELECT label_id FROM merged_label_survivors) \
+                       AND id NOT IN (SELECT id FROM label_merges) \
                      ORDER BY id",
                     [&key],
                     LabelRow::from_row,

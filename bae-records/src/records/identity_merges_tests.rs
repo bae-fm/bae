@@ -335,6 +335,13 @@ async fn check_synced_label_merge_chain(devices: &bae_store::test_devices::TwoSt
             survivors(device, "merged_label_survivors").await,
             [(middle.clone(), smallest.clone()), (largest.clone(), smallest.clone())]
         );
+        let mut shown = [
+            (smallest.clone(), smallest.clone()),
+            (middle.clone(), smallest.clone()),
+            (largest.clone(), smallest.clone()),
+        ];
+        shown.sort();
+        assert_eq!(survivors(device, "label_shown_as").await, shown);
     }
 }
 
@@ -442,4 +449,33 @@ async fn a_label_merge_into_a_missing_survivor_is_a_bug() {
     let bug = reported_bug(&heard, &failed);
     assert!(bug.contains("exactly its surviving label"), "{bug}");
     assert_eq!(row_count(&db, "label_merges").await, 0);
+}
+
+/// A live read of a release's labels, with the label each shows as, reruns
+/// for a write that adds or merges other labels only if it names a label of
+/// the release: the write alone is not a cause.
+#[tokio::test]
+async fn a_releases_labels_do_not_rerun_for_a_write_to_another_label() {
+    use bae_store::test_fixtures::live_query::next_run_is_only_the_request;
+    let (db, _tmp) = library(crate::test_fixtures::TEST_SCHEMA).await;
+    crate::test_fixtures::labels::write(&db, vec![label(Some("Label Name"), None)]).await.unwrap();
+    let mut live: coven::ReconfigurableLiveQuery<_, _, DbError> =
+        db.subscribe_reconfigurable(0_u8, |_, sql| {
+            Ok(sql.query_row(
+                &format!("SELECT {}", crate::records::pressing_columns::release_labels_sql("?1")),
+                [crate::test_fixtures::labels::RELEASE],
+                |row| row.get::<_, String>(0),
+            )?)
+        });
+    let shown = live.next_inline().await.expect("the query stays open").result.unwrap();
+    assert!(shown.contains("Label Name"), "{shown}");
+
+    let other = add_label(&db, "Other Label Name", None, None).await;
+    let another = add_label(&db, "Another Label Name", None, None).await;
+    let (survivor, absorbed) =
+        if other < another { (&other, &another) } else { (&another, &other) };
+    merge_label(&db, survivor, absorbed).await.unwrap();
+
+    let moved = next_run_is_only_the_request(&mut live, 1).await;
+    assert_eq!(moved.result.unwrap(), shown);
 }

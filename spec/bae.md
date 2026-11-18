@@ -595,8 +595,9 @@ import's or an edit's save:
 A label that matches fills in its missing ids. Two labels merge in any
 write that finds one id on both (rule 1); as for artists, bae has no merge
 action yet. Both rows stay, and every read shows the survivor, following a
-chain as artists do; no list sorts by label, so no table keeps the
-label each label shows as. The artist edge cases hold for labels: two ids
+chain as artists do. The label each label shows as is kept on the device
+(`label_shown_as`), written in the same write as the label or the merge that
+decides it, so a screen reads it with a plain join. The artist edge cases hold for labels: two ids
 naming two labels name the MusicBrainz one, and a label whose name alone
 matches a label holding a different id of the same catalog is not that
 label. Two labels of one write sharing a MusicBrainz id and carrying
@@ -6679,7 +6680,7 @@ All sync.
 | `artist_credits` | another name a credit prints for an artist, keyed by the artist and the folded name (§2.3) |
 | `artist_merges` | artist absorbed into another (§2.3); the view `merged_artist_survivors` follows each chain to the artist it shows as |
 | `labels` | record label: name, name key, MusicBrainz and Discogs ids (§2.3) |
-| `label_merges` | label absorbed into another (§2.3); the view `merged_label_survivors` follows each chain to the label it shows as |
+| `label_merges` | label absorbed into another (§2.3); the view `merged_label_survivors` follows each chain to the label it shows as, for the triggers that fill `label_shown_as` |
 | `artist_images` | artist's picture, keyed by the artist: the coven file it references (`file`), with an index by it, and its type |
 | `albums` | album: title, year, compilation flag |
 | `album_artists` | album's credit, one per place in its list, from position 0: its artist, the other name it prints (none: the artist's own) and what follows it |
@@ -6708,6 +6709,7 @@ Beside them, device-local tables:
 | Table | One row per |
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
+| `label_shown_as` | label, keyed by the label: the label it shows as (§2.3) |
 | `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, and the name of the file whose original failed a move of it, from the move's pending record, with an index of the releases uploading in queue order, which the import list's Imported tab reads (§3.2) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 

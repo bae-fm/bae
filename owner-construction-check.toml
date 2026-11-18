@@ -1333,6 +1333,7 @@ tables = [
     "releases",
     "labels",
     "label_merges",
+    "label_shown_as",
     "release_labels",
     "release_barcodes",
     "release_media",

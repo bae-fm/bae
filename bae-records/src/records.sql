@@ -313,7 +313,7 @@ CREATE INDEX IF NOT EXISTS idx_labels_discogs_id ON labels (discogs_label_id);
 
 -- Two library labels the person confirmed are one: `id` was absorbed into
 -- `into_label_id`. Both rows stay so a release naming the absorbed label still
--- resolves; reads go through `merged_label_survivors`.
+-- resolves; reads go through `label_shown_as`.
 CREATE TABLE IF NOT EXISTS label_merges (
     id TEXT PRIMARY KEY,
     into_label_id TEXT NOT NULL,
@@ -336,6 +336,64 @@ WITH RECURSIVE hop(start, current) AS (
 )
 SELECT start AS label_id, current AS survivor_id FROM hop
 WHERE current NOT IN (SELECT id FROM label_merges);
+
+-- Each label and the label it shows as (§2.3): the survivor of its merges
+-- (`merged_label_survivors`), else itself. Every read of a label a release
+-- names goes through it, and only triggers read the recursive view.
+CREATE TABLE IF NOT EXISTS label_shown_as (
+    label_id TEXT PRIMARY KEY REFERENCES labels (id) ON DELETE CASCADE,
+    shown_label_id TEXT NOT NULL
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_label_shown_as_shown ON label_shown_as (shown_label_id);
+
+-- Each label a merge names, and every label joined to it through merges in
+-- either direction: the labels a change to one of those merges can show as
+-- another label.
+CREATE VIEW IF NOT EXISTS label_merge_groups AS
+WITH RECURSIVE edge(label_id, other_id) AS (
+    SELECT id, into_label_id FROM label_merges
+    UNION SELECT into_label_id, id FROM label_merges
+),
+reach(label_id, member_id) AS (
+    SELECT label_id, label_id FROM edge
+    UNION SELECT reach.label_id, edge.other_id FROM reach JOIN edge ON edge.label_id = reach.member_id
+)
+SELECT label_id, member_id FROM reach;
+
+-- A label arrives showing as itself: a merge names both its labels, so none
+-- naming it is written or applied before it.
+CREATE TRIGGER IF NOT EXISTS label_added AFTER INSERT ON labels
+BEGIN
+    INSERT INTO label_shown_as (label_id, shown_label_id) VALUES (NEW.id, NEW.id);
+END;
+
+-- Inserting a merge's two labels into `label_merge_refresh` sets the shown
+-- label of every label joined to either. The view holds no rows: it names the
+-- statement its INSTEAD OF trigger runs, which the two triggers on
+-- `label_merges` share. No write deletes a merge, so none follows a delete.
+CREATE VIEW IF NOT EXISTS label_merge_refresh AS SELECT NULL AS label_id, NULL AS into_label_id WHERE 0;
+
+CREATE TRIGGER IF NOT EXISTS label_merge_refresh INSTEAD OF INSERT ON label_merge_refresh
+BEGIN
+    UPDATE label_shown_as
+    SET shown_label_id = COALESCE(
+        (SELECT survivor_id FROM merged_label_survivors WHERE label_id = label_shown_as.label_id),
+        label_shown_as.label_id)
+    WHERE label_id IN (NEW.label_id, NEW.into_label_id)
+       OR label_id IN (SELECT member_id FROM label_merge_groups WHERE label_id IN (NEW.label_id, NEW.into_label_id));
+END;
+
+CREATE TRIGGER IF NOT EXISTS label_merge_added AFTER INSERT ON label_merges
+BEGIN
+    INSERT INTO label_merge_refresh (label_id, into_label_id) VALUES (NEW.id, NEW.into_label_id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS label_merge_changed AFTER UPDATE OF into_label_id ON label_merges
+BEGIN
+    INSERT INTO label_merge_refresh (label_id, into_label_id) VALUES (OLD.id, OLD.into_label_id);
+    INSERT INTO label_merge_refresh (label_id, into_label_id) VALUES (NEW.id, NEW.into_label_id);
+END;
 
 -- Every label a pressing is on, in its source's order, each naming a library
 -- label, the catalog number that label gives the pressing, or both. A save
