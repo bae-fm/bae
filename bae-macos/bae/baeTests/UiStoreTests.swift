@@ -232,6 +232,18 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.pendingAlbumReveal?.albumId == "album-2")
     }
 
+    @Test("endAlbumReveal clears only a reveal of the album it names")
+    func endAlbumRevealClearsOnlyItsAlbum() {
+        let store = UiStore()
+        store.navigateToAlbum("album-2")
+
+        store.endAlbumReveal(of: "album-1")
+        #expect(store.pendingAlbumReveal?.albumId == "album-2")
+
+        store.endAlbumReveal(of: "album-2")
+        #expect(store.pendingAlbumReveal == nil)
+    }
+
     @Test("flashTrack hands the reveal's track to its row")
     func flashTrackSetsFlash() throws {
         let store = UiStore()

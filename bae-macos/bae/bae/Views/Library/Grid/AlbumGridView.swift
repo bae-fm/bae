@@ -256,11 +256,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 await openPlace.follow(request, in: library) { error in
                     // A reveal of the album ends here rather than replaying
                     // on every later mount of the grid.
-                    if let reveal = uiStore.pendingAlbumReveal,
-                        reveal.albumId == request.albumId
-                    {
-                        uiStore.consumeAlbumReveal(seq: reveal.seq)
-                    }
+                    uiStore.endAlbumReveal(of: request.albumId)
                     uiStore.showError(error)
                 }
             }

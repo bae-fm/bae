@@ -271,6 +271,15 @@ class UiStore: @unchecked Sendable {
         }
     }
 
+    /// Clear the pending grid-scroll command when it reveals `albumId`: the
+    /// grid could not read where the album's card is. A no-op for a reveal of
+    /// another album.
+    func endAlbumReveal(of albumId: String) {
+        if pendingAlbumReveal?.albumId == albumId {
+            pendingAlbumReveal = nil
+        }
+    }
+
     /// Flash `trackId`'s row for the reveal `seq`, once the grid has scrolled
     /// that row into view. A no-op if a newer navigation superseded the
     /// reveal.
