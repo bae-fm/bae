@@ -15,6 +15,10 @@ rules = ["capability-boundaries", "capability-construction", "component-bundles"
 # The code generator for the bindings answers only to the conventions.
 tools = ["bae-uniffi-bindgen"]
 
+# Items gated on test support take a raw connection: `Schema::open_bare_library`
+# applies a bare library's schema for every crate's tests.
+test_support_features = ["test-utils"]
+
 # The crates in dependency order: each depends, dev-dependencies included,
 # only on crates before it. bae-views sits below bae-library because the
 # library's tests read the views.
@@ -192,7 +196,6 @@ external_types = [
 # lifetime of it: a message sent to a thread or task, the parameters one
 # operation is started with, and an operation's result.
 non_owner_types = [
-    "FollowedImportList",
     # Messages to the playback thread and the services' coordinators; they
     # carry reply channels for the one request they hold.
     "PlaybackCommand",
@@ -229,12 +232,8 @@ non_owner_types = [
     "DiscogsKey",
     "Queue",
     "Queued",
-    # The recorded routes and requests of the test host, behind its lock.
-    "FakeState",
     # A server controller's state, plain data behind its lock.
     "ServerState",
-    # The hold on one image path, kept in the test image host's map.
-    "HeldPath",
     # What a Cast client holds for the requests it waits on and for the
     # receiver's last word, behind the client's own lock, and what each
     # request waits with.
@@ -449,11 +448,7 @@ task_types = [
     "AirPlayAudioStream",
     "AAudioStreamHandle",
     "CpalStream",
-    "CaptureStream",
-    "CapturedStream",
     "CpalAudioOutput",
-    "CaptureAudioOutput",
-    "ManualCaptureAudioOutput",
     "AirPlayOutput",
     # One player's output with the state and volume its streams play by, and one
     # pipeline decoding into it.
@@ -490,7 +485,6 @@ task_types = [
     "LoudnessProgressSink",
     "LoudnessProgress",
     "SourceStream",
-    "SendHold",
     # A streamed track's encoded chunks on their way to the response.
     "ChannelSink",
     # One MCP client session's server, built when the session opens.
@@ -564,16 +558,10 @@ DeviceListWatch = "PublishedDevices"
 # and password it adds.
 ServerWatch = "ServerController"
 SubsonicWatch = "SubsonicServerController"
-# Import events off the bus, and one import's progress and the scan events
-# the bus filters from them; the percents of the running imports, and a
-# test's feeds of the runtime's changes and counts; and the snapshots of the
-# extraction feeding one identify run.
+# Import events off the bus, the percents of the running imports, and the
+# snapshots of the extraction feeding one identify run.
 ImportEvents = "ImportEventBus"
-ImportProgressFeed = "ImportEventBus"
-ScanEvents = "ImportEventBus"
 ImportPercentsWatch = "CandidateRuntime"
-CandidateRuntimeChanges = "CandidateRuntime"
-IdentificationCounts = "CandidateRuntime"
 ExtractionWatch = "ExtractionService"
 # Where one pane tells the identification queue which candidate it shows,
 # held while the pane's read lives.
@@ -589,8 +577,6 @@ BufferReader = "SparseStreamingBuffer"
 # while the stream plays.
 FormatLease = "DeviceFormats"
 StreamFormat = "PlayerFormat"
-# One image a test's remote image host holds back until the test lets it go.
-ImageHold = "RemoteImageHost"
 # An open library's place in the host's record, held by its session while it
 # is open, and one close of a store, recorded until it ends; dropping either
 # takes it out of the record.
@@ -617,12 +603,6 @@ OpenCalls = "LibrarySessions"
     "bootstrap_opening",
     "bootstrap_inner",
     "open_library",
-]
-# A test's library with the app's services started over it.
-"bae-app/src/test_services.rs" = [
-    "runtime_with_services",
-    # The same, over the runtime a #[tokio::test] already runs on.
-    "start_services_on",
 ]
 # The platform hands its artwork analyzer in once at launch; the adapter is
 # built where it arrives.
@@ -655,16 +635,6 @@ OpenCalls = "LibrarySessions"
     "BootstrapCancellation::new",
     "BridgeJoinControl::new",
 ]
-# The clock, ids and budget of open files a test makes once, builds its store
-# from and opens its library on.
-"bae-store/src/test_sources.rs" = [
-    "TestSources::system",
-    "TestSources::on",
-    "TestSources::on_budget",
-    "TestSources::ids",
-    "TestSources::files",
-    "TestSources::store",
-]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-bridge/src/host/library_sessions.rs" = ["LibrarySessions::new", "OpenLibrary::new"]
@@ -693,16 +663,6 @@ OpenCalls = "LibrarySessions"
 "bae-shots/tool/src/render/serve.rs" = ["with_server"]
 # A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
-# A test's catalog fakes: the providers its library asks are built over
-# them, once per library the test opens.
-"bae-catalogs/src/fake_catalogs.rs" = [
-    "FakeCatalogs::providers",
-    "FakeCatalogs::offline",
-    "FakeCatalogs::over",
-]
-# A rate-limiter test's load: the tasks it starts are joined or aborted
-# before it returns.
-"bae-catalogs/src/rate_limiter/load_model.rs" = ["sustain"]
 # The one place a task that reports its panic starts, and the one for a
 # thread: each hands its handle to the caller, which aborts or joins it.
 "bae-diagnostics/src/background.rs" = [
@@ -710,8 +670,6 @@ OpenCalls = "LibrarySessions"
     "Diagnostics::spawn_thread_reported",
     "Diagnostics::run_on_thread",
 ]
-# A test's candidate runtime opens its own tables.
-"bae-import/src/candidate_runtime.rs" = ["CandidateRuntime::for_test"]
 # Scoped threads: the scope joins them before the function returns.
 "bae-import/src/folder_scanner/folder_times.rs" = ["read_each_at_once"]
 # Scoped threads: the scope joins them before the function returns.
@@ -750,17 +708,6 @@ OpenCalls = "LibrarySessions"
 "bae-library/src/manager/locality.rs" = ["LibraryManager::start_move_to_this_device"]
 # An export's task: its running op holds the abort a cancel uses.
 "bae-library/src/manager/output.rs" = ["LibraryManager::run_output_worker"]
-"bae-library/src/test_libraries/playback.rs" = [
-    "start_capture_playback",
-    "start_manual_playback",
-    "start_manual_playback_with_clock",
-]
-"bae-library/src/test_libraries/storage.rs" = [
-    "storage_library",
-    "storage_library_of",
-    "storage_library_within",
-    "storage_library_on",
-]
 # The writer thread of an output stream: the stream's handle stops it and
 # joins it when dropped.
 "bae-playback/src/aaudio_output.rs" = ["AAudioOutput::create_stream", "AAudioOutput::new"]
@@ -769,134 +716,9 @@ OpenCalls = "LibrarySessions"
 # The follow of the tracks a service holds, made for the service when it is
 # built.
 "bae-playback/src/service/advance.rs" = ["track_infos_follow"]
-# A test's capture devices: the audio devices a test hands the playback
-# service in place of the system's.
-"bae-playback/src/test_capture.rs" = [
-    "capture_device",
-    "manual_capture_device",
-]
-# The fixtures below build records over a test store and hand them to their
-# test.
-"bae-records/src/test_fixtures.rs" = [
-    "test_records",
-    "seed_artist_album_release",
-]
-"bae-records/src/test_fixtures/aggregate_ordering.rs" = [
-    "aggregate_db",
-    "queue_db",
-    "release_detail_db",
-    "insert_file",
-]
-"bae-records/src/test_fixtures/album_listing.rs" = ["listed_db"]
-"bae-records/src/test_fixtures/artists_apart.rs" = ["merge_apart"]
-"bae-records/src/test_fixtures/composed_work.rs" = ["composed_work_db"]
-"bae-records/src/test_fixtures/labels.rs" = [
-    "library",
-    "add_label",
-]
-"bae-records/src/test_fixtures/live_query.rs" = ["live_db"]
-"bae-records/src/test_fixtures/storage_listing.rs" = ["insert_file"]
-# The test fixtures below own what they hand their test, and their getters give
-# the test what the fixture holds: no production code reaches them, so they are
-# listed rather than reshaped.
-# Two stores a test syncs over shared memory storage: it creates the first
-# and restores the second from it, and hands the test, the final owner of
-# what it built, each store to write and read. It is test-utils code, which
-# the views' tests compile, so the checker reads it as production code.
-"bae-store/src/test_devices.rs" = [
-    "TwoStores::a",
-    "TwoStores::b",
-    "StoreDevice::new",
-    "SyncCycles::follow",
-    "TwoStores::new",
-    "run_two_store_test",
-    "test_builder",
-    # A test's devices run on a thread the test joins.
-    "on_device_runtime",
-]
-# One person's devices of a test library, syncing over shared memory storage:
-# it creates the first device and restores or pairs more from its codes, and hands the
-# test, the final owner of what it built, each device and the manager and
-# store it runs. It is test-utils code, which the library's integration tests
-# compile, so the checker reads it as production code.
-"bae-library/src/test_libraries/devices.rs" = [
-    "TestDevice::manager",
-    "TestDevice::store",
-    "TestDevice::records",
-    "TestDevice::people",
-    "TestDevice::membership",
-    "TestDevice::sync_status",
-    "TwoDevices::a",
-    "TwoDevices::b",
-    "TwoDevices::a_mut",
-    "TwoDevices::b_mut",
-    "DeviceLibrary::first",
-    "DeviceLibrary::restore",
-    "DeviceLibrary::pair",
-    "DeviceLibrary::new",
-    "RunningLibrary::new",
-    "TwoDevices::new",
-    "run_library_test",
-    "run_two_device_test",
-    "TwoDevices::close",
-    "TwoDevices::pause",
-    "TwoDevices::resume",
-    "TwoDevices::settle",
-    "TwoDevices::converge",
-    "TestDevice::reopen_with",
-    "TestDevice::open_again",
-    "device",
-]
-# A test's library: it opens the library as the app's opening step does, and
-# hands the test, the final owner of what it built, the manager, the parts the
-# app's step hands the library's services, and the services it builds over
-# them. It is test-utils code, which the tests of the crates above
-# compile, so the checker reads it as production code.
-"bae-library/src/test_libraries.rs" = [
-    "TestLibrary::manager",
-    "TestLibrary::store",
-    "TestLibrary::records",
-    "TestLibrary::people",
-    "TestLibrary::membership",
-    "TestLibrary::sync_status",
-    "TestLibrary::catalogs",
-    "TestLibrary::import_tables",
-    "TestLibrary::closing",
-    "TestLibrary::clock",
-    "TestLibrary::ids",
-    "TestLibrary::files",
-    "TestLibrary::diagnostics",
-    "TestLibrary::remote_images",
-    "TestLibrary::cast_picker",
-    "TestLibrary::start_playback",
-    "TestLibrary::start_playback_on",
-    "TestLibrary::open",
-    "TestLibrary::open_with",
-    "TestLibrary::start_playback_reporting",
-    "open_test_library",
-    "open_test_library_with",
-    "setup_test_library_with_album_dir_within",
-    "imported_release_setup_within",
-    "test_library_from_handle",
-    "setup_test_library",
-    "setup_test_library_with",
-    "setup_test_library_with_album_dir",
-    "setup_fresh_library",
-    "imported_release_setup",
-    "imported_release_setup_with",
-    # A test's import service over its library, on the test's runtime.
-    "TestLibrary::start_import",
-    # A runtime a test blocks on.
-    "multi_thread_runtime",
-]
 # An owner's constructor builds the owner and the parts it holds that nothing
 # else shares.
 "bae-subsonic/src/controller.rs" = ["SubsonicServerController::new"]
-# A test's host that answers every request 404, ending with the test's
-# runtime.
-"bae-util/src/http.rs" = ["serve_not_found"]
-# A test awaits its blocking work, so a panic in it fails the test.
-"bae-util/src/test_blocking.rs" = ["on_blocking_pool"]
 # Starts a worker's thread: it opens the worker's channel and moves the
 # receiving end into the thread it starts, so the sender the worker keeps
 # is always the one paired with that thread. Its handle stops the thread.
@@ -904,7 +726,6 @@ OpenCalls = "LibrarySessions"
 # Starts the playback service's task; its handle stops it.
 "bae-playback/src/service/runtime.rs" = [
     "PlaybackService::start",
-    "PlaybackService::start_with_audio_device",
 ]
 "bae-playback/src/service/thread.rs" = [
     "PlaybackService::start_inner",
@@ -936,8 +757,6 @@ OpenCalls = "LibrarySessions"
 "bae-preferences/src/row.rs" = ["PreferencesRow::new"]
 "bae-sync-status/src/sync_status.rs" = ["SyncStatus::new"]
 "bae-views/src/lib.rs" = ["LibraryViews::new"]
-# A test's sync status, over its store.
-"bae-sync-status/src/test_fixtures.rs" = ["test_sync_status"]
 # Patterns compiled on first use and kept for the process: the process is
 # their scope.
 "bae-types/src/text_match/label.rs" = ["TAILS"]
@@ -1020,18 +839,15 @@ OpenCalls = "LibrarySessions"
 ]
 "bae-cast/src/renderer/published_devices.rs" = ["PublishedDevices::new"]
 "bae-catalogs/src/discogs/client.rs" = [
-    "Discogs::for_test",
     "Discogs::new",
     "Discogs::with_limiter",
 ]
 "bae-catalogs/src/musicbrainz/mod.rs" = [
-    "MusicBrainz::for_test",
     "MusicBrainz::new",
     "MusicBrainz::with_limiter",
 ]
 "bae-catalogs/src/payloads/traversal.rs" = ["FetchDocuments::new"]
 "bae-catalogs/src/providers.rs" = [
-    "Providers::for_test",
     "Providers::new",
 ]
 "bae-catalogs/src/rate_limiter.rs" = [
@@ -1040,9 +856,7 @@ OpenCalls = "LibrarySessions"
     "RateLimiter::new",
     "Ticket::take",
 ]
-"bae-catalogs/src/test_image_host.rs" = ["RemoteImageHost::start"]
 "bae-catalogs/src/wikidata/mod.rs" = [
-    "Wikidata::for_test",
     "Wikidata::new",
     "Wikidata::with_interval",
 ]
@@ -1051,23 +865,12 @@ OpenCalls = "LibrarySessions"
     "Diagnostics::noop",
     "Diagnostics::with_transport",
     "DiagnosticsWorker::new",
-    "RecordingTransport::new",
-    "HeardBugReports::new",
-]
-# The panic hook's reports in a test process: the hook is the process's, so
-# the reporter it reports to is too.
-"bae-diagnostics/src/test_panic.rs" = [
-    "REPORTS",
-    "reported_panics",
 ]
 "bae-import/src/assemble.rs" = ["ArtistRows::new"]
 "bae-import/src/catalog_sessions.rs" = ["CatalogSessions::new"]
 "bae-import/src/event_bus.rs" = [
     "EventDelivery::new",
     "ImportEventBus::new",
-    # A test's relay of the bus's events, which ends when the test drops its reader.
-    "ImportEventBus::import_progress_feed",
-    "ImportEventBus::scan_events",
 ]
 "bae-import/src/extraction/candidate_text.rs" = [
     "BRACKET_RE",
@@ -1090,9 +893,6 @@ OpenCalls = "LibrarySessions"
     "ScanCancellation::child",
     "ScanCancellation::new",
     "Walk::new",
-    # A folder read outside any library makes its own budget of open files.
-    "scan_for_candidates_with_decisions",
-    "collect_release_candidate_files_with_scope",
 ]
 "bae-import/src/identification/handle.rs" = ["IdentificationHandle::new"]
 "bae-import/src/identify_service.rs" = ["IdentifyService::new"]
@@ -1106,9 +906,6 @@ OpenCalls = "LibrarySessions"
     "RootScanTask::new",
     "ScanServices::new",
 ]
-# store_scan_item makes its own budget of open files when no library's store
-# gives it one.
-"bae-import/src/scan_passes/scan_items.rs" = ["store_scan_item"]
 "bae-import/src/tables.rs" = ["ImportTables::new"]
 "bae-import/src/watching/active_roots.rs" = ["ActiveRoots::new"]
 "bae-import/src/watching/coordinator.rs" = [
@@ -1117,10 +914,6 @@ OpenCalls = "LibrarySessions"
     "run_watcher_with_starter",
 ]
 "bae-import/src/watching/root_removal.rs" = ["ServiceRootRemovalBackend::new"]
-"bae-library/examples/bench_library/mod.rs" = [
-    "BenchLibrary::create",
-    "run",
-]
 "bae-library/src/bootstrap.rs" = [
     "JoinControl::new",
     "create_library",
@@ -1145,27 +938,14 @@ OpenCalls = "LibrarySessions"
     "AirPlayControl::new",
     "AirPlayOutput::new",
     "DrainSource::new",
-    "PcmWake::unattached",
 ]
 "bae-playback/src/audio_output.rs" = [
     "AtomicF32::new",
     "AudioDrain::new",
     "AudioDrain::reporting",
-    "AudioDrain::reporting_every",
     "AudioOutputControls::new",
     "PlayerOutput::new",
 ]
-"bae-playback/src/capture_output.rs" = [
-    "AudioClock::new",
-    "CaptureAudioDevice::new",
-    "CaptureAudioOutput::new",
-    "CaptureOutputCore::publishing_to",
-    "CaptureStream::spawn",
-    "CaptureStream::spawn_manual",
-    "ManualCaptureAudioOutput::new",
-    "ManualCaptureDevice::new",
-]
-"bae-playback/src/clock.rs" = ["ManualPlaybackClock::new"]
 "bae-playback/src/cpal_output.rs" = ["CpalAudioOutput::new"]
 "bae-playback/src/device_formats.rs" = [
     "DeviceFormats::new",
@@ -1198,15 +978,7 @@ OpenCalls = "LibrarySessions"
 "bae-records/src/records.rs" = ["Records::new"]
 "bae-store/src/store.rs" = [
     "Store::new",
-    # A test store built from the clock and ids its library runs on, which
-    # it keeps for the library's services to open on.
-    "Store::new_on",
-    "Store::test_sources",
-    "Store::new_test_reporting_to",
-    "Store::new_test_within",
 ]
-# A kept store is made on the clock and ids of the run that made it.
-"bae-store/src/test_fixtures/kept_store.rs" = ["create_kept", "open_kept"]
 "bae-track-audio/src/data_source.rs" = [
     "CovenFileReader::for_playback",
     "CovenFileReader::new",
@@ -1235,10 +1007,6 @@ OpenCalls = "LibrarySessions"
     # The server's task: the controller holds it, and shutdown cancels it and waits for it.
     "ServerController::start",
 ]
-"bae-util/src/test_host.rs" = ["FakeHost::start"]
-# place() waits for its place on a thread of its own, so tokio's limit on a
-# task's work cannot stall it.
-"bae-util/src/test_files.rs" = ["place"]
 
 # Work that runs on after its caller returns starts only at a listed root,
 # which keeps it and stops it: a runtime, the ambient runtime a task would
@@ -1298,9 +1066,6 @@ paths = ["Uuid::new_v4", "Uuid::new_v7", "Uuid::now_v7"]
 # file creates is in one domain.
 [database]
 capability = "SQLite"
-# Items gated on test support take a raw connection: `Schema::open_bare_library`
-# applies a bare library's schema for every crate's tests.
-test_support_features = ["test-utils"]
 
 [[database.domains]]
 name = "catalog image cache"

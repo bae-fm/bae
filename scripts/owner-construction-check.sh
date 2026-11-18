@@ -9,7 +9,7 @@ cd "$ROOT"
 # it runs, and what it holds them to, from this workspace's
 # owner-construction-check.toml. This tool pin is independent of the runtime
 # dependency in Cargo.toml.
-checker_revision="9e92d464d2ecb0e27c5921f005b6b2e544b76dd5"
+checker_revision="5b09cad025726f8238a30b40ded9dec83952b9f8"
 # Every checkout on this machine runs the one checker installed for its
 # revision. The first checkout that needs a revision builds the checker from
 # scratch, in a target folder of its own, installs it into a new folder beside
