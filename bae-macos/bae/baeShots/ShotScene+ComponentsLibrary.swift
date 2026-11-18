@@ -277,5 +277,37 @@ extension ShotScene {
                 status: .movingToThisDevice(step: .queued)
             )
         },
+        storageChip("mac.component.storage-chip.long") {
+            MacStorageChip(
+                release: PreviewData.storageRelease(
+                    upload: BridgeReleaseUpload(
+                        progress: BridgeUploadProgress(
+                            queued: 3,
+                            uploading: 0,
+                            activity: .queued
+                        ),
+                        summary: [],
+                        missing: nil
+                    )
+                ),
+                status: .uploading,
+                long: true
+            )
+            MacStorageChip(
+                release: PreviewData.storageRelease(),
+                status: .pinning(step: .queued),
+                long: true
+            )
+            MacStorageChip(
+                release: PreviewData.storageRelease(),
+                status: .movingToThisDevice(step: .queued),
+                long: true
+            )
+            MacStorageChip(
+                release: PreviewData.storageRelease(),
+                status: .movingToThisDevice(step: .running),
+                long: true
+            )
+        },
     ]
 }

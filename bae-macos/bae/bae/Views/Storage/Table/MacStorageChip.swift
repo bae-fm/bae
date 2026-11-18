@@ -8,9 +8,16 @@ import SwiftUI
 /// an upload that needs a missing original; the tooltip says which and why.
 /// Only a release whose files upload, pin or move to This Mac shows a chip,
 /// filled by the share of bytes bae has transferred.
+///
+/// With `long`, which a release's Storage sheet passes, a change on its way
+/// names what it does: Queued to upload, Queued to pin, Queued to move to
+/// This Mac and Moving to This Mac…, each a chip. A release whose upload
+/// waits on a missing original shows the queued chip, beside the notice that
+/// names the file.
 struct MacStorageChip: View {
     let release: ReleaseSummary
     let status: BridgeStorageRowStatus
+    var long = false
 
     var body: some View {
         switch status {
@@ -26,24 +33,49 @@ struct MacStorageChip: View {
                     )
                 )
         case .uploading:
-            if let missing = release.upload?.missing {
+            if let missing = release.upload?.missing, !long {
                 StorageWord("Waiting", tone: .warning)
                     .help(String(localized: "Waiting for \(missing)"))
             }
-            else if release.upload?.progress.activity == .uploading {
+            else if release.upload?.missing == nil,
+                release.upload?.progress.activity == .uploading
+            {
                 StorageUploadingChipContainer(releaseId: release.id)
+            }
+            else if long {
+                StatusChip(
+                    verbatim: BridgeUploadActivity.queued.phaseText,
+                    tone: .activity
+                )
             }
             else {
                 StorageWord("Queued")
             }
-        case .pinning(.queued), .movingToThisDevice(.queued):
-            StorageWord("Queued")
+        case .pinning(.queued):
+            if long {
+                StatusChip("Queued to pin", tone: .activity)
+            }
+            else {
+                StorageWord("Queued")
+            }
+        case .movingToThisDevice(.queued):
+            if long {
+                StatusChip("Queued to move to This Mac", tone: .activity)
+            }
+            else {
+                StorageWord("Queued")
+            }
         case .pinning(.running):
             StoragePinningChipContainer(releaseId: release.id)
         case .movingToThisDevice(.running):
             StorageMovingToThisDeviceChipContainer(
                 releaseId: release.id,
-                label: Text("Moving")
+                label: long
+                    ? Text(
+                        verbatim: BridgeReleaseStorageAction.moveToThisDevice
+                            .transferLabel
+                    )
+                    : Text("Moving")
             )
         case .onOneDevice:
             StorageWord("Local")
