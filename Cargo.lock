@@ -991,6 +991,7 @@ dependencies = [
  "hex",
  "hkdf 0.12.4",
  "local-ip-address",
+ "md-5 0.10.6",
  "mdns-sd",
  "num-bigint",
  "prost",

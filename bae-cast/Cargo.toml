@@ -34,6 +34,7 @@ axum = { workspace = true, features = ["http1", "tokio"] }
 tokio-util = { workspace = true }
 # The fresh salt each minted media URL carries, and the AirPlay keys.
 hex = { workspace = true }
+md5 = { workspace = true }
 rand = { workspace = true }
 # The LAN IP the receiver reaches this device at (the ephemeral server binds
 # 0.0.0.0, but the URL must name a routable address).

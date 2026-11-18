@@ -4,10 +4,11 @@
 
 use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::AirPlaySink;
+use bae_playback::NamedReceiver;
 
 use crate::airplay::airplay2::TimingProtocol;
 use crate::airplay::ap2_pairing::PAIR_SETUP_M1;
-use crate::airplay::ap2_session::Ap2Error;
+use crate::airplay::ap2_session::{Ap2Auth, Ap2Error};
 use crate::airplay::capabilities::{Ap2Pairing, Dialect, RaopAuth, RaopEncryption, ReceiverAccess};
 use crate::airplay::pairing::{HomeKitError, PairingError};
 use crate::airplay::sink::{Ap2Sink, RaopSink};
@@ -37,6 +38,7 @@ pub(crate) fn build_airplay_sink(
     ids: &coven::IdSourceRef,
     diagnostics: &Diagnostics,
     client_name: &str,
+    named: NamedReceiver,
     addr: std::net::IpAddr,
     port: u16,
     capabilities: &Result<AirPlayCapabilities, UnreadableSetting>,
@@ -59,6 +61,8 @@ pub(crate) fn build_airplay_sink(
                     // The receiver's features decide whether it requires PTP or accepts NTP.
                     TimingProtocol::from_features(capabilities.features),
                     client_name.to_string(),
+                    Ap2Auth::Transient,
+                    named,
                     ids.clone(),
                     diagnostics.clone(),
                 )),

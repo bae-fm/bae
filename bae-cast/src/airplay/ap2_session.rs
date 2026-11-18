@@ -22,9 +22,11 @@ use tracing::warn;
 
 use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
-use super::ap2_pairing::run_transient_pair_setup;
+use super::ap2_pairing::{run_pair_verify, run_transient_pair_setup};
 use super::bplist::{self, Plist};
+use super::digest::DigestChallenge;
 use super::pairing::PairingError;
+use super::pairing_keys::KeptPairing;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
@@ -172,16 +174,28 @@ pub(crate) struct Ap2Control {
     cseq: u32,
     uri: String,
     user_agent: String,
+    /// The password a receiver that has one asks for again, as HTTP Digest,
+    /// after pair-verify.
+    password: Option<String>,
+    /// The Digest challenge the receiver answered a request with, once it
+    /// asked; every later request carries the answer to it.
+    challenge: Option<DigestChallenge>,
 }
+
+/// The status a receiver answers a request with when it wants the password
+/// as HTTP Digest.
+const UNAUTHORIZED: u16 = 401;
 
 impl Ap2Control {
     /// Wrap an already-verified stream in the encrypted transport. `uri` is the
-    /// RTSP request URI (`rtsp://<local>/<session-id>`).
+    /// RTSP request URI (`rtsp://<local>/<session-id>`). `password` answers a
+    /// receiver that asks for it as HTTP Digest.
     pub(crate) fn new(
         stream: TcpStream,
         shared_secret: &[u8],
         uri: impl Into<String>,
         user_agent: impl Into<String>,
+        password: Option<String>,
     ) -> std::io::Result<Self> {
         let reader = BufReader::new(stream.try_clone()?);
         Ok(Ap2Control {
@@ -191,13 +205,19 @@ impl Ap2Control {
             cseq: 0,
             uri: uri.into(),
             user_agent: user_agent.into(),
+            password,
+            challenge: None,
         })
     }
 
     /// Send one RTSP request over the encrypted channel and read its response.
     pub(crate) fn request(&mut self, request: &RtspRequest) -> Result<RtspResponse, Ap2Error> {
         self.cseq += 1;
-        let extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
+        let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
+        if let (Some(password), Some(challenge)) = (&self.password, &self.challenge) {
+            let answer = challenge.authorization(password, request.method.as_str(), &request.uri);
+            extra.push(("Authorization".to_string(), answer));
+        }
         let plaintext = request.serialize(self.cseq, &extra);
         let sealed = self.channel.seal(&plaintext);
         self.writer.write_all(&sealed)?;
@@ -326,18 +346,49 @@ impl Ap2Control {
         Ok(bplist::decode(&response.body)?)
     }
 
-    /// Send a request and require a 2xx status.
+    /// Send a request and require a 2xx status, answering a Digest challenge
+    /// with the password when the receiver asks for it.
     fn request_expecting(
         &mut self,
         request: &RtspRequest,
         step: &'static str,
     ) -> Result<RtspResponse, Ap2Error> {
-        let response = self.request(request)?;
+        let mut response = self.request(request)?;
+        if response.status == UNAUTHORIZED {
+            response = self.answer_challenge(request, response)?;
+        }
         if response.is_success() {
             Ok(response)
         } else {
             Err(Ap2Error::Rejected { step, status: response.status })
         }
+    }
+
+    /// Send `request` again with the password, after the receiver answered
+    /// it with `refused`, a 401. Without a password the 401 stands. A
+    /// receiver that refuses the password, on this request or after it took
+    /// it once, no longer accepts what bae kept for it.
+    fn answer_challenge(
+        &mut self,
+        request: &RtspRequest,
+        refused: RtspResponse,
+    ) -> Result<RtspResponse, Ap2Error> {
+        if self.password.is_none() {
+            return Ok(refused);
+        }
+        if self.challenge.is_some() {
+            return Err(PairingError::PairingLost.into());
+        }
+        let challenge = refused
+            .header("WWW-Authenticate")
+            .and_then(DigestChallenge::from_header)
+            .ok_or(Ap2Error::BadBody("a 401 without a Digest challenge"))?;
+        self.challenge = Some(challenge);
+        let answered = self.request(request)?;
+        if answered.status == UNAUTHORIZED {
+            return Err(PairingError::PairingLost.into());
+        }
+        Ok(answered)
     }
 }
 
@@ -355,17 +406,57 @@ pub(crate) struct Ap2SetupParams {
     pub ptp_anchor: Option<(u64, u32, u64)>,
 }
 
-/// Pair with the receiver once on a connection of its own, which closes when
-/// this returns: what a cast learns about the receiver before playback moves.
-/// Every session start pairs again on its own connection. `client_name` names
-/// this device to the receiver.
+/// How each AirPlay 2 session proves bae to its receiver, which gives the
+/// secret the session's control channel and audio are keyed from.
+#[derive(Debug, Clone)]
+pub(crate) enum Ap2Auth {
+    /// Transient pair-setup: the receiver asks for no code, and nothing is
+    /// kept.
+    Transient,
+    /// Pair-verify with what a pairing by code kept.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "a cast reaches kept pairings only once it asks for codes")
+    )]
+    Verify(KeptPairing),
+}
+
+impl Ap2Auth {
+    /// Pair on `conn`, naming this device `client_name`, and return the
+    /// secret the session is keyed from: the SRP key of a transient
+    /// pair-setup, or the X25519 secret of a pair-verify.
+    fn session_secret(
+        &self,
+        conn: &mut RtspConnection,
+        client_name: &str,
+    ) -> Result<Vec<u8>, Ap2Error> {
+        match self {
+            Ap2Auth::Transient => run_transient_pair_setup(conn, client_name),
+            Ap2Auth::Verify(kept) => Ok(run_pair_verify(conn, client_name, &kept.keys)?.to_vec()),
+        }
+    }
+
+    /// The password the receiver asks for again as HTTP Digest, if it has one.
+    fn password(&self) -> Option<String> {
+        match self {
+            Ap2Auth::Transient => None,
+            Ap2Auth::Verify(kept) => kept.password.clone(),
+        }
+    }
+}
+
+/// Pair with the receiver once, as `auth` says, on a connection of its own,
+/// which closes when this returns: what a cast learns about the receiver
+/// before playback moves. Every session start pairs again on its own
+/// connection. `client_name` names this device to the receiver.
 pub(crate) fn pair_once(
     receiver: IpAddr,
     airplay_port: u16,
     client_name: &str,
+    auth: &Ap2Auth,
 ) -> Result<(), Ap2Error> {
     let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
-    run_transient_pair_setup(&mut conn, client_name)?;
+    auth.session_secret(&mut conn, client_name)?;
     Ok(())
 }
 
@@ -411,7 +502,7 @@ pub(crate) struct Ap2Session {
 }
 
 impl Ap2Session {
-    /// Connect to an AirPlay 2 receiver, run transient pair-setup naming this
+    /// Connect to an AirPlay 2 receiver, pair as `auth` says naming this
     /// device `client_name`, drive the encrypted
     /// SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and start streaming
     /// `feed` as ChaCha-encrypted audio.
@@ -420,6 +511,7 @@ impl Ap2Session {
         receiver: IpAddr,
         airplay_port: u16,
         client_name: &str,
+        auth: &Ap2Auth,
         feed: PcmFeed,
         failed: AirPlayFailed,
         timing: super::airplay2::TimingProtocol,
@@ -431,7 +523,7 @@ impl Ap2Session {
         let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
         let local_ip = conn.local_addr();
 
-        let shared = run_transient_pair_setup(&mut conn, client_name)?;
+        let shared = auth.session_secret(&mut conn, client_name)?;
 
         // Bind the timing/control sockets before SETUP so their ports are announced.
         let sockets = StreamSockets::bind()?;
@@ -455,7 +547,8 @@ impl Ap2Session {
             TimingProtocol::Ntp => ("NTP".to_string(), None),
         };
 
-        let mut control = Ap2Control::new(conn.into_stream(), &shared, uri, AP2_USER_AGENT)?;
+        let mut control =
+            Ap2Control::new(conn.into_stream(), &shared, uri, AP2_USER_AGENT, auth.password())?;
         let params = Ap2SetupParams {
             timing_protocol,
             group_uuid,

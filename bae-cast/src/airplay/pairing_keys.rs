@@ -1,6 +1,7 @@
 //! The pairing a receiver that asked for a code and bae agreed on: the
-//! identities each later session's pair-verify proves, and the text bae keeps
-//! them as.
+//! identities each later session's pair-verify proves, the password a
+//! receiver that has one asks for again on each session, and the text bae
+//! keeps them as.
 //!
 //! bae-cast owns this text's format. Whoever keeps it stores the string by
 //! name and never reads inside it.
@@ -39,18 +40,42 @@ pub(crate) struct PairingKeys {
     pub(crate) receiver_public: [u8; ED25519_PUBLIC_KEY_LEN],
 }
 
-/// The fields of the kept text, in order.
-const FIELDS: usize = 4;
+/// What bae keeps for one receiver: the keys pair-verify proves, and, for a
+/// receiver with a password, that password, which it asks for again as HTTP
+/// Digest on each session after pair-verify (a HomePod or Apple TV with a
+/// password does; OwnTone commit e437e418).
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct KeptPairing {
+    pub(crate) keys: PairingKeys,
+    pub(crate) password: Option<String>,
+}
 
-impl PairingKeys {
+/// The password is a secret: debug output says only whether there is one.
+impl std::fmt::Debug for KeptPairing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("KeptPairing")
+            .field("keys", &self.keys)
+            .field("has_password", &self.password.is_some())
+            .finish()
+    }
+}
+
+/// The fields of the kept text, in order.
+const FIELDS: usize = 5;
+
+impl KeptPairing {
     /// The text bae keeps: bae's identifier, its seed, the receiver's
-    /// identifier and its public key, each in lowercase hex, joined by `:`.
+    /// identifier, its public key and the password, each in lowercase hex,
+    /// joined by `:`. A receiver without a password has an empty last field,
+    /// which no password is, since a password has a character.
     pub(crate) fn encode(&self) -> String {
+        let keys = &self.keys;
         [
-            hex::encode(self.controller.id.as_bytes()),
-            hex::encode(self.controller.seed),
-            hex::encode(&self.receiver_id),
-            hex::encode(self.receiver_public),
+            hex::encode(keys.controller.id.as_bytes()),
+            hex::encode(keys.controller.seed),
+            hex::encode(&keys.receiver_id),
+            hex::encode(keys.receiver_public),
+            hex::encode(self.password.as_deref().unwrap_or_default()),
         ]
         .join(":")
     }
@@ -59,7 +84,7 @@ impl PairingKeys {
     /// says which field.
     pub(crate) fn decode(text: &str) -> Result<Self, MalformedPairingKeys> {
         let fields: Vec<&str> = text.split(':').collect();
-        let [controller_id, seed, receiver_id, receiver_public] = fields[..] else {
+        let [controller_id, seed, receiver_id, receiver_public, password] = fields[..] else {
             return Err(MalformedPairingKeys::FieldCount(fields.len()));
         };
         let controller_id = String::from_utf8(hex_field(controller_id, "controller id")?)
@@ -68,10 +93,18 @@ impl PairingKeys {
         if controller_id.is_empty() || receiver_id.is_empty() {
             return Err(MalformedPairingKeys::EmptyIdentifier);
         }
-        Ok(PairingKeys {
-            controller: ControllerIdentity { id: controller_id, seed: fixed_field(seed, "seed")? },
-            receiver_id,
-            receiver_public: fixed_field(receiver_public, "receiver public key")?,
+        let password = String::from_utf8(hex_field(password, "password")?)
+            .map_err(|error| MalformedPairingKeys::Password(error.utf8_error()))?;
+        Ok(KeptPairing {
+            keys: PairingKeys {
+                controller: ControllerIdentity {
+                    id: controller_id,
+                    seed: fixed_field(seed, "seed")?,
+                },
+                receiver_id,
+                receiver_public: fixed_field(receiver_public, "receiver public key")?,
+            },
+            password: Some(password).filter(|password| !password.is_empty()),
         })
     }
 }
@@ -89,7 +122,7 @@ fn fixed_field<const N: usize>(
     bytes.try_into().map_err(|_bytes: Vec<u8>| MalformedPairingKeys::Length { field, len })
 }
 
-/// Kept pairing text that [`PairingKeys::encode`] didn't write.
+/// Kept pairing text that [`KeptPairing::encode`] didn't write.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub(crate) enum MalformedPairingKeys {
     #[error("the kept AirPlay pairing has {0} fields, not {FIELDS}")]
@@ -102,6 +135,8 @@ pub(crate) enum MalformedPairingKeys {
     ControllerId(std::str::Utf8Error),
     #[error("the kept AirPlay pairing has an empty identifier")]
     EmptyIdentifier,
+    #[error("the kept AirPlay pairing's password is not UTF-8: {0}")]
+    Password(std::str::Utf8Error),
 }
 
 #[cfg(test)]

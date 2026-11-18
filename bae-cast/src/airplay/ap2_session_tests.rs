@@ -86,7 +86,7 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
         let mut saw_anchor_rate = None;
 
         for step in 0..5 {
-            let (method, cseq, body) = read_encrypted_request(&mut reader, &mut channel);
+            let (method, cseq, body, _) = read_encrypted_request(&mut reader, &mut channel);
             match method.as_str() {
                 "SETUP" if body.get("streams").is_some() => {
                     let stream = match body.get("streams").unwrap() {
@@ -128,7 +128,7 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
 
     let stream = TcpStream::connect(addr).unwrap();
     let local_ip = stream.local_addr().unwrap().ip();
-    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test").unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
     let params = Ap2SetupParams {
         timing_protocol: "NTP".to_string(),
         group_uuid: "group".to_string(),
@@ -157,7 +157,7 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
 fn read_encrypted_request(
     reader: &mut impl Read,
     channel: &mut HapChannel,
-) -> (String, String, Plist) {
+) -> (String, String, Plist, Option<String>) {
     let mut plaintext = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
@@ -173,8 +173,9 @@ fn read_encrypted_request(
     }
 }
 
-/// Parse an RTSP request from decrypted plaintext, or `None` if incomplete.
-fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist)> {
+/// Parse an RTSP request from decrypted plaintext, or `None` if incomplete:
+/// its method, CSeq, body and `Authorization` header.
+fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist, Option<String>)> {
     let mut cursor = std::io::Cursor::new(bytes);
     let mut line = String::new();
     if cursor.read_line(&mut line).ok()? == 0 || !line.ends_with('\n') {
@@ -182,6 +183,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist)> {
     }
     let method = line.split(' ').next()?.to_string();
     let mut cseq = String::new();
+    let mut authorization = None;
     let mut content_length = 0usize;
     loop {
         let mut header = String::new();
@@ -195,6 +197,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist)> {
         if let Some((k, v)) = header.split_once(':') {
             match k.trim().to_ascii_lowercase().as_str() {
                 "cseq" => cseq = v.trim().to_string(),
+                "authorization" => authorization = Some(v.trim().to_string()),
                 "content-length" => {
                     content_length = v.trim().parse().expect("valid content-length")
                 }
@@ -212,7 +215,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist)> {
     } else {
         bplist::decode(body_bytes).unwrap()
     };
-    Some((method, cseq, body))
+    Some((method, cseq, body, authorization))
 }
 
 fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
@@ -225,7 +228,11 @@ fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
 
 // -- Full AirPlay 2 session against a scripted fake receiver --
 
-use crate::airplay::fake_receiver::serve_transient_pair_setup;
+use crate::airplay::fake_receiver::{
+    serve_transient_pair_setup, CodeReceiver, PairedController, ReceiverCode, Served,
+};
+use crate::airplay::pairing::public_key;
+use crate::airplay::pairing_keys::{ControllerIdentity, KeptPairing, PairingKeys};
 use bae_playback::airplay_output::AirPlayStreamControl;
 use bae_playback::airplay_output::PcmSource;
 use bae_util::test_channels::HANG_GUARD;
@@ -266,6 +273,30 @@ struct SessionLatency {
     told: Duration,
 }
 
+/// How the fake receiver pairs at the start of a session.
+enum ReceiverPairing {
+    /// Transient pair-setup.
+    Transient,
+    /// Pair-verify, accepting the controllers this receiver paired with.
+    Verify(CodeReceiver),
+}
+
+/// A receiver bae paired with by code, and what bae kept from it.
+fn paired_by_code() -> (CodeReceiver, KeptPairing) {
+    let controller = ControllerIdentity { id: "controller".to_string(), seed: [0x11; 32] };
+    let mut receiver = CodeReceiver::new(ReceiverCode::Pins(Vec::new()));
+    receiver.paired.push(PairedController {
+        id: controller.id.clone().into_bytes(),
+        public: public_key(&controller.seed),
+    });
+    let keys = PairingKeys {
+        controller,
+        receiver_id: receiver.identity.id.clone(),
+        receiver_public: receiver.identity.public(),
+    };
+    (receiver, KeptPairing { keys, password: None })
+}
+
 /// Run a whole AirPlay 2 session against the scripted fake receiver with the
 /// sender using `timing`, the receiver reporting `audio_latency` frames on its
 /// SETUP stream response (or none), returning what the receiver saw and the
@@ -273,6 +304,17 @@ struct SessionLatency {
 fn run_full_ap2_session(
     timing: crate::airplay::airplay2::TimingProtocol,
     audio_latency: Option<u64>,
+) -> (Captured, SessionLatency) {
+    run_ap2_session(timing, audio_latency, Ap2Auth::Transient, ReceiverPairing::Transient)
+}
+
+/// [`run_full_ap2_session`], with the sender pairing as `auth` and the
+/// receiver as `pairing`.
+fn run_ap2_session(
+    timing: crate::airplay::airplay2::TimingProtocol,
+    audio_latency: Option<u64>,
+    auth: Ap2Auth,
+    pairing: ReceiverPairing,
 ) -> (Captured, SessionLatency) {
     let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = tcp.local_addr().unwrap();
@@ -286,12 +328,21 @@ fn run_full_ap2_session(
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
 
-        // -- Transient pair-setup over the plain socket, real SRP on this side.
-        // Every byte after M4 is HAP blocks keyed from the SRP key.
-        let shared = serve_transient_pair_setup(&mut reader, &mut writer)
-            .expect("the sender pairs the way a receiver reads it");
+        // -- Pairing over the plain socket: transient pair-setup with real SRP,
+        // or pair-verify. Every byte after it is HAP blocks keyed from the
+        // secret it gave.
+        let shared = match pairing {
+            ReceiverPairing::Transient => serve_transient_pair_setup(&mut reader, &mut writer)
+                .expect("the sender pairs the way a receiver reads it"),
+            ReceiverPairing::Verify(mut receiver) => {
+                match receiver.serve(&mut reader, &mut writer) {
+                    Served::Verified(shared) => shared.to_vec(),
+                    Served::Closed => panic!("the sender closed before pair-verify finished"),
+                }
+            }
+        };
 
-        // -- Encrypted control channel, keyed from the SRP key.
+        // -- Encrypted control channel, keyed from the pairing's secret.
         let (write, read) = control_keys(&shared);
         let mut channel = HapChannel::from_keys(&read, &write);
         let shk = audio_key(&shared);
@@ -301,7 +352,7 @@ fn run_full_ap2_session(
         let mut timing_protocol = String::new();
         let mut anchor_has_network_time = false;
         for step in 0..5 {
-            let (method, cseq, body) = read_encrypted_request(&mut reader, &mut channel);
+            let (method, cseq, body, _) = read_encrypted_request(&mut reader, &mut channel);
             if method == "SETUP" && body.get("streams").is_some() {
                 if let Plist::Array(items) = body.get("streams").unwrap() {
                     saw_shk = items[0].get("shk") == Some(&Plist::Data(shk.to_vec()));
@@ -361,6 +412,7 @@ fn run_full_ap2_session(
         addr.ip(),
         addr.port(),
         "Kitchen Mac",
+        &auth,
         crate::airplay::stream::PcmFeed::new(
             Box::new(FixedSource { packets_left: 5 }),
             bae_playback::airplay_output::PcmWake::unattached(),
@@ -426,4 +478,170 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         Duration::from_millis(250),
         "playback offsets by the latency the session paces by"
     );
+}
+
+/// A session with a kept pairing pair-verifies, and its control channel and
+/// audio are keyed from the pair-verify secret.
+#[test]
+fn a_session_with_a_kept_pairing_is_keyed_from_pair_verify() {
+    let (receiver, kept) = paired_by_code();
+    let (c, _) = run_ap2_session(
+        crate::airplay::airplay2::TimingProtocol::Ntp,
+        None,
+        Ap2Auth::Verify(kept),
+        ReceiverPairing::Verify(receiver),
+    );
+    assert_eq!(c.methods, vec!["SETUP", "SETUP", "SETPEERS", "SETRATEANCHORTIME", "RECORD"]);
+    assert!(c.saw_shk, "SETUP carried the audio key derived from the pair-verify secret");
+    assert_eq!(c.pcm.len(), 352 * 2 * 2);
+}
+
+/// A session start whose receiver forgot this device fails as the pairing
+/// lost, and the sink names the receiver, so playback can say which one.
+#[test]
+fn a_session_start_on_a_receiver_that_forgot_this_device_names_it() {
+    use bae_playback::airplay_output::AirPlaySink;
+    let (mut receiver, kept) = paired_by_code();
+    receiver.paired.clear();
+    let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = tcp.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = tcp.accept().unwrap();
+        let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+        receiver.serve(&mut reader, &mut stream)
+    });
+    let named = bae_playback::NamedReceiver { id: "AA01".to_string(), name: "Kitchen".to_string() };
+    let sink = crate::airplay::sink::Ap2Sink::new(
+        addr.ip(),
+        addr.port(),
+        crate::airplay::airplay2::TimingProtocol::Ntp,
+        "Kitchen Mac".to_string(),
+        Ap2Auth::Verify(kept),
+        named.clone(),
+        Arc::new(coven::SequentialIds::new()),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    let Err(error) = sink.start(
+        Box::new(FixedSource { packets_left: 0 }),
+        bae_playback::airplay_output::PcmWake::unattached(),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+    ) else {
+        panic!("a receiver that forgot this device starts no session");
+    };
+    assert!(
+        matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == named),
+        "{error}"
+    );
+    assert_eq!(server.join().unwrap(), Served::Closed);
+}
+
+/// The Digest answer a receiver with `password` expects for a `method`
+/// request to `uri`, computed here apart from the sender's.
+fn expected_digest(password: &str, method: &str, uri: &str) -> String {
+    use md5::{Digest, Md5};
+    let md5 = |text: String| hex::encode(Md5::digest(text.as_bytes()));
+    let credentials = md5(format!(":airplay:{password}"));
+    let request = md5(format!("{method}:{uri}"));
+    let response = md5(format!("{credentials}:9a4b3c:{request}"));
+    format!(
+        r#"Digest username="", realm="airplay", nonce="9a4b3c", uri="{uri}", response="{response}""#
+    )
+}
+
+/// Serve `requests` encrypted requests the way a receiver with `password`
+/// does: a request without the right Digest answer gets a 401 challenge.
+/// Returns each request's method and whether the receiver took it.
+fn serve_digest_receiver(
+    listener: TcpListener,
+    shared: [u8; 32],
+    password: &'static str,
+    requests: usize,
+) -> std::thread::JoinHandle<Vec<(String, bool)>> {
+    std::thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+        let mut writer = stream;
+        let (write, read) = control_keys(&shared);
+        let mut channel = HapChannel::from_keys(&read, &write);
+        let mut seen = Vec::new();
+        for _ in 0..requests {
+            let (method, cseq, _, authorization) =
+                read_encrypted_request(&mut reader, &mut channel);
+            let took = authorization == Some(expected_digest(password, &method, "rtsp://x/1"));
+            let response = if took {
+                build_response(&cseq, &[])
+            } else {
+                format!(
+                    "RTSP/1.0 401 Unauthorized\r\nCSeq: {cseq}\r\n\
+                     WWW-Authenticate: Digest realm=\"airplay\", nonce=\"9a4b3c\"\r\n\
+                     Content-Length: 0\r\n\r\n"
+                )
+                .into_bytes()
+            };
+            writer.write_all(&channel.seal(&response)).unwrap();
+            writer.flush().unwrap();
+            seen.push((method, took));
+        }
+        seen
+    })
+}
+
+/// A receiver with a password answers the first request after pair-verify
+/// with a Digest challenge; the session answers it with the kept password,
+/// and every later request carries the answer.
+#[test]
+fn a_digest_challenge_is_answered_with_the_password_on_every_later_request() {
+    let shared = [0x33u8; 32];
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = serve_digest_receiver(listener, shared, "hunter2", 3);
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let mut control =
+        Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("hunter2".to_string()))
+            .unwrap();
+    control.set_rate(1).unwrap();
+    control.teardown().unwrap();
+
+    assert_eq!(
+        server.join().unwrap(),
+        [
+            ("SETRATEANCHORTIME".to_string(), false),
+            ("SETRATEANCHORTIME".to_string(), true),
+            ("TEARDOWN".to_string(), true),
+        ]
+    );
+}
+
+/// A receiver that refuses the kept password no longer accepts what bae kept
+/// for it.
+#[test]
+fn a_refused_password_is_the_pairing_lost() {
+    let shared = [0x33u8; 32];
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = serve_digest_receiver(listener, shared, "hunter2", 2);
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let mut control =
+        Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("old".to_string()))
+            .unwrap();
+    let refused = control.set_rate(1).unwrap_err();
+    assert!(matches!(refused, Ap2Error::Pairing(PairingError::PairingLost)), "{refused:?}");
+    assert_eq!(server.join().unwrap().len(), 2);
+}
+
+/// Without a password, a 401 is the request's refusal.
+#[test]
+fn a_401_without_a_password_is_the_request_refused() {
+    let shared = [0x33u8; 32];
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = serve_digest_receiver(listener, shared, "hunter2", 1);
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
+    let refused = control.set_rate(1).unwrap_err();
+    assert!(matches!(refused, Ap2Error::Rejected { status: 401, .. }), "{refused:?}");
+    server.join().unwrap();
 }

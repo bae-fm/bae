@@ -33,6 +33,7 @@ pub(crate) mod ap2_session;
 pub(crate) mod bplist;
 pub(crate) mod capabilities;
 pub(crate) mod crypto;
+mod digest;
 pub(crate) mod discovery;
 #[cfg(test)]
 pub(crate) mod fake_receiver;

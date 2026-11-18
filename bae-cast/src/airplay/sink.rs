@@ -13,12 +13,13 @@ use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::{
     AirPlayControlError, AirPlayFailed, AirPlaySink, AirPlayStreamControl, PcmSource, PcmWake,
 };
-use bae_playback::AudioError;
+use bae_playback::{AudioError, NamedReceiver};
 
 use super::airplay2::TimingProtocol;
-use super::ap2_session::Ap2Session;
+use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
+use super::pairing::PairingError;
 use super::session::RaopSession;
 use super::stream::{PcmFeed, SystemClock};
 
@@ -95,7 +96,8 @@ impl AirPlayStreamControl for RaopSession {
 }
 
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
-/// (transient pair-setup) then push ChaCha-encrypted audio to a HomePod-class receiver.
+/// (transient pair-setup, or pair-verify with a kept pairing) then push
+/// ChaCha-encrypted audio to a HomePod-class receiver.
 pub(crate) struct Ap2Sink {
     receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
@@ -104,6 +106,11 @@ pub(crate) struct Ap2Sink {
     timing: TimingProtocol,
     /// The name each session's pairing gives this device.
     client_name: String,
+    /// How each session proves bae to the receiver.
+    auth: Ap2Auth,
+    /// The receiver as a failure names it, when it no longer accepts this
+    /// device.
+    named: NamedReceiver,
     /// Where the session's ids come from.
     ids: coven::IdSourceRef,
     /// What the session's stream threads run under, so one that panics fails
@@ -117,10 +124,12 @@ impl Ap2Sink {
         airplay_port: u16,
         timing: TimingProtocol,
         client_name: String,
+        auth: Ap2Auth,
+        named: NamedReceiver,
         ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, airplay_port, timing, client_name, ids, diagnostics }
+        Self { receiver, airplay_port, timing, client_name, auth, named, ids, diagnostics }
     }
 }
 
@@ -136,13 +145,21 @@ impl AirPlaySink for Ap2Sink {
             self.receiver,
             self.airplay_port,
             &self.client_name,
+            &self.auth,
             PcmFeed::new(source, wake),
             failed,
             self.timing,
             Arc::new(SystemClock::new()),
             self.ids.as_ref(),
         )
-        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
+        .map_err(|error| match error {
+            // The receiver no longer accepts the pairing bae kept: casting to
+            // it again pairs anew.
+            Ap2Error::Pairing(PairingError::PairingLost) => {
+                AudioError::AirPlayPairingLost(self.named.clone())
+            }
+            error => AudioError::AirPlayRefused(error.to_string()),
+        })?;
 
         Ok(Arc::new(session))
     }
