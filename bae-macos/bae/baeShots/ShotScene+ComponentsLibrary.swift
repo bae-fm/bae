@@ -213,6 +213,8 @@ extension ShotScene {
     ) -> ShotScene {
         component(id, height: height) {
             HStack(spacing: 6) { chips() }
+                .environment(DownloadStore())
+                .environment(OutboxStore(uploadsPaused: false))
         }
     }
 
