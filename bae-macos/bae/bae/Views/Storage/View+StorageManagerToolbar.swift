@@ -17,14 +17,9 @@ extension View {
                 ToolbarItem(placement: .principal) {
                     MacSegmentedControl(
                         selectedIndex: Binding(
-                            get: {
-                                StorageFilterSegment.order.firstIndex(
-                                    of: filter.wrappedValue
-                                ) ?? 0
-                            },
+                            get: { filter.wrappedValue.segmentIndex },
                             set: {
-                                filter.wrappedValue =
-                                    StorageFilterSegment.order[$0]
+                                filter.wrappedValue = .init(segmentIndex: $0)
                             }
                         ),
                         segments: [
@@ -117,7 +112,23 @@ private struct OffFilterField: View {
     }
 }
 
-/// The segments' order in the All / Local / Cloud control.
-private enum StorageFilterSegment {
-    static let order: [BridgeStorageFilter] = [.all, .local, .remote]
+extension BridgeStorageFilter {
+    /// The place of this filter among the All / Local / Cloud segments.
+    fileprivate var segmentIndex: Int {
+        switch self {
+        case .all: 0
+        case .local: 1
+        case .remote: 2
+        }
+    }
+
+    /// The filter of the segment at `segmentIndex`.
+    fileprivate init(segmentIndex: Int) {
+        switch segmentIndex {
+        case 0: self = .all
+        case 1: self = .local
+        case 2: self = .remote
+        default: preconditionFailure("the control has three segments")
+        }
+    }
 }
