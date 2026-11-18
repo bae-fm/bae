@@ -8,7 +8,9 @@ extension BridgeCoverGallery {
     /// that cover while the gallery shows it, else on its first cover, with
     /// the covers before and after it wrapping around the ends.
     func focused(on key: BridgeCoverKey?) -> BridgeCoverGallery {
-        let covers = [current].compactMap { $0 } + sections.flatMap(\.items)
+        let covers =
+            [current].compactMap { $0 } + (remote?.items ?? [])
+            + (files?.items ?? [])
         var gallery = self
         let place = covers.firstIndex { $0.key == key } ?? covers.indices.first
         gallery.focus = place.map { place in
