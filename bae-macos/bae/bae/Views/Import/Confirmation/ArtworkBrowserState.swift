@@ -67,18 +67,15 @@ struct CoverGalleryContent: Equatable {
 
     /// A picker's gallery as core read it.
     init(_ gallery: BridgeCoverGallery) {
-        func section(_ source: BridgeCoverSectionSource) -> Section? {
-            gallery.sections.first { $0.source == source }
-                .map {
-                    Section(
-                        items: $0.items.map { CoverItem(gallery: $0) },
-                        count: Int($0.count)
-                    )
-                }
+        func section(_ section: BridgeCoverSection) -> Section {
+            Section(
+                items: section.items.map { CoverItem(gallery: $0) },
+                count: Int(section.count)
+            )
         }
         current = gallery.current.map { CoverItem(gallery: $0) }
-        remote = section(.remote)
-        files = section(.releaseFiles)
+        remote = gallery.remote.map(section)
+        files = gallery.files.map(section)
         total = Int(gallery.total)
         focus = gallery.focus
     }

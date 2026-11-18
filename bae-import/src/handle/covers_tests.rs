@@ -56,25 +56,21 @@ async fn focused_gallery(
     }
 }
 
-/// Each section the gallery shows: its source, its count and its covers'
-/// names, a catalog's cover by its address.
-fn sections(gallery: &crate::CoverGallery) -> Vec<(crate::CoverSectionSource, u32, Vec<String>)> {
-    gallery
-        .sections
-        .iter()
-        .map(|section| {
-            let names = section
-                .items
-                .iter()
-                .map(|item| match (&item.label, &item.image) {
-                    (crate::GalleryLabel::File { name, .. }, _) => name.clone(),
-                    (_, crate::CoverImageSource::Remote { image }) => image.url.clone(),
-                    other => panic!("a candidate's gallery holds {other:?}"),
-                })
-                .collect();
-            (section.source, section.count, names)
-        })
-        .collect()
+/// A section the gallery shows: its count and its covers' names, a
+/// catalog's cover by its address; `None` while the filter hides it.
+fn section(section: &Option<crate::CoverSection>) -> Option<(u32, Vec<String>)> {
+    section.as_ref().map(|section| {
+        let names = section
+            .items
+            .iter()
+            .map(|item| match (&item.label, &item.image) {
+                (crate::GalleryLabel::File { name, .. }, _) => name.clone(),
+                (_, crate::CoverImageSource::Remote { image }) => image.url.clone(),
+                other => panic!("a candidate's gallery holds {other:?}"),
+            })
+            .collect();
+        (section.count, names)
+    })
 }
 
 /// The addresses of the catalogs' covers the candidate's picker offers, in
@@ -86,10 +82,8 @@ async fn offered(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Vec
         crate::CoverFilter::Catalog(bae_catalogs::catalog::Catalog::MusicBrainz),
     )
     .await;
-    match sections(&gallery).as_slice() {
-        [(crate::CoverSectionSource::Remote, _, urls)] => urls.clone(),
-        other => panic!("a catalog's filter shows the remote section alone, not {other:?}"),
-    }
+    assert_eq!(gallery.files, None, "a catalog's filter shows the remote section alone");
+    section(&gallery.remote).expect("a catalog's filter shows the remote section").1
 }
 
 fn front_of(release_id: &str) -> String {
@@ -197,7 +191,6 @@ async fn unlinked_cover_gallery_for_file_tags() {
 /// linked to nothing.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_candidates_picker_counts_what_each_source_shows() {
-    use crate::CoverSectionSource::{ReleaseFiles, Remote};
     let (handle, _tmp, key, _) = pane_fixture().await;
     let all = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     let files = candidate_gallery(&handle, &key, crate::CoverFilter::ReleaseFiles).await;
@@ -211,14 +204,17 @@ async fn a_candidates_picker_counts_what_each_source_shows() {
     assert_eq!(all.fetch, crate::CoverFetch::NotFetched);
     assert_eq!(all.current, None);
     assert_eq!(
-        (sections(&all), all.total),
-        (vec![(Remote, 0, vec![]), (ReleaseFiles, 1, vec!["cover.jpg".to_string()])], 1)
+        (section(&all.remote), section(&all.files), all.total),
+        (Some((0, vec![])), Some((1, vec!["cover.jpg".to_string()])), 1)
     );
     assert_eq!(
-        (sections(&files), files.total),
-        (vec![(ReleaseFiles, 1, vec!["cover.jpg".to_string()])], 1)
+        (section(&files.remote), section(&files.files), files.total),
+        (None, Some((1, vec!["cover.jpg".to_string()])), 1)
     );
-    assert_eq!((sections(&discogs), discogs.total), (vec![(Remote, 0, vec![])], 0));
+    assert_eq!(
+        (section(&discogs.remote), section(&discogs.files), discogs.total),
+        (Some((0, vec![])), None, 0)
+    );
 }
 
 /// While the candidate keeps the link bae fetched the covers for, the picker
@@ -250,7 +246,7 @@ async fn a_fetch_shows_while_the_link_it_was_fetched_for_stands() {
     let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     shut_down(handle).await;
     assert_eq!(gallery.fetch, crate::CoverFetch::NotFetched);
-    assert_eq!(sections(&gallery)[0], (crate::CoverSectionSource::Remote, 0, vec![]));
+    assert_eq!(section(&gallery.remote), Some((0, vec![])));
 }
 
 /// A candidate's picker focuses the cover its draft chose, after the
@@ -393,5 +389,5 @@ async fn linked_cover_gallery_can_be_empty() {
     let gallery = candidate_gallery(&handle, &key, crate::CoverFilter::All).await;
     shut_down(handle).await;
     assert_eq!(gallery.fetch, crate::CoverFetch::Linked);
-    assert_eq!(sections(&gallery)[0], (crate::CoverSectionSource::Remote, 0, vec![]));
+    assert_eq!(section(&gallery.remote), Some((0, vec![])));
 }

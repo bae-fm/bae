@@ -131,12 +131,26 @@ async fn read(tables: &ImportTables, filter: CoverFilter) -> CoverGallery {
     gallery_until(&mut gallery, &asked, |_| true).await
 }
 
-fn counts(gallery: &CoverGallery) -> Vec<(CoverSectionSource, u32, usize)> {
-    gallery
-        .sections
-        .iter()
-        .map(|section| (section.source, section.count, section.items.len()))
-        .collect()
+/// A section's count and its number of covers, `None` while the filter hides
+/// it.
+type SectionCount = Option<(u32, usize)>;
+
+/// The catalogs' section's [`SectionCount`] and the image files' section's.
+fn counts(gallery: &CoverGallery) -> (SectionCount, SectionCount) {
+    let count = |section: &Option<CoverSection>| {
+        section.as_ref().map(|section| (section.count, section.items.len()))
+    };
+    (count(&gallery.remote), count(&gallery.files))
+}
+
+/// The catalogs' section, which the filter shows.
+fn remote(gallery: &CoverGallery) -> &CoverSection {
+    gallery.remote.as_ref().expect("the filter shows the catalogs' covers")
+}
+
+/// The image files' section, which the filter shows.
+fn files(gallery: &CoverGallery) -> &CoverSection {
+    gallery.files.as_ref().expect("the filter shows the image files")
 }
 
 fn names(section: &CoverSection) -> Vec<String> {
@@ -166,15 +180,12 @@ async fn all_sources_show_the_saved_cover_the_offered_covers_and_the_image_files
         CoverImageSource::ReleaseImage { source: bae_records::GallerySource::Cover(_), .. }
     ));
     assert_eq!(gallery.fetch, CoverFetch::Linked);
+    assert_eq!(counts(&gallery), (Some((3, 3)), Some((2, 2))));
     assert_eq!(
-        counts(&gallery),
-        [(CoverSectionSource::Remote, 3, 3), (CoverSectionSource::ReleaseFiles, 2, 2)]
-    );
-    assert_eq!(
-        names(&gallery.sections[0]),
+        names(remote(&gallery)),
         ["https://caa.example/front", "https://discogs.example/1", "https://discogs.example/2"]
     );
-    assert_eq!(names(&gallery.sections[1]), ["art 2.png", "Back.jpg"]);
+    assert_eq!(names(files(&gallery)), ["art 2.png", "Back.jpg"]);
     assert_eq!(gallery.total, 6);
 }
 
@@ -184,7 +195,7 @@ async fn a_catalog_filter_shows_only_that_catalogs_covers() {
     let gallery = read(&tables, CoverFilter::Catalog(Catalog::Discogs)).await;
 
     assert!(gallery.current.is_none());
-    assert_eq!(counts(&gallery), [(CoverSectionSource::Remote, 2, 2)]);
+    assert_eq!(counts(&gallery), (Some((2, 2)), None));
     assert_eq!(gallery.total, 2);
 }
 
@@ -194,7 +205,7 @@ async fn the_release_files_filter_shows_only_the_image_files() {
     let gallery = read(&tables, CoverFilter::ReleaseFiles).await;
 
     assert!(gallery.current.is_none());
-    assert_eq!(counts(&gallery), [(CoverSectionSource::ReleaseFiles, 2, 2)]);
+    assert_eq!(counts(&gallery), (None, Some((2, 2))));
     assert_eq!(gallery.fetch, CoverFetch::Linked);
     assert_eq!(gallery.total, 2);
 }
@@ -210,8 +221,8 @@ async fn a_new_fetch_replaces_the_covers_of_the_last() {
         .await
         .unwrap();
     let gallery = read(&tables, CoverFilter::All).await;
-    assert_eq!(names(&gallery.sections[0]), ["https://discogs.example/3"]);
-    assert_eq!(gallery.sections[0].count, 1);
+    assert_eq!(names(remote(&gallery)), ["https://discogs.example/3"]);
+    assert_eq!(remote(&gallery).count, 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -220,7 +231,7 @@ async fn an_unlinked_release_stores_that_it_offers_nothing() {
     tables.replace_release_covers(RELEASE_ID, None).await.unwrap();
     let gallery = read(&tables, CoverFilter::All).await;
     assert_eq!(gallery.fetch, CoverFetch::Unlinked);
-    assert_eq!(gallery.sections[0].count, 0);
+    assert_eq!(remote(&gallery).count, 0);
     assert_eq!(gallery.total, 3);
 }
 
@@ -229,10 +240,7 @@ async fn a_release_nothing_fetched_for_has_no_answer() {
     let (db, _temp) = live_db(crate::TEST_SCHEMA).await;
     let gallery = read(&ImportTables::new(db), CoverFilter::All).await;
     assert_eq!(gallery.fetch, CoverFetch::NotFetched);
-    assert_eq!(
-        counts(&gallery),
-        [(CoverSectionSource::Remote, 0, 0), (CoverSectionSource::ReleaseFiles, 0, 0)]
-    );
+    assert_eq!(counts(&gallery), (Some((0, 0)), Some((0, 0))));
     assert_eq!(gallery.total, 0);
 }
 
@@ -259,7 +267,7 @@ async fn a_fetch_reaches_an_open_picker() {
     let (tables, _db, _temp, _files) = seeded().await;
     let asked = request(CoverFilter::All);
     let mut gallery = tables.subscribe_cover_gallery(Some(asked.clone()));
-    gallery_until(&mut gallery, &asked, |gallery| gallery.sections[0].count == 3).await;
+    gallery_until(&mut gallery, &asked, |gallery| remote(gallery).count == 3).await;
 
     tables
         .replace_release_covers(
@@ -269,21 +277,21 @@ async fn a_fetch_reaches_an_open_picker() {
         .await
         .unwrap();
 
-    let after = gallery_until(&mut gallery, &asked, |gallery| gallery.sections[0].count == 1).await;
-    assert_eq!(names(&after.sections[0]), ["https://discogs.example/9"]);
+    let after = gallery_until(&mut gallery, &asked, |gallery| remote(gallery).count == 1).await;
+    assert_eq!(names(remote(&after)), ["https://discogs.example/9"]);
     assert_eq!(after.total, 4);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_new_image_file_reaches_an_open_picker() {
-    let (tables, db, _temp, files) = seeded().await;
+    let (tables, db, _temp, file_dir) = seeded().await;
     let asked = request(CoverFilter::ReleaseFiles);
     let mut gallery = tables.subscribe_cover_gallery(Some(asked.clone()));
     gallery_until(&mut gallery, &asked, |gallery| gallery.total == 2).await;
 
     image_file(
         &db,
-        files.path(),
+        file_dir.path(),
         &bae_util::test_ids::test_uuid("file-new"),
         "Inlay.jpg",
         ContentType::Jpeg,
@@ -291,7 +299,7 @@ async fn a_new_image_file_reaches_an_open_picker() {
     .await;
 
     let after = gallery_until(&mut gallery, &asked, |gallery| gallery.total == 3).await;
-    assert_eq!(names(&after.sections[0]), ["art 2.png", "Back.jpg", "Inlay.jpg"]);
+    assert_eq!(names(files(&after)), ["art 2.png", "Back.jpg", "Inlay.jpg"]);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -305,7 +313,7 @@ async fn another_source_is_a_new_request_on_the_same_read() {
     gallery.requests().set(Some(discogs.clone())).unwrap();
 
     let after = gallery_until(&mut gallery, &discogs, |_| true).await;
-    assert_eq!(counts(&after), [(CoverSectionSource::Remote, 2, 2)]);
+    assert_eq!(counts(&after), (Some((2, 2)), None));
 }
 
 /// The gallery `filter` shows now, focused on the cover `focus` names.

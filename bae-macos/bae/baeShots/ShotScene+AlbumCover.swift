@@ -111,18 +111,14 @@ extension ShotScene {
                 label: .current
             ),
             fetch: linked ? .linked : .unlinked,
-            sections: [
-                BridgeCoverSection(
-                    source: .remote,
-                    items: remotes,
-                    count: UInt32(remotes.count)
-                ),
-                BridgeCoverSection(
-                    source: .releaseFiles,
-                    items: files,
-                    count: UInt32(files.count)
-                ),
-            ],
+            remote: BridgeCoverSection(
+                items: remotes,
+                count: UInt32(remotes.count)
+            ),
+            files: BridgeCoverSection(
+                items: files,
+                count: UInt32(files.count)
+            ),
             total: UInt32(1 + remotes.count + files.count),
             focus: nil
         )

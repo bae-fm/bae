@@ -234,18 +234,14 @@ extension CoverLightboxTests {
         BridgeCoverGallery(
             current: nil,
             fetch: .linked,
-            sections: [
-                BridgeCoverSection(
-                    source: .remote,
-                    items: remote.map(\.cover),
-                    count: UInt32(remote.count)
-                ),
-                BridgeCoverSection(
-                    source: .releaseFiles,
-                    items: files.map(\.cover),
-                    count: UInt32(files.count)
-                ),
-            ],
+            remote: BridgeCoverSection(
+                items: remote.map(\.cover),
+                count: UInt32(remote.count)
+            ),
+            files: BridgeCoverSection(
+                items: files.map(\.cover),
+                count: UInt32(files.count)
+            ),
             total: UInt32(remote.count + files.count),
             focus: nil
         )

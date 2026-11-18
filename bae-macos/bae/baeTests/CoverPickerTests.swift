@@ -87,14 +87,11 @@ struct CoverPickerTests {
         return BridgeCoverGallery(
             current: nil,
             fetch: .unlinked,
-            sections: [
-                BridgeCoverSection(source: .remote, items: [], count: 0),
-                BridgeCoverSection(
-                    source: .releaseFiles,
-                    items: files,
-                    count: UInt32(files.count)
-                ),
-            ],
+            remote: BridgeCoverSection(items: [], count: 0),
+            files: BridgeCoverSection(
+                items: files,
+                count: UInt32(files.count)
+            ),
             total: UInt32(files.count),
             focus: nil
         )

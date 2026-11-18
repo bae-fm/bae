@@ -238,13 +238,11 @@ extension LibraryArtworkBrowserTests {
         return BridgeCoverGallery(
             current: saved,
             fetch: .linked,
-            sections: [
-                BridgeCoverSection(
-                    source: .remote,
-                    items: covers.map(galleryCover),
-                    count: UInt32(covers.count)
-                )
-            ],
+            remote: BridgeCoverSection(
+                items: covers.map(galleryCover),
+                count: UInt32(covers.count)
+            ),
+            files: nil,
             total: UInt32(covers.count + (saved == nil ? 0 : 1)),
             focus: nil
         )

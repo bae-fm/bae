@@ -580,19 +580,26 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
             .collect(),
     };
     assert_eq!(
-        gallery.sections,
-        vec![crate::CoverSection {
-            source: crate::CoverSectionSource::Remote,
-            items: vec![crate::GalleryCover {
-                key: crate::CoverKey::Remote(front.to_string()),
-                label: crate::GalleryLabel::Remote {
-                    label: bae_catalogs::remote_image::CoverLabel::Lead { release_group: false },
-                    source: Catalog::MusicBrainz,
-                    selection: crate::CoverSelection::Remote(image.clone(), Catalog::MusicBrainz),
-                },
-                image: crate::CoverImageSource::Remote { image },
-            }],
-            count: 1,
-        }]
+        (gallery.remote, gallery.files),
+        (
+            Some(crate::CoverSection {
+                items: vec![crate::GalleryCover {
+                    key: crate::CoverKey::Remote(front.to_string()),
+                    label: crate::GalleryLabel::Remote {
+                        label: bae_catalogs::remote_image::CoverLabel::Lead {
+                            release_group: false
+                        },
+                        source: Catalog::MusicBrainz,
+                        selection: crate::CoverSelection::Remote(
+                            image.clone(),
+                            Catalog::MusicBrainz
+                        ),
+                    },
+                    image: crate::CoverImageSource::Remote { image },
+                }],
+                count: 1,
+            }),
+            None
+        )
     );
 }

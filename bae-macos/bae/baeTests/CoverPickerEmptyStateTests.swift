@@ -37,13 +37,8 @@ struct CoverPickerEmptyStateTests {
                     BridgeCoverGallery(
                         current: nil,
                         fetch: .notFetched,
-                        sections: [
-                            BridgeCoverSection(
-                                source: .remote,
-                                items: [],
-                                count: 0
-                            )
-                        ],
+                        remote: BridgeCoverSection(items: [], count: 0),
+                        files: nil,
                         total: 0,
                         focus: nil
                     )

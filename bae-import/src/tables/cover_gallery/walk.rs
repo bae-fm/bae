@@ -211,21 +211,13 @@ impl GalleryColumns {
     /// The gallery these columns hold, for the picker of the library release
     /// `release_id`, or of a candidate (`None`).
     pub(super) fn gallery(self, release_id: Option<&str>) -> Result<CoverGallery, DbError> {
-        let mut sections = Vec::new();
-        if self.shows_remote {
-            sections.push(CoverSection {
-                source: CoverSectionSource::Remote,
-                items: covers(&self.remote, release_id)?,
-                count: self.remote_count,
-            });
-        }
-        if self.shows_files {
-            sections.push(CoverSection {
-                source: CoverSectionSource::ReleaseFiles,
-                items: covers(&self.files, release_id)?,
-                count: self.files_count,
-            });
-        }
+        let section = |shows: bool, json: &str, count: u32| {
+            shows
+                .then(|| Ok::<_, DbError>(CoverSection { items: covers(json, release_id)?, count }))
+                .transpose()
+        };
+        let remote = section(self.shows_remote, &self.remote, self.remote_count)?;
+        let files = section(self.shows_files, &self.files, self.files_count)?;
         let current = self
             .saved
             .map(|json| {
@@ -260,7 +252,8 @@ impl GalleryColumns {
         Ok(CoverGallery {
             current,
             fetch: CoverFetch::of_column(self.fetched),
-            sections,
+            remote,
+            files,
             total: self.total,
             focus,
         })

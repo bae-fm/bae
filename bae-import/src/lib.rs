@@ -300,9 +300,8 @@ pub use tables::SCHEMA_PARTS;
 #[cfg(desktop)]
 pub use tables::{
     CoverFetch, CoverFilter, CoverGallery, CoverGalleryOwner, CoverGalleryRequest,
-    CoverGallerySnapshot, CoverKey, CoverSection, CoverSectionSource, FolderImageFocus,
-    FolderImages, FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus,
-    GalleryLabel, Neighbors,
+    CoverGallerySnapshot, CoverKey, CoverSection, FolderImageFocus, FolderImages,
+    FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus, GalleryLabel, Neighbors,
 };
 
 /// The schema this crate's tests open their stores on: the catalogs' part,

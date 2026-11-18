@@ -591,7 +591,9 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
         }
     };
     assert_eq!(
-        gallery.sections[0]
+        gallery
+            .remote
+            .expect("a catalog's filter shows the catalogs' covers")
             .items
             .iter()
             .map(|cover| match &cover.image {

@@ -68,13 +68,6 @@ impl CoverFetch {
     }
 }
 
-/// Which part of the picker a section is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CoverSectionSource {
-    Remote,
-    ReleaseFiles,
-}
-
 /// What names a gallery cover to the person, and what saving it selects.
 /// Saving the cover the release has now selects nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,7 +101,6 @@ pub struct GalleryCover {
 /// The covers of one source, and how many the filter leaves in it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverSection {
-    pub source: CoverSectionSource,
     pub items: Vec<GalleryCover>,
     pub count: u32,
 }
@@ -131,14 +123,16 @@ pub struct GalleryFocus {
     pub neighbors: Option<Neighbors<CoverKey>>,
 }
 
-/// A cover picker: a library release's saved cover, the sections the filter
-/// shows, the number of covers in all of them, and the cover it focuses,
-/// or none while it shows no cover.
+/// A cover picker: a library release's saved cover, the catalogs' covers
+/// and the image files, each section only while the filter shows it, the
+/// number of covers in all of them, and the cover it focuses, or none while
+/// it shows no cover.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverGallery {
     pub current: Option<GalleryCover>,
     pub fetch: CoverFetch,
-    pub sections: Vec<CoverSection>,
+    pub remote: Option<CoverSection>,
+    pub files: Option<CoverSection>,
     pub total: u32,
     pub focus: Option<GalleryFocus>,
 }

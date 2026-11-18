@@ -36,19 +36,6 @@ mirror_enum! {
     variants: { NotFetched, Unlinked, Linked },
 }
 
-/// Which part of the cover picker a section is.
-#[derive(Debug, Clone, Copy, uniffi::Enum)]
-pub enum BridgeCoverSectionSource {
-    Remote,
-    ReleaseFiles,
-}
-
-mirror_enum! {
-    BridgeCoverSectionSource = bae_import::CoverSectionSource,
-    from_core: pub(crate) fn,
-    variants: { Remote, ReleaseFiles },
-}
-
 /// What names a cover in the picker, which the app words, and what saving it
 /// selects. Saving the cover the release has now selects nothing.
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -93,9 +80,14 @@ pub struct BridgeGalleryCover {
 /// The covers of one source, and how many the filter leaves in it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverSection {
-    pub source: BridgeCoverSectionSource,
     pub items: Vec<BridgeGalleryCover>,
     pub count: u32,
+}
+
+mirror_struct! {
+    BridgeCoverSection = bae_import::CoverSection,
+    from_core: fn,
+    fields: { items: (each BridgeGalleryCover), count },
 }
 
 /// The covers before and after the one a picker focuses, wrapping around
@@ -123,13 +115,15 @@ pub struct BridgeGalleryFocus {
 }
 
 /// A cover picker under one filter: a library release's saved cover, the
-/// sections the filter shows, the number of covers in all of them, and the
-/// cover it focuses, none while it shows no cover.
+/// catalogs' covers and the image files, each section only while the filter
+/// shows it, the number of covers in all of them, and the cover it focuses,
+/// none while it shows no cover.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCoverGallery {
     pub current: Option<BridgeGalleryCover>,
     pub fetch: BridgeCoverFetch,
-    pub sections: Vec<BridgeCoverSection>,
+    pub remote: Option<BridgeCoverSection>,
+    pub files: Option<BridgeCoverSection>,
     pub total: u32,
     pub focus: Option<BridgeGalleryFocus>,
 }
@@ -139,15 +133,8 @@ impl BridgeCoverGallery {
         Self {
             current: gallery.current.map(BridgeGalleryCover::from_core),
             fetch: BridgeCoverFetch::from_core(gallery.fetch),
-            sections: gallery
-                .sections
-                .into_iter()
-                .map(|section| BridgeCoverSection {
-                    source: BridgeCoverSectionSource::from_core(section.source),
-                    items: section.items.into_iter().map(BridgeGalleryCover::from_core).collect(),
-                    count: section.count,
-                })
-                .collect(),
+            remote: gallery.remote.map(BridgeCoverSection::from_core),
+            files: gallery.files.map(BridgeCoverSection::from_core),
             total: gallery.total,
             focus: gallery.focus.map(|focus| BridgeGalleryFocus {
                 cover: BridgeGalleryCover::from_core(focus.cover),
