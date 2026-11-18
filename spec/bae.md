@@ -4021,7 +4021,7 @@ storage* where the line names the place the library is kept.
     page: Transfers shows it (§4.2).
   - Waiting for access, while a change received waits for a key this device
     doesn't hold, naming the devices that hold it: *Your iPhone or Ana’s Pixel
-    gives this Mac access the next time either one syncs.* / *To get it now,
+    will give this Mac access the next time either one syncs.* / *To get it now,
     scan one of them.*, with *Scan device…*. The button opens a sheet, *Scan
     another device*: *On the other device, open bae’s Sync settings and choose
     Share access. Then hold its code up to this Mac’s
