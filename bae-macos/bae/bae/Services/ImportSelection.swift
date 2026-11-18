@@ -127,9 +127,9 @@ final class ImportSelection {
     @ObservationIgnored
     private(set) var generation = 0
     /// The request of the list the sidebar shows, which each read of rows
-    /// takes.
+    /// takes; nil until the sidebar shows its first list.
     @ObservationIgnored
-    private(set) var request = ImportListRequests.initial
+    private(set) var request: BridgeImportListRequest?
     /// Where a failure to tell the read the keys goes.
     @ObservationIgnored
     var onError: @MainActor (any Error) -> Void = { _ in }
@@ -153,6 +153,13 @@ final class ImportSelection {
     /// that follow take it.
     func show(_ request: BridgeImportListRequest) {
         self.request = request
+    }
+
+    /// The request of the list the sidebar shows. Before the sidebar shows a
+    /// list there are no rows to act on, so a read or an action fails.
+    private func shownRequest() throws -> BridgeImportListRequest {
+        guard let request else { throw ImportSelectionError.noList }
+        return request
     }
 
     /// Take core's latest summary.
@@ -204,7 +211,14 @@ final class ImportSelection {
             ) async throws -> [Data]
     ) {
         let operations = operations
-        let request = request
+        let request: BridgeImportListRequest
+        do {
+            request = try shownRequest()
+        }
+        catch {
+            onError(error)
+            return
+        }
         keysRead.replace(
             "Selection keys read",
             work: { try await read(operations, request) },
@@ -234,13 +248,16 @@ final class ImportSelection {
     }
 
     func sourceFolders() async throws -> [Data] {
-        try await operations.sourceFolders(request, keys.inByteOrder)
+        try await operations.sourceFolders(try shownRequest(), keys.inByteOrder)
     }
 
     /// Read every selected folder the list shows as one release, and select
     /// it.
     func combine() async throws -> Data {
-        let key = try await operations.combine(request, keys.inByteOrder)
+        let key = try await operations.combine(
+            try shownRequest(),
+            keys.inByteOrder
+        )
         select([key])
         return key
     }
@@ -249,7 +266,10 @@ final class ImportSelection {
     /// select them.
     @discardableResult
     func separate() async throws -> [Data] {
-        let separated = try await operations.separate(request, keys.inByteOrder)
+        let separated = try await operations.separate(
+            try shownRequest(),
+            keys.inByteOrder
+        )
         select(Set(separated))
         return separated
     }
@@ -288,7 +308,7 @@ final class ImportSelection {
         let failures: [BridgeSelectionActionFailure]
         do {
             failures = try await operations.run(
-                request,
+                try shownRequest(),
                 action,
                 keys.inByteOrder,
                 progress
@@ -317,19 +337,9 @@ final class ImportSelection {
     }
 }
 
-/// The requests the import list's calls take.
-enum ImportListRequests {
-    /// The request of a list showing Found, newest first, with nothing
-    /// narrowed and no group folded.
-    static let initial = BridgeImportListRequest(
-        view: BridgeImportListView(
-            tab: .pending,
-            filterText: "",
-            pendingFilter: .all,
-            order: .newestFirst
-        ),
-        folds: .allOpen
-    )
+/// The selection was read or acted on before the sidebar showed a list.
+enum ImportSelectionError: Error {
+    case noList
 }
 
 extension Set<Data> {

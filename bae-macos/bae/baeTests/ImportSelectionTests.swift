@@ -68,13 +68,55 @@ extension ImportSelectionOperations {
     }
 }
 
+extension ImportSelection {
+    /// A selection over `operations` on a list showing Found, as the sidebar
+    /// shows it once it has read its first list.
+    static func onList(
+        operations: ImportSelectionOperations = .inert
+    ) -> ImportSelection {
+        let selection = ImportSelection(operations: operations)
+        selection.show(
+            BridgeImportListRequest(
+                view: BridgeImportListView(
+                    tab: .pending,
+                    filterText: "",
+                    pendingFilter: .all,
+                    order: .newestFirst
+                ),
+                folds: .allOpen
+            )
+        )
+        return selection
+    }
+}
+
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct ImportSelectionTests {
+    @Test("Acting on the selection before the sidebar shows a list fails")
+    func actingBeforeAListFails() async {
+        let selection = ImportSelection(
+            operations: .stub(run: { _, _, _, _ in
+                Issue.record("no list to act on")
+                return []
+            })
+        )
+        var errors: [any Error] = []
+        selection.onError = { errors.append($0) }
+        selection.selectAll()
+        #expect(errors.count == 1)
+        await #expect(throws: ImportSelectionError.self) {
+            try await selection.sourceFolders()
+        }
+        let uiStore = UiStore()
+        await selection.perform(.skip, uiStore: uiStore)
+        #expect(uiStore.lastError != nil)
+    }
+
     @Test("A running action can be cancelled and rejects a second one")
     func cancelRunningAction() async throws {
         let entered = AsyncStream<Void>.makeStream()
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(run: { _, _, _, _ in
                 entered.continuation.yield(())
                 try await Task.neverAnswers()
@@ -110,7 +152,7 @@ struct ImportSelectionTests {
         let sent = CallLog<[Data]>()
         let album = Data("/music/Album".utf8)
         let other = Data("/music/Other Album".utf8)
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(run: { _, action, keys, _ in
                 requested.record(action)
                 sent.record(keys)
@@ -159,7 +201,7 @@ struct ImportSelectionTests {
     func progressFollowsCore() async throws {
         let release = AsyncStream<Void>.makeStream()
         let progress = LatestStream<BridgeSelectionActionProgress>.written()
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(
                 progressStream: { progress.stream },
                 run: { _, _, _, _ in
@@ -240,7 +282,7 @@ struct ImportSelectionReplacementTests {
     @Test("combining selects the release it makes")
     func combiningSelectsTheRelease() async throws {
         let sent = CallLog<[Data]>()
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(combine: { _, keys in
                 sent.record(keys)
                 return Self.combined
@@ -255,7 +297,7 @@ struct ImportSelectionReplacementTests {
 
     @Test("separating selects the releases it returns")
     func separatingSelectsTheReleases() async throws {
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(separate: { _, _ in Self.parts })
         )
         selection.select([Self.combined])
@@ -295,7 +337,7 @@ struct ImportSelectionKeysReadTests {
     func clickCancelsSelectAll() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let cancelled = CallLog<Void>()
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: Self.waiting(
                 entered: entered.continuation,
                 cancelled: cancelled
@@ -313,7 +355,7 @@ struct ImportSelectionKeysReadTests {
     func clickCancelsRange() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let cancelled = CallLog<Void>()
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: Self.waiting(
                 entered: entered.continuation,
                 cancelled: cancelled
@@ -338,7 +380,7 @@ struct ImportSelectionKeysReadTests {
     @Test("the range core reads joins the kept keys")
     func rangeJoinsTheKeptKeys() async throws {
         let between = [Data("/music/A".utf8), Data("/music/B".utf8)]
-        let selection = ImportSelection(
+        let selection = ImportSelection.onList(
             operations: .stub(keysBetween: { _, _, _ in between })
         )
         selection.select([Self.clicked])
@@ -365,7 +407,7 @@ struct ImportSelectionEditTests {
             Data("/music/Hidden".utf8), Data("/music/Shown".utf8),
             Data("/music/Clicked".utf8)
         )
-        let selection = ImportSelection()
+        let selection = ImportSelection.onList()
         selection.select([hidden, shown])
         selection.edit(
             .adjust(add: [clicked], remove: [shown], range: nil)

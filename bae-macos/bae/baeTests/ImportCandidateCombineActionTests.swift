@@ -15,7 +15,7 @@ struct ImportCandidateCombineActionTests {
         let combined = CallLog<Void>()
 
         await ImportCandidateCombineAction(
-            selection: ImportSelection(
+            selection: ImportSelection.onList(
                 operations: .stub(combine: { _, _ in
                     combined.record(())
                     return Data("grouping-new".utf8)
@@ -38,7 +38,7 @@ struct ImportCandidateCombineActionTests {
         let uiStore = UiStore()
 
         await ImportCandidateCombineAction(
-            selection: ImportSelection(
+            selection: ImportSelection.onList(
                 operations: .stub(combine: { _, _ in throw CombineRefused() })
             ),
             uiStore: uiStore

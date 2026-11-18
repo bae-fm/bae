@@ -514,6 +514,7 @@ extension ImportListSlot {
                 list: list,
                 request: slot.asked
             )
+            selection.show(slot.asked)
             return slot
         }
     }
