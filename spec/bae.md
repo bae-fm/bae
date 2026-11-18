@@ -3651,7 +3651,7 @@ declares it (§6.3), and what a person sees when sync stops (§6.4).
 | Fetched catalog data (§3.4) | Ratings, history and playlists (§5.3) |
 | Settings (Appendix C) | |
 | The paths of a local release's originals, in coven's records (§4.2) | |
-| Plays from before the person had a profile (§5.3) | |
+| A removed device's own writes, plays among them (§5.3) | |
 
 Each reason is the same: the data is one device's, and another device would be
 wrong to follow it. Ana's queue is what she is listening to, not Ben. A scan is
