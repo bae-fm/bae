@@ -26,7 +26,7 @@ whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,s
 whole frozen-shrinks owner-construction-check.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
-check clippy *.rs,Cargo.toml,Cargo.lock scripts/clippy-crates.sh {crates}
+check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml scripts/clippy-crates.sh {crates}
 
 # The apps' sources and the bridge they call
 whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
