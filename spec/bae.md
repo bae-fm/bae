@@ -5272,8 +5272,8 @@ the save returns, so a save that fails puts the switch back.
 ## 9. Across the apps
 
 Every app does the same things with a library: open it, read it, watch it
-change, import, play, move files, sync, and change settings. bae's core does
-each once, so every app follows the same rules.
+change, import, play, move files, sync, and change settings. Every app
+follows the same rules for each, which this section states.
 
 ### 9.1 Opening a library
 
