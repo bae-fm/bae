@@ -601,6 +601,43 @@ extension CandidatePlacementNavigationTests {
 
         XCTAssertNil(position)
     }
+
+    /// The person's next action cancels a reveal on its way: the slot then
+    /// shows no other view and selects nothing.
+    @MainActor
+    func testACancelledRevealChangesNothing() async throws {
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.pending)
+        let selection = ImportSelection()
+        let delivery = AppliedViewResolver()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            selection: selection,
+            makeHandle: {
+                .stub(
+                    items: (0..<80).map(candidateItem),
+                    revealCandidate: { request, _ in
+                        await delivery.wait(for: request.view)
+                        return revealed(request, on: .done, at: 61)
+                    }
+                )
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list?.idAt(0) != nil }
+        let reveal = Task { try await slot.revealCandidate(candidateKey(61)) }
+        try await Wait.until { !delivery.requests.isEmpty }
+
+        reveal.cancel()
+        delivery.resolve()
+        let position = try await reveal.value
+
+        XCTAssertNil(position)
+        XCTAssertEqual(slot.shown?.view.tab, .pending)
+        XCTAssertEqual(uiStore.importCandidateTab, .pending)
+        XCTAssertTrue(selection.keys.isEmpty)
+    }
 }
 
 @MainActor

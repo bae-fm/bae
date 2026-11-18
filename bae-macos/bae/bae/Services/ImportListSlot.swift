@@ -244,10 +244,12 @@ extension ImportListSlot {
     /// select it alone. Core answers the request that reveals it from the
     /// list the person asked for, and where it sits there; the slot shows
     /// that request. Returns that position; `nil` when no tab lists the
-    /// candidate.
+    /// candidate. Cancelling the caller cancels the reveal: until the new
+    /// list is on screen, the slot changes neither the view nor the
+    /// selection.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
         guard current != nil else { return nil }
-        let outcome = await enqueue {
+        let reveal = enqueue {
             [self] () async -> Result<Int?, any Error> in
             guard let handle = current?.handle else { return .success(nil) }
             do {
@@ -255,20 +257,29 @@ extension ImportListSlot {
                     let reveal = try await handle.revealCandidate(
                         asked,
                         candidateKey
+                    ),
+                    !Task.isCancelled
+                else { return .success(nil) }
+                let position = Int(reveal.position)
+                guard
+                    try await show(
+                        reveal.request,
+                        at: position,
+                        through: handle
                     )
                 else { return .success(nil) }
                 ask(reveal.request)
                 selectOnly(candidateKey)
-                let position = Int(reveal.position)
-                try await show(reveal.request, at: position, through: handle)
                 return .success(position)
             }
             catch { return .failure(error) }
         }
-        .value
-        let position = try outcome.get()
-        guard !Task.isCancelled else { return nil }
-        return position
+        let outcome = await withTaskCancellationHandler {
+            await reveal.value
+        } onCancel: {
+            reveal.cancel()
+        }
+        return try outcome.get()
     }
 
     /// Make `request` the view and folds the person asked for, and the
@@ -358,13 +369,15 @@ extension ImportListSlot {
     /// Read `request` through `handle` in a new list opened at `position`,
     /// and show it in place of the list on screen once it has its first rows
     /// and its count: until then the sidebar keeps drawing the list it has.
-    /// With `opening`, the table scrolls to `position`.
+    /// With `opening`, the table scrolls to `position`. Answers whether the
+    /// new list is on screen: a cancelled or failed read leaves the old one.
+    @discardableResult
     private func show(
         _ request: BridgeImportListRequest,
         at position: Int,
         through handle: ImportListHandle,
         opening: Bool = false
-    ) async throws {
+    ) async throws -> Bool {
         let next = PaginatedList<BridgeImportListItem>(
             queries: handle.queries(request),
             onError: { [weak self] error in self?.fail(error) }
@@ -373,20 +386,21 @@ extension ImportListSlot {
         await next.waitForCount()
         guard !Task.isCancelled else {
             next.cancel()
-            return
+            return false
         }
         if let failed = next.initialLoadError {
             next.cancel()
             sourceFailed = true
             loadFailure = failed
             uiStore.showError(failed)
-            return
+            return false
         }
         let previous = current?.list
         current = ShownImportList(handle: handle, list: next, request: request)
         selection.show(request)
         previous?.cancel()
         if opening { open(at: position) }
+        return true
     }
 
     /// A read failed: report it, and have the next change rebuild the list.
