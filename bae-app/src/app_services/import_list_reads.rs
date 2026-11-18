@@ -115,7 +115,8 @@ impl AppServices {
     delegate_sync!(import, import_list_window_for_test => subscribe_list_window(request: ImportListRequest, initial: bae_store::ListWindow) -> bae_store::live_query::CancellableLiveQuery<bae_store::ListWindow, bae_import::ImportWindow, bae_store::DbError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(import, import_list_count_for_test => subscribe_list_count(request: ImportListRequest) -> coven::LiveQuery<bae_import::ImportListCount, bae_store::DbError>);
-    delegate_async!(import, import_list_key_at => list_key_at(request: ImportListRequest, position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError>);
+    #[cfg(any(test, feature = "test-utils"))]
+    delegate_async!(import, import_list_key_at_for_test => list_key_at(request: ImportListRequest, position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(import, follow_import_list_for_test => follow_list(request: ImportListRequest, window: bae_store::ListWindow) -> bae_import::FollowedImportList);
 }

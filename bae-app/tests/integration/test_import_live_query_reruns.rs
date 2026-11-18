@@ -133,8 +133,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         order: ImportListOrder::PathAscending,
         ..ImportListView::default()
     });
-    let seed_key =
-        services.import_list_key_at(list.clone(), 0).await.unwrap().expect("the seed is listed");
+    let seed_key = services
+        .import_list_key_at_for_test(list.clone(), 0)
+        .await
+        .unwrap()
+        .expect("the seed is listed");
     let mut count = services.import_list_count_for_test(list.clone());
     let (count_tx, mut list_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let count_reader = tokio::spawn(async move {
