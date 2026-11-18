@@ -404,7 +404,7 @@ impl LibraryManager {
                             continue;
                         }
                     };
-                    lm.follow_sync_status(last.as_ref(), &snapshot).await;
+                    lm.follow_sync_status(last.as_ref(), &snapshot);
                     last = Some(snapshot);
                 }
             },
@@ -416,7 +416,7 @@ impl LibraryManager {
 
     /// Log a failure coven doesn't log itself, and report a failed pass to
     /// diagnostics, when `snapshot` brings it after `last`.
-    async fn follow_sync_status(
+    fn follow_sync_status(
         &self,
         last: Option<&bae_sync_status::SyncStatusSnapshot>,
         snapshot: &bae_sync_status::SyncStatusSnapshot,
@@ -431,13 +431,11 @@ impl LibraryManager {
             _ => None,
         };
         if failed(snapshot).is_some() && last.and_then(failed) != failed(snapshot) {
-            match self.store.storage_config().await {
-                Ok(Some(storage)) => self.diagnostics.event(TelemetryEvent::SyncFailed {
-                    provider: storage.provider(),
+            if let Some(provider) = snapshot.provider() {
+                self.diagnostics.event(TelemetryEvent::SyncFailed {
+                    provider,
                     operation: SyncOperation::Cycle,
-                }),
-                Ok(None) => {}
-                Err(error) => warn!(%error, "could not identify sync provider for diagnostics"),
+                });
             }
         }
     }

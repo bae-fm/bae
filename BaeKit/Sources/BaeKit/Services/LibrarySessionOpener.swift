@@ -5,7 +5,6 @@ private let logger = Logger.bae("LibrarySessionOpener")
 
 public protocol LibrarySessionHandle: AnyObject, Sendable {
     func getConfig() async throws -> BridgeConfig
-    func storageLocation() async throws -> BridgeStorageLocation?
     func getUploadsPaused() async throws -> Bool
     func closeLibrary(closing: BridgeLibraryClosing?) throws
 }
@@ -13,23 +12,19 @@ public protocol LibrarySessionHandle: AnyObject, Sendable {
 extension AppHandle: LibrarySessionHandle {}
 
 public struct LibrarySessionSeed: Sendable {
-    public let storage: BridgeStorageLocation?
     public let uploadsPaused: Bool
 
     public init(
-        storage: BridgeStorageLocation?,
         uploadsPaused: Bool
     ) {
-        self.storage = storage
         self.uploadsPaused = uploadsPaused
     }
 
     static func read(from handle: some LibrarySessionHandle) async throws
         -> Self
     {
-        let storage = try await handle.storageLocation()
         let uploadsPaused = try await handle.getUploadsPaused()
-        return Self(storage: storage, uploadsPaused: uploadsPaused)
+        return Self(uploadsPaused: uploadsPaused)
     }
 }
 

@@ -50,8 +50,6 @@ private struct ProviderRow: View {
 struct SyncSetupWizard: View {
     let onDone: () -> Void
 
-    @Environment(ConfigStore.self)
-    private var configStore
     #if BAE_OAUTH_PROVIDERS
         @Environment(CloudSyncSetup.self)
         private var cloudSyncSetup
@@ -223,11 +221,9 @@ struct SyncSetupWizard: View {
         S3SetupForm(leave: leave, onConnected: connected)
     }
 
-    /// The storage is connected: record its location, and show the restore
-    /// code before the sheet closes, whether or not the Mac's keychain
-    /// carries it anywhere else.
-    private func connected(_ setup: BridgeStorageSetup) {
-        configStore.applyStorage(setup.location)
+    /// The storage is connected: show the restore code before the sheet
+    /// closes, whether or not the Mac's keychain carries it anywhere else.
+    private func connected(_: BridgeStorageSetup) {
         withAnimation(.easeInOut(duration: 0.15)) {
             step = .restoreCode(choice)
         }

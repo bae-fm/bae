@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -135,10 +136,11 @@ private fun InviteDialogsShown(
     model: MembersModel,
     dialogs: MembersDialogs,
 ) {
+    val config by session.configStore.config.collectAsState()
     if (dialogs.inviting) {
         InviteDialog(
             session = session,
-            storage = model.storage,
+            storage = config.storage,
             onCreated = { id ->
                 dialogs.inviting = false
                 dialogs.shownInvite = id
@@ -155,14 +157,15 @@ private fun InviteDialogsShown(
         ?.takeIf { it.key == shownId }
         ?.let { read ->
             val invite = read.value
+            val storage = config.storage
             if (invite == null) {
                 // Once the invite ends, its live query returns no invite, so the screen closes the dialog.
                 LaunchedEffect(read) { dialogs.shownInvite = null }
-            } else {
+            } else if (storage != null) {
                 InviteShownDialog(
                     session = session,
                     invite = invite,
-                    storage = model.storage,
+                    storage = storage,
                     onDismiss = { dialogs.shownInvite = null },
                 )
             }

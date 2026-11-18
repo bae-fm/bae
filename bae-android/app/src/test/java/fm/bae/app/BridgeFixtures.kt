@@ -363,6 +363,7 @@ object BridgeFixtures {
         BridgeConfig(
             libraryId = libraryId,
             libraryPath = "/tmp/lib",
+            storage = BridgeStorageLocation.S3("music", "us-east-1", null, null),
             pauseBetweenSides = false,
             sidePauseCountdown = BridgeSidePauseCountdown.OFF,
             maxConcurrentUploads = 3u,

@@ -3845,10 +3845,9 @@ account names them, and coven records them with the location
 Settings' Sync page shows that name as *Folder*, under the account, with
 *Open in browser*, which opens the folder's page at the provider; when no app
 on the device opens it, the section says so. S3 and iCloud show neither, and
-nor does Dropbox's App folder, which has no label. On a Mac and on Android, a
-folder renamed at the provider shows its new name the first time the section
-opens after a connection has recorded it; a location bae can't read shows why
-in the section.
+nor does Dropbox's App folder, which has no label. A folder renamed at the
+provider shows its new name in Settings as soon as a connection has recorded
+it, on a Mac and on Android.
 
 **iCloud setup** uses the Apple Account the device is signed in to, and keeps
 the library in bae's iCloud container, `iCloud.fm.bae.desktop`.
@@ -4116,10 +4115,7 @@ The Sync page lists no pending records: the page's status says what stops sync,
 a file's upload, pin, download or move shows on its release in Storage Manager,
 a change the person made (an invite, a role, a rename) shows in its change box
 where it happens, and what only waits for coven to retry shows nowhere but the
-status's Waiting to sync. On the Mac, a read of this device's own record of the
-cloud home that fails is a bug: the page says *Could not read this library’s
-cloud home.* with *Details* only, and the bug is reported to the crash reporter
-without crashing.
+status's Waiting to sync.
 
 The state is made from two sources, each followed as it changes: coven's sync
 state, which coven computes and follows itself (it changes as a file starts or

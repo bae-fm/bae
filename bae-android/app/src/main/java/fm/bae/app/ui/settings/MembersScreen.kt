@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +51,6 @@ import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRefusedInvite
 import uniffi.bae_bridge.BridgeRequestedProfile
-import uniffi.bae_bridge.BridgeStorageLocation
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -91,9 +89,6 @@ internal class MembersModel(
      * once it arrives, and the invites a sharing refusal ended, until the person dismisses them.
      */
     var inviteEntries by mutableStateOf<List<BridgeInviteEntry>>(emptyList())
-        private set
-
-    var storage by mutableStateOf<BridgeStorageLocation?>(null)
         private set
 
     /** The profile this device's person asked for, while it isn't written yet; null before they ask and once it is. */
@@ -184,12 +179,6 @@ internal class MembersModel(
     /** Subscribe to the people again after a failed read, showing the spinner while it runs. */
     fun retry() = watchPeople()
 
-    suspend fun loadStorage() {
-        performBridgeAction(logger, "read the library's storage", errors, { error = it }) {
-            storage = appHandle.storageLocation()
-        }
-    }
-
     /** Follow the profile this person asked for. The request ends in the write that makes the profile, and the people
      *  subscription shows the profile once core writes it. */
     private fun subscribeRequestedProfile(): ScreenSubscription<BridgeRequestedProfile?> =
@@ -263,7 +252,6 @@ fun MembersScreen(
     val scope = rememberScreenScope()
     val model = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     DisposableEffect(model) { onDispose(model.subscribe()) }
-    LaunchedEffect(model) { model.loadStorage() }
     val dialogs = remember { MembersDialogs() }
     var pageKey by rememberSaveable { mutableStateOf(PeoplePage.People.key()) }
     val requested = peoplePage(pageKey)

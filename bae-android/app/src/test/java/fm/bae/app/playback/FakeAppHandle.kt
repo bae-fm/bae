@@ -64,7 +64,6 @@ import uniffi.bae_bridge.BridgeSidePauseCountdown
 import uniffi.bae_bridge.BridgeSortCriterion
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeStorageFilter
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeStorageSort
 import uniffi.bae_bridge.BridgeStoreKeyState
@@ -386,8 +385,6 @@ internal open class FakeAppHandle(
     override fun closeLibrary(closing: BridgeLibraryClosing?) {
         unfaked("closeLibrary")
     }
-
-    override suspend fun storageLocation(): BridgeStorageLocation? = unfaked("storageLocation")
 
     override fun subscribeAlbumSelection(): AlbumSelectionSubscription = unfaked("subscribeAlbumSelection")
 

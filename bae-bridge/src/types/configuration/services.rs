@@ -4,6 +4,9 @@ use super::super::*;
 pub struct BridgeConfig {
     pub library_id: String,
     pub library_path: String,
+    /// Where the library is stored, with its account and folder labels, as
+    /// coven records it. None while no storage is set up.
+    pub storage: Option<BridgeStorageLocation>,
     pub pause_between_sides: bool,
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long. Settings show it only while `pause_between_sides` is on.

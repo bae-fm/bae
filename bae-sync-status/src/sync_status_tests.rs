@@ -24,7 +24,7 @@ pub(crate) fn read(
             start_failure: error,
             retry_effect,
             storage_setup: None,
-            provider: None,
+            location: None,
         },
     )
 }

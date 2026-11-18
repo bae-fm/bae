@@ -84,6 +84,7 @@
                     bridge: BridgeConfig(
                         libraryId: "lib-preview",
                         libraryPath: "/preview",
+                        storage: storage,
                         pauseBetweenSides: pauseBetweenSides,
                         sidePauseCountdown: .off,
                         maxConcurrentUploads: 3,
@@ -122,8 +123,7 @@
                         discogsUsable: tokenStatus == .valid
                             || tokenStatus == .unvalidated
                     )
-                ),
-                storage: storage
+                )
             )
         }
 

@@ -374,6 +374,24 @@ mod conversion_roundtrip {
     }
 
     #[test]
+    fn the_config_carries_the_recorded_storage_location() {
+        let mut config = defaults();
+        assert_eq!(BridgeConfig::from_core(&config).storage, None);
+
+        config.storage = Some(coven::StorageConfig::Dropbox {
+            location: coven::DropboxLocation::AppFolder,
+            account_label: Some("Account Name".into()),
+            folder_label: None,
+        });
+
+        assert!(matches!(
+            BridgeConfig::from_core(&config).storage,
+            Some(BridgeStorageLocation::Dropbox { account_label: Some(label), .. })
+                if label == "Account Name"
+        ));
+    }
+
+    #[test]
     fn the_config_carries_the_folder_name_pattern_as_typed() {
         let mut config = defaults();
         let pattern = bae_preferences::NamePattern::new(vec![

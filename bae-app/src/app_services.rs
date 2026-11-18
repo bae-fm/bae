@@ -930,7 +930,3 @@ pub use import_list_reads::*;
 pub use personal::PlayPlaylistError;
 
 mod removal;
-
-impl AppServices {
-    delegate_lib!(store, storage_location => storage_config() -> Option<coven::StorageConfig>);
-}

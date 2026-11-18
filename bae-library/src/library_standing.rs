@@ -55,12 +55,11 @@ pub async fn closed_library_standing(
         .closed_sync_status(&directory)
         .await
         .map_err(|error| coven::task::reported(diagnostics, error))?;
-    let provider = coven::Coven::storage_config(&directory)
+    let location = coven::Coven::storage_config(&directory)
         .await
-        .map_err(|error| coven::task::reported(diagnostics, error))?
-        .map(|config| config.provider());
+        .map_err(|error| coven::task::reported(diagnostics, error))?;
     Ok(LibraryStanding::of(
-        &bae_sync_status::SyncStatusSnapshot::closed(status.sync, provider),
+        &bae_sync_status::SyncStatusSnapshot::closed(status.sync, location),
         status.unsent,
     ))
 }

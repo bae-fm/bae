@@ -5,6 +5,9 @@ import Foundation
 public struct Config: Equatable {
     public let libraryId: String
     public let libraryPath: String
+    /// Where the library is stored, with its account and folder labels, as
+    /// core records it. Nil while no storage is set up.
+    public let storage: BridgeStorageLocation?
     public let discogsTokenStatus: BridgeDiscogsTokenStatus
     /// Whether Discogs can be used as a metadata source. Core decides the policy
     /// (a stored key that isn't rejected); the UI reads this, not the status.
@@ -82,6 +85,7 @@ public struct Config: Equatable {
     public init(bridge: BridgeConfig) {
         libraryId = bridge.libraryId
         libraryPath = bridge.libraryPath
+        storage = bridge.storage
         discogsTokenStatus = bridge.discogsTokenStatus
         discogsUsable = bridge.discogsUsable
         pauseBetweenSides = bridge.pauseBetweenSides

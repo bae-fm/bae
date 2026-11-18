@@ -39,10 +39,10 @@ struct InviteCodeSheet: View {
         // A stack, not a group: it is on screen before the read answers, so
         // its appearance starts the read.
         ZStack {
-            if let invite {
+            if let invite, let storage = configStore.storage {
                 InviteCodeSheetContent(
                     invite: invite,
-                    providerName: configStore.storage?.displayName ?? "",
+                    providerName: storage.displayName,
                     offline: syncStatus.offline,
                     error: error,
                     busy: task != nil,

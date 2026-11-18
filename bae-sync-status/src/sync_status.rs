@@ -61,8 +61,9 @@ pub struct SyncStatusSnapshot {
     /// A storage setup running, or one that ended undone and that the
     /// person hasn't dismissed.
     pub storage_setup: Option<StorageSetupState>,
-    /// The provider of the location recorded on this device, while one is.
-    pub provider: Option<coven::CloudProvider>,
+    /// The location recorded on this device, with its account and folder
+    /// labels, while one is.
+    pub location: Option<coven::StorageConfig>,
 }
 
 /// Why this device isn't in the library, as the failure's detail says it.
@@ -190,7 +191,7 @@ pub struct SyncStatusRows {
     pub start_failure: Option<UiError>,
     pub retry_effect: coven::RetryEffect,
     pub storage_setup: Option<StorageSetupState>,
-    pub provider: Option<coven::CloudProvider>,
+    pub location: Option<coven::StorageConfig>,
 }
 
 /// The sync status's rows as one read of the library's tables sees them.
@@ -200,17 +201,17 @@ pub fn sync_status_rows_on(
     let pending = pending::pending_rows_on(&sql)?.into_iter().map(PendingItem::listed).collect();
     let start_failure = start_failure::start_failure_on(&sql)?;
     let storage_setup = storage_setup::storage_setup_on(&sql)?;
-    let provider = recorded_provider_on(&sql)?;
+    let location = recorded_location_on(&sql)?;
     let retry_effect = coven::RetryEffect::read(sql)?;
-    Ok(SyncStatusRows { pending, start_failure, retry_effect, storage_setup, provider })
+    Ok(SyncStatusRows { pending, start_failure, retry_effect, storage_setup, location })
 }
 
-/// The provider of the location recorded on this device, as coven's sync
-/// status row names it.
-fn recorded_provider_on(
+/// The location recorded on this device, with its labels, as coven's sync
+/// status row holds it.
+fn recorded_location_on(
     sql: &coven::SqlReadContext<'_>,
-) -> Result<Option<coven::CloudProvider>, DbError> {
-    Ok(sql.query_row("SELECT provider FROM coven_sync_status", [], |row| row.get(0))?)
+) -> Result<Option<coven::StorageConfig>, DbError> {
+    Ok(sql.query_row("SELECT location FROM coven_sync_status", [], |row| row.get(0))?)
 }
 
 impl SyncStatusSnapshot {
@@ -218,14 +219,14 @@ impl SyncStatusSnapshot {
     /// closed store: sync doesn't run, and what an open library reads from
     /// its tables, the pending records, a failed start and a storage setup,
     /// is not read.
-    pub fn closed(coven: coven::SyncStatus, provider: Option<coven::CloudProvider>) -> Self {
+    pub fn closed(coven: coven::SyncStatus, location: Option<coven::StorageConfig>) -> Self {
         Self {
             coven,
             pending: Vec::new(),
             error: None,
             retry_effect: coven::RetryEffect::NotSyncing,
             storage_setup: None,
-            provider,
+            location,
         }
     }
 
@@ -234,8 +235,13 @@ impl SyncStatusSnapshot {
     /// attempt to start sync failed, while that stands, what a retry would
     /// do, and where this device's storage setup stands.
     pub fn read(coven: coven::SyncStatus, rows: SyncStatusRows) -> Self {
-        let SyncStatusRows { pending, start_failure, retry_effect, storage_setup, provider } = rows;
-        Self { coven, pending, error: start_failure, retry_effect, storage_setup, provider }
+        let SyncStatusRows { pending, start_failure, retry_effect, storage_setup, location } = rows;
+        Self { coven, pending, error: start_failure, retry_effect, storage_setup, location }
+    }
+
+    /// The provider of the location recorded on this device, while one is.
+    pub fn provider(&self) -> Option<coven::CloudProvider> {
+        self.location.as_ref().map(coven::StorageConfig::provider)
     }
 
     /// Storage is set up on this device: a location is recorded and this

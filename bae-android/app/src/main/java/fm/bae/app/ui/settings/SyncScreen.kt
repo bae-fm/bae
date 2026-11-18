@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -156,15 +155,14 @@ private class PendingActionRunner(
             }
 
             BridgeSyncFix.OpenInBrowser -> {
-                perform("read the folder to open") {
-                    val folder =
-                        when (val location = session.appHandle.storageLocation()) {
-                            is BridgeStorageLocation.Dropbox -> location.folderLabel
-                            is BridgeStorageLocation.OneDrive -> location.folderLabel
-                            else -> null
-                        }
-                    folder?.let { error = openInBrowser(context, it.webUrl) }
-                }
+                error = null
+                val folder =
+                    when (val location = session.configStore.config.value.storage) {
+                        is BridgeStorageLocation.Dropbox -> location.folderLabel
+                        is BridgeStorageLocation.OneDrive -> location.folderLabel
+                        else -> null
+                    }
+                folder?.let { error = openInBrowser(context, it.webUrl) }
             }
 
             else -> {
@@ -218,13 +216,11 @@ private class PendingActionRunner(
      */
     private fun signIn(provider: BridgeCloudProvider) {
         if (provider == BridgeCloudProvider.S3) {
-            perform("read the S3 location a new access key is for") {
-                val location = session.appHandle.storageLocation()
-                askingForKey =
-                    checkNotNull(location as? BridgeStorageLocation.S3) {
-                        "an S3 sign-in record under the storage location $location"
-                    }
-            }
+            val location = session.configStore.config.value.storage
+            askingForKey =
+                checkNotNull(location as? BridgeStorageLocation.S3) {
+                    "an S3 sign-in record under the storage location $location"
+                }
             return
         }
         val providers = actions.oauthProviders
@@ -269,20 +265,11 @@ internal fun SyncScreen(
     val pending by session.syncStatusStore.pending.collectAsState()
     val recordsDropped by session.syncStatusStore.recordsDropped.collectAsState()
     val line by session.syncStatusStore.line.collectAsState()
-    val setupRunning by session.syncStatusStore.setupRunning.collectAsState()
     val context = LocalContext.current
     val scope = rememberScreenScope()
     val runner = remember(session) { PendingActionRunner(session, actions, context, scope) }
-    var location by remember(session) { mutableStateOf<BridgeStorageLocation?>(null) }
-    var locationError by remember(session) { mutableStateOf<DisplayError?>(null) }
-    // The location is recorded as a setup ends, so it is read again when one stops running.
-    LaunchedEffect(session, setupRunning) {
-        if (setupRunning) return@LaunchedEffect
-        performBridgeAction(logger, "read the library's storage", session.errors, { locationError = it }) {
-            location = session.appHandle.storageLocation()
-            locationError = null
-        }
-    }
+    val config by session.configStore.config.collectAsState()
+    val location = config.storage
 
     // The restore code is made once per visit, whether or not its section is on screen.
     val restoreCode =
@@ -298,7 +285,6 @@ internal fun SyncScreen(
             UndoneSetupNotice(session)
             runner.signIns.steps?.let { StorageSetupLine(it) }
             runner.error?.let { AndroidNotice(it) }
-            locationError?.let { AndroidNotice(it) }
         },
         location = location,
         restoreCode = restoreCode.state,
@@ -317,7 +303,7 @@ internal fun SyncScreen(
 }
 
 /**
- * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed reads, then the
+ * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed actions, then the
  * library's [location] with its restore code, then what sync waits on in [pending]; [recordsDropped] says a
  * record a phone can't have was left out of it and reported.
  */

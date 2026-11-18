@@ -56,7 +56,7 @@ private val logger = BaeLogger("bae.InviteShownDialog")
 internal fun InviteShownDialog(
     session: OpenLibrary,
     invite: BridgeInvite,
-    storage: BridgeStorageLocation?,
+    storage: BridgeStorageLocation,
     onDismiss: () -> Unit,
 ) {
     val scope = rememberScreenScope()
@@ -91,7 +91,7 @@ internal fun InviteShownDialog(
     }
     InviteCodeDialog(
         invite = invite,
-        providerName = storage?.let { cloudProviderLabel(storageProvider(it)) }.orEmpty(),
+        providerName = cloudProviderLabel(storageProvider(storage)),
         offline = offline,
         error = error,
         busy = busy,

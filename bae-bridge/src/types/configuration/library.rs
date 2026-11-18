@@ -458,10 +458,7 @@ pub struct BridgeSyncStatusSnapshot {
     /// What coven waits on, each with the action the person can take.
     pub pending: Vec<crate::types::BridgePendingRecord>,
     /// A storage setup runs: a setup screen's, or one past its point of no
-    /// return that sync's connection finishes after a relaunch. It records
-    /// the library's location as it finishes, so a surface that shows the
-    /// location reads it again (`AppHandle::storage_location`) once this
-    /// turns false.
+    /// return that sync's connection finishes after a relaunch.
     pub setup_running: bool,
     /// A storage setup that ended undone with no setup screen there to hear
     /// it, shown until the person dismisses it with
@@ -487,7 +484,7 @@ impl BridgeSyncStatusSnapshot {
             error: _,
             retry_effect: _,
             storage_setup,
-            provider: _,
+            location: _,
         } = snapshot;
         let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);
         let undone_setup = match storage_setup {

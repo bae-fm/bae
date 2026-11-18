@@ -6,12 +6,41 @@ import Testing
 
 @Suite("SyncStatusStore")
 struct SyncStatusStoreTests {
+    /// A folder renamed at the provider reaches the screen with the next
+    /// config value, with no read of its own.
+    @MainActor
+    @Test("each config value brings the storage location it carries")
+    func configValuesBringTheStorageLocation() {
+        let config = ConfigStore(config: Config(bridge: bridgeConfig()))
+        #expect(config.storage == nil)
+        #expect(!config.syncs)
+
+        let location = BridgeStorageLocation.dropbox(
+            location: .appFolder,
+            accountLabel: "name@example.com",
+            folderLabel: nil
+        )
+        config.applyConfigSnapshot(bridgeConfig(storage: location))
+        #expect(config.storage == location)
+        #expect(config.syncs)
+
+        let renamed = BridgeStorageLocation.dropbox(
+            location: .appFolder,
+            accountLabel: "name@example.com",
+            folderLabel: BridgeFolderLabel(
+                name: "Renamed Music",
+                webUrl: "https://www.dropbox.com/home/Renamed%20Music"
+            )
+        )
+        config.applyConfigSnapshot(bridgeConfig(storage: renamed))
+        #expect(config.storage == renamed)
+    }
+
     @MainActor
     @Test("config values cannot overwrite the sync state")
     func configValuesDoNotPublishTheState() {
         let config = ConfigStore(
-            config: Config(bridge: bridgeConfig()),
-            storage: nil
+            config: Config(bridge: bridgeConfig())
         )
         let sync = SyncStatusStore()
 
@@ -156,10 +185,13 @@ struct SyncStatusStoreTests {
         )
     }
 
-    private func bridgeConfig() -> BridgeConfig {
+    private func bridgeConfig(
+        storage: BridgeStorageLocation? = nil
+    ) -> BridgeConfig {
         BridgeConfig(
             libraryId: "test-library",
             libraryPath: "/test",
+            storage: storage,
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
             maxConcurrentUploads: 1,

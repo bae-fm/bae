@@ -343,9 +343,7 @@ extension ShotScene {
                     subpage: .person(memberId: otherMemberId)
                 )
                 .environment(
-                    PreviewData.previewSync(
-                        storage: PreviewData.previewDropboxStorage
-                    )
+                    PreviewData.previewSync()
                 )
                 .environment(
                     PreviewData.connectedConfigStore(
@@ -426,9 +424,7 @@ extension ShotScene {
             shown: shown,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(
-                    PreviewData.previewSync(
-                        storage: PreviewData.previewDropboxStorage
-                    )
+                    PreviewData.previewSync()
                 )
                 .environment(
                     PreviewData.connectedConfigStore(

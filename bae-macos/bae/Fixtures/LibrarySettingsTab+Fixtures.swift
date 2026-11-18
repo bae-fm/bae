@@ -43,9 +43,7 @@ func librarySettingsTabPreview(
         onRemoveLibrary: {}
     )
     .frame(width: 500, height: 640)
-    .environment(
-        PreviewData.previewSync(storage: fixture.configStore.storage)
-    )
+    .environment(PreviewData.previewSync())
     #if BAE_OAUTH_PROVIDERS
         .environment(CloudSyncSetup())
     #endif
@@ -66,23 +64,19 @@ func librarySettingsTabPreview(
 }
 
 /// The Sync page over `fixture`'s library, its sync as `shown` says, with
-/// what coven waits on, a storage setup that ended undone, and a failed
-/// read of the library's location, when given, and its restore code
-/// masked unless `restoreCode` says otherwise.
+/// what coven waits on and a storage setup that ended undone, when given,
+/// and its restore code masked unless `restoreCode` says otherwise.
 @MainActor
 func syncSettingsPagePreview(
     _ fixture: LibrarySettingsTabPreviewFixture,
     shown: BridgeSyncShown,
     pending: [BridgePendingRecord] = [],
     undoneSetup: BridgeUndoneStorageSetup? = nil,
-    storageReadError: DisplayError? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
     )
 ) -> some View {
-    let sync = PreviewData.previewSync(
-        storage: fixture.configStore.storage
-    )
+    let sync = PreviewData.previewSync()
     let status = SyncStatusStore(
         snapshot: BridgeSyncStatusSnapshot(
             shown: shown,
@@ -103,8 +97,7 @@ func syncSettingsPagePreview(
                 syncSettingsPageWithInertActions(
                     restoreCode: RestoreCodeReveal(
                         previewState: restoreCode
-                    ),
-                    storageReadError: storageReadError
+                    )
                 )
                 .environment(sync)
                 #if BAE_OAUTH_PROVIDERS

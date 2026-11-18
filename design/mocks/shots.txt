@@ -342,7 +342,6 @@ mac.settings.sync-setup.s3-step-1
 mac.settings.sync-setup.s3-step-2
 mac.settings.sync-setup.s3-step-3
 mac.settings.sync-setup.s3-step-4
-mac.settings.sync.cloud-home-unreadable
 mac.settings.sync.code-shown
 mac.settings.sync.dropbox
 mac.settings.sync.icloud

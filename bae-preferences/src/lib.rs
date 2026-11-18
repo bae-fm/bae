@@ -391,6 +391,10 @@ pub struct Config {
     /// The save preset the last save used, which `prefs` names by id. The
     /// config query reads it by joining the presets to the preferences row.
     pub last_save_preset: SavePreset,
+    /// The location recorded on this device, with its account and folder
+    /// labels, as coven's sync status row holds it: none while no storage is
+    /// set up.
+    pub storage: Option<coven::StorageConfig>,
 }
 
 impl Config {
@@ -401,7 +405,7 @@ impl Config {
         let prefs = Preferences::default();
         // The defaults' last-used format is their first, FLAC.
         let last_save_preset = prefs.save_presets[0].clone();
-        Self { store_id, library_path: library_path.into(), prefs, last_save_preset }
+        Self { store_id, library_path: library_path.into(), prefs, last_save_preset, storage: None }
     }
 }
 

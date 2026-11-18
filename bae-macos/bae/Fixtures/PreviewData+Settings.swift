@@ -190,9 +190,8 @@ extension PreviewData {
     }()
 
     /// A `Sync` whose reads serve shot values, so the library-settings
-    /// shots never touch cloud storage. It reads the library's
-    /// location as `storage`.
-    static func previewSync(storage: BridgeStorageLocation?) -> Sync {
+    /// shots never touch cloud storage.
+    static func previewSync() -> Sync {
         Sync(
             followStorageSetup: {
                 StorageSetupFollowing(host: BaeHost.inTemporaryFolder())
@@ -204,8 +203,7 @@ extension PreviewData {
                     code: restoreCodeGrouped,
                     qrText: restoreCode
                 )
-            }),
-            storageLocation: { storage }
+            })
         )
     }
 

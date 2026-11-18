@@ -72,18 +72,16 @@ class SyncStatusStoreTest {
         assertEquals(SyncLine.Read(synced), sync.line.value)
     }
 
-    /** A setup that ended undone shows why with the operation that dismisses it; one running shows as running. */
+    /** A setup that ended undone shows why with the operation that dismisses it. */
     @Test
-    fun aStorageSetupShowsRunningOrUndone() {
+    fun anUndoneStorageSetupShowsWhy() {
         val sync = SyncStatusStore()
         val why = BridgeException.Diagnostic(BridgeErrorCategory.StorageSetupUndone, "bae stopped partway")
 
-        sync.apply(status(synced).copy(setupRunning = true), errors, bugs)
-        assertEquals(true, sync.setupRunning.value)
+        sync.apply(status(synced), errors, bugs)
         assertEquals(null, sync.undoneSetup.value)
 
         sync.apply(status(synced).copy(undoneSetup = BridgeUndoneStorageSetup(7, why)), errors, bugs)
-        assertEquals(false, sync.setupRunning.value)
         assertEquals(UndoneSetup(7, DisplayError("line for $why", "detail of $why")), sync.undoneSetup.value)
     }
 

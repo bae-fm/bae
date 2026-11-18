@@ -58,8 +58,6 @@ public final class Sync: Sendable, Observable {
     public let setSyncPaused: @Sendable (Bool) async throws -> Void
     public let reconnectSync: @Sendable () async throws -> Void
     public let setMaxConcurrentUploads: @Sendable (UInt32) async throws -> Void
-    public let storageLocation:
-        @Sendable () async throws -> BridgeStorageLocation?
     /// The requests that ask sync to run now, none of which waits for it.
     public let nudges: SyncNudges
     /// What a pending record's action asks core to do.
@@ -154,10 +152,6 @@ public final class Sync: Sendable, Observable {
             @escaping @Sendable (UInt32) async throws -> Void = { _ in
                 throw StubError.notImplemented
             },
-        storageLocation:
-            @escaping @Sendable () async throws -> BridgeStorageLocation? = {
-                throw StubError.notImplemented
-            },
         nudges: SyncNudges = SyncNudges(),
         pendingActions: SyncPendingActions = SyncPendingActions()
     ) {
@@ -186,7 +180,6 @@ public final class Sync: Sendable, Observable {
         self.setSyncPaused = setSyncPaused
         self.reconnectSync = reconnectSync
         self.setMaxConcurrentUploads = setMaxConcurrentUploads
-        self.storageLocation = storageLocation
         self.nudges = nudges
         self.pendingActions = pendingActions
     }
@@ -249,7 +242,6 @@ public final class Sync: Sendable, Observable {
             setMaxConcurrentUploads: {
                 try await handle.setMaxConcurrentUploads(n: $0)
             },
-            storageLocation: { try await handle.storageLocation() },
             nudges: SyncNudges(handle: handle),
             pendingActions: SyncPendingActions(handle: handle)
         )

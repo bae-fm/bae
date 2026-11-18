@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.data.SyncLine
 import fm.bae.app.factSeparator
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -33,7 +35,6 @@ import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import fm.bae.app.ui.rememberScreenScope
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAdminChanges
@@ -51,19 +52,24 @@ internal fun LibrarySettingsScreen(
     val scope = rememberScreenScope()
     val model = rememberSettingsLibraryModel(session)
     val members = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
-    LaunchedEffect(model) { model.loadStorage() }
     DisposableEffect(members) { onDispose(members.subscribe()) }
     LaunchedEffect(members) { members.adminChanges.show(BridgeAdminChangePlace.Library) }
     val line by session.syncStatusStore.line.collectAsState()
-    val storage = model.storage
+    val config by session.configStore.config.collectAsState()
+    val hasStorage = config.storage != null
+    val bugs = LocalBugReports.current
+    // A phone joins a library and never makes one, so a library without storage is a bug, said in place.
+    LaunchedEffect(session, hasStorage) {
+        if (!hasStorage) bugs.reportShownInPlace("show a library's storage", LibraryWithoutStorage())
+    }
     var renaming by remember { mutableStateOf(false) }
     val name = (model.name as? LibraryNameRead.Named)?.name
     AndroidSettingsLibrary(
         name = name,
         canRename = members.selfIsAdmin,
         sync = syncRowSummary(line),
-        peopleAndDevices = if (storage is Storage.At) peopleAndDevices(members.people) else null,
-        hasStorage = storage is Storage.At,
+        peopleAndDevices = if (hasStorage) peopleAndDevices(members.people) else null,
+        hasStorage = hasStorage,
         adminChanges =
             members.adminChangesAt(BridgeAdminChangePlace.Library),
         onDismissChange = { change ->
@@ -74,7 +80,7 @@ internal fun LibrarySettingsScreen(
         onOpenSync = { onPush(LibraryDestination.Sync) },
         onOpenPeople = { onPush(LibraryDestination.Members) },
     ) {
-        if (storage is Storage.Missing) SomethingWentWrongNotice()
+        if (!hasStorage) SomethingWentWrongNotice()
         LibraryNameFailures(model = model, members = members)
     }
     if (renaming && name != null) {
@@ -140,16 +146,12 @@ internal fun AndroidSettingsLibrary(
     }
 }
 
-/** Shows why the screen could not read the storage, the name or the people, each with Retry. */
+/** Shows why the screen could not read the name or the people, each with Retry. */
 @Composable
 private fun LibraryNameFailures(
     model: SettingsLibraryModel,
     members: MembersModel,
 ) {
-    val scope = rememberScreenScope()
-    (model.storage as? Storage.Failed)?.let {
-        ReadFailure(error = it.error, onRetry = { scope.launch { model.loadStorage() } })
-    }
     (model.name as? LibraryNameRead.Failed)?.let { ReadFailure(error = it.error, onRetry = model::watchName) }
     (members.people as? PeopleRead.Failed)?.let { ReadFailure(error = it.error, onRetry = members::retry) }
 }

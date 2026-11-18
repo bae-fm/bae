@@ -81,8 +81,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     ) {
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(
-            config: Config(bridge: config),
-            storage: seed.storage
+            config: Config(bridge: config)
         )
         let syncStatusStore = SyncStatusStore()
         let membershipStore = MembershipStore(handle: appHandle)

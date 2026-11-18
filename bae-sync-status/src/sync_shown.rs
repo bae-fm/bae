@@ -203,7 +203,7 @@ impl SyncStatusSnapshot {
             SyncState::StorageFull(_) => {
                 let shown = SyncShown::new(W::StorageFull, T::Danger)
                     .because(SyncCauseLine::FreeStorageSpace);
-                match self.provider {
+                match self.provider() {
                     Some(CloudProvider::Dropbox | CloudProvider::OneDrive) => {
                         shown.fixed_by(SyncFix::OpenInBrowser)
                     }
@@ -256,7 +256,7 @@ impl SyncStatusSnapshot {
             }
             SyncWait::CoolingDown { until } => {
                 let amber = SyncShown::new(WaitingToSync, SyncTone::Warning);
-                match self.provider {
+                match self.provider() {
                     Some(provider) => {
                         amber.because(SyncCauseLine::ProviderWait { provider, until: *until })
                     }
@@ -317,7 +317,7 @@ impl SyncStatusSnapshot {
 
     /// A provider failure no state names, as the provider told it.
     fn storage_cause(&self, failure: coven::StorageFailure, error: &str) -> SyncCauseLine {
-        match self.provider {
+        match self.provider() {
             Some(provider) => SyncCauseLine::ProviderError { provider, detail: error.to_string() },
             None => SyncCauseLine::Failure(UiError::diagnostic(
                 bae_diagnostics::UiErrorCategory::Storage(failure),

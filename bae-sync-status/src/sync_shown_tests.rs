@@ -9,6 +9,34 @@ fn finished() -> std::time::SystemTime {
     std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000)
 }
 
+/// A location on `provider`, with no labels.
+pub(crate) fn location_on(provider: coven::CloudProvider) -> coven::StorageConfig {
+    match provider {
+        coven::CloudProvider::S3 => coven::StorageConfig::S3 {
+            bucket: "bucket".into(),
+            region: "region".into(),
+            endpoint: None,
+            profile: None,
+        },
+        coven::CloudProvider::Dropbox => coven::StorageConfig::Dropbox {
+            location: coven::DropboxLocation::AppFolder,
+            account_label: None,
+            folder_label: None,
+        },
+        coven::CloudProvider::OneDrive => coven::StorageConfig::OneDrive {
+            drive_id: "drive".into(),
+            folder_id: "folder".into(),
+            account_label: None,
+            folder_label: None,
+        },
+        coven::CloudProvider::CloudKit => coven::StorageConfig::CloudKit {
+            container: "container".into(),
+            owner: "owner".into(),
+            zone: "zone".into(),
+        },
+    }
+}
+
 /// The top block for `state` in a library on `provider`, sync having last
 /// finished at [`finished`], with nothing pending and no failed start.
 fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShown {
@@ -19,7 +47,7 @@ fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShow
             start_failure: None,
             retry_effect: coven::RetryEffect::Pass,
             storage_setup: None,
-            provider: Some(provider),
+            location: Some(location_on(provider)),
         },
     )
     .shown()
@@ -278,7 +306,7 @@ fn failed_upload_of_cover(reason: coven::PendingReason) -> SyncStatusSnapshot {
             start_failure: None,
             retry_effect: coven::RetryEffect::Pass,
             storage_setup: None,
-            provider: Some(coven::CloudProvider::Dropbox),
+            location: Some(location_on(coven::CloudProvider::Dropbox)),
         },
     )
 }

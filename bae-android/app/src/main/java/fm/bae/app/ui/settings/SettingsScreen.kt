@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import fm.bae.app.DisplayError
 import fm.bae.app.LibraryListing
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -34,24 +33,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeScreen
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
-
-/** Where the open library is stored, as Settings knows it. */
-internal sealed interface Storage {
-    data object Loading : Storage
-
-    /** The library has no storage, which a phone's never lacks: a reported bug, and Settings says so in its place. */
-    data object Missing : Storage
-
-    data class At(
-        val location: BridgeStorageLocation,
-    ) : Storage
-
-    data class Failed(
-        val error: DisplayError,
-    ) : Storage
-}
 
 /** Per-device settings, reached from the gear in the library top bar. */
 @Composable
@@ -76,7 +58,6 @@ internal fun SettingsScreen(
     when (page) {
         null -> {
             val libraryModel = rememberSettingsLibraryModel(session)
-            LaunchedEffect(libraryModel) { libraryModel.loadStorage() }
             val line by session.syncStatusStore.line.collectAsState()
             val sync = syncRowSummary(line)
             val deviceStorage = rememberDeviceStorageModel(session)

@@ -596,7 +596,7 @@ fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
-        provider: Some(coven::CloudProvider::S3),
+        location: Some(s3_location()),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -626,7 +626,7 @@ fn a_healthy_sync_status_crosses_as_synced() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
-        provider: Some(coven::CloudProvider::Dropbox),
+        location: Some(dropbox_location()),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -648,7 +648,7 @@ fn a_storage_setup_crosses_undone_or_running() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: Some(storage_setup),
-        provider: None,
+        location: None,
     };
     let undone = bae_sync_status::StorageSetupState::Undone {
         operation: coven::OperationId(7),
@@ -687,7 +687,7 @@ fn a_failed_start_crosses_offering_reconnect() {
         pending: Vec::new(),
         retry_effect: coven::RetryEffect::NotSyncing,
         storage_setup: None,
-        provider: Some(coven::CloudProvider::S3),
+        location: Some(s3_location()),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -720,7 +720,7 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
         ))],
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
-        provider: Some(coven::CloudProvider::S3),
+        location: Some(s3_location()),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -928,4 +928,23 @@ fn a_library_refusal_crosses_in_the_class_core_gave_it() {
         ),
         "{result:?}"
     );
+}
+
+/// An S3 location with no endpoint.
+fn s3_location() -> coven::StorageConfig {
+    coven::StorageConfig::S3 {
+        bucket: "bucket".into(),
+        region: "region".into(),
+        endpoint: None,
+        profile: None,
+    }
+}
+
+/// A Dropbox app folder location with no labels.
+fn dropbox_location() -> coven::StorageConfig {
+    coven::StorageConfig::Dropbox {
+        location: coven::DropboxLocation::AppFolder,
+        account_label: None,
+        folder_label: None,
+    }
 }

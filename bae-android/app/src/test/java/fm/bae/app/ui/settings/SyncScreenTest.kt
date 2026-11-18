@@ -31,7 +31,6 @@ import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingRecord
 import uniffi.bae_bridge.BridgeRestoreCodeShare
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
@@ -54,14 +53,6 @@ class SyncScreenTest {
     fun anS3SignInAsksForANewAccessKey() {
         val handle =
             object : FakeAppHandle() {
-                override suspend fun storageLocation(): BridgeStorageLocation =
-                    BridgeStorageLocation.S3(
-                        bucket = "music-library",
-                        region = "us-east-1",
-                        endpoint = null,
-                        profile = null,
-                    )
-
                 override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
 
                 override fun close() = Unit
@@ -127,8 +118,6 @@ class SyncScreenTest {
     fun aFullDiskIsWordedForThePhone() {
         val handle =
             object : FakeAppHandle() {
-                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
-
                 override suspend fun generateRestoreCode() = restoreCodeShare
 
                 override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
@@ -176,8 +165,6 @@ class SyncScreenTest {
         var restores = 0
         val handle =
             object : FakeAppHandle() {
-                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
-
                 override suspend fun generateRestoreCode() = restoreCodeShare
 
                 override fun closeLibrary(closing: BridgeLibraryClosing?) = Unit
@@ -232,8 +219,6 @@ class SyncScreenTest {
         var made = 0
         val handle =
             object : FakeAppHandle() {
-                override suspend fun storageLocation(): BridgeStorageLocation = s3Location
-
                 override suspend fun generateRestoreCode(): BridgeRestoreCodeShare {
                     made += 1
                     return restoreCodeShare
@@ -261,14 +246,6 @@ class SyncScreenTest {
         compose.onNodeWithText("Making your restore code…").assertDoesNotExist()
         assertEquals(1, made)
     }
-
-    private val s3Location =
-        BridgeStorageLocation.S3(
-            bucket = "music-library",
-            region = "us-east-1",
-            endpoint = null,
-            profile = null,
-        )
 
     private val restoreCodeShare =
         BridgeRestoreCodeShare(

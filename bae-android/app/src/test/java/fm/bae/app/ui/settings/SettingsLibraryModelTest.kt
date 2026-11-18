@@ -4,13 +4,11 @@ import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
-import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -21,7 +19,6 @@ import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
-import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.LibraryNameSubscription
 
@@ -49,7 +46,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aFailedNameSubscriptionIsAFailureAndRetrySubscribesAgain() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
 
         model.watchName()
         handle.names
@@ -72,7 +69,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aReplacedNameSubscriptionCannotOverwriteItsReplacement() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
         model.watchName()
         val replaced = handle.names.last().pulls
         model.watchName()
@@ -86,7 +83,7 @@ class SettingsLibraryModelTest {
     @Test
     fun aCancelledNameSubscriptionLeavesTheNameAsItWas() {
         val handle = SettingsHandle()
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
+        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope)
         model.watchName()
         handle.names
             .last()
@@ -103,31 +100,6 @@ class SettingsLibraryModelTest {
         assertEquals(LibraryNameRead.Named("Household"), model.name)
     }
 
-    @Test
-    fun aFailedStorageReadIsAFailureAndReadingAgainRecovers() {
-        val location = BridgeStorageLocation.S3("music", "us-east-1", null, null)
-        val handle = SettingsHandle(storage = listOf(Result.failure(offline()), Result.success(location)))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { _, _ -> }
-
-        runBlocking { model.loadStorage() }
-        assertEquals(Storage.Failed(DisplayError("couldn't reach the cloud")), model.storage)
-
-        runBlocking { model.loadStorage() }
-        assertEquals(Storage.At(location), model.storage)
-    }
-
-    @Test
-    fun aLibraryWithNoStorageIsReportedAsABug() {
-        val bugs = mutableListOf<Pair<String, Throwable>>()
-        val handle = SettingsHandle(storage = listOf(Result.success(null)))
-        val model = SettingsLibraryModel(handle, TestErrorDisplays, scope) { operation, error -> bugs += operation to error }
-
-        runBlocking { model.loadStorage() }
-
-        assertEquals(Storage.Missing, model.storage)
-        assertEquals(LibraryWithoutStorage::class, bugs.single().second::class)
-    }
-
     private fun offline() = BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
 
     /** Core's answer for what each failure shows: a cancellation shows nothing. */
@@ -142,13 +114,8 @@ class SettingsLibraryModelTest {
         override fun display(outcome: BridgePlayOutcome): DisplayError? = null
     }
 
-    private class SettingsHandle(
-        private val storage: List<Result<BridgeStorageLocation?>> = emptyList(),
-    ) : FakeAppHandle() {
-        private var storageReads = 0
+    private class SettingsHandle : FakeAppHandle() {
         val names = mutableListOf<FakeLibraryNameSubscription>()
-
-        override suspend fun storageLocation(): BridgeStorageLocation? = storage[storageReads++].getOrThrow()
 
         override fun subscribeLibraryName(): LibraryNameSubscription = FakeLibraryNameSubscription().also(names::add)
     }

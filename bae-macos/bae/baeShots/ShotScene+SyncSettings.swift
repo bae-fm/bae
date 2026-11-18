@@ -97,22 +97,6 @@ extension ShotScene {
             )
         },
         ShotScene(
-            id: "mac.settings.sync.cloud-home-unreadable",
-            size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden)
-        ) {
-            ShotStage(
-                syncSettingsWindow(
-                    LibrarySettingsTabPreviewFixture(storage: nil),
-                    shown: .fixtureSynced,
-                    storageReadError: DisplayError(
-                        line: "Could not read the cloud home.",
-                        detail: "database error: no such record"
-                    )
-                )
-            )
-        },
-        ShotScene(
             id: "mac.settings.sync.code-shown",
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)
@@ -139,7 +123,6 @@ private func syncSettingsWindow(
     shown: BridgeSyncShown,
     pending: [BridgePendingRecord] = [],
     undoneSetup: BridgeUndoneStorageSetup? = nil,
-    storageReadError: DisplayError? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
     )
@@ -153,7 +136,6 @@ private func syncSettingsWindow(
             shown: shown,
             pending: pending,
             undoneSetup: undoneSetup,
-            storageReadError: storageReadError,
             restoreCode: restoreCode
         )
     )
@@ -182,9 +164,7 @@ func peopleSettingsWindow(
             undoneSetup: nil,
             page: PeopleAndDevicesPage(onBack: {}, subpage: subpage)
                 .environment(
-                    PreviewData.previewSync(
-                        storage: PreviewData.previewDropboxStorage
-                    )
+                    PreviewData.previewSync()
                 )
                 .environment(
                     PreviewData.connectedConfigStore(

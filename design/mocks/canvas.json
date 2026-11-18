@@ -3651,14 +3651,6 @@
    "x": 770,
    "y": 25888
   },
-  "mac.settings.sync.cloud-home-unreadable.dc.html": {
-   "h": 600,
-   "page": "library",
-   "title": "macOS: Sync: cloud home unreadable",
-   "w": 690,
-   "x": 1540,
-   "y": 25888
-  },
   "mac.settings.person.s3.dc.html": {
    "h": 600,
    "page": "library",
@@ -6505,7 +6497,6 @@
   "mac.welcome.saved-code.delete.dc.html",
   "mac.settings.sync.pending.dc.html",
   "mac.settings.sync.setup-undone.dc.html",
-  "mac.settings.sync.cloud-home-unreadable.dc.html",
   "android.settings.sync.pending.dc.html",
   "mac.settings.person.s3.dc.html",
   "android.settings.person.s3.dc.html",

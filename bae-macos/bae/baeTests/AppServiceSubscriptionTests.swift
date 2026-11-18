@@ -114,51 +114,6 @@ struct SyncStatusSubscriptionTests {
 }
 
 @MainActor
-@Suite("Storage setup", .serialized)
-struct StorageSetupSubscriptionTests {
-    @Test(
-        "a storage setup that stops running with no screen to hear it shows the location it recorded"
-    )
-    func aSetupThatStopsRunningShowsItsLocation() async throws {
-        let handle = FakeAppHandle()
-        let appService = makeAppService(handle: handle)
-        appService.startCommonSubscriptions()
-        let location = BridgeStorageLocation.s3(
-            bucket: "music-library",
-            region: "us-east-1",
-            endpoint: nil,
-            profile: nil
-        )
-        let status = { (running: Bool) in
-            BridgeSyncStatusSnapshot(
-                shown: running
-                    ? BridgeSyncShown(
-                        status: .settingUpStorage,
-                        statusKey: "core.sync.setting_up_storage",
-                        tone: .neutral,
-                        cause: nil,
-                        fix: nil,
-                        lastSynced: nil
-                    ) : .fixtureSynced,
-                pending: [],
-                setupRunning: running,
-                undoneSetup: nil
-            )
-        }
-
-        handle.deliverSyncStatus(status(true))
-        try await Wait.until {
-            appService.syncStatusStoreForTesting.shown?.status
-                == .settingUpStorage
-        }
-        handle.location = location
-        handle.deliverSyncStatus(status(false))
-
-        try await Wait.until { appService.storageForTesting == location }
-    }
-}
-
-@MainActor
 @Suite("Sync activity", .serialized)
 struct SyncActivitySubscriptionTests {
     @Test("each pulled sync activity reaches its store")
@@ -520,6 +475,7 @@ private func testBridgeConfig() -> BridgeConfig {
     BridgeConfig(
         libraryId: "lib-test",
         libraryPath: "/tmp/test",
+        storage: nil,
         pauseBetweenSides: false,
         sidePauseCountdown: .off,
         maxConcurrentUploads: 3,
@@ -575,10 +531,7 @@ private func testBridgeConfig() -> BridgeConfig {
 /// An empty upload queue, as a freshly opened library's core reports it.
 @MainActor
 private var emptySeed: LibrarySessionSeed {
-    LibrarySessionSeed(
-        storage: nil,
-        uploadsPaused: false
-    )
+    LibrarySessionSeed(uploadsPaused: false)
 }
 
 /// A handle-less `AppHandle` that answers the reads the macOS `AppService`
@@ -613,13 +566,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     func failSyncStatusRead(_ error: BridgeError) {
         syncStatus.values.fail(error)
-    }
-
-    /// The library's location, as `storageLocation()` reads it.
-    var location: BridgeStorageLocation?
-
-    override func storageLocation() async throws -> BridgeStorageLocation? {
-        location
     }
 
     init() {

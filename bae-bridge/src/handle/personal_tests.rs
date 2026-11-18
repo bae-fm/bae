@@ -51,7 +51,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         assert_eq!(metadata.provider, BridgeCloudProvider::S3);
         assert_eq!(
             Some(metadata.location),
-            app.clone().storage_location().await.unwrap(),
+            app.subscribe_config().next().await.unwrap().storage,
             "a typed code shows where its library is stored before connecting"
         );
 

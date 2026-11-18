@@ -47,14 +47,6 @@ class SyncStatusStore {
     val recordsDropped: StateFlow<Boolean> = _recordsDropped.asStateFlow()
     private val phoneRecords = PhonePendingRecords()
 
-    /**
-     * A storage setup runs: a setup screen's, or one past its point of no return that sync's connection finishes after
-     * a relaunch. It records the library's location as it finishes, so Settings reads the location again once this
-     * turns false.
-     */
-    private val _setupRunning = MutableStateFlow(false)
-    val setupRunning: StateFlow<Boolean> = _setupRunning.asStateFlow()
-
     private val _undoneSetup = MutableStateFlow<UndoneSetup?>(null)
     val undoneSetup: StateFlow<UndoneSetup?> = _undoneSetup.asStateFlow()
 
@@ -67,7 +59,6 @@ class SyncStatusStore {
         val taken = phoneRecords.take(status.pending, "list the pending records", bugs::reportShownInPlace)
         _pending.value = taken.listed
         _recordsDropped.value = taken.onlyAMacHas.isNotEmpty()
-        _setupRunning.value = status.setupRunning
         _undoneSetup.value =
             status.undoneSetup?.let { undone ->
                 errors.display(undone.error)?.let { shown -> UndoneSetup(undone.operation, shown) }

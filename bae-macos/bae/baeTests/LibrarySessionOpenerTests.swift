@@ -200,6 +200,7 @@ extension LibrarySessionOpenerTests {
         BridgeConfig(
             libraryId: "lib-test",
             libraryPath: "/tmp/test",
+            storage: nil,
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
             maxConcurrentUploads: 3,
@@ -302,7 +303,6 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     var didClose: Bool { closeFlag.isSet }
 
     func getConfig() async throws -> BridgeConfig { config }
-    func storageLocation() async throws -> BridgeStorageLocation? { nil }
     func getUploadsPaused() async throws -> Bool {
         try outbox.get()
     }

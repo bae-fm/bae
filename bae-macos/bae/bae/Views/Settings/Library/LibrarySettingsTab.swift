@@ -1,8 +1,5 @@
 import BaeKit
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
     /// Shows the screen that offers resetting this device for the active
@@ -38,9 +35,6 @@ struct LibrarySettingsTab: View {
     /// The restore code section's reveal, closed whenever this pane goes away.
     @State
     private var restoreCode = RestoreCodeReveal()
-    /// Why the library's location couldn't be read as this pane opened.
-    @State
-    private var storageReadError: DisplayError?
 
     /// The pages the Library pane opens.
     private enum Page: Hashable {
@@ -101,7 +95,6 @@ struct LibrarySettingsTab: View {
                 case .sync:
                     SyncSettingsPage(
                         restoreCode: restoreCode,
-                        storageReadError: storageReadError,
                         onResetDevice: onResetDevice,
                         onRestoreFromCode: onRestoreFromCode,
                         onCheckForUpdates: onCheckForUpdates,
@@ -115,7 +108,6 @@ struct LibrarySettingsTab: View {
         // The name and the people are read while this pane shows, which
         // includes the pages it opens: the stack, not a page, owns that.
         .task { await libraryName.follow() }
-        .task { await readStorage() }
         .onAppear {
             membership.show()
             membership.showAdminChanges(at: .library)
@@ -194,30 +186,6 @@ struct LibrarySettingsTab: View {
         let deviceCount = String(localized: "\(Int(people.devices)) devices")
         return "\(peopleText) · \(deviceCount)"
     }
-
-    /// Read the library's location again as the pane opens: coven records
-    /// a Dropbox or OneDrive folder's name at every connection, so one
-    /// renamed at the provider shows from the first read after.
-    private func readStorage() async {
-        storageReadError = nil
-        do {
-            configStore.applyStorage(try await sync.storageLocation())
-        }
-        catch {
-            // The location is this device's own record, so a read that fails
-            // is a bug, not a condition the person can fix. A cancellation as
-            // the pane closes has no line to show and is not one.
-            guard let display = DisplayError(error) else { return }
-            let detail = String(reflecting: error)
-            logger.error("Couldn't read the library's location: \(detail)")
-            CoreBugReporter()
-                .report(
-                    operation: "read the library's cloud home",
-                    detail: detail
-                )
-            storageReadError = display
-        }
-    }
 }
 
 /// The Sync page: the state sync is in, with its cause, its fix and when it
@@ -225,7 +193,6 @@ struct LibrarySettingsTab: View {
 /// sync waits on.
 private struct SyncSettingsPage: View {
     let restoreCode: RestoreCodeReveal
-    let storageReadError: DisplayError?
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
     let onCheckForUpdates: () -> Void
@@ -252,16 +219,6 @@ private struct SyncSettingsPage: View {
         Form {
             Section {
                 UndoneSetupLine()
-                if let storageReadError {
-                    Notice(
-                        title: String(
-                            localized:
-                                "Could not read this library’s cloud home."
-                        ),
-                        advice: nil,
-                        error: storageReadError
-                    )
-                }
                 SyncStatusBlock(
                     location: configStore.storage,
                     actions: SyncFixActions(
@@ -279,7 +236,10 @@ private struct SyncSettingsPage: View {
                         OpenFolderInBrowserRow(folder: folder)
                     }
                 }
-                LibraryRestoreCodeSection(reveal: restoreCode)
+                LibraryRestoreCodeSection(
+                    reveal: restoreCode,
+                    location: location
+                )
                 SyncPendingList(
                     location: location,
                     onRestoreFromCode: onRestoreFromCode,
@@ -299,12 +259,10 @@ private struct SyncSettingsPage: View {
     /// The Sync page with actions that do nothing, for a shot.
     @MainActor
     func syncSettingsPageWithInertActions(
-        restoreCode: RestoreCodeReveal,
-        storageReadError: DisplayError?
+        restoreCode: RestoreCodeReveal
     ) -> some View {
         SyncSettingsPage(
             restoreCode: restoreCode,
-            storageReadError: storageReadError,
             onResetDevice: {},
             onRestoreFromCode: {},
             onCheckForUpdates: {},
@@ -327,9 +285,7 @@ private struct PeopleAndDevicesDestination: View {
 /// printing names where the library is stored.
 private struct LibraryRestoreCodeSection: View {
     let reveal: RestoreCodeReveal
-
-    @Environment(ConfigStore.self)
-    private var configStore
+    let location: BridgeStorageLocation
 
     var body: some View {
         RestoreCodeSection(
@@ -337,7 +293,7 @@ private struct LibraryRestoreCodeSection: View {
             onPrint: { code in
                 RestoreCodePrinting.print(
                     code: code,
-                    location: configStore.storage?.accountLine ?? ""
+                    location: location.accountLine
                 )
             }
         )
