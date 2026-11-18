@@ -16,12 +16,12 @@ struct LibraryFailedView: View {
         ContentUnavailableView {
             Text(verbatim: title)
         } actions: {
-            if let details = ErrorDetails(
-                title: title,
-                advice: nil,
-                error: error
-            ) {
-                Button("Details") { openedDetails = details }
+            Button("Details") {
+                openedDetails = ErrorDetails(
+                    title: title,
+                    advice: nil,
+                    error: error
+                )
             }
             if error.offersRetry {
                 Button("Retry", action: retry)
