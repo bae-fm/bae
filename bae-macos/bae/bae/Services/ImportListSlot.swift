@@ -45,10 +45,20 @@ struct ImportListNarrowing: Equatable {
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
 /// the view the list reads.
+/// The list on screen: the handle its reads go through, the list, and the
+/// request it reads. The slot sets the three at once, so none is there without
+/// the others.
+struct ShownImportList {
+    let handle: ImportListHandle
+    let list: PaginatedList<BridgeImportListItem>
+    let request: BridgeImportListRequest
+}
+
 @MainActor
 @Observable
 final class ImportListSlot {
-    private(set) var list: PaginatedList<BridgeImportListItem>?
+    /// The list on screen, once the slot has read one.
+    private(set) var current: ShownImportList?
     private(set) var sortOrder: BridgeImportListOrder
     /// The row each opening of the list puts on top: its first selected row,
     /// or its top. The table scrolls to each position `openings` sends. A
@@ -70,13 +80,8 @@ final class ImportListSlot {
     /// The groups the person folded shut.
     @ObservationIgnored
     private var folds: BridgeImportListFolds = .allOpen
-    /// The request the list on screen reads, which the filter field's count
-    /// is checked against.
-    private(set) var shown: BridgeImportListRequest?
     @ObservationIgnored
     private let makeHandle: () async throws -> ImportListHandle
-    @ObservationIgnored
-    private var handle: ImportListHandle?
     @ObservationIgnored
     private let importStore: ImportStore
     @ObservationIgnored
@@ -183,6 +188,13 @@ final class ImportListSlot {
         updateView { $0.order = order }
     }
 
+    /// The list on screen.
+    var list: PaginatedList<BridgeImportListItem>? { current?.list }
+
+    /// The request the list on screen reads, which the filter field's count
+    /// is checked against.
+    var shown: BridgeImportListRequest? { current?.request }
+
     /// How many of the tab's rows the list shows, when the list on screen
     /// was read under `narrowing`, the filter the field holds now; nil when
     /// the list was read for another filter or has not counted yet, so the
@@ -190,9 +202,10 @@ final class ImportListSlot {
     func narrowedCount(
         under narrowing: ImportListNarrowing
     ) -> BridgeNarrowedCount? {
-        guard let shown, narrowing == ImportListNarrowing(of: shown.view)
+        guard let current,
+            narrowing == ImportListNarrowing(of: current.request.view)
         else { return nil }
-        return list?.narrowed
+        return current.list.narrowed
     }
 
     /// Open the list at `position`: the person's place is its row, at its
@@ -218,10 +231,9 @@ extension ImportListSlot {
     func revealFirstIdentifying() async throws
         -> (candidateKey: Data, position: Int)?
     {
-        guard let handle,
-            let candidateKey = try await handle.firstIdentifyingCandidate(
-                sortOrder
-            ),
+        guard let current,
+            let candidateKey = try await current.handle
+                .firstIdentifyingCandidate(sortOrder),
             let position = try await revealCandidate(candidateKey)
         else { return nil }
         return (candidateKey, position)
@@ -234,10 +246,10 @@ extension ImportListSlot {
     /// that request. Returns that position; `nil` when no tab lists the
     /// candidate.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
-        guard handle != nil else { return nil }
+        guard current != nil else { return nil }
         let outcome = await enqueue {
             [self] () async -> Result<Int?, any Error> in
-            guard let handle else { return .success(nil) }
+            guard let handle = current?.handle else { return .success(nil) }
             do {
                 guard
                     let reveal = try await handle.revealCandidate(
@@ -248,7 +260,7 @@ extension ImportListSlot {
                 ask(reveal.request)
                 selectOnly(candidateKey)
                 let position = Int(reveal.position)
-                try await show(reveal.request, at: position)
+                try await show(reveal.request, at: position, through: handle)
                 return .success(position)
             }
             catch { return .failure(error) }
@@ -281,7 +293,7 @@ extension ImportListSlot {
             startLoad()
             return
         }
-        guard handle != nil else { return }
+        guard current != nil else { return }
         enqueue { [self] in await reconcile() }
     }
 
@@ -305,11 +317,12 @@ extension ImportListSlot {
     /// new list opens and which selected rows leave the selection.
     private func reconcile() async {
         let next = asked
-        guard let handle, let before = shown, before != next else { return }
+        guard let current, current.request != next else { return }
+        let handle = current.handle
         do {
             let generation = selection.generation
             let change = try await handle.viewChange(
-                before: before,
+                before: current.request,
                 after: next,
                 selected: selection.keys.inByteOrder
             )
@@ -318,13 +331,23 @@ extension ImportListSlot {
             }
             switch change.opening {
             case .top:
-                try await show(next, at: 0, opening: true)
+                try await show(next, at: 0, through: handle, opening: true)
             case .at(let position):
-                try await show(next, at: Int(position), opening: true)
+                try await show(
+                    next,
+                    at: Int(position),
+                    through: handle,
+                    opening: true
+                )
             case .inPlace:
-                // The row on top stays on top: the new list opens there, and
-                // the table puts the release that was on top back on top.
-                try await show(next, at: list?.topPosition ?? 0)
+                // The row on top stays on top: the new list opens where the
+                // list still on screen has it, and the table puts the release
+                // that was on top back on top.
+                try await show(
+                    next,
+                    at: current.list.topPosition,
+                    through: handle
+                )
             }
         }
         catch {
@@ -332,16 +355,16 @@ extension ImportListSlot {
         }
     }
 
-    /// Read `request` in a new list opened at `position`, and show it in
-    /// place of the list on screen once it has its first rows and its count:
-    /// until then the sidebar keeps drawing the list it has. With `opening`,
-    /// the table scrolls to `position`.
+    /// Read `request` through `handle` in a new list opened at `position`,
+    /// and show it in place of the list on screen once it has its first rows
+    /// and its count: until then the sidebar keeps drawing the list it has.
+    /// With `opening`, the table scrolls to `position`.
     private func show(
         _ request: BridgeImportListRequest,
         at position: Int,
+        through handle: ImportListHandle,
         opening: Bool = false
     ) async throws {
-        guard let handle else { return }
         let next = PaginatedList<BridgeImportListItem>(
             queries: handle.queries(request),
             onError: { [weak self] error in self?.fail(error) }
@@ -359,9 +382,8 @@ extension ImportListSlot {
             uiStore.showError(failed)
             return
         }
-        let previous = list
-        list = next
-        shown = request
+        let previous = current?.list
+        current = ShownImportList(handle: handle, list: next, request: request)
         selection.show(request)
         previous?.cancel()
         if opening { open(at: position) }
@@ -389,7 +411,7 @@ extension ImportListSlot {
             return
         }
         guard !Task.isCancelled else { return }
-        list?.cancel()
+        current?.list.cancel()
         let newList = PaginatedList<BridgeImportListItem>(
             queries: made.queries(requested),
             onError: { [weak self] error in self?.fail(error) }
@@ -408,9 +430,11 @@ extension ImportListSlot {
             uiStore.showError(initial)
         }
         guard !Task.isCancelled else { return }
-        handle = made
-        list = newList
-        shown = requested
+        current = ShownImportList(
+            handle: made,
+            list: newList,
+            request: requested
+        )
         selection.show(requested)
         // A list built anew opens at its top.
         open(at: 0)
@@ -485,9 +509,11 @@ extension ImportListSlot {
                 onError: { _ in }
             )
             list.preloadRows(rows: items, extra: extra)
-            slot.list = list
-            slot.shown = slot.asked
-            slot.handle = handle
+            slot.current = ShownImportList(
+                handle: handle,
+                list: list,
+                request: slot.asked
+            )
             return slot
         }
     }
@@ -522,7 +548,7 @@ extension ImportListSlot {
             startLoad()
             return
         }
-        guard handle != nil else { return }
+        guard current != nil else { return }
         enqueue { [self] in await reconcile() }
     }
 }
@@ -535,11 +561,14 @@ extension ImportListSlot {
     /// when the place's row is not a candidate's, or the view does not show
     /// the candidate. The slot reports a failed read and answers `nil`.
     func position(ofPlace place: ImportListPlace) async -> Int? {
-        guard case .candidate(let candidateKey) = place.row, let handle,
-            let shown
+        guard case .candidate(let candidateKey) = place.row, let current
         else { return nil }
         do {
-            return try await handle.candidatePosition(shown, candidateKey)
+            return try await current.handle
+                .candidatePosition(
+                    current.request,
+                    candidateKey
+                )
                 .map(Int.init)
         }
         catch {
