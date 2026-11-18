@@ -100,7 +100,7 @@
   // The folder's images under the release: a ruled Images heading, then each image at 128pt, a button named by its file that opens the lightbox at it (`images`: "artwork title|file name", comma-separated).
   function MacImportImages(props) {
     return h('div', { className: 'bae-m-ifiles' }, h('div', { className: 'bae-m-formhead' }, 'Images'),
-      h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] || p[0] }, h(Artwork, { title: p[0], size: 128, radius: 6 })); })));
+      h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] }, h(Artwork, { title: p[0], size: 128, radius: 6 })); })));
   }
   // The release's files that are no track (a rip log, a cover image), or on a skipped folder's pane every file but its images: a ruled Files heading, then one line per file, its name in mono and its size at the right. A document, a track sheet or an image is a button named by its file, which opens it. The third part says what else the file is (`files`: "name|size[|kind]", comma-separated): `other` opens nothing; `audio` is a track that plays, with its Play button before the size; `damaged:why` is a damaged file, marked with why and opening nothing.
   function MacReleaseFiles(props) {
