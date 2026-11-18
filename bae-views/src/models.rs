@@ -14,9 +14,6 @@ pub struct DbLibrarySearchResults {
     pub tracks: Vec<DbTrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,
-    /// The track a spoken "play" of the search plays: the first track found,
-    /// else the first track of the first album found.
-    pub top_playable: Option<DbTopPlayable>,
     /// Whether the search found anything of any kind.
     pub found: bool,
     /// How many rows each section lists.

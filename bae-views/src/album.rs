@@ -30,9 +30,10 @@ impl LibraryViews {
         Ok(crate::album_detail::SearchResults::from_raw(rows))
     }
 
-    /// The track a spoken "play" of `query` plays: the search's
-    /// `top_playable`. The method runs only the SQL statement that picks
-    /// that track, not the whole search.
+    /// The track a spoken "play" of `query` plays: the first track the
+    /// search finds, else the first track of the first album it finds. The
+    /// method runs only the SQL statement that picks that track, not the
+    /// whole search.
     pub async fn search_top_playable(
         &self,
         query: &crate::LibrarySearchQuery,
@@ -568,7 +569,6 @@ fn search_library_on(
         params![pattern, limit],
         row_to_work_summary,
     )?;
-    let top_playable = top_playable_on(sql, pattern)?;
     // This query checks whether any album, track, artist, composer or work
     // matches, through the statements that list each kind, and stops at the
     // first match.
@@ -604,16 +604,7 @@ fn search_library_on(
         composers: composer_count,
         works: work_count,
     };
-    Ok(DbLibrarySearchResults {
-        albums,
-        artists,
-        tracks,
-        composers,
-        works,
-        top_playable,
-        found,
-        section_counts,
-    })
+    Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, found, section_counts })
 }
 
 /// The first track `pattern` finds, and failing that the first track of the

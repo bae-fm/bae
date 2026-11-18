@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::{
-    DbAlbumSearchResult, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults, DbTopPlayable,
+    DbAlbumSearchResult, DbArtistSummary, DbComposerSummary, DbLibrarySearchResults,
     DbTrackSearchResult, DbWorkSummary,
 };
 
@@ -15,9 +15,6 @@ pub struct SearchResults {
     pub tracks: Vec<TrackSearchResult>,
     pub composers: Vec<DbComposerSummary>,
     pub works: Vec<DbWorkSummary>,
-    /// The track a spoken "play" of the search plays: the first track found,
-    /// else the first track of the first album found.
-    pub top_playable: Option<DbTopPlayable>,
     /// Whether the search found anything of any kind.
     pub found: bool,
     /// How many rows each section lists, which decides whether it shows.
@@ -33,7 +30,6 @@ impl SearchResults {
             artists: raw.artists,
             composers: raw.composers,
             works: raw.works,
-            top_playable: raw.top_playable,
             found: raw.found,
             section_counts: raw.section_counts,
         }

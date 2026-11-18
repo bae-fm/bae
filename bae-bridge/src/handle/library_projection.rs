@@ -268,9 +268,6 @@ impl BridgeSearchResults {
             tracks,
             composers,
             works,
-            // A voice request to play reads the top result through
-            // read_search_top_playable.
-            top_playable: _,
             found,
             section_counts,
         } = results;
