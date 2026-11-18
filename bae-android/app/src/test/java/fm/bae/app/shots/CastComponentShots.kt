@@ -71,5 +71,8 @@ class CastComponentShots : BoardShot() {
         component("android.component.pin-field.error") { AndroidPinField(4, "4821", {}, error = "That PIN did not match.") }
 
     @Test
+    fun androidComponentPinFieldOff() = component("android.component.pin-field.off") { AndroidPinField(4, "4821", {}, enabled = false) }
+
+    @Test
     fun androidComponentPinFieldSixDigits() = component("android.component.pin-field.six-digits") { AndroidPinField(6, "482", {}) }
 }

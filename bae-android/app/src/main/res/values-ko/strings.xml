@@ -260,6 +260,12 @@
     <string name="cast_turn_off_message">%1$s(으)로의 캐스트가 중지됩니다.</string>
     <string name="cast_turn_off_confirm">끄기</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">%1$s와(과) 페어링</string>
+    <string name="cast_password">암호</string>
+    <string name="cast_pair">페어링</string>
+    <string name="cast_pairing">페어링 중…</string>
+    <string name="cast_refused_title">%1$s(으)로 캐스트할 수 없음</string>
+    <string name="cast_pair_again">다시 페어링…</string>
     <string name="settings_casting">캐스트</string>
     <string name="settings_enable_casting">캐스트 사용</string>
     <string name="settings_casting_help">네트워크에서 Cast, AirPlay, UPnP 수신기를 검색합니다.</string>

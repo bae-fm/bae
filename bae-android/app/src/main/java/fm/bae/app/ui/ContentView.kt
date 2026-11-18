@@ -46,12 +46,15 @@ import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
 import fm.bae.app.ui.onboarding.RestoreOver
 import fm.bae.app.ui.onboarding.WelcomeLibraryActions
+import fm.bae.app.ui.playback.CastCodeDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeAudioOutputProblem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.bridgeRecoveryLines
 
 /** App root: opens an existing library or onboards, then shows the library once open. */
@@ -369,16 +372,35 @@ private fun LibraryOpenScreen(
     }
     // A playback failure has no screen of its own: its snackbar shows wherever the person is while the session's
     // playbackFailure holds a failure, and a later failure replaces it. When the person closes the snackbar or it
-    // times out, the app dismisses the failure.
+    // times out, the app dismisses the failure. An AirPlay receiver that no longer accepts this device offers
+    // Pair again…, which casts to it again.
     val playbackFailure by session.playbackFailure.collectAsState()
+    val pairAgainLabel = stringResource(R.string.cast_pair_again)
     LaunchedEffect(session, playbackFailure, snackbarHostState) {
-        val error = playbackFailure?.let { session.errors.display(it) } ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(
-            message = error.line,
-            withDismissAction = true,
-            duration = SnackbarDuration.Long,
-        )
+        val failure = playbackFailure ?: return@LaunchedEffect
+        val error = session.errors.display(failure) ?: return@LaunchedEffect
+        val pairingLost =
+            (failure as? BridgePlaybackErrorReason.AudioOutput)?.problem as? BridgeAudioOutputProblem.AirPlayPairingLost
+        val result =
+            snackbarHostState.showSnackbar(
+                message = error.line,
+                actionLabel = pairingLost?.let { pairAgainLabel },
+                withDismissAction = true,
+                duration = SnackbarDuration.Long,
+            )
         session.dismissPlaybackFailure()
+        if (result == SnackbarResult.ActionPerformed && pairingLost != null) {
+            session.castStart.cast(pairingLost.receiver)
+        }
+    }
+    // An AirPlay receiver's request for its PIN or password, over whatever is on screen.
+    val codeSheet by session.castStart.codeSheet.collectAsState()
+    codeSheet?.let { sheet ->
+        CastCodeDialog(
+            sheet = sheet,
+            onPair = session.castStart::pair,
+            onCancel = session.castStart::cancelCode,
+        )
     }
     // The Resume shortcut plays the queue that opening the library restored paused.
     LaunchedEffect(session, shortcutAction) {

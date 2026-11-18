@@ -267,6 +267,12 @@
     <string name="cast_turn_off_message">Bu, %1$s cihazına yayınlamayı durdurur.</string>
     <string name="cast_turn_off_confirm">Kapat</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">%1$s ile eşleştir</string>
+    <string name="cast_password">Parola</string>
+    <string name="cast_pair">Eşleştir</string>
+    <string name="cast_pairing">Eşleştiriliyor…</string>
+    <string name="cast_refused_title">%1$s cihazına yayınlanamadı</string>
+    <string name="cast_pair_again">Yeniden eşleştir…</string>
     <string name="settings_casting">Yayınlama</string>
     <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>
     <string name="settings_casting_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarını tarar.</string>

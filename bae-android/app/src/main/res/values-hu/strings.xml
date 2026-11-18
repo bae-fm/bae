@@ -265,6 +265,12 @@
     <string name="cast_turn_off_message">Ezzel leáll az átküldés ide: %1$s.</string>
     <string name="cast_turn_off_confirm">Kikapcsolás</string>
     <string name="cast_pin_field">PIN-kód</string>
+    <string name="cast_pair_with">Párosítás ezzel: %1$s</string>
+    <string name="cast_password">Jelszó</string>
+    <string name="cast_pair">Párosítás</string>
+    <string name="cast_pairing">Párosítás…</string>
+    <string name="cast_refused_title">Nem sikerült az átküldés ide: %1$s</string>
+    <string name="cast_pair_again">Párosítás újra…</string>
     <string name="settings_casting">Átküldés</string>
     <string name="settings_enable_casting">Átküldés bekapcsolása</string>
     <string name="settings_casting_help">Cast-, AirPlay- és UPnP-vevőket keres a hálózatodon.</string>

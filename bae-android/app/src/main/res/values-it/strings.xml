@@ -273,6 +273,12 @@
     <string name="cast_turn_off_message">La trasmissione a %1$s verrà interrotta.</string>
     <string name="cast_turn_off_confirm">Disattiva</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">Abbina a %1$s</string>
+    <string name="cast_password">Password</string>
+    <string name="cast_pair">Abbina</string>
+    <string name="cast_pairing">Abbinamento…</string>
+    <string name="cast_refused_title">Impossibile trasmettere a %1$s</string>
+    <string name="cast_pair_again">Abbina di nuovo…</string>
     <string name="settings_casting">Trasmissione</string>
     <string name="settings_enable_casting">Attiva la trasmissione</string>
     <string name="settings_casting_help">Cerca ricevitori Cast, AirPlay e UPnP nella tua rete.</string>

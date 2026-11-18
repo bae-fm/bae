@@ -281,6 +281,12 @@
     <string name="cast_turn_off_message">Spowoduje to zatrzymanie przesyłania do %1$s.</string>
     <string name="cast_turn_off_confirm">Wyłącz</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">Sparuj z %1$s</string>
+    <string name="cast_password">Hasło</string>
+    <string name="cast_pair">Sparuj</string>
+    <string name="cast_pairing">Parowanie…</string>
+    <string name="cast_refused_title">Nie można przesyłać do %1$s</string>
+    <string name="cast_pair_again">Sparuj ponownie…</string>
     <string name="settings_casting">Przesyłanie</string>
     <string name="settings_enable_casting">Włącz przesyłanie</string>
     <string name="settings_casting_help">Wyszukuje odbiorniki Cast, AirPlay i UPnP w Twojej sieci.</string>

@@ -265,6 +265,12 @@
     <string name="cast_turn_off_message">Dette stopper castingen til %1$s.</string>
     <string name="cast_turn_off_confirm">Slå av</string>
     <string name="cast_pin_field">PIN-kode</string>
+    <string name="cast_pair_with">Par med %1$s</string>
+    <string name="cast_password">Passord</string>
+    <string name="cast_pair">Par</string>
+    <string name="cast_pairing">Parer…</string>
+    <string name="cast_refused_title">Kunne ikke caste til %1$s</string>
+    <string name="cast_pair_again">Par på nytt…</string>
     <string name="settings_casting">Caster</string>
     <string name="settings_enable_casting">Slå på casting</string>
     <string name="settings_casting_help">Søker etter Cast-, AirPlay- og UPnP-mottakere på nettverket ditt.</string>

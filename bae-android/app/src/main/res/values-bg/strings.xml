@@ -267,6 +267,12 @@
     <string name="cast_turn_off_message">Това ще спре предаването към %1$s.</string>
     <string name="cast_turn_off_confirm">Изключване</string>
     <string name="cast_pin_field">ПИН</string>
+    <string name="cast_pair_with">Сдвояване с %1$s</string>
+    <string name="cast_password">Парола</string>
+    <string name="cast_pair">Сдвояване</string>
+    <string name="cast_pairing">Сдвояване…</string>
+    <string name="cast_refused_title">Не може да се предава към %1$s</string>
+    <string name="cast_pair_again">Ново сдвояване…</string>
     <string name="settings_casting">Предаване</string>
     <string name="settings_enable_casting">Включване на предаването</string>
     <string name="settings_casting_help">Търси приемници Cast, AirPlay и UPnP в мрежата ви.</string>

@@ -274,6 +274,12 @@
     <string name="cast_turn_off_message">Time će se prekinuti emitiranje na %1$s.</string>
     <string name="cast_turn_off_confirm">Isključi</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">Upari s uređajem %1$s</string>
+    <string name="cast_password">Lozinka</string>
+    <string name="cast_pair">Upari</string>
+    <string name="cast_pairing">Uparivanje…</string>
+    <string name="cast_refused_title">Emitiranje na %1$s nije uspjelo</string>
+    <string name="cast_pair_again">Ponovno upari…</string>
     <string name="settings_casting">Emitiranje</string>
     <string name="settings_enable_casting">Omogući emitiranje</string>
     <string name="settings_casting_help">Traži Cast, AirPlay i UPnP prijamnike na vašoj mreži.</string>

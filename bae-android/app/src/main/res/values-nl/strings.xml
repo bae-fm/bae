@@ -267,6 +267,12 @@
     <string name="cast_turn_off_message">Hiermee stopt het casten naar %1$s.</string>
     <string name="cast_turn_off_confirm">Uitschakelen</string>
     <string name="cast_pin_field">Pincode</string>
+    <string name="cast_pair_with">Koppelen met %1$s</string>
+    <string name="cast_password">Wachtwoord</string>
+    <string name="cast_pair">Koppelen</string>
+    <string name="cast_pairing">Koppelen…</string>
+    <string name="cast_refused_title">Kan niet casten naar %1$s</string>
+    <string name="cast_pair_again">Opnieuw koppelen…</string>
     <string name="settings_casting">Casten</string>
     <string name="settings_enable_casting">Casten inschakelen</string>
     <string name="settings_casting_help">Zoekt naar Cast-, AirPlay- en UPnP-ontvangers in je netwerk.</string>

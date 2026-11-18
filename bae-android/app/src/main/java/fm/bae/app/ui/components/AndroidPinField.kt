@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
@@ -45,7 +47,8 @@ private val cellDigit =
  * A PIN the person reads off a receiver's screen and types on the number pad: one outlined box per digit, each
  * showing its digit as it is typed. While the field has focus, the box where the next digit goes has the accent
  * outline. The field takes digits only, keeps leading zeros and stops at [digits]. With an [error], every box is
- * outlined in red and the error is the line under them. A focus request on [modifier] gives the field the keyboard.
+ * outlined in red and the error is the line under them. Off ([enabled] false), the field dims and takes nothing,
+ * as it does while bae pairs. A focus request on [modifier] gives the field the keyboard.
  */
 @Composable
 internal fun AndroidPinField(
@@ -54,12 +57,17 @@ internal fun AndroidPinField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     error: String? = null,
+    enabled: Boolean = true,
 ) {
     var focused by remember { mutableStateOf(false) }
     val label = stringResource(R.string.cast_pin_field)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+    Column(
+        modifier = modifier.alpha(if (enabled) 1f else ThemeOpacity.off),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+    ) {
         BasicTextField(
             value = value,
+            enabled = enabled,
             onValueChange = { typed -> onValueChange(typed.filter { it in '0'..'9' }.take(digits)) },
             modifier = Modifier.onFocusChanged { focused = it.isFocused }.semantics { contentDescription = label },
             singleLine = true,

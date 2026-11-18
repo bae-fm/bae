@@ -273,6 +273,12 @@
     <string name="cast_turn_off_message">La diffusion vers %1$s sera interrompue.</string>
     <string name="cast_turn_off_confirm">Désactiver</string>
     <string name="cast_pin_field">Code PIN</string>
+    <string name="cast_pair_with">Jumeler avec %1$s</string>
+    <string name="cast_password">Mot de passe</string>
+    <string name="cast_pair">Jumeler</string>
+    <string name="cast_pairing">Jumelage…</string>
+    <string name="cast_refused_title">Impossible de diffuser vers %1$s</string>
+    <string name="cast_pair_again">Jumeler à nouveau…</string>
     <string name="settings_casting">Diffusion</string>
     <string name="settings_enable_casting">Activer la diffusion</string>
     <string name="settings_casting_help">Recherche les récepteurs Cast, AirPlay et UPnP de votre réseau.</string>

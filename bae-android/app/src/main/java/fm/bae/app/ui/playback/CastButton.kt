@@ -25,6 +25,7 @@ import fm.bae.app.data.castingDevice
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeBrowsingFor
 
@@ -100,7 +101,7 @@ private fun CastPickerSheet(
     }
 
     AndroidSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
-        PickerFailures(endedFailure = endedFailure, castFailure = castFailure?.error)
+        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,
             receivers = receivers,
@@ -115,11 +116,14 @@ private fun CastPickerSheet(
     }
 }
 
-/** Why the last device stopped, when its link was lost, and why the last cast this picker started failed. */
+/**
+ * Why the last device stopped, when its link was lost, and why the last cast this picker started failed: a
+ * receiver's refusal is titled with the receiver's name, over core's line.
+ */
 @Composable
-private fun PickerFailures(
+internal fun PickerFailures(
     endedFailure: DisplayError?,
-    castFailure: DisplayError?,
+    castFailure: CastStart.Failure?,
 ) {
     endedFailure?.let { failure ->
         AndroidNotice(
@@ -129,9 +133,18 @@ private fun PickerFailures(
         )
     }
     castFailure?.let { failure ->
-        AndroidNotice(
-            error = failure,
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        )
+        val modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)
+        val receiver = failure.refusedBy
+        if (receiver != null) {
+            AndroidNotice(
+                title = stringResource(R.string.cast_refused_title, receiver),
+                advice = failure.error.line,
+                error = failure.error,
+                modifier = modifier,
+                look = NoticeLook.QUIET,
+            )
+        } else {
+            AndroidNotice(error = failure.error, modifier = modifier)
+        }
     }
 }

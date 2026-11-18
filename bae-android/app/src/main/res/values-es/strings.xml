@@ -273,6 +273,12 @@
     <string name="cast_turn_off_message">Esto detendrá la transmisión a %1$s.</string>
     <string name="cast_turn_off_confirm">Desactivar</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">Vincular con %1$s</string>
+    <string name="cast_password">Contraseña</string>
+    <string name="cast_pair">Vincular</string>
+    <string name="cast_pairing">Vinculando…</string>
+    <string name="cast_refused_title">No se pudo transmitir a %1$s</string>
+    <string name="cast_pair_again">Volver a vincular…</string>
     <string name="settings_casting">Transmisión</string>
     <string name="settings_enable_casting">Activar la transmisión</string>
     <string name="settings_casting_help">Busca receptores Cast, AirPlay y UPnP en tu red.</string>

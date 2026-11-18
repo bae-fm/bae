@@ -273,6 +273,12 @@
     <string name="cast_turn_off_message">Isso interromperá a transmissão para %1$s.</string>
     <string name="cast_turn_off_confirm">Desativar</string>
     <string name="cast_pin_field">PIN</string>
+    <string name="cast_pair_with">Parear com %1$s</string>
+    <string name="cast_password">Senha</string>
+    <string name="cast_pair">Parear</string>
+    <string name="cast_pairing">Pareando…</string>
+    <string name="cast_refused_title">Não foi possível transmitir para %1$s</string>
+    <string name="cast_pair_again">Parear de novo…</string>
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar a transmissão</string>
     <string name="settings_casting_help">Procura receptores Cast, AirPlay e UPnP na sua rede.</string>

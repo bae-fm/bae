@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -35,32 +36,7 @@ class ScreenComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentLibraryScreenDefault() =
-        shot("android.component.library-screen.default") {
-            ScreenScene {
-                Images {
-                    val state = remember { LibraryBrowserState() }
-                    AndroidLibraryScreen(
-                        state = state,
-                        onShuffleLibrary = {},
-                        onSettings = {},
-                        syncActivity = {},
-                        nowPlayingBar = { Bar(playing) },
-                    ) { modifier ->
-                        Box(modifier) {
-                            AndroidAlbumGrid(
-                                count = previewAlbums.size,
-                                layout = AlbumGridLayout.Flat,
-                                rowAt = previewAlbums::get,
-                                gridState = state.gridState,
-                                onSelectAlbum = {},
-                                onSelectArtist = {},
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    fun androidComponentLibraryScreenDefault() = shot("android.component.library-screen.default") { ScreenScene { PlayingLibraryScreen() } }
 
     @Test
     fun androidComponentDetailScreenDefault() =
@@ -88,4 +64,30 @@ class ScreenComponentShots : BoardShot() {
                 }
             }
         }
+}
+
+/** The library screen on Albums with a track playing in the bar, as the boards draw it behind what opens over it. */
+@Composable
+internal fun PlayingLibraryScreen() {
+    Images {
+        val state = remember { LibraryBrowserState() }
+        AndroidLibraryScreen(
+            state = state,
+            onShuffleLibrary = {},
+            onSettings = {},
+            syncActivity = {},
+            nowPlayingBar = { Bar(playing) },
+        ) { modifier ->
+            Box(modifier) {
+                AndroidAlbumGrid(
+                    count = previewAlbums.size,
+                    layout = AlbumGridLayout.Flat,
+                    rowAt = previewAlbums::get,
+                    gridState = state.gridState,
+                    onSelectAlbum = {},
+                    onSelectArtist = {},
+                )
+            }
+        }
+    }
 }
