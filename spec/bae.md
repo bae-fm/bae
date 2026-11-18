@@ -3962,7 +3962,7 @@ coven gives the state
 ([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
 and when several hold the first of these shows: Not synced, Removed from the
 library, Device needs reset, New restore code, Update needed, Signed out, No
-access, Folder missing, Clock is wrong, Cloud full, Waiting for access,
+access, Folder missing, Clock is wrong, Cloud full,
 Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync,
 Synced. Mac and Android show the same words and
 the same button for each state, except that a line or button that names the
@@ -4001,14 +4001,6 @@ storage* where the line names the place the library is kept.
     can save one.*
   - A paused upload, or one held for the network, puts no state on the Sync
     page: Transfers shows it (§4.2).
-  - Waiting for access, while a change received waits for a key this device
-    doesn't hold, naming the devices that hold it: *Your iPhone or Ana’s Pixel
-    will give this Mac access the next time either one syncs.* / *To get it now,
-    scan one of them.*, with *Scan device…*. The button opens a sheet, *Scan
-    another device*: *On the other device, open bae’s Sync settings and choose
-    Share access. Then hold its code up to this Mac’s
-    camera.*, over the camera and *Cancel*. When no device holds the key any
-    more, coven deletes the library for everyone, and this device says so once.
   - Offline: *Syncing resumes when this Mac reconnects.*
   - Offline · unsent changes, while changes or files wait to go out, with no
     count: *Syncing resumes when this Mac reconnects.* / *Your changes stay here

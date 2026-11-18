@@ -4083,14 +4083,6 @@
    "x": 2848,
    "y": 9392
   },
-  "mac.settings.sync.key-scan.dc.html": {
-   "h": 600,
-   "page": "library",
-   "title": "macOS settings: Sync: scanning another device for access",
-   "w": 690,
-   "x": 1316,
-   "y": 9640
-  },
   "mac.storage.window.move-failed.dc.html": {
    "h": 660,
    "page": "storage",
@@ -4150,7 +4142,7 @@
   "mac.settings.sync.pending.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Sync: waiting for access",
+   "title": "macOS: Sync: waiting to sync",
    "w": 690,
    "x": 0,
    "y": 25888
@@ -4158,7 +4150,7 @@
   "android.settings.sync.pending.dc.html": {
    "h": 916,
    "page": "library",
-   "title": "Sync: waiting for access",
+   "title": "Sync: waiting to sync",
    "w": 412,
    "x": 2850,
    "y": 25888
@@ -5932,7 +5924,7 @@
    "page": "library",
    "x": 0,
    "y": 25748,
-   "text": "Sync page: waiting for access, undone setup, unreadable cloud home (macOS)",
+   "text": "Sync page: waiting to sync, undone setup, unreadable cloud home (macOS)",
    "kind": "title1",
    "w": 240,
    "maxW": 3200
@@ -6094,7 +6086,6 @@
   "all.settings.sync.states-table.dc.html",
   "android.settings.sync.every-state.dc.html",
   "mac.settings.sync.every-state.dc.html",
-  "mac.settings.sync.key-scan.dc.html",
   "android.settings.invite.dropbox.dc.html",
   "android.settings.invite.code.dc.html",
   "android.settings.people.invite-listed.dc.html",
