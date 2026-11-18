@@ -56,6 +56,10 @@ internal fun syncCauseText(
         BridgeSyncCause.LibraryUnreadable -> {
             context.getString(R.string.sync_cause_library_unreadable)
         }
+
+        BridgeSyncCause.ScanNewRestoreCode -> {
+            context.getString(R.string.sync_cause_scan_new_restore_code)
+        }
     }
 
 /** When sync last finished, as "2 hours ago". */

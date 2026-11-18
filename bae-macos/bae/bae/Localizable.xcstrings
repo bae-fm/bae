@@ -149543,6 +149543,180 @@
         }
       }
     },
+    "Scan the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent." : {
+      "comment" : "Sync status line after another of the person's devices made a new restore code: scanning it restores the library on this Mac, and the restore loses what this Mac had not sent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "امسح رمز الاستعادة الجديد ضوئيًا لاستعادة المكتبة على هذا الـ Mac. تحذف الاستعادة أي تغييرات لم يرسلها هذا الـ Mac."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сканирайте новия код за възстановяване, за да възстановите библиотеката на този Mac. Възстановяването отхвърля всички промени, които този Mac не е изпратил."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte nový kód pro obnovení a obnovte tak knihovnu na tomto Macu. Obnovení zahodí všechny změny, které tento Mac neodeslal."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan den nye gendannelseskode for at gendanne biblioteket på denne Mac. Gendannelsen kasserer alle ændringer, som denne Mac ikke har sendt."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanne den neuen Wiederherstellungscode, um die Bibliothek auf diesem Mac wiederherzustellen. Die Wiederherstellung verwirft alle Änderungen, die dieser Mac noch nicht gesendet hat."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Σαρώστε τον νέο κωδικό επαναφοράς για να επαναφέρετε τη βιβλιοθήκη σε αυτό το Mac. Η επαναφορά απορρίπτει όσες αλλαγές δεν έχει στείλει αυτό το Mac."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escanea el nuevo código de restauración para restaurar la biblioteca en este Mac. La restauración descarta los cambios que este Mac no haya enviado."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palauta kirjasto tähän Maciin skannaamalla uusi palautuskoodi. Palautus hylkää kaikki muutokset, joita tämä Mac ei ole lähettänyt."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scannez le nouveau code de restauration pour restaurer la bibliothèque sur ce Mac. La restauration supprime les modifications que ce Mac n’a pas encore envoyées."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרוק את קוד השחזור החדש כדי לשחזר את הספרייה ב-Mac הזה. השחזור מבטל את כל השינויים שה-Mac הזה עוד לא שלח."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skenirajte novi kod za vraćanje da biste vratili fonoteku na ovaj Mac. Vraćanje odbacuje sve izmjene koje ovaj Mac nije poslao."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olvasd be az új helyreállítási kódot, hogy visszaállítsd a könyvtárat ezen a Mac gépen. A visszaállítás elveti azokat a módosításokat, amelyeket ez a Mac még nem küldött el."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scansiona il nuovo codice di ripristino per ripristinare la libreria su questo Mac. Il ripristino scarta le modifiche che questo Mac non ha ancora inviato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しい復元コードをスキャンすると、この Mac のライブラリを復元できます。復元すると、この Mac がまだ送信していない変更は破棄されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 복원 코드를 스캔하여 이 Mac의 보관함을 복원하세요. 복원하면 이 Mac에서 아직 보내지 않은 변경 사항이 모두 삭제됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skann den nye gjenopprettingskoden for å gjenopprette biblioteket på denne Macen. Gjenopprettingen forkaster alle endringer som denne Macen ikke har sendt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan de nieuwe herstelcode om de bibliotheek op deze Mac te herstellen. Het herstellen verwijdert alle wijzigingen die deze Mac nog niet heeft verstuurd."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeskanuj nowy kod przywracania, aby przywrócić bibliotekę na tym Macu. Przywracanie odrzuca wszystkie zmiany, których ten Mac nie wysłał."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escaneie o novo código de restauração para restaurar a biblioteca neste Mac. A restauração descarta as alterações que este Mac ainda não enviou."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digitalize o novo código de restauração para restaurar a biblioteca neste Mac. O restauro descarta as alterações que este Mac ainda não enviou."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanează noul cod de restaurare pentru a restaura biblioteca pe acest Mac. Restaurarea renunță la toate modificările pe care acest Mac nu le-a trimis."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naskenujte nový kód na obnovenie a obnovte tak knižnicu na tomto Macu. Obnovenie zahodí všetky zmeny, ktoré tento Mac neodoslal."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skanna den nya återställningskoden för att återställa biblioteket på den här Macen. Återställningen tar bort alla ändringar som den här Macen inte har skickat."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu Mac’teki kitaplığı geri yüklemek için yeni geri yükleme kodunu tarayın. Geri yükleme, bu Mac’in göndermediği tüm değişiklikleri atar."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відскануйте новий код відновлення, щоб відновити бібліотеку на цьому Mac. Відновлення відкидає всі зміни, які цей Mac не надіслав."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "扫描新的恢复码，以恢复此 Mac 上的资料库。恢复会丢弃此 Mac 尚未发送的所有更改。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "掃描新的還原碼，以還原此 Mac 上的資料庫。還原會捨棄此 Mac 尚未傳送的所有變更。"
+          }
+        }
+      }
+    },
     "Subsonic server" : {
       "comment" : "Subsonic settings: title of the switch row that turns the server on",
       "localizations" : {

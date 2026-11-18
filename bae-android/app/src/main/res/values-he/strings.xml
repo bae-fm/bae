@@ -471,6 +471,7 @@
     <string name="sync_cause_disk_full">במכשיר הזה נגמר המקום. פנה קצת מקום ו-bae ינסה שוב.</string>
     <string name="sync_cause_keys_unreadable">bae לא הצליח לקרוא את המפתחות ששמר במכשיר הזה.</string>
     <string name="sync_cause_library_unreadable">bae לא הצליח לקרוא את הספרייה במכשיר הזה.</string>
+    <string name="sync_cause_scan_new_restore_code">סרוק את קוד השחזור החדש כדי לשחזר את הספרייה במכשיר הזה. השחזור מבטל את כל השינויים שהמכשיר הזה עוד לא שלח.</string>
     <string name="pins_at_once">הצמדות בו-זמניות</string>
     <string name="pinning_empty">אין מה להצמיד</string>
     <string name="pinning_load_failed">לא ניתן לטעון את ההצמדות.</string>

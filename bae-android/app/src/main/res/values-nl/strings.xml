@@ -463,6 +463,7 @@
     <string name="sync_cause_disk_full">Dit apparaat heeft geen ruimte meer. Maak wat vrij en bae probeert het opnieuw.</string>
     <string name="sync_cause_keys_unreadable">bae kon zijn opgeslagen sleutels op dit apparaat niet lezen.</string>
     <string name="sync_cause_library_unreadable">bae kon de bibliotheek op dit apparaat niet lezen.</string>
+    <string name="sync_cause_scan_new_restore_code">Scan de nieuwe herstelcode om de bibliotheek op dit apparaat te herstellen. Het herstellen verwijdert alle wijzigingen die dit apparaat nog niet heeft verstuurd.</string>
     <string name="pins_at_once">Gelijktijdig vastzetten</string>
     <string name="pinning_empty">Niets om vast te zetten</string>
     <string name="pinning_load_failed">Kon je vastgezette items niet laden.</string>

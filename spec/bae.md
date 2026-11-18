@@ -4335,9 +4335,10 @@ storage* where the line names the place the library is kept.
     until then.*
   - New restore code, after another of the person's devices made a new
     restore code, naming that device: *You made the new code on your iPhone.* /
-    *Your changes stay on this Mac until you scan it.*, with *Scan restore
-    code…*. Sync stays stopped until the
-    person scans the code, and the device takes on the new keys in place.
+    *Scan the new restore code to restore the library on this Mac. The restore
+    discards any changes this Mac has not sent.*, with *Scan restore code…*.
+    Sync stays stopped until the person scans the code, and the scan restores
+    this device as a new device that takes its place (below).
   - Update needed: *Another device uses a newer bae.* / *Update this one to
     keep syncing with it.*, with *Update…*, which opens bae's updater on the
     Mac and bae's page in the Play Store on Android.
@@ -4517,17 +4518,24 @@ offers nothing.
   sync state
   ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)).
 - **New restore code.** When another of the person's devices made a new
-  restore code, this device stops syncing and keeps its changes, and its sync
-  state is New restore code, naming that device. *Scan restore code…* opens the
-  camera for the new code. Core checks first that the code restores this
-  library; another library's code, or an invite, changes nothing. coven then
-  takes on the new keys in place, on the same device id and the same copy of
-  the library, and sync resumes with the changes this device kept
+  restore code, this device stops syncing, and its sync state is New restore
+  code, naming that device. No device can send the changes this device has
+  not sent: coven refuses every write signed with the keys the new code
+  replaced
+  ([coven §12.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#123-replacing-a-members-keys)).
+  So the state says, before the scan, that the restore discards them.
+  *Scan restore code…* opens the camera for the new code. Core checks first
+  that the code restores this library; another library's code, or an invite,
+  changes nothing. coven then restores this device with the code: a new device
+  loads the library beside this device's copy, takes its place once it has
+  loaded, and starts without the changes the old copy had not sent
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
-  A scan that fails, such as one of an older code or with storage out of
-  reach, leaves the library as it was: the scan screen says why, an older code
-  saying that the code from the other device restores the library, and the
-  person can scan again.
+  A scan that fails before the new device registers, such as one of an older
+  code or with storage out of reach, leaves the library as it was: the scan
+  screen says why, an older code saying that the code from the other device
+  restores the library, and the person can scan again. A restore that stops
+  after the new device registers stays unfinished until the person finishes
+  it, as `ReplacementUnfinished` says.
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
 has been read the line says it is checking rather than claim the library is
@@ -7242,7 +7250,7 @@ with one of these categories and a detail:
 | `Renderer` | reads what the device playback was sent to said when it refused a command |
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
-| `MemberKeysReplaced` | scans the new restore code: another of their devices made a new restore code, and this device takes on the new keys in place (§6.4) |
+| `MemberKeysReplaced` | scans the new restore code: another of their devices made a new restore code, and the scan restores this device as a new device, which starts without the changes this device had not sent (§6.4) |
 | `StorageSetupUndone` | sets the library's storage up again: a setup ended undone with nobody there to hear it, such as one bae was stopped partway through (§6.2) |
 | `StorageSetupFinishing` | waits for the storage setup already running, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |

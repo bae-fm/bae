@@ -461,6 +461,7 @@
     <string name="sync_cause_disk_full">Den här enheten har slut på utrymme. Frigör lite så försöker bae igen.</string>
     <string name="sync_cause_keys_unreadable">bae kunde inte läsa sina sparade nycklar på den här enheten.</string>
     <string name="sync_cause_library_unreadable">bae kunde inte läsa biblioteket på den här enheten.</string>
+    <string name="sync_cause_scan_new_restore_code">Skanna den nya återställningskoden för att återställa biblioteket på den här enheten. Återställningen tar bort alla ändringar som den här enheten inte har skickat.</string>
     <string name="pins_at_once">Samtidiga fästningar</string>
     <string name="pinning_empty">Inget att fästa</string>
     <string name="pinning_load_failed">Det gick inte att läsa in dina fästningar.</string>

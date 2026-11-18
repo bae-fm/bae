@@ -479,6 +479,7 @@
     <string name="sync_cause_disk_full">Na tym urządzeniu brakuje miejsca. Zwolnij trochę, a bae spróbuje ponownie.</string>
     <string name="sync_cause_keys_unreadable">bae nie mógł odczytać zapisanych kluczy na tym urządzeniu.</string>
     <string name="sync_cause_library_unreadable">bae nie mógł odczytać biblioteki na tym urządzeniu.</string>
+    <string name="sync_cause_scan_new_restore_code">Zeskanuj nowy kod przywracania, aby przywrócić bibliotekę na tym urządzeniu. Przywracanie odrzuca wszystkie zmiany, których to urządzenie nie wysłało.</string>
     <string name="pins_at_once">Równoczesne przypinania</string>
     <string name="pinning_empty">Nic do przypięcia</string>
     <string name="pinning_load_failed">Nie udało się wczytać przypięć.</string>

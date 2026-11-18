@@ -840,7 +840,7 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
     .collect()
 }
 
-/// The three causes that name the device reach a UI as themselves, not as a
+/// The causes that name the device reach a UI as themselves, not as a
 /// catalog message, so each platform words them.
 #[test]
 fn device_causes_are_the_platforms_to_word() {
@@ -853,6 +853,10 @@ fn device_causes_are_the_platforms_to_word() {
     assert_eq!(
         BridgeSyncCause::from_core(C::LibraryUnreadable),
         BridgeSyncCause::LibraryUnreadable
+    );
+    assert_eq!(
+        BridgeSyncCause::from_core(C::ScanNewRestoreCode),
+        BridgeSyncCause::ScanNewRestoreCode
     );
 }
 

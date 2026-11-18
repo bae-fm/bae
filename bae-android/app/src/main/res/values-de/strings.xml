@@ -463,6 +463,7 @@
     <string name="sync_cause_disk_full">Auf diesem Gerät ist der Speicherplatz voll. Gib etwas frei, dann versucht bae es erneut.</string>
     <string name="sync_cause_keys_unreadable">bae konnte seine gespeicherten Schlüssel auf diesem Gerät nicht lesen.</string>
     <string name="sync_cause_library_unreadable">bae konnte die Mediathek auf diesem Gerät nicht lesen.</string>
+    <string name="sync_cause_scan_new_restore_code">Scanne den neuen Wiederherstellungscode, um die Bibliothek auf diesem Gerät wiederherzustellen. Die Wiederherstellung verwirft alle Änderungen, die dieses Gerät noch nicht gesendet hat.</string>
     <string name="pins_at_once">Gleichzeitiges Anheften</string>
     <string name="pinning_empty">Nichts zum Anheften</string>
     <string name="pinning_load_failed">Deine Anheftungen konnten nicht geladen werden.</string>

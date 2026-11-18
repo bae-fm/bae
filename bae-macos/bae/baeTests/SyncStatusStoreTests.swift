@@ -109,6 +109,10 @@ struct SyncStatusStoreTests {
             BridgeSyncCause.libraryUnreadable.macLine
                 == "bae could not read the library on this Mac."
         )
+        #expect(
+            BridgeSyncCause.scanNewRestoreCode.macLine
+                == "Scan the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent."
+        )
     }
 
     @MainActor

@@ -555,9 +555,10 @@ pub enum BridgeSyncStatusWord {
 /// Why a sync state is what it is. Most causes are a catalog message, whose
 /// arguments are the message's own; a cause that names when sync resumes also
 /// carries that moment: the UI formats it in the person's locale and passes
-/// it as the message's last argument. The three causes that name the device
-/// (its disk, its saved keys, its library) are worded by each platform in its
-/// own terms ("this Mac" and the keychain, "this device").
+/// it as the message's last argument. The causes that name the device (its
+/// disk, its saved keys, its library, its restore from a new restore code)
+/// are worded by each platform in its own terms ("this Mac" and the keychain,
+/// "this device").
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeSyncCause {
     Message {
@@ -570,6 +571,10 @@ pub enum BridgeSyncCause {
     DeviceKeysUnreadable,
     /// bae could not read the library on this device.
     LibraryUnreadable,
+    /// Another of the person's devices made a new restore code: scanning it
+    /// restores the library on this device, and the restore discards what
+    /// this device has not sent.
+    ScanNewRestoreCode,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -703,6 +708,7 @@ impl BridgeSyncCause {
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::LibraryUnreadable => return Self::LibraryUnreadable,
+            C::ScanNewRestoreCode => return Self::ScanNewRestoreCode,
             C::ProviderError { provider, detail } => BridgeMessage {
                 key: "core.sync.cause.provider_error".to_string(),
                 args: vec![

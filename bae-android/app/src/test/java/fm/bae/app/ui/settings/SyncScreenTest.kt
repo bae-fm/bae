@@ -167,8 +167,9 @@ class SyncScreenTest {
     }
 
     /**
-     * After another of the person's devices made a new restore code, the status's Scan restore code asks the app to
-     * close the library for the restore screen.
+     * After another of the person's devices made a new restore code, the status says, before the scan, that the restore
+     * discards what this device has not sent, and its Scan restore code asks the app to close the library for the
+     * restore screen.
      */
     @Test
     fun aNewRestoreCodeIsScannedFromTheStatus() {
@@ -192,7 +193,7 @@ class SyncScreenTest {
                         status = BridgeSyncStatusWord.NEW_RESTORE_CODE,
                         statusKey = "core.sync.status.new_restore_code",
                         tone = BridgeSyncTone.WARNING,
-                        cause = null,
+                        cause = BridgeSyncCause.ScanNewRestoreCode,
                         fix = BridgeSyncFix.ScanRestoreCode,
                         lastSynced = null,
                     ),
@@ -212,6 +213,11 @@ class SyncScreenTest {
         }
 
         compose.onNodeWithText("New restore code").assertExists()
+        compose
+            .onNodeWithText(
+                "Scan the new restore code to restore the library on this device. " +
+                    "The restore discards any changes this device has not sent.",
+            ).assertExists()
         compose.onNodeWithText("Scan restore code…").performClick()
 
         assertEquals(1, restores)

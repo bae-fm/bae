@@ -122,7 +122,13 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         },
         unsent: coven::UnsentWork { writes: 1, files: 0 },
     };
-    check(dropbox(keys_replaced), W::NewRestoreCode, T::Warning, None, Some(F::ScanRestoreCode));
+    check(
+        dropbox(keys_replaced),
+        W::NewRestoreCode,
+        T::Warning,
+        Some(C::ScanNewRestoreCode),
+        Some(F::ScanRestoreCode),
+    );
     check(
         by_pass(
             coven::StatusFailure::Storage(coven::StorageFailure::PermissionDenied),

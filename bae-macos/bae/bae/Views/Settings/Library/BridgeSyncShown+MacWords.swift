@@ -10,8 +10,8 @@ extension BridgeSyncShown {
 }
 
 extension BridgeSyncCause {
-    /// Core's words for the cause, but for the three that name the device:
-    /// the Mac words those, with the keychain where the saved keys live.
+    /// Core's words for the cause, but for those that name the device: the
+    /// Mac words those, with the keychain where the saved keys live.
     var macLine: String {
         switch self {
         case .message(let message, let resumesAt):
@@ -34,6 +34,13 @@ extension BridgeSyncCause {
                 localized: "bae could not read the library on this Mac.",
                 comment:
                     "Sync failed: the library's database on this Mac couldn't be read."
+            )
+        case .scanNewRestoreCode:
+            String(
+                localized:
+                    "Scan the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent.",
+                comment:
+                    "Sync status line after another of the person's devices made a new restore code: scanning it restores the library on this Mac, and the restore loses what this Mac had not sent."
             )
         }
     }

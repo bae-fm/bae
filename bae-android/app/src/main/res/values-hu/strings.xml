@@ -461,6 +461,7 @@
     <string name="sync_cause_disk_full">Ennek az eszköznek elfogyott a helye. Szabadíts fel egy keveset, és a bae újra megpróbálja.</string>
     <string name="sync_cause_keys_unreadable">A bae nem tudta elolvasni a mentett kulcsait ezen az eszközön.</string>
     <string name="sync_cause_library_unreadable">A bae nem tudta elolvasni a könyvtárat ezen az eszközön.</string>
+    <string name="sync_cause_scan_new_restore_code">Olvasd be az új helyreállítási kódot, hogy visszaállítsd a könyvtárat ezen az eszközön. A visszaállítás elveti azokat a módosításokat, amelyeket ez az eszköz még nem küldött el.</string>
     <string name="pins_at_once">Egyidejű rögzítések</string>
     <string name="pinning_empty">Nincs mit rögzíteni</string>
     <string name="pinning_load_failed">Nem sikerült betölteni a rögzítéseket.</string>
