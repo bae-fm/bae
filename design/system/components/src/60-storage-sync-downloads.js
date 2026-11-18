@@ -71,7 +71,7 @@
     return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
   }
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
-  // The Storage column, as StorageStateLabel draws it: one chip of one word, with no icon. At rest: Local, Pinned, Cloud. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
+  // The Storage column, as MacStorageChip draws it: one word, with no icon. At rest, Local, Pinned and Cloud are plain words, since every row has one; only the states the person must notice are chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back.
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
     var chip = function (tone, label) { return h(StatusChip, { tone: tone }, label); };
@@ -82,7 +82,7 @@
     if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return chip('danger', 'Error');
     if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return chip('activity', 'Queued');
     if (s === 'uploadBlocked') return chip('warning', 'Waiting');
-    return chip('neutral', { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
+    return h('span', { className: 'bae-m-storeword' }, { local: 'Local', pinned: 'Pinned', cloud: 'Cloud' }[s]);
   }
 
   // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`moveToThisDevice`) that failed shows the notice Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
