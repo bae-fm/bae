@@ -8,11 +8,6 @@ import uniffi.bae_bridge.PlaylistsSubscription
 
 /** The bridge handle's playlist calls: the list of playlists sends nothing, and no test fakes the rest. */
 internal abstract class PlaylistFakeAppHandle : EditionFakeAppHandle() {
-    override suspend fun appendPlaylistEntries(
-        playlist: String,
-        trackIds: List<String>,
-    ): Unit = unfaked("appendPlaylistEntries")
-
     override suspend fun appendPickedToPlaylist(
         playlist: String,
         trackIds: List<String>,

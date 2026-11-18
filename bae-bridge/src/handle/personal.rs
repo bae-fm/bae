@@ -18,7 +18,6 @@ forward! { async this => {
     fn edit_playlist(id: String, name: String, sharing: BridgeSharing) -> () { Ok(this.services.edit_playlist(id.parse().map_err(BridgeError::config)?,&name,sharing.into_core()).await?) }
     fn delete_playlist(id: String) -> () { Ok(this.services.delete_playlist(id.parse().map_err(BridgeError::config)?).await?) }
     fn append_playlist_entry(playlist: String, track: String) -> String { Ok(this.services.append_playlist_entry(playlist.parse().map_err(BridgeError::config)?,track).await?.to_string()) }
-    fn append_playlist_entries(playlist: String, track_ids: Vec<String>) -> () { Ok(this.services.append_playlist_entries(playlist.parse().map_err(BridgeError::config)?,track_ids.into()).await?) }
     /// Add the tracks a person picked to the end of the playlist, in the order their release lists them, in one write. A pick the library lacks fails the write, which adds none of them.
     fn append_picked_to_playlist(playlist: String, track_ids: Vec<String>) -> () { Ok(this.services.append_playlist_entries(playlist.parse().map_err(BridgeError::config)?,crate::from_app::picked(track_ids)).await?) }
     fn remove_playlist_entry(playlist: String, position: String) -> () { Ok(this.services.remove_playlist_entry(playlist.parse().map_err(BridgeError::config)?,position.parse().map_err(BridgeError::config)?).await?) }
