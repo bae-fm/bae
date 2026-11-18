@@ -186,14 +186,15 @@ impl ListLayout {
                 // The card shows the cover the rules chose from one of its
                 // releases: the first of its releases in the list that carries
                 // that cover.
-                let cover_ord = group.cover_art.as_ref().and_then(|cover| {
+                let cover_ord = group.cover_art.as_ref().map(|cover| {
                     found
                         .iter()
                         .filter(|row| row.card == card)
                         .flat_map(|row| row.records.iter().copied())
                         .filter(|&at| list[at].cover_art.as_ref() == Some(cover))
                         .min()
-                        .map(|at| at as u32)
+                        .expect("the rules take a card's cover from one of its releases")
+                        as u32
                 });
                 let splits = group.sections.iter().any(|section| section.album.is_some());
                 CardLayout {
