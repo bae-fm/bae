@@ -316,14 +316,15 @@ extension AlbumGridRevealTests {
         #expect(try inView(stage.flashed?.frame, of: hosted))
     }
 
-    @Test("a reveal of an album the grid has no card of scrolls nowhere")
-    func albumWithNoCardScrollsNowhere() async throws {
+    @Test("a reveal of an album the grid has no card of ends where it is")
+    func albumWithNoCardEndsReveal() async throws {
         let stage = Stage()
         let hosted = try await host(stage, preloaded: false)
         defer { hosted.window.close() }
         let top = try #require(hosted.scrollView).contentView.bounds.origin
 
         hosted.uiStore.navigateToAlbum("no-such-album")
+        try await Wait.until { hosted.uiStore.albumReveal == nil }
         try await hosted.settle()
 
         #expect(

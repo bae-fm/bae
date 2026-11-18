@@ -552,9 +552,11 @@ extension AlbumGridView {
             // The grid shows the reveal once core answers.
             return
         case .noCard:
-            albumGridLogger.debug(
-                "reveal of \(reveal.albumId): no card under the current sort; nothing to scroll to"
+            // Nothing to show, so nothing for the reveal to wait for.
+            albumGridLogger.warning(
+                "No card of album \(reveal.albumId) under the current sort; ending its reveal"
             )
+            uiStore.endAlbumReveal(of: reveal.albumId)
             return
         case .card(let placed):
             card = placed
