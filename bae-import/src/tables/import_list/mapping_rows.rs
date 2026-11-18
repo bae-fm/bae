@@ -189,9 +189,14 @@ runs AS (
                    'artist_standing', json({track_standing}),
                    'position', position_text,
                    'listed_ms', listed_ms,
-                   'kind', file_kind, 'audio', json(audio), 'unit_ms', unit_ms,
-                   'sheet_id', sheet_id, 'index', slice_index, 'number', cue_number,
-                   'title', cue_title, 'start', start_sample, 'end', end_sample)
+                   'unit', CASE WHEN file_kind IS NOT NULL THEN json_object(
+                       'audio', json(audio), 'length_ms', unit_ms,
+                       'source', CASE file_kind
+                           WHEN 'sheet_slice' THEN json_object(
+                               'kind', file_kind, 'sheet_id', sheet_id, 'index', slice_index,
+                               'number', cue_number, 'title', cue_title,
+                               'start', start_sample, 'end', end_sample)
+                           ELSE json_object('kind', file_kind) END) END)
                    ORDER BY position)) AS json
     FROM numbered AS n GROUP BY side_no, run_no
 ),
@@ -262,15 +267,34 @@ struct RowJson {
     /// `bae_lengths_disagree` finds that it differs too much from the audio's
     /// own length.
     listed_ms: Option<u64>,
-    kind: Option<String>,
+    /// The folder's audio unit at the track's position; `None` when the
+    /// folder has fewer units than the draft has tracks.
+    unit: Option<UnitJson>,
+}
+
+/// One audio unit of the folder: the audio file it plays from, the length
+/// it measures, and what part of the file it is.
+#[derive(serde::Deserialize)]
+struct UnitJson {
     audio: Option<AudioJson>,
-    unit_ms: Option<u64>,
-    sheet_id: Option<String>,
-    index: Option<u32>,
-    number: Option<u32>,
-    title: Option<String>,
-    start: Option<u64>,
-    end: Option<u64>,
+    length_ms: u64,
+    source: UnitSourceJson,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum UnitSourceJson {
+    /// The whole file.
+    Standalone,
+    /// One entry a track sheet carves out of the file.
+    SheetSlice {
+        sheet_id: String,
+        index: u32,
+        number: u32,
+        title: Option<String>,
+        start: u64,
+        end: Option<u64>,
+    },
 }
 
 #[derive(serde::Deserialize)]
@@ -559,33 +583,27 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             track.edit.id, track.edit.file
         )));
     }
-    let audio = row.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
-    let length_ms =
-        row.unit_ms.ok_or_else(|| internal("an audio unit has no length".to_owned()))?;
-    let source = match row.kind.as_deref() {
-        Some("standalone") => MappingSource::File(MappingFile {
-            file_id: audio.file_id.clone(),
+    let unit = row.unit.ok_or_else(|| internal("a draft track has no audio unit".to_owned()))?;
+    let audio = unit.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
+    let source = match unit.source {
+        UnitSourceJson::Standalone => MappingSource::File(MappingFile {
             name: audio.file_id.clone(),
+            file_id: audio.file_id,
             size: audio.size,
-            preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path.clone())),
+            preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path)),
             role: MappingRole::Audio,
         }),
-        Some("sheet_slice") => MappingSource::SheetEntry(MappingEntry {
-            sheet_id: row.sheet_id.ok_or_else(|| internal("a slice names no sheet".to_owned()))?,
-            index: row.index.ok_or_else(|| internal("a slice has no index".to_owned()))?,
-            number: row.number.ok_or_else(|| internal("a slice has no number".to_owned()))?,
-            title: row.title,
-            container_id: audio.file_id.clone(),
-            preview_target: bae_track_audio::PreviewTarget::sample_range(
-                audio.path.clone(),
-                row.start.ok_or_else(|| internal("a slice has no start".to_owned()))?,
-                row.end,
-            ),
-        }),
-        other => {
-            return Err(internal(format!(
-                "the statement returned an audio unit of unknown kind {other:?}"
-            )))
+        UnitSourceJson::SheetSlice { sheet_id, index, number, title, start, end } => {
+            MappingSource::SheetEntry(MappingEntry {
+                sheet_id,
+                index,
+                number,
+                title,
+                container_id: audio.file_id,
+                preview_target: bae_track_audio::PreviewTarget::sample_range(
+                    audio.path, start, end,
+                ),
+            })
         }
     };
     let artist_standing =
@@ -597,7 +615,7 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
         source,
         track: track.edit.as_edit(),
         position: row.position,
-        length_ms,
+        length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
         artist_standing,
     })
