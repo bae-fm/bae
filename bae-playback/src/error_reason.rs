@@ -37,7 +37,7 @@ pub enum PlaybackDiagnostic {
 }
 
 /// What kept the audio output from starting, as the person can act on it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AudioOutputProblem {
     /// The audio device was disconnected or is no longer available.
     DeviceUnavailable,
@@ -45,6 +45,17 @@ pub enum AudioOutputProblem {
     UnsupportedFormat,
     /// The AirPlay speaker couldn't be reached or didn't accept the session.
     AirPlayRefused,
+    /// The AirPlay speaker no longer knows this device: it forgot the pairing
+    /// bae kept for it. Casting to `receiver` again pairs anew.
+    AirPlayPairingLost { receiver: NamedReceiver },
+}
+
+/// A receiver as a failure names it: the id a cast to it again takes, and the
+/// name the person knows it by.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NamedReceiver {
+    pub id: String,
+    pub name: String,
 }
 
 impl PlaybackErrorReason {

@@ -151,6 +151,14 @@ async fn each_change_reads_back_as_written() {
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::DeviceUnavailable },
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::UnsupportedFormat },
         PlaybackErrorReason::AudioOutput { problem: AudioOutputProblem::AirPlayRefused },
+        PlaybackErrorReason::AudioOutput {
+            problem: AudioOutputProblem::AirPlayPairingLost {
+                receiver: crate::NamedReceiver {
+                    id: "58:55:CA:1A:2B:3C".to_string(),
+                    name: "Kitchen".to_string(),
+                },
+            },
+        },
         PlaybackErrorReason::internal("decode failed"),
         PlaybackErrorReason::renderer("LOAD refused"),
     ] {
@@ -321,6 +329,31 @@ async fn the_schema_holds_a_wait_on_storage_only_while_loading() {
         "UPDATE playback_now SET waits_on_storage = 1".to_string(),
     ] {
         let statement = sql.clone();
+        let refused = db
+            .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
+            .await
+            .is_err();
+        assert!(refused, "{sql}");
+    }
+}
+
+/// The schema holds a receiver in the failure exactly when the failure is an
+/// AirPlay receiver that no longer accepts this device, and holds both its id
+/// and its name.
+#[tokio::test]
+async fn the_schema_names_a_receiver_only_for_a_lost_pairing() {
+    let (db, _tmp, _tracks) = release_db(1).await;
+    for sql in [
+        "UPDATE playback_now SET failure = 'audio_output', \
+             failure_problem = 'airplay_pairing_lost'",
+        "UPDATE playback_now SET failure = 'audio_output', \
+             failure_problem = 'airplay_pairing_lost', failure_receiver_id = 'AA01'",
+        "UPDATE playback_now SET failure = 'audio_output', \
+             failure_problem = 'airplay_pairing_lost', failure_receiver_name = 'Kitchen'",
+        "UPDATE playback_now SET failure = 'audio_output', failure_problem = 'airplay_refused', \
+             failure_receiver_id = 'AA01', failure_receiver_name = 'Kitchen'",
+    ] {
+        let statement = sql.to_string();
         let refused = db
             .call(move |conn| conn.execute_batch(&statement).map_err(DbError::from))
             .await

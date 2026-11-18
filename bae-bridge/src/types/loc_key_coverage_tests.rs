@@ -773,6 +773,12 @@ fn playback_error_reason_lines() -> Vec<BridgeMessage> {
         BridgePlaybackErrorReason::AudioOutput {
             problem: BridgeAudioOutputProblem::AirPlayRefused,
         },
+        BridgePlaybackErrorReason::AudioOutput {
+            problem: BridgeAudioOutputProblem::AirPlayPairingLost {
+                receiver_id: "58:55:CA:1A:2B:3C".to_string(),
+                receiver_name: name(),
+            },
+        },
     ]
     .iter()
     .map(|reason| {

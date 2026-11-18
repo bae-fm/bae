@@ -5075,10 +5075,11 @@ session does.
 
 **When the output won't start.** Playback that can't start its output — on
 this device or a receiver — stops and says why: the audio device was
-disconnected or isn't available, it can't play the track's sample rate, or the
-AirPlay speaker didn't accept the connection. These are the device's or the
-speaker's doing. Any other failure is bae's own: it shows as an error, is
-reported as a bug, and the log keeps the whole error with its causes. When
+disconnected or isn't available, it can't play the track's sample rate, the
+AirPlay speaker didn't accept the connection, or the AirPlay speaker no longer
+accepts this device. These are the device's or the speaker's doing. Any other
+failure is bae's own: it shows as an error, is reported as a bug, and the log
+keeps the whole error with its causes. When
 this device's output won't open as playback starts, playback says why the
 same way and ends: a later play or queue change fails with that reason.
 
@@ -5413,9 +5414,11 @@ What playback is doing is one device-local row, `playback_now`: the playing
 track, its phase and whether its load waits on storage, the volume, the mute,
 where playback is going (a receiver by its id, name, kind, model, address and
 whether it takes a volume), the preview, and why playback last failed, until
-it next plays or the person dismisses the failure notice. Starting playback
-with the library resets the row to stopped, keeping the volume and mute only
-when it resumes what it played. A track the library no longer holds shows as a
+it next plays or the person dismisses the failure notice. A failure because an
+AirPlay speaker no longer accepts this device names that speaker by its id and
+name, which Pair again… casts to. Starting playback with the library resets
+the row to stopped, keeping the volume and mute only when it resumes what it
+played. A track the library no longer holds shows as a
 removed track (§7.1).
 
 The failure notice shows wherever the person is while the row holds a failure:
@@ -5766,7 +5769,7 @@ All sync (§5), except `admin_operations`.
 | `playback_manual` | Up next entry, in order: the track it plays |
 | `playback_context` | entry of what's playing from: its track, its place in the list's own order and its place in the shuffled order |
 | `playback_state` | the one row of what this device was playing (§7.8) |
-| `playback_now` | the one row of what this device's playback is doing: track and phase, whether a load waits on storage, pause prompt, volume, mute, receiver and its kind, preview, and the last failure (§9.4) |
+| `playback_now` | the one row of what this device's playback is doing: track and phase, whether a load waits on storage, pause prompt, volume, mute, receiver and its kind, preview, and the last failure, with the AirPlay receiver that no longer accepts this device (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on from there, and whether playback started the track's line at a seek (§9.4) |
 | `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 

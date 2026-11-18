@@ -2,6 +2,10 @@ use super::*;
 use crate::AudioError;
 use crate::{AudioOutputProblem, PlaybackErrorReason};
 
+fn kitchen() -> crate::NamedReceiver {
+    crate::NamedReceiver { id: "58:55:CA:1A:2B:3C".to_string(), name: "Kitchen".to_string() }
+}
+
 /// A device's or a speaker's problem reaches the person by name and is no
 /// bug; bae's own failure is a bug and reads as one.
 #[test]
@@ -15,6 +19,10 @@ fn an_audio_output_failure_names_its_reason() {
         (
             AudioError::AirPlayRefused("connection refused".to_string()),
             AudioOutputProblem::AirPlayRefused,
+        ),
+        (
+            AudioError::AirPlayPairingLost(kitchen()),
+            AudioOutputProblem::AirPlayPairingLost { receiver: kitchen() },
         ),
     ] {
         let error = PlaybackError::AudioOutput(error);

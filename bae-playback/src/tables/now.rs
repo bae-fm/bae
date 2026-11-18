@@ -165,13 +165,16 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             let columns = FailureColumns::of(reason);
             sql.execute(
                 "UPDATE playback_now SET failure = ?, failure_problem = ?, failure_detail = ?, \
-                     failure_device = ?, failure_device_state = ?",
+                     failure_device = ?, failure_device_state = ?, \
+                     failure_receiver_id = ?, failure_receiver_name = ?",
                 params![
                     columns.failure,
                     columns.problem,
                     columns.detail,
                     columns.device,
-                    columns.device_state
+                    columns.device_state,
+                    columns.receiver.map(|receiver| &receiver.id),
+                    columns.receiver.map(|receiver| &receiver.name),
                 ],
             )?;
         }
@@ -182,7 +185,8 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
 /// Clears the row's failure, which ends the failure notice.
 const CLEAR_FAILURE: &str = "UPDATE playback_now \
      SET failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-         failure_device = NULL, failure_device_state = NULL \
+         failure_device = NULL, failure_device_state = NULL, \
+         failure_receiver_id = NULL, failure_receiver_name = NULL \
      WHERE failure IS NOT NULL";
 
 /// The person dismissed the failure notice: clear the failure the row holds,
@@ -208,7 +212,8 @@ pub(super) fn reset_playback_now_on(
              remote_end_detail = NULL, preview = 'idle', preview_path = NULL, \
              preview_start_sample = NULL, preview_end_sample = NULL, preview_duration_ms = NULL, \
              failure = NULL, failure_problem = NULL, failure_detail = NULL, \
-             failure_device = NULL, failure_device_state = NULL",
+             failure_device = NULL, failure_device_state = NULL, \
+             failure_receiver_id = NULL, failure_receiver_name = NULL",
         [],
     )?;
     if !keep_level {
@@ -301,6 +306,7 @@ struct FailureColumns<'a> {
     detail: Option<&'a str>,
     device: Option<&'a str>,
     device_state: Option<coven::DeviceState>,
+    receiver: Option<&'a crate::NamedReceiver>,
 }
 
 impl<'a> FailureColumns<'a> {
@@ -311,6 +317,7 @@ impl<'a> FailureColumns<'a> {
             detail: None,
             device: None,
             device_state: None,
+            receiver: None,
         };
         match reason {
             PlaybackErrorReason::SyncDisconnected => columns("sync_disconnected"),
@@ -331,7 +338,14 @@ impl<'a> FailureColumns<'a> {
                     AudioOutputProblem::DeviceUnavailable => "device_unavailable",
                     AudioOutputProblem::UnsupportedFormat => "unsupported_format",
                     AudioOutputProblem::AirPlayRefused => "airplay_refused",
+                    AudioOutputProblem::AirPlayPairingLost { .. } => "airplay_pairing_lost",
                 }),
+                receiver: match problem {
+                    AudioOutputProblem::AirPlayPairingLost { receiver } => Some(receiver),
+                    AudioOutputProblem::DeviceUnavailable
+                    | AudioOutputProblem::UnsupportedFormat
+                    | AudioOutputProblem::AirPlayRefused => None,
+                },
                 ..columns("audio_output")
             },
             PlaybackErrorReason::Diagnostic { failure, detail } => Self {
@@ -470,6 +484,12 @@ fn failure_from_row(row: &Row<'_>) -> rusqlite::Result<Option<PlaybackErrorReaso
                     "device_unavailable" => AudioOutputProblem::DeviceUnavailable,
                     "unsupported_format" => AudioOutputProblem::UnsupportedFormat,
                     "airplay_refused" => AudioOutputProblem::AirPlayRefused,
+                    "airplay_pairing_lost" => AudioOutputProblem::AirPlayPairingLost {
+                        receiver: crate::NamedReceiver {
+                            id: row.get("failure_receiver_id")?,
+                            name: row.get("failure_receiver_name")?,
+                        },
+                    },
                     other => return Err(unknown(row, "failure_problem", other)),
                 },
             }

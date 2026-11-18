@@ -53,17 +53,21 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- Why playback last failed, until it next plays or the person dismisses
     -- the failure notice: a reason the person can act on, the other device a
     -- release's audio is on (by its name, and whether it is still in the
-    -- library, removed, or replaced), or bae's own or the renderer's failure
-    -- with its untranslated detail. Playback writes a later failure over the
-    -- earlier one.
+    -- library, removed, or replaced), the AirPlay receiver that no longer
+    -- accepts this device (its id and name), or bae's own or the renderer's
+    -- failure with its untranslated detail. Playback writes a later failure
+    -- over the earlier one.
     failure         TEXT CHECK (failure IN (
         'sync_disconnected', 'on_other_device', 'original_missing',
         'audio_output', 'internal', 'renderer')),
     failure_problem TEXT CHECK (failure_problem IN (
-        'device_unavailable', 'unsupported_format', 'airplay_refused')),
+        'device_unavailable', 'unsupported_format', 'airplay_refused',
+        'airplay_pairing_lost')),
     failure_detail  TEXT,
     failure_device       TEXT,
     failure_device_state TEXT CHECK (failure_device_state IN ('active', 'removed', 'replaced')),
+    failure_receiver_id   TEXT,
+    failure_receiver_name TEXT,
     CHECK ((state = 'stopped') = (track_id IS NULL)),
     CHECK ((state = 'loading') = (prepared IS NOT NULL)),
     CHECK ((state = 'loading') = (waits_on_storage IS NOT NULL)),
@@ -87,7 +91,9 @@ CREATE TABLE IF NOT EXISTS playback_now (
     CHECK ((failure IS 'audio_output') = (failure_problem IS NOT NULL)),
     CHECK ((failure IS 'internal' OR failure IS 'renderer') = (failure_detail IS NOT NULL)),
     CHECK ((failure IS 'on_other_device') = (failure_device IS NOT NULL)
-        AND (failure IS 'on_other_device') = (failure_device_state IS NOT NULL))
+        AND (failure IS 'on_other_device') = (failure_device_state IS NOT NULL)),
+    CHECK ((failure_problem IS 'airplay_pairing_lost') = (failure_receiver_id IS NOT NULL)
+        AND (failure_problem IS 'airplay_pairing_lost') = (failure_receiver_name IS NOT NULL))
 ) STRICT;
 
 INSERT OR IGNORE INTO playback_now (singleton, state, volume, is_muted, remote, preview)

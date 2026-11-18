@@ -346,7 +346,7 @@ pub fn bridge_error_retry_can_help(error: &BridgeError) -> bool {
 
 /// What kept the audio output from starting. Mirrors
 /// `bae_playback::AudioOutputProblem`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAudioOutputProblem {
     /// The audio device was disconnected or is no longer available.
     DeviceUnavailable,
@@ -354,6 +354,10 @@ pub enum BridgeAudioOutputProblem {
     UnsupportedFormat,
     /// The AirPlay speaker couldn't be reached or didn't accept the session.
     AirPlayRefused,
+    /// The AirPlay speaker no longer knows this device. `receiver_id` is the
+    /// id a cast to it again takes (Pair again…), and `receiver_name` the
+    /// name the person knows it by.
+    AirPlayPairingLost { receiver_id: String, receiver_name: String },
 }
 
 /// The line for the actionable `BridgePlaybackErrorReason` variants, or
@@ -379,6 +383,9 @@ pub fn bridge_playback_error_reason_line(
                 "core.playback.error.audio_format_unsupported"
             }
             BridgeAudioOutputProblem::AirPlayRefused => "core.playback.error.airplay_refused",
+            BridgeAudioOutputProblem::AirPlayPairingLost { .. } => {
+                "core.playback.error.airplay_pairing_lost"
+            }
         }),
         BridgePlaybackErrorReason::Diagnostic { .. } => None,
     }
@@ -531,10 +538,18 @@ impl BridgePlaybackErrorReason {
     }
 }
 
-mirror_enum! {
-    BridgeAudioOutputProblem = bae_playback::AudioOutputProblem,
-    from_core: pub(crate) fn,
-    variants: { DeviceUnavailable, UnsupportedFormat, AirPlayRefused },
+impl BridgeAudioOutputProblem {
+    pub(crate) fn from_core(problem: bae_playback::AudioOutputProblem) -> Self {
+        use bae_playback::AudioOutputProblem;
+        match problem {
+            AudioOutputProblem::DeviceUnavailable => Self::DeviceUnavailable,
+            AudioOutputProblem::UnsupportedFormat => Self::UnsupportedFormat,
+            AudioOutputProblem::AirPlayRefused => Self::AirPlayRefused,
+            AudioOutputProblem::AirPlayPairingLost {
+                receiver: bae_playback::NamedReceiver { id, name },
+            } => Self::AirPlayPairingLost { receiver_id: id, receiver_name: name },
+        }
+    }
 }
 
 #[cfg(desktop)]

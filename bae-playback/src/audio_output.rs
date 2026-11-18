@@ -381,9 +381,9 @@ impl AudioDrain {
     }
 }
 
-/// Why an audio output couldn't start or keep playing. The first three are the
-/// device's or the speaker's doing, which the person can act on; `Unexpected`
-/// is bae's own failure, a bug.
+/// Why an audio output couldn't start or keep playing. All but `Unexpected`
+/// are the device's or the speaker's doing, which the person can act on;
+/// `Unexpected` is bae's own failure, a bug.
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum AudioError {
     /// There is no output device, or the one there was went away: unplugged,
@@ -396,6 +396,10 @@ pub enum AudioError {
     /// The AirPlay speaker couldn't be reached or didn't accept the session.
     #[error("the AirPlay speaker didn't accept the connection: {0}")]
     AirPlayRefused(String),
+    /// The AirPlay speaker no longer knows this device: it refused the
+    /// pairing bae kept for it.
+    #[error("the AirPlay speaker {} no longer accepts this device", .0.name)]
+    AirPlayPairingLost(crate::NamedReceiver),
     /// Anything else: a failure bae didn't expect from its own audio path.
     #[error("{0}")]
     Unexpected(String),

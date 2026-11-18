@@ -421,3 +421,66 @@ async fn a_volume_drag_moves_the_output_and_announces_only_where_it_ends() {
     service.set_volume(crate::Volume::new(0.5).unwrap());
     assert_eq!(announced(&mut progress_rx), vec![0.5]);
 }
+
+/// An AirPlay sink whose receiver refuses the pairing bae kept for it.
+struct PairingLostSink;
+
+impl crate::airplay_output::AirPlaySink for PairingLostSink {
+    fn start(
+        &self,
+        _source: Box<dyn crate::airplay_output::PcmSource>,
+        _wake: crate::airplay_output::PcmWake,
+        _failed: crate::airplay_output::AirPlayFailed,
+    ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
+        Err(AudioError::AirPlayPairingLost(crate::NamedReceiver {
+            id: test_device().id,
+            name: test_device().name,
+        }))
+    }
+}
+
+/// A receiver that no longer accepts this device when a session starts ends
+/// AirPlay on this device, and the failure names that receiver, so the person
+/// can pair with it again. Sabotage: map the refusal to `AirPlayRefused`, and
+/// the failure names no receiver.
+#[tokio::test]
+async fn a_receiver_that_forgot_this_device_ends_airplay_and_names_the_receiver() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    service.slot = PlaybackSlot::Stopped;
+    service
+        .handle_play_on_airplay(crate::service::renderer::AirPlayConnect::new(
+            Box::new(PairingLostSink),
+            test_device(),
+        ))
+        .await;
+    assert!(service.renderer.is_airplay());
+
+    // The next session start on the receiver: an output built over a track.
+    let (_sink, stream, _r) = create_track_stream_pair(44_100, 2);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, TrackFmt::for_test("t"))));
+    let (_tx, rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
+    let mut out = test_output(source, rx);
+    out.stream = Box::new(InvalidatedTestStream::new("the session ended"));
+    service.output = Some(out);
+    service.slot =
+        active_slot(test_prepared_track("t", create_sparse_buffer(1_024)), TrackPhase::Playing);
+    while progress_rx.try_recv().is_ok() {}
+
+    service.follow_output_devices().await;
+
+    assert!(!service.renderer.is_airplay(), "playback comes back to this device");
+    let mut reasons = Vec::new();
+    while let Ok(progress) = progress_rx.try_recv() {
+        if let PlaybackProgress::PlaybackError { reason } = progress {
+            reasons.push(reason);
+        }
+    }
+    assert_eq!(
+        reasons,
+        [crate::PlaybackErrorReason::AudioOutput {
+            problem: crate::AudioOutputProblem::AirPlayPairingLost {
+                receiver: crate::NamedReceiver { id: test_device().id, name: test_device().name },
+            },
+        }]
+    );
+}

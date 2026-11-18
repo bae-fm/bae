@@ -65,6 +65,9 @@ impl PlaybackError {
                     AudioError::DeviceUnavailable => AudioOutputProblem::DeviceUnavailable,
                     AudioError::UnsupportedFormat { .. } => AudioOutputProblem::UnsupportedFormat,
                     AudioError::AirPlayRefused(_) => AudioOutputProblem::AirPlayRefused,
+                    AudioError::AirPlayPairingLost(receiver) => {
+                        AudioOutputProblem::AirPlayPairingLost { receiver: receiver.clone() }
+                    }
                     AudioError::Unexpected(_) => return PlaybackErrorReason::internal(self),
                 };
                 PlaybackErrorReason::AudioOutput { problem }
