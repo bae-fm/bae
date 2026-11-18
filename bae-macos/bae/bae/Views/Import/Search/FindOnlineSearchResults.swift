@@ -53,8 +53,7 @@ struct FindOnlineSearchResults: View {
         )
     }
 
-    /// Shown only once no source is looking or failed and none named a
-    /// release, which includes a search that asked no source.
+    /// Shown only once every source has answered with nothing.
     @ViewBuilder
     private var emptyLine: some View {
         if search.status == .noMatches {

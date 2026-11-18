@@ -69,10 +69,12 @@ pub enum SourceSearch {
 pub enum SearchStatus {
     /// A source is still looking.
     Searching,
-    /// No source is looking and none failed, and a source named a release.
+    /// No source is looking and none failed, and either a source named a
+    /// release or bae asked no source.
     Found,
-    /// No source is looking, none failed, and no source named a release. A
-    /// search that asked no source, the library asking none, found nothing.
+    /// No source is looking and none failed, a source answered, and no
+    /// source named a release. A source that was not asked is not an empty
+    /// answer.
     NoMatches,
     /// No source is looking and at least one failed, whatever the others
     /// found.
