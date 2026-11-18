@@ -297,7 +297,7 @@ pub(super) fn categorize_files_from_tree(
         if *role != ProposedRole::Cue {
             continue;
         }
-        match reads.sheet(file) {
+        match reads.sheet(file)? {
             Some(sheet) => {
                 sheets.insert(index, sheet);
             }

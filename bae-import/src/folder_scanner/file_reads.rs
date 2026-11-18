@@ -461,20 +461,16 @@ impl FileReads {
     }
 
     /// The sheet the CUE file `file` parses to — what is known, or a parse of
-    /// it now — or `None` when it does not parse.
-    pub(super) fn sheet(&self, file: &ScannedFile) -> Option<CueSheet> {
+    /// it now — or `None` when it does not parse. `Err` is a failure to take
+    /// a place of the budget, never a sheet that does not parse.
+    pub(super) fn sheet(&self, file: &ScannedFile) -> Result<Option<CueSheet>, FolderScanError> {
         if let Some(sheet) = self.with_known(|known| match known.files.get(&file.version) {
             Some(FileRead::Sheet(sheet)) => Some(sheet.clone()),
             _ => None,
         }) {
-            return sheet;
+            return Ok(sheet);
         }
-        let sheet = match self
-            .place()
-            .map_err(|error| std::io::Error::other(error.to_string()))
-            .map_err(crate::cue_sheet::CueSheetError::Io)
-            .and_then(|place| parse_cue_sheet(&file.version.path, place))
-        {
+        let sheet = match parse_cue_sheet(&file.version.path, self.place()?) {
             Ok(sheet) => Some(sheet),
             Err(error) => {
                 info!("CUE {:?} does not parse: {error}", file.version.path);
@@ -484,7 +480,7 @@ impl FileReads {
         self.with_known(|known| {
             known.files.insert(file.version.clone(), FileRead::Sheet(sheet.clone()))
         });
-        sheet
+        Ok(sheet)
     }
 
     /// What the tags of a folder that can't be imported call the release,

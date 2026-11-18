@@ -332,7 +332,8 @@ async fn a_cue_sheet_read_waits_for_a_place() {
     .unwrap();
     let file = scanned(&sheet);
 
-    let parsed = read_after_waiting_for_the_only_place(move |reads| reads.sheet(&file)).await;
+    let parsed =
+        read_after_waiting_for_the_only_place(move |reads| reads.sheet(&file).unwrap()).await;
 
     assert!(parsed.is_some(), "the sheet parses");
 }
