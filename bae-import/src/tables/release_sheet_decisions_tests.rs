@@ -31,3 +31,35 @@ fn the_sheet_decision_tables_are_the_part_s_synced_tables() {
         assert_eq!(table.get_key_columns(), keys);
     }
 }
+
+/// A decision that names a path none of the release's files has fails the
+/// write, whether the path is the sheet's or the audio a binding names.
+#[tokio::test]
+async fn a_decision_naming_a_path_outside_the_release_fails_its_write() {
+    use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
+    use std::collections::HashMap;
+
+    let (db, _dir) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db);
+
+    let mut disc = CandidateFileEdits::default();
+    disc.sheet_discs.set("CD2.cue".to_string(), SheetDisc::Disc { number: 1 });
+    let error = tables.store_release_sheet_decisions_for_test(disc, HashMap::new()).await;
+    assert!(
+        matches!(&error, Err(bae_store::DbError::Unreadable { stored, .. }) if stored.contains("CD2.cue")),
+        "{error:?}"
+    );
+
+    let mut binding = CandidateFileEdits::default();
+    binding.sheet_bindings.set_reference(
+        "Album.cue".to_string(),
+        "Album.wav".to_string(),
+        UserSheetBinding::Describes { file_id: "Album.flac".to_string() },
+    );
+    let sheet_only = HashMap::from([("Album.cue".to_string(), "sheet-id".to_string())]);
+    let error = tables.store_release_sheet_decisions_for_test(binding, sheet_only).await;
+    assert!(
+        matches!(&error, Err(bae_store::DbError::Unreadable { stored, .. }) if stored.contains("Album.flac")),
+        "{error:?}"
+    );
+}

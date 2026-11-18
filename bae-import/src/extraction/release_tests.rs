@@ -424,7 +424,7 @@ async fn folder_and_library_disc_ids_with_decisions(
         records.insert_file_for_test(&row, &file.version.path).await.unwrap();
     }
     let tables = crate::tables::ImportTables::new(db.clone());
-    tables.store_release_sheet_decisions_for_test(decided, file_ids).await;
+    tables.store_release_sheet_decisions_for_test(decided, file_ids).await.unwrap();
     let identity = resolve_release_identity(
         &tables,
         &records,

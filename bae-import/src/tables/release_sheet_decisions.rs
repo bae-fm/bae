@@ -30,18 +30,22 @@ use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
 
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
-/// the id of its `release_files` row). When a decision names a path that is
-/// not one of the release's files, the scan reads it as describing nothing,
-/// so `store_on` writes no row for it.
+/// the id of its `release_files` row). A candidate's decisions name only its
+/// own files, and the release holds every one of them, so a decision that
+/// names any other path is a damaged row, and `store_on` fails the commit.
 pub(super) fn store_on(
     sql: &CovenWrite<'_>,
     decided: &CandidateFileEdits,
     file_ids: &HashMap<&str, &str>,
 ) -> Result<(), DbError> {
+    let file_id = |path: &str| {
+        file_ids
+            .get(path)
+            .copied()
+            .ok_or_else(|| DbError::unreadable("a candidate's sheet decisions", path))
+    };
     for (sheet, disc) in decided.sheet_discs.iter() {
-        let Some(sheet_file_id) = file_ids.get(sheet) else {
-            continue;
-        };
+        let sheet_file_id = file_id(sheet)?;
         let (kind, number) = disc.columns();
         sql.execute(
             "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) VALUES (?, ?, ?)",
@@ -49,17 +53,9 @@ pub(super) fn store_on(
         )?;
     }
     for (sheet, references) in decided.sheet_bindings.iter() {
-        let Some(sheet_file_id) = file_ids.get(sheet) else {
-            continue;
-        };
+        let sheet_file_id = file_id(sheet)?;
         for (reference, decision) in references.iter() {
-            let audio_file_id = match decision.stored_file() {
-                Some(file_id) => match file_ids.get(file_id) {
-                    Some(audio_file_id) => Some(*audio_file_id),
-                    None => continue,
-                },
-                None => None,
-            };
+            let audio_file_id = decision.stored_file().map(file_id).transpose()?;
             sql.execute(
                 "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
                  VALUES (?, ?, ?)",
@@ -144,7 +140,7 @@ impl ImportTables {
         &self,
         decided: CandidateFileEdits,
         file_ids: HashMap<String, String>,
-    ) {
+    ) -> Result<(), DbError> {
         self.store
             .write(move |sql| {
                 let file_ids: HashMap<&str, &str> =
@@ -152,7 +148,6 @@ impl ImportTables {
                 store_on(&sql, &decided, &file_ids)
             })
             .await
-            .unwrap();
     }
 }
 
