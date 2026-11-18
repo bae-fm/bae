@@ -1,7 +1,9 @@
-//! The long lists' reads on [`AppServices`]: each list's window, count and
-//! position are live reads of their own, built the same way for every list,
-//! and each list's view (`bae_views::list_view`) opens its window and
-//! position from the reads its builder here gives it.
+//! The library views' long lists' reads on [`AppServices`], and how every
+//! list's reads are built: each list's window, count and position are live
+//! reads of their own, and each list's view (`bae_views::list_view`) opens
+//! its window and position from the reads its builder gives it. The queue's,
+//! the download queue's and the Storage Manager's builders are with their
+//! domains' other reads.
 
 use super::*;
 use bae_store::list_windows::OrderKey;
@@ -139,62 +141,12 @@ impl AppServices {
             },
         )
     }
-
-    /// The reads of the tracks after the playing one, in the context lane's
-    /// order, or in its shuffled order when `shuffled` is true.
-    pub fn upcoming_list(&self, shuffled: bool) -> ListReads {
-        list_reads(
-            self,
-            move |services, window| services.subscribe_upcoming_window(shuffled, window),
-            move |services, key| services.subscribe_upcoming_position(shuffled, key),
-            move |services, position| async move {
-                services.inner.manager.upcoming_key_at(shuffled, position).await
-            },
-        )
-    }
-
-    /// The reads of the download queue, in the order queued.
-    pub fn download_list(&self) -> ListReads {
-        list_reads(
-            self,
-            |services, window| services.subscribe_download_window(window),
-            |services, key| services.subscribe_download_position(key),
-            |services, position| async move { services.inner.manager.download_key_at(position).await },
-        )
-    }
-
-    /// The reads of the Storage Manager list under `sort`, `filter` and the
-    /// search text `search`.
-    pub fn storage_list(
-        &self,
-        sort: bae_views::StorageSortCriterion,
-        filter: bae_views::StorageFilter,
-        search: String,
-    ) -> ListReads {
-        let (window_sort, window_search) = (sort, search.clone());
-        let (position_sort, position_search) = (sort, search.clone());
-        list_reads(
-            self,
-            move |services, window| {
-                services.subscribe_storage_window(&window_sort, filter, &window_search, window)
-            },
-            move |services, key| {
-                services.subscribe_storage_position(&position_sort, filter, &position_search, key)
-            },
-            move |services, position| {
-                let search = search.clone();
-                async move {
-                    services.inner.views.storage_key_at(&sort, filter, &search, position).await
-                }
-            },
-        )
-    }
 }
 
 /// The reads one list's view opens: `window` opens its live window, from
 /// `services`; `position` opens the live position of a key; and `key_at`
 /// reads the key at a position once.
-fn list_reads<KeyAt>(
+pub(super) fn list_reads<KeyAt>(
     services: &AppServices,
     window: impl Fn(&AppServices, ListWindow) -> bae_views::LiveListWindow + Send + Sync + 'static,
     position: impl Fn(&AppServices, OrderKey) -> bae_views::LiveListPosition + Send + Sync + 'static,

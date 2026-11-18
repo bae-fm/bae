@@ -8,6 +8,16 @@ use super::*;
 use bae_library::LibraryError;
 
 impl AppServices {
+    /// The reads of the download queue, in the order queued.
+    pub fn download_list(&self) -> bae_views::list_view::ListReads {
+        super::list_reads::list_reads(
+            self,
+            |services, window| services.subscribe_download_window(window),
+            |services, key| services.subscribe_download_position(key),
+            |services, position| async move { services.inner.manager.download_key_at(position).await },
+        )
+    }
+
     /// One window of the download queue as the Downloads pane draws it: the
     /// entries from one on in the order the person queued them, each joined
     /// with its release. Coven reruns the window's query when a write adds,

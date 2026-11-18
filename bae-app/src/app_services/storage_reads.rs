@@ -5,6 +5,33 @@
 use super::*;
 
 impl AppServices {
+    /// The reads of the Storage Manager list under `sort`, `filter` and the
+    /// search text `search`.
+    pub fn storage_list(
+        &self,
+        sort: bae_views::StorageSortCriterion,
+        filter: bae_views::StorageFilter,
+        search: String,
+    ) -> bae_views::list_view::ListReads {
+        let (window_sort, window_search) = (sort, search.clone());
+        let (position_sort, position_search) = (sort, search.clone());
+        super::list_reads::list_reads(
+            self,
+            move |services, window| {
+                services.subscribe_storage_window(&window_sort, filter, &window_search, window)
+            },
+            move |services, key| {
+                services.subscribe_storage_position(&position_sort, filter, &position_search, key)
+            },
+            move |services, position| {
+                let search = search.clone();
+                async move {
+                    services.inner.views.storage_key_at(&sort, filter, &search, position).await
+                }
+            },
+        )
+    }
+
     /// One window of the Storage Manager list under `sort`, `filter` and the
     /// search text `search`.
     pub fn subscribe_storage_window(

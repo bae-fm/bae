@@ -26,6 +26,19 @@ impl AppServices {
         manager.values_until_closed(manager.subscribe_session_up_next(limit))
     }
 
+    /// The reads of the tracks after the playing one, in the context lane's
+    /// order, or in its shuffled order when `shuffled` is true.
+    pub fn upcoming_list(&self, shuffled: bool) -> bae_views::list_view::ListReads {
+        super::list_reads::list_reads(
+            self,
+            move |services, window| services.subscribe_upcoming_window(shuffled, window),
+            move |services, key| services.subscribe_upcoming_position(shuffled, key),
+            move |services, position| async move {
+                services.inner.manager.upcoming_key_at(shuffled, position).await
+            },
+        )
+    }
+
     /// One window of the tracks after the playing one, a range of the context
     /// lane's position order, or of its shuffled order when `shuffled` is
     /// true. Coven reruns it when a write adds, removes or moves a track in
