@@ -172,14 +172,6 @@ impl ImportServiceHandle {
         Ok(self.services.tables.import_list_hidden_by(before, after, selected).await?)
     }
 
-    /// The key of every group header Found holds: what folding every group
-    /// folds.
-    pub async fn group_keys(
-        &self,
-    ) -> Result<Vec<crate::FolderReleaseDecisionKey>, crate::ImportError> {
-        Ok(self.services.tables.import_group_keys().await?)
-    }
-
     /// The view that reveals the candidate at `candidate_key`: its tab, with
     /// the filters cleared and its group opened. `None` when no tab lists
     /// such a candidate.

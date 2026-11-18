@@ -490,10 +490,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     let mut query = tables.subscribe_import_count(list.clone());
     let before = query.next_inline().await.unwrap().unwrap();
     assert_eq!(before.rows, whole(&tables, &list).await.len() as u64);
-    let folded = ImportListRequest {
-        folded: tables.import_group_keys().await.unwrap().into_iter().collect(),
-        ..list.clone()
-    };
+    let folded = list.clone().folding_all();
     let hidden = tables.read_import_list_for_test(folded.clone(), Vec::new()).await.unwrap().count;
     assert!(
         hidden.rows < before.rows,

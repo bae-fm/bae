@@ -7,6 +7,7 @@ use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
 use crate::ImportListView;
+use crate::{FolderReleaseDecisionKey, ImportListFolds};
 use bae_catalogs::search::MetadataResult;
 
 impl Library {
@@ -63,6 +64,57 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     assert_eq!(
         sequence(&lib.read(&list).await),
         ["group Group", "candidate Group/Release 1", "candidate Group/Release 2"]
+    );
+}
+
+/// A group folded in the request that a rescan takes out of the list and
+/// brings back under the same folder comes back folded: the request names
+/// the group by its folder, not by a row the rescan replaced.
+#[tokio::test]
+async fn a_folded_group_a_rescan_brings_back_comes_back_folded() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2") + lib.scan("Loose")).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending)).folding(lib.group_key("Group"));
+    assert_eq!(sequence(&lib.read(&list).await), ["group Group", "candidate Loose"]);
+
+    lib.run(lib.unscan("Group/Release 1")).await;
+    lib.run(lib.unscan("Group/Release 2")).await;
+    assert_eq!(sequence(&lib.read(&list).await), ["candidate Loose"], "the group left the list");
+
+    lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2")).await;
+    assert_eq!(
+        sequence(&lib.read(&list).await),
+        ["group Group", "candidate Loose"],
+        "the group came back folded"
+    );
+}
+
+/// Folding every group folds the groups Found gains later too, and a group
+/// the person opens after that stays open.
+#[tokio::test]
+async fn folding_every_group_folds_the_groups_found_gains_later() {
+    let lib = Library::new().await;
+    lib.run(lib.scan("Box/Release 1") + lib.scan("Box/Release 2") + lib.scan("Loose")).await;
+    let list = ImportListRequest::of(view(TriageTab::Pending)).folding_all();
+    assert_eq!(sequence(&lib.read(&list).await), ["group Box", "candidate Loose"]);
+
+    lib.run(lib.scan("Crate/Release 1") + lib.scan("Crate/Release 2")).await;
+    assert_eq!(
+        sequence(&lib.read(&list).await),
+        ["group Box", "group Crate", "candidate Loose"],
+        "the new group arrives folded"
+    );
+
+    let list = list.unfolding(&lib.group_key("Crate"));
+    assert_eq!(
+        sequence(&lib.read(&list).await),
+        [
+            "group Box",
+            "group Crate",
+            "candidate Crate/Release 1",
+            "candidate Crate/Release 2",
+            "candidate Loose"
+        ]
     );
 }
 
@@ -674,6 +726,53 @@ async fn a_search_reads_the_rows_its_index_finds() {
             !plan.iter().any(|step| step.contains("(tab=?)")),
             "{tab:?} reads its tab: {plan:?}"
         );
+    }
+}
+
+/// The groups a request folds or leaves open, `count` of them, none of them
+/// a group the library holds but the first, `Box`.
+fn many_groups(
+    lib: &Library,
+    count: usize,
+) -> std::collections::BTreeSet<FolderReleaseDecisionKey> {
+    std::iter::once(lib.group_key("Box"))
+        .chain((1..count).map(|n| lib.group_key(&format!("Folder {n}"))))
+        .collect()
+}
+
+/// A Found window under folds naming 4,000 groups reads them as one list
+/// subquery off the JSON array, beside the members index, whether the folds
+/// name the groups folded or the groups left open: never a scan of the array
+/// for each row, and no sort.
+#[tokio::test]
+async fn a_window_reads_four_thousand_folds_as_one_list() {
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    lib.run(lib.scan("Box/1") + lib.scan("Other/1") + lib.scan("Loose")).await;
+    let groups = many_groups(&lib, 4_000);
+    for folds in [ImportListFolds::Only(groups.clone()), ImportListFolds::AllBut(groups)] {
+        let list = ImportListRequest {
+            folds: folds.clone(),
+            ..ImportListRequest::of(ordered(TriageTab::Pending, ImportListOrder::NewestFirst))
+        };
+        let plans = tables.import_list_window_plans(list).await.unwrap().concat();
+        let (by_offset, _) = plans.split_first().expect("a part is read by its offset");
+        let kind = match folds {
+            ImportListFolds::Only(_) => "only",
+            ImportListFolds::AllBut(_) => "all but",
+        };
+        assert!(
+            by_offset.iter().any(|step| step.contains("import_list_newest_first_members ")),
+            "{kind}: {by_offset:?}"
+        );
+        for plan in &plans {
+            assert!(plan.iter().any(|step| step.contains("LIST SUBQUERY")), "{kind}: {plan:?}");
+            assert!(
+                !plan.iter().any(|step| step.contains("CORRELATED")),
+                "{kind} reads the folds for each row: {plan:?}"
+            );
+            assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{kind}: {plan:?}");
+        }
     }
 }
 

@@ -29,9 +29,6 @@ extension ImportListHandle {
             @escaping @Sendable (
                 BridgeImportListRequest, BridgeImportListRequest, [Data]
             ) async throws -> [Data] = { _, _, _ in [] },
-        groupKeys:
-            @escaping @Sendable () async throws
-            -> [BridgeFolderReleaseDecisionKey] = { [] },
         locateCandidate:
             @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
@@ -52,7 +49,6 @@ extension ImportListHandle {
             selection: fixed.selection,
             viewChange: viewChange,
             hiddenByFold: hiddenByFold,
-            groupKeys: groupKeys,
             locateCandidate: locateCandidate,
             candidatePosition: candidatePosition,
             firstIdentifyingCandidate: firstIdentifyingCandidate
@@ -296,8 +292,7 @@ struct ImportListSlotTests {
                     hiddenByFold: { _, _, selected in
                         sent.record(Set(selected))
                         return [second]
-                    },
-                    groupKeys: { [boxGroup] }
+                    }
                 )
             }
         )
@@ -313,8 +308,8 @@ struct ImportListSlotTests {
     }
 
     /// Folds are the slot's: each fold opens the list under a request that
-    /// holds the folded groups, and folding every group folds the groups core
-    /// names.
+    /// holds the folded groups, and folding every group folds every group,
+    /// the ones Found gains later included.
     @Test("folding a group reads the list under the groups it folds")
     func foldingReadsTheListUnderItsFolds() async throws {
         let folds = CallLog<String>()
@@ -325,20 +320,9 @@ struct ImportListSlotTests {
             makeHandle: {
                 .stub(
                     hiddenByFold: { _, after, _ in
-                        folds.record(
-                            after.folded
-                                .map {
-                                    String(
-                                        bytes: $0.relativeFolder,
-                                        encoding: .utf8
-                                    )
-                                        ?? "not UTF-8"
-                                }
-                                .joined(separator: ",")
-                        )
+                        folds.record(described(after.folds))
                         return []
-                    },
-                    groupKeys: { [boxGroup] }
+                    }
                 )
             }
         )
@@ -352,8 +336,21 @@ struct ImportListSlotTests {
         slot.setAllGroupsExpanded(false)
         try await Wait.until { folds.all.count == 3 }
 
-        #expect(folds.all == ["Box", "", "Box"])
+        #expect(folds.all == ["only Box", "only ", "all but "])
     }
+}
+
+/// The folds as a test reads them: which kind, and the folders it names.
+private func described(_ folds: BridgeImportListFolds) -> String {
+    let (kind, groups) =
+        switch folds {
+        case .only(let groups): ("only", groups)
+        case .allBut(let groups): ("all but", groups)
+        }
+    let folders = groups.map {
+        String(bytes: $0.relativeFolder, encoding: .utf8) ?? "not UTF-8"
+    }
+    return "\(kind) \(folders.joined(separator: ","))"
 }
 
 /// The group a test folds.

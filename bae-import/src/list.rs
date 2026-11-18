@@ -94,21 +94,37 @@ pub enum ImportListOrder {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ImportListRequest {
     pub view: ImportListView,
-    /// The groups the list folds shut: their members are not in it. A group
-    /// that leaves the list and comes back under the same folder comes back
-    /// folded.
-    pub folded: std::collections::BTreeSet<FolderReleaseDecisionKey>,
+    /// Which groups the list folds shut: their members are not in it.
+    pub folds: ImportListFolds,
+}
+
+/// Which of Found's groups a list folds shut. A group that leaves the list
+/// and comes back under the same folder comes back as folded as it was.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportListFolds {
+    /// The list folds these groups shut and leaves every other group open.
+    Only(std::collections::BTreeSet<FolderReleaseDecisionKey>),
+    /// The list folds every group shut but these, the groups Found gains
+    /// later included: what folding every group leaves.
+    AllBut(std::collections::BTreeSet<FolderReleaseDecisionKey>),
+}
+
+impl Default for ImportListFolds {
+    /// Every group open.
+    fn default() -> Self {
+        Self::Only(Default::default())
+    }
 }
 
 impl From<ImportListView> for ImportListRequest {
-    /// The request showing `view` with no group folded.
+    /// The request showing `view` with every group open.
     fn from(view: ImportListView) -> Self {
-        Self { view, folded: Default::default() }
+        Self { view, folds: Default::default() }
     }
 }
 
 impl ImportListRequest {
-    /// The request showing `view` with no group folded.
+    /// The request showing `view` with every group open.
     pub fn of(view: ImportListView) -> Self {
         view.into()
     }
@@ -132,12 +148,6 @@ impl ImportListRequest {
     /// Whether the text filter or Found's filter entry narrows the tab.
     pub(crate) fn narrows(&self) -> bool {
         self.filters_text() || self.entry().is_some()
-    }
-
-    /// Whether the list shows every row of its tab: nothing narrows it and no
-    /// group is folded shut.
-    pub(crate) fn keeps_all(&self) -> bool {
-        !self.narrows() && self.folded.is_empty()
     }
 }
 

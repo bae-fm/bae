@@ -438,13 +438,24 @@ impl crate::types::BridgeImportListRequest {
     pub(crate) fn into_core(
         self,
     ) -> Result<bae_import::ImportListRequest, crate::types::BridgeError> {
-        let Self { view, folded } = self;
-        Ok(bae_import::ImportListRequest {
-            view: view.into_core(),
-            folded: folded
+        let Self { view, folds } = self;
+        Ok(bae_import::ImportListRequest { view: view.into_core(), folds: folds.into_core()? })
+    }
+}
+
+impl crate::types::BridgeImportListFolds {
+    /// The folds the app names. Only a group's bytes no folder here has,
+    /// which core never gave the app, fail.
+    fn into_core(self) -> Result<bae_import::ImportListFolds, crate::types::BridgeError> {
+        let groups = |groups: Vec<crate::types::BridgeFolderReleaseDecisionKey>| {
+            groups
                 .into_iter()
                 .map(crate::types::BridgeFolderReleaseDecisionKey::into_core)
-                .collect::<Result<_, _>>()?,
+                .collect::<Result<_, _>>()
+        };
+        Ok(match self {
+            Self::Only { groups: named } => bae_import::ImportListFolds::Only(groups(named)?),
+            Self::AllBut { groups: named } => bae_import::ImportListFolds::AllBut(groups(named)?),
         })
     }
 }

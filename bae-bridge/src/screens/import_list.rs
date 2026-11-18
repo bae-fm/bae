@@ -185,25 +185,6 @@ impl ImportList {
             .await
     }
 
-    /// The key of every group header Found holds: what folding every group
-    /// folds.
-    pub async fn group_keys(
-        self: std::sync::Arc<Self>,
-    ) -> Result<Vec<crate::types::BridgeFolderReleaseDecisionKey>, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportList.group_keys", move || async move {
-                Ok(self
-                    .services
-                    .import_group_keys()
-                    .await?
-                    .into_iter()
-                    .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
-                    .collect())
-            })
-            .await
-    }
-
     /// The view that reveals the candidate at its current placement: its tab,
     /// with the filters cleared and its group opened; absent when no tab
     /// lists such a candidate.

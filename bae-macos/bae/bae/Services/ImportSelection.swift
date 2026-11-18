@@ -328,7 +328,7 @@ enum ImportListRequests {
             pendingFilter: .all,
             order: .newestFirst
         ),
-        folded: []
+        folds: .allOpen
     )
 }
 

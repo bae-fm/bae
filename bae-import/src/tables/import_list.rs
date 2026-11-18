@@ -46,7 +46,7 @@ mod summary;
 mod window;
 
 use super::*;
-use crate::list::ImportListRequest;
+use crate::list::{ImportListFolds, ImportListRequest};
 use crate::{PendingFilter, TriageTab};
 use order::Items;
 

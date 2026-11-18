@@ -33,8 +33,19 @@ pub struct BridgeImportListView {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportListRequest {
     pub view: BridgeImportListView,
-    /// The groups the list folds shut: their members are not in it.
-    pub folded: Vec<BridgeFolderReleaseDecisionKey>,
+    /// Which groups the list folds shut: their members are not in it.
+    pub folds: BridgeImportListFolds,
+}
+
+/// Which of Found's groups a list folds shut. Mirrors
+/// `bae_import::ImportListFolds`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportListFolds {
+    /// The list folds these groups shut and leaves every other group open.
+    Only { groups: Vec<BridgeFolderReleaseDecisionKey> },
+    /// The list folds every group shut but these, the groups Found gains
+    /// later included: what folding every group leaves.
+    AllBut { groups: Vec<BridgeFolderReleaseDecisionKey> },
 }
 
 /// One entry of Found's filter menu: which of Found's rows the list shows.

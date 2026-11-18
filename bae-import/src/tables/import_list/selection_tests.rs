@@ -171,9 +171,7 @@ async fn folding_a_group_answers_the_selected_rows_it_hid() {
         .await
         .unwrap()
         .is_empty());
-    let every_group = tables.import_group_keys().await.unwrap();
-    let all_folded =
-        ImportListRequest { folded: every_group.into_iter().collect(), ..list.clone() };
+    let all_folded = list.clone().folding_all();
     assert_eq!(
         tables.import_list_hidden_by(list, all_folded, selected).await.unwrap(),
         [lib.key("Box/1")]

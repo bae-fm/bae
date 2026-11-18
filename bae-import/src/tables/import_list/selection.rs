@@ -204,23 +204,6 @@ pub(super) fn hidden_by(
     )
 }
 
-/// The key of every Found group's header: what folding every group folds.
-pub(super) fn group_keys(
-    sql: &impl coven::SqlRead,
-) -> Result<Vec<crate::FolderReleaseDecisionKey>, DbError> {
-    Ok(sql.query(
-        "SELECT watched_folder_path, key FROM import_list_placement \
-         WHERE tab = 'pending' AND item = 'group'",
-        [],
-        |row| {
-            Ok(crate::FolderReleaseDecisionKey {
-                watched_folder_path: path_column::get(row, 0)?,
-                relative_folder: row.get(1)?,
-            })
-        },
-    )?)
-}
-
 impl ImportTables {
     /// The rows at `keys` the list `request` shows, in its order: what a bulk
     /// action runs over. When the caller names a command in `acting`, the
@@ -285,12 +268,6 @@ impl ImportTables {
         selected: Vec<CandidateKey>,
     ) -> Result<Vec<CandidateKey>, DbError> {
         self.store.read(move |sql| hidden_by(&sql, &before, &after, &selected)).await
-    }
-
-    /// The key of every group header Found holds: the folds when the surface
-    /// folds every group.
-    pub async fn import_group_keys(&self) -> Result<Vec<crate::FolderReleaseDecisionKey>, DbError> {
-        self.store.read(move |sql| group_keys(&sql)).await
     }
 }
 

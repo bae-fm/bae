@@ -338,14 +338,34 @@ pub(crate) fn view(tab: TriageTab) -> ImportListView {
 impl ImportListRequest {
     /// This request with `group` folded shut.
     pub(crate) fn folding(mut self, group: FolderReleaseDecisionKey) -> Self {
-        self.folded.insert(group);
+        match &mut self.folds {
+            ImportListFolds::Only(folded) => {
+                folded.insert(group);
+            }
+            ImportListFolds::AllBut(open) => {
+                open.remove(&group);
+            }
+        }
         self
     }
 
     /// This request with `group` open.
     pub(crate) fn unfolding(mut self, group: &FolderReleaseDecisionKey) -> Self {
-        self.folded.remove(group);
+        match &mut self.folds {
+            ImportListFolds::Only(folded) => {
+                folded.remove(group);
+            }
+            ImportListFolds::AllBut(open) => {
+                open.insert(group.clone());
+            }
+        }
         self
+    }
+
+    /// This request with every group folded shut, those Found gains later
+    /// included.
+    pub(crate) fn folding_all(self) -> Self {
+        Self { folds: ImportListFolds::AllBut(Default::default()), ..self }
     }
 }
 

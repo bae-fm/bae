@@ -159,10 +159,9 @@ pub(super) fn search_counts(request: &ImportListRequest) -> String {
     )
 }
 
-/// The statement counting how many items a list that folds a group or narrows
-/// its tab holds: the releases its filter entry keeps, less those under the
-/// groups it folds shut, plus the header of each group holding a kept
-/// release.
+/// The statement counting how many items a list that searches for nothing
+/// holds: the releases its filter entry keeps, less those under the groups it
+/// folds shut, plus the header of each group holding a kept release.
 fn kept_items(request: &ImportListRequest) -> String {
     let pending = request.view.tab == TriageTab::Pending;
     let kept = match request.entry_sql("p") {
@@ -207,10 +206,7 @@ fn listed(request: &ImportListRequest) -> String {
     if request.filters_text() {
         return search_counts(request);
     }
-    let items = match request.keeps_all() {
-        true => "SELECT COUNT(*) FROM import_list_placement WHERE tab = :tab".to_string(),
-        false => kept_items(request),
-    };
+    let items = kept_items(request);
     // Without a search, only Found's filter entry narrows the list.
     let shown = match request.entry_sql("p") {
         Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),

@@ -4,15 +4,16 @@
 //! groups it folds shut. Each fragment is a subquery over the placement
 //! (`import_list_placement`) built from the request: it tests the filter entry
 //! with the bound `:filter`, the text with `bae_search_pattern(:filter_text)`,
-//! and the folds with `:folded`, one JSON array tested only as
-//! `(root, key) IN (SELECT ... FROM json_each(:folded))`, which keeps Found's
-//! merge of its indexes. A request that narrows nothing and folds nothing
-//! leaves the tests out of the statement, so no row is tested.
+//! and the folds with `:folded`, one JSON array of the groups the folds name,
+//! tested only as `(root, key) IN (SELECT ... FROM json_each(:folded))`, or
+//! `NOT IN` for folds that name the groups left open, which keeps Found's
+//! merge of its indexes. A request that narrows nothing leaves the filters'
+//! tests out of the statement.
 
 use super::*;
 
-/// The statement selecting the keys of the folded groups that the parameter
-/// `folded` holds, as the placement holds them.
+/// The statement selecting the keys of the groups that the parameter `folded`
+/// holds, as the placement holds them.
 fn folded_keys(folded: &str) -> String {
     format!(
         "SELECT unhex(json_extract(f.value, '$[0]')), unhex(json_extract(f.value, '$[1]')) \
@@ -28,12 +29,12 @@ pub(super) struct Fragments<'a> {
 }
 
 impl ImportListRequest {
-    /// The folded groups as the JSON array `:folded` binds: each group's
-    /// watched folder path and folder, as hex of the bytes the placement
-    /// holds.
+    /// The groups the folds name as the JSON array `:folded` binds: each
+    /// group's watched folder path and folder, as hex of the bytes the
+    /// placement holds.
     pub(super) fn folded_json(&self) -> String {
-        let groups: Vec<[String; 2]> = self
-            .folded
+        let (ImportListFolds::Only(named) | ImportListFolds::AllBut(named)) = &self.folds;
+        let groups: Vec<[String; 2]> = named
             .iter()
             .map(|group| {
                 [
@@ -84,8 +85,7 @@ impl ImportListRequest {
         Fragments { request: self, folded }
     }
 
-    /// The test that the list folds the group at `root` and `folder` shut;
-    /// `0` when it folds none.
+    /// The test that the list folds the group at `root` and `folder` shut.
     pub(super) fn folds_sql(&self, root: &str, folder: &str) -> String {
         self.fragments().folds_sql(root, folder)
     }
@@ -117,12 +117,14 @@ impl ImportListRequest {
 }
 
 impl Fragments<'_> {
-    /// The test that the list folds the group at `root` and `folder` shut;
-    /// `0` when it folds none.
+    /// The test that the list folds the group at `root` and `folder` shut:
+    /// the group is one the folds name, or, for folds that name the groups
+    /// left open, one they don't.
     pub(super) fn folds_sql(&self, root: &str, folder: &str) -> String {
-        match self.request.folded.is_empty() {
-            true => "0".to_string(),
-            false => format!("(({root}, {folder}) IN ({}))", folded_keys(self.folded)),
+        let named = folded_keys(self.folded);
+        match self.request.folds {
+            ImportListFolds::Only(_) => format!("(({root}, {folder}) IN ({named}))"),
+            ImportListFolds::AllBut(_) => format!("(({root}, {folder}) NOT IN ({named}))"),
         }
     }
 
@@ -149,8 +151,13 @@ impl Fragments<'_> {
     /// the groups it folds shut, and the header of each group holding a
     /// release its filters keep.
     pub(super) fn items(&self) -> String {
-        if self.request.keeps_all() {
-            return self.judged();
+        // With nothing narrowing the list, every group's header holds a
+        // release the list keeps.
+        if !self.request.narrows() {
+            return format!(
+                "(SELECT j.* FROM {} AS j WHERE j.item = 'group' OR NOT j.folded)",
+                self.judged()
+            );
         }
         format!(
             "(SELECT j.* FROM {judged} AS j \

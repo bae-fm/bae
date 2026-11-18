@@ -1070,7 +1070,9 @@ leads its members, and folding the group shut keeps the header, still counting
 its members, and leaves the members out of the list. The screen keeps which
 groups it folds, and each read of the list takes them: a group that leaves the
 list and comes back under the same folder comes back folded. Folding or opening
-every group is one change. A header offers to read its
+every group is one change, and it holds for the groups Found gains later: once
+the person folds every group, Found shows each new group folded too, until the
+person opens that group. A header offers to read its
 folder as one release (§3.1) when a stored reading of the folder keeps its
 releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of

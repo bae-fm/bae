@@ -105,7 +105,6 @@ impl AppServices {
     delegate_async!(import, import_list_selected => list_selected(request: ImportListRequest, selected: Vec<bae_import::CandidateKey>, acting: Option<bae_import::CandidateAction>) -> Result<bae_import::selection::SelectedRows, bae_import::ImportError>);
     delegate_async!(import, import_list_view_change => list_view_change(request: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<bae_import::ImportListViewChange, bae_import::ImportError>);
     delegate_async!(import, import_list_hidden_by => list_hidden_by(before: ImportListRequest, after: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<Vec<bae_import::CandidateKey>, bae_import::ImportError>);
-    delegate_async!(import, import_group_keys => group_keys() -> Result<Vec<bae_import::FolderReleaseDecisionKey>, bae_import::ImportError>);
     delegate_async!(import, import_locate_candidate => locate_candidate(candidate_key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportCandidateListLocation>, bae_import::ImportError>);
     delegate_async!(import, import_candidate_position => candidate_position(request: ImportListRequest, candidate_key: &bae_import::CandidateKey) -> Result<Option<u64>, bae_import::ImportError>);
     delegate_async!(import, import_first_identifying_candidate => first_identifying_candidate(order: bae_import::ImportListOrder) -> Result<Option<bae_import::CandidateKey>, bae_import::ImportError>);

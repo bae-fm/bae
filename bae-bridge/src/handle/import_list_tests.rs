@@ -1,8 +1,9 @@
 //! The import list's selection through the bridge object the macOS app holds.
 
 use crate::types::{
-    BridgeImportListItem, BridgeImportListOrder, BridgeImportListRequest, BridgeImportListView,
-    BridgeListRows, BridgeListView, BridgePendingFilter, BridgeSelectionSummary, BridgeTriageTab,
+    BridgeImportListFolds, BridgeImportListItem, BridgeImportListOrder, BridgeImportListRequest,
+    BridgeImportListView, BridgeListRows, BridgeListView, BridgePendingFilter,
+    BridgeSelectionSummary, BridgeTriageTab,
 };
 use std::sync::Arc;
 
@@ -92,7 +93,7 @@ fn separating_the_selection_selects_the_releases_it_returns() {
             pending_filter: BridgePendingFilter::All,
             order: BridgeImportListOrder::PathAscending,
         },
-        folded: Vec::new(),
+        folds: BridgeImportListFolds::Only { groups: Vec::new() },
     };
     let window = list.subscribe_list_view(request.clone(), 0, 9).unwrap();
     let selection = list.subscribe_selection();
@@ -146,7 +147,7 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
             pending_filter: BridgePendingFilter::All,
             order: BridgeImportListOrder::PathAscending,
         },
-        folded: Vec::new(),
+        folds: BridgeImportListFolds::Only { groups: Vec::new() },
     };
     let window = list.subscribe_list_view(request.clone(), 0, 9).unwrap();
     let selection = list.subscribe_selection();

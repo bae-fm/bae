@@ -57,8 +57,6 @@ import Foundation
             @Sendable (
                 BridgeImportListRequest, BridgeImportListRequest, [Data]
             ) async throws -> [Data]
-        private let groups:
-            @Sendable () async throws -> [BridgeFolderReleaseDecisionKey]
         private let locate:
             @Sendable (Data) async throws -> BridgeImportCandidateListLocation?
         private let position:
@@ -84,9 +82,6 @@ import Foundation
                 @escaping @Sendable (
                     BridgeImportListRequest, BridgeImportListRequest, [Data]
                 ) async throws -> [Data],
-            groupKeys:
-                @escaping @Sendable () async throws
-                -> [BridgeFolderReleaseDecisionKey],
             locateCandidate:
                 @escaping @Sendable (Data) async throws
                 -> BridgeImportCandidateListLocation?,
@@ -103,7 +98,6 @@ import Foundation
             self.selection = selection
             change = viewChange
             hidden = hiddenByFold
-            groups = groupKeys
             locate = locateCandidate
             position = candidatePosition
             firstIdentifying = firstIdentifyingCandidate
@@ -134,7 +128,6 @@ import Foundation
                         selected: $2
                     )
                 },
-                groupKeys: { try await list.groupKeys() },
                 locateCandidate: {
                     try await list.locateCandidate(candidateKey: $0)
                 },
@@ -169,14 +162,6 @@ import Foundation
             selected: [Data]
         ) async throws -> [Data] {
             try await hidden(before, after, selected)
-        }
-
-        /// The key of every group header Found holds, which folding every
-        /// group folds.
-        public func groupKeys() async throws
-            -> [BridgeFolderReleaseDecisionKey]
-        {
-            try await groups()
         }
 
         /// Where the list shows the candidate after it clears the filters and

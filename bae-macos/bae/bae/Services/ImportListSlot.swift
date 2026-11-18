@@ -69,7 +69,7 @@ final class ImportListSlot {
     private(set) var view: BridgeImportListView
     /// The groups the person folded shut.
     @ObservationIgnored
-    private var folded: Set<BridgeFolderReleaseDecisionKey> = []
+    private var folds: BridgeImportListFolds = .allOpen
     /// The request the list on screen reads, which the filter field's count
     /// is checked against.
     private(set) var shown: BridgeImportListRequest?
@@ -149,7 +149,7 @@ final class ImportListSlot {
 
     /// The request for the view and folds the person asked for.
     private var asked: BridgeImportListRequest {
-        BridgeImportListRequest(view: view, folded: folded.inKeyOrder)
+        BridgeImportListRequest(view: view, folds: folds)
     }
 
     /// Build the list and read its first rows. Called once the app's
@@ -248,7 +248,7 @@ extension ImportListSlot {
         let outcome = await enqueue {
             [self] () async -> Result<Int?, any Error> in
             if let groupKey = location.groupKey {
-                folded.remove(groupKey)
+                folds = folds.setting(groupKey, folded: false)
             }
             let request = asked
             do {
@@ -523,46 +523,28 @@ extension ImportListSlot {
         _ group: BridgeFolderReleaseDecisionKey,
         _ expanded: Bool
     ) {
-        foldGroups { folded, _ in
-            expanded ? folded.subtracting([group]) : folded.union([group])
-        }
+        foldGroups { $0.setting(group, folded: !expanded) }
     }
 
     /// Fold every group open or shut as one change.
     func setAllGroupsExpanded(_ expanded: Bool) {
-        foldGroups { _, handle in
-            expanded ? [] : Set(try await handle.groupKeys())
-        }
+        foldGroups { _ in expanded ? .allOpen : .allFolded }
     }
 
-    /// Change the folded groups to what `fold` makes of them once the changes
-    /// asked for before it have finished, so core gets them in the order the
-    /// person made them. The slot reports a failure. The slot rebuilds a list
-    /// whose read failed instead, and the rebuilt list starts with no group
-    /// folded.
+    /// Change the folded groups to what `fold` makes of them, and show the
+    /// list under them once the changes asked for before have finished, so
+    /// core gets them in the order the person made them. The slot rebuilds a
+    /// list whose read failed instead, under the new folds.
     private func foldGroups(
-        _ fold:
-            @escaping @MainActor (
-                Set<BridgeFolderReleaseDecisionKey>, ImportListHandle
-            ) async throws -> Set<BridgeFolderReleaseDecisionKey>
+        _ fold: (BridgeImportListFolds) -> BridgeImportListFolds
     ) {
+        folds = fold(folds)
         if sourceFailed {
-            folded = []
             startLoad()
             return
         }
         guard handle != nil else { return }
-        enqueue { [self] in
-            guard let handle else { return }
-            do {
-                folded = try await fold(folded, handle)
-            }
-            catch {
-                uiStore.showError(error)
-                return
-            }
-            await reconcile()
-        }
+        enqueue { [self] in await reconcile() }
     }
 }
 
@@ -635,7 +617,35 @@ extension PaginatedList<BridgeImportListItem> {
     }
 }
 
+extension BridgeImportListFolds {
+    /// Every group open.
+    static let allOpen = BridgeImportListFolds.only(groups: [])
+    /// Every group folded shut, the groups Found gains later included.
+    static let allFolded = BridgeImportListFolds.allBut(groups: [])
+
+    /// These folds with `group` folded shut, or open.
+    func setting(
+        _ group: BridgeFolderReleaseDecisionKey,
+        folded: Bool
+    ) -> BridgeImportListFolds {
+        switch self {
+        case .only(let groups):
+            .only(groups: Set(groups).holding(group, folded).inKeyOrder)
+        case .allBut(let groups):
+            .allBut(groups: Set(groups).holding(group, !folded).inKeyOrder)
+        }
+    }
+}
+
 extension Set<BridgeFolderReleaseDecisionKey> {
+    /// This set with `key` in it, or without it.
+    fileprivate func holding(
+        _ key: BridgeFolderReleaseDecisionKey,
+        _ held: Bool
+    ) -> Self {
+        held ? union([key]) : subtracting([key])
+    }
+
     /// The keys in the order of their bytes, so a request holds the same
     /// folds in one order.
     var inKeyOrder: [BridgeFolderReleaseDecisionKey] {

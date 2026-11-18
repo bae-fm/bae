@@ -307,7 +307,6 @@
                         BridgeImportListViewChange(opening: .top, left: [])
                     },
                     hiddenByFold: { _, _, _ in [] },
-                    groupKeys: { [] },
                     locateCandidate: { key in
                         position(of: key, in: items)
                             .map { _ in
