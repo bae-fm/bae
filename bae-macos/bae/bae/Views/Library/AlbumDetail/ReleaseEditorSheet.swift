@@ -8,7 +8,6 @@ struct ReleaseEditorSheet: View {
     let onClose: @MainActor @Sendable () -> Void
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
-    let onViewAlbum: (String) -> Void
 
     @State
     private var session: ReleaseMetadataEditSession
@@ -19,13 +18,11 @@ struct ReleaseEditorSheet: View {
         opened: OpenedReleaseEdit,
         commands: ReleaseEditCommands,
         onSaved: @escaping @MainActor @Sendable (String) -> Void,
-        onViewAlbum: @escaping (String) -> Void,
         onClose: @escaping @MainActor @Sendable () -> Void
     ) {
         self.displayName = displayName
         self.onClose = onClose
         self.onSaved = onSaved
-        self.onViewAlbum = onViewAlbum
         _session = State(
             initialValue: ReleaseMetadataEditSession(
                 releaseId: releaseId,
@@ -45,7 +42,6 @@ struct ReleaseEditorSheet: View {
                     ReleaseEditorView(
                         session: session,
                         displayName: displayName,
-                        onViewAlbum: onViewAlbum,
                         onSaved: onSaved
                     )
                     .padding(ThemeSpace.section)

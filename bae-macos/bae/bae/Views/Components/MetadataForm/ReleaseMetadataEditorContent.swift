@@ -13,8 +13,6 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     @ViewBuilder
     var lead: () -> Lead
     var onEditCover: (() -> Void)?
-    /// Show a library album the album row names.
-    let onViewAlbum: (String) -> Void
     var onPlayTrack: ((String) -> Void)?
     /// The images of the folder the release was imported from, drawn under
     /// the album row.
@@ -56,9 +54,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                         DraftAlbumRow(
                             album: draft.album,
                             canEdit: true,
-                            actions: session.albumActions(
-                                viewInLibrary: onViewAlbum
-                            )
+                            actions: session.albumActions
                         )
                     }
                 )

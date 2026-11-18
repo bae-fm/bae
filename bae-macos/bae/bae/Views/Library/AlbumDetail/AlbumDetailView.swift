@@ -342,10 +342,6 @@ extension AlbumDetailView {
                                 )
                             }
                         },
-                        onViewAlbum: { albumId in
-                            uiStore.dismissAllModals()
-                            uiStore.navigateToAlbum(albumId)
-                        },
                         onClose: { uiStore.dismissAllModals() }
                     )
                 }

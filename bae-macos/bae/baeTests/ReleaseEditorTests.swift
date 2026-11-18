@@ -170,7 +170,6 @@ struct ReleaseEditorTests {
                     session: session,
                     draft: draft,
                     lead: { EmptyView() },
-                    onViewAlbum: { _ in },
                     onPlayTrack: { _ in },
                     onOpenDocument: { _, _ in }
                 )

@@ -78,8 +78,7 @@ enum ImportMappingPreview {
             ),
             albumActions: DraftAlbumActions(
                 pick: { _ in },
-                search: { _ in [] },
-                viewInLibrary: { _ in }
+                search: { _ in [] }
             ),
             onMovePane: { _ in },
             onIdentify: {},

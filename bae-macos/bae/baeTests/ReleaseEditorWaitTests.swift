@@ -82,7 +82,6 @@ struct ReleaseEditorWaitTests {
             ReleaseEditorView(
                 session: session,
                 displayName: "Album Title",
-                onViewAlbum: { _ in },
                 onSaved: { _ in }
             )
             .frame(width: size.width, height: size.height)

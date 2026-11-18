@@ -158,8 +158,7 @@ extension ImportView {
                     }
                 }
             },
-            search: { try await importer.searchAlbums($0) },
-            viewInLibrary: { uiStore.navigateToAlbum($0) }
+            search: { try await importer.searchAlbums($0) }
         )
     }
 

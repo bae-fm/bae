@@ -109,7 +109,6 @@ extension ShotScene {
                 opened: library.opened(),
                 commands: library.commands(),
                 onSaved: { _ in },
-                onViewAlbum: { _ in },
                 onClose: {}
             )
             .environment(images)

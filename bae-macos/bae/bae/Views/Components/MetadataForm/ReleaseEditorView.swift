@@ -9,8 +9,6 @@ struct ReleaseEditorView: View {
     let session: ReleaseMetadataEditSession
     /// What the catalog search names the release by.
     let displayName: String
-    /// Show a library album the album row names.
-    let onViewAlbum: (String) -> Void
     var onPlayTrack: ((String) -> Void)?
     /// The images of the folder the release was imported from, as the scan
     /// read them, drawn between the album row and the tracks; empty where
@@ -65,7 +63,6 @@ struct ReleaseEditorView: View {
                     draft: draft,
                     lead: { lead },
                     onEditCover: presentCoverPicker,
-                    onViewAlbum: onViewAlbum,
                     onPlayTrack: onPlayTrack,
                     images: images,
                     onOpenImages: onOpenImages,

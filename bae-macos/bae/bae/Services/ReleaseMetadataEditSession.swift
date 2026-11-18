@@ -125,13 +125,10 @@ final class ReleaseMetadataEditSession {
 
     /// What the album row does: pick a library album or a new album, or
     /// leave it to the release's records, and find albums to pick.
-    func albumActions(viewInLibrary: @escaping (String) -> Void)
-        -> DraftAlbumActions
-    {
+    var albumActions: DraftAlbumActions {
         DraftAlbumActions(
             pick: { [weak self] pick in self?.pickAlbum(pick) },
-            search: commands.searchAlbums,
-            viewInLibrary: viewInLibrary
+            search: commands.searchAlbums
         )
     }
 

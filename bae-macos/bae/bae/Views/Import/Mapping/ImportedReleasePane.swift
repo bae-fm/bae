@@ -40,7 +40,6 @@ struct ImportedReleasePane: View {
                 ReleaseEditorView(
                     session: session,
                     displayName: candidate.displayName,
-                    onViewAlbum: onViewInLibrary,
                     onPlayTrack: onPlayTrack,
                     images: images,
                     onOpenImages: onOpenImages,

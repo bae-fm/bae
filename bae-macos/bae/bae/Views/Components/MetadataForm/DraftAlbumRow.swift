@@ -8,7 +8,6 @@ struct DraftAlbumActions {
     /// release's own album.
     let pick: (BridgeAlbumPick) -> Void
     let search: @MainActor (String) async throws -> [BridgeAlbumChoice]
-    let viewInLibrary: (String) -> Void
 }
 
 /// The library album a draft files under — an import's or a library
@@ -39,7 +38,6 @@ struct DraftAlbumRow: View {
         case standing
         case newAlbum
         case releasesAlbum
-        case showInLibrary
         case searchLibrary
     }
 
@@ -78,9 +76,6 @@ struct DraftAlbumRow: View {
                 value: Choice.releasesAlbum
             )
         }
-        if album.standingAlbumId != nil {
-            MacPopUpOption("Show in library", value: Choice.showInLibrary)
-        }
         MacMenuDivider()
         MacPopUpOption("Choose another album…", value: Choice.searchLibrary)
     }
@@ -98,10 +93,6 @@ struct DraftAlbumRow: View {
                         actions.pick(.new)
                     case .releasesAlbum:
                         actions.pick(.records)
-                    case .showInLibrary:
-                        if let albumId = album.standingAlbumId {
-                            actions.viewInLibrary(albumId)
-                        }
                     case .searchLibrary:
                         isPresented = true
                     }
