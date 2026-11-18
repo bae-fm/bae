@@ -253,9 +253,6 @@ impl BridgeWatchedFolder {
 pub struct BridgeWatchedFolderScanStatus {
     pub folder: BridgeWatchedFolder,
     pub status: BridgeFolderScanStatus,
-    /// Whether this folder is on a network volume, which is also checked on a
-    /// schedule because a watch misses changes made on the server.
-    pub on_network_volume: bool,
 }
 
 /// The catalog key for a network folder's hover text; its argument is
@@ -272,19 +269,29 @@ pub fn bridge_network_folder_check_minutes() -> u32 {
     bae_import::check_period_minutes()
 }
 
+/// A watched folder's scan status. `on_network_volume` says whether the
+/// folder is on a network volume, which is also checked on a schedule because
+/// a watch misses changes made on the server.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeFolderScanStatus {
-    /// No scan has read the folder yet.
+    /// No scan has read the folder yet, so bae has not asked which volume
+    /// it is on.
     NotScanned,
-    Scanning,
-    Complete,
+    Scanning {
+        on_network_volume: bool,
+    },
+    Complete {
+        on_network_volume: bool,
+    },
     Failed {
         error: String,
+        on_network_volume: bool,
     },
     /// Read in full, with a directory that could not be watched, for this
     /// reason (the system's own, untranslated).
     NotWatched {
         reason: String,
+        on_network_volume: bool,
     },
 }
 

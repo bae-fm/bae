@@ -61,7 +61,8 @@ BEGIN
 END;
 
 -- Each watched folder's scan status and its detail, with its place in the
--- list and the volume it is shown on:
+-- list and the volume it is shown on, which is NULL for a folder no scan has
+-- opened a generation for:
 --
 -- - A failure the coordinator holds is the status, over anything stored.
 -- - A folder no scan has opened a generation for is 'not_scanned'.
@@ -88,8 +89,7 @@ SELECT
         WHEN held.state = 'running' THEN NULL
         ELSE 'the scan stopped before bae stored its result'
     END AS detail,
-    (CASE WHEN held.state = 'failed' THEN held.volume ELSE roots.volume END) IS 'network'
-        AS on_network_volume
+    CASE WHEN held.state = 'failed' THEN held.volume ELSE roots.volume END AS volume
 FROM watched_import_folders AS watched
 LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path
 LEFT JOIN folder_scan_held AS held ON held.watched_folder_path = watched.path;

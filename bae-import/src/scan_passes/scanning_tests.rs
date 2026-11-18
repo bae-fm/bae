@@ -447,14 +447,14 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     assert_eq!(stored_outcome(&test.db).await, crate::StoredScanOutcome::Unfinished);
-    let crate::FolderScanStatus::Failed { error } = progress().await else {
+    let crate::FolderScanStatus::Failed { error, .. } = progress().await else {
         panic!("the unstored failure is the root's status");
     };
     assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
 
     std::fs::create_dir(&root).unwrap();
     assert_eq!(refresh(&commands, &root).await, Ok(()));
-    assert_eq!(progress().await, crate::FolderScanStatus::Complete);
+    assert!(matches!(progress().await, crate::FolderScanStatus::Complete { .. }));
 
     stop_coordinator(&commands, coordinator).await;
 }
@@ -479,12 +479,12 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
     let progress = test.tables().load_folder_scan_progress().await.unwrap();
     let [status] = <[_; 1]>::try_from(progress.statuses).expect("the watched folder is listed");
     assert_eq!(status.folder.path, root);
-    let crate::FolderScanStatus::Failed { error } = status.status else {
+    let crate::FolderScanStatus::Failed { error, on_network_volume } = status.status else {
         panic!("the folder's first scan failed");
     };
     assert!(error.contains("the scan could not begin"), "{error}");
     assert_eq!(
-        status.on_network_volume,
+        on_network_volume,
         crate::volume::volume_kind(&root, &bae_diagnostics::Diagnostics::noop()).await
             == crate::VolumeKind::Network
     );

@@ -1,7 +1,7 @@
 //! Each watched folder's scan status: scanning, complete, failed, or
-//! read but not watched; whether the folder is on a network volume; whether
-//! bae is scanning any folder, for the list's chrome; and the problems whose
-//! alert the app has not raised yet.
+//! read but not watched, each with whether the folder is on a network
+//! volume; whether bae is scanning any folder, for the list's chrome; and
+//! the problems whose alert the app has not raised yet.
 //!
 //! One live query reads it all (`folder_scans/progress.sql`). The query puts
 //! each folder's stored scan beside the state the folder scan coordinator
@@ -21,29 +21,37 @@ use std::path::PathBuf;
 pub struct WatchedFolderScanStatus {
     pub folder: crate::WatchedFolder,
     pub status: FolderScanStatus,
-    /// Whether this folder lives on a volume served over the network, which
-    /// changes how it is watched: a filesystem watch on such a volume reports
-    /// only what this machine does to it, so the folder is checked on a
-    /// schedule as well. The list says so, because "I added an album on the
-    /// server and bae has not noticed" is otherwise a mystery.
-    pub on_network_volume: bool,
 }
 
+/// A watched folder's scan status. Each status but `NotScanned` holds whether
+/// the folder lives on a volume served over the network, from the volume
+/// its scan found it on. That changes how the folder is watched: a
+/// filesystem watch on such a volume reports only what this machine does to
+/// it, so the folder is checked on a schedule as well. The list says so,
+/// because "I added an album on the server and bae has not noticed" is
+/// otherwise a mystery.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderScanStatus {
     /// No scan has opened a generation for the folder yet, and the folder
-    /// scan coordinator holds no failure for it.
+    /// scan coordinator holds no failure for it, so bae has not asked which
+    /// volume the folder is on.
     NotScanned,
-    Scanning,
-    Complete,
+    Scanning {
+        on_network_volume: bool,
+    },
+    Complete {
+        on_network_volume: bool,
+    },
     Failed {
         error: String,
+        on_network_volume: bool,
     },
     /// The folder was read in full, and a directory in it could not be
     /// watched, for this reason: a change there reaches bae only when the
     /// folder is read again.
     NotWatched {
         reason: String,
+        on_network_volume: bool,
     },
 }
 

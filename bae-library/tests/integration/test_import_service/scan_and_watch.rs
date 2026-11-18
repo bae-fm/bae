@@ -296,10 +296,10 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
         .statuses
         .into_iter()
         .find_map(|status| match status.status {
-            bae_import::FolderScanStatus::Failed { error } => Some(error),
+            bae_import::FolderScanStatus::Failed { error, .. } => Some(error),
             bae_import::FolderScanStatus::NotScanned
-            | bae_import::FolderScanStatus::Scanning
-            | bae_import::FolderScanStatus::Complete
+            | bae_import::FolderScanStatus::Scanning { .. }
+            | bae_import::FolderScanStatus::Complete { .. }
             | bae_import::FolderScanStatus::NotWatched { .. } => None,
         })
         .expect("the root's scan failed");
@@ -380,7 +380,7 @@ async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
         roots.iter().all(|root| {
             scans.statuses.iter().any(|status| {
                 status.folder.path == *root
-                    && matches!(status.status, bae_import::FolderScanStatus::Complete)
+                    && matches!(status.status, bae_import::FolderScanStatus::Complete { .. })
             })
         })
     })

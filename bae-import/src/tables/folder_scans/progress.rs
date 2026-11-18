@@ -19,7 +19,7 @@ use crate::folder_scan_status::{
 
 /// Each watched folder's status, in the order the folders are listed (their
 /// `position`, by its index).
-const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, on_network_volume \
+const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, volume \
      FROM folder_scan_status ORDER BY position";
 
 /// Whether any folder's scan failed or left it not watched, and whether any
@@ -39,18 +39,33 @@ const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder
              AND shown.kind = folder.status AND shown.detail = folder.detail) \
      ORDER BY folder.position";
 
-/// A folder's status from the view's `status` and `detail`.
+/// A folder's status from the view's `status`, `detail` and `volume`.
 fn folder_scan_status(
     watched_folder_path: &std::path::Path,
     status: String,
     detail: Option<String>,
+    volume: Option<String>,
 ) -> Result<FolderScanStatus, DbError> {
-    Ok(match (status.as_str(), detail) {
-        ("not_scanned", None) => FolderScanStatus::NotScanned,
-        ("scanning", None) => FolderScanStatus::Scanning,
-        ("complete", None) => FolderScanStatus::Complete,
-        ("failed", Some(error)) => FolderScanStatus::Failed { error },
-        ("unwatched", Some(reason)) => FolderScanStatus::NotWatched { reason },
+    let on_network_volume = volume
+        .as_deref()
+        .map(|volume| {
+            Ok::<_, DbError>(super::columns::volume_of(volume)? == crate::VolumeKind::Network)
+        })
+        .transpose()?;
+    Ok(match (status.as_str(), detail, on_network_volume) {
+        ("not_scanned", None, None) => FolderScanStatus::NotScanned,
+        ("scanning", None, Some(on_network_volume)) => {
+            FolderScanStatus::Scanning { on_network_volume }
+        }
+        ("complete", None, Some(on_network_volume)) => {
+            FolderScanStatus::Complete { on_network_volume }
+        }
+        ("failed", Some(error), Some(on_network_volume)) => {
+            FolderScanStatus::Failed { error, on_network_volume }
+        }
+        ("unwatched", Some(reason), Some(on_network_volume)) => {
+            FolderScanStatus::NotWatched { reason, on_network_volume }
+        }
         stored => {
             return Err(DbError::unreadable(
                 format!("folder_scan_status of {}", coven::path_text(watched_folder_path)),
@@ -77,20 +92,19 @@ fn alert_kind_text(kind: FolderScanAlertKind) -> &'static str {
 
 fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanProgress, DbError> {
     let mut statuses = Vec::new();
-    for (watched_folder_path, status, detail, on_network_volume) in
+    for (watched_folder_path, status, detail, volume) in
         sql.query(FOLDER_SCAN_STATUSES, [], |row| {
             Ok((
                 path_column::get(row, 0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
-                row.get::<_, bool>(3)?,
+                row.get::<_, Option<String>>(3)?,
             ))
         })?
     {
         statuses.push(WatchedFolderScanStatus {
-            status: folder_scan_status(&watched_folder_path, status, detail)?,
+            status: folder_scan_status(&watched_folder_path, status, detail, volume)?,
             folder: crate::WatchedFolder::from_path(watched_folder_path),
-            on_network_volume,
         });
     }
     let (has_problem, scanning) =

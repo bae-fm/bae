@@ -187,31 +187,33 @@ final class CandidateListMenuController {
     private func folderLine(_ folder: BridgeWatchedFolderScanStatus)
         -> MacMenuEntry
     {
-        let onNetwork = folder.onNetworkVolume
-        let networkLine = onNetwork ? Self.networkLine() : nil
         let accessory: MacMenuAccessory?
         switch folder.status {
-        case .scanning:
+        case .scanning(let onNetwork):
             accessory = MacMenuAccessory(
                 symbol: "progress.indicator",
                 tone: .secondary,
-                help: networkLine
+                help: onNetwork ? Self.networkLine() : nil
             )
-        case .failed(let detail), .notWatched(let detail):
+        case .failed(let detail, let onNetwork),
+            .notWatched(let detail, let onNetwork):
             accessory = MacMenuAccessory(
                 symbol: "exclamationmark.circle",
                 tone: .danger,
-                help: [detail, networkLine].compactMap { $0 }
+                help: [detail, onNetwork ? Self.networkLine() : nil]
+                    .compactMap { $0 }
                     .joined(separator: "\n")
             )
-        case .complete, .notScanned:
+        case .complete(let onNetwork):
             accessory =
                 onNetwork
                 ? MacMenuAccessory(
                     symbol: "network",
                     tone: .secondary,
-                    help: networkLine
+                    help: Self.networkLine()
                 ) : nil
+        case .notScanned:
+            accessory = nil
         }
         let refreshing = state.refreshingFolders.contains(
             folder.folder.path

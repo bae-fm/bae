@@ -73,15 +73,15 @@ impl Automation {
                 for status in statuses {
                     match status.status {
                         bae_import::FolderScanStatus::NotScanned
-                        | bae_import::FolderScanStatus::Complete
+                        | bae_import::FolderScanStatus::Complete { .. }
                         | bae_import::FolderScanStatus::NotWatched { .. } => {}
-                        bae_import::FolderScanStatus::Failed { error } => {
+                        bae_import::FolderScanStatus::Failed { error, .. } => {
                             return Err(AutomationError::import(format!(
                                 "{}: {error}",
                                 coven::path_text(&status.folder.path)
                             )));
                         }
-                        bae_import::FolderScanStatus::Scanning => {
+                        bae_import::FolderScanStatus::Scanning { .. } => {
                             return Err(AutomationError::import(format!(
                                 "{}: another read of it began before this one was over",
                                 coven::path_text(&status.folder.path)

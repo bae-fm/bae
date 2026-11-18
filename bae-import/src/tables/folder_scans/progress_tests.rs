@@ -66,7 +66,10 @@ async fn progress_follows_the_walk_in_flight() {
 
     let mut live = tables.subscribe_folder_scan_progress();
     let initial = live.next_inline().await.expect("the query stays open").unwrap();
-    assert_eq!(initial.statuses[0].status, crate::FolderScanStatus::Scanning);
+    assert_eq!(
+        initial.statuses[0].status,
+        crate::FolderScanStatus::Scanning { on_network_volume: false }
+    );
     assert!(!initial.has_problem);
     assert!(initial.scanning);
 
@@ -78,7 +81,10 @@ async fn progress_follows_the_walk_in_flight() {
         .expect("finishing the scan wakes the progress")
         .expect("the query stays open")
         .unwrap();
-    assert_eq!(complete.statuses[0].status, crate::FolderScanStatus::Complete);
+    assert_eq!(
+        complete.statuses[0].status,
+        crate::FolderScanStatus::Complete { on_network_volume: false }
+    );
     assert!(!complete.scanning);
 }
 
@@ -132,7 +138,7 @@ async fn an_unfinished_scan_nothing_reads_failed() {
     let progress = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
-        crate::FolderScanStatus::Failed { error: STOPPED.to_string() }
+        crate::FolderScanStatus::Failed { error: STOPPED.to_string(), on_network_volume: false }
     );
     assert!(progress.has_problem);
     assert!(!progress.scanning);
@@ -152,11 +158,17 @@ async fn a_failure_the_store_refused_is_the_status() {
         .unwrap();
     assert_eq!(
         only_status(&tables).await,
-        crate::FolderScanStatus::Failed { error: "the disk is full".to_string() }
+        crate::FolderScanStatus::Failed {
+            error: "the disk is full".to_string(),
+            on_network_volume: false
+        }
     );
 
     tables.hold_root_scans(crate::folder_scan_status::HeldRootScans::new()).await.unwrap();
-    assert_eq!(only_status(&tables).await, crate::FolderScanStatus::Complete);
+    assert_eq!(
+        only_status(&tables).await,
+        crate::FolderScanStatus::Complete { on_network_volume: false }
+    );
 }
 
 /// A whole-root pass that has not opened its generation yet leaves the last
@@ -172,7 +184,10 @@ async fn a_stored_outcome_stands_while_the_root_is_being_read() {
     let progress = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
-        crate::FolderScanStatus::Failed { error: "share disconnected".to_string() }
+        crate::FolderScanStatus::Failed {
+            error: "share disconnected".to_string(),
+            on_network_volume: false
+        }
     );
     assert!(!progress.scanning);
 }
@@ -199,8 +214,10 @@ async fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
         progress.statuses,
         [crate::WatchedFolderScanStatus {
             folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
-            status: crate::FolderScanStatus::Failed { error: "the disk is full".to_string() },
-            on_network_volume: true,
+            status: crate::FolderScanStatus::Failed {
+                error: "the disk is full".to_string(),
+                on_network_volume: true
+            },
         }]
     );
     assert!(progress.has_problem);
@@ -221,7 +238,10 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     let progress = tables.load_folder_scan_progress().await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
-        crate::FolderScanStatus::NotWatched { reason: "/music/a: too many open files".to_string() }
+        crate::FolderScanStatus::NotWatched {
+            reason: "/music/a: too many open files".to_string(),
+            on_network_volume: false
+        }
     );
     assert!(progress.has_problem);
     assert!(!progress.scanning);

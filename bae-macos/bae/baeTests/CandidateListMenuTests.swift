@@ -11,7 +11,7 @@ import Testing
 struct CandidateListMenuTests {
     private func state(
         entries: [BridgePendingFilterEntry],
-        scanStatus: BridgeFolderScanStatus = .complete
+        scanStatus: BridgeFolderScanStatus = .complete(onNetworkVolume: false)
     ) -> CandidateListMenuState {
         CandidateListMenuState(
             folders: [
@@ -21,8 +21,7 @@ struct CandidateListMenuTests {
                         pathText: "/Imports",
                         name: "Imports"
                     ),
-                    status: scanStatus,
-                    onNetworkVolume: false
+                    status: scanStatus
                 )
             ],
             hasScanProblem: {
@@ -171,7 +170,10 @@ struct CandidateListMenuTests {
         controller.show(
             state(
                 entries: entries(inProgress: 0),
-                scanStatus: .failed(error: "The volume could not be reached.")
+                scanStatus: .failed(
+                    error: "The volume could not be reached.",
+                    onNetworkVolume: false
+                )
             )
         )
 
