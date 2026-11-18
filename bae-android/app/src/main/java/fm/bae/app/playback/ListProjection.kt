@@ -17,18 +17,20 @@ import uniffi.bae_bridge.BridgeListCount
 private const val MAXIMUM_LIST_PAGES = 12
 
 /**
- * A list's items as Android Auto's browse tree asks for them, a page at a time by offset; [item] makes each row
- * the item the tree shows.
- * Media3 asks for a page by offset, and core reads each page live: the rows at the page's places, none past the
- * list's end, which move with every write that moves a row across them. A page stays live while it is among the
- * last [MAXIMUM_LIST_PAGES] asked for, and a page or the list's count changing tells the tree its children
- * changed.
+ * A database list that a controller asks for a page at a time by offset: the albums, the composers, a composer's
+ * page, an album's tracks, a work's children, or the albums a search lists. [item] makes each row the item the
+ * tree shows.
+ * Core reads each page live: the rows at the page's places, none past the list's end, which move with every write
+ * that moves a row across them. A page stays live while it is among the last [MAXIMUM_LIST_PAGES] asked for, and a
+ * repeat request for it answers with its latest rows. Each later delivery of a live page tells the tree, through
+ * [onChanged], that the list changed, with the number of rows unknown. The list's live count tells the tree its
+ * first number of rows and each change to it, and says which is the first.
  */
 internal class ListProjection<Row, Item>(
     private val scope: CoroutineScope,
     private val reads: PageReads<Row>,
     private val item: (Row) -> Item,
-    private val onChanged: (Int) -> Unit,
+    private val onChanged: (itemCount: Int, isFirstCount: Boolean) -> Unit,
     private val onError: (BridgeException) -> Unit,
 ) {
     /** One page: its live read, and the items of its latest delivery, set before [first] completes. */
@@ -42,14 +44,30 @@ internal class ListProjection<Row, Item>(
 
     private val mutex = Mutex()
     private val pages = LinkedHashMap<Pair<Int, Int>, Page<Row, Item>>(16, 0.75f, true)
-    private val ready = CompletableDeferred<Unit>()
-    private var closed = false
-    private val countRead = reads.count()
-    private val consumer: Job = scope.launch(start = CoroutineStart.UNDISPATCHED) { consume() }
 
-    /** Wait for the list's first count, or its failure. */
+    /**
+     * The count's first result: completes at its first value or fails with its first error. A value after a
+     * failure replaces it with one that has completed, so the list is ready again once its count reads again.
+     */
+    private var ready = CompletableDeferred<Unit>()
+
+    /** Why the projection closed, which every later request fails with; null while it is open. */
+    private var closedBy: BrowseUnavailable? = null
+    private val countRead = reads.count()
+    private var consumer: Job? = null
+
+    /** Start reading the list's count, once the tree holds the projection, so that [onChanged] finds it. */
+    fun start() {
+        consumer = scope.launch(start = CoroutineStart.UNDISPATCHED) { consume() }
+    }
+
+    /** Wait for the list's first count, throwing its error. */
     suspend fun awaitReady() {
-        ready.await()
+        mutex
+            .withLock {
+                closedBy?.let { throw it }
+                ready
+            }.await()
     }
 
     /** The items at the [limit] places from [offset], as their page's latest delivery holds them. */
@@ -68,7 +86,7 @@ internal class ListProjection<Row, Item>(
         limit: Int,
     ): Page<Row, Item> =
         mutex.withLock {
-            checkOpen()
+            closedBy?.let { throw it }
             val place = offset to limit
             val held = pages[place]
             if (held != null && !held.first.isCancelled) return@withLock held
@@ -80,15 +98,15 @@ internal class ListProjection<Row, Item>(
             }
         }
 
-    suspend fun close() {
-        val error = treeClosedError()
+    /** Stop every read; a request waiting on one, and every later request, fails with [reason]. */
+    suspend fun close(reason: BrowseUnavailable = treeClosedError()) {
         val toClose =
             mutex.withLock {
-                if (closed) return
-                closed = true
-                ready.complete(Unit)
+                if (closedBy != null) return
+                closedBy = reason
+                ready.completeExceptionally(reason)
                 pages.values.toList().also {
-                    it.forEach { page -> page.first.completeExceptionally(error) }
+                    it.forEach { page -> page.first.completeExceptionally(reason) }
                     pages.clear()
                 }
             }
@@ -97,7 +115,7 @@ internal class ListProjection<Row, Item>(
             countRead.cancel()
         } finally {
             toClose.forEach { it.job.cancelAndJoin() }
-            consumer.cancelAndJoin()
+            consumer?.cancelAndJoin()
         }
     }
 
@@ -114,10 +132,10 @@ internal class ListProjection<Row, Item>(
                             mutex.withLock {
                                 val before = page.latest
                                 page.latest = items
-                                before != null && before != items && !closed && pages[place] === page
+                                before != null && before != items && closedBy == null && pages[place] === page
                             }
                         page.first.complete(Unit)
-                        if (changed) onChanged(UNKNOWN_CHILD_COUNT)
+                        if (changed) onChanged(UNKNOWN_CHILD_COUNT, false)
                     },
                     onError = { error ->
                         page.first.completeExceptionally(error)
@@ -138,30 +156,30 @@ internal class ListProjection<Row, Item>(
         page.job.cancel()
     }
 
-    /** Each count value: the first makes the projection ready, and each later one tells the tree. */
+    /** Each count value reaches [onChanged], with whether it is the count's first result. */
     private suspend fun consume() {
         countRead.pullEach(
             onValue = { value: BridgeListCount ->
-                val notify =
+                val isFirst =
                     mutex.withLock {
-                        if (closed) return@pullEach
-                        val later = ready.isCompleted
-                        ready.complete(Unit)
-                        later
+                        if (closedBy != null) return@pullEach
+                        val isFirst = !ready.isCompleted
+                        if (isFirst) {
+                            ready.complete(Unit)
+                        } else if (ready.isCancelled) {
+                            ready = CompletableDeferred(Unit)
+                        }
+                        isFirst
                     }
-                if (notify) onChanged(value.rows.toInt())
+                onChanged(value.rows.toInt(), isFirst)
             },
             onError = { error ->
                 mutex.withLock {
-                    if (closed) return@pullEach
-                    ready.complete(Unit)
+                    if (closedBy != null) return@pullEach
+                    ready.completeExceptionally(error)
                 }
                 onError(error)
             },
         )
-    }
-
-    private fun checkOpen() {
-        if (closed) throw treeClosedError()
     }
 }

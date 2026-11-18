@@ -68,10 +68,10 @@ class LibraryBrowseTreeTest {
 
     /**
      * A change inside a page the controller asked for tells the controller the album's children changed, with
-     * their number unknown, and the controller's next request for the page reads it again.
+     * their number unknown, and the controller's next request for the page answers from the same live read.
      */
     @Test
-    fun aChangeInsideAnAskedPageTellsTheControllerAndTheNextRequestReadsIt() =
+    fun aChangeInsideAnAskedPageTellsTheControllerAndTheNextRequestAnswersFromItsLiveRead() =
         runBlocking {
             val handle =
                 FakeAppHandle(albumTracks = mapOf("album-1" to listOf(BridgeFixtures.browseTrack(id = "trk-0", title = "Old"))))
@@ -99,9 +99,9 @@ class LibraryBrowseTreeTest {
                     .single()
                     .mediaMetadata.title,
             )
-            assertTrue(list.pages.first().cancelled)
+            assertFalse(list.pages.single().cancelled)
             tree.close()
-            assertTrue(list.pages.last().cancelled)
+            assertTrue(list.pages.single().cancelled)
         }
 
     /** The tree tells the controller each time an album's live track count changes, but not when the read delivers its first count. */
@@ -483,10 +483,11 @@ class LibraryBrowseTreeTest {
 
     /**
      * A change inside a search page the controller asked for tells the controller its search's results changed,
-     * with their number unknown, and the controller's next request for the page reads the renamed album.
+     * with their number unknown, and the controller's next request for the page answers with the renamed album
+     * from the same live read.
      */
     @Test
-    fun aChangeInsideASearchPageTellsTheControllerAndTheNextRequestReadsIt() =
+    fun aChangeInsideASearchPageTellsTheControllerAndTheNextRequestAnswersFromItsLiveRead() =
         runBlocking {
             val handle =
                 FakeAppHandle(
@@ -518,9 +519,9 @@ class LibraryBrowseTreeTest {
                     .single()
                     .mediaMetadata.title,
             )
-            assertTrue(list.pages.first().cancelled)
+            assertFalse(list.pages.single().cancelled)
             tree.close()
-            assertTrue(list.pages.last().cancelled)
+            assertTrue(list.pages.single().cancelled)
         }
 
     /** A track item is the one track the database read returns, found by its release and track ids. */

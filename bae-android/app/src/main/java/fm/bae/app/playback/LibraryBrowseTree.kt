@@ -101,7 +101,7 @@ internal class LibraryBrowseTree<Owner : Any>(
     private val parentsByOwner = mutableMapOf<Owner, ParentInterests>()
 
     /** The live pages of each retained album's tracks and each retained work's children, by its media id. */
-    private val childPages = mutableMapOf<String, ChildPages<*>>()
+    private val childPages = mutableMapOf<String, ListProjection<*, MediaItem>>()
 
     /** Each controller's search: its phrase, with the live count and pages of the albums the phrase lists. */
     private val searchesByOwner = mutableMapOf<Owner, Search>()
@@ -362,28 +362,22 @@ internal class LibraryBrowseTree<Owner : Any>(
     fun close() = runBlocking { closeSuspending() }
 
     private suspend fun closeSuspending() {
-        val pages = mutableListOf<ListProjection<BridgeComposerDetailRow, BridgeComposerDetailRow>>()
-        val children = mutableListOf<ChildPages<*>>()
-        val state =
+        val projections =
             synchronized(lock) {
                 if (closed) return
                 closed = true
-                val state = Pair(albums to composers, searchesByOwner.values.toList())
-                pages += composerPages.values
-                children += childPages.values
+                val projections =
+                    listOfNotNull(albums, composers) + composerPages.values + childPages.values +
+                        searchesByOwner.values.map { it.pages }
                 albums = null
                 composers = null
                 composerPages.clear()
                 childPages.clear()
                 searchesByOwner.clear()
                 parentsByOwner.clear()
-                state
+                projections
             }
-        state.first.first?.close()
-        state.first.second?.close()
-        pages.forEach { it.close() }
-        children.forEach { it.close() }
-        state.second.forEach { it.pages.close(searchInterestEnded()) }
+        projections.forEach { it.close() }
     }
 
     /**
@@ -396,7 +390,7 @@ internal class LibraryBrowseTree<Owner : Any>(
         onResultsChanged: (Int) -> Unit,
     ) {
         val pages =
-            ChildPages(
+            ListProjection(
                 scope,
                 lists.searchAlbumPages(query),
                 { nodes.album(it.id, it.title, it.cover) },
@@ -412,9 +406,12 @@ internal class LibraryBrowseTree<Owner : Any>(
                 scope,
                 lists.albumPages(listOf(ALBUM_SORT)),
                 BridgeAlbumAppearance::album,
-                onChanged = { count -> notifyParent(BrowseId.Albums.mediaId, count) },
+                onChanged = { count, isFirst -> if (!isFirst) notifyParent(BrowseId.Albums.mediaId, count) },
                 onError = onQueryError,
-            ).also { albums = it }
+            ).also {
+                albums = it
+                it.start()
+            }
         }
 
     private fun composerProjection(): ListProjection<BridgeComposerSummary, BridgeComposerSummary> =
@@ -424,9 +421,12 @@ internal class LibraryBrowseTree<Owner : Any>(
                 scope,
                 lists.composerPages(COMPOSER_SORT),
                 { it },
-                onChanged = { count -> notifyParent(BrowseId.Composers.mediaId, count) },
+                onChanged = { count, isFirst -> if (!isFirst) notifyParent(BrowseId.Composers.mediaId, count) },
                 onError = onQueryError,
-            ).also { composers = it }
+            ).also {
+                composers = it
+                it.start()
+            }
         }
 
     /** [artistId]'s page rows for the composer node [parentId], opened on first use. */
@@ -440,13 +440,16 @@ internal class LibraryBrowseTree<Owner : Any>(
                 scope,
                 lists.composerPagePages(artistId),
                 { it },
-                onChanged = { count -> notifyParent(parentId, count) },
+                onChanged = { count, isFirst -> if (!isFirst) notifyParent(parentId, count) },
                 onError = onQueryError,
-            ).also { composerPages[parentId] = it }
+            ).also {
+                composerPages[parentId] = it
+                it.start()
+            }
         }
 
     /** The live pages of [parentId]'s children, an album's tracks or a work's children, opened on first use. */
-    private fun childPages(parentId: String): ChildPages<*> =
+    private fun childPages(parentId: String): ListProjection<*, MediaItem> =
         synchronized(lock) {
             check(!closed)
             childPages.getOrPut(parentId) {
@@ -455,7 +458,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                 val onChanged = { count: Int, isFirst: Boolean -> if (!isFirst) notifyParent(parentId, count) }
                 when (val id = BrowseId.parse(parentId)) {
                     is BrowseId.Album -> {
-                        ChildPages(
+                        ListProjection(
                             scope,
                             lists.albumTrackPages(id.albumId),
                             nodes::browseTrack,
@@ -465,7 +468,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                     }
 
                     is BrowseId.Work -> {
-                        ChildPages(
+                        ListProjection(
                             scope,
                             lists.workChildPages(id.workId),
                             nodes::workChild,
@@ -487,13 +490,17 @@ internal class LibraryBrowseTree<Owner : Any>(
                 parentsByOwner.values.any { parentId in it.explicit || parentId in it.implicit }
             }
         if (retained) return
-        when (BrowseId.parse(parentId)) {
-            BrowseId.Albums -> synchronized(lock) { albums.also { albums = null } }?.close()
-            BrowseId.Composers -> synchronized(lock) { composers.also { composers = null } }?.close()
-            is BrowseId.Composer -> synchronized(lock) { composerPages.remove(parentId) }?.close()
-            is BrowseId.Album, is BrowseId.Work -> synchronized(lock) { childPages.remove(parentId) }?.close()
-            BrowseId.Root, is BrowseId.Track, null -> Unit
-        }
+        val unused =
+            synchronized(lock) {
+                when (BrowseId.parse(parentId)) {
+                    BrowseId.Albums -> albums.also { albums = null }
+                    BrowseId.Composers -> composers.also { composers = null }
+                    is BrowseId.Composer -> composerPages.remove(parentId)
+                    is BrowseId.Album, is BrowseId.Work -> childPages.remove(parentId)
+                    BrowseId.Root, is BrowseId.Track, null -> null
+                }
+            }
+        unused?.close(parentInterestEnded())
     }
 
     private fun notifyParent(

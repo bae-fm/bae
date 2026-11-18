@@ -29,9 +29,10 @@ class ListProjectionCloseTest {
                     CoroutineScope(SupervisorJob() + Dispatchers.Default),
                     reads,
                     { it },
-                    onChanged = {},
+                    onChanged = { _, _ -> },
                     onError = {},
                 )
+            projection.start()
             count.started.await()
 
             assertThrows(IllegalStateException::class.java) {
