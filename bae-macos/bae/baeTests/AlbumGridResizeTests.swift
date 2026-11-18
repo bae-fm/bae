@@ -119,6 +119,15 @@ struct AlbumGridResizeTests {
                         }
                 }
                 .frame(maxWidth: .infinity)
+                // The detail of the album open at host time opens at once,
+                // so no layout read lands partway through its spring; the
+                // panel's spring still moves the grid.
+                .transaction {
+                    if $0.animation != QueuePanelMotion.spring {
+                        $0.animation = nil
+                        $0.disablesAnimations = true
+                    }
+                }
                 if stage.showPanel {
                     Color.gray.frame(width: 320)
                         .transition(.move(edge: .trailing))

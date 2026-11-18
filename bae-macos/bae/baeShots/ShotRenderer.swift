@@ -39,8 +39,15 @@ enum ShotRenderer {
         defaults.set(tone.rawValue, forKey: "appearance.tone")
         defer { defaults.removePersistentDomain(forName: suite) }
         let stage = scene.stage()
+        // A view that opens or moves after the window shows, such as an album
+        // grid's detail opening on its place's first answer, lands at once,
+        // so the capture never holds a frame partway through.
         let rootView = stage.view.appAppearance()
             .defaultAppStorage(defaults)
+            .transaction {
+                $0.animation = nil
+                $0.disablesAnimations = true
+            }
         let (window, captured) = hostWindow(rootView, for: scene)
         window.appearance = NSAppearance(
             named: mode == .dark ? .darkAqua : .aqua
