@@ -148,6 +148,7 @@
       h('div', { className: 'bae-m-libhead-trail' }, props.children));
   }
   SF.down = 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z';
+  SF.sidebar = 'M3 5h18v14H3V5zm2 2v10h9V7H5zm11 0v10h3V7h-3z';
 
   function MacAlbumGrid(props) {
     var n = Number(props.columns || 4);

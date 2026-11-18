@@ -224,7 +224,8 @@
 
   function MacSegmentedControl(props) {
     var options = String(props.options || '').split(',').map(function (o) { return o.trim(); }).filter(Boolean);
-    return h('span', { className: 'bae-m-segmented', role: 'radiogroup' },
+    // `off` dims the whole control while none of its options can be chosen.
+    return h('span', { className: cx('bae-m-segmented', props.off && 'bae-off'), role: 'radiogroup', 'aria-disabled': props.off ? true : null },
       options.map(function (o) {
         return h('span', { key: o, role: 'radio', 'aria-checked': o === props.selected, className: cx('bae-m-segment', o === props.selected && 'bae-m-segment-on') }, o);
       }));

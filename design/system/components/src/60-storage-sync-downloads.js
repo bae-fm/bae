@@ -43,15 +43,16 @@
   // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector. `disabled` dims the controls, which do nothing while no library is open.
   function MacStorageWindow(props) {
     var k = kids(props.children);
-    return h('div', { className: cx('bae-m-window bae-m-storewin', props.disabled && 'bae-m-storewin-off'), style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
+    // `disabled` (no library open): the filter, the search field and the inspector button are off, each drawn by its own off state.
+    return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
       h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
       h('header', { className: 'bae-m-storewin-bar' },
         h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
         h('span', { style: { flex: 1 } }),
-        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All' }),
+        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
         h('span', { style: { flex: 1 } }),
-        h('span', { className: 'bae-m-storewin-filter' }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
-        h('span', { className: cx('bae-m-iconbtn', props.inspector && 'bae-m-iconbtn-on'), title: 'Inspector' }, h(Sym, { name: 'sidebar', size: 15 }))),
+        h('span', { className: cx('bae-m-storewin-filter', props.disabled && 'bae-off'), 'aria-disabled': props.disabled ? true : null }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
+        h(MacIconButton, { icon: 'sidebar', size: 15, label: 'Inspector', active: props.inspector, off: props.disabled })),
       h('div', { className: 'bae-m-storewin-body' },
         h('div', { className: 'bae-m-storewin-list' }, k[0]),
         props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, k.slice(1)) : null));
