@@ -23,8 +23,8 @@ pub enum FileRow {
 /// The columns naming the release file a pending record is about: its
 /// release, its name and its album's title. A move's record names the release
 /// file of its original, and a file's record the release file of its file
-/// when the file's namespace is the release files'. The columns are `NULL`
-/// unless all three are present. This is the one place that rule lives: the
+/// when the file's namespace is the release files'. The schema sets all three
+/// or none. This is the one place that rule lives: the
 /// pending rows' files and the failure's file both read these columns.
 pub(super) fn release_file_columns() -> ReleaseFileColumns {
     use bae_records::synced::RELEASE_FILES_NAMESPACE;
@@ -37,13 +37,7 @@ pub(super) fn release_file_columns() -> ReleaseFileColumns {
     let id = picked("original_file.release_id", "named_file.release_id");
     let name = picked("original_file.original_filename", "named_file.original_filename");
     let album = picked("original_album.title", "named_file_album.title");
-    let present = format!("{id} IS NOT NULL AND {name} IS NOT NULL AND {album} IS NOT NULL");
-    let only_if_present = |column: String| format!("CASE WHEN {present} THEN {column} END");
-    ReleaseFileColumns {
-        release_id: only_if_present(id.clone()),
-        file_name: only_if_present(name.clone()),
-        album_title: only_if_present(album.clone()),
-    }
+    ReleaseFileColumns { release_id: id, file_name: name, album_title: album }
 }
 
 /// The SQL of [`release_file_columns`]' three columns.
