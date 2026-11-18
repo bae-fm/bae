@@ -273,8 +273,7 @@ impl BridgeSourceSearch {
 pub enum BridgeSearchStatus {
     /// A source is still looking.
     Searching,
-    /// No source is looking and none failed, and either a source named a
-    /// release or bae asked no source.
+    /// No source is looking and none failed, and a source named a release.
     Found,
     /// Every source landed, none failed, and a source that answered named no
     /// release.

@@ -203,9 +203,22 @@ async fn a_started_search_asks_only_the_catalogs_the_library_asks() {
             (LookupCatalog::Discogs, SourceSearch::NotConfigured),
         ]
     );
+}
 
-    let (_, asked) = start(&tables, key, &availability(Off, NotConfigured)).await;
-    assert!(asked.is_empty());
+/// A library that asks no catalog is in an invalid state: a search it starts
+/// fails, and the search the key held before stays as it was.
+#[tokio::test]
+async fn a_search_fails_when_the_library_asks_no_catalog() {
+    use SourceAvailability::{NotConfigured, Off};
+    let (tables, key, _tmp) = scanned().await;
+    let key = &key;
+    let run = started_search(&tables, key).await;
+
+    let refused = tables
+        .start_candidate_search(key, &search_query(), &availability(Off, NotConfigured))
+        .await;
+    assert!(matches!(refused, Err(crate::ImportError::NoCatalogAsked)), "{refused:?}");
+    assert!(is_current(&tables, key, run).await);
 }
 
 /// The search's read decides its status: searching while a part is,
@@ -263,13 +276,6 @@ async fn the_read_decides_where_the_search_stands() {
     let (run, _) = start(&tables, key, &availability(Off, On)).await;
     assert!(land(&tables, run, LookupCatalog::Discogs, Ok(Vec::new())).await);
     assert_eq!(status().await, SearchStatus::NoMatches);
-
-    start(&tables, key, &availability(Off, NotConfigured)).await;
-    assert_eq!(
-        status().await,
-        SearchStatus::Found,
-        "the search asked no catalog, so no catalog returned an empty answer"
-    );
 }
 
 /// A new search replaces the key's search on a new run: the replaced run's

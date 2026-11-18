@@ -492,13 +492,18 @@ impl ImportTables {
     /// with a part for each of `sources`: a folder candidate's of the files
     /// the scan holds it with now, a library release's of none. Answers the
     /// run its parts' answers land on and the catalogs to ask, in their
-    /// order. Refuses a folder key the scan holds no candidate at.
+    /// order. Refuses a folder key the scan holds no candidate at, and fails
+    /// when `sources`, the library's settings, ask no catalog, writing
+    /// nothing.
     pub(crate) async fn start_candidate_search(
         &self,
         key: &CandidateKey,
         query: &SearchQuery,
         sources: &[CatalogAvailability],
     ) -> Result<(SearchRun, Vec<LookupCatalog>), crate::ImportError> {
+        if !bae_preferences::asks_a_source(sources) {
+            return Err(crate::ImportError::NoCatalogAsked);
+        }
         let key = key.clone();
         let query = query.clone();
         let sources = sources.to_vec();

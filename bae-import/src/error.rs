@@ -115,6 +115,13 @@ pub enum ImportError {
     #[error("This release is still being identified; import it once identification finishes")]
     CandidateBeingIdentified,
 
+    /// A typed search was started while the library's settings ask no
+    /// catalog: each is switched off or lacks its key. A library left so is
+    /// in an invalid state, so the search fails and bae stores none.
+    #[cfg(desktop)]
+    #[error("the library asks no catalog, so a search has nothing to ask")]
+    NoCatalogAsked,
+
     /// This device already imported a release from these files: one folder
     /// hash is one release on a device (`local_release_origin`). Refused when
     /// the import is asked for, and by the commit when another import of the
@@ -627,6 +634,8 @@ impl ImportError {
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             #[cfg(desktop)]
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
+            #[cfg(desktop)]
+            Self::NoCatalogAsked => C::Internal,
             #[cfg(desktop)]
             Self::FilesAlreadyImported { .. } => C::FilesAlreadyImported,
             #[cfg(desktop)]

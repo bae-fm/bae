@@ -1767,7 +1767,9 @@ picked. The person then:
 - **searches** by artist and album, catalog number or barcode, with each
   catalog's results landing as they come, and a line naming each catalog
   still being searched; *Retry* asks again only the
-  catalogs that failed, keeping what the others returned. An answer bae cannot
+  catalogs that failed, keeping what the others returned. A library that
+  asks no catalog is in an invalid state: a search started there fails, and
+  bae stores no search. An answer bae cannot
   save counts as that catalog's failure, so Retry covers it. Nothing more is
   read about a result until it is picked, so a statement joins two catalogs'
   albums on the search's cards only once a pick has read a MusicBrainz
