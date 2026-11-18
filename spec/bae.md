@@ -46,8 +46,7 @@ words bae puts on screen, and what each means, are in [words.md](words.md).
 - [6. Sync](#6-sync)
 - [7. Playback](#7-playback)
 - [8. Servers](#8-servers)
-- [9. API](#9-api)
-- [10. Bridge](#10-bridge)
+- [9. Across the apps](#9-across-the-apps)
 - [11. Crates and conventions](#11-crates-and-conventions)
 - [Appendix A. Schema](#appendix-a-schema)
 - [Appendix B. Synced tables](#appendix-b-synced-tables)
@@ -2479,7 +2478,7 @@ has come; Moving, filled as far as a move to This Mac's copies have downloaded
 Local, Pinned or Cloud at rest. The inspector says the rest for the selected
 release: how many files are queued, moving or done, with Cancel; for a failed
 pin, *Could not pin*, and for a failed move to This Mac, *Could not move to
-This Mac*, each with *Details* (§9.7) and *Retry*; for a failed move to the
+This Mac*, each with *Details* (§9.6) and *Retry*; for a failed move to the
 cloud, *Could not move to the cloud*, naming the file whose original changed
 since import, with *Details* and *Cancel upload*; and it marks, in the release's
 file list, the file whose original is missing or changed, or whose download
@@ -3169,7 +3168,10 @@ member's person rows open nothing: a member has nothing to do there. On Android
 the Name row opens the rename dialog, whose **Save** is off while the name is
 blank, and listening history is chosen from radio
 rows in a dialog. A person with no profile yet creates one in *You* in place of
-the name (§5.4). Removing a person or a device still asks first.
+the name (§5.4). Removing a person or a device still asks first. A person's
+page closes, and the people page shows, once that person has left the
+library. Rename Library starts from the name as it stands when it opens, and
+the macOS menu bar always shows Rename Library, enabled for an admin.
 
 Removing a person or a device, changing a role, renaming the library and
 approving a request are admin changes. Each is one write on the device that asks: coven checks it
@@ -3929,7 +3931,7 @@ Sync page. A file that can't move or a change that can't go out shows where the
 person can retry or cancel it, on its release in Storage Manager or in its
 change box, never in the panel. Nothing in the panel retries. A row shows no
 error: clicking it closes the panel and opens the alert with what to do and the
-causes (§9.7); on Android a tap closes the sheet and opens a dialog with the
+causes (§9.6); on Android a tap closes the sheet and opens a dialog with the
 same words and causes. Each problem has an × that takes it out of the panel,
 without fixing it: it still shows where it is fixed, and a problem that leaves
 the list and comes back shows again. While a library is open these problems show
@@ -4130,7 +4132,7 @@ in plain words, in the order they arose, with an action wherever the person
 can act. A change of this device's that waits for the data it changes to be
 updated to this version of bae says that, not that it waits for earlier
 changes. A record whose condition changes keeps its place. The error behind
-a record opens from its notice's *Details* (§9.7), to copy: its text names
+a record opens from its notice's *Details* (§9.6), to copy: its text names
 every cause below it, with secrets and URLs already cut by coven. A record
 read after the library reopens has no details and offers none. A retry that
 fails for the same reason leaves its record as it was and shows the error it
@@ -5268,83 +5270,61 @@ Its switch shows the new setting while bae saves it, and the stored setting once
 the save returns, so a save that fails puts the switch back.
 
 ---
-## 9. API
+## 9. Across the apps
 
 Every app does the same things with a library: open it, read it, watch it
-change, import, play, move files, sync, and change settings. bae's Rust
-API (bae-app over bae-library and bae-views) does each once, so no platform keeps its own copy of a rule. This section
-names the API's parts; the source is the reference for each signature.
+change, import, play, move files, sync, and change settings. bae's core does
+each once, so every app follows the same rules.
 
 ### 9.1 Opening a library
 
-`AppDir` is bae's directory, `~/.bae` under the home the host passes in. Each
-library is registered there by id.
+bae keeps its own directory, `~/.bae` under the person's home, and registers
+each library there by id.
 
-| Call | What it does |
-|---|---|
-| `create_library` | creates a new library's store and gives this device its identity, registering it under the device name the call gives, and keeps the creator's name for their profile (§5.4); given no library name, the bridge generates one; a blank creator's name fails before anything is made, and a name that can't be kept removes the new library again |
-| `restore_from_code`, `restore_from_saved_code` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain or the phone's Block Store (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain, or in this device's Block Store on Android, for libraries not already on this device, each with its library's saved name, its location and the provider sign-in restoring it needs; an entry coven can't restore from is listed with its library id and why, for deleting only; a device with no Block Store lists none |
-| `forget_saved_restore_code` | deletes a saved restore code, readable or not, and the S3 key beside it from iCloud Keychain on all the person's Apple devices, or from this device's Block Store; no library, storage or device's copy changes, and an absent code succeeds (§5.6); the apps ask first, and the question names the library of a readable code and says nothing of one for an unreadable code |
-| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, then restores it under a new device id beside this device's copy, at a new library's settings; a restore failing before its record leaves this device's copy as it was; called again, finishes a restore that stopped after its record (§6.4) |
-| `resume_replacement` | finishes this device's reset or restore of a library that stopped after its record, from what coven kept: no code, and no sign-in unless the provider refuses the kept one; told which call the listing names, so a restore's finishing can be cancelled and a reset's can't (§6.4) |
-| `join_with_invite` | joins a library from an invite as the person named in the call, whose name the request carries with the private circle it asks for, so the person's profile is written as their device registers (§5.4); once approved, returns the library open even when its first load failed, with that failure (§5.6) |
-| `unfinished_joins`, `unfinished_join_for`, `resume_join` | list the joins this device has under way, find the one for a library, and continue one after bae restarts, without the code, signing in only when coven has no sign-in it can use (§5.6) |
-| `discard_unfinished_installation` | deletes a join or restore that stopped before it finished from this device, directory and entries, for one coven can't read; `unfinished_joins` and `unfinished_restores` fail with `UnfinishedInstallationUnreadable` naming its library until it is gone; refused as `Config` when this device has none for the library, or a call holds it (§5.6) |
-| `unfinished_restores`, `resume_restore` | list the restores onto this device that stopped after they recorded themselves, and finish one after bae restarts, without the code, signing in only when coven has no sign-in it can use; a cancel before the device registered takes the restore back (§5.6) |
-| `reset_device` | loads a library again under a fresh device id, after the warning; called again, finishes a reset that stopped after its record (§6.4) |
-| `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why: storage settings or a name that can't be read, a reset or restore of this device's copy that didn't finish, with the call that finishes it, or a removal from this device that didn't finish |
-| `bae_app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification; a library whose reset or restore didn't finish fails with the call that finishes it, and one whose removal didn't finish fails saying so |
-| `AppServices::close` | stops playback, saving where it was, then identification and import, waits for the Discogs key-validation writes still in flight, then closes the store |
-| `unsent_before_removal` | counts what removing a library that isn't open would discard: the edits and files this device hasn't sent, opening its store briefly (§6.4) |
-| `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
-| `remove_unopenable_library` | records the removal of a library that can't open, deletes its store from this device without opening it, losing what it hasn't sent, then its files and the record last (§6.4) |
-| `UnfinishedRemoval::find`, `finish_removals` | report recorded removals that stopped partway, and finish them (§6.4) |
-| `finish_deletion` | finishes removing a library whose leaving stopped partway after it was under way: coven opens it and goes on as the removal would, then bae's files and the record follow (§6.4) |
+Creating a library registers this device under the device name the person
+gives it and keeps the creator's name for their profile (§5.4). Given no
+library name, bae names the library itself. A blank creator's name fails
+before anything is made, and a name that can't be kept removes the new library
+again.
 
-Creating, restoring and joining each return coven's open handle, and bae
-starts the library on that same handle rather than opening it again.
+Deleting a saved restore code (§5.6) deletes it, readable or not, with the S3
+key beside it; no library, storage or device's copy changes, and deleting a
+code that is already gone succeeds. The question the apps ask first names the
+library of a readable code and names none for an unreadable one.
+
+When the system keychain refuses a library's key for now, the Mac shows the
+keychain screen and opens the library again once the person unlocks the
+keychain, and Android shows the failed open with *Retry*.
 
 **How far an open has come.** Opening a library can take a while on a large
 one: after an app update it runs the migrations the library hasn't run, and
 after a new version of SQLite or of one of bae's orders or functions it
-rebuilds the indexes they changed. Every call that opens a library's store
-reports each of these steps as it runs, with how much of it is done: first
-rebuilding, counted in rebuilds, then migrating, counted in migrations, at
-most four times a second within a step
+rebuilds the indexes they changed. An open reports each of these steps as it
+runs, with how much of it is done: first rebuilding, counted in rebuilds, then
+migrating, counted in migrations, at most four times a second within a step
 ([coven E1](https://github.com/bae-fm/coven/blob/main/spec/api.md#e1-opening)).
-That is `bae_app::bootstrap`, `unsent_before_removal` for a library that isn't
-open, and `restore_replacing_device` when this device already holds the
-code's keys and the call just opens the library. An open with neither step
-reports nothing. The apps read the steps as a fast stream, never as observed
-state, and wherever such an open runs they show the step's name over a bar of
-how much of it is done in place of the spinner: the screen a library opens
-or switches on, the restore over this device's copy, and, on the Mac, the
-row of a library that isn't open while removing it counts what it would
-lose. Between steps, and through an open that runs none, the screen names
-what it waits on in the app's own words under its spinner, never a bare
+An open with neither step reports nothing. Wherever such an open runs, the
+apps show the step's name over a bar of how much of it is done in place of the
+spinner: the screen a library opens or switches on, the restore over this
+device's copy, and, on the Mac, the row of a library that isn't open while
+removing it counts what it would lose. Between steps, and through an open that
+runs none, the screen names what it waits on under its spinner, never a bare
 spinner: finding this device's libraries at launch, opening the library, and
-on the Mac setting one up, closing it, removing it, or resetting from cloud;
-a reset before it first reports where it stands says "Resetting from
-cloud…".
+on the Mac setting one up, closing it, removing it, or resetting from cloud; a
+reset before it first reports where it stands says "Resetting from cloud…".
 
-**How far a setup call has come.** Each call that sets a library up before
-one is open reports through a stream of its own, of the same kind as an
-open's steps, which the app makes for that call and hands to it: a restore or
-a join reports where it stands (connecting, waiting for approval with the
-confirmation number and when it checks next, loading, or the records it waits
-on), and creating a library reports its one step. The debug Mac app's dev
-reset is one such call: it reports finishing earlier removals, removing each
-library on this device (counted by library), deleting their saved restore
-codes (counted by code), deleting bae's files on this device, creating the
-profile's library, setting it up, and connecting it to its storage, and the
-first step that fails stops it. The apps read these steps from the stream
-like an open's, never from a callback, and show the step's name over a bar:
-counted where the step is counted, moving without a count where it is not,
-never a bare spinner. Core decides which with each step it sends: the share of
-the step's units done, or none for a step of no units and for each step of
-a storage setup other than loading, which is one unit; the apps fill the bar
-to it or move it without a count.
+**How far a setup has come.** Creating a library, a restore and a join each
+report their steps the same way: a restore or a join reports where it stands
+(connecting, waiting for approval with the confirmation number and when it
+checks next, loading, or the records it waits on), and creating a library
+reports its one step. The debug Mac app's dev reset reports finishing earlier
+removals, removing each library on this device (counted by library), deleting
+their saved restore codes (counted by code), deleting bae's files on this
+device, creating the profile's library, setting it up, and connecting it to
+its storage, and the first step that fails stops it. The apps show the step's
+name over a bar, never a bare spinner: the bar fills as the step's units are
+done, and moves without a count for a step of no units and for each step of a
+storage setup other than loading.
 
 A restore, a join and a device reset load the library from storage, and say
 where they stand state by state: a new installation's database opening, then
@@ -5355,319 +5335,185 @@ work before it opens. A join reports loading for the check that finds its
 approval, then finishes, then reports loading again for the library it
 published
 ([coven E10](https://github.com/bae-fm/coven/blob/main/spec/api.md#e10-joining-and-restore)).
-The app pulls these states as it pulls every screen value, each time the
-state changes; the counts of the step that counts, the open's steps as above
-or loading's, go in the call's stream instead, which holds the step while it
-runs and nothing otherwise, so a count moving changes no state.
-Loading reports its steps with how much of each is done: reading the
-library's history for the person's keys, counted in slots, when the saved copy
-holds none for them; downloading each saved copy, the one every member reads
-and then each circle's, counted in bytes; writing the copies into the library
+Loading reports its steps with how much of each is done: reading the library's
+history for the person's keys, counted in slots, when the saved copy holds
+none for them; downloading each saved copy, the one every member reads and
+then each circle's, counted in bytes; writing the copies into the library
 here, counted in tables; applying the changes saved with them, then
 downloading and applying the changes made since, counted in changes. A step
 runs only when it has work. The apps show each step's name over its bar on
-the restore and join screens, and on the screen a reset loads on.
-Registering and finishing have no count, since how much the registration
-reads isn't known until it has read it: the apps name each as they name
-connecting, and a join that has found its approval can no longer be
-cancelled. Each state says
-whether the call can still be cancelled: a restore until it ends, a join while
-it opens or connects, a reset never; the apps show Cancel only while it says
-so.
+the restore and join screens, and on the screen a reset loads on. Registering
+and finishing have no count, since how much the registration reads isn't
+known until it has read it: the apps name each as they name connecting, and a
+join that has found its approval can no longer be cancelled. A restore can be
+cancelled until it ends, a join while it opens or connects, and a reset never;
+the apps show Cancel only while it can.
 
-`bootstrap` returns `AppServices`, the running library. Every later call goes
-through it. A store is opened once per process; closing waits for every worker
-holding it.
+**Closing a library** stops playback, saving where it was, then the desktop's
+servers, identification, import and sync, and then the library's store. A
+close the app shows reports each step as it starts: stopping the desktop's
+servers, stopping playback, stopping identification and import, stopping sync
+once its running pass ends, ending the library's background work, and closing
+the store. The apps show the step's name while it runs: on the Mac over a
+moving bar on the loading screen, on Android over one on its own screen.
+Before the first step, and between steps, both screens name what they wait
+on, closing or removing the library, under a spinner. That covers closing a
+library, the close before restoring or resetting this device's copy, and, on
+Android, the close of the library a newly opened one replaces. Quitting the
+Mac app, and the close after a removal or a failed open, show nothing. A step
+of the close that breaks on a bug is reported as one and fails the close, and
+the steps after it still run. A close the Mac app shows that fails ends the
+library's session anyway, since the library is closed either way: the welcome
+screen shows *Could not close the library* with the failure and says the
+session ended anyway.
 
 ### 9.2 Reading and watching
 
-Reads come two ways:
+Every screen shows the library as it stands, and changes as soon as a write
+changes what it shows. A read that fails shows its failure, and the screen
+goes on following the library, unless the library closed or can no longer be
+read or written.
 
-- **One-time reads** return the library as it stands: an album's detail (which
-  carries the album's ratings and the person's stars for each track, and reads
-  every release it holds, each with its tracks, credits, files, records and
-  storage state, in one statement, and says whether it holds more than one so
-  the page offers a choice between them), a release's tracks and files, an
-  artist, a work, a search.
-- **Live subscriptions** deliver a value, then a new one each time the rows it
-  read change. The album grid, the artist and composer lists, a composer's
-  page, a search, an editor's artist search, a release editor's draft, the
-  import list, sync status,
-  uploads, downloads, the queue, the playlists and a playlist's page are all
-  live. A read that fails is delivered as a value and the
-  subscription goes on, but one that fails because the store closed, or
-  because the library can no longer read or write it, is delivered once and
-  ends the subscription. The apps show the album grid, the artist and composer
-  lists, a composer's page, the download queue, the Storage manager, an artist
-  picker's search, the queue's upcoming tracks and the import list through one
-  live window each. Every list uses the same bridge objects: a value names the
-  list, one handle call opens its view, and another opens its count. Each list
-  sorts by terms that end with a unique one, so every row has one place, and an
-  index serves each of its sorts. The app reports the first and last row on
-  screen: when it opens the list, from its own height and its row height before
-  any row arrives (rows 0 to as many as fit, or the place a jump or a reveal
-  asks for), and again each time the person scrolls, resizes or jumps. Core
-  keeps the list's one window around those rows: the rows on screen and about
-  one screen of rows above and one below them, with no fixed number of rows.
-  The window holds the rows at or after the sort values of one row (from the
-  list's top when it has none), at most as many as core sized it for, read as a
-  run of index seeks. Each seek is one statement with an ORDER BY and a LIMIT
-  and no OFFSET, and where each term it orders by is a stored column of one
-  table that the statement returns, coven reruns it, once it has returned as
-  many rows as its LIMIT, only for a write at or before its last row: a write
-  after the window reruns nothing. The album grid sorted by year (whose first
-  term is whether the year is missing) or grouped by artist (whose terms span
-  two tables), a composer's page, the artist picker's search and the import
-  list break those conditions, so coven reruns their window for every write to
-  what it reads. When the rows on screen come within half a
-  screen of an edge of the window past which the list goes on, core moves the
-  window so that they sit in its middle. The new window starts at the sort
-  values of a row the window holds; when it holds no such row (a scrollbar
-  drag, the end key, a reveal), core reads the sort values of the row at that
-  position once, by offset. The window's position is a live count of the rows
-  before its first row: one statement that adds the COUNT of each index range
-  before that row, so SQL sums the counts; a window at the list's top is at
-  row 0. Core holds the latest answer of the window's query and of its
-  position's query, and nothing else. The app draws each row at the window's
-  position plus the row's place in the window, and a placeholder at every
-  place outside the window. The album grid draws an open album's detail under
-  the row that holds its card: the card the person opened, in its artist's
-  group when the grid groups by artist, else the album's first card, which the
-  grid also uses once the artist's group no longer holds the album. Where that
-  card is, its position and its artist's group, is a live read of its own, so a
-  write that moves the card, such as a new title under a title sort, moves the
-  detail with it. Revealing an album opens it and scrolls to that card from the
-  same live read, so a write that moves the card while the reveal waits for
-  its rows sends the reveal to the card's new place. When rows come or go above the rows on screen, the
-  window's position moves with them, and the app keeps the top row on screen
-  where it was. A list's count is its own live query delivering its row count,
-  which sizes the scroll view, and how many distinct items the rows show: the
-  album grid's albums, which grouped by artist are fewer than its rows, and the
-  row count for every other list. When another order, a reopen or a jump opens
-  a new view, the app keeps drawing the rows it has until the new view
-  answers, so the screen never empties. bae keeps nothing about where rows sit
-  between reads. bae reads the import list the same way: its view, its count
-  and its summary are each a live read of its own, opened from the open list,
-  whose sort values lead with the number of the part of the tab a row is in.
-  The queue's upcoming tracks are one more list: its window is a range of the
-  context lane's places, which are whole numbers with no gaps, and a jump skips
-  those places by offset before the query reads any track, so a deep window
-  costs little. The Storage manager's count and its window read one statement
-  each, whether the search finds few releases or many. The artist picker's
-  search opens a new list, with new queries, for each text the person types:
-  its order puts the artists whose id or name the text matches exactly first,
-  then those whose name starts with it, then the rest, by name and id, and bae
-  reads its window the way it reads the other lists, from every artist its text
-  finds. Until the query for the new text returns its first rows, the picker
-  shows the rows the previous text found; when the new text's first read fails,
-  the picker shows that failure instead of a list.
-  The Storage manager's count delivers its row count and its files' total
-  size, and whether a search narrows it; a new sort, filter or search opens new
-  queries. The app keeps the selected release ids in the view, and each row in
-  view draws its highlight from them: a click, a Command-click or an arrow key
-  changes them. To select a range with Shift held, or to select all, the app
-  asks core for the ids: core reads every release from one release to another
-  in the list's order, or every release the list shows, loaded or not. Its selection is a live query
-  of its own. The app tells it which releases the person selected, and each value carries the row of each selected
-  release the list holds, on screen or not, and the storage actions all of them
-  allow. The app offers only those actions. A row's menu acts on the row drawn
-  where the person clicked, or on the selection when that row is in it. Another
-  live query reads which transfer queues hold work. Its inspector shows, and its storage actions act
-  on, a selected release only while the list holds it: a release that finishes
-  uploading out of the Local list, no longer matches the filter, or is deleted
-  leaves the inspector and the actions' targets as it leaves the list, including
-  while an action's confirmation or folder prompt is open. The details of the
-  file selected in the inspector are a live read of that file by its id. The
-  inspector reads its release live by id: the release's files, each beside its
-  upload while one waits (whether it is being sent, and what it waits for with
-  the error behind that while this process holds it; how far it has got arrives apart, by file;
-  and while the release waits in or runs through the download queue, whether the
-  file is kept whole on this device yet, as coven's `coven_pins` says; and
-  whether coven is downloading the file now to be kept, as `coven_downloading`
-  says, how far it has got arriving apart, by file, from coven's download
-  watch), and its entry in the download, export and upload queues, a download
-  with how many of its files are downloading, wait and are kept, all read for
-  that release alone and at once, so its queue entries and its files' pins are
-  as they stood together. The read itself decides that the release is pinning
-  (its download entry pins and has not failed) and counts its files by pin
-  state, and bae keeps no earlier value to compare with: the live query sends a
-  value only when it differs from the last. The inspector shows nothing of a
-  whole queue, which the list's footer pauses (§4.2): its upload shows how many
-  of its files are uploading, queued and stored, a count of none left out, so a
-  release with nothing being sent reads only what waits and what is stored; a
-  control that cancels it, and while files are sent, the bytes of its size
-  stored or sent and how fast they go. Each file is one line, its name and size
-  after a mark: none for a file at rest, a dashed circle for one waiting its
-  turn, a ring filling as it is sent; a file waiting on a reason says why when
-  the pointer rests on it. While the release pins, its download shows the same
-  way: how many of its files are pinning, waiting and pinned, again leaving
-  out a count of none; a control that
-  cancels the pin, and while it downloads the bytes it holds of its size and
-  how fast it goes; a file downloading shows a ring filling as it comes, and
-  one waiting its turn a dashed circle. A failed pin says it
-  failed instead, its error behind *Details* (§9.7), with a control that
-  retries it (§4.3) and one that cancels it. Selecting a file shows its details under the list,
-  closed by a button or by selecting nothing: its name and the folder it
-  sits in within the release's folder, what kind of file it is, its audio
-  format, and its size. Core reads a file's kind from the role and document
-  kind its import stored (§2.2): a CUE sheet, parsed or not, a rip log, an
-  AccurateRip report, a playlist, text, or a damaged image; and from its
-  content type an audio file's or an image's format, and a PDF.
-  The upload queue's own subscription says only whether it is paused; how
-  fast each release's upload goes, the bytes and speed each download moves,
-  and the percent each export reaches arrive apart, per release.
+**Long lists.** The album grid, the artist and composer lists, a composer's
+page, the download queue, the Storage manager, an artist picker's search, the
+queue's upcoming tracks and the import list each sort by terms that end with
+a unique one, so every row has one place. A list shows a placeholder at each
+place whose row it hasn't read yet. When rows come or go above the rows on
+screen, the list keeps the top row on screen where it was. When another order,
+a reopen or a jump changes the list, the list keeps drawing the rows it has
+until the new rows arrive, so the screen never empties.
 
-What a read returns is already resolved: labels, paths, flags, totals, sides
-and positions are worked out in core, and a surface only renders them. A
-detail embeds its summary, so a surface holding a detail can treat it as one.
+The album grid draws an open album's detail under the row that holds its card:
+the card the person opened, in its artist's group when the grid groups by
+artist, else the album's first card, which the grid also uses once the
+artist's group no longer holds the album. A write that moves the card, such as
+a new title under a title sort, moves the detail with it. Revealing an album
+opens it and scrolls to that card, and a write that moves the card while the
+reveal waits sends the reveal to the card's new place.
 
-How far the identifications and imports in flight have got is a live query
-of its own, `subscribe_import_counts`, which the app pulls.
+The artist picker's search puts the artists whose id or name the text matches
+exactly first, then those whose name starts with it, then the rest, by name
+and id. Until the rows for new text arrive, the picker shows the rows the
+previous text found; when the new text's first read fails, the picker shows
+that failure instead of a list.
+
+**The Storage manager's selection.** A click, a Command-click or an arrow key
+changes the selection. Shift-click selects every release from one release to
+another in the list's order, and Select All every release the list shows,
+loaded or not. The app offers only the storage actions every selected release
+allows. A row's menu acts on the row the person clicked, or on the selection
+when that row is in it. The inspector shows, and the storage actions act on, a
+selected release only while the list holds it: a release that finishes
+uploading out of the Local list, no longer matches the filter, or is deleted
+leaves the inspector and the actions' targets as it leaves the list, including
+while an action's confirmation or folder prompt is open.
+
+**The Storage manager's inspector** shows the release's files and its entries
+in the download, export and upload queues, as they stand together. It shows
+nothing of a whole queue, which the list's footer pauses (§4.2). Its upload
+shows how many of its files are uploading, queued and stored, leaving out a
+count of none, so a release with nothing being sent reads only what waits and
+what is stored; a control that cancels it; and while files are sent, the bytes
+of its size stored or sent and how fast they go. Each file is one line, its
+name and size after a mark: none for a file at rest, a dashed circle for one
+waiting its turn, a ring filling as it is sent; a file waiting on a reason
+says why when the pointer rests on it. While the release pins, its download
+shows the same way: how many of its files are pinning, waiting and pinned,
+again leaving out a count of none; a control that cancels the pin; and while it
+downloads, the bytes it holds of its size and how fast it goes. A file
+downloading shows a ring filling as it comes, and one waiting its turn a
+dashed circle. A failed pin says it failed instead, its error behind *Details*
+(§9.6), with a control that retries it (§4.3) and one that cancels it.
+Selecting a file shows its details under the list, closed by a button or by
+selecting nothing: its name and the folder it sits in within the release's
+folder, what kind of file it is, its audio format, and its size. A file's kind
+comes from the role and document kind its import stored (§2.2): a CUE sheet,
+parsed or not, a rip log, an AccurateRip report, a playlist, text, or a
+damaged image; and from its content type, an audio file's or an image's
+format, and a PDF.
 
 ### 9.3 Importing
 
-The import service (desktop only) owns the watched folders, the scan, the
-candidates, extraction, identification and the import worker. Its handle
-watches and unwatches folders, scans, groups and separates candidates, runs and
-cancels identification, searches, picks, edits drafts, binds CUE sheets, starts
-and cancels imports, and serves the import list's live query. The step a
-candidate's import is at is a column of its standings row, which the worker
-writes before it starts each step, so the list's rows and the pane read it with
-the rest of the row. Each identify run in flight is stored beside the standings
-in the shape of the verdict it may end on, with the signals it last read, as
-the run publishes it (A.5), and a person's typed search beside them, each
-catalog's answer landing in a write of its own. What each candidate has in
-flight — its standing, its run's state and the signals that run last read,
-its search — is a live query of those tables by key, which the screen drawing
-that candidate pulls; a write to another key tells it nothing. The search
-form's autocomplete pools are those signals while a run reads the folder,
-else the candidate's stored ones; the settle of a run's answer stores the
-signals of that run's own rows beside its verdict. How far through its step a
-running import is moves many times a second,
-so it reaches an app only in a `KeyedValueStream` (§10.2), by candidate. Every
-write to a candidate loads it whole, applies its rule, and saves it against the
-revisions it read, so two writers never disagree about which rows belong
-together.
+The import list and the pane show the step each candidate's import is at, and
+how far through it the import has got. The search form suggests the clues the
+candidate's run is reading, else the clues stored for it. Two edits of one
+candidate never leave its rows disagreeing about which rows belong together.
 
 ### 9.4 Playing
 
-The playback handle drives one queue on its own thread: play a release,
-several releases or the library shuffled; pause, resume, stop; next, previous,
-seek; volume and mute; queue edits; repeat and shuffle; play on a receiver or
-stop; preview a file before import, where Pause and Play are each their own
-command and a preview already so stays so, so a pause from the lock screen or
-a media key never starts a paused preview. What playback is doing is one
-device-local row, `playback_now`, which playback writes as each value
-changes, before it tells anyone else of the change: the playing track, its
-phase and whether its load waits on storage, the volume, the mute, where playback is going (a receiver by its id, name,
-kind, model, address and whether it takes a volume), the preview, and why playback last failed,
-until it next plays or the person dismisses the failure notice. Starting playback with the library resets the row to stopped, keeping
-the volume and mute only when it resumes what it played. The app pulls a
-live query of that row joined with the display of the track it names
-(loading, playing or paused) and the queue's repeat mode, a value after each
-change. The query passes every value to the app and skips none, a value
-for a deleted track included. A track the library no longer
-holds comes back with no display, which the value states as a removed track
-(§7.1).
+A preview's Pause and Play are each their own command, and a preview already
+paused or playing stays so, so a pause from the lock screen or a media key
+never starts a paused preview.
+
+What playback is doing is one device-local row, `playback_now`: the playing
+track, its phase and whether its load waits on storage, the volume, the mute,
+where playback is going (a receiver by its id, name, kind, model, address and
+whether it takes a volume), the preview, and why playback last failed, until
+it next plays or the person dismisses the failure notice. Starting playback
+with the library resets the row to stopped, keeping the volume and mute only
+when it resumes what it played. A track the library no longer holds shows as a
+removed track (§7.1).
+
 The failure notice shows wherever the person is while the row holds a failure:
-an alert on macOS, a snackbar on Android. Playback writes a second failure
-over the first while the notice shows, and the notice shows the latest. When
-the notice ends (the person presses the alert's button or the snackbar's
-dismiss button, or the snackbar times out), bae clears the row's failure, so a
-later failure shows again, even one with the same reason as the one before it.
-A write of that row that fails is a playback failure too, an internal one: it
-is reported to the crash reporter, written to the row as the failure when that
-write works, and told to the app after the change it could not write. Playback
-halts on it as on any playback failure, so the row, the audio and the screens
-agree instead of the failure being only logged.
-What playback compares a later change against is what the row holds: a value
-the row refused stays the row's old one.
+an alert on macOS, a snackbar on Android. A second failure while the notice
+shows replaces the first, and the notice shows the latest. When the notice
+ends (the person presses the alert's button or the snackbar's dismiss button,
+or the snackbar times out), bae clears the row's failure, so a later failure
+shows again, even one with the same reason as the one before it. When bae
+can't record what playback is doing, playback stops with an internal error,
+reported as a bug, so the row, the audio and the screens agree.
+
 Each command that puts tracks into Up next (add to queue, play next, add a
-release, insert) returns how many tracks it added, leaving out tracks the
-library does not hold. The screen that sent the command shows that number: the
-queue button's badge on macOS, a snackbar on Android. When an add puts no
-tracks in, no screen shows a count, and only the screen that sent an add shows
-its count.
-The timeline, for the operating system's media controls and Media3, which
-move the position on themselves, is another device-local row,
-`playback_timeline`: the line of the playing track and of a preview, each a
-position and whether it moves on from it at the play rate, and whether
-playback started the track's line because it applied a seek, in which case
-the line's position is the seek's target. Playback writes it only as it
-leaves the line it holds (a seek, even one to where the line puts the track, another
-track or clip, a pause or resume, a new length, the pregap ending, or a
-position more than a second off the line), before it tells anyone else, and
-starting playback with the library resets it to no line. The app pulls a live
-query of it, a value after each write. Those surfaces show no time before a
-track's start, so a playing pregap is one line standing at the start, and the
-line that moves begins as the track does. A seek the person makes through
-Media3 shows its target there until playback writes a line for that track
-that it started at a seek; playback wrote each line before that one before it
-applied the seek. A paused load, such as a restore, starts no line at a seek.
-The queue is a live subscription of its own. The playing track's position
-reaches an app only in a `KeyedValueStream` (§10.2), under the track's id: the
-track-relative position, how far through the track's length it is as a
-fraction from 0 to 1, and the length. Past the stored length the fraction
-stays at 1, since the position holds at the length there. While the track plays here, playback sends a new position each time
-the output has played 8 ms of audio, one display frame at 120 Hz, and at most
-one for each buffer the output takes from playback. While it plays on a
-receiver, playback works out where the receiver has reached from its last
-status every 8 ms. While playback is paused or loading, it sends the position
-once. The native view draws the latest position each display frame, with no
-arithmetic of its own, and draws the fraction as it comes, with no clamping.
-A preview's position reaches an app the same way, in a
-`KeyedValueStream` too. So do the parts of the playing track its buffer holds (§7.6), as
-fractions of its length under its id. When playback accepts a seek the person
-made, it reports the target as the track's or the preview's position before it
-rebuilds the audio stream. The track's position, or the preview's, moves to the
-target at once, so every view that draws the track (the seek bar, the queue's
-strip) or the preview shows the dropped position. No earlier position follows.
-No view keeps the position the person dropped the thumb at.
+release, insert) adds only the tracks the library holds, and the screen that
+sent the command shows how many it added: the queue button's badge on macOS, a
+snackbar on Android. When an add puts no tracks in, no screen shows a count,
+and only the screen that sent an add shows its count.
 
-Playback's thread outlives the service it runs. A service that ends on a bug
-of its own, or because the audio output won't open as it starts, is told once:
-playback stops with why, on this device, with no preview, and a bug goes to the
-crash reporter. A fresh service starts for the next command the handle sends,
-which it then serves, so the next press works, and nothing else starts one: a
-device that can't open is tried once for each command, never in a loop, and
-each failed try is told once, as an end of its own. That command ends with the
-service when it can't be served: a call waiting on its answer fails with
-"Something went wrong", and the end's report is what tells of any other.
-Commands sent while a service ends or the next starts wait in the thread's
-channel and are served in order. What a service sent itself reaches no later
-one, a decoder's failure included. Saving state with no service running has nothing to save and starts none,
-and a shutdown ends the thread.
+The operating system's media controls and Media3 move the position on
+themselves, from a line bae keeps in another device-local row,
+`playback_timeline`: for the playing track and for a preview, a position and
+whether it moves on from it at the play rate, and whether playback started the
+track's line because it applied a seek, in which case the line's position is
+the seek's target. bae writes a new line only as playback leaves the one it
+holds (a seek, even one to where the line puts the track, another track or
+clip, a pause or resume, a new length, the pregap ending, or a position more
+than a second off the line), and starting playback with the library resets it
+to no line. Those surfaces show no time before a track's start, so a playing
+pregap is one line standing at the start, and the line that moves begins as
+the track does. A seek the person makes through Media3 shows its target there
+until playback writes a line for that track that it started at a seek. A
+paused load, such as a restore, starts no line at a seek.
 
-A fresh service holds what outlives a service, whether or not it restores on
-launch: the queue's tables with their repeat mode, the volume and mute of
-`playback_now`, and the resume row's entry, loaded paused at its position
-(§7.8), which is never more than a second of playing behind. Nothing plays until
-a command plays it, and a next or previous from the loaded track stays paused.
-Only the ended service held the rest, and it is gone: a session on a receiver
-(which is told to stop as the service goes, so it doesn't play on while the app
-says stopped), a preview, a preloaded next track, a side-pause countdown, and
-the side-end reason of a pause, which comes back as a plain pause. A play under way keeps what was
-last saved of it.
+While a track plays here, the position shown moves each time the output has
+played 8 ms of audio, one display frame at 120 Hz; while it plays on a
+receiver, bae works out where the receiver has reached from its last status
+every 8 ms. Past the track's stored length the position holds at the length.
+When playback accepts a seek the person made, every view that draws the track
+(the seek bar, the queue's strip) or the preview shows the target at once, and
+no earlier position follows.
 
-### 9.5 Storage and sync
+When playback ends on a bug of its own, or because the audio output won't open
+as it starts, bae says so once: playback stops with why, on this device, with
+no preview, and a bug goes to the crash reporter. The next command starts
+playback afresh and is served, so the next press works, and nothing else
+starts it: a device that can't open is tried once for each command, never in
+a loop, and each failed try is told once. A command that can't be served fails
+with "Something went wrong". Commands sent meanwhile are served in order.
 
-Through `AppServices`: move releases to storage and make them local again,
-pin and unpin, cancel a transition, export and save; read what this device
-keeps for the library, clear its cache, set how much audio it keeps and
-delete the data a reset kept (§4.7); set up storage,
-cancel a running setup and dismiss one that ended undone (§6.2),
-reconnect, pause, read the pending list and act on its records; list people
-and their devices, watch for a device of this person's that joins after the
-watch begins, invite a person, list this device's open invites, approve or
-decline an invite's request, change a role, remove a person or a device,
-rename the library; make a restore code; create and rename a profile, set
-its avatar and history setting, rate, and make and edit playlists.
+Playback that starts afresh holds the queue with its repeat mode, the volume
+and mute, and the saved entry, loaded paused at its position (§7.8), whether
+or not the app restores on launch. Nothing plays until a command plays it, and
+a next or previous from the loaded track stays paused. The rest ends with the
+playback that ended: a session on a receiver, which is told to stop so it
+doesn't play on while the app says stopped, a preview, a preloaded next track,
+a side-pause countdown, and the side-end reason of a pause, which comes back
+as a plain pause. A play under way keeps what was last saved of it.
 
-### 9.6 Settings
+### 9.5 Settings
 
-This device's settings for the library are the `preferences` row. Each
-change edits the stored row in one write, and a UI follows it with no restart
-through the row's live query. Appendix C lists the settings.
+This device's settings for the library are the `preferences` row. Each change
+edits the stored row in one write, and every screen follows it with no
+restart. Appendix C lists the settings.
 
 On a Mac, Library settings starts with two rows. **Name** shows the library's name,
 with *Rename…* for an admin, or for anyone when the library isn't synced, and
@@ -5686,45 +5532,41 @@ with the same state, and **People and devices**: a phone's library always has
 storage. Each row opens its page. Settings keeps the switch to
 another library on this device under the Library row.
 
-### 9.7 Errors
+### 9.6 Errors
 
-The locale never crosses into core. A failure reaches a UI as a category and a
-detail: the UI shows one translated line per category, and offers the detail,
-the Rust error chain, untranslated, to copy. A category says what the person
-can do: fix credentials, retry the network, unlock the keyring, wait for an
-identification. Appendix G lists them.
+Every failure has a category and a detail: the app shows one translated line
+per category, and offers the detail, the error's chain of causes, untranslated,
+to copy. A category says what the person can do: fix credentials, retry the
+network, unlock the keyring, wait for an identification. Appendix G lists them.
 
-Core says per category whether the detail says anything its line doesn't: a
-path, an underlying cause, the provider's or the network's own message. Only
-then does an app offer the detail, and a notice never shows it: a notice shows the
-category's line, or a title the app words for what failed with what to do under
-it, and its *Details* opens the causes one a line, led by the category's line
-when the notice didn't show it, with a button that copies them whole: in an
-alert on macOS and a dialog on Android. The Mac's alerts, these
-and every confirmation, are bae's own and not the system's: no app icon, an
-elevated face with 20 point corners hung 36 points below the window's top edge,
-the title in bold, the message small and secondary under it, and bae's buttons
-below. It sits over the frontmost window, or over the sheet open on it, and
-nothing below it can be reached while it is up, by pointer, keyboard or
-VoiceOver. bae's alert draws in that window's tone, accent and light or dark
-appearance, and follows them when they change while the alert is up. The first
-button listed is the default, drawn in the accent unless it removes something,
-which draws red; Return presses it and
-Escape presses Cancel. A
-category whose line names the whole fault, with the counts, discs or folder it
-carries, shows the line alone, since its detail is the same sentence again in
-English.
+An app offers the detail only when it says something the category's line
+doesn't: a path, an underlying cause, the provider's or the network's own
+message. A notice never shows the detail: a notice shows the category's line,
+or a title the app words for what failed with what to do under it, and its
+*Details* opens the causes one a line, led by the category's line when the
+notice didn't show it, with a button that copies them whole: in an alert on
+macOS and a dialog on Android. The Mac's alerts, these and every confirmation,
+are bae's own and not the system's: no app icon, an elevated face with 20
+point corners hung 36 points below the window's top edge, the title in bold,
+the message small and secondary under it, and bae's buttons below. The alert
+sits over the frontmost window, or over the sheet open on it, and nothing
+below it can be reached while it is up, by pointer, keyboard or VoiceOver.
+bae's alert draws in that window's tone, accent and light or dark appearance,
+and follows them when they change while the alert is up. The first button
+listed is the default, drawn in the accent unless it removes something, which
+draws red; Return presses it and Escape presses Cancel. A category whose line
+names the whole fault, with the counts, discs or folder it carries, shows the
+line alone, since its detail is the same sentence again in English.
 
-Core also says per error whether making the same call again can get past
-it, and an app offers *Retry* on an error only then: a busy database, the
-network or a keychain locked this second can pass; a damaged database, a
-bug, an edit to fix or a call only another call answers can't. A database
-failure says which it met, from SQLite's or coven's own answer: busy (another
-connection held it past SQLite's wait, the store open in another process,
-coven's own work the call waits on, or what it read changed under it),
-damaged (a page SQLite can't read, a file that isn't a database, a stored
-value nothing writes), or refused (anything else). Appendix G lists which
-categories offer it.
+An app offers *Retry* on an error only when making the same call again can get
+past it: a busy database, the network or a keychain locked this second can
+pass; a damaged database, a bug, an edit to fix or a call only another call
+answers can't. A database failure says which it met, from SQLite's or coven's
+own answer: busy (another connection held it past SQLite's wait, the store
+open in another process, coven's own work the call waits on, or what it read
+changed under it), damaged (a page SQLite can't read, a file that isn't a
+database, a stored value nothing writes), or refused (anything else).
+Appendix G lists which categories offer it.
 
 A failure while bringing a library up has a step as well as a category: bae
 starting, opening secure storage, reading sign-in settings, listing this
@@ -5743,278 +5585,9 @@ later failure doesn't replace it. On macOS, while a library is open, it shows
 in the Activity panel (§6.4) and nowhere else in the window; on the welcome it
 shows in the welcome's content. On Android, while a library is open it shows in the Activity sheet
 and nowhere else on its screens; on its screens without an open library it
-shows at their top. A keychain that won't open stops the launch:
-the host opens it as it starts, and listing, opening and removing libraries
-all go through it. On Apple's platforms only a wrong keychain service name,
-bae's own bug, keeps it from opening; on Linux it is the desktop's secret
-service, reached over D-Bus.
-
----
-
-## 10. Bridge
-
-The apps are written in Swift and Kotlin, and the API is Rust. The bridge is
-how the API reaches Swift and Kotlin, and C# for bae-avalonia.
-
-### 10.1 Only translation
-
-bae-bridge does one thing: it converts the types of bae-app and the crates below
-it to and from types uniffi can export. It looks nothing up, formats nothing, filters
-nothing and holds no state. Anything else is added to bae-app or the crate below
-it that owns it, and the bridge calls it.
-
-The reason is the platforms: anything a UI or the bridge decides, each
-platform would decide again, and they would drift. So a UI renders what it is
-given. It formats numbers, sizes, durations and dates in its locale, and turns
-message keys into text from its string catalog. It never derives a value from
-two fields, sorts or groups by a domain rule, or builds a URL.
-
-Most `Bridge*` types restate a core type field for field. Macros in bae-mirror
-write those copies, and destructure every field, so a field added in core fails
-to compile in the bridge until it is carried across.
-
-A path on the device crosses as coven's bytes for it (`coven::path_bytes`;
-`Data` in Swift, `ByteArray` in Kotlin, `byte[]` in C#), never as text, so a
-name that isn't valid Unicode still opens: a path core gives the app to open
-or send back (a file to audition, an image to draw), and a folder or
-file the person picks (an export or save target, the folder a release's files
-move into). The app makes a file URL from the bytes, and the bytes from a
-URL's file-system representation. Text that shows a path or a file's name,
-such as the name a preview shows for the file it plays, comes from core,
-escaped (§3.1). A candidate's document the person opens to read (a log, a
-text file, a track sheet) is named by the candidate's key and the file's id,
-and core reads it and decodes it from the encoding it was written in.
-
-What the import queue is keyed by crosses as bytes the same way, so a folder
-whose name isn't valid Unicode is named apart from every other: a candidate's
-key (its folder's path, its grouping's key, or the key a library release's
-re-identify session runs under, which core gives the app for the release),
-a watched folder's path, and a folder below a watched folder (each name's
-bytes, joined by `/`). Each record that shows one carries the text that shows
-it beside it. A fast value's stream (§10.2) is keyed by bytes too: a file's,
-release's or track's id as UTF-8, or a candidate's key.
-
-### 10.2 The handle and the host
-
-- **`BridgeHost`** is built once per process. It holds bae's directory, the
-  telemetry sink the app built at launch, which it reports bugs and a failed
-  open through, the OAuth applications, on phones the app's sign-in presenter,
-  the budget of open files (§3.7), and a runtime for
-  the calls that run before a library is open: create, restore, join, reset,
-  sign in. A call that creates or opens a store hands back coven's handle, and
-  the app starts the library on it.
-- **`init_app`** opens a library and returns an **`AppHandle`**, which wraps
-  `AppServices` and, on desktop, the MCP and Subsonic servers and the cast
-  controller. A failed open throws `BridgeOpenError`, one case for each
-  thing the app can do next: `ResetFromCloud`, `ReplacementUnfinished` (with
-  the call that finishes it), `DeletionUnfinished`, `KeychainLocked` (the OS
-  keychain refused the library's key for now: the Mac shows the keychain
-  screen and opens the library again once the person unlocks the keychain,
-  and Android shows the failed open with *Retry*), or `Failed`. Each carries the
-  `BridgeError` it shows. Starting the library on the store a create, restore,
-  join or reset handed back fails with the same cases.
-- **Async calls** run on the library's own runtime. A Swift task cancelled
-  mid-call cancels the Rust work it started. A call that panics fails with an
-  internal error and is reported as a bug; one that must finish after its
-  caller leaves (remove, create, restore, reset) is reported even with no
-  caller left to hear it.
-- **Closing a library** ends it before its runtime: playback saves where it
-  was and stops, the desktop servers, identification, import and sync stop,
-  the library's tasks, its live subscriptions among them, end and its store
-  closes, and only then does the runtime shut down. Releasing the handle closes it the same way; the app closes it
-  first, off the main thread, to wait for it and hear a failure, which a
-  release reports as a bug. A step of the close that breaks on a bug is
-  reported as one and fails the close, and the steps after it still run, the
-  store's close among them. A handle released on the library's own runtime
-  closes it on a thread of its own, and opening, resetting, restoring or
-  removing that library waits for the close first. A store that a create,
-  restore, join or device reset left open, released before any open took it,
-  is closed the same way, on a thread the same calls wait for; a removal that
-  followed it at once would otherwise find the store still held. Once an open
-  has taken the store, the library owns it and it can't be opened from there
-  again. A close that panics is reported as a bug, as a failed one is, and
-  never fails the open or removal that waited for it. After a removal deleted
-  the store, only the runtime is left to end. An open that fails after the
-  library started closes it the same way before its runtime ends.
-  A close the app shows reports each step as it starts, through a stream of
-  its own of the same kind as an open's, which the app makes from the host
-  (whose runtime outlives the library's) and hands to the close: stopping the
-  desktop's servers, stopping playback, stopping identification and import,
-  stopping sync once its running pass ends, ending the library's background
-  work, and closing the store. The apps show the step's name while it runs:
-  on the Mac over a moving bar on the loading screen, on Android over one on
-  its own screen. While the close runs no step, before its first or once its
-  stream holds nothing, both screens name what they wait on, closing or
-  removing the library, under a spinner. That covers closing a library, the
-  close before restoring or resetting this device's copy, and, on Android, the
-  close of the library a newly opened one replaces. Quitting the Mac app, and
-  the close after a removal or a failed open, show nothing and report nowhere.
-  A close the Mac app shows that fails ends the library's session anyway, since the library is closed either way: the welcome screen shows *Could not close the library* with the failure and says the session ended anyway.
-- **`release_memory`** gives back the pages the library's store keeps cached
-  that no read or write is using; later reads load what they need again. SQLite
-  keeps every connection's unused pages in one pool for the process, so coven
-  frees them all, the writer's included, with one call on an idle reader. It is
-  safe at any time and never waits for a write. The Android app calls it each
-  time `onTrimMemory` asks, at every level, which includes bae leaving the
-  screen and waiting in the background, and on `onLowMemory`, while a library is
-  open. The iOS app, once it has a library to show, calls it on
-  `didReceiveMemoryWarningNotification` and `didEnterBackgroundNotification`.
-  The macOS app doesn't: the OS ends no app there for holding memory.
-- **What a read is.** Everything a screen shows comes from SQL, except values
-  that change many times a second (keyed latest-value streams, §10.2) and state
-  that lives only on screen (hover, focus, an open popover or menu, a drag in
-  progress), which the view holds. Core may compute a fast value by adding a
-  live query's values to an in-memory value that changes fast, but a plain
-  query result never goes on a fast stream (§10.2). A read that must follow changes (a screen, or a bridge,
-  automation or MCP subscriber) is one SQL query subscribed as a coven live
-  query, and everything a screen shows beside its rows (counts, totals, groups
-  and section headers, "N of M", sums, facets) comes from SQL, in the same
-  query or its own live query; any other read is a plain SQL read. SQLite
-  filters, sorts, joins, groups, counts and windows. Nothing is kept in memory between reads, no pass walks rows beside a
-  live query, no value is written only to make a query read again, and no size
-  cutoff sends a read down one of two paths. A long list's window, its count
-  and its section headers are separate live queries: the list has one window,
-  the rows from the sort values of one row on, at most as many as core sizes it
-  for around the rows on screen, sought through the order's index, so a write
-  after it reruns nothing; core moves the window as the rows on screen move,
-  and a jump to a position reads the sort values at that position by offset,
-  indexed only when it measures slow enough to warrant one, and starts the
-  window there.
-- **Screen subscriptions** are objects the app pulls from, built only in the
-  bridge's `screens` module (`screens.rs` and its submodules) from a live
-  query: `next()` answers the first value at
-  once, then one after each write that changes it; a failed read answers as
-  an error and the next pull waits for the read after it; `cancel()`, or
-  closing the library, answers a waiting pull and every later one that it was
-  cancelled. Each app reads them through one helper, `ScreenSubscription`,
-  with the same name and shape in BaeKit and in Android's data layer. On
-  macOS every pulled subscription below goes through it too, and nothing
-  else in the app calls a subscription's `next()`. What
-  playback is doing is one (§9.4); so are the settings, one save format by its id for its
-  edit sheet, which reads none once the person deletes the format, the sync status and
-  activity, the queue, the download counts, whether uploads are paused, whether
-  files move only on unmetered networks, the members, this device's open invites, one open
-  invite by its id, which reads none once the invite ends, the first
-  invite whose join request waits for a decision, skipping invites whose request the person
-  closed, the device that joins from Add
-  Device's code, the profiles, ratings, playlists and a playlist's entries,
-  the library's name, and the watched folders' scans.
-- **Fast values** — transfer bytes and rates, the Activity lines' bars, file shares, export
-  percents, playback and preview positions, the parts of the playing track
-  its buffer holds,
-  import percents, and how far a
-  bulk action has got, which core sends many times a second, and the steps
-  of an open and of a setup call — reach an app
-  only in a `KeyedValueStream`, keyed by release, file, track, candidate or
-  Activity line,
-  never in a callback, a
-  record field or a subscription value. A fast value is a value that core
-  holds in memory, or that a watcher in core computes from such a value and
-  a live query's latest rows: a release's upload bar is its stored bytes plus
-  the bytes of its files that bae has sent so far (§4.2), and an Activity
-  line's bar is its batch's share done plus the share of each file or release
-  that bae is transferring (§6.4). The watcher computes the value again each
-  time the query returns new rows or the in-memory value changes, starting
-  once the query has returned its first rows. The watcher keeps no copy of what it last
-  sent and nothing from an earlier read. A query's result alone never goes on
-  a stream: it reaches the screen in the screen's live query. Every stream is built in the
-  bridge's `screens` module. A `feed_*` call starts writing one
-  on the bridge's side and returns it; cancelling or dropping it, or closing
-  the library, stops it, and it then holds nothing, whatever still runs that
-  wrote it — a bulk action's stream included. The writing runs as one of the
-  library's tasks, so closing or removing the library stops it before the
-  store closes; one started on a closed library writes nothing and is
-  reported as a bug, and one that panics ends with the panic reported while
-  the library's other streams go on. A read that fails empties
-  it until the next read fills it whole. What the app pulls from a stream,
-  through the same helper as every screen subscription, is the keys that
-  started or stopped holding a value since its last pull, a key that came
-  and went once, never a value that moved; the keys that started or stopped
-  moving, and the keys at rest whose value changed (a paused track's position,
-  a fully buffered track); and a failed read, once the keys it emptied are
-  pulled. Once cancelled, a pull answers with the keys that
-  held a value, and every pull after it that the stream was cancelled. The
-  pulls of an open's or a setup call's stream run on the host's runtime,
-  which is why the app makes those objects from the host. The native
-  view drawing a key reads the key's latest value once per display frame
-  while the key is moving, and once on each pull that names it otherwise; the
-  playing track's position rests while playback is paused or loading, and its buffered
-  parts rest once they are one stretch from start to end; every other value
-  rests once a second passes without a change (a download's bytes, a file's
-  or release's upload share, an export's or import's percent, a preview's
-  position, a call's step), and moves again with the next, so a stalled or
-  paused transfer or a step that counts nothing asks for no frames; the
-  stream's pull rests it, whatever feed writes it; nothing the UI framework
-  observes holds a fast value.
-- **Pulled subscriptions** are the browse, download and queue lists, the
-  searches, the import list and its counts, the detail views, the Storage
-  manager's list, a release's files, and the read of which selected albums
-  are gone. Each pulled subscription is an object the app asks for each
-  next value and points at new windows or a new query in place, built in the
-  bridge's `screens` module like every screen subscription. A screen's read
-  is open while the screen shows and cancelled when it stops showing, in
-  both apps: a detail view shown for another item moves its one read to it
-  in place, and a detail view showing nothing has no read, since a read is
-  never pointed at nothing. The library's name, its people, this device's
-  open invites, the requested profile and the admin changes are read while
-  the settings screen showing them does. One read returns this device's person,
-  the other people by name in the device's language (the people with no profile
-  yet after them, in the order bae made their member ids), and the counts of
-  people and of active devices that the Library row shows ("2 people · 3 devices"),
-  all from the same database state; a person's page is its own read keyed by
-  that person's member id, which answers none once they have left the library,
-  and the app then closes the person's page and shows the people page, on both
-  apps, so neither searches the list for a person; Rename Library starts from the name as it
-  stands when it opens. The macOS menu bar always shows Rename Library, enabled
-  for an admin, so the Mac reads whether this device's person is one for as long
-  as the library is open. Closing or removing the library cancels every one
-  before the store closes: a read waiting on one, or asked of it after, answers
-  that it was cancelled, never with the closed store, and it takes no new
-  request. One opened as the library closes is cancelled from the start. One
-  whose task breaks on a bug, or whose read coven ends on a bug, answers with
-  that failure, "Something went wrong", and ends; the bug is reported.
-- **Callbacks the app provides**: the crash reporter core hands each bug it
-  finds to, from startup on; the artwork reader; and on phones the audio
-  focus and the sign-in presenter, which shows the provider's page and returns
-  where it redirected. These are the only callbacks the bridge declares: each
-  is a platform service core calls, and none carries a value a screen shows,
-  which the app always pulls. A check in the commit hook and CI refuses any
-  other callback, a pulled object built outside the `screens` module, and a
-  pull an app makes outside its one helper. Desktops sign in through coven's
-  own browser flow; iCloud runs in coven. A callback that throws what it
-  doesn't declare is reported as the app's bug and answered as that call
-  fails: a request for audio focus is refused, a sign-in fails. A throw from
-  the crash reporter itself is logged.
-
-### 10.3 Generated bindings
-
-The Swift, Kotlin and C# bindings are generated from the Rust at build time
-and are not in the repository. A type's fields are read in
-`bae-bridge/src/types/`.
-
-Build features choose what a build exports:
-
-| Feature | Adds |
-|---|---|
-| `oauth-providers` | Dropbox and OneDrive sign-in |
-| `cloudkit` | iCloud |
-| `cast` | the receiver picker and casting |
-
-Desktop builds (macOS, Windows, Linux) also export import, identification,
-metadata editing, export and save, and the MCP and Subsonic servers; phone
-builds leave them out by the one desktop condition of §11.2.
-
-The baeium edition builds without the first two, and a check confirms its
-bindings export none of their symbols.
-
-### 10.4 The apps
-
-| App | Shape |
-|---|---|
-| bae-macos | AppKit app whose application delegate owns start-up, the main menu and the windows; each window hosts SwiftUI views. The main menu holds the standard macOS menus with their standard actions, sent up the responder chain, plus bae's own commands. Its service layer and the generated bindings live in the BaeKit package, whose start-up pieces the iOS app also uses |
-| bae-ios | iOS start-up on BaeKit (telemetry, crash reporting, the host and the keychain), release packaging, and one screen that lists this device's libraries through the bridge |
-| bae-android | Kotlin app: onboarding, library, album detail, downloads, playback with a system media session, settings, a widget |
-| bae-avalonia | Windows and Linux start-up, single instance, crash capture, telemetry, updater and packaging, and one window that calls the bridge |
+shows at their top. A keychain that won't open stops the launch, since
+listing, opening and removing libraries all need it. On Linux the keychain is
+the desktop's secret service.
 
 ---
 
@@ -6062,135 +5635,44 @@ channel and hears its status as the receiver sends it (Cast) or asks for it
 (UPnP), and drives an AirPlay receiver through a sink it hands decoded audio to,
 and bae-cast connects each device and hands playback the channel or sink.
 
-### 11.2 Conventions
+### 11.2 Languages, telemetry and failures
 
-- **One schema.** The database schema is one migration, assembled from each
-  domain's SQL files, which sit beside the domain's code. A schema change
-  edits its domain's file; there is never a second migration, and
-  development data is reset.
-  No library has to advance from an older schema before 1.0.
-- **One shape at a time.** When a shared shape changes — a bridge type, an
-  event, a file layout, a storage path — every caller changes with it. No
-  compatibility flags, silent defaults for renamed fields, or decoders for old
-  data.
-- **Desktop-only code is compiled out of phones.** One condition gates the
-  import pipeline, identification and the catalog clients, and the same
-  condition gates their dependencies, so a phone build carries none of them.
-  bae-import is a desktop-only dependency of the crates above it.
-- **One declaration per dependency.** Every dependency, the workspace's own
-  crates included, is declared once, in the root manifest's
-  `[workspace.dependencies]`, with its version or path, its package name and
-  whether default features are on. A crate names it with `workspace = true`
-  and, at most, the features it needs and whether it is optional.
-- **Visibility.** Every crate denies unreachable `pub` items and dead code;
-  test-only code is gated to tests, never allowed to rot.
-- **Files.** A source file stays under 1,000 lines, split along its domain's
-  own boundaries.
-- **No real names.** Durable artifacts use placeholder artist, album and song
-  names.
 - **bae is lowercase** in everything a person reads.
-- **Strings.** Every user-facing string lives in a catalog, translated into
-  every shipped locale in the change that adds it. Core and the bridge emit
-  keys and data, never prose.
+- **Every string is translated.** Every string a person reads is translated
+  into every shipped locale in the change that adds it.
 - **Locales.** bae is written in English and ships 27 other locales: German,
   French, Spanish, Italian, Dutch, Polish, Czech, Slovak, Hungarian, Romanian,
   Greek, Bulgarian, Croatian, Ukrainian, Turkish, Hebrew, Arabic, Brazilian
   and European Portuguese, Swedish, Danish, Norwegian Bokmål, Finnish,
   Japanese, Korean, and Simplified and Traditional Chinese. They are the
   languages of the markets where people use desktop apps and expect them in
-  their own language. `bae_loc::TARGET_LOCALES` is the one list: `loc-gen
-  check` fails a catalog whose translations miss a locale on it or hold one
-  off it, and the platform catalog checks read it from `loc-gen locales`.
+  their own language.
 - **Telemetry is typed.** What leaves a device is a closed catalog of events
   with typed fields. A string can't be a field, so a name, path or title can't
   leak. Events from one installation share an id bae makes once and keeps in
   `~/.bae/install-id`, never coven's device id, and each launch adds an id of
   its own. The baeium edition sends none.
-- **Errors keep their cause.** A failure carries its typed reason to the
-  person who can act on it; nothing defaults over an error. A logged error
-  keeps its whole chain of causes and its stack.
-- **Bugs reach the crash reporter.** A bug core finds — code that broke its
-  own guarantee — is logged with its causes and handed to the platform's crash
-  reporter as a non-fatal event naming the operation, through the reporter
-  each app hands core at launch. Crash reporting itself stays in the apps.
-- **A panic is reported once, from the panic hook.** A panic is such a bug,
-  on whatever thread it happens: in core's work, in coven's, or in a
-  library's own thread or task that no catch of core's runs on, such as an
-  HTTP connection's task, the mDNS daemon or an audio device's callback
-  thread. A catch hears only the panics that unwind to it, so the one place
-  every panic passes is the process's panic hook, which core adds at launch.
-  The hook logs each panic with its backtrace and reports it, once, as it
-  begins: the report names the operation of the innermost catch on the
-  panicking thread, or "work outside every catch", and where in the code the
-  panic began, as file, line and column. It hands the report to a thread of
-  its own that calls the platform's reporter, since a throw from the
-  reporter inside the hook would end the process. Nothing else reports a
-  panic: a panic a catch hands back is logged as the failure of what it was
-  doing, never reported again, and only a bug core or coven finds without a
-  panic is reported where it lands.
-- **A panic ends what its work served.** A panic in work core runs apart
-  from whoever asked for it — on a blocking thread, as a task or a thread of
-  its own — ends what the work served with it, the operation that asked
-  failing with "Something went wrong", never left waiting. Core starts such
-  tasks and threads through the spawners that end what a panicking task or
-  thread served; clippy refuses a bare `tokio::spawn`, a runtime's or a task
-  set's `spawn`, or `std::thread::spawn` outside them, bar work whose caller
-  joins it at once, a task set or tracker that joins every task it holds, and test
-  code. A service's own
-  thread that such a panic ends, the import worker's or the folder scan
-  coordinator's, ends its service with it: a later call that waits on the
-  service's answer fails with "Something went wrong", carrying the thread's
-  bug, which is not reported again; a call made once the service was shut
-  down fails as stopped. Such a panic in playback's service stops playback
-  with "Something went wrong" for whoever follows it, and the next command
-  starts a fresh service (§9.4). Work on a blocking thread runs to its end
-  even once whoever asked for it stops waiting. coven's own bugs in work
-  nobody waits for, such as a store's sync loop and upload worker, reach the
-  same crash reporter: bae hands coven its reporter when it builds the
-  device's libraries at launch, which reports a bug coven found and only
-  logs a panic, which the hook reported. A later call coven answers with
-  such a worker's bug, such as a retry of uploads after the upload worker
-  panicked, shows "Something went wrong" and is not reported again; so
-  does every call on a library an earlier bug failed, until it reopens. A
-  call into coven that fails on a bug of its own work, a panic in coven or in
-  core's code coven runs, carries the bug back to whatever in core awaits it:
-  the library's store for its reads, writes and other calls on the library, a
-  subscription for its live query, the code that lists, opens, creates,
-  restores, joins or removes a library. That one reports it, once, if coven
-  found it without a panic, and the failure shows "Something went wrong";
-  nothing it passes the failure to reports it again.
-- **Logs stay in the platform's log.** Core's and each app's log lines go to
-  the platform's own log on the device: the unified log on macOS and iOS,
-  logcat on Android, ETW on Windows, the systemd journal on Linux. A
-  development (Debug) build of the macOS or iOS app has the unified log save
-  every level of its lines, so a running build is read after the fact with
-  `log show`; a release keeps the system's defaults, which save default,
-  error and fault lines and drop the rest, so bae doesn't fill a person's log
-  with its detail. A desktop app whose output is a terminal — run from one —
-  also prints its lines there; launched from Finder, the Dock or a desktop
-  launcher, it has no terminal and formats no line for one.
-- **Reporting needs its settings.** A bae-edition build missing a telemetry
-  or crash-reporting setting turns that reporting off and logs a warning
-  naming what's missing.
-
-### 11.3 Checks
-
-A pre-commit hook runs the checks `.checks` declares for the staged files, and
-no others: the formatters of the staged files' languages, and static checks
-that read only what changed (clippy over the changed crates with their tests
-and, for bae-bridge, every feature the macOS app builds it with, while the
-workspace crates they depend on are only compiled, through the build cache; the
-file-size limit; visibility, error-printing, keychain, preview and ownership
-boundaries; the string catalogs; the linters of each language). It runs
-no tests, the tests of bae's own checkers included, and finishes within 45
-seconds. CI runs, on macOS, iOS, Android, Linux and Windows, every one of those
-checks over the whole tree, and in addition: the crates that depend on a
-changed crate, the crates' libraries without test features, rustdoc, clippy
-for the iOS target, the crates' dependency order, clippy for each feature
-set, dead-code and unused-dependency checks, cargo deny, every crate's tests,
-the Avalonia smoke test, the macOS builds and tests and the iOS builds for both
-editions, and Swift lint and format. A push also runs the tests of the
-checkers it touched, as `.checks` lists them.
+- **Errors keep their cause.** A failure reaches the person who can act on it
+  with its reason, and bae never puts a default in place of an error. A logged
+  error keeps its whole chain of causes and its stack.
+- **Bugs reach the crash reporter.** A bug bae finds, code that broke its own
+  guarantee, is logged with its causes and handed to the platform's crash
+  reporter as a non-fatal event naming the operation. A panic is such a bug,
+  on whatever thread it happens, and bae reports each panic once, with its
+  backtrace, the operation it interrupted, or "work outside every catch", and
+  the file, line and column where it began.
+- **A panic ends what its work served.** The operation that asked for the work
+  fails with "Something went wrong", never left waiting, and the failure is not
+  reported again. A later call that waits on a service a panic ended fails the
+  same way. Every call on a library an earlier bug failed shows "Something went
+  wrong" until the library reopens.
+- **Logs stay in the platform's log.** bae's log lines go to the platform's own
+  log on the device: the unified log on macOS and iOS, logcat on Android, ETW
+  on Windows, the systemd journal on Linux. A development (Debug) build of the
+  macOS or iOS app has the unified log save every level of its lines; a
+  release keeps the system's defaults, which save default, error and fault
+  lines and drop the rest, so bae doesn't fill a person's log with its detail.
+  A desktop app run from a terminal also prints its lines there.
 
 ---
 ## Appendix A. Schema
@@ -6852,7 +6334,7 @@ with one of these categories and a detail:
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
 | `UnfinishedInstallationUnreadable` | discards the unfinished join or restore of the library the category names, which this device can't read; listing what is under way fails until it is gone (§5.6) |
 
-These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
+These show their line alone, without the detail (§9.6): `SyncUpdateRequired`,
 `DeviceRemoved`, `CandidateImportInProgress`, `CandidateBeingIdentified`,
 `FilesAlreadyImported`, `AlbumGone`, `MetadataTrackCount`, `TiedMediums`,
 `ReleaseChangedSinceOpened`, `ChangedMeanwhile`, `InvalidEdit`,
@@ -6863,7 +6345,7 @@ These show their line alone, without the detail (§9.7): `SyncUpdateRequired`,
 Every other category shows its detail under its line.
 
 An error offers *Retry* only when making the same call again can get past
-it (§9.7): `DatabaseBusy`, `CandidateBeingIdentified`,
+it (§9.6): `DatabaseBusy`, `CandidateBeingIdentified`,
 `StorageSetupFinishing`, `ChangedMeanwhile`, `Import`, `Network`,
 `KeyringLocked`, `Credentials`, `Membership`, a `GroupingBlocked` waiting on a
 download, and a `Storage`, `StorageCheck` or `S3VersioningUnknown` whose
