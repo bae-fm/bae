@@ -55,9 +55,10 @@ pub enum Dialect {
     AirPlay2 { pairing: Ap2Pairing },
 }
 
-/// How an AirPlay 2 receiver wants to be paired, from its status flags and `pw`,
-/// decided in OwnTone's order: one-time pairing first, then a PIN on every
-/// connection, then a password, else the password-less transient pairing.
+/// How an AirPlay 2 receiver wants to be paired, from its status flags and `pw`:
+/// a password first, since a Mac set to require one also sets the one-time
+/// pairing flag (`0x284`, OwnTone issue 1385), then one-time pairing, then a
+/// PIN on every connection, else the password-less transient pairing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ap2Pairing {
     /// Neither a PIN nor a password: transient pair-setup.
@@ -66,7 +67,7 @@ pub enum Ap2Pairing {
     PinOnce,
     /// `0x8`: a PIN on every connection.
     PinEveryCast,
-    /// `0x80` or `pw=true`: the receiver's password.
+    /// `0x80` or `pw=true`, whatever else it sets: the receiver's password.
     Password,
 }
 
@@ -189,12 +190,12 @@ impl AirPlayCapabilities {
         };
 
         Ok(if is_airplay2 {
-            let pairing = if flags & status_flags::ONE_TIME_PAIRING != 0 {
+            let pairing = if password {
+                Ap2Pairing::Password
+            } else if flags & status_flags::ONE_TIME_PAIRING != 0 {
                 Ap2Pairing::PinOnce
             } else if flags & status_flags::PIN_REQUIRED != 0 {
                 Ap2Pairing::PinEveryCast
-            } else if password {
-                Ap2Pairing::Password
             } else {
                 Ap2Pairing::Transient
             };

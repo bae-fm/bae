@@ -117,9 +117,11 @@ fn raop_caps(extra: &[(&str, &str)]) -> AirPlayCapabilities {
     AirPlayCapabilities::from_txt(RendererServiceType::Raop, &txt(extra)).unwrap()
 }
 
-/// What an AirPlay 2 receiver asks for follows OwnTone's order: the one-time
-/// pairing flag first, then a PIN on every connection, then a password; none of
-/// them is the transient pairing. The rows are pyatv's `test_utils` flags.
+/// What an AirPlay 2 receiver asks for follows its flags: a password first,
+/// whatever PIN flag comes with it (a Mac that requires a password sets
+/// `0x284`), then the one-time pairing flag, then a PIN on every connection;
+/// none of them is the transient pairing. The rows are pyatv's `test_utils`
+/// flags.
 #[test]
 fn an_airplay2_receivers_pairing_follows_its_status_flags() {
     for (extra, pairing) in [
@@ -127,9 +129,11 @@ fn an_airplay2_receivers_pairing_follows_its_status_flags() {
         (vec![("flags", "0x4")], Ap2Pairing::Transient),
         (vec![("sf", "0x200")], Ap2Pairing::PinOnce),
         (vec![("sf", "0x208")], Ap2Pairing::PinOnce),
-        (vec![("sf", "0x280")], Ap2Pairing::PinOnce),
+        (vec![("sf", "0x280")], Ap2Pairing::Password),
+        (vec![("sf", "0x284")], Ap2Pairing::Password),
+        (vec![("sf", "0x200"), ("pw", "true")], Ap2Pairing::Password),
         (vec![("sf", "0x8")], Ap2Pairing::PinEveryCast),
-        (vec![("sf", "0x88")], Ap2Pairing::PinEveryCast),
+        (vec![("sf", "0x88")], Ap2Pairing::Password),
         (vec![("sf", "0x80")], Ap2Pairing::Password),
         (vec![("pw", "true")], Ap2Pairing::Password),
         (vec![("pw", "TRUE"), ("sf", "0x1")], Ap2Pairing::Password),
