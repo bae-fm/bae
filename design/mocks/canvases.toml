@@ -1,0 +1,14 @@
+# The claude.ai canvases the boards publish to, split by page.
+# `builds design canvas-files` reads this file.
+
+[[canvas]]
+url = "https://claude.ai/artifact/FLmQghVJ24uoT5Ukpe92NR"
+title = "bae boards: welcome, settings, library"
+launch = "welcome"
+pages = ["welcome", "settings", "library", "logo", "shared"]
+
+[[canvas]]
+url = "https://claude.ai/artifact/UD1cAH7iWgr6927dGF2m4j"
+title = "bae boards: home, import, storage"
+launch = "home"
+pages = ["home", "loading", "search", "import", "storage", "explore"]
