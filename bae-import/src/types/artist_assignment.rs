@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 /// library id and, where they picked one, one of its other printed names; or
 /// a credit: what a catalog, the files' tags, or the person's typing said. A
 /// credit claims nothing about the library. Which library artist it names, if
-/// any, is read against the library whenever the draft is shown
-/// ([`CreditResolution`]), and decided for good inside the write that commits
-/// it.
+/// any, is read against the library whenever the draft is shown (the import
+/// list's artist standings), and decided for good inside the write that
+/// commits it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
     Picked { artist: ExistingArtist, credit_name: Option<bae_records::credits::CreditName> },
