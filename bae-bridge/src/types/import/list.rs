@@ -125,32 +125,40 @@ pub enum BridgeImportListItem {
     },
 }
 
-/// The list view that reveals one candidate at its current placement: its
-/// tab, with the filters cleared and the group `group_key` opened. Where the
-/// candidate sits in that view is the list's `candidate_position`.
+/// What revealing a candidate shows: the request on the tab its placement
+/// puts it on, with the filters cleared, its group opened and the order and
+/// the other folds of the list it was revealed from kept, and where the
+/// candidate sits in that list. Mirrors `bae_import::ImportListReveal`.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportCandidateListLocation {
-    pub tab: BridgeTriageTab,
-    pub group_key: Option<BridgeFolderReleaseDecisionKey>,
+pub struct BridgeImportListReveal {
+    pub request: BridgeImportListRequest,
+    pub position: u64,
 }
 
-/// Where a list's view opens.
+/// Where a list opens under a new request. Mirrors
+/// `bae_import::ImportListOpening`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportListOpening {
-    /// The list's top: the view shows none of the selected rows.
+    /// The list's top: another tab, filter or search shows none of the
+    /// selected rows.
     Top,
-    /// The first selected row the new view shows: the position the row sits
-    /// at, where the list's view opens.
+    /// The first selected row another tab, filter or search shows: the
+    /// position the row sits at, where the list opens.
     At { position: u64 },
+    /// Where the person is in the list: another order or another fold moves
+    /// rows within the same view, so the list keeps the row on top on top.
+    InPlace,
 }
 
-/// What showing another view comes to. Mirrors
+/// What showing a list under a new request comes to. Mirrors
 /// `bae_import::ImportListViewChange`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportListViewChange {
     pub opening: BridgeImportListOpening,
-    /// The keys of the selected rows that leave the selection: each selected
-    /// row the new view doesn't show.
+    /// The keys of the selected rows that leave the selection: on another
+    /// tab, filter or search, each selected row the new view doesn't show;
+    /// on another fold, each selected row the fold hid; and none on another
+    /// order.
     pub left: Vec<Vec<u8>>,
 }
 

@@ -303,16 +303,19 @@
                                 )
                         )
                     },
-                    viewChange: { _, _ in
+                    viewChange: { _, _, _ in
                         BridgeImportListViewChange(opening: .top, left: [])
                     },
-                    hiddenByFold: { _, _, _ in [] },
-                    locateCandidate: { key in
+                    revealCandidate: { request, key in
                         position(of: key, in: items)
-                            .map { _ in
-                                BridgeImportCandidateListLocation(
-                                    tab: tab,
-                                    groupKey: nil
+                            .map { position in
+                                var revealed = request
+                                revealed.view.tab = tab
+                                revealed.view.filterText = ""
+                                revealed.view.pendingFilter = .all
+                                return BridgeImportListReveal(
+                                    request: revealed,
+                                    position: UInt64(position)
                                 )
                             }
                     },

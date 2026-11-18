@@ -48,6 +48,7 @@ mod window;
 use super::*;
 use crate::list::{ImportListFolds, ImportListRequest};
 use crate::{PendingFilter, TriageTab};
+use judged::Fragments;
 use order::Items;
 
 pub use folder_images::{
@@ -115,6 +116,12 @@ fn tab_column(tab: TriageTab) -> &'static str {
         TriageTab::Done => "done",
         TriageTab::Skipped => "skipped",
     }
+}
+
+/// The tab as the placement's `tab` column holds it, as an SQL literal: each
+/// statement names its tab, so SQLite picks a tab's partial indexes by it.
+fn tab_literal(tab: TriageTab) -> String {
+    format!("'{}'", tab_column(tab))
 }
 
 fn tab_of(column: &str) -> Result<TriageTab, DbError> {

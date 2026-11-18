@@ -241,13 +241,14 @@ impl ImportListItem {
     }
 }
 
-/// The list view that reveals one candidate at its current placement: its
-/// tab, with the filters cleared and the group `group_key` opened.
+/// What revealing a candidate shows: the request on the tab its placement
+/// puts it on, with the filters cleared, its group opened and the order and
+/// the other folds of the list it was revealed from kept, and where the
+/// candidate sits in that list.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ImportCandidateListLocation {
-    pub tab: TriageTab,
-    /// The Pending group that has to be open for this candidate to be visible.
-    pub group_key: Option<FolderReleaseDecisionKey>,
+pub struct ImportListReveal {
+    pub request: ImportListRequest,
+    pub position: u64,
 }
 
 /// Whether bae watches any folder and whether Found has groups, which a
@@ -277,24 +278,29 @@ pub struct ImportListCount {
     pub tabs: crate::TriageTabCounts,
 }
 
-/// Where a list's view opens: what a list narrowed anew shows on top.
+/// Where a list opens under a new request.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportListOpening {
-    /// The list's top: the view shows none of the selected rows.
+    /// The list's top: another tab, filter or search shows none of the
+    /// selected rows.
     Top,
-    /// The first selected row the new view shows: the position the row sits
-    /// at, where the list's view opens.
+    /// The first selected row another tab, filter or search shows: the
+    /// position the row sits at, where the list opens.
     At { position: u64 },
+    /// Where the person is in the list: another order or another fold moves
+    /// rows within the same view, so the list keeps the row on top on top.
+    InPlace,
 }
 
-/// What showing another view comes to: where the new view opens, and the
+/// What showing a list under a new request comes to: where it opens, and the
 /// selected rows it takes out of the selection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListViewChange {
     pub opening: ImportListOpening,
     /// The keys of the selected rows that leave the selection: on another
-    /// tab, filter or search, each selected row the new view doesn't show,
-    /// and none on another order.
+    /// tab, filter or search, each selected row the new view doesn't show;
+    /// on another fold, each selected row the fold hid; and none on another
+    /// order.
     pub left: Vec<crate::CandidateKey>,
 }
 

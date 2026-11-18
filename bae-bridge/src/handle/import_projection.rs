@@ -397,6 +397,7 @@ mirror_struct! {
 
 mirror_enum! {
     crate::types::BridgeImportListOrder = bae_import::ImportListOrder,
+    from_core: fn,
     into_core: pub(crate) fn,
     variants: { NewestFirst, OldestFirst, PathAscending, PathDescending },
 }
@@ -419,6 +420,17 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeImportListView {
+    /// The view as the app shows it: no search is an empty search field.
+    fn from_core(view: bae_import::ImportListView) -> Self {
+        let bae_import::ImportListView { tab, search, pending_filter, order } = view;
+        Self {
+            tab: crate::types::BridgeTriageTab::from_core(tab),
+            filter_text: search.map_or_else(String::new, |text| text.as_str().to_string()),
+            pending_filter: crate::types::BridgePendingFilter::from_core(pending_filter),
+            order: crate::types::BridgeImportListOrder::from_core(order),
+        }
+    }
+
     /// The view the app names: the text typed into its search field
     /// searches the rows for that text, and an empty field for nothing.
     pub(crate) fn into_core(self) -> bae_import::ImportListView {
@@ -433,6 +445,14 @@ impl crate::types::BridgeImportListView {
 }
 
 impl crate::types::BridgeImportListRequest {
+    fn from_core(request: bae_import::ImportListRequest) -> Self {
+        let bae_import::ImportListRequest { view, folds } = request;
+        Self {
+            view: crate::types::BridgeImportListView::from_core(view),
+            folds: crate::types::BridgeImportListFolds::from_core(folds),
+        }
+    }
+
     /// The request the app names. Only a folded group's bytes no folder here
     /// has, which core never gave the app, fail.
     pub(crate) fn into_core(
@@ -444,6 +464,19 @@ impl crate::types::BridgeImportListRequest {
 }
 
 impl crate::types::BridgeImportListFolds {
+    fn from_core(folds: bae_import::ImportListFolds) -> Self {
+        let groups = |groups: std::collections::BTreeSet<bae_import::FolderReleaseDecisionKey>| {
+            groups
+                .into_iter()
+                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
+                .collect()
+        };
+        match folds {
+            bae_import::ImportListFolds::Only(named) => Self::Only { groups: groups(named) },
+            bae_import::ImportListFolds::AllBut(named) => Self::AllBut { groups: groups(named) },
+        }
+    }
+
     /// The folds the app names. Only a group's bytes no folder here has,
     /// which core never gave the app, fail.
     fn into_core(self) -> Result<bae_import::ImportListFolds, crate::types::BridgeError> {
@@ -561,13 +594,10 @@ impl crate::types::BridgeImportQueueSummary {
     }
 }
 
-impl crate::types::BridgeImportCandidateListLocation {
-    pub(crate) fn from_core(location: bae_import::ImportCandidateListLocation) -> Self {
-        let bae_import::ImportCandidateListLocation { tab, group_key } = location;
-        Self {
-            tab: crate::types::BridgeTriageTab::from_core(tab),
-            group_key: group_key.map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
-        }
+impl crate::types::BridgeImportListReveal {
+    pub(crate) fn from_core(reveal: bae_import::ImportListReveal) -> Self {
+        let bae_import::ImportListReveal { request, position } = reveal;
+        Self { request: crate::types::BridgeImportListRequest::from_core(request), position }
     }
 }
 
@@ -576,6 +606,7 @@ impl crate::types::BridgeImportListOpening {
         match opening {
             bae_import::ImportListOpening::Top => Self::Top,
             bae_import::ImportListOpening::At { position } => Self::At { position },
+            bae_import::ImportListOpening::InPlace => Self::InPlace,
         }
     }
 }

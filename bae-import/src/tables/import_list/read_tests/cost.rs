@@ -267,8 +267,14 @@ async fn measure_import_list_first_selected(db: &Store) {
         let which = (run % 2 == 1) as usize;
         let order = [PathDescending, PathAscending][which];
         let started = Instant::now();
+        // Found shown in place of Done narrows the list anew, so the change
+        // reads where it opens.
         let change = tables
             .import_list_view_change(
+                crate::ImportListRequest::of(crate::ImportListView {
+                    tab: crate::TriageTab::Done,
+                    ..found_view("", PendingFilter::All, order)
+                }),
                 crate::ImportListRequest::of(found_view("", PendingFilter::All, order)),
                 selected.clone(),
             )
@@ -281,6 +287,7 @@ async fn measure_import_list_first_selected(db: &Store) {
         opened[which] = match change.opening {
             crate::ImportListOpening::At { position, .. } => position,
             crate::ImportListOpening::Top => 0,
+            crate::ImportListOpening::InPlace => panic!("another tab opens where it reads"),
         };
     }
     for (which, order, at) in [(1, PathAscending, "middle"), (0, PathDescending, "end")] {

@@ -51,14 +51,12 @@ import Foundation
         /// the query, and the query reads the rows at those keys.
         public let selection: @Sendable () -> ImportSelectionQuery
         private let change:
-            @Sendable (BridgeImportListRequest, [Data]) async throws
-                -> BridgeImportListViewChange
-        private let hidden:
             @Sendable (
                 BridgeImportListRequest, BridgeImportListRequest, [Data]
-            ) async throws -> [Data]
-        private let locate:
-            @Sendable (Data) async throws -> BridgeImportCandidateListLocation?
+            ) async throws -> BridgeImportListViewChange
+        private let reveal:
+            @Sendable (BridgeImportListRequest, Data) async throws
+                -> BridgeImportListReveal?
         private let position:
             @Sendable (BridgeImportListRequest, Data) async throws -> UInt64?
         private let firstIdentifying:
@@ -76,15 +74,12 @@ import Foundation
                 >,
             selection: @escaping @Sendable () -> ImportSelectionQuery,
             viewChange:
-                @escaping @Sendable (BridgeImportListRequest, [Data])
-                async throws -> BridgeImportListViewChange,
-            hiddenByFold:
                 @escaping @Sendable (
                     BridgeImportListRequest, BridgeImportListRequest, [Data]
-                ) async throws -> [Data],
-            locateCandidate:
-                @escaping @Sendable (Data) async throws
-                -> BridgeImportCandidateListLocation?,
+                ) async throws -> BridgeImportListViewChange,
+            revealCandidate:
+                @escaping @Sendable (BridgeImportListRequest, Data)
+                async throws -> BridgeImportListReveal?,
             candidatePosition:
                 @escaping @Sendable (BridgeImportListRequest, Data) async throws
                 -> UInt64?,
@@ -97,8 +92,7 @@ import Foundation
             self.filterEntries = filterEntries
             self.selection = selection
             change = viewChange
-            hidden = hiddenByFold
-            locate = locateCandidate
+            reveal = revealCandidate
             position = candidatePosition
             firstIdentifying = firstIdentifyingCandidate
         }
@@ -119,17 +113,17 @@ import Foundation
                 },
                 selection: { ImportSelectionQuery(list.subscribeSelection()) },
                 viewChange: {
-                    try await list.viewChange(request: $0, selected: $1)
-                },
-                hiddenByFold: {
-                    try await list.hiddenByFold(
+                    try await list.viewChange(
                         before: $0,
                         after: $1,
                         selected: $2
                     )
                 },
-                locateCandidate: {
-                    try await list.locateCandidate(candidateKey: $0)
+                revealCandidate: {
+                    try await list.revealCandidate(
+                        request: $0,
+                        candidateKey: $1
+                    )
                 },
                 candidatePosition: {
                     try await list.candidatePosition(
@@ -143,34 +137,26 @@ import Foundation
             )
         }
 
-        /// Where the list `request` shows opens, at the first of `selected`
-        /// it shows or the list's top, and which of `selected` it doesn't
-        /// show, which leave the selection.
+        /// What showing the list `after` in place of the list `before`
+        /// comes to for `selected`, as core decides it: where the list opens,
+        /// and which of `selected` leave the selection.
         public func viewChange(
-            _ request: BridgeImportListRequest,
-            selected: [Data]
-        ) async throws -> BridgeImportListViewChange {
-            try await change(request, selected)
-        }
-
-        /// The keys of `selected` that the list showed under `before` and
-        /// doesn't show under `after`, which differ in their folds only:
-        /// what a fold hid.
-        public func hiddenByFold(
             before: BridgeImportListRequest,
             after: BridgeImportListRequest,
             selected: [Data]
-        ) async throws -> [Data] {
-            try await hidden(before, after, selected)
+        ) async throws -> BridgeImportListViewChange {
+            try await change(before, after, selected)
         }
 
-        /// Where the list shows the candidate after it clears the filters and
-        /// opens the candidate's group: its tab, and the group to open. `nil`
-        /// when no tab lists such a candidate.
-        public func locateCandidate(_ candidateKey: Data) async throws
-            -> BridgeImportCandidateListLocation?
-        {
-            try await locate(candidateKey)
+        /// What revealing the candidate from the list `request` shows: the
+        /// request on the tab its placement puts it on, with the filters
+        /// cleared and its group opened, and where it sits there. `nil` when
+        /// no tab lists such a candidate.
+        public func revealCandidate(
+            _ request: BridgeImportListRequest,
+            _ candidateKey: Data
+        ) async throws -> BridgeImportListReveal? {
+            try await reveal(request, candidateKey)
         }
 
         /// Where the list `request` shows the candidate. `nil` when it does

@@ -103,9 +103,8 @@ impl AppServices {
     delegate_async!(import, import_list_keys => list_keys(request: ImportListRequest) -> Result<Vec<bae_import::CandidateKey>, bae_import::ImportError>);
     delegate_async!(import, import_list_keys_between => list_keys_between(request: ImportListRequest, from: bae_import::CandidateKey, to: bae_import::CandidateKey) -> Result<Vec<bae_import::CandidateKey>, bae_import::ImportError>);
     delegate_async!(import, import_list_selected => list_selected(request: ImportListRequest, selected: Vec<bae_import::CandidateKey>, acting: Option<bae_import::CandidateAction>) -> Result<bae_import::selection::SelectedRows, bae_import::ImportError>);
-    delegate_async!(import, import_list_view_change => list_view_change(request: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<bae_import::ImportListViewChange, bae_import::ImportError>);
-    delegate_async!(import, import_list_hidden_by => list_hidden_by(before: ImportListRequest, after: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<Vec<bae_import::CandidateKey>, bae_import::ImportError>);
-    delegate_async!(import, import_locate_candidate => locate_candidate(candidate_key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportCandidateListLocation>, bae_import::ImportError>);
+    delegate_async!(import, import_list_view_change => list_view_change(before: ImportListRequest, after: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<bae_import::ImportListViewChange, bae_import::ImportError>);
+    delegate_async!(import, import_reveal_candidate => reveal_candidate(request: ImportListRequest, candidate_key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportListReveal>, bae_import::ImportError>);
     delegate_async!(import, import_candidate_position => candidate_position(request: ImportListRequest, candidate_key: &bae_import::CandidateKey) -> Result<Option<u64>, bae_import::ImportError>);
     delegate_async!(import, import_first_identifying_candidate => first_identifying_candidate(order: bae_import::ImportListOrder) -> Result<Option<bae_import::CandidateKey>, bae_import::ImportError>);
     delegate_async!(import, load_import_items => load_list(request: ImportListRequest) -> Result<Vec<bae_import::ImportListItem>, bae_import::ImportError>);

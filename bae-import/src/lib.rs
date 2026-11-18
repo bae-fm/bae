@@ -275,10 +275,10 @@ pub use import_failure::{ImportFailure, ImportFailureReason};
 pub use list::{FollowedImportList, ImportListRead};
 #[cfg(desktop)]
 pub use list::{
-    ImportCandidateListLocation, ImportCounts, ImportGroupHeader, ImportGroupMember,
-    ImportListCount, ImportListFolds, ImportListItem, ImportListOpening, ImportListOrder,
-    ImportListRequest, ImportListView, ImportListViewChange, ImportQueueSummary, ImportWindow,
-    NarrowedCount, PendingFilter, PendingFilterEntry, SearchText,
+    ImportCounts, ImportGroupHeader, ImportGroupMember, ImportListCount, ImportListFolds,
+    ImportListItem, ImportListOpening, ImportListOrder, ImportListRequest, ImportListReveal,
+    ImportListView, ImportListViewChange, ImportQueueSummary, ImportWindow, NarrowedCount,
+    PendingFilter, PendingFilterEntry, SearchText,
 };
 #[cfg(desktop)]
 pub use mapping::{

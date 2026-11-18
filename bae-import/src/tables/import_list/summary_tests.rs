@@ -459,10 +459,12 @@ async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
     );
 }
 
-/// Locating a candidate clears the filters and opens its group, the list's
-/// other folds kept.
+/// Revealing a candidate clears the filters and opens its group, the list's
+/// other folds and its order kept, whether the folds name the folded groups
+/// or the open ones, and places the candidate where the revealed list shows
+/// it.
 #[tokio::test]
-async fn candidate_location_opens_only_its_group() {
+async fn revealing_a_candidate_opens_only_its_group() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(
@@ -471,49 +473,87 @@ async fn candidate_location_opens_only_its_group() {
             + lib.scan("Target/Release 1"),
     )
     .await;
-    let fold = |group: &str| crate::FolderReleaseDecisionKey {
-        watched_folder_path: lib.root.clone(),
-        relative_folder: crate::RelativeFolder::test(group),
-    };
-    let location = tables
-        .locate_import_candidate(&lib.key("Target/Release 1"))
-        .await
-        .unwrap()
-        .expect("the candidate is in Pending");
-    assert_eq!(location.tab, TriageTab::Pending);
-    assert_eq!(location.group_key, Some(fold("Target")));
+    let target = lib.key("Target/Release 1");
+    let searching = ImportListRequest::of(ImportListView {
+        search: crate::SearchText::of("nothing matches this"),
+        ..ordered(TriageTab::Pending, crate::ImportListOrder::PathAscending)
+    });
+    for (from, kept) in [
+        (
+            searching.clone().folding(lib.group_key("Earlier")).folding(lib.group_key("Target")),
+            searching.clone().folding(lib.group_key("Earlier")).folds,
+        ),
+        (
+            searching.clone().folding_all(),
+            searching.clone().folding_all().unfolding(&lib.group_key("Target")).folds,
+        ),
+    ] {
+        let reveal = tables
+            .reveal_import_candidate(from.clone(), &target)
+            .await
+            .unwrap()
+            .expect("the candidate is in Found");
+        assert_eq!(
+            reveal.request,
+            ImportListRequest {
+                view: ordered(TriageTab::Pending, crate::ImportListOrder::PathAscending),
+                folds: kept,
+            }
+        );
+        assert_eq!(reveal.position, 2, "the folded group's header, then the open one's");
+        assert_eq!(
+            tables.import_candidate_position(reveal.request, &target).await.unwrap(),
+            Some(reveal.position)
+        );
+    }
 }
 
+/// Revealing a candidate follows its import from Found to Imported, and a key
+/// no tab lists reveals nothing.
 #[tokio::test]
-async fn candidate_location_follows_an_import_from_pending_to_done() {
+async fn revealing_a_candidate_follows_an_import_from_pending_to_done() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(
-        scanned_with_states(&lib, &["Release"]) + lib.imported("Release", "2026-01-02T00:00:00Z"),
+        scanned_with_states(&lib, &["Release", "Other"])
+            + lib.imported("Release", "2026-01-02T00:00:00Z"),
     )
     .await;
-    let location = tables
-        .locate_import_candidate(&lib.key("Release"))
+    let reveal = tables
+        .reveal_import_candidate(ImportListRequest::default(), &lib.key("Release"))
         .await
         .unwrap()
         .expect("the imported candidate is in Done");
-    assert_eq!(location.tab, TriageTab::Done);
-    assert_eq!(location.group_key, None);
-    assert_eq!(tables.locate_import_candidate(&lib.key("Nowhere")).await.unwrap(), None);
+    assert_eq!(reveal.request.view.tab, TriageTab::Done);
+    assert_eq!(reveal.position, 0);
+    assert_eq!(
+        tables
+            .reveal_import_candidate(ImportListRequest::default(), &lib.key("Nowhere"))
+            .await
+            .unwrap(),
+        None
+    );
 }
 
-/// Locating a candidate clears the filters, so a row the entry hides is
+/// Revealing a candidate clears the filters, so a row the entry hides is
 /// still found where it sits.
 #[tokio::test]
-async fn locating_a_candidate_ignores_the_pending_filter() {
+async fn revealing_a_candidate_ignores_the_pending_filter() {
     let lib = every_kind().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let location = tables
-        .locate_import_candidate(&lib.key("Unidentified"))
+    let key = lib.key("Unidentified");
+    let hiding = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::Identified));
+    assert_eq!(tables.import_candidate_position(hiding.clone(), &key).await.unwrap(), None);
+    let reveal = tables
+        .reveal_import_candidate(hiding, &key)
         .await
         .unwrap()
         .expect("the candidate is found");
-    assert_eq!(location.tab, TriageTab::Pending);
+    assert_eq!(reveal.request, ImportListRequest::of(view(TriageTab::Pending)));
+    assert_eq!(
+        tables.import_candidate_position(reveal.request, &key).await.unwrap(),
+        Some(reveal.position)
+    );
 }
 
 /// A candidate's position in the view counts only the rows the view shows: a

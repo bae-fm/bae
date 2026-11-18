@@ -183,7 +183,11 @@ async fn done_runs_the_releases_still_uploading_first() {
     let oldest_first =
         bae_import::ImportListRequest::of(done(bae_import::ImportListOrder::OldestFirst));
     let opening = tables
-        .import_list_view_change(oldest_first.clone(), selected.clone())
+        .import_list_view_change(
+            bae_import::ImportListRequest::default(),
+            oldest_first.clone(),
+            selected.clone(),
+        )
         .await
         .unwrap()
         .opening;

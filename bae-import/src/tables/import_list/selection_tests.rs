@@ -126,7 +126,11 @@ async fn a_view_change_answers_the_selected_rows_that_leave() {
         let (tables, selected) = (lib.tables(), selected.clone());
         async move {
             let mut left = tables
-                .import_list_view_change(ImportListRequest::of(view), selected)
+                .import_list_view_change(
+                    ImportListRequest::default(),
+                    ImportListRequest::of(view),
+                    selected,
+                )
                 .await
                 .unwrap()
                 .left;
@@ -150,9 +154,10 @@ async fn a_view_change_answers_the_selected_rows_that_leave() {
     assert_eq!(left(view(TriageTab::Done)).await, hidden, "Done shows A alone");
 }
 
-/// Folding a group answers with the selected rows it hid; opening it hides
-/// none, and a selected row the list hid by a change to it is no row the fold
-/// hid.
+/// Folding a group keeps the person's place and answers with the selected
+/// rows it hid, and only those: opening it hides none, and a selected row the
+/// list already hid by a change to it is no row the fold hid. Another order
+/// keeps the place and hides none.
 #[tokio::test]
 async fn folding_a_group_answers_the_selected_rows_it_hid() {
     let lib = Library::new().await;
@@ -161,21 +166,24 @@ async fn folding_a_group_answers_the_selected_rows_it_hid() {
     let list = ImportListRequest::of(under(TriageTab::Pending, PendingFilter::NotLookedUp));
     lib.run(lib.linked("Box/2")).await;
     let selected = vec![lib.key("Box/1"), lib.key("Box/2"), lib.key("Loose")];
+    let change = |before: &ImportListRequest, after: &ImportListRequest| {
+        let (tables, before, after, selected) =
+            (tables.clone(), before.clone(), after.clone(), selected.clone());
+        async move { tables.import_list_view_change(before, after, selected).await.unwrap() }
+    };
     let folded = list.clone().folding(lib.group_key("Box"));
-    assert_eq!(
-        tables.import_list_hidden_by(list.clone(), folded.clone(), selected.clone()).await.unwrap(),
-        [lib.key("Box/1")]
-    );
-    assert!(tables
-        .import_list_hidden_by(folded.clone(), list.clone(), selected.clone())
-        .await
-        .unwrap()
-        .is_empty());
-    let all_folded = list.clone().folding_all();
-    assert_eq!(
-        tables.import_list_hidden_by(list, all_folded, selected).await.unwrap(),
-        [lib.key("Box/1")]
-    );
+    let fold = change(&list, &folded).await;
+    assert_eq!(fold.opening, ImportListOpening::InPlace);
+    assert_eq!(fold.left, [lib.key("Box/1")], "Box/2 was hidden before the fold");
+    assert!(change(&folded, &list).await.left.is_empty());
+    assert_eq!(change(&list, &list.clone().folding_all()).await.left, [lib.key("Box/1")]);
+    let reordered = ImportListRequest {
+        view: ImportListView { order: ImportListOrder::PathDescending, ..list.view.clone() },
+        ..list.clone()
+    };
+    let reorder = change(&list, &reordered).await;
+    assert_eq!(reorder.opening, ImportListOpening::InPlace);
+    assert!(reorder.left.is_empty(), "another order hides no row");
 }
 
 /// The selected rows a bulk action takes are in the order the list shows

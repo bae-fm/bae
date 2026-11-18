@@ -10,8 +10,8 @@ private struct ReadFailed: Error {}
 
 extension ImportListHandle {
     /// A handle over `items` whose reads are the given stand-ins, and change
-    /// nothing otherwise: a view opens at the top, a fold hides nothing, and
-    /// no candidate is found.
+    /// nothing otherwise: a view opens at the top and hides nothing, and no
+    /// candidate is found.
     static func stub(
         items: [BridgeImportListItem] = [],
         queries:
@@ -21,17 +21,14 @@ extension ImportListHandle {
                 >
             )? = nil,
         viewChange:
-            @escaping @Sendable (BridgeImportListRequest, [Data]) async throws
-            -> BridgeImportListViewChange = { _, _ in
-                BridgeImportListViewChange(opening: .top, left: [])
-            },
-        hiddenByFold:
             @escaping @Sendable (
                 BridgeImportListRequest, BridgeImportListRequest, [Data]
-            ) async throws -> [Data] = { _, _, _ in [] },
-        locateCandidate:
-            @escaping @Sendable (Data) async throws
-            -> BridgeImportCandidateListLocation? = { _ in nil },
+            ) async throws -> BridgeImportListViewChange = { _, _, _ in
+                BridgeImportListViewChange(opening: .top, left: [])
+            },
+        revealCandidate:
+            @escaping @Sendable (BridgeImportListRequest, Data) async throws
+            -> BridgeImportListReveal? = { _, _ in nil },
         candidatePosition:
             @escaping @Sendable (BridgeImportListRequest, Data) async throws
             -> UInt64? = { _, _ in nil },
@@ -48,8 +45,7 @@ extension ImportListHandle {
             filterEntries: fixed.filterEntries,
             selection: fixed.selection,
             viewChange: viewChange,
-            hiddenByFold: hiddenByFold,
-            locateCandidate: locateCandidate,
+            revealCandidate: revealCandidate,
             candidatePosition: candidatePosition,
             firstIdentifyingCandidate: firstIdentifyingCandidate
         )
@@ -224,8 +220,9 @@ struct ImportListSlotTests {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    locateCandidate: { _ in located(on: .pending) },
-                    candidatePosition: { _, _ in 61 },
+                    revealCandidate: { request, _ in
+                        revealed(request, on: .pending, at: 61)
+                    },
                     firstIdentifyingCandidate: { _ in target }
                 )
             }
@@ -252,8 +249,8 @@ struct ImportListSlotTests {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    locateCandidate: { _ in
-                        Issue.record("nothing to locate")
+                    revealCandidate: { _, _ in
+                        Issue.record("nothing to reveal")
                         return nil
                     }
                 )
@@ -265,9 +262,9 @@ struct ImportListSlotTests {
         #expect(try await slot.revealFirstIdentifying() == nil)
     }
 
-    /// A view change sends core the selected keys and removes from the
-    /// selection the keys it returns; a fold does the same with the keys of
-    /// the rows it hid.
+    /// A view change and a fold each send core the request before, the
+    /// request after and the selected keys, and remove from the selection the
+    /// keys core returns.
     @Test("a view change and a fold take out the selected rows they hide")
     func viewChangesAndFoldsTakeOutWhatTheyHide() async throws {
         let first = candidateKey(1)
@@ -282,16 +279,17 @@ struct ImportListSlotTests {
             makeHandle: {
                 .stub(
                     items: (0..<5).map(candidateItem),
-                    viewChange: { _, selected in
+                    viewChange: { before, after, selected in
                         sent.record(Set(selected))
-                        return BridgeImportListViewChange(
-                            opening: .top,
-                            left: [first]
-                        )
-                    },
-                    hiddenByFold: { _, _, selected in
-                        sent.record(Set(selected))
-                        return [second]
+                        return before.view.tab != after.view.tab
+                            ? BridgeImportListViewChange(
+                                opening: .top,
+                                left: [first]
+                            )
+                            : BridgeImportListViewChange(
+                                opening: .inPlace,
+                                left: [second]
+                            )
                     }
                 )
             }
@@ -319,9 +317,12 @@ struct ImportListSlotTests {
             selection: ImportSelection(),
             makeHandle: {
                 .stub(
-                    hiddenByFold: { _, after, _ in
+                    viewChange: { _, after, _ in
                         folds.record(described(after.folds))
-                        return []
+                        return BridgeImportListViewChange(
+                            opening: .inPlace,
+                            left: []
+                        )
                     }
                 )
             }
@@ -377,7 +378,7 @@ struct ImportListSlotViewChangeTests {
             makeHandle: {
                 .stub(
                     items: (0..<3).map(candidateItem),
-                    viewChange: { request, _ in
+                    viewChange: { _, request, _ in
                         await delivery.wait(for: request.view)
                         return BridgeImportListViewChange(
                             opening: .top,
@@ -414,7 +415,7 @@ struct ImportListSlotViewChangeTests {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    viewChange: { _, _ in
+                    viewChange: { _, _, _ in
                         BridgeImportListViewChange(
                             opening: .at(position: 60),
                             left: []
@@ -440,10 +441,10 @@ struct ImportListSlotViewChangeTests {
         listening.cancel()
     }
 
-    /// For another order the slot asks core nothing and sends no opening: the
-    /// person's place stays the same while the table draws the rows in the new
-    /// order.
-    @Test("another order opens the list without an opening")
+    /// Core keeps the person's place for another order, and the slot sends
+    /// no opening: the place stays the same while the table draws the rows in
+    /// the new order.
+    @Test("another order opens the list in place")
     func anotherOrderOpensNothing() async throws {
         let slot = ImportListSlot(
             importStore: ImportStore(),
@@ -452,10 +453,10 @@ struct ImportListSlotViewChangeTests {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    viewChange: { _, _ in
-                        Issue.record("another order asks for no opening")
+                    viewChange: { before, after, _ in
+                        #expect(before.view.order != after.view.order)
                         return BridgeImportListViewChange(
-                            opening: .top,
+                            opening: .inPlace,
                             left: []
                         )
                     }
@@ -513,16 +514,26 @@ struct ImportListSlotViewChangeTests {
     }
 }
 
-/// Where core says a candidate in no group is revealed: on `tab`.
-private func located(
-    on tab: BridgeTriageTab
-) -> BridgeImportCandidateListLocation {
-    BridgeImportCandidateListLocation(tab: tab, groupKey: nil)
+/// What core says revealing a candidate in no group from `request` shows: the
+/// request on `tab` with the filters cleared, the candidate at `position`.
+private func revealed(
+    _ request: BridgeImportListRequest,
+    on tab: BridgeTriageTab,
+    at position: UInt64
+) -> BridgeImportListReveal {
+    var revealed = request
+    revealed.view.tab = tab
+    revealed.view.filterText = ""
+    revealed.view.pendingFilter = .all
+    return BridgeImportListReveal(request: revealed, position: position)
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {
+    /// The slot asks core to reveal the candidate from the list it shows,
+    /// and shows the request core answers with: the candidate's tab, the
+    /// filters cleared, the list opened at the candidate.
     @MainActor
-    func testRevealFollowsCurrentPlacementBeforeLoading() async throws {
+    func testRevealShowsTheRequestCoreAnswers() async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         uiStore.setImportCandidateFilterText("hidden")
@@ -535,10 +546,9 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    locateCandidate: { _ in located(on: .done) },
-                    candidatePosition: { request, _ in
+                    revealCandidate: { request, _ in
                         await delivery.wait(for: request.view)
-                        return 61
+                        return revealed(request, on: .done, at: 61)
                     }
                 )
             }
@@ -551,17 +561,17 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         }
         try await Wait.until { !delivery.requests.isEmpty }
 
-        XCTAssertEqual(uiStore.importCandidateTab, .done)
-        XCTAssertTrue(uiStore.importCandidateFilterText.isEmpty)
+        XCTAssertEqual(delivery.requests.first?.tab, .pending)
+        XCTAssertEqual(delivery.requests.first?.filterText, "hidden")
         XCTAssertNil(outcome.position)
-        XCTAssertNil(slot.list?.idAt(61))
-        XCTAssertEqual(delivery.requests.first?.tab, .done)
-        XCTAssertEqual(delivery.requests.first?.filterText.isEmpty, true)
 
         delivery.resolve()
         try await Wait.until { outcome.position != nil }
 
         XCTAssertEqual(outcome.position, 61)
+        XCTAssertEqual(uiStore.importCandidateTab, .done)
+        XCTAssertTrue(uiStore.importCandidateFilterText.isEmpty)
+        XCTAssertEqual(slot.shown?.view.tab, .done)
         XCTAssertEqual(
             slot.list?.idAt(61),
             candidateStableKey(targetKey)
@@ -580,8 +590,7 @@ extension CandidatePlacementNavigationTests {
             makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    locateCandidate: { _ in located(on: .pending) },
-                    candidatePosition: { _, _ in nil }
+                    revealCandidate: { _, _ in nil }
                 )
             }
         )

@@ -289,6 +289,11 @@ enum Part {
 /// and each tested; Found's in runs that pass no folded group's members.
 pub(super) struct Items {
     request: ImportListRequest,
+    /// The statement selecting the group a reveal opens whatever the
+    /// request's folds say, for the items a reveal counts. A reveal's
+    /// statement names Done's uploads once, materialized, so the stream's
+    /// parts read that one CTE rather than each its own copy.
+    opened: Option<&'static str>,
 }
 
 /// A statement over one part of a stream: what it starts with, its rows, and
@@ -340,7 +345,19 @@ impl RangeStatement {
 
 impl Items {
     pub(super) fn new(request: ImportListRequest) -> Self {
-        Self { request }
+        Self { request, opened: None }
+    }
+
+    /// The items a reveal counts in the list `request` shows: the group the
+    /// statement `opened` selects open, whatever the request's folds say, and
+    /// Done's uploads read from the reveal statement's `uploading`.
+    pub(super) fn revealing(request: ImportListRequest, opened: &'static str) -> Self {
+        Self { request, opened: Some(opened) }
+    }
+
+    /// The request's fragments, with the group a reveal opens open.
+    fn fragments(&self) -> Fragments<'_> {
+        self.request.fragments_opening(self.opened)
     }
 
     fn tab(&self) -> TriageTab {
@@ -361,8 +378,13 @@ impl Items {
 
     /// The rows the stream shows, over the alias `i`, and the condition on
     /// them past its source.
-    fn source(&self) -> (String, &'static str) {
-        (format!("{} AS i", self.request.items()), "i.tab = :tab")
+    fn source(&self) -> (String, String) {
+        (format!("{} AS i", self.fragments().items()), format!("i.tab = {}", self.tab_sql()))
+    }
+
+    /// The stream's tab as an SQL literal.
+    fn tab_sql(&self) -> String {
+        tab_literal(self.tab())
     }
 
     /// The two sources each run of Found reads: the list's rows, and the
@@ -374,15 +396,16 @@ impl Items {
             return None;
         }
         Some((
-            format!("{} AS p WHERE p.tab = :tab", self.request.items()),
+            format!("{} AS p WHERE p.tab = {}", self.fragments().items(), self.tab_sql()),
             format!(
                 "{judged} AS h \
                  CROSS JOIN {items} AS m \
                      ON m.watched_folder_path = h.watched_folder_path \
                     AND m.group_folder = h.key AND m.item <> 'group' \
-                 WHERE h.tab = :tab AND h.item = 'group' AND NOT h.folded",
-                judged = self.request.judged(),
-                items = self.request.items(),
+                 WHERE h.tab = {tab} AND h.item = 'group' AND NOT h.folded",
+                judged = self.fragments().judged(),
+                items = self.fragments().items(),
+                tab = self.tab_sql(),
             ),
         ))
     }
@@ -422,6 +445,10 @@ impl Items {
             }
         };
         let order = self.part_order(part).clause();
+        let with = match self.opened {
+            Some(_) => String::new(),
+            None => format!("WITH {}", uploading_cte()),
+        };
         match part {
             Part::Whole => PartSql {
                 with: String::new(),
@@ -429,14 +456,14 @@ impl Items {
                 order,
             },
             Part::Uploading => PartSql {
-                with: format!("WITH {}", uploading_cte()),
+                with: with.clone(),
                 from: format!(
                     "uploading AS u JOIN {source} ON i.key = u.key {join} WHERE {condition}"
                 ),
                 order,
             },
             Part::Settled => PartSql {
-                with: format!("WITH {}", uploading_cte()),
+                with: with.clone(),
                 from: format!(
                     "{source} {join} WHERE {condition} AND i.key NOT IN (SELECT key FROM uploading)"
                 ),
@@ -467,16 +494,11 @@ impl Items {
         extra: &[(&str, &dyn ToSql)],
         run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
-        let tab = tab_column(self.tab());
         let filter = pending_filter_column(self.request.view.pending_filter);
         let folded = self.request.folded_json();
         let text = self.request.view.search.as_ref().map(crate::SearchText::as_str);
-        let mut named: Vec<(&str, &dyn ToSql)> = vec![
-            (":tab", &tab),
-            (":filter", &filter),
-            (":filter_text", &text),
-            (":folded", &folded),
-        ];
+        let mut named: Vec<(&str, &dyn ToSql)> =
+            vec![(":filter", &filter), (":filter_text", &text), (":folded", &folded)];
         named.extend_from_slice(extra);
         let bound: Vec<(&str, &dyn ToSql)> =
             named.into_iter().filter(|(name, _)| names(statement, name)).collect();
@@ -527,6 +549,61 @@ impl Items {
                 .collect::<Vec<_>>()
                 .join(" + "),
         }
+    }
+
+    /// The FROM clause reading the candidate a reveal starts from as the row
+    /// of `part` its order's terms name: the CTE `revealed`'s one row as
+    /// `i`, Found's joined to the row it sorts in the place of as `unit`, and
+    /// Done's uploads to the queue's place as `u`.
+    fn revealed_from(&self, part: Part) -> String {
+        match (self.tab(), part) {
+            (TriageTab::Pending, _) => format!("revealed AS i {}", unit_join("i", "unit")),
+            (_, Part::Uploading) => "revealed AS i JOIN uploading AS u ON u.key = i.key".into(),
+            (_, Part::Whole | Part::Settled) => "revealed AS i".into(),
+        }
+    }
+
+    /// One arm of a reveal's statement for each part of the tab, with the
+    /// CTE it reads the candidate's values in the part's order from: when the
+    /// candidate the CTE `revealed` holds is on this tab, in that part, the
+    /// CTE holds its one row, and the arm selects the candidate's tab, its
+    /// group and how many items sit before it: every item of the parts before
+    /// its part, and the rows the seeks before its values read in its part,
+    /// each a count off the part's order index. The seeks read the values as
+    /// columns of the arm's row, so the statement names each CTE once per arm.
+    pub(super) fn reveal_arms(&self) -> Vec<(String, String)> {
+        self.parts()
+            .iter()
+            .enumerate()
+            .map(|(at, &part)| {
+                let order = self.part_order(part);
+                let keys = format!("revealed_{}_{at}", tab_column(self.tab()));
+                let in_part = match part {
+                    Part::Whole => "",
+                    Part::Uploading => " WHERE i.key IN (SELECT key FROM uploading)",
+                    Part::Settled => " WHERE i.key NOT IN (SELECT key FROM uploading)",
+                };
+                let cte = format!(
+                    "{keys} AS (SELECT {columns} FROM {from}{in_part})",
+                    columns = order.key_columns(),
+                    from = self.revealed_from(part),
+                );
+                let mut before = vec![self.held_before(at)];
+                before.extend(
+                    order
+                        .seeks_before_row(|term| format!("rk.order_key_{term}"))
+                        .iter()
+                        .map(|seek| self.held(part, Some(seek))),
+                );
+                let arm = format!(
+                    "SELECT r.tab, r.watched_folder_path, r.group_folder, {before} AS position \
+                     FROM revealed AS r, {keys} AS rk WHERE r.tab = {tab}",
+                    before = before.join(" + "),
+                    tab = self.tab_sql(),
+                );
+                (cte, arm)
+            })
+            .collect()
     }
 
     /// How many key columns the widest order of the tab's parts has.

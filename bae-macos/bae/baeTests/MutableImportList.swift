@@ -80,12 +80,16 @@ final class MutableImportList: @unchecked Sendable {
     var handle: ImportListHandle {
         .stub(
             queries: { [self] _ in queries },
-            locateCandidate: { [self] key in
+            revealCandidate: { [self] request, key in
                 position(of: key)
-                    .map { _ in
-                        BridgeImportCandidateListLocation(
-                            tab: .pending,
-                            groupKey: nil
+                    .map { position in
+                        var revealed = request
+                        revealed.view.tab = .pending
+                        revealed.view.filterText = ""
+                        revealed.view.pendingFilter = .all
+                        return BridgeImportListReveal(
+                            request: revealed,
+                            position: UInt64(position)
                         )
                     }
             },

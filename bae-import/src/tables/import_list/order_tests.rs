@@ -629,6 +629,25 @@ async fn the_filter_matches_an_invalid_folder_by_its_name_and_its_tags() {
 }
 
 impl ImportTables {
+    /// SQLite's plan for the statement revealing a candidate from `list`,
+    /// one line per step.
+    async fn import_reveal_plan(
+        &self,
+        list: ImportListRequest,
+        key: crate::CandidateKey,
+    ) -> Result<Vec<String>, DbError> {
+        self.store
+            .read(move |sql| {
+                Items::new(list.clone()).query(
+                    &sql,
+                    &format!("EXPLAIN QUERY PLAN {}", summary::reveal_statement(&list)),
+                    &[(":key", &key)],
+                    |row| row.get::<_, String>(3),
+                )
+            })
+            .await
+    }
+
     /// The plans each part of `list`'s windows is read by, by offset and by
     /// each seek from a row, for a test that holds every order to its index.
     async fn import_list_window_plans(
@@ -702,6 +721,39 @@ async fn every_order_reads_its_windows_off_its_index() {
                 );
             }
         }
+    }
+}
+
+/// A reveal reads the candidate's placement row by its key first, then
+/// counts the items before it off its tab's order indexes, with no temporary
+/// B-tree: one read whose cost is the index ranges before the candidate,
+/// however its list is folded.
+#[tokio::test]
+async fn a_reveal_reads_the_candidate_by_key_then_its_tabs_order_index() {
+    let lib = Library::new().await;
+    let tables = crate::tables::ImportTables::new(lib.db.clone());
+    lib.run(lib.scan("Box/1") + lib.scan("Box/2") + lib.scan("Loose")).await;
+    for order in [ImportListOrder::NewestFirst, ImportListOrder::PathAscending] {
+        let list =
+            ImportListRequest::of(ordered(TriageTab::Pending, order)).folding(lib.group_key("Box"));
+        let plan = tables.import_reveal_plan(list, lib.key("Box/1")).await.unwrap();
+        let first = plan
+            .iter()
+            .position(|step| step.starts_with("SEARCH") || step.starts_with("SCAN"))
+            .expect("the reveal reads a table");
+        assert!(
+            plan[first].contains("import_list_placement_by_key (key=?)"),
+            "{order:?} reads the candidate by its key first: {plan:?}"
+        );
+        // A seek that holds every term up to the folder equal may take any
+        // order's index, since each holds those terms.
+        assert!(
+            plan.iter().any(|step| step.starts_with("SEARCH")
+                && step.contains("USING INDEX import_list_")
+                && step.contains("_members ")),
+            "{order:?} counts a group's members off an order index: {plan:?}"
+        );
+        assert!(!plan.iter().any(|step| step.contains("TEMP B-TREE")), "{order:?} sorts: {plan:?}");
     }
 }
 

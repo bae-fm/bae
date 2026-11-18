@@ -138,14 +138,18 @@ impl ImportSelectionSubscription {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl ImportList {
-    /// Where the list `request` shows opens, at the position of the first
-    /// selected row it shows, or at its top, and the selected keys it doesn't
-    /// show, which leave the selection. The app asks for another tab, filter
-    /// or search with this, opens a new view under the request at the place
-    /// it returns, and scrolls the table there.
+    /// What showing the list `after` in place of the list `before` comes to
+    /// for `selected`, the rows the app keeps selected: where it opens and
+    /// which selected keys leave the selection. Core decides it from the two
+    /// requests: another tab, filter or search opens at the first selected
+    /// row it shows, or its top, and takes out the selected rows it doesn't
+    /// show; another order or fold keeps the person's place, and a fold takes
+    /// out the selected rows it hid. The app opens the list under `after`
+    /// there and takes the keys out of its selection.
     pub async fn view_change(
         self: std::sync::Arc<Self>,
-        request: crate::types::BridgeImportListRequest,
+        before: crate::types::BridgeImportListRequest,
+        after: crate::types::BridgeImportListRequest,
         selected: Vec<Vec<u8>>,
     ) -> Result<crate::types::BridgeImportListViewChange, BridgeError> {
         let runtime = self.runtime.clone();
@@ -153,28 +157,7 @@ impl ImportList {
             .run("ImportList.view_change", move || async move {
                 Ok(crate::types::BridgeImportListViewChange::from_core(
                     self.services
-                        .import_list_view_change(request.into_core()?, keys(selected))
-                        .await?,
-                ))
-            })
-            .await
-    }
-
-    /// The keys of `selected`, the rows the app keeps selected, that the
-    /// list showed under `before` and doesn't show under `after`: what a
-    /// fold hid. The two requests differ in their folds only.
-    pub async fn hidden_by_fold(
-        self: std::sync::Arc<Self>,
-        before: crate::types::BridgeImportListRequest,
-        after: crate::types::BridgeImportListRequest,
-        selected: Vec<Vec<u8>>,
-    ) -> Result<Vec<Vec<u8>>, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ImportList.hidden_by_fold", move || async move {
-                Ok(bytes(
-                    self.services
-                        .import_list_hidden_by(
+                        .import_list_view_change(
                             before.into_core()?,
                             after.into_core()?,
                             keys(selected),
@@ -185,21 +168,24 @@ impl ImportList {
             .await
     }
 
-    /// The view that reveals the candidate at its current placement: its tab,
-    /// with the filters cleared and its group opened; absent when no tab
-    /// lists such a candidate.
-    pub async fn locate_candidate(
+    /// What revealing the candidate from the list `request` shows: the
+    /// request on the tab its placement puts it on, with the filters cleared
+    /// and its group opened, and where it sits there; absent when no tab
+    /// lists such a candidate. The app opens the list under the request at
+    /// that place.
+    pub async fn reveal_candidate(
         self: std::sync::Arc<Self>,
+        request: crate::types::BridgeImportListRequest,
         candidate_key: Vec<u8>,
-    ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
+    ) -> Result<Option<crate::types::BridgeImportListReveal>, BridgeError> {
         let runtime = self.runtime.clone();
         runtime
-            .run("ImportList.locate_candidate", move || async move {
+            .run("ImportList.reveal_candidate", move || async move {
                 Ok(self
                     .services
-                    .import_locate_candidate(&candidate_key.into())
+                    .import_reveal_candidate(request.into_core()?, &candidate_key.into())
                     .await?
-                    .map(crate::types::BridgeImportCandidateListLocation::from_core))
+                    .map(crate::types::BridgeImportListReveal::from_core))
             })
             .await
     }

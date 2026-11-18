@@ -507,6 +507,22 @@ impl ListOrder {
         self.seeks(key, Side::Before, false, true)
     }
 
+    /// The seeks that together read every row before another row of the
+    /// same statement, whose value of the order's term `at` the expression
+    /// `value_of(at)` reads: [`Self::seeks_before`] with the row's values
+    /// read in SQL, so one statement finds a row and counts the rows before
+    /// it.
+    #[cfg(desktop)]
+    pub fn seeks_before_row(&self, value_of: impl Fn(usize) -> String) -> Vec<Seek> {
+        let values = self
+            .terms
+            .iter()
+            .enumerate()
+            .map(|(at, term)| KeyValue::Read { expression: value_of(at), nullable: term.nullable })
+            .collect::<Vec<_>>();
+        self.seeks_from(&values, Side::Before, false, true)
+    }
+
     /// The seeks reading the rows after the row at `key`, then those reading
     /// the rows before it: what a test holds to the order's index.
     #[cfg(any(test, feature = "test-utils"))]

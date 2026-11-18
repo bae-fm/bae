@@ -110,7 +110,10 @@ impl Followed<'_> {
         selected: Vec<CandidateKey>,
     ) -> Result<ImportListViewChange, bae_import::ImportError> {
         let request = ImportListRequest { view, ..self.request() };
-        let change = self.services.import_list_view_change(request.clone(), selected).await?;
+        let change = self
+            .services
+            .import_list_view_change(self.request(), request.clone(), selected)
+            .await?;
         self.list = self.services.follow_import_list_for_test(request, ListWindow::top(50));
         Ok(change)
     }

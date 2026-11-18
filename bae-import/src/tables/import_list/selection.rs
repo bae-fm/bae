@@ -151,10 +151,34 @@ pub(super) fn selected(
     Ok(selected)
 }
 
+/// What showing the list `after` in place of the list `before` comes to for
+/// the selected `keys`. Another tab, filter or search narrows the list anew:
+/// it opens at the first of `keys` it shows, or at its top, and the keys it
+/// doesn't show leave the selection. Another order or another fold shows the
+/// same view: the list keeps the person's place, and the keys a fold hid
+/// leave the selection.
+pub(super) fn view_change(
+    sql: &impl coven::SqlRead,
+    before: &ImportListRequest,
+    after: &ImportListRequest,
+    keys: &[CandidateKey],
+) -> Result<ImportListViewChange, DbError> {
+    let narrowed_anew = before.view.tab != after.view.tab
+        || before.view.search != after.view.search
+        || before.entry() != after.entry();
+    match narrowed_anew {
+        true => opening(sql, after, keys),
+        false => Ok(ImportListViewChange {
+            opening: ImportListOpening::InPlace,
+            left: hidden_by(sql, before, after, keys)?,
+        }),
+    }
+}
+
 /// Where the list `request` shows opens: the position of the first of `keys`
 /// it shows, or its top when it shows none; and the keys it doesn't show,
 /// which leave the selection.
-pub(super) fn view_change(
+fn opening(
     sql: &impl coven::SqlRead,
     request: &ImportListRequest,
     keys: &[CandidateKey],
@@ -179,9 +203,9 @@ pub(super) fn view_change(
 }
 
 /// The keys of `keys` whose rows the list `before` showed and the list
-/// `after` doesn't: what a fold hid. The two requests differ in their folds
-/// only, so the statement reads `before`'s from `:folded_before`.
-pub(super) fn hidden_by(
+/// `after` doesn't: what a fold hid. The two requests show the same view, so
+/// the statement reads `before`'s folds from `:folded_before`.
+fn hidden_by(
     sql: &impl coven::SqlRead,
     before: &ImportListRequest,
     after: &ImportListRequest,
@@ -249,25 +273,16 @@ impl ImportTables {
         self.store.read(move |sql| Items::new(request).keys_between(&sql, &from, &to)).await
     }
 
-    /// Where the list `request` shows opens, and which of the selected keys
-    /// it doesn't show.
+    /// What showing the list `after` in place of the list `before` comes
+    /// to for the keys of `selected`: where it opens, and which of them leave
+    /// the selection.
     pub async fn import_list_view_change(
-        &self,
-        request: ImportListRequest,
-        selected: Vec<CandidateKey>,
-    ) -> Result<ImportListViewChange, DbError> {
-        self.store.read(move |sql| view_change(&sql, &request, &selected)).await
-    }
-
-    /// The keys of `selected` that the list showed under `before` and doesn't
-    /// under `after`, which differ in their folds only.
-    pub async fn import_list_hidden_by(
         &self,
         before: ImportListRequest,
         after: ImportListRequest,
         selected: Vec<CandidateKey>,
-    ) -> Result<Vec<CandidateKey>, DbError> {
-        self.store.read(move |sql| hidden_by(&sql, &before, &after, &selected)).await
+    ) -> Result<ImportListViewChange, DbError> {
+        self.store.read(move |sql| view_change(&sql, &before, &after, &selected)).await
     }
 }
 

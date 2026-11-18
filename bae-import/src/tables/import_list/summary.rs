@@ -8,9 +8,7 @@
 
 use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::*;
-use crate::list::{
-    ImportCandidateListLocation, ImportListCount, ImportQueueSummary, NarrowedCount,
-};
+use crate::list::{ImportListCount, ImportListReveal, ImportQueueSummary, NarrowedCount};
 use crate::RelativeFolder;
 use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
@@ -166,9 +164,11 @@ fn kept_items(request: &ImportListRequest) -> String {
     let pending = request.view.tab == TriageTab::Pending;
     let kept = match request.entry_sql("p") {
         Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),
-        None => "SELECT COUNT(*) FROM import_list_placement AS p \
-                 WHERE p.tab = :tab AND p.item <> 'group'"
-            .to_string(),
+        None => format!(
+            "SELECT COUNT(*) FROM import_list_placement AS p \
+             WHERE p.tab = {tab} AND p.item <> 'group'",
+            tab = tab_literal(request.view.tab),
+        ),
     };
     let folded = match pending {
         true => format!(
@@ -215,35 +215,90 @@ fn listed(request: &ImportListRequest) -> String {
     format!("SELECT ({items}) AS items, ({shown}) AS shown")
 }
 
-/// The view that reveals the candidate at `key`: its tab, with the filters
-/// cleared and its group opened. `None` for a candidate no tab lists.
-pub(super) fn reveal_view(
+/// The CTE a reveal starts from: the candidate's placement row, by its key.
+const REVEALED: &str = "revealed AS ( \
+     SELECT * FROM import_list_placement WHERE key = :key AND item = 'candidate')";
+
+/// The group a reveal opens, whatever the list's folds say: the candidate's.
+const REVEALED_GROUP: &str = "SELECT watched_folder_path, group_folder FROM revealed \
+     WHERE group_folder IS NOT NULL";
+
+/// The request that reveals a candidate on `tab` from the list `request`
+/// shows: the filters cleared, the order and the folds kept.
+fn revealing(request: &ImportListRequest, tab: TriageTab) -> ImportListRequest {
+    ImportListRequest {
+        view: crate::ImportListView {
+            tab,
+            search: None,
+            pending_filter: PendingFilter::All,
+            order: request.view.order,
+        },
+        folds: request.folds.clone(),
+    }
+}
+
+/// The statement revealing the candidate at `:key` from the list `request`
+/// shows, in one read: it finds the candidate's placement row by its key,
+/// and an arm for each part of each tab counts, when the row is on that tab
+/// and part, the items before it in the tab's order with the filters cleared
+/// and the candidate's group opened, off the order's index. It selects the
+/// tab, the group and the position.
+pub(super) fn reveal_statement(request: &ImportListRequest) -> String {
+    let (ctes, arms): (Vec<String>, Vec<String>) =
+        [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped]
+            .into_iter()
+            .flat_map(|tab| Items::revealing(revealing(request, tab), REVEALED_GROUP).reveal_arms())
+            .unzip();
+    format!(
+        "WITH {REVEALED}, {uploading}, {ctes} {arms}",
+        uploading = uploading_cte().replacen(" AS (", " AS MATERIALIZED (", 1),
+        ctes = ctes.join(", "),
+        arms = arms.join(" UNION ALL ")
+    )
+}
+
+/// What revealing the candidate at `key` from the list `request` shows: the
+/// request on the tab its placement puts it on, the filters cleared, its
+/// group opened and the list's order and other folds kept, and where it sits
+/// there. `None` for a candidate no tab lists.
+pub(super) fn reveal(
     sql: &SqlReadContext<'_>,
+    request: &ImportListRequest,
     key: &CandidateKey,
-) -> Result<Option<ImportCandidateListLocation>, DbError> {
-    let Some((root, tab, group_folder)) = sql
-        .query_row(
-            "SELECT watched_folder_path, tab, group_folder FROM import_list_placement \
-             WHERE key = ? AND item = 'candidate'",
-            [key],
-            |row| {
-                Ok((
-                    path_column::get(row, 0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, Option<RelativeFolder>>(2)?,
-                ))
-            },
-        )
-        .optional()?
+) -> Result<Option<ImportListReveal>, DbError> {
+    // Every tab's arm binds the same values: no search, no filter entry, and
+    // the request's folds.
+    let items = Items::revealing(revealing(request, TriageTab::Pending), REVEALED_GROUP);
+    let Some((tab, root, group_folder, position)) = items
+        .query(sql, &reveal_statement(request), &[(":key", key)], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                path_column::get(row, 1)?,
+                row.get::<_, Option<RelativeFolder>>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        })?
+        .into_iter()
+        .next()
     else {
         return Ok(None);
     };
-    Ok(Some(ImportCandidateListLocation {
-        tab: tab_of(&tab)?,
-        group_key: group_folder.map(|folder| crate::FolderReleaseDecisionKey {
-            watched_folder_path: root,
-            relative_folder: folder,
-        }),
+    let mut revealed = revealing(request, tab_of(&tab)?);
+    if let Some(folder) = group_folder {
+        let group =
+            crate::FolderReleaseDecisionKey { watched_folder_path: root, relative_folder: folder };
+        match &mut revealed.folds {
+            ImportListFolds::Only(folded) => {
+                folded.remove(&group);
+            }
+            ImportListFolds::AllBut(open) => {
+                open.insert(group);
+            }
+        }
+    }
+    Ok(Some(ImportListReveal {
+        request: revealed,
+        position: to_u64(position, "a revealed candidate's position")?,
     }))
 }
 
@@ -289,15 +344,16 @@ impl ImportTables {
         self.store.subscribe(move |sql| tab_counts_on(&sql))
     }
 
-    /// The view that reveals the candidate at `candidate_key`: the tab its
-    /// placement puts it on, with the filters cleared and its group opened.
-    /// `None` when no tab lists such a candidate.
-    pub async fn locate_import_candidate(
+    /// What revealing the candidate at `candidate_key` from the list
+    /// `request` shows, and where the candidate sits there; `None` when no
+    /// tab lists such a candidate.
+    pub async fn reveal_import_candidate(
         &self,
+        request: ImportListRequest,
         candidate_key: &crate::CandidateKey,
-    ) -> Result<Option<crate::ImportCandidateListLocation>, DbError> {
+    ) -> Result<Option<ImportListReveal>, DbError> {
         let candidate_key = candidate_key.clone();
-        self.store.read(move |sql| reveal_view(&sql, &candidate_key)).await
+        self.store.read(move |sql| reveal(&sql, &request, &candidate_key)).await
     }
 
     /// Where the candidate at `candidate_key` sits in what the list `request`

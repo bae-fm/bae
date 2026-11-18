@@ -36,11 +36,11 @@ struct ImportListNarrowing: Equatable {
 /// them and every read of the list takes them in its request. When the person
 /// changes either, the slot reads the new request's first rows and count in a
 /// new list, and the sidebar keeps drawing the old list until the new one has
-/// both. A new tab, filter or search first asks core where the new view opens
-/// and which selected rows it doesn't show, and the new list opens there. A
-/// new order opens the new list at the row on top. A fold asks core which
-/// selected rows it hid and opens the new list at the row on top, and the
-/// table puts the release that was on top back on top.
+/// both. Core decides what each change comes to from the request before and
+/// the request after: a new tab, filter or search opens at the first selected
+/// row it shows, or its top, and takes out the selected rows it doesn't show;
+/// a new order or fold opens at the row on top, and a fold takes out the
+/// selected rows it hid.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
@@ -229,38 +229,27 @@ extension ImportListSlot {
 
     /// Navigate to the candidate's current authoritative placement, even when
     /// that placement has moved it out of the list presently on screen, and
-    /// select it alone. Returns where the list opened by the reveal places
-    /// the candidate; `nil` when that list does not show it.
+    /// select it alone. Core answers the request that reveals it from the
+    /// list the person asked for, and where it sits there; the slot shows
+    /// that request. Returns that position; `nil` when no tab lists the
+    /// candidate.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
-        guard let handle,
-            let location = try await handle.locateCandidate(candidateKey)
-        else {
-            return nil
-        }
-        uiStore.setImportCandidateTab(location.tab)
-        uiStore.setImportCandidateFilterText("")
-        uiStore.setImportCandidatePendingFilter(.all)
-        var next = view
-        next.tab = location.tab
-        next.filterText = ""
-        next.pendingFilter = .all
-        view = next
+        guard handle != nil else { return nil }
         let outcome = await enqueue {
             [self] () async -> Result<Int?, any Error> in
-            if let groupKey = location.groupKey {
-                folds = folds.setting(groupKey, folded: false)
-            }
-            let request = asked
+            guard let handle else { return .success(nil) }
             do {
                 guard
-                    let placed = try await handle.candidatePosition(
-                        request,
+                    let reveal = try await handle.revealCandidate(
+                        asked,
                         candidateKey
                     )
                 else { return .success(nil) }
+                ask(reveal.request)
                 selectOnly(candidateKey)
-                try await show(request, at: Int(placed))
-                return .success(Int(placed))
+                let position = Int(reveal.position)
+                try await show(reveal.request, at: position)
+                return .success(position)
             }
             catch { return .failure(error) }
         }
@@ -268,6 +257,16 @@ extension ImportListSlot {
         let position = try outcome.get()
         guard !Task.isCancelled else { return nil }
         return position
+    }
+
+    /// Make `request` the view and folds the person asked for, and the
+    /// session state the sidebar renders from.
+    private func ask(_ request: BridgeImportListRequest) {
+        uiStore.setImportCandidateTab(request.view.tab)
+        uiStore.setImportCandidateFilterText(request.view.filterText)
+        uiStore.setImportCandidatePendingFilter(request.view.pendingFilter)
+        view = request.view
+        folds = request.folds
     }
 
     private func updateView(_ change: (inout BridgeImportListView) -> Void) {
@@ -302,49 +301,29 @@ extension ImportListSlot {
     }
 
     /// Show the list under the view and folds asked for now, unless it is
-    /// the list on screen.
+    /// the list on screen. Core decides what the change comes to: where the
+    /// new list opens and which selected rows leave the selection.
     private func reconcile() async {
         let next = asked
         guard let handle, let before = shown, before != next else { return }
         do {
-            if ImportListNarrowing(of: before.view)
-                != ImportListNarrowing(of: next.view)
-            {
-                // Another tab, filter or search opens where the first
-                // selected row it shows sits, or at its top, and takes the
-                // selected rows it doesn't show out of the selection.
-                let generation = selection.generation
-                let change = try await handle.viewChange(
-                    next,
-                    selected: selection.keys.inByteOrder
-                )
-                if selection.generation == generation {
-                    selection.remove(change.left)
-                }
-                let position: Int
-                switch change.opening {
-                case .top: position = 0
-                case .at(let at): position = Int(at)
-                }
-                try await show(next, at: position, opening: true)
+            let generation = selection.generation
+            let change = try await handle.viewChange(
+                before: before,
+                after: next,
+                selected: selection.keys.inByteOrder
+            )
+            if selection.generation == generation {
+                selection.remove(change.left)
             }
-            else if before.view.order != next.view.order {
-                // Another order moves the rows, not which rows there are: the
-                // list opens at the row on top.
-                try await show(next, at: list?.topPosition ?? 0)
-            }
-            else {
-                // A fold takes the selected rows it hides out of the
-                // selection.
-                let generation = selection.generation
-                let hidden = try await handle.hiddenByFold(
-                    before: before,
-                    after: next,
-                    selected: selection.keys.inByteOrder
-                )
-                if selection.generation == generation {
-                    selection.remove(hidden)
-                }
+            switch change.opening {
+            case .top:
+                try await show(next, at: 0, opening: true)
+            case .at(let position):
+                try await show(next, at: Int(position), opening: true)
+            case .inPlace:
+                // The row on top stays on top: the new list opens there, and
+                // the table puts the release that was on top back on top.
                 try await show(next, at: list?.topPosition ?? 0)
             }
         }

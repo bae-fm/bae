@@ -22,10 +22,12 @@ fn folded_keys(folded: &str) -> String {
 }
 
 /// The request's fragments with its folds read from the parameter `folded`,
-/// so one statement can name two requests' folds.
+/// so one statement can name two requests' folds, and the group `opened`
+/// selects, when it selects one, open whatever the folds say.
 pub(super) struct Fragments<'a> {
     request: &'a ImportListRequest,
     folded: &'a str,
+    opened: Option<&'a str>,
 }
 
 impl ImportListRequest {
@@ -77,22 +79,23 @@ impl ImportListRequest {
 
     /// The request's fragments, its folds read from `:folded`.
     pub(super) fn fragments(&self) -> Fragments<'_> {
-        Fragments { request: self, folded: ":folded" }
+        Fragments { request: self, folded: ":folded", opened: None }
+    }
+
+    /// The request's fragments, the group the statement `opened` selects
+    /// open whatever the folds say.
+    pub(super) fn fragments_opening<'a>(&'a self, opened: Option<&'a str>) -> Fragments<'a> {
+        Fragments { request: self, folded: ":folded", opened }
     }
 
     /// The request's fragments, its folds read from the parameter `folded`.
     pub(super) fn fragments_folding<'a>(&'a self, folded: &'a str) -> Fragments<'a> {
-        Fragments { request: self, folded }
+        Fragments { request: self, folded, opened: None }
     }
 
     /// The test that the list folds the group at `root` and `folder` shut.
     pub(super) fn folds_sql(&self, root: &str, folder: &str) -> String {
         self.fragments().folds_sql(root, folder)
-    }
-
-    /// The rows of the request's tab with their `kept` and `folded` tests.
-    pub(super) fn judged(&self) -> String {
-        self.fragments().judged()
     }
 
     /// The releases the filters keep, folded groups' members included.
@@ -122,9 +125,13 @@ impl Fragments<'_> {
     /// left open, one they don't.
     pub(super) fn folds_sql(&self, root: &str, folder: &str) -> String {
         let named = folded_keys(self.folded);
-        match self.request.folds {
+        let folds = match self.request.folds {
             ImportListFolds::Only(_) => format!("(({root}, {folder}) IN ({named}))"),
             ImportListFolds::AllBut(_) => format!("(({root}, {folder}) NOT IN ({named}))"),
+        };
+        match self.opened {
+            Some(opened) => format!("({folds} AND ({root}, {folder}) NOT IN ({opened}))"),
+            None => folds,
         }
     }
 
@@ -136,7 +143,8 @@ impl Fragments<'_> {
         format!(
             "(SELECT p.*, {kept} AS kept, \
                     (p.group_folder IS NOT NULL AND {folded}) AS folded \
-             FROM import_list_placement AS p WHERE +p.tab = :tab)",
+             FROM import_list_placement AS p WHERE +p.tab = {tab})",
+            tab = tab_literal(self.request.view.tab),
             kept = self.request.kept_sql("p"),
             folded = self.folds_sql("p.watched_folder_path", "p.group_folder"),
         )

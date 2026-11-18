@@ -150,36 +150,32 @@ impl ImportServiceHandle {
         Ok(self.services.tables.load_import_list_selected(request, selected, acting).await?)
     }
 
-    /// Where the list `request` shows opens, at the first of `selected` it
-    /// shows or at its top, and which of `selected` it doesn't show, which
-    /// leave the selection.
+    /// What showing the list `after` in place of the list `before` comes
+    /// to, for the keys of `selected`: where it opens and which of them
+    /// leave the selection. Core decides it from the two requests: another
+    /// tab, filter or search opens at the first selected row it shows and
+    /// takes out the selected rows it doesn't show; another order or fold
+    /// keeps the person's place, and a fold takes out the selected rows it
+    /// hid.
     pub async fn list_view_change(
-        &self,
-        request: crate::ImportListRequest,
-        selected: Vec<crate::CandidateKey>,
-    ) -> Result<crate::ImportListViewChange, crate::ImportError> {
-        Ok(self.services.tables.import_list_view_change(request, selected).await?)
-    }
-
-    /// The keys of `selected` that the list showed under `before` and doesn't
-    /// show under `after`, which differ in their folds only: what a fold hid.
-    pub async fn list_hidden_by(
         &self,
         before: crate::ImportListRequest,
         after: crate::ImportListRequest,
         selected: Vec<crate::CandidateKey>,
-    ) -> Result<Vec<crate::CandidateKey>, crate::ImportError> {
-        Ok(self.services.tables.import_list_hidden_by(before, after, selected).await?)
+    ) -> Result<crate::ImportListViewChange, crate::ImportError> {
+        Ok(self.services.tables.import_list_view_change(before, after, selected).await?)
     }
 
-    /// The view that reveals the candidate at `candidate_key`: its tab, with
-    /// the filters cleared and its group opened. `None` when no tab lists
-    /// such a candidate.
-    pub async fn locate_candidate(
+    /// What revealing the candidate at `candidate_key` from the list
+    /// `request` shows: the request on the tab its placement puts it on, with
+    /// the filters cleared and its group opened, and where it sits there.
+    /// `None` when no tab lists such a candidate.
+    pub async fn reveal_candidate(
         &self,
+        request: crate::ImportListRequest,
         candidate_key: &crate::CandidateKey,
-    ) -> Result<Option<crate::ImportCandidateListLocation>, crate::ImportError> {
-        Ok(self.services.tables.locate_import_candidate(candidate_key).await?)
+    ) -> Result<Option<crate::ImportListReveal>, crate::ImportError> {
+        Ok(self.services.tables.reveal_import_candidate(request, candidate_key).await?)
     }
 
     /// Where the candidate at `candidate_key` sits in what the list `request`
