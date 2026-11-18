@@ -12,7 +12,7 @@ extension PreviewData {
 
     /// Every folder the import boards list or open, with the path it sits at
     /// below the watched folder and the name the pane's folder line gives it.
-    enum BoardFolder: CaseIterable {
+    enum BoardFolder {
         case fieldRecordings, fieldRecordingsDisc2, lowTideHours, copperSky
         case untitled07, smallHours, winterKitchen, northbound
         case saltAndCedar, paperLanterns
@@ -120,13 +120,15 @@ extension PreviewData {
         log: Bool = true
     ) -> BridgeCandidateFiles {
         let audio = tracks.map {
-            boardFile($0.file, size: 35_000_000, role: .audio)
+            previewFile(name: $0.file, size: 35_000_000, role: .audio)
         }
         let art = images.map {
-            boardFile("\($0).jpg", size: 1_100_000, role: .artwork)
+            previewFile(name: "\($0).jpg", size: 1_100_000, role: .artwork)
         }
         let documents =
-            log ? [boardFile("rip.log", size: 4_000, role: .document)] : []
+            log
+            ? [previewFile(name: "rip.log", size: 4_000, role: .document)]
+            : []
         return BridgeCandidateFiles(
             fileMetadataIdentity: "board-\(tracks.count)-\(images.count)",
             files: audio + art + documents,
@@ -142,53 +144,17 @@ extension PreviewData {
         )
     }
 
-    static func boardFile(
-        _ name: String,
-        size: UInt64,
-        role: BridgeFileRole
-    ) -> BridgeCandidateFile {
-        BridgeCandidateFile(
-            file: BridgeFileInfo(
-                name: name,
-                size: size,
-                fileName: name,
-                audioFormat: role.isAudio ? previewSourceAudioFormat : nil
-            ),
-            role: role
+    /// The audio file `name`, as the folder's mapping table lists it.
+    static func boardAudio(_ name: String) -> BridgeMappingFile {
+        mappingFile(
+            previewFile(name: name, size: 35_000_000, role: .audio),
+            role: .audio
         )
     }
 
-    static func boardPath(_ name: String) -> Data {
-        URL(fileURLWithPath: "/tmp/board/\(name)").pathBytes
-    }
-
-    static func boardMappingFile(
-        _ name: String,
-        size: UInt64,
-        role: BridgeMappingRole
-    ) -> BridgeMappingFile {
-        BridgeMappingFile(
-            fileId: name,
-            name: name,
-            size: size,
-            previewTarget: role == .audio
-                ? BridgePreviewTarget(
-                    path: boardPath(name),
-                    name: name,
-                    startSample: 0,
-                    endSample: nil
-                ) : nil,
-            audioFormat: role == .audio ? previewSourceAudioFormat : nil,
-            role: role
-        )
-    }
-
+    /// The image `name`, as the folder's gallery shows it.
     static func boardImage(_ name: String) -> BridgeMappingImage {
-        BridgeMappingImage(
-            fileId: "\(name).jpg",
-            name: "\(name).jpg",
-            file: previewArtFile(name)
-        )
+        mappingImage(previewFile(name: name, size: 1_100_000, role: .artwork))
     }
 
     static func boardCover(_ name: String) -> BridgeCoverChoice {
@@ -293,11 +259,7 @@ extension PreviewData {
                             .map { index, track in
                                 BridgeTrackMapping(
                                     source: .file(
-                                        file: boardMappingFile(
-                                            track.file,
-                                            size: 35_000_000,
-                                            role: .audio
-                                        )
+                                        file: boardAudio(track.file)
                                     ),
                                     track: edit.tracks[index],
                                     position: "\(index + 1)",
@@ -318,20 +280,29 @@ extension PreviewData {
     /// two images and the files carried alongside.
     static func northboundMapping() -> BridgeMappingTable {
         BridgeMappingTable(
-            images: [boardImage("Northbound"), boardImage("Northbound back")],
+            images: [
+                boardImage("Northbound.jpg"),
+                boardImage("Northbound back.jpg"),
+            ],
             trackSides: boardTrackSides(
                 northboundTracks,
                 edit: northboundEdit()
             ),
-            files: carriedBoardFiles,
+            files: carriedBoardFiles.map { .file(file: $0) },
             untitledTrackCount: 0
         )
     }
 
-    static let carriedBoardFiles: [BridgeMappingFileRow] = [
-        .file(file: boardMappingFile("rip.log", size: 4_000, role: .document)),
-        .file(
-            file: boardMappingFile("cover.jpg", size: 1_100_000, role: .image)
+    /// The files a board release carries that no track plays: its rip log
+    /// and a cover image.
+    static let carriedBoardFiles: [BridgeMappingFile] = [
+        mappingFile(
+            previewFile(name: "rip.log", size: 4_000, role: .document),
+            role: .document
+        ),
+        mappingFile(
+            previewFile(name: "cover.jpg", size: 1_100_000, role: .artwork),
+            role: .image
         ),
     ]
 

@@ -18,7 +18,7 @@ extension PreviewData {
 
     /// Where a fake file named `name` would be, as the bridge carries a
     /// path.
-    private static func fakePath(_ name: String) -> Data {
+    static func fakePath(_ name: String) -> Data {
         URL(fileURLWithPath: "/tmp/fake/\(name)").pathBytes
     }
 
@@ -40,7 +40,7 @@ extension PreviewData {
         )
     }
 
-    private static func mappingFile(
+    static func mappingFile(
         _ file: BridgeCandidateFile,
         role: BridgeMappingRole
     ) -> BridgeMappingFile {
@@ -92,7 +92,7 @@ extension PreviewData {
         mappingImage(scanImage),
     ]
 
-    private static func mappingImage(
+    static func mappingImage(
         _ file: BridgeCandidateFile,
     ) -> BridgeMappingImage {
         BridgeMappingImage(
@@ -336,21 +336,17 @@ extension PreviewData {
         )
     }
 
-    /// A session opened on `presentation`, at `section` of Find online,
-    /// with `artist` and `album` typed in its general search.
+    /// An untouched session opened on `presentation`.
     static func paneSession(
-        presentation: BridgeMetadataPresentation,
-        section: BridgeFindOnlineSection = .automatic,
-        artist: String = "",
-        album: String = ""
+        presentation: BridgeMetadataPresentation
     ) -> BridgeCandidateSession {
         BridgeCandidateSession(
             presentation: presentation,
-            findOnlineSection: section,
+            findOnlineSection: .automatic,
             search: BridgeSearchForm(
                 tab: .general,
-                artist: artist,
-                album: album,
+                artist: "",
+                album: "",
                 catalog: "",
                 barcode: ""
             ),
@@ -372,7 +368,6 @@ extension PreviewData {
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
         presentation: BridgeMetadataPresentation = .draft,
-        session: BridgeCandidateSession? = nil,
         placement: BridgeCandidatePanePlacement = .pending(
             folderCheck: nil,
             records: []
@@ -415,8 +410,7 @@ extension PreviewData {
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
-                        session: session
-                            ?? paneSession(presentation: presentation)
+                        session: paneSession(presentation: presentation)
                     )
                 )
             )
@@ -518,24 +512,32 @@ extension PreviewData {
 
     /// Direct entry starts with blank editable metadata while retaining the
     /// candidate's physical audio-to-track mapping.
-    private static let blankDraftValues = BridgeRawReleaseEdit(
-        albumTitle: "",
-        albumArtistAssignments: [],
-        albumYear: "",
-        pressing: BridgeRawPressingEdit(
-            year: "",
-            labels: [],
-            barcodes: [],
-            facts: PreviewData.pressingFacts()
-        ),
-        tracks: (1...9)
-            .map { index in
-                BridgeRawTrackEdit(
-                    id: "draft-track-\(index - 1)",
-                    title: "",
-                    artistAssignments: .albumArtists,
-                    file: .standalone(fileId: "Track \(index).flac")
-                )
-            }
+    private static let blankDraftValues = blankDraft(
+        files: (1...9).map { "Track \($0).flac" }
     )
+
+    /// A draft with no metadata over `files`, each file the audio of an
+    /// untitled track.
+    static func blankDraft(files: [String]) -> BridgeRawReleaseEdit {
+        BridgeRawReleaseEdit(
+            albumTitle: "",
+            albumArtistAssignments: [],
+            albumYear: "",
+            pressing: BridgeRawPressingEdit(
+                year: "",
+                labels: [],
+                barcodes: [],
+                facts: PreviewData.pressingFacts()
+            ),
+            tracks: files.enumerated()
+                .map { index, file in
+                    BridgeRawTrackEdit(
+                        id: "draft-track-\(index)",
+                        title: "",
+                        artistAssignments: .albumArtists,
+                        file: .standalone(fileId: file)
+                    )
+                }
+        )
+    }
 }

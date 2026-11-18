@@ -21,7 +21,7 @@ extension PreviewData {
         channels: 2
     )
 
-    private static func previewFile(
+    static func previewFile(
         name: String,
         size: UInt64,
         role: BridgeFileRole,

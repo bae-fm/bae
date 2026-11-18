@@ -64,8 +64,8 @@ extension PreviewData {
                 stage: .imported(
                     release: release,
                     images: [
-                        boardImage("Northbound"),
-                        boardImage("Northbound back"),
+                        boardImage("Northbound.jpg"),
+                        boardImage("Northbound back.jpg"),
                     ]
                 )
             )
@@ -112,10 +112,7 @@ extension PreviewData {
                         }
                 )
             ],
-            files: [
-                boardMappingFile("rip.log", size: 4_000, role: .document),
-                boardMappingFile("cover.jpg", size: 1_100_000, role: .image),
-            ],
+            files: carriedBoardFiles,
             album: .named(
                 albumId: boardImported(.northbound).albumId,
                 line: .titleAndArtists(
@@ -207,7 +204,7 @@ extension PreviewData {
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
             mapping: BridgeMappingTable(
-                images: [boardImage("Low Tide Hours")],
+                images: [boardImage("Low Tide Hours.jpg")],
                 trackSides: boardTrackSides(tracks, edit: edit),
                 files: [],
                 untitledTrackCount: 0
@@ -229,36 +226,11 @@ extension PreviewData {
         BoardTrack(file: "track03.flac", title: "", seconds: 320),
     ]
 
-    /// A draft with no titles over `files`, each file the audio of a blank
-    /// track.
-    static func boardBlankEdit(files: [String]) -> BridgeRawReleaseEdit {
-        BridgeRawReleaseEdit(
-            albumTitle: "",
-            albumArtistAssignments: [],
-            albumYear: "",
-            pressing: BridgeRawPressingEdit(
-                year: "",
-                labels: [],
-                barcodes: [],
-                facts: pressingFacts()
-            ),
-            tracks: files.enumerated()
-                .map {
-                    BridgeRawTrackEdit(
-                        id: "blank-\($0.offset)",
-                        title: "",
-                        artistAssignments: .albumArtists,
-                        file: .standalone(fileId: $0.element)
-                    )
-                }
-        )
-    }
-
     /// untitled 07, from whose files bae read nothing to look it up by: a
     /// blank draft over its three files.
     @MainActor
     static func untitledCandidate() -> Candidate {
-        let edit = boardBlankEdit(files: untitledTracks.map(\.file))
+        let edit = blankDraft(files: untitledTracks.map(\.file))
         return paneCandidate(
             folder: boardFolder(
                 .untitled07,
@@ -308,13 +280,19 @@ extension PreviewData {
     ]
 
     /// A CUE sheet of Field Recordings' folder, on disc `number`, asking for
-    /// its disc's audio file, which `boundTo` names when the folder has it.
+    /// its disc's audio file, bound as `bound` says.
     static func fieldRecordingsSheet(
         _ number: Int,
-        bound: BridgeSheetBound,
-        boundTo: String?
+        bound: BridgeSheetBound
     ) -> BridgeSheetGroup {
         let name = "Field Recordings CD\(number).cue"
+        let boundTo: String? =
+            if case .describes(let container) = bound {
+                container.fileId
+            }
+            else {
+                nil
+            }
         return BridgeSheetGroup(
             sheetId: name,
             name: name,
@@ -358,7 +336,7 @@ extension PreviewData {
                             title: entry.title,
                             containerId: container.fileId,
                             previewTarget: BridgePreviewTarget(
-                                path: boardPath(container.name),
+                                path: fakePath(container.name),
                                 name: container.name,
                                 startSample: from,
                                 endSample: startSample
@@ -423,13 +401,11 @@ extension PreviewData {
     static func fieldRecordingsCandidate() -> Candidate {
         let sheetOne = fieldRecordingsSheet(
             1,
-            bound: .describes(container: fieldRecordingsContainer),
-            boundTo: fieldRecordingsContainer.fileId
+            bound: .describes(container: fieldRecordingsContainer)
         )
         let sheetTwo = fieldRecordingsSheet(
             2,
-            bound: .unresolved(requested: ["Field Recordings CD2.flac"]),
-            boundTo: nil
+            bound: .unresolved(requested: ["Field Recordings CD2.flac"])
         )
         let edit = fieldRecordingsEdit()
         return paneCandidate(
