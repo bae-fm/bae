@@ -11,7 +11,7 @@
 
 use super::pending::{pending_columns, pending_joins, PendingColumns};
 use super::start_failure::{StartFailureColumns, START_FAILURE_COLUMNS};
-use super::storage_setup::{StorageSetupColumns, STORAGE_SETUP_COLUMNS, UNDONE_SETUP_JOIN};
+use super::storage_setup::{storage_setup_columns, StorageSetupColumns, UNDONE_SETUP_JOIN};
 use super::*;
 use std::time::{Duration, SystemTime};
 
@@ -62,7 +62,7 @@ const FAILURE_RECORDED: &str = "CASE \
 /// reads it again as a file starts or ends a transfer.
 pub(crate) fn status_query() -> String {
     let start_failure = START_FAILURE_COLUMNS;
-    let setup = STORAGE_SETUP_COLUMNS;
+    let setup = storage_setup_columns();
     let undone = UNDONE_SETUP_JOIN;
     let pending = pending_columns();
     let joins = pending_joins();

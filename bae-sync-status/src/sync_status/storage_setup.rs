@@ -96,12 +96,17 @@ impl SetupRow {
     }
 }
 
+/// Whether a storage setup runs on this device: one in `coven_operations`
+/// has no outcome yet.
+const STORAGE_SETUP_RUNNING: &str = "EXISTS (SELECT 1 FROM coven_operations AS setup \
+     WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NULL)";
+
 /// The columns the status query reads of this device's storage setups: whether
 /// one runs, then the newest one that ended undone, which it reads only for
 /// when none runs.
-pub(super) const STORAGE_SETUP_COLUMNS: &str = "EXISTS (SELECT 1 FROM coven_operations AS setup \
-     WHERE setup.kind = 'StorageSetup' AND setup.outcome IS NULL) AS setup_running, \
-     undone.operation, undone.outcome";
+pub(super) fn storage_setup_columns() -> String {
+    format!("{STORAGE_SETUP_RUNNING} AS setup_running, undone.operation, undone.outcome")
+}
 
 /// The newest storage setup that ended undone, which [`STORAGE_SETUP_COLUMNS`]
 /// reads from: coven names how an operation ended in `outcome_kind`.
@@ -162,12 +167,8 @@ impl SyncStatus {
     pub async fn storage_setup_running(&self) -> Result<bool, DbError> {
         self.store
             .read(|sql| {
-                Ok(sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM coven_operations \
-                     WHERE kind = 'StorageSetup' AND outcome IS NULL)",
-                    [],
-                    |row| row.get(0),
-                )?)
+                Ok(sql
+                    .query_row(&format!("SELECT {STORAGE_SETUP_RUNNING}"), [], |row| row.get(0))?)
             })
             .await
     }
