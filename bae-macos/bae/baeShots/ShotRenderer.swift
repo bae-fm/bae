@@ -97,6 +97,10 @@ enum ShotRenderer {
             // makes the top one key.
             let alerts = try await alertPanels()
             try await becomeKey(window, scene: scene)
+            try await shownOnScreen(
+                [window] + AlertWindows.shared.panels,
+                scene: scene
+            )
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
                 alerts: alerts,
