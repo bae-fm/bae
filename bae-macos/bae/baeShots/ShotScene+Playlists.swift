@@ -25,7 +25,7 @@ extension ShotScene {
                                 NewPlaylistSheetState(
                                     name: "Late night",
                                     sharing: .household,
-                                    trackIds: []
+                                    pickedTrackIds: []
                                 )
                             ),
                             onCancel: {},

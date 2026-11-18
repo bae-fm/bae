@@ -18,11 +18,11 @@ impl AppServices {
     delegate_values!(subscribe_people => subscribe_people() -> bae_people::people::PeopleView);
     delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
-    delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: Vec<String>) -> Result<uuid::Uuid, CollectionError>);
+    delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: bae_records::TrackList) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(people, edit_playlist => edit_playlist(id: uuid::Uuid, name: &str, sharing: Sharing) -> Result<(), CollectionError>);
     delegate_async!(people, delete_playlist => delete_playlist(id: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(manager, append_playlist_entry => append_playlist_entry(playlist: uuid::Uuid, track: String) -> Result<uuid::Uuid, CollectionError>);
-    delegate_async!(manager, append_playlist_entries => append_playlist_entries(playlist: uuid::Uuid, tracks: Vec<String>) -> Result<(), CollectionError>);
+    delegate_async!(manager, append_playlist_entries => append_playlist_entries(playlist: uuid::Uuid, tracks: bae_records::TrackList) -> Result<(), CollectionError>);
     delegate_async!(people, remove_playlist_entry => remove_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid) -> Result<(), CollectionError>);
     delegate_async!(people, move_playlist_entry => move_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid, place: bae_people::collections::EntryPlace) -> Result<(), CollectionError>);
 }
@@ -59,12 +59,12 @@ impl AppServices {
                 }
             }
         };
-        let track_ids = entries.into_iter().map(|entry| entry.track_id).collect();
+        let track_ids: Vec<String> = entries.into_iter().map(|entry| entry.track_id).collect();
         let start = if shuffle {
             bae_playback::tables::TracksStart::Shuffled
         } else {
             bae_playback::tables::TracksStart::Index(start_index)
         };
-        Ok(self.playback_play_tracks(track_ids, start).await?)
+        Ok(self.playback_play_tracks(track_ids.into(), start).await?)
     }
 }

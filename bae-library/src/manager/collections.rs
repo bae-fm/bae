@@ -3,17 +3,20 @@ use bae_people::collections::CollectionError;
 use bae_people::people::Sharing;
 
 impl LibraryManager {
-    /// Makes a playlist holding `tracks` in that order, from its first write,
-    /// and returns its id.
+    /// Makes a playlist holding `tracks` in the list's order, from its first
+    /// write, and returns its id.
     pub async fn create_playlist(
         &self,
         name: &str,
         sharing: Sharing,
-        tracks: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
     ) -> Result<uuid::Uuid, CollectionError> {
-        let entries = tracks.into_iter().map(|track| (self.ids.new_id(), track)).collect();
-        let playlist =
-            self.people.create_playlist(self.ids.new_id(), name, sharing, entries).await?;
+        let tracks = tracks.into();
+        let positions = (0..tracks.len()).map(|_| self.ids.new_id()).collect();
+        let playlist = self
+            .people
+            .create_playlist(self.ids.new_id(), name, sharing, positions, tracks)
+            .await?;
         Ok(playlist.id)
     }
 
@@ -27,13 +30,15 @@ impl LibraryManager {
         Ok(position)
     }
 
-    /// Adds `tracks` to the end of the playlist in that order, in one write.
+    /// Adds `tracks` to the end of the playlist in the list's order, in one
+    /// write.
     pub async fn append_playlist_entries(
         &self,
         playlist: uuid::Uuid,
-        tracks: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
     ) -> Result<(), CollectionError> {
-        let entries = tracks.into_iter().map(|track| (self.ids.new_id(), track)).collect();
-        self.people.append_playlist_entries(playlist, entries).await
+        let tracks = tracks.into();
+        let positions = (0..tracks.len()).map(|_| self.ids.new_id()).collect();
+        self.people.append_playlist_entries(playlist, positions, tracks).await
     }
 }

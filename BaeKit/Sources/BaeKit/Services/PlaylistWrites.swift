@@ -4,15 +4,18 @@ import Foundation
 /// make it, add to it, rename it, choose who sees it, take an entry out,
 /// move an entry, delete it.
 public struct PlaylistWrites: Sendable {
-    /// Make a playlist holding `trackIds` in order, and return its id. A
-    /// failed write leaves no playlist.
-    public let create:
+    /// Make a playlist holding the tracks a person picked, `trackIds` in no
+    /// order, in the order their release lists them, and return its id. A
+    /// failed write, such as one naming a track the library lacks, leaves no
+    /// playlist.
+    public let createOfPicked:
         @Sendable (
             _ name: String, _ sharing: BridgeSharing, _ trackIds: [String]
         ) async throws -> String
-    /// Add tracks to the end of a playlist, in the order given. A failed
-    /// write adds none.
-    public let append:
+    /// Add the tracks a person picked, `trackIds` in no order, to the end of
+    /// a playlist, in the order their release lists them. A failed write,
+    /// such as one naming a track the library lacks, adds none.
+    public let appendPicked:
         @Sendable (_ playlistId: String, _ trackIds: [String]) async throws
             -> Void
     /// Set a playlist's name and who sees it, in one write.
@@ -36,10 +39,10 @@ public struct PlaylistWrites: Sendable {
     public let delete: @Sendable (_ playlistId: String) async throws -> Void
 
     public init(
-        create:
+        createOfPicked:
             @escaping @Sendable (String, BridgeSharing, [String]) async throws
             -> String = { _, _, _ in throw StubError.notImplemented },
-        append:
+        appendPicked:
             @escaping @Sendable (String, [String]) async throws -> Void = {
                 _,
                 _ in throw StubError.notImplemented
@@ -64,8 +67,8 @@ public struct PlaylistWrites: Sendable {
             _ in throw StubError.notImplemented
         }
     ) {
-        self.create = create
-        self.append = append
+        self.createOfPicked = createOfPicked
+        self.appendPicked = appendPicked
         self.edit = edit
         self.removeEntry = removeEntry
         self.moveEntry = moveEntry
@@ -78,15 +81,15 @@ public struct PlaylistWrites: Sendable {
         /// The writes through `handle`.
         static func live(_ handle: any AppHandleProtocol) -> PlaylistWrites {
             PlaylistWrites(
-                create: {
-                    try await handle.createPlaylist(
+                createOfPicked: {
+                    try await handle.createPlaylistOfPicked(
                         name: $0,
                         sharing: $1,
                         trackIds: $2
                     )
                 },
-                append: {
-                    try await handle.appendPlaylistEntries(
+                appendPicked: {
+                    try await handle.appendPickedToPlaylist(
                         playlist: $0,
                         trackIds: $1
                     )

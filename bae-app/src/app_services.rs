@@ -491,7 +491,6 @@ impl AppServices {
     delegate_lib!(records, check_releases_in_library => check_releases_in_library(checks: &[bae_records::LibraryCheck]) -> Vec<bae_records::LibraryStatus>);
     delegate_view!(album_ids_between => album_ids_between(sort: &[bae_views::AlbumSortCriterion], group_by_artist: bool, from: bae_views::album::AlbumCard<'_>, to: bae_views::album::AlbumCard<'_>) -> Vec<String>);
     delegate_view!(albums_in_browse_order => albums_in_browse_order(sort: &[bae_views::AlbumSortCriterion], album_ids: Vec<String>, group_by_artist: bool) -> Vec<bae_views::album_detail::AlbumSummary>);
-    delegate_lib!(records, track_ids_in_release_order => track_ids_in_release_order(track_ids: Vec<String>) -> Vec<String>);
     delegate_lib!(records, track_ids_between => track_ids_between(anchor_id: String, target_id: String) -> Vec<String>);
     delegate_view!(find_album_detail => find_album_detail(album_id: &str) -> Option<bae_views::album_detail::AlbumDetail>);
     delegate_view!(get_composer_detail => get_composer_detail(artist_id: &str) -> Option<bae_views::album_detail::ComposerDetail>);
@@ -649,7 +648,7 @@ impl AppServices {
 
     delegate_async!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
     delegate_async!(playback, playback_play_releases => play_releases(release_ids: Vec<String>) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
-    delegate_async!(playback, playback_play_tracks => play_tracks(track_ids: Vec<String>, start: bae_playback::tables::TracksStart) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
+    delegate_async!(playback, playback_play_tracks => play_tracks(tracks: bae_records::TrackList, start: bae_playback::tables::TracksStart) -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
     delegate_async!(playback, playback_play_library_shuffled => play_library_shuffled() -> Result<bae_playback::PlayOutcome, bae_playback::PlayError>);
     delegate_sync!(playback, playback_pause => pause() -> ());
     delegate_sync!(playback, playback_resume => resume() -> ());
@@ -700,10 +699,10 @@ impl AppServices {
     /// them all.
     pub fn playback_add_to_queue(
         &self,
-        track_ids: Vec<String>,
+        tracks: bae_records::TrackList,
     ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
-        self.inner.playback.add_to_queue(track_ids)
+        self.inner.playback.add_to_queue(tracks)
     }
 
     /// Add tracks to the front of Up Next. This call sends the command at once;
@@ -711,10 +710,10 @@ impl AppServices {
     /// them all.
     pub fn playback_add_next(
         &self,
-        track_ids: Vec<String>,
+        tracks: bae_records::TrackList,
     ) -> impl std::future::Future<Output = Result<usize, bae_playback::QueueEditError>> + Send + 'static
     {
-        self.inner.playback.add_next(track_ids)
+        self.inner.playback.add_next(tracks)
     }
 
     /// Add a release's tracks to the end of Up Next. This call sends the

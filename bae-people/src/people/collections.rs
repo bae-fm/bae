@@ -36,16 +36,19 @@ impl People {
         self.inner.store.read(|sql| Ok(ratings(&sql)?)).await
     }
 
-    /// Writes the playlist and its `entries` (a position id and a track id
-    /// each, at positions 0…n) in one write, so a playlist is never seen, or
-    /// left, without the tracks it was made with. The caller obtains ids from
-    /// its injected IdSource, including on retries.
+    /// Writes the playlist and an entry for each of `tracks`, in the list's
+    /// order at positions 0…n, with the position ids `positions` (one per
+    /// track), in one write, so a playlist is never seen, or left, without the
+    /// tracks it was made with. A track the library lacks fails the write.
+    /// The caller obtains ids from its injected IdSource, including on
+    /// retries.
     pub async fn create_playlist(
         &self,
         id: uuid::Uuid,
         name: &str,
         sharing: Sharing,
-        entries: Vec<(uuid::Uuid, String)>,
+        positions: Vec<uuid::Uuid>,
+        tracks: bae_records::TrackList,
     ) -> Result<Playlist, CollectionError> {
         let name = bae_store::EnteredName::parse(name)?.into_string();
         let person = self.own_profile().await?;
@@ -63,7 +66,9 @@ impl People {
                     "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
                     params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
                 )?;
-                for (position, (position_id, track_id)) in entries.iter().enumerate() {
+                let track_ids = tracks.ordered_on(sql)?;
+                assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
+                for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
                     sql.execute(
                         "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) VALUES (?, ?, ?, ?)",
                         params![row.id.to_string(), position_id.to_string(), track_id, position as i64],
@@ -114,18 +119,22 @@ impl People {
         position: uuid::Uuid,
         track: String,
     ) -> Result<(), CollectionError> {
-        self.append_playlist_entries(playlist, vec![(position, track)]).await
+        self.append_playlist_entries(playlist, vec![position], vec![track].into()).await
     }
 
-    /// Adds `entries`, each a fresh position id and its track, after the
-    /// playlist's last entry in that order, in one write.
+    /// Adds an entry for each of `tracks` after the playlist's last entry, in
+    /// the list's order, with the fresh position ids `positions` (one per
+    /// track), in one write. A track the library lacks fails the write.
     pub async fn append_playlist_entries(
         &self,
         playlist: uuid::Uuid,
-        entries: Vec<(uuid::Uuid, String)>,
+        positions: Vec<uuid::Uuid>,
+        tracks: bae_records::TrackList,
     ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql| {
-            for (position, track) in &entries {
+            let track_ids = tracks.ordered_on(sql)?;
+            assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
+            for (position, track) in positions.iter().zip(&track_ids) {
                 sql.execute("INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) SELECT ?1, ?2, ?3, COALESCE(MAX(position) + 1, 0) FROM playlist_entries WHERE playlist_id = ?1", params![playlist.to_string(), position.to_string(), track])?;
             }
             Ok(Ok(()))

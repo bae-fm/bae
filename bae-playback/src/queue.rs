@@ -112,14 +112,21 @@ impl PlaybackQueue {
 
     // -- Up Next ---------------------------------------------------------------
 
-    /// Add tracks to the end of Up Next; how many the library held.
-    pub async fn add_to_queue(&mut self, track_ids: Vec<String>) -> Result<usize, DbError> {
-        self.tables.add_manual(track_ids, ManualPlace::End).await
+    /// Add tracks to the end of Up Next, in the list's order; how many the
+    /// library held.
+    pub async fn add_to_queue(
+        &mut self,
+        tracks: impl Into<bae_records::TrackList>,
+    ) -> Result<usize, DbError> {
+        self.tables.add_manual(tracks, ManualPlace::End).await
     }
 
-    /// Add tracks to the front of Up Next (play next), in their order.
-    pub async fn add_next(&mut self, track_ids: Vec<String>) -> Result<usize, DbError> {
-        self.tables.add_manual(track_ids, ManualPlace::Front).await
+    /// Add tracks to the front of Up Next (play next), in the list's order.
+    pub async fn add_next(
+        &mut self,
+        tracks: impl Into<bae_records::TrackList>,
+    ) -> Result<usize, DbError> {
+        self.tables.add_manual(tracks, ManualPlace::Front).await
     }
 
     /// Insert tracks before the Up Next entry at `index`.

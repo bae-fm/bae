@@ -9,7 +9,7 @@ pub(super) use bae_store::test_fixtures::*;
 /// them.
 pub(super) async fn queue_items(db: &Store, track_ids: &[&str]) -> Vec<crate::QueueItem> {
     PlaybackQueueTables::new(db.clone())
-        .add_manual(track_ids.iter().map(|id| id.to_string()).collect(), ManualPlace::End)
+        .add_manual(track_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(), ManualPlace::End)
         .await
         .unwrap();
     queue_value(db).await.unwrap().manual

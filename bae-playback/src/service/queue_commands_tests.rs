@@ -27,11 +27,13 @@ async fn each_add_returns_how_many_tracks_it_added() {
     let tracks = vec![FINISHED_TRACK.to_string(), missing, NEXT_TRACK.to_string()];
 
     let (reply, answer) = oneshot::channel();
-    let _served = service.handle_command(PlaybackCommand::AddToQueue(tracks.clone(), reply)).await;
+    let _served =
+        service.handle_command(PlaybackCommand::AddToQueue(tracks.clone().into(), reply)).await;
     assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
 
     let (reply, answer) = oneshot::channel();
-    let _served = service.handle_command(PlaybackCommand::AddNext(tracks.clone(), reply)).await;
+    let _served =
+        service.handle_command(PlaybackCommand::AddNext(tracks.clone().into(), reply)).await;
     assert_eq!(answer.await.expect("the command answers").unwrap(), 2);
 
     let (reply, answer) = oneshot::channel();
@@ -46,7 +48,7 @@ async fn each_add_returns_how_many_tracks_it_added() {
 
     let (reply, answer) = oneshot::channel();
     let _served = service
-        .handle_command(PlaybackCommand::AddToQueue(vec!["not-a-track".to_string()], reply))
+        .handle_command(PlaybackCommand::AddToQueue(vec!["not-a-track".to_string()].into(), reply))
         .await;
     assert_eq!(answer.await.expect("the command answers").unwrap(), 0);
 }
@@ -54,7 +56,7 @@ async fn each_add_returns_how_many_tracks_it_added() {
 #[tokio::test]
 async fn an_add_to_the_queue_that_fails_answers_the_failure() {
     let answer = answer_with_failing_writes(|reply| {
-        PlaybackCommand::AddToQueue(vec![NEXT_TRACK.to_string()], reply)
+        PlaybackCommand::AddToQueue(vec![NEXT_TRACK.to_string()].into(), reply)
     })
     .await;
     assert!(matches!(answer, Err(QueueEditError::Queue(_))), "{answer:?}");
@@ -63,7 +65,7 @@ async fn an_add_to_the_queue_that_fails_answers_the_failure() {
 #[tokio::test]
 async fn an_add_next_that_fails_answers_the_failure() {
     let answer = answer_with_failing_writes(|reply| {
-        PlaybackCommand::AddNext(vec![NEXT_TRACK.to_string()], reply)
+        PlaybackCommand::AddNext(vec![NEXT_TRACK.to_string()].into(), reply)
     })
     .await;
     assert!(matches!(answer, Err(QueueEditError::Queue(_))), "{answer:?}");

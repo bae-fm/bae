@@ -48,8 +48,10 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Two)).await.unwrap();
 
     let id = coven::IdSource::new_id(&coven::UuidIds);
-    let playlist =
-        people.create_playlist(id, "Evening", Sharing::Private, Vec::new()).await.unwrap();
+    let playlist = people
+        .create_playlist(id, "Evening", Sharing::Private, Vec::new(), Vec::new().into())
+        .await
+        .unwrap();
     assert_eq!(playlist.audience, coven::Audience::Circle(person.private_circle));
     let a = coven::IdSource::new_id(&coven::UuidIds);
     let b = coven::IdSource::new_id(&coven::UuidIds);
@@ -204,6 +206,68 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
     library.manager().close().await.unwrap();
 }
 
+/// Picked tracks make a playlist, and go onto one, in the order their
+/// release lists them, whatever order the picks came in; a pick the library
+/// lacks adds none of them.
+#[tokio::test]
+async fn picked_tracks_go_into_a_playlist_in_their_release_s_order_or_not_at_all() {
+    let directory = tempfile::tempdir().unwrap();
+    let (library, storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    connect_storage(library.manager(), library.store(), &storage).await;
+    made_profile(library.manager(), library.people(), "Robin").await;
+    let first = test_uuid("picked-first");
+    let second = test_uuid("picked-second");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("picked-album"), "Picked"),
+        &test_uuid("picked-release"),
+        &[(&first, "First"), (&second, "Second")],
+    )
+    .await;
+    let picked = |ids: &[&String]| {
+        bae_records::TrackList::Picked(ids.iter().map(|id| id.to_string()).collect())
+    };
+    let tracks = |id| {
+        let people = people.clone();
+        async move {
+            people
+                .playlist_entries(id)
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|entry| entry.track_id)
+                .collect::<Vec<_>>()
+        }
+    };
+
+    let id = library
+        .manager()
+        .create_playlist("Evening", Sharing::Private, picked(&[&second, &first]))
+        .await
+        .unwrap();
+    library.manager().append_playlist_entries(id, picked(&[&second, &first])).await.unwrap();
+    assert_eq!(
+        tracks(id).await,
+        vec![first.clone(), second.clone(), first.clone(), second.clone()]
+    );
+
+    let unknown = test_uuid("picked-unknown");
+    let refused =
+        library.manager().append_playlist_entries(id, picked(&[&second, &unknown, &first])).await;
+    assert!(refused.is_err());
+    assert_eq!(tracks(id).await.len(), 4);
+    let refused =
+        library.manager().create_playlist("Morning", Sharing::Private, picked(&[&unknown])).await;
+    assert!(refused.is_err());
+    library.manager().close().await.unwrap();
+}
+
 /// The playlists query computes each playlist's summary in SQL from its
 /// entries: it counts them, adds up their time, and picks the covers of the
 /// first four different releases when its entries are on that many, else its
@@ -233,7 +297,10 @@ async fn a_playlists_summary_comes_counted_with_its_row() {
     }
     let playlist = async |name: &str, entries: &[usize]| {
         let id = coven::IdSource::new_id(&coven::UuidIds);
-        people.create_playlist(id, name, Sharing::Private, Vec::new()).await.unwrap();
+        people
+            .create_playlist(id, name, Sharing::Private, Vec::new(), Vec::new().into())
+            .await
+            .unwrap();
         for &entry in entries {
             let position = coven::IdSource::new_id(&coven::UuidIds);
             people.append_playlist_entry(id, position, tracks[entry].clone()).await.unwrap();

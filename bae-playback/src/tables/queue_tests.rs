@@ -25,7 +25,10 @@ async fn play(db: &Store, start: ReleaseStart) -> crate::QueueEntry {
 /// playing.
 async fn play_tracks(db: &Store, tracks: &[String], start: usize) -> crate::QueueEntry {
     match PlaybackQueueTables::new(db.clone())
-        .fill(ContextFill::Tracks { track_ids: tracks.to_vec(), start: TracksStart::Index(start) })
+        .fill(ContextFill::Tracks {
+            tracks: tracks.to_vec().into(),
+            start: TracksStart::Index(start),
+        })
         .await
         .unwrap()
     {
@@ -108,7 +111,7 @@ async fn deleting_a_track_queued_twice_takes_every_entry() {
     let (db, _tmp, tracks) = single_track_releases_db(2).await;
     let filled = PlaybackQueueTables::new(db.clone())
         .fill(ContextFill::Tracks {
-            track_ids: [&tracks[..], &tracks[..]].concat(),
+            tracks: [&tracks[..], &tracks[..]].concat().into(),
             start: TracksStart::Index(0),
         })
         .await

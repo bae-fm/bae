@@ -149,11 +149,12 @@ extension LibraryView {
         let uiStore = uiStore
         Task {
             do {
-                let playlistId = try await library.playlistWrites.create(
-                    sheet.name,
-                    sheet.sharing,
-                    sheet.trackIds
-                )
+                let playlistId = try await library.playlistWrites
+                    .createOfPicked(
+                        sheet.name,
+                        sheet.sharing,
+                        sheet.pickedTrackIds
+                    )
                 session.selectPlaylist(playlistId)
                 uiStore.newPlaylistSheet = nil
             }
@@ -196,7 +197,7 @@ extension LibraryView {
             case .playlists:
                 if libraryProjections.playlists.value?.canCreate == true {
                     Button("New playlist…") {
-                        uiStore.presentNewPlaylist(trackIds: [])
+                        uiStore.presentNewPlaylist(pickedTrackIds: [])
                     }
                 }
             }

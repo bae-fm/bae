@@ -37,3 +37,9 @@ pub(crate) fn invite(invite_id: &str) -> Result<coven::InviteId, BridgeError> {
 pub(crate) fn name(name: &str) -> Result<bae_store::EnteredName, BridgeError> {
     bae_store::EnteredName::parse(name).map_err(BridgeError::config)
 }
+
+/// The tracks a person picked, which the app hands over in no order: core
+/// puts them in the order their release lists them.
+pub(crate) fn picked(track_ids: Vec<String>) -> bae_records::TrackList {
+    bae_records::TrackList::Picked(track_ids.into_iter().collect())
+}

@@ -42,8 +42,8 @@ impl PlaybackService {
                     self.play_filled("PlayReleases", fill, PlaybackStartSource::Releases).await;
                 answer_play(reply, played);
             }
-            PlaybackCommand::PlayTracks { track_ids, start, reply } => {
-                let fill = ContextFill::Tracks { track_ids, start };
+            PlaybackCommand::PlayTracks { tracks, start, reply } => {
+                let fill = ContextFill::Tracks { tracks, start };
                 let played =
                     self.play_filled("PlayTracks", fill, PlaybackStartSource::Tracks).await;
                 answer_play(reply, played);
@@ -117,13 +117,13 @@ impl PlaybackService {
             PlaybackCommand::SetMuted(muted) => {
                 self.set_muted(muted);
             }
-            PlaybackCommand::AddToQueue(track_ids, reply) => {
-                let added = self.playback_queue.add_to_queue(track_ids).await;
+            PlaybackCommand::AddToQueue(tracks, reply) => {
+                let added = self.playback_queue.add_to_queue(tracks).await;
                 let answer = self.queue_added(added).await;
                 answer_queue_edit(reply, answer, "an add to the queue");
             }
-            PlaybackCommand::AddNext(track_ids, reply) => {
-                let added = self.playback_queue.add_next(track_ids).await;
+            PlaybackCommand::AddNext(tracks, reply) => {
+                let added = self.playback_queue.add_next(tracks).await;
                 let answer = self.queue_added(added).await;
                 answer_queue_edit(reply, answer, "an add next");
             }

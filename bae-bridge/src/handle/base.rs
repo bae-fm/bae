@@ -187,13 +187,6 @@ forward! { async this => {
             .collect())
     }
 
-    /// The tracks of `track_ids` the library holds, each once, in the order
-    /// their release lists them. An action on tracks the person picked uses
-    /// this order, whatever order the person picked them in.
-    fn tracks_in_release_order(track_ids: Vec<String>) -> Vec<String> {
-        this.services.track_ids_in_release_order(track_ids).await.map_err(BridgeError::from)
-    }
-
     /// The tracks from `anchor_id` to `target_id`, both included, in the
     /// order their release lists them: what a shift-click on the album page
     /// picks. When the anchor is not a track of the target's release, the
@@ -335,7 +328,15 @@ forward! { async this => {
 
     /// Play `track_ids` in that order, from the one at `start_index`.
     fn play_tracks(track_ids: Vec<String>, start_index: u32) -> crate::types::BridgePlayOutcome {
-        let played = this.services.playback_play_tracks(track_ids, bae_playback::tables::TracksStart::Index(start_index as usize)).await?;
+        let played = this.services.playback_play_tracks(track_ids.into(), bae_playback::tables::TracksStart::Index(start_index as usize)).await?;
+        Ok(crate::types::BridgePlayOutcome::from_core(played))
+    }
+
+    /// Play the tracks a person picked, in the order their release lists
+    /// them, from the first the library holds. Picks the library lacks are
+    /// left out and named in the answer.
+    fn play_picked_tracks(track_ids: Vec<String>) -> crate::types::BridgePlayOutcome {
+        let played = this.services.playback_play_tracks(crate::from_app::picked(track_ids), bae_playback::tables::TracksStart::Index(0)).await?;
         Ok(crate::types::BridgePlayOutcome::from_core(played))
     }
 
@@ -452,11 +453,25 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
     ) -> Result<u32, BridgeError> {
-        let answer = self.services.playback_add_to_queue(track_ids);
+        let answer = self.services.playback_add_to_queue(track_ids.into());
         self.run_exported(
             "AppHandle.add_to_queue",
             move |_| async move { Ok(answer.await? as u32) },
         )
+        .await
+    }
+
+    /// Add the tracks a person picked to the end of Up Next, in the order
+    /// their release lists them, and return how many tracks it added. The
+    /// command goes out before the call first waits, as `add_to_queue`'s does.
+    pub async fn add_picked_to_queue(
+        self: std::sync::Arc<Self>,
+        track_ids: Vec<String>,
+    ) -> Result<u32, BridgeError> {
+        let answer = self.services.playback_add_to_queue(crate::from_app::picked(track_ids));
+        self.run_exported("AppHandle.add_picked_to_queue", move |_| async move {
+            Ok(answer.await? as u32)
+        })
         .await
     }
 
@@ -466,9 +481,23 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         track_ids: Vec<String>,
     ) -> Result<u32, BridgeError> {
-        let answer = self.services.playback_add_next(track_ids);
+        let answer = self.services.playback_add_next(track_ids.into());
         self.run_exported("AppHandle.add_next", move |_| async move { Ok(answer.await? as u32) })
             .await
+    }
+
+    /// Add the tracks a person picked to the front of Up Next, in the order
+    /// their release lists them, and return how many tracks it added.
+    pub async fn add_picked_next(
+        self: std::sync::Arc<Self>,
+        track_ids: Vec<String>,
+    ) -> Result<u32, BridgeError> {
+        let answer = self.services.playback_add_next(crate::from_app::picked(track_ids));
+        self.run_exported(
+            "AppHandle.add_picked_next",
+            move |_| async move { Ok(answer.await? as u32) },
+        )
+        .await
     }
 
     /// Add a release's tracks to the end of Up Next, and return how many

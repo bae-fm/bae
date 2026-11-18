@@ -7,29 +7,28 @@ extension AlbumDetailView {
             listing: libraryProjections?.playlists.value,
             onAdd: addToPlaylist,
             onNewPlaylist: { trackIds in
-                inReleaseOrder(trackIds) { ordered in
-                    uiStore.presentNewPlaylist(trackIds: ordered)
-                }
+                uiStore.presentNewPlaylist(pickedTrackIds: trackIds)
             }
         )
     }
 
-    /// Add `trackIds` to the end of the playlist `playlistId`, in their
-    /// release's order; if the write fails, the view shows the error and adds
-    /// no tracks.
+    /// Add the picked `trackIds` to the end of the playlist `playlistId`, in
+    /// their release's order; if the write fails, the view shows the error and
+    /// adds no tracks.
     private func addToPlaylist(trackIds: [String], playlistId: String) {
         let library = library
-        inReleaseOrder(trackIds) { ordered in
-            Task {
-                do {
-                    try await library.playlistWrites.append(
-                        playlistId,
-                        ordered
-                    )
-                }
-                catch {
-                    uiStore.showError(error)
-                }
+        let uiStore = uiStore
+        // The write is the person's change to the playlist, so it finishes
+        // even after the album page closes; nothing holds the task.
+        Task {
+            do {
+                try await library.playlistWrites.appendPicked(
+                    playlistId,
+                    trackIds
+                )
+            }
+            catch {
+                uiStore.showError(error)
             }
         }
     }

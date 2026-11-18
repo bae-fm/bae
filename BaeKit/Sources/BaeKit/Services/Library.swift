@@ -127,10 +127,6 @@ public final class Library: Sendable, Observable {
         @Sendable (_ enabled: Bool) async throws -> Void
     /// The writes that make a playlist and change one.
     public let playlistWrites: PlaylistWrites
-    /// The tracks of `trackIds` the library holds, each once, in the order
-    /// their release lists them, which core reads.
-    public let tracksInReleaseOrder:
-        @Sendable (_ trackIds: [String]) async throws -> [String]
     /// The tracks from the anchor to the target, both included, in the order
     /// their release lists them, which core reads: what a shift-click picks.
     public let trackIdsBetween:
@@ -260,10 +256,6 @@ public final class Library: Sendable, Observable {
             _ in throw StubError.notImplemented
         },
         playlistWrites: PlaylistWrites = PlaylistWrites(),
-        tracksInReleaseOrder:
-            @escaping @Sendable ([String]) async throws -> [String] = {
-                _ in throw StubError.notImplemented
-            },
         trackIdsBetween:
             @escaping @Sendable (String, String) async throws -> [String] = {
                 _,
@@ -302,7 +294,6 @@ public final class Library: Sendable, Observable {
         self.resolveToTrackIds = resolveToTrackIds
         self.setLibraryFullWidth = setLibraryFullWidth
         self.playlistWrites = playlistWrites
-        self.tracksInReleaseOrder = tracksInReleaseOrder
         self.trackIdsBetween = trackIdsBetween
         self.setRating = setRating
     }
@@ -373,7 +364,6 @@ extension Library {
                     try await handle.setLibraryFullWidth(enabled: $0)
                 },
                 playlistWrites: .live(handle),
-                tracksInReleaseOrder: Self.tracksInReleaseOrder(handle),
                 trackIdsBetween: Self.trackIdsBetween(handle),
                 setRating: { try await handle.setRating(target: $0, stars: $1) }
             )
@@ -503,13 +493,6 @@ extension Library {
             _ handle: any AppHandleProtocol
         ) -> @Sendable (String, String) async throws -> [String] {
             { try await handle.trackIdsBetween(anchorId: $0, targetId: $1) }
-        }
-
-        /// Order picked tracks as their release lists them through `handle`.
-        private static func tracksInReleaseOrder(
-            _ handle: any AppHandleProtocol
-        ) -> @Sendable ([String]) async throws -> [String] {
-            { try await handle.tracksInReleaseOrder(trackIds: $0) }
         }
 
         /// The album list read through `handle`, under each sort and grouping

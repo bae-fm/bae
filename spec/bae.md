@@ -198,14 +198,15 @@ reads those rows cancels the read. The page clears the picks when it shows
 another release or closes. The app tints a picked row and marks it as selected
 for screen readers. A row's menu acts on every pick when the row is among
 several, and on the row alone otherwise. For several it offers *Play N tracks*,
-*Play next*, *Add to queue* and *Add to playlist*. The app hands core the
-picked ids in no order, and core answers with the tracks the library holds,
-each once, in the order their release lists them (by release, then stored
-position). Play plays that list from its first track as a list of tracks
-(§7.1), Play next and Add to queue put it in Up next in that order, and Add to
-playlist appends it to the playlist in that order in one write: when the
-library lacks any of the tracks, Add to playlist adds none of them. New
-playlist starts a playlist holding it.
+*Play next*, *Add to queue* and *Add to playlist*. Each action hands core the
+picked ids in no order, and core puts the tracks in the order their release
+lists them (by release, then stored position), each once, in the same call.
+Play plays the tracks the library holds from the first as a list of tracks
+(§7.1) and names the ones the library lacks, Play next and Add to queue put the tracks
+the library holds in Up next in that order, and Add to playlist appends the
+tracks to the playlist in that order in one write: when the library lacks any
+of the tracks, Add to playlist adds none of them. New playlist starts a
+playlist holding them, or fails as Add to playlist does.
 
 On macOS the person picks several albums in the album grid the same way:
 cmd-click picks or unpicks an album, shift-click picks the albums of the cards

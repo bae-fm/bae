@@ -138,15 +138,16 @@ impl PlaybackQueueTables {
         self.store.call_bulk(move |sql| fill_on(sql, fill)).await
     }
 
-    /// Add tracks to Up Next where `place` says, leaving out any the library
-    /// does not hold, and say how many went in. Putting any in counts one
-    /// addition on the queue row, with how many.
+    /// Add tracks to Up Next where `place` says, in the list's order, leaving
+    /// out any the library does not hold, and say how many went in. Putting
+    /// any in counts one addition on the queue row, with how many.
     pub async fn add_manual(
         &self,
-        track_ids: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
         place: ManualPlace,
     ) -> Result<usize, DbError> {
-        self.store.call(move |sql| add_manual_on(sql, &track_ids, place)).await
+        let tracks = tracks.into();
+        self.store.call(move |sql| add_manual_on(sql, &tracks, place)).await
     }
 
     /// Empty Up Next, as a bulk write.
@@ -511,11 +512,10 @@ fn place_shuffled_on(sql: &CovenWrite<'_>, order: &str) -> rusqlite::Result<i64>
 
 fn add_manual_on(
     sql: &CovenWrite<'_>,
-    track_ids: &[String],
+    tracks: &bae_records::TrackList,
     place: ManualPlace,
 ) -> Result<usize, DbError> {
-    let track_ids =
-        serde_json::to_string(track_ids).expect("serializing a Vec<String> to JSON cannot fail");
+    let track_ids = tracks.ids_json();
     let count: i64 = sql.query_row(
         "SELECT count(*) FROM json_each(?) j JOIN tracks t ON t.id = j.value",
         [&track_ids],
@@ -550,10 +550,13 @@ fn add_manual_on(
     };
     let base = queue_row_on(sql)?.next_entry;
     sql.execute(
-        "INSERT INTO playback_manual (entry, position, track_id) \
-         SELECT ?2 + k, ?3 + k, track_id FROM ( \
-             SELECT t.id AS track_id, row_number() OVER (ORDER BY j.key) - 1 AS k \
-             FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
+        &format!(
+            "INSERT INTO playback_manual (entry, position, track_id) \
+             SELECT ?2 + k, ?3 + k, track_id FROM ( \
+                 SELECT t.id AS track_id, row_number() OVER (ORDER BY {order}) - 1 AS k \
+                 FROM json_each(?1) j JOIN tracks t ON t.id = j.value)",
+            order = tracks.order_sql(),
+        ),
         params![track_ids, base, start],
     )?;
     sql.execute("UPDATE playback_queue SET next_entry = ?", params![base + count])?;

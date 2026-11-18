@@ -395,6 +395,14 @@ internal open class FakeAppHandle(
         unfaked("addNext")
     }
 
+    override suspend fun addPickedNext(trackIds: List<String>): UInt {
+        unfaked("addPickedNext")
+    }
+
+    override suspend fun addPickedToQueue(trackIds: List<String>): UInt {
+        unfaked("addPickedToQueue")
+    }
+
     override suspend fun addReleaseNext(releaseId: String): UInt {
         unfaked("addReleaseNext")
     }
@@ -520,7 +528,7 @@ internal open class FakeAppHandle(
         position: ULong,
     ): Boolean = unfaked("reorderEntry")
 
-    override suspend fun tracksInReleaseOrder(trackIds: List<String>): List<String> = unfaked("tracksInReleaseOrder")
+    override suspend fun playPickedTracks(trackIds: List<String>): BridgePlayOutcome = unfaked("playPickedTracks")
 
     override suspend fun trackIdsBetween(
         anchorId: String,

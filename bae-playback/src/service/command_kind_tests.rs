@@ -43,7 +43,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::SeekByRatio(0.5),
         PlaybackCommand::Play("track".to_string()),
         PlaybackCommand::PlayLibraryShuffled(oneshot::channel().0),
-        PlaybackCommand::AddToQueue(vec!["track".to_string()], oneshot::channel().0),
+        PlaybackCommand::AddToQueue(vec!["track".to_string()].into(), oneshot::channel().0),
         PlaybackCommand::ClearUpNext(oneshot::channel().0),
         PlaybackCommand::SetShuffle(true, oneshot::channel().0),
         PlaybackCommand::StopRemote,

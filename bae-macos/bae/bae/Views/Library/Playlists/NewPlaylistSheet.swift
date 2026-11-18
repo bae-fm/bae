@@ -2,13 +2,13 @@ import BaeKit
 import SwiftUI
 
 /// The New playlist sheet's content while it is open: the name typed, who
-/// sees the playlist, the tracks it starts with, and the error from a failed
-/// create. A new playlist starts on Only me.
+/// sees the playlist, the picked tracks it starts with, in no order, and the
+/// error from a failed create. A new playlist starts on Only me.
 struct NewPlaylistSheetState: Identifiable {
     let id = UUID()
     var name = ""
     var sharing: BridgeSharing = .private
-    let trackIds: [String]
+    let pickedTrackIds: [String]
     var error: DisplayError?
 }
 

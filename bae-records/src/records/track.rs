@@ -113,29 +113,6 @@ impl Records {
             .await
     }
 
-    /// The tracks of `track_ids` the library holds, each once, in the order
-    /// their release lists them: by release, then stored position, id. An
-    /// action on tracks the person picked uses this order, whatever order the
-    /// person picked them in. The query leaves out an id the library lacks.
-    pub async fn track_ids_in_release_order(
-        &self,
-        track_ids: Vec<String>,
-    ) -> Result<Vec<String>, DbError> {
-        let track_ids = serde_json::to_string(&track_ids).expect("track ids serialize as JSON");
-        self.store
-            .read(move |sql| {
-                sql.query(
-                    "SELECT id FROM tracks \
-                     WHERE id IN (SELECT value FROM json_each(?1)) \
-                     ORDER BY release_id, position, id",
-                    params![track_ids],
-                    |row| row.get::<_, String>("id"),
-                )
-                .map_err(DbError::from)
-            })
-            .await
-    }
-
     /// The tracks from `anchor_id` to `target_id`, both included, in the
     /// order their release lists them: what a shift-click on `target_id`
     /// picks after a pick of `anchor_id`. The function returns only the

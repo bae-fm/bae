@@ -6,6 +6,12 @@ import Foundation
 public final class Queue: Sendable, Observable {
     public let addToQueue: @Sendable (_ trackIds: [String]) -> Void
     public let addNext: @Sendable (_ trackIds: [String]) -> Void
+    /// Add the tracks a person picked, `trackIds` in no order, to the end of
+    /// Up Next: core puts them in the order their release lists them.
+    public let addPickedToQueue: @Sendable (_ trackIds: [String]) -> Void
+    /// Add the tracks a person picked, `trackIds` in no order, to the front
+    /// of Up Next, in the order their release lists them.
+    public let addPickedNext: @Sendable (_ trackIds: [String]) -> Void
     public let insertInQueue:
         @Sendable (_ trackIds: [String], _ index: UInt32) -> Void
     /// Remove the row `entryId`. A row the queue no longer holds is already
@@ -37,6 +43,8 @@ public final class Queue: Sendable, Observable {
     public init(
         addToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
         addNext: @escaping @Sendable ([String]) -> Void = { _ in },
+        addPickedToQueue: @escaping @Sendable ([String]) -> Void = { _ in },
+        addPickedNext: @escaping @Sendable ([String]) -> Void = { _ in },
         insertInQueue: @escaping @Sendable ([String], UInt32) -> Void = {
             _,
             _ in
@@ -60,6 +68,8 @@ public final class Queue: Sendable, Observable {
     ) {
         self.addToQueue = addToQueue
         self.addNext = addNext
+        self.addPickedToQueue = addPickedToQueue
+        self.addPickedNext = addPickedNext
         self.insertInQueue = insertInQueue
         self.removeEntry = removeEntry
         self.clearUpNext = clearUpNext
@@ -90,6 +100,20 @@ public final class Queue: Sendable, Observable {
             addNext: { trackIds in
                 answerCommand(show) {
                     try await handle.addNext(trackIds: trackIds)
+                } confirm: {
+                    confirmAdded(Int($0))
+                }
+            },
+            addPickedToQueue: { trackIds in
+                answerCommand(show) {
+                    try await handle.addPickedToQueue(trackIds: trackIds)
+                } confirm: {
+                    confirmAdded(Int($0))
+                }
+            },
+            addPickedNext: { trackIds in
+                answerCommand(show) {
+                    try await handle.addPickedNext(trackIds: trackIds)
                 } confirm: {
                     confirmAdded(Int($0))
                 }

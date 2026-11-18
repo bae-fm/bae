@@ -136,12 +136,12 @@ pub(crate) enum PlaybackCommand {
         release_ids: Vec<String>,
         reply: PlayReply,
     },
-    /// Play tracks as one context, in the order given from the one at an
+    /// Play tracks as one context, in the list's order from the one at an
     /// index, or shuffled. Tracks the library does not hold are left out and
     /// named in the answer; a start index past the list or naming such a track
     /// plays nothing, and so does a shuffled list holding none.
     PlayTracks {
-        track_ids: Vec<String>,
+        tracks: bae_records::TrackList,
         start: TracksStart,
         reply: PlayReply,
     },
@@ -195,10 +195,10 @@ pub(crate) enum PlaybackCommand {
     /// Move the output to this level while a slider is dragged: nothing is
     /// announced or stored until the drag's final `SetVolume`.
     SetVolumeLive(crate::Volume),
-    /// Add tracks to the end of Up Next.
-    AddToQueue(Vec<String>, QueueEditReply<usize>),
-    /// Add tracks to the front of Up Next.
-    AddNext(Vec<String>, QueueEditReply<usize>),
+    /// Add tracks to the end of Up Next, in the list's order.
+    AddToQueue(bae_records::TrackList, QueueEditReply<usize>),
+    /// Add tracks to the front of Up Next, in the list's order.
+    AddNext(bae_records::TrackList, QueueEditReply<usize>),
     /// Add a release's tracks to the end of Up Next.
     AddReleaseToQueue(String, QueueEditReply<usize>),
     /// Add a release's tracks to the front of Up Next.
@@ -472,13 +472,14 @@ impl PlaybackHandle {
     pub async fn play_releases(&self, release_ids: Vec<String>) -> Result<PlayOutcome, PlayError> {
         self.play_answered(|reply| PlaybackCommand::PlayReleases { release_ids, reply }).await
     }
-    /// Play `track_ids` from `start`, and say what it did.
+    /// Play `tracks` from `start`, and say what it did.
     pub async fn play_tracks(
         &self,
-        track_ids: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
         start: TracksStart,
     ) -> Result<PlayOutcome, PlayError> {
-        self.play_answered(|reply| PlaybackCommand::PlayTracks { track_ids, start, reply }).await
+        let tracks = tracks.into();
+        self.play_answered(|reply| PlaybackCommand::PlayTracks { tracks, start, reply }).await
     }
     /// Play the whole library in a new shuffle, and say what it did.
     pub async fn play_library_shuffled(&self) -> Result<PlayOutcome, PlayError> {
@@ -650,19 +651,19 @@ impl PlaybackHandle {
     /// you call it, in order with the commands sent before and after it.
     pub fn add_to_queue(
         &self,
-        track_ids: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
     ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.edit_queue(PlaybackCommand::AddToQueue(track_ids, reply), answer)
+        self.edit_queue(PlaybackCommand::AddToQueue(tracks.into(), reply), answer)
     }
     /// Add tracks to the front of Up Next, answering once they are in or why
     /// they are not.
     pub fn add_next(
         &self,
-        track_ids: Vec<String>,
+        tracks: impl Into<bae_records::TrackList>,
     ) -> impl std::future::Future<Output = Result<usize, QueueEditError>> + Send + 'static {
         let (reply, answer) = oneshot::channel();
-        self.edit_queue(PlaybackCommand::AddNext(track_ids, reply), answer)
+        self.edit_queue(PlaybackCommand::AddNext(tracks.into(), reply), answer)
     }
     /// Add a release's tracks to the end of Up Next, answering once they are
     /// in or why they are not.

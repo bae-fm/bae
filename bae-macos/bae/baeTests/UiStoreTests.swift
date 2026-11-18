@@ -273,10 +273,12 @@ struct UiStoreNewPlaylistSheetTests {
         let store = UiStore()
         #expect(store.newPlaylistSheet == nil)
 
-        store.presentNewPlaylist(trackIds: ["track-a", "track-b"])
+        store.presentNewPlaylist(pickedTrackIds: ["track-a", "track-b"])
 
         #expect(store.newPlaylistSheet?.sharing == .private)
         #expect(store.newPlaylistSheet?.name == "")
-        #expect(store.newPlaylistSheet?.trackIds == ["track-a", "track-b"])
+        #expect(
+            store.newPlaylistSheet?.pickedTrackIds == ["track-a", "track-b"]
+        )
     }
 }

@@ -34,10 +34,12 @@ public final class Playback: Sendable, Observable {
     /// A single release behaves exactly like `playRelease`; core leaves out
     /// any release without tracks, and the line says how many.
     public let playReleases: @Sendable (_ releaseIds: [String]) -> Void
-    /// Play `trackIds` in the order given, from the first. What the play did
-    /// shows on the app's error surface when it has a line: core leaves out
-    /// any track the library no longer holds, and the line says how many.
-    public let playTracks: @Sendable (_ trackIds: [String]) -> Void
+    /// Play the tracks a person picked, `trackIds` in no order: core plays
+    /// them in the order their release lists them, from the first the
+    /// library holds. What the play did shows on the app's error surface
+    /// when it has a line: core leaves out any track the library no longer
+    /// holds, and the line says how many.
+    public let playPickedTracks: @Sendable (_ trackIds: [String]) -> Void
     /// Play a playlist's tracks in its order, from the entry `startPositionId`
     /// names or from the first, or shuffled. What the play did shows on the app's error
     /// surface when it has a line: the playlist holds nothing, or the entry
@@ -82,7 +84,7 @@ public final class Playback: Sendable, Observable {
             _ in
         },
         playReleases: @escaping @Sendable ([String]) -> Void = { _ in },
-        playTracks: @escaping @Sendable ([String]) -> Void = { _ in },
+        playPickedTracks: @escaping @Sendable ([String]) -> Void = { _ in },
         playPlaylist: @escaping @Sendable (String, String?, Bool) -> Void = {
             _,
             _,
@@ -116,7 +118,7 @@ public final class Playback: Sendable, Observable {
         self.setRepeatMode = setRepeatMode
         self.playRelease = playRelease
         self.playReleases = playReleases
-        self.playTracks = playTracks
+        self.playPickedTracks = playPickedTracks
         self.playPlaylist = playPlaylist
         self.playLibraryShuffled = playLibraryShuffled
         self.setPauseBetweenSides = setPauseBetweenSides
@@ -160,12 +162,9 @@ public final class Playback: Sendable, Observable {
                     try await handle.playReleases(releaseIds: releaseIds)
                 }
             },
-            playTracks: { trackIds in
+            playPickedTracks: { trackIds in
                 Self.answer(show) {
-                    try await handle.playTracks(
-                        trackIds: trackIds,
-                        startIndex: 0
-                    )
+                    try await handle.playPickedTracks(trackIds: trackIds)
                 }
             },
             playPlaylist: { playlistId, startPositionId, shuffle in

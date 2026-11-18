@@ -242,6 +242,22 @@ async fn test_add_next_preserves_order() {
     assert_eq!(f.upcoming().await, names(&["a", "b", "x"]));
 }
 
+/// Picked tracks go into Up Next in the order their release lists them,
+/// whatever order the picks came in, at the end and at the front.
+#[tokio::test]
+async fn picked_tracks_go_into_up_next_in_their_release_s_order() {
+    let mut f = release(&["a", "b", "c", "x"]).await;
+    f.add(&["x"]).await;
+    let picked =
+        |names: &[&str]| bae_records::TrackList::Picked(f.ids(names).into_iter().collect());
+    let (at_end, at_front) = (picked(&["c", "a"]), picked(&["b", "a"]));
+
+    f.queue.add_to_queue(at_end).await.unwrap();
+    f.queue.add_next(at_front).await.unwrap();
+
+    assert_eq!(f.upcoming().await, names(&["a", "b", "x", "a", "c"]));
+}
+
 #[tokio::test]
 async fn test_remove_by_entry_id() {
     let mut f = release(&["a", "b", "c"]).await;

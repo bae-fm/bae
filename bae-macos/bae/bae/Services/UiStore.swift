@@ -139,9 +139,10 @@ class UiStore: @unchecked Sendable {
         activeSection = .library
     }
 
-    /// Open the New playlist sheet, the playlist starting with `trackIds`.
-    func presentNewPlaylist(trackIds: [String]) {
-        newPlaylistSheet = NewPlaylistSheetState(trackIds: trackIds)
+    /// Open the New playlist sheet, the playlist starting with the picked
+    /// tracks `pickedTrackIds`, which core puts in their release's order.
+    func presentNewPlaylist(pickedTrackIds: [String]) {
+        newPlaylistSheet = NewPlaylistSheetState(pickedTrackIds: pickedTrackIds)
     }
 
     func setLibraryBrowserMode(_ mode: LibraryBrowserMode) {

@@ -13,6 +13,11 @@ internal abstract class PlaylistFakeAppHandle : EditionFakeAppHandle() {
         trackIds: List<String>,
     ): Unit = unfaked("appendPlaylistEntries")
 
+    override suspend fun appendPickedToPlaylist(
+        playlist: String,
+        trackIds: List<String>,
+    ): Unit = unfaked("appendPickedToPlaylist")
+
     override suspend fun appendPlaylistEntry(
         playlist: String,
         track: String,
@@ -23,6 +28,12 @@ internal abstract class PlaylistFakeAppHandle : EditionFakeAppHandle() {
         sharing: BridgeSharing,
         trackIds: List<String>,
     ): String = unfaked("createPlaylist")
+
+    override suspend fun createPlaylistOfPicked(
+        name: String,
+        sharing: BridgeSharing,
+        trackIds: List<String>,
+    ): String = unfaked("createPlaylistOfPicked")
 
     override suspend fun editPlaylist(
         id: String,
