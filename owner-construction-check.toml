@@ -1882,7 +1882,6 @@ allowed = [
     { path = "bae-types/src/pressing/country.rs", item = "Country::from_code", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-types/src/text_match/fold.rs", item = "folded", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
     { path = "bae-types/src/text_match/fold.rs", item = "squash", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
-    { path = "bae-types/src/credits.rs", item = "CreditLine::is_empty", shape = "length-branch", count = 1, reason = "tests whether one credit line names anyone; the line's names, not a read's rows" },
     { path = "bae-bridge/src/types/pressing.rs", item = "bridge_pressing_details", shape = "filter", count = 1, reason = "drops one pressing's optional status when it is the official one; one value, not rows" },
     { path = "bae-diagnostics/src/ui_error/class.rs", item = "UiErrorClass::named", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::stored", shape = "length-branch", count = 1, reason = "asserts a pressing is built from at least one release; a check on its input, and no screen shows the count" },

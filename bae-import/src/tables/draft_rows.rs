@@ -6,8 +6,11 @@
 //! release editor's session (`release_edit_session`). Each statement takes
 //! the [`DraftTables`] it writes or reads.
 
+mod album;
 mod form_rows;
 mod values;
+
+pub(crate) use album::DraftAlbumRow;
 
 pub(crate) use form_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,

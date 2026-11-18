@@ -15,64 +15,36 @@ fn release_edit_album_on(sql: &impl coven::SqlRead, session: i64) -> Result<Draf
          WHERE session = :session",
         "(SELECT release_id FROM release_edit_session WHERE session = :session)",
     );
-    let (kind, album_id, title, credits): (String, Option<String>, Option<String>, String) = sql
-        .query_row(
-            &format!(
-                "WITH choice (kind, album_id) AS ( \
-                     SELECT CASE WHEN pick.album_id IS NULL THEN 'new' ELSE 'album' END, \
-                            pick.album_id \
-                     FROM release_edit_album_pick pick WHERE pick.session = :session \
-                     UNION ALL \
-                     SELECT CASE WHEN target.target_album_id IS NULL THEN 'none' ELSE 'named' END, \
-                            target.target_album_id \
-                     FROM ({target}) AS target \
-                     WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
-                                       WHERE session = :session) \
-                       AND EXISTS (SELECT 1 FROM release_edit_applied WHERE session = :session) \
-                     UNION ALL \
-                     SELECT 'named', s.album_id \
-                     FROM (SELECT r.album_id FROM release_edit_session s \
-                           JOIN releases r ON r.id = s.release_id \
-                           WHERE s.session = :session) AS s \
-                     WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
-                                       WHERE session = :session) \
-                       AND NOT EXISTS (SELECT 1 FROM release_edit_applied \
-                                       WHERE session = :session)) \
-                 SELECT choice.kind, a.id, a.title, {credits} \
-                 FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
-                credits = bae_records::records::query::album_credits_json_sql(),
-            ),
-            named_params! { ":session": session },
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )?;
-    let album = |kind: &str| -> Result<(String, crate::AlbumLine), DbError> {
-        match (album_id.clone(), title.clone()) {
-            (Some(album_id), Some(title)) => Ok((
-                album_id,
-                crate::AlbumLine::of(
-                    title,
-                    bae_records::records::read::credit_line_of_json(&credits)?,
-                ),
-            )),
-            _ => Err(DbError::unreadable(
-                format!("the {kind} album of release edit session {session}"),
-                None::<String>,
-            )),
-        }
-    };
-    Ok(match kind.as_str() {
-        "none" => DraftAlbum::New,
-        "new" => DraftAlbum::PickedNew,
-        "named" => {
-            let (album_id, line) = album("named")?;
-            DraftAlbum::Named { album_id, line }
-        }
-        "album" => {
-            let (album_id, line) = album("picked")?;
-            DraftAlbum::Picked { album_id, line }
-        }
-        other => return Err(DbError::unreadable("the kind of a session's album", other)),
-    })
+    let row = sql.query_row(
+        &format!(
+            "WITH choice (kind, album_id) AS ( \
+                 SELECT CASE WHEN pick.album_id IS NULL THEN 'new' ELSE 'album' END, \
+                        pick.album_id \
+                 FROM release_edit_album_pick pick WHERE pick.session = :session \
+                 UNION ALL \
+                 SELECT CASE WHEN target.target_album_id IS NULL THEN 'none' ELSE 'named' END, \
+                        target.target_album_id \
+                 FROM ({target}) AS target \
+                 WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
+                                   WHERE session = :session) \
+                   AND EXISTS (SELECT 1 FROM release_edit_applied WHERE session = :session) \
+                 UNION ALL \
+                 SELECT 'named', s.album_id \
+                 FROM (SELECT r.album_id FROM release_edit_session s \
+                       JOIN releases r ON r.id = s.release_id \
+                       WHERE s.session = :session) AS s \
+                 WHERE NOT EXISTS (SELECT 1 FROM release_edit_album_pick \
+                                   WHERE session = :session) \
+                   AND NOT EXISTS (SELECT 1 FROM release_edit_applied \
+                                   WHERE session = :session)) \
+             SELECT choice.kind, a.id, a.title, {credits} \
+             FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
+            credits = bae_records::records::query::album_credits_json_sql(),
+        ),
+        named_params! { ":session": session },
+        super::super::draft_rows::DraftAlbumRow::of_row,
+    )?;
+    row.album(&format!("release edit session {session}"))
 }
 
 /// The version of the cover of the session's release, `None` for none.
