@@ -252,10 +252,10 @@ pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
     let skipped = confirmed
         .into_iter()
         .map(|name| {
-            let entry = record.get(&name.to_string());
+            let entry = record.get(&name.to_string()).expect("partition skips only recorded pairs");
             Skipped {
-                findings: entry.map(|e| e.findings.clone()).unwrap_or_default(),
-                warnings: entry.map(|e| e.warnings.clone()).unwrap_or_default(),
+                findings: entry.findings.clone(),
+                warnings: entry.warnings.clone(),
                 against_base: standing(&name),
                 name,
             }

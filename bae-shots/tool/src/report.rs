@@ -43,6 +43,16 @@ fn standing_note(standing: Option<Standing>) -> &'static str {
     }
 }
 
+/// The standing note as a bracketed suffix, empty when there is none.
+fn bracketed_note(standing: Option<Standing>) -> String {
+    let note = standing_note(standing);
+    if note.is_empty() {
+        String::new()
+    } else {
+        format!(" ({note})")
+    }
+}
+
 /// The picture file names a checked pair uses inside the report directory.
 pub(crate) fn board_picture(name: &str) -> String {
     format!("img/{name}.board.png")
@@ -181,19 +191,14 @@ fn skipped_row(pair: &Skipped) -> String {
     if !note.is_empty() {
         put!(html, " <span class=\"note\">{note}</span>");
     }
-    if !pair.findings.is_empty() {
-        html.push_str("<ul class=\"findings\">");
-        for finding in &pair.findings {
-            put!(html, "<li>{}</li>", esc(finding));
+    for (items, class) in [(&pair.findings, "findings"), (&pair.warnings, "warnings")] {
+        if !items.is_empty() {
+            put!(html, "<ul class=\"{class}\">");
+            for item in items {
+                put!(html, "<li>{}</li>", esc(item));
+            }
+            html.push_str("</ul>");
         }
-        html.push_str("</ul>");
-    }
-    if !pair.warnings.is_empty() {
-        html.push_str("<ul class=\"warnings\">");
-        for warning in &pair.warnings {
-            put!(html, "<li>{}</li>", esc(warning));
-        }
-        html.push_str("</ul>");
     }
     html.push_str("</li>");
     html
@@ -361,15 +366,13 @@ pub(crate) fn summary(outcome: &Outcome, header: &Header) -> String {
             putln!(text, "- {}", problem.sentence);
         }
         for pair in outcome.checked.iter().filter(|c| !c.findings.is_empty()) {
-            let note = standing_note(pair.against_base);
-            let note = if note.is_empty() { String::new() } else { format!(" ({note})") };
+            let note = bracketed_note(pair.against_base);
             for finding in &pair.findings {
                 putln!(text, "- `{}`{note}: {}", pair.name, finding.sentence());
             }
         }
         for pair in outcome.skipped.iter().filter(|s| !s.findings.is_empty()) {
-            let note = standing_note(pair.against_base);
-            let note = if note.is_empty() { String::new() } else { format!(" ({note})") };
+            let note = bracketed_note(pair.against_base);
             for finding in &pair.findings {
                 putln!(text, "- `{}`{note}: {finding} (from the record)", pair.name);
             }
