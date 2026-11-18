@@ -128,17 +128,14 @@ impl LibraryManager {
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        if self.store.uploads_paused().await? {
-            return Err(LibraryError::Storage(
-                "upload retry cannot run while cloud sync is paused".to_string(),
-            ));
-        }
-        let outcome = self.store.retry_uploads_now().await?;
-        self.store.sync_now();
-        match outcome {
-            coven::DrainOutcome::Paused => Err(LibraryError::Storage(
-                "cloud upload pipeline paused after the retry began".to_string(),
-            )),
+        let result = match self.store.retry_uploads_now().await? {
+            // coven refuses the retry while the person has paused uploads
+            // and tries nothing, so no pass runs for it either.
+            coven::DrainOutcome::Paused => {
+                return Err(LibraryError::Storage(
+                    "upload retry cannot run while cloud sync is paused".to_string(),
+                ))
+            }
             // coven holds trailing uploads on a metered network only while
             // the app asks it to move files on unmetered ones.
             coven::DrainOutcome::Metered => Err(LibraryError::Storage(
@@ -149,7 +146,9 @@ impl LibraryManager {
             // when no storage is set up.
             coven::DrainOutcome::NotSyncing => Err(coven::SyncError::NoStorage.into()),
             coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => Ok(()),
-        }
+        };
+        self.store.sync_now();
+        result
     }
 
     /// Cancel the release's move to the cloud: its files stay on this device

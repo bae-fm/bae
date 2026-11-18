@@ -873,10 +873,13 @@ async fn upload_pause_survives_retry_and_resuming_allows_progress() {
     // Sync runs, so passes make requests of their own; the retry sends no
     // file.
     let before = manager.storage.request_trace().len();
-    assert!(matches!(
-        manager.library.manager().store.retry_uploads_now().await.unwrap(),
-        coven::DrainOutcome::Paused
-    ));
+    // coven refuses the paused retry, and the person reads why.
+    let refused = manager.library.manager().retry_outbox_now().await.unwrap_err();
+    assert!(
+        matches!(&refused, LibraryError::Storage(message)
+            if message == "upload retry cannot run while cloud sync is paused"),
+        "got {refused:?}"
+    );
     let files = coven::ObjectPrefix::files(manager.library.manager().store.store_id_for_test());
     let sent: Vec<_> = manager.storage.request_trace()[before..]
         .iter()
