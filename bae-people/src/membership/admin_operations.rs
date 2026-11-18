@@ -140,47 +140,59 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
             ))
         }
     };
-    let state = match kind {
+    let outcome = match kind {
         coven::OperationKind::ReplaceMemberKeys => {
-            match row.get::<_, Option<coven::FreshChangeOutcome>>(2)? {
-                None => AdminChangeState::Waiting,
-                Some(coven::FreshChangeOutcome::Landed(_)) => AdminChangeState::Done,
-                Some(coven::FreshChangeOutcome::Rejected(reason)) => {
-                    AdminChangeState::Refused(reason)
-                }
-                Some(coven::FreshChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-            }
+            row.get::<_, Option<coven::FreshChangeOutcome>>(2)?.map(fresh_change_outcome)
         }
-        coven::OperationKind::Invite => match row.get::<_, Option<coven::InviteOutcome>>(2)? {
-            None => AdminChangeState::Waiting,
-            Some(coven::InviteOutcome::Landed(_) | coven::InviteOutcome::Satisfied) => {
-                AdminChangeState::Done
-            }
-            Some(coven::InviteOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
-            Some(coven::InviteOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-            // A sharing refusal ends the invite itself, which this device
-            // records as no admin change; an approval's binding ends as
-            // a change does.
-            Some(outcome @ coven::InviteOutcome::SharingRefused { .. }) => {
-                return Err(bae_store::read::column_conversion_error(
+        coven::OperationKind::Invite => row
+            .get::<_, Option<coven::InviteOutcome>>(2)?
+            .map(binding_outcome)
+            .transpose()
+            .map_err(|outcome| {
+                bae_store::read::column_conversion_error(
                     row,
                     2,
                     format!("an approval that ended {outcome:?}"),
-                ))
-            }
-        },
+                )
+            })?,
         // RenameStore, SetRole, RemoveMember and RemoveDevice, the other
         // kinds the match above reads.
-        _ => match row.get::<_, Option<coven::ChangeOutcome>>(2)? {
-            None => AdminChangeState::Waiting,
-            Some(coven::ChangeOutcome::Landed(_) | coven::ChangeOutcome::Satisfied) => {
-                AdminChangeState::Done
-            }
-            Some(coven::ChangeOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
-            Some(coven::ChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-        },
+        _ => row.get::<_, Option<coven::ChangeOutcome>>(2)?,
+    };
+    let state = match outcome {
+        None => AdminChangeState::Waiting,
+        Some(coven::ChangeOutcome::Landed(_) | coven::ChangeOutcome::Satisfied) => {
+            AdminChangeState::Done
+        }
+        Some(coven::ChangeOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+        Some(coven::ChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
     };
     Ok(AdminChange { operation, change, state })
+}
+
+/// How a member's key replacement ended, as an admin change ends: it is
+/// never satisfied, which `ChangeOutcome` also holds.
+fn fresh_change_outcome(outcome: coven::FreshChangeOutcome) -> coven::ChangeOutcome {
+    match outcome {
+        coven::FreshChangeOutcome::Landed(slot) => coven::ChangeOutcome::Landed(slot),
+        coven::FreshChangeOutcome::Rejected(reason) => coven::ChangeOutcome::Rejected(reason),
+        coven::FreshChangeOutcome::Stopped(stop) => coven::ChangeOutcome::Stopped(stop),
+    }
+}
+
+/// How an approval's binding ended, as an admin change ends; the outcome
+/// itself when it is a sharing refusal, which ends the invite this device
+/// records as no admin change.
+fn binding_outcome(
+    outcome: coven::InviteOutcome,
+) -> Result<coven::ChangeOutcome, coven::InviteOutcome> {
+    match outcome {
+        coven::InviteOutcome::Landed(slot) => Ok(coven::ChangeOutcome::Landed(slot)),
+        coven::InviteOutcome::Satisfied => Ok(coven::ChangeOutcome::Satisfied),
+        coven::InviteOutcome::Rejected(reason) => Ok(coven::ChangeOutcome::Rejected(reason)),
+        coven::InviteOutcome::Stopped(stop) => Ok(coven::ChangeOutcome::Stopped(stop)),
+        refused @ coven::InviteOutcome::SharingRefused { .. } => Err(refused),
+    }
 }
 
 /// Record what the change journaled as `operation` changes, in its write.
