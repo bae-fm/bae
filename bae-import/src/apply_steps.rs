@@ -101,8 +101,7 @@ impl CatalogApplySteps {
     /// delete in place of what `work` returned.
     ///
     /// `work` is awaited at one place only: each place a future is awaited
-    /// holds a copy of it in this future, and `work` is a catalog read that
-    /// every caller up to the import holds again.
+    /// holds a copy of it in this future.
     pub(crate) async fn during<T, E: From<DbError>>(
         &self,
         step: CatalogApplyStep,

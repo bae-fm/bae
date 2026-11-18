@@ -6,6 +6,14 @@ use bae_catalogs::payloads::{DiscIdRelease, ReadDepth, ReleasePayloads};
 use bae_catalogs::rate_limiter::CallClass;
 use bae_catalogs::records::LookupRef;
 use bae_catalogs::source_release::PreparedRelease;
+use std::future::Future;
+use std::pin::Pin;
+
+/// A catalog read of a release, boxed. Every async function above a read,
+/// up to the import, holds its future until it is awaited, and a debug
+/// build's poll frames hold it again; a boxed read is one pointer in each.
+type CatalogRead<'a> =
+    Pin<Box<dyn Future<Output = Result<ReleasePayloads, ImportError>> + Send + 'a>>;
 
 /// Where import reads a catalog release: the store holding releases already
 /// read, and the catalogs to fetch one from.
@@ -62,9 +70,9 @@ impl ReleaseReads {
         answered: &DiscIdRelease,
         class: CallClass,
     ) -> Result<PreparedRelease, ImportError> {
-        let read = async {
+        let read: CatalogRead<'_> = Box::pin(async move {
             Ok(self.catalogs.session().await?.read_disc_id_release(answered, class).await?)
-        };
+        });
         self.prepare(
             answered.release(),
             ReadDepth::Identification,
@@ -119,13 +127,15 @@ impl ReleaseReads {
     }
 
     /// `release` fetched from its catalog to `depth`.
-    async fn fetch(
-        &self,
-        release: &LookupRef,
+    fn fetch<'a>(
+        &'a self,
+        release: &'a LookupRef,
         depth: ReadDepth,
         class: CallClass,
-    ) -> Result<ReleasePayloads, ImportError> {
-        Ok(self.catalogs.session().await?.fetch_payloads(release, depth, class).await?)
+    ) -> CatalogRead<'a> {
+        Box::pin(async move {
+            Ok(self.catalogs.session().await?.fetch_payloads(release, depth, class).await?)
+        })
     }
 
     /// `release_ref` from storage, unless reading it again at `depth` could
@@ -135,7 +145,7 @@ impl ReleaseReads {
         &self,
         release_ref: &LookupRef,
         depth: ReadDepth,
-        read: impl std::future::Future<Output = Result<ReleasePayloads, ImportError>>,
+        read: CatalogRead<'_>,
         steps: &CatalogApplySteps,
     ) -> Result<PreparedRelease, ImportError> {
         if let Some(stored) = self.tables.load_prepared_release(release_ref).await? {
