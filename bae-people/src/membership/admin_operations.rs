@@ -107,17 +107,9 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
         coven::OperationKind::SetRole => AdminChangeKind::SetRole {
             member: member()?,
             person: row.get(7)?,
-            role: match row.get::<_, Option<String>>(5)?.as_deref() {
-                Some("admin") => coven::MemberRole::Admin,
-                Some("member") => coven::MemberRole::Member,
-                other => {
-                    return Err(bae_store::read::column_conversion_error(
-                        row,
-                        5,
-                        format!("a role {other:?}"),
-                    ))
-                }
-            },
+            role: row.get::<_, Option<coven::MemberRole>>(5)?.ok_or_else(|| {
+                bae_store::read::column_conversion_error(row, 5, "a role change names no role")
+            })?,
         },
         coven::OperationKind::RemoveMember => {
             AdminChangeKind::RemovePerson { member: member()?, person: row.get(7)? }
@@ -177,13 +169,9 @@ pub(super) fn insert_admin_operation(
     operation: coven::OperationId,
     target: &AdminTarget,
 ) -> rusqlite::Result<()> {
-    let role = |role: &coven::MemberRole| match role {
-        coven::MemberRole::Admin => "admin",
-        coven::MemberRole::Member => "member",
-    };
     let (member, device, role, name) = match target {
         AdminTarget::LibraryName(name) => (None, None, None, Some(name.as_str())),
-        AdminTarget::Role(member, chosen) => (Some(*member), None, Some(role(chosen)), None),
+        AdminTarget::Role(member, role) => (Some(*member), None, Some(*role), None),
         AdminTarget::Person(member) => (Some(*member), None, None, None),
         AdminTarget::Device(device) => (None, Some(*device), None, None),
         AdminTarget::Approval(member, invitee) => (Some(*member), None, None, invitee.as_deref()),

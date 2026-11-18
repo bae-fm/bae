@@ -79,38 +79,13 @@ fn self_is_admin_column(row: &Row<'_>, first: usize) -> rusqlite::Result<bool> {
 pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<MembershipMember> {
     let self_is_admin = self_is_admin_column(row, first)?;
     let is_self: bool = row.get(first + 2)?;
-    let role = match row.get::<_, String>(first + 1)?.as_str() {
-        "admin" => coven::MemberRole::Admin,
-        "member" => coven::MemberRole::Member,
-        other => {
-            return Err(column_conversion_error(
-                row,
-                first + 1,
-                format!("{other} is not a member role"),
-            ))
-        }
-    };
-    let access = match (
-        row.get::<_, Option<String>>(first + 3)?,
-        row.get::<_, Option<String>>(first + 4)?,
-    ) {
-        (Some(account), None) => Some(coven::MemberAccess::ProviderAccount(account)),
-        (None, Some(access_key_id)) => Some(coven::MemberAccess::S3AccessKey { access_key_id }),
-        // The store's creator, until Set up storage records theirs (coven §10.3).
-        (None, None) => None,
-        (Some(_), Some(_)) => {
-            return Err(column_conversion_error(
-                row,
-                first + 3,
-                "a member's access holds both an account and an S3 key id",
-            ))
-        }
-    };
+    let access = coven::MemberAccess::from_columns(row.get(first + 3)?, row.get(first + 4)?)
+        .map_err(|error| column_conversion_error(row, first + 3, error))?;
     let active: Vec<(String, String, bool)> = json_column(row, first + 5)?;
     let former: Vec<(String, String, String)> = json_column(row, first + 6)?;
     Ok(MembershipMember {
         id: row.get(first)?,
-        role,
+        role: row.get(first + 1)?,
         access,
         is_self,
         can_remove: MembershipMember::removable(self_is_admin, is_self),
