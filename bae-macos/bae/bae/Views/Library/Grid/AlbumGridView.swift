@@ -81,8 +81,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
 
     /// The reveal and what core answered for where its album's card is: a
     /// reveal names the open album, so the open album's place is the card the
-    /// grid scrolls to. The grid shows the reveal again each time core places
-    /// the card elsewhere.
+    /// grid scrolls to. The reveal starts again each time core places the
+    /// card elsewhere before the grid has shown it.
     private var revealTarget: RevealTarget? {
         guard let reveal = uiStore.albumReveal else { return nil }
         guard let answer = openPlace.answer,
@@ -537,7 +537,8 @@ extension AlbumGridView {
     /// row, which exists only once the album's detail is laid out — scrolling
     /// to the album is what brings the detail into the lazy grid — so the
     /// grid scrolls to the row and flashes it once the row is laid out
-    /// (`showRevealedRow`).
+    /// (`showRevealedRow`). The reveal ends once the grid has shown what it
+    /// names.
     ///
     /// The album's page stays held until the reveal ends or core places the
     /// card elsewhere, either of which cancels this task: the rows on screen
@@ -623,13 +624,14 @@ extension AlbumGridView {
     }
 
     /// The grid has scrolled to the revealed album, and come to rest there.
-    /// An album revealed alone is shown. A track's row is measured from
-    /// here: where the scroll stops, not on its way.
+    /// An album revealed alone is shown, which ends its reveal. A track's row
+    /// is measured from here: where the scroll stops, not on its way.
     private func revealArrived() {
         guard let reveal = uiStore.albumReveal else { return }
         guard let trackId = reveal.trackId else {
             albumGridLogger.debug("reveal of \(reveal.albumId): shown")
             viewport.endRevealScroll()
+            uiStore.endAlbumReveal(of: reveal.albumId)
             return
         }
         if let row = viewport.revealedRow(of: trackId, arrived: true) {
@@ -646,19 +648,20 @@ extension AlbumGridView {
     }
 
     /// Flashes the revealed track's row where it is in full view, as far as
-    /// the scroll can bring it; otherwise scrolls it there. The grid measures
-    /// the row again where it lays it out next: a far scroll lands over
-    /// several layouts of the lazy grid, and the header above the grid folds
-    /// away as the grid leaves its top, resizing the grid under the scroll.
+    /// the scroll can bring it, which ends the reveal; otherwise scrolls it
+    /// there. The grid measures the row again where it lays it out next: a
+    /// far scroll lands over several layouts of the lazy grid, and the header
+    /// above the grid folds away as the grid leaves its top, resizing the
+    /// grid under the scroll.
     private func showRevealedRow(_ row: PlacedTrackRow) {
-        guard uiStore.albumReveal?.trackId == row.trackId else {
-            return
-        }
+        guard let reveal = uiStore.albumReveal, reveal.trackId == row.trackId
+        else { return }
         guard let offset = row.scrollOffset else {
             albumGridLogger.debug(
                 "reveal: row \(row.trackId) needs no scroll (\(String(describing: row))); flashing it"
             )
             viewport.endRevealScroll()
+            uiStore.endAlbumReveal(of: reveal.albumId)
             uiStore.flashTrack(row.trackId)
             return
         }

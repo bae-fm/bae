@@ -12,10 +12,13 @@ import Testing
 @MainActor
 @Suite("AlbumGridView revealing a track", .serialized)
 struct AlbumGridRevealTests {
-    /// A flashed track and where its row sat when the flash came.
+    /// Measure the flash and frame together; separate callbacks can pair
+    /// a new flash with a position from the previous layout.
     struct Placement: Equatable {
         let trackId: String
-        let frame: CGRect?
+        let frame: CGRect
+        /// How many flashes the row had received when it sat there.
+        let flashes: Int
     }
 
     @Observable
@@ -26,10 +29,15 @@ struct AlbumGridRevealTests {
         var rowsShown = true
         /// Where each track row sits in the visible area.
         var rowFrames: [String: CGRect] = [:]
+        /// How many flashes each track's row received.
+        var flashes: [String: Int] = [:]
         /// The last track flashed, and where its row sat when the flash came.
         var flashed: Placement?
-        /// How many flashes the rows received.
-        var flashCount = 0
+
+        /// How many flashes the rows received in all.
+        var flashCount: Int {
+            flashes.values.reduce(0, +)
+        }
     }
 
     /// Thirty 40-point track rows, `<album>-t0` to `<album>-t29`, in place
@@ -54,25 +62,28 @@ struct AlbumGridRevealTests {
         }
 
         private func row(_ trackId: String) -> some View {
-            Text(verbatim: trackId)
+            let flashes = stage.flashes[trackId] ?? 0
+            return Text(verbatim: trackId)
                 .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
                 .revealsAsTrackRow(trackId)
-                .onGeometryChange(for: CGRect.self) { geometry in
-                    geometry.frame(in: .scrollView)
-                } action: { frame in
-                    stage.rowFrames[trackId] = frame
+                .onGeometryChange(for: Placement.self) { geometry in
+                    Placement(
+                        trackId: trackId,
+                        frame: geometry.frame(in: .scrollView),
+                        flashes: flashes
+                    )
+                } action: { placement in
+                    stage.rowFrames[trackId] = placement.frame
+                    if placement.flashes > 0,
+                        stage.flashed?.trackId != trackId
+                            || stage.flashed?.flashes != placement.flashes
+                    {
+                        stage.flashed = placement
+                    }
                 }
                 .onReceive(uiStore.trackFlashes) { flashed in
-                    guard flashed == trackId else { return }
-                    // The grid sends the flash from the layout it measured
-                    // the row in, which may report the row's own frame
-                    // after it: read the frame once that layout is done.
-                    DispatchQueue.main.async {
-                        stage.flashCount += 1
-                        stage.flashed = Placement(
-                            trackId: trackId,
-                            frame: stage.rowFrames[trackId]
-                        )
+                    if flashed == trackId {
+                        stage.flashes[trackId] = flashes + 1
                     }
                 }
         }
@@ -126,13 +137,17 @@ struct AlbumGridRevealTests {
         return frame.minY > -0.5 && frame.maxY < height + 0.5
     }
 
-    /// Return once the grid has flashed `trackId`'s row and come to rest.
+    /// Return once the reveal of `trackId` has ended with the track flashed,
+    /// and the grid has come to rest.
     private func revealed(
         _ trackId: String,
         in hosted: HostedAlbumGrid,
         _ stage: Stage
     ) async throws {
-        try await Wait.until { stage.flashed?.trackId == trackId }
+        try await Wait.until {
+            hosted.uiStore.albumReveal == nil
+                && stage.flashed?.trackId == trackId
+        }
         try await hosted.settle()
     }
 
@@ -187,11 +202,6 @@ struct AlbumGridRevealTests {
         #expect(try inView(stage.rowFrames["grid-300-t28"], of: hosted))
         #expect(stage.flashCount == 1)
         #expect(try inView(stage.flashed?.frame, of: hosted))
-        // The reveal holds until the person moves on.
-        #expect(
-            hosted.uiStore.albumReveal
-                == AlbumReveal(albumId: "grid-300", trackId: "grid-300-t28")
-        )
     }
 
     @Test("a track already in view is flashed where it is")
@@ -271,14 +281,17 @@ struct AlbumGridRevealTests {
         #expect(stage.flashed == nil)
     }
 
-    @Test("an album revealed alone is scrolled to with nothing flashed")
+    @Test("an album revealed alone ends its reveal with nothing flashed")
     func albumAloneFlashesNothing() async throws {
         let stage = Stage()
         let hosted = try await host(stage, preloaded: false)
         defer { hosted.window.close() }
 
         hosted.uiStore.navigateToAlbum("grid-300")
-        try await Wait.until { stage.rowFrames["grid-300-t0"] != nil }
+        try await Wait.until {
+            hosted.uiStore.albumReveal == nil
+                && stage.rowFrames["grid-300-t0"] != nil
+        }
         try await hosted.settle()
 
         #expect(stage.flashed == nil)
@@ -286,6 +299,23 @@ struct AlbumGridRevealTests {
 }
 
 extension AlbumGridRevealTests {
+    @Test("asking again for a track already shown reveals it again")
+    func repeatRevealFlashesAgain() async throws {
+        let stage = Stage()
+        let hosted = try await host(stage, preloaded: false)
+        defer { hosted.window.close() }
+
+        hosted.uiStore.navigateToAlbum("grid-300", trackId: "grid-300-t28")
+        try await revealed("grid-300-t28", in: hosted, stage)
+        hosted.uiStore.navigateToAlbum("grid-300", trackId: "grid-300-t28")
+        try await Wait.until { stage.flashed?.flashes == 2 }
+        try await hosted.settle()
+
+        #expect(hosted.uiStore.albumReveal == nil)
+        #expect(stage.flashCount == 2)
+        #expect(try inView(stage.flashed?.frame, of: hosted))
+    }
+
     @Test("a reveal of an album the grid has no card of scrolls nowhere")
     func albumWithNoCardScrollsNowhere() async throws {
         let stage = Stage()

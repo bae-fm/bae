@@ -27,9 +27,10 @@ enum LibraryBrowserMode: CaseIterable {
 
 /// The open album the person asked to see, by a navigation such as Go to Now
 /// Playing rather than a click on its card, and the track in it whose row
-/// they asked to see, if any. The album grid shows it wherever core places
-/// the album's card, again each time core places the card elsewhere, until
-/// the person scrolls the grid, clicks a card or closes the album.
+/// they asked to see, if any, until the album grid has shown it. The grid
+/// scrolls to wherever core places the album's card, and again each time
+/// core places the card elsewhere before the grid has shown it. The person
+/// scrolling the grid, clicking a card or closing the album ends it sooner.
 struct AlbumReveal: Equatable {
     let albumId: String
     /// The track whose row the grid scrolls into view and then flashes, or
@@ -235,8 +236,8 @@ class UiStore: @unchecked Sendable {
         )
     }
 
-    /// End the reveal of `albumId`: the grid could not read where the
-    /// album's card is. A no-op for a reveal of another album.
+    /// End the reveal of `albumId`: the grid has shown it, or could not read
+    /// where the album's card is. A no-op for a reveal of another album.
     func endAlbumReveal(of albumId: String) {
         if albumReveal?.albumId == albumId {
             albumReveal = nil
