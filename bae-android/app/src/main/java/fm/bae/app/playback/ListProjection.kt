@@ -20,8 +20,8 @@ private const val MAXIMUM_LIST_PAGES = 12
  * A list's items as Android Auto's browse tree asks for them, a page at a time by offset; [item] makes each row
  * the item the tree shows.
  * Media3 asks for a page by offset, and core reads each page live: the rows at the page's places, none past the
- * list's end. A page stays live while it is among the last [MAXIMUM_LIST_PAGES] asked for, and a page or the list's
- * count changing tells the tree its children changed.
+ * list's end. A page stays live while it is among the last [MAXIMUM_LIST_PAGES] asked for and the list's count
+ * stays as it was, and a page or the list's count changing tells the tree its children changed.
  */
 internal class ListProjection<Row, Item>(
     private val scope: CoroutineScope,
@@ -137,14 +137,20 @@ internal class ListProjection<Row, Item>(
         page.job.cancel()
     }
 
-    /** Each count value: the first makes the projection ready, and each later one tells the tree. */
+    /**
+     * Each count value: the first makes the projection ready, and each later one drops the pages, which the tree
+     * asks for again, and tells the tree.
+     */
     private suspend fun consume() {
         countRead.pullEach(
             onValue = { value: BridgeListCount ->
                 val notify =
                     mutex.withLock {
                         if (closed) return@pullEach
-                        ready.isCompleted.also { ready.complete(Unit) }
+                        val later = ready.isCompleted
+                        if (later) pages.entries.toList().forEach { drop(it.key, it.value) }
+                        ready.complete(Unit)
+                        later
                     }
                 if (notify) onChanged(value.rows.toInt())
             },
