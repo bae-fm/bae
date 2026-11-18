@@ -53,6 +53,9 @@ impl Store {
     /// a test compares to show an operation left the store as it found it.
     /// Coven's own tables are closed to bae's connections and are left out;
     /// the files coven keeps for bae are files under the library directory.
+    /// The database files' sizes in `coven_library_bytes` are left out too:
+    /// coven writes them as the store opens and after a checkpoint, never for
+    /// a write.
     pub async fn every_row_for_test(
         &self,
     ) -> Result<std::collections::BTreeMap<String, Vec<String>>, DbError> {
@@ -66,7 +69,12 @@ impl Store {
             )?;
             let mut every_row = std::collections::BTreeMap::new();
             for table in tables {
-                let mut rows = sql.query(&format!("SELECT * FROM \"{table}\""), [], |row| {
+                let rows_of = match table.as_str() {
+                    "coven_library_bytes" => " WHERE part NOT IN ('database', 'inputs')",
+                    _ => "",
+                };
+                let query = format!("SELECT * FROM \"{table}\"{rows_of}");
+                let mut rows = sql.query(&query, [], |row| {
                     (0..row.as_ref().column_count())
                         .map(|column| {
                             row.get_ref(column).map(|value| match value {
