@@ -145,26 +145,57 @@ pub struct Seek {
     from: usize,
     /// Whether the read runs against the order, from the row back.
     reversed: bool,
-    binds: Vec<(String, Value)>,
-    /// How many of the seek's rows the read skips, for a read by offset; a
-    /// window's read skips none and has no OFFSET.
-    offset: Option<u64>,
-    /// For a page's read, where the page starts: the read holds its rows to
-    /// those at or after the row at the page's first place, which a subquery
-    /// of the same statement finds by offset.
-    start: Option<PageStart>,
-    /// Whether the seek reads the one row at the place `:place` names, by
-    /// offset: the subquery a page's statement finds its first row with.
-    place_row: bool,
+    /// The values it compares the terms it holds equal and the term it
+    /// passes with, in the order's terms' order.
+    values: Vec<KeyValue>,
+    /// Which read the seek is.
+    read: SeekRead,
 }
 
-/// Where a page's read starts: the page's first place, and the statement that
-/// reads the row at that place by offset, whose key columns the page's
-/// condition compares each row with.
+/// Which read a seek is.
 #[derive(Debug, Clone)]
-struct PageStart {
-    place: u64,
-    row: String,
+enum SeekRead {
+    /// A window's read, or part of one: an index seek with a LIMIT and no
+    /// OFFSET.
+    Window,
+    /// A read that skips this many of its rows by offset.
+    Offset(u64),
+    /// A page's read: the rows at or after the row at `place`, which the
+    /// statement `row`, a subquery of the page's statement, reads by offset.
+    Page { place: u64, row: String },
+    /// The read of the one row at the place `:place` names, by offset: the
+    /// subquery a page's statement finds its first row with.
+    PlaceRow,
+}
+
+/// The value a seek compares one of the order's terms with.
+#[derive(Debug, Clone)]
+enum KeyValue {
+    /// A key's value, bound to a parameter.
+    Bound { parameter: String, value: Value },
+    /// The value an expression of the statement reads, which only SQL
+    /// knows: a page's first row's, which the page's subquery reads. It is
+    /// never NULL for a term that is never NULL.
+    Read { expression: String, nullable: bool },
+}
+
+impl KeyValue {
+    /// The value as the statement names it.
+    fn sql(&self) -> &str {
+        match self {
+            Self::Bound { parameter, .. } => parameter,
+            Self::Read { expression, .. } => expression,
+        }
+    }
+
+    /// Whether the value is NULL, when the seek knows it before SQL reads it.
+    fn known_null(&self) -> Option<bool> {
+        match self {
+            Self::Bound { value, .. } => Some(matches!(value, Value::Null)),
+            Self::Read { nullable: true, .. } => None,
+            Self::Read { nullable: false, .. } => Some(false),
+        }
+    }
 }
 
 /// What a seek holds the term at its place to.
@@ -174,22 +205,34 @@ enum Past {
     Above(Bound),
     /// Below the bound's value. NULL is not.
     Below(Bound),
-    NotNull,
-    Null,
+    /// Not NULL, past a NULL value going up. For a value only SQL knows, the
+    /// value is also held to NULL.
+    NotNull(Option<String>),
+    /// NULL, past a value going down. For a value only SQL knows, the value
+    /// is also held to not NULL.
+    Null(Option<String>),
 }
 
 /// The value a [`Past::Above`] or [`Past::Below`] compares its term with: the
-/// parameter holding the value, and whether a term equal to it passes.
+/// value as the statement names it, and whether a term equal to it passes.
 #[derive(Debug, Clone)]
 struct Bound {
     inclusive: bool,
-    parameter: String,
+    value: String,
 }
 
 impl Seek {
     /// The parameters the seek's condition names, as a statement binds them.
     pub fn params(&self) -> Vec<(&str, &dyn ToSql)> {
-        self.binds.iter().map(|(name, value)| (name.as_str(), value as &dyn ToSql)).collect()
+        self.values
+            .iter()
+            .filter_map(|value| match value {
+                KeyValue::Bound { parameter, value } => {
+                    Some((parameter.as_str(), value as &dyn ToSql))
+                }
+                KeyValue::Read { .. } => None,
+            })
+            .collect()
     }
 
     /// The statement's LIMIT clause: `LIMIT :limit`, with `OFFSET :offset`
@@ -197,10 +240,10 @@ impl Seek {
     /// page's first row. A window's statement has no OFFSET, so coven reruns
     /// it only for a write at or before its last row.
     pub fn limit_clause(&self) -> &'static str {
-        match (self.place_row, self.offset) {
-            (true, _) => "LIMIT 1 OFFSET :place",
-            (false, Some(_)) => "LIMIT :limit OFFSET :offset",
-            (false, None) => "LIMIT :limit",
+        match self.read {
+            SeekRead::Window | SeekRead::Page { .. } => "LIMIT :limit",
+            SeekRead::Offset(_) => "LIMIT :limit OFFSET :offset",
+            SeekRead::PlaceRow => "LIMIT 1 OFFSET :place",
         }
     }
 
@@ -209,22 +252,22 @@ impl Seek {
     /// place as `:place`.
     pub fn bound<T>(&self, limit: u64, run: impl FnOnce(&[(&str, &dyn ToSql)]) -> T) -> T {
         let limit = sql_bound(limit);
-        let offset = self.offset.map(sql_bound);
-        let place = self.start.as_ref().map(|start| sql_bound(start.place));
+        let skipped = match &self.read {
+            SeekRead::Offset(offset) => Some((":offset", sql_bound(*offset))),
+            SeekRead::Page { place, .. } => Some((":place", sql_bound(*place))),
+            SeekRead::Window | SeekRead::PlaceRow => None,
+        };
         let mut params = self.params();
         params.push((":limit", &limit));
-        if let Some(offset) = &offset {
-            params.push((":offset", offset));
-        }
-        if let Some(place) = &place {
-            params.push((":place", place));
+        if let Some((name, value)) = &skipped {
+            params.push((name, value));
         }
         run(&params)
     }
 
     /// Whether the read skips rows by offset.
     pub fn by_offset(&self) -> bool {
-        self.offset.is_some() || self.place_row
+        matches!(self.read, SeekRead::Offset(_) | SeekRead::PlaceRow)
     }
 
     /// How many of the order's leading terms the seek holds equal.
@@ -292,10 +335,8 @@ impl ListOrder {
             past: None,
             from: 0,
             reversed: false,
-            binds: Vec::new(),
-            offset: None,
-            start: None,
-            place_row: false,
+            values: Vec::new(),
+            read: SeekRead::Window,
         }
     }
 
@@ -305,14 +346,14 @@ impl ListOrder {
     /// `statement` reading the row at `place` by offset, so one statement
     /// reads the page's rows after every write.
     pub fn from_place(&self, place: u64, statement: impl Fn(&Self, &Seek) -> String) -> Seek {
-        let row = statement(self, &Seek { place_row: true, ..self.everything() });
-        Seek { start: Some(PageStart { place, row }), ..self.everything() }
+        let row = statement(self, &Seek { read: SeekRead::PlaceRow, ..self.everything() });
+        Seek { read: SeekRead::Page { place, row }, ..self.everything() }
     }
 
     /// Every row of the list from `position` on, read by offset: the seek
     /// that finds the key of the row at a position.
     pub fn at_offset(&self, position: u64) -> Seek {
-        Seek { offset: Some(position), ..self.everything() }
+        Seek { read: SeekRead::Offset(position), ..self.everything() }
     }
 
     /// Every row of the list, from its last to its first: the seek a read of
@@ -329,27 +370,32 @@ impl ListOrder {
     /// one's albums, would sort the second table's rows instead of reading
     /// them in its index's order.
     pub fn condition(&self, seek: &Seek) -> String {
-        if let Some(start) = &seek.start {
-            return self.page_condition(&start.row);
+        if let SeekRead::Page { row, .. } = &seek.read {
+            return self.page_condition(row);
         }
         let term = |at: usize| &self.terms[at].expression;
-        let held = |at: usize| match &seek.binds[at].1 {
-            Value::Null => format!("({}) IS {}", term(at), key_parameter(at)),
-            _ => format!("({}) = {}", term(at), key_parameter(at)),
+        let held = |at: usize| match &seek.values[at] {
+            KeyValue::Bound { parameter, value: Value::Null } => {
+                format!("({}) IS {parameter}", term(at))
+            }
+            KeyValue::Bound { parameter, .. } => format!("({}) = {parameter}", term(at)),
+            KeyValue::Read { expression, .. } => format!("({}) IS {expression}", term(at)),
         };
         let past = seek.past.as_ref().map(|past| {
             let term = term(seek.equal);
             match past {
                 Past::Above(bound) => {
                     let op = if bound.inclusive { ">=" } else { ">" };
-                    format!("({term}) {op} {}", bound.parameter)
+                    format!("({term}) {op} {}", bound.value)
                 }
                 Past::Below(bound) => {
                     let op = if bound.inclusive { "<=" } else { "<" };
-                    format!("({term}) {op} {}", bound.parameter)
+                    format!("({term}) {op} {}", bound.value)
                 }
-                Past::NotNull => format!("({term}) IS NOT NULL"),
-                Past::Null => format!("({term}) IS NULL"),
+                Past::NotNull(None) => format!("({term}) IS NOT NULL"),
+                Past::NotNull(Some(value)) => format!("({term}) IS NOT NULL AND {value} IS NULL"),
+                Past::Null(None) => format!("({term}) IS NULL"),
+                Past::Null(Some(value)) => format!("({term}) IS NULL AND {value} IS NOT NULL"),
             }
         });
         let conditions = (0..seek.equal).map(held).chain(past).collect::<Vec<_>>();
@@ -361,41 +407,28 @@ impl ListOrder {
     }
 
     /// The condition holding this order's rows to those at or after the row
-    /// `row` reads, in the order: a row past it on one term and tying it on
-    /// every term before, or tying it on every term but the last and at or
-    /// past it on that. NULL sorts below every value, and `IS` compares a
-    /// NULL. When `row` reads no row, the last term's value, never NULL for
-    /// a row, is NULL, and the condition holds no row.
+    /// `row` reads: the conditions of the seeks a window from that row's key
+    /// runs, any of them, over the values a subquery of `row` reads. When
+    /// `row` reads no row, the last term's value, never NULL for a row, is
+    /// NULL, and the condition holds no row.
     fn page_condition(&self, row: &str) -> String {
-        let value = |at: usize| format!("(SELECT {} FROM ({row}))", key_column(at));
-        let term = |at: usize| &self.terms[at].expression;
-        let ties = |before: usize| {
-            (0..before).map(|at| format!("({}) IS {}", term(at), value(at))).collect::<Vec<_>>()
-        };
-        let last = self.terms.len() - 1;
-        let past = |at: usize| {
-            let (term, value) = (term(at), value(at));
-            let descending = self.terms[at].descending;
-            match (at == last, descending) {
-                (true, false) => format!("({term}) >= {value}"),
-                (true, true) => format!("({term}) <= {value}"),
-                (false, false) => {
-                    format!("(({term}) > {value} OR ({value} IS NULL AND ({term}) IS NOT NULL))")
-                }
-                (false, true) => {
-                    format!("(({term}) < {value} OR (({term}) IS NULL AND {value} IS NOT NULL))")
-                }
-            }
-        };
-        let rows = (0..self.terms.len())
-            .map(|at| {
-                let mut held = ties(at);
-                held.push(past(at));
-                format!("({})", held.join(" AND "))
+        let values = self
+            .terms
+            .iter()
+            .enumerate()
+            .map(|(at, term)| KeyValue::Read {
+                expression: format!("(SELECT {} FROM ({row}))", key_column(at)),
+                nullable: term.nullable,
             })
+            .collect::<Vec<_>>();
+        let last = values[values.len() - 1].sql().to_string();
+        let seeks = self
+            .seeks_from(&values, Side::After, true, false)
+            .iter()
+            .map(|seek| format!("({})", self.condition(seek)))
             .collect::<Vec<_>>()
             .join(" OR ");
-        format!("({} IS NOT NULL AND ({rows}))", value(last))
+        format!("({last} IS NOT NULL AND ({seeks}))")
     }
 
     /// The ORDER BY clause `seek` reads this order's rows in.
@@ -480,6 +513,28 @@ impl ListOrder {
     /// to read them in order. With `inclusive`, the row itself is among the
     /// rows after it.
     fn seeks(&self, key: &OrderKey, side: Side, inclusive: bool, reversed: bool) -> Vec<Seek> {
+        let values = key
+            .0
+            .iter()
+            .enumerate()
+            .map(|(at, value)| KeyValue::Bound {
+                parameter: key_parameter(at),
+                value: value.clone(),
+            })
+            .collect::<Vec<_>>();
+        self.seeks_from(&values, side, inclusive, reversed)
+    }
+
+    /// The seeks [`Self::seeks`] runs for a key with `values`. A value only
+    /// SQL knows can be NULL or not, so the seeks hold both rows past a NULL
+    /// and rows past a value, each holding the value to what it passes.
+    fn seeks_from(
+        &self,
+        values: &[KeyValue],
+        side: Side,
+        inclusive: bool,
+        reversed: bool,
+    ) -> Vec<Seek> {
         let last = self.terms.len() - 1;
         let mut seeks = Vec::new();
         for at in (0..self.terms.len()).rev() {
@@ -489,35 +544,37 @@ impl ListOrder {
             let seek = |past: Past, from: usize| {
                 let compared = match past {
                     Past::Above(_) | Past::Below(_) => at + 1,
-                    Past::NotNull | Past::Null => at,
+                    Past::NotNull(_) | Past::Null(_) => at,
                 };
                 Seek {
                     equal: at,
                     past: Some(past),
                     from,
                     reversed,
-                    binds: (0..compared)
-                        .map(|bound| (key_parameter(bound), key.0[bound].clone()))
-                        .collect(),
-                    offset: None,
-                    start: None,
-                    place_row: false,
+                    values: values[..compared].to_vec(),
+                    read: SeekRead::Window,
                 }
             };
+            let value = &values[at];
             let bound =
-                || Bound { inclusive: inclusive && at == last, parameter: key_parameter(at) };
+                || Bound { inclusive: inclusive && at == last, value: value.sql().to_string() };
+            // A value only SQL knows passes a row on each way it can be.
+            let guard = |known: bool| (!known).then(|| value.sql().to_string());
             let downward = term.descending != (side == Side::Before);
-            match (&key.0[at], downward) {
-                // NULL sorts first: everything else on this term is past it
-                // going up, and nothing is going down.
-                (Value::Null, false) => seeks.push(seek(Past::NotNull, at)),
-                (Value::Null, true) => {}
-                (_, false) => seeks.push(seek(Past::Above(bound()), at)),
-                (_, true) => {
+            let null = value.known_null();
+            // NULL sorts first: everything else on this term is past it
+            // going up, and nothing is going down.
+            if null != Some(false) && !downward {
+                seeks.push(seek(Past::NotNull(guard(null.is_some())), at));
+            }
+            if null != Some(true) {
+                if downward {
                     seeks.push(seek(Past::Below(bound()), at));
                     if term.nullable {
-                        seeks.push(seek(Past::Null, at + 1));
+                        seeks.push(seek(Past::Null(guard(null.is_some())), at + 1));
                     }
+                } else {
+                    seeks.push(seek(Past::Above(bound()), at));
                 }
             }
         }
