@@ -3,9 +3,7 @@
 //! and the count, summary, filter entries and selection beside them, read in
 //! one snapshot so they agree with each other.
 
-use super::{
-    ImportListCount, ImportListItem, ImportQueueSummary, NarrowedCount, PendingFilterEntry,
-};
+use super::{ImportListCount, ImportListItem, ImportQueueSummary, PendingFilterEntry};
 use crate::selection::SelectionSummary;
 use bae_store::WindowRead;
 
@@ -13,8 +11,7 @@ use bae_store::WindowRead;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListRead {
     pub windows: Vec<WindowRead<ImportListItem>>,
-    pub total_count: u64,
-    pub narrowed: Option<NarrowedCount>,
+    pub count: ImportListCount,
     pub summary: ImportQueueSummary,
     pub pending_filter_entries: Vec<PendingFilterEntry>,
     pub selection: SelectionSummary,
@@ -28,14 +25,7 @@ impl ImportListRead {
         pending_filter_entries: Vec<PendingFilterEntry>,
         selection: SelectionSummary,
     ) -> Self {
-        Self {
-            windows: vec![window],
-            total_count: count.rows,
-            narrowed: count.narrowed,
-            summary,
-            pending_filter_entries,
-            selection,
-        }
+        Self { windows: vec![window], count, summary, pending_filter_entries, selection }
     }
 }
 

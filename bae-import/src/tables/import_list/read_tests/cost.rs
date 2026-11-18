@@ -151,7 +151,7 @@ async fn import_list_search_window_cost() {
 pub(super) async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     let tables = crate::tables::ImportTables::new(db.clone());
     let list = tables.open_import_list(view).await.unwrap();
-    let total = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().total_count;
+    let total = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows;
     tables.close_import_list(list).await.unwrap();
     total
 }

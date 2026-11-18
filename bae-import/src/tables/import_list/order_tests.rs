@@ -54,7 +54,7 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
         .unwrap();
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group Group"]);
-    assert_eq!(read.total_count, 1);
+    assert_eq!(read.count.rows, 1);
     let ImportListItem::GroupHeader { expanded, entry_count, .. } = &read.windows[0].rows[0] else {
         panic!("the header is the one item");
     };
@@ -375,7 +375,7 @@ async fn a_jump_past_the_end_starts_at_the_last_item() {
     let window = lib.window_at(list, 5, 5).await;
     assert_eq!(items_sequence(&window.read.rows), ["candidate C"]);
     assert!(window.read.beyond.is_none(), "the list ends there");
-    assert_eq!(lib.read(list).await.total_count, 3);
+    assert_eq!(lib.read(list).await.count.rows, 3);
     let empty = Library::new().await;
     let none = empty.open(view(TriageTab::Pending)).await;
     assert!(empty.tables().import_key_at(none, 0).await.unwrap().is_none());

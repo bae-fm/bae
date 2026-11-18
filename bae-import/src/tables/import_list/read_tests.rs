@@ -517,12 +517,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     let before = query.next_inline().await.unwrap().unwrap();
     assert_eq!(before.rows, whole(&tables, list).await.len() as u64);
     let mut follows = async |what: &str| {
-        let fresh = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
-        let fresh = crate::list::ImportListCount {
-            rows: fresh.total_count,
-            narrowed: fresh.narrowed,
-            tabs: tables.load_tab_counts().await.unwrap(),
-        };
+        let fresh = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count;
         count_until(&mut query, &format!("{fresh:?} after {what}"), |count| *count == fresh).await
     };
     tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();

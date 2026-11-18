@@ -422,7 +422,7 @@ async fn a_release_gone_from_the_scan_names_no_row_until_it_is_back() {
     )
     .await;
     let read = lib.read_selecting(list, selected).await;
-    assert_eq!(read.total_count, 5);
+    assert_eq!(read.count.rows, 5);
     assert_eq!(read.selection.count, 1);
 }
 

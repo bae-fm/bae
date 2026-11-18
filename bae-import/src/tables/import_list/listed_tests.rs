@@ -542,7 +542,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
         .unwrap();
 
     assert_eq!(
-        tables.load_import_list_read(request(TriageTab::Done).await).await.unwrap().total_count,
+        tables.load_import_list_read(request(TriageTab::Done).await).await.unwrap().count.rows,
         0,
         "a failed attempt imported nothing, so nothing is done"
     );

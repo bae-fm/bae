@@ -94,7 +94,7 @@ async fn list_showing(
         ListWindow::Forward { from: None, until: None, limit: 50 },
     );
     let snapshot = until(&list, &[], |snapshot| {
-        snapshot.total_count == count
+        snapshot.count.rows == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
     })
     .await;
@@ -149,7 +149,7 @@ async fn a_bulk_action_runs_over_every_selected_row() {
         .unwrap();
 
     assert!(failures.is_empty(), "{failures:?}");
-    let settled = until(&list, &selected, |snapshot| snapshot.total_count == 0).await;
+    let settled = until(&list, &selected, |snapshot| snapshot.count.rows == 0).await;
     tab_counts_until(&services, |counts| counts.pending == 0 && counts.skipped == 3).await;
     assert_eq!(settled.selection.count, 3, "the selection keeps the skipped rows");
     assert!(selected_keys(&list, &selected).await.is_empty(), "the list shows none of them");
@@ -188,7 +188,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
         .unwrap();
     assert!(failures.is_empty(), "{failures:?}");
 
-    let left = until(&list, &picked, |snapshot| snapshot.total_count == 1).await;
+    let left = until(&list, &picked, |snapshot| snapshot.count.rows == 1).await;
     assert_eq!(left.selection.count, 2, "the hidden rows stay selected");
     assert!(selected_keys(&list, &picked).await.is_empty(), "no action applies to a hidden row");
 
@@ -226,7 +226,7 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
         .unwrap();
     assert_eq!(change.left.len(), 2, "the filter hides two selected rows");
     selected.retain(|key| !change.left.contains(key));
-    let narrowed = until(&list, &selected, |snapshot| snapshot.total_count == 1).await;
+    let narrowed = until(&list, &selected, |snapshot| snapshot.count.rows == 1).await;
     assert_eq!(narrowed.selection.count, 1);
     let kept = selected_keys(&list, &selected).await;
     assert_eq!(kept, selected);

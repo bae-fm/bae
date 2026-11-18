@@ -172,7 +172,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
     let across = read_list(&manager.store, list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
-    assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().total_count, 4);
+    assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows, 4);
     assert!(across.read.beyond.is_some(), "A lies past the window");
     // A key leads with the number of the part its row is in: C and B are
     // still uploading, A and D are not.
