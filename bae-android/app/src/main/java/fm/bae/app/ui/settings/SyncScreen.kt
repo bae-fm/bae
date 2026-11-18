@@ -216,11 +216,14 @@ private class PendingActionRunner(
      */
     private fun signIn(provider: BridgeCloudProvider) {
         if (provider == BridgeCloudProvider.S3) {
-            val location = session.configStore.config.value.storage
-            askingForKey =
-                checkNotNull(location as? BridgeStorageLocation.S3) {
-                    "an S3 sign-in record under the storage location $location"
-                }
+            // A record that doesn't match the location is a bug; the screen's scope reports a throw.
+            scope.launch {
+                val location = session.configStore.config.value.storage
+                askingForKey =
+                    checkNotNull(location as? BridgeStorageLocation.S3) {
+                        "an S3 sign-in record under the storage location $location"
+                    }
+            }
             return
         }
         val providers = actions.oauthProviders

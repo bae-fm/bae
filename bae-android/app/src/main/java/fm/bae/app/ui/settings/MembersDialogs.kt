@@ -13,9 +13,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
@@ -161,7 +163,14 @@ private fun InviteDialogsShown(
             if (invite == null) {
                 // Once the invite ends, its live query returns no invite, so the screen closes the dialog.
                 LaunchedEffect(read) { dialogs.shownInvite = null }
-            } else if (storage != null) {
+            } else if (storage == null) {
+                // A library with an invite always has a location: a reported bug, and the dialog doesn't open empty.
+                val bugs = LocalBugReports.current
+                LaunchedEffect(read) {
+                    bugs.reportShownInPlace("show an invite", LibraryWithoutStorage())
+                    dialogs.shownInvite = null
+                }
+            } else {
                 InviteShownDialog(
                     session = session,
                     invite = invite,

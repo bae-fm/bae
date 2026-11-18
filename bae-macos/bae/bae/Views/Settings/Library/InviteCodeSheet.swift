@@ -55,6 +55,18 @@ struct InviteCodeSheet: View {
         .onChange(of: read != nil && invite == nil) { _, ended in
             if ended { onDismiss() }
         }
+        // A library with an invite always has a location. One without is a
+        // bug: report it, and close the sheet instead of showing it empty.
+        .onChange(of: invite != nil && configStore.storage == nil) {
+            _,
+            missing in
+            guard missing else { return }
+            let detail = "a library with an open invite has no storage location"
+            logger.error("\(detail)")
+            CoreBugReporter()
+                .report(operation: "show an invite", detail: detail)
+            onDismiss()
+        }
         .onAppear { store.showInvite(inviteId) }
         .task { await store.holdInviteScreenSync() }
         .macAlert(
