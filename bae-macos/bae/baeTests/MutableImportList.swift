@@ -21,6 +21,7 @@ final class MutableImportList: @unchecked Sendable {
     private var views: [View] = []
     private var counts: [ImportFeed<BridgeListCount>] = []
     private var deliveredIds: Set<String> = []
+    private var answered: (shown: ClosedRange<Int>, start: Int)?
 
     init(items: [BridgeImportListItem]) {
         self.items = items
@@ -47,6 +48,22 @@ final class MutableImportList: @unchecked Sendable {
         }
         Wait.happened()
         return answer
+    }
+
+    /// The rows on screen a view last reported, and the first position of
+    /// the window the list answered them with; nil before a view opens.
+    func lastAnswer() -> (shown: ClosedRange<Int>, start: Int)? {
+        lock.withLock { answered }
+    }
+
+    /// Answer the rows on screen `shown` that a view reported with the window
+    /// around them, and record the answer as the last.
+    private func answer(_ shown: ClosedRange<Int>)
+        -> ListViewDelivery<BridgeImportListItem>
+    {
+        let window = delivery(of: shown)
+        lock.withLock { answered = (shown, window.start) }
+        return window
     }
 
     /// Replace the list's items and deliver the change to everything open.
@@ -118,11 +135,11 @@ final class MutableImportList: @unchecked Sendable {
             view: { [self] first, last in
                 let view = View(Int(first)...Int(last))
                 lock.withLock { views.append(view) }
-                view.feed.emit(delivery(of: view.shown))
+                view.feed.emit(answer(view.shown))
                 return ListViewQuery(
                     setVisible: { [self] first, last in
                         view.shown = Int(first)...Int(last)
-                        view.feed.emit(delivery(of: view.shown))
+                        view.feed.emit(answer(view.shown))
                     },
                     values: PulledValues(
                         read: { try await view.feed.next() },

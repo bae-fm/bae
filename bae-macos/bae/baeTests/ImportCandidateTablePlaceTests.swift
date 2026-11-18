@@ -75,7 +75,10 @@ struct ImportCandidateTablePlaceTests {
             try await Wait.until(notices: [.scroll(of: table)]) {
                 Self.topRow(of: table) == 30
             }
-            #expect(slot.list?.idAt(30) == Self.stableKey(30))
+            // The table scrolls back before the window of the rows on screen
+            // arrives: wait for the row on top to land.
+            try await Wait.until { slot.list?.idAt(30) == Self.stableKey(30) }
+            #expect(Self.topRow(of: table) == 30)
         }
     }
 
@@ -338,19 +341,31 @@ extension ImportCandidateTablePlaceTests {
         ) { table in
             let clipView = try #require(table.enclosingScrollView?.contentView)
             Self.scroll(table, toRow: 30)
-            // The window holds row 30 once the table reports it on screen.
+            // Wait for the list to hold a window the source sent for the rows
+            // on screen, one that starts above them. The window the list held
+            // before, from the top of the list, holds row 30 too, but the
+            // source moves the window off it as the table reports its rows.
             try await Wait.until {
-                slot.place?.position == 30 && slot.list?.idAt(30) != nil
+                guard slot.place?.position == 30,
+                    let answer = source.lastAnswer(),
+                    answer.shown.contains(30), answer.start < 29
+                else { return false }
+                return slot.list?.delivered?.start == answer.start
+                    && slot.list?.idAt(30) != nil
             }
             let key = slot.list?.idAt(30)
             let offset = table.rect(ofRow: 30).minY - clipView.bounds.minY
+            // The window's first row sits above the rows in view. As the
+            // table reports more of its rows on screen, the source starts the
+            // window higher, so every later window holds that row too.
+            let above = try #require(slot.list?.delivered?.start)
 
             var items = (0..<80).map(Self.candidateItem)
-            items[5] = Self.headerItem(5)
+            items[above] = Self.headerItem(above)
             await source.replaceItems(items)
             // The window holds row 30 again once the new rows land.
             try await Wait.untilLaidOut(table) {
-                table.rect(ofRow: 5).height
+                table.rect(ofRow: above).height
                     == ImportCandidateTableLayout.headerRowHeight
                     && slot.list?.idAt(30) != nil
             }
