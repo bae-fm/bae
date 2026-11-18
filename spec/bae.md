@@ -576,7 +576,7 @@ write that finds one id on both (rule 1); as for artists, bae has no merge
 action yet. Both rows stay, and every read shows the survivor, following a
 chain as artists do. The label each label shows as is kept on the device
 (`label_shown_as`), written in the same write as the label or the merge that
-decides it, so a screen reads it with a plain join. The artist edge cases hold for labels: two ids
+decides it. The artist edge cases hold for labels: two ids
 naming two labels name the MusicBrainz one, and a label whose name alone
 matches a label holding a different id of the same catalog is not that
 label. Two labels of one write sharing a MusicBrainz id and carrying
