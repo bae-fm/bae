@@ -54,7 +54,7 @@ export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.R
 export interface MacFieldRowProps { label?: string; labelWidth?: number; alignText?: boolean; children?: React.ReactNode }
 export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
 
-/** size alert is the button of a MacAlert; tinted is a secondary button on a filled notice. kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name). destructive colors the words danger. */
+/** size alert is the button of a MacAlert; tinted is a secondary button on a filled notice. kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name); beside words, label names a button whose words do not say what it does. destructive colors the words danger. */
 export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; tinted?: boolean; off?: boolean; /** It opens a menu, as Add library… does: read as a pop-up button. */ menu?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
@@ -67,7 +67,7 @@ export interface MacRadioProps { label: string; note?: string; checked?: boolean
 export declare function MacRadio(props: MacRadioProps): React.ReactElement;
 
 /** A pop-up menu showing its current choice. */
-export interface MacPopUpButtonProps { value?: string; width?: number; off?: boolean; children?: React.ReactNode; /** Its menu drawn open, as macOS opens it: the chosen item over the control. */ open?: boolean; /** The choices, comma-separated ("-" for a line). */ items?: string; chosen?: string; highlighted?: string; /** Keeps the menu inside a board's window: its right edge at the control's. */ menuInside?: boolean; /** The menu's top against the control's, when macOS would move it to stay on screen. */ menuTop?: number }
+export interface MacPopUpButtonProps { /** Names the pop-up by what it chooses (Import to, Album). */ label?: string; value?: string; width?: number; off?: boolean; children?: React.ReactNode; /** Its menu drawn open, as macOS opens it: the chosen item over the control. */ open?: boolean; /** The choices, comma-separated ("-" for a line). */ items?: string; chosen?: string; highlighted?: string; /** Keeps the menu inside a board's window: its right edge at the control's. */ menuInside?: boolean; /** The menu's top against the control's, when macOS would move it to stay on screen. */ menuTop?: number }
 export declare function MacPopUpButton(props: MacPopUpButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
@@ -137,9 +137,9 @@ export interface AndroidRowProps { title: string; tag?: string; subtitle?: strin
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
-export interface MacImportImagesProps { images?: string }
+export interface MacImportImagesProps { /** "artwork title|file name", comma-separated. */ images?: string }
 export declare function MacImportImages(props: MacImportImagesProps): React.ReactElement;
-export interface MacReleaseFilesProps { files?: string }
+export interface MacReleaseFilesProps { /** "name|size[|other]", comma-separated; `other` opens nothing. */ files?: string }
 export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
 export interface AndroidKeyboardProps {}
 export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;
@@ -360,10 +360,10 @@ export declare function MacImportRow(props: { title?: string; artist?: string; f
 export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
 /** Where an import goes: This Mac or Cloud. One stored choice, wherever it shows. */
 export declare function MacImportDestination(props: { to?: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
-export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; cover?: string; fields?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
+export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumOpen?: boolean; albumItems?: string; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file: string; entry?: boolean; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
-export declare function MacImportSheetCaption(props: { disc?: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
+export declare function MacImportSheetCaption(props: { disc: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;

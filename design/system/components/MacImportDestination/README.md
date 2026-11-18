@@ -1,6 +1,6 @@
 # MacImportDestination
 
-Where an import goes, as one pop-up button of two choices:
+Where an import goes, as one pop-up button named Import to, of two choices:
 
 - **This Mac:** the files stay on this Mac only.
 - **Cloud:** the files go to the cloud, so every device can play them.

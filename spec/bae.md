@@ -1813,6 +1813,12 @@ undo: to start over, the person applies a source again (a catalog release, or
 the files' tags) or clears the metadata, and the file decisions stay as they
 are.
 
+The pane's draft card shows the folder's audio on one line under the album's
+year: the codec, the sample rate, the bit depth (a lossy codec's bitrate in
+its place) and the channels, in the order a track's audio format lists them
+(§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no count of
+files or tracks: the table under it lists the tracks.
+
 The mapping table pairs each unit with its draft track. Each row shows the
 length its audio measures; where the track's source lists a length more than
 three seconds apart, that listed length follows it in the warning colour, so
@@ -2007,7 +2013,9 @@ tags hold, as the scan read them. When the person saves a draft naming a
 file the scan did not store as an image, an image in another format, or
 artwork the tags do not hold, bae refuses the draft, and the cover stays as
 it was. Dropping one of the folder's images on the pane's cover makes it the
-cover, or bae refuses it by the same rule. The artists' pictures
+cover, or bae refuses it by the same rule. The pane shows a plain tile in
+place of a missing cover, with no words and no invitation to add an image.
+The artists' pictures
 are not part of the draft: nothing before the import shows them, and many
 drafts are never imported, so a pick or an edit fetches none and the import
 fetches them (step 2). Every stored image is downscaled to at most 600 pixels

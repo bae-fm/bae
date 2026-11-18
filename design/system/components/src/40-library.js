@@ -131,7 +131,7 @@
           return h('span', { key: s, role: 'tab', 'aria-selected': s === section, className: cx('bae-m-section-tab', s === section && 'bae-m-section-tab-on') }, s);
         })),
         h('div', { className: 'bae-m-titlebar-trail' },
-          h('div', { className: cx('bae-m-search', props.searchFocused && 'bae-m-search-focused') }, h(Glyph, { set: 'mac', name: 'search', size: 14 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Search')),
+          h('div', { className: cx('bae-m-search', props.searchFocused && 'bae-m-search-focused') }, h(Glyph, { set: 'mac', name: 'search', size: 14 }), bareInput({ label: 'Search', placeholder: 'Search', value: props.search })),
           props.sync === 'moving' ? h('span', { className: 'bae-m-iconbtn', title: 'Activity' }, h(MacSpinner, { size: 14 })) : null,
           props.sync === 'attention' ? h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 17 })) : null,
           // A queue held (Paused, Waiting for network) with nothing moving: the button stays, as a pause symbol, so the hold can be seen.

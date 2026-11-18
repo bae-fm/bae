@@ -154,3 +154,7 @@
 .bae-m-box:has(.bae-m-popupbutton-open) { overflow: visible; }
 .bae-m-popupbutton-menu .bae-m-menu { min-width: 0; white-space: nowrap; }
 .bae-m-popupbutton-menu .bae-m-menu-item { padding-right: 16px; }
+/* A button that draws nothing of its own: its component's classes give it its look. */
+.bae-plainbtn { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+.bae-m-bareinput { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: none; outline: none; color: inherit; font: inherit; }
+.bae-m-bareinput::placeholder { color: var(--text-tertiary); }

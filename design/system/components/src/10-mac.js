@@ -151,7 +151,14 @@
       rest['aria-label'] = props.label || icon;
       return h('button', rest, icon === 'check' ? h(CheckGlyph) : h(CopyGlyph));
     }
+    // `label` beside words names a button whose words don't say what it does, such as the ⋯ that opens the Metadata menu.
+    if (props.children != null && props.label != null) rest['aria-label'] = props.label;
     return h('button', rest, props.children != null ? props.children : props.label);
+  }
+
+  // A text field drawn as the text it holds, with no box of its own, for a field that sits inside another control's frame (a search capsule, a filter row): `label` names it, `placeholder` shows while it is empty.
+  function bareInput(props) {
+    return h('input', { type: 'text', className: cx('bae-m-bareinput', props.className), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
   }
 
   // A code as people read it: groups of four characters with a space between, the way Settings shows a restore code. Spaces typed or pasted drop first.
@@ -215,8 +222,10 @@
         return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, checked: t === checked, highlighted: t === (props.highlighted || checked) }, t);
       }))));
   }
+  // `label` names the pop-up by what it chooses (Import to, Album), as the app's Picker is named by its title, and the value it shows is its value.
   function MacPopUpFace(props) {
-    return h('button', { type: 'button', className: 'bae-m-popupbutton', 'aria-haspopup': 'menu', disabled: !!props.off, style: props.width ? { width: Number(props.width), justifyContent: 'space-between' } : null },
+    var named = props.label != null ? { role: 'combobox', 'aria-label': props.label, 'aria-expanded': !!props.open } : { 'aria-haspopup': 'menu' };
+    return h('button', Object.assign({ type: 'button', className: 'bae-m-popupbutton', disabled: !!props.off, style: props.width ? { width: Number(props.width), justifyContent: 'space-between' } : null }, named),
       h('span', { className: 'bae-m-popupbutton-value' }, props.children),
       h('span', { className: 'bae-m-popupbutton-mark', 'aria-hidden': true }, h('svg', { width: 8, height: 12, viewBox: '0 0 8 12', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M1.5 4.5 4 2l2.5 2.5M1.5 7.5 4 10l2.5-2.5' }))));
   }

@@ -40,10 +40,9 @@
 .bae-m-idraft { display: flex; flex-direction: column; gap: 12px; padding: 16px 24px; }
 .bae-m-idraft-actions { display: flex; align-items: center; gap: 8px; }
 .bae-m-idraft-head { display: flex; gap: 12px; }
-.bae-m-idraft-well { width: 132px; height: 132px; flex: none; box-sizing: border-box; border-radius: 6px; background: var(--hover); border: 1px dashed var(--hairline-strong); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 8px; }
 .bae-m-idraft-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bae-m-idraft-title { font: 700 22px var(--font-sans); }
-.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; gap: 6px 12px; font: 400 13px var(--font-sans); }
+.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 6px 12px; font: 400 13px var(--font-sans); }
 .bae-m-idraft-grid > .bae-muted { text-align: right; font-size: 11.5px; }
 .bae-m-idraft-records { display: flex; gap: 10px; align-items: center; padding-top: 8px; border-top: 1px solid var(--hairline); }
 /* The link-out arrow is larger than the text beside it; held to the text's line height, it never makes the line taller. */
@@ -82,3 +81,22 @@
 .bae-m-bulkrow-off { opacity: 0.4; }
 .bae-m-prow-catalog { font-weight: 400; font-size: 11px; }
 .bae-m-idraft-album { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+/* The import pane's own buttons, drawn with bae-plainbtn: each takes the box its words and glyphs need. */
+.bae-m-igh { width: 100%; box-sizing: border-box; text-align: start; }
+.bae-m-ifl-tab, .bae-m-ifl-reveal { flex: none; display: inline-flex; align-items: center; }
+.bae-m-idraft-artist { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.bae-m-iimage { display: block; border-radius: 6px; }
+.bae-m-ifile { width: 100%; box-sizing: border-box; text-align: start; }
+.bae-m-fo-sec { width: 100%; box-sizing: border-box; text-align: start; }
+.bae-m-fo-back { display: flex; align-items: center; gap: 4px; }
+.bae-m-fo-close { flex: none; display: inline-flex; align-items: flex-start; }
+.bae-m-reclink { text-decoration: none; }
+/* A field drawn as the value it holds: the field's fill shows under the pointer and while it has focus. It pulls out by its padding so its words keep the column's edge. */
+.bae-m-icell { box-sizing: border-box; min-width: 0; width: calc(100% + 6px); height: 22px; margin: 0 0 0 -6px; padding: 0 6px; border: 0; border-radius: 5px; background: none; outline: none; color: var(--text-primary); font: inherit; text-overflow: ellipsis; }
+.bae-m-icell::placeholder { color: var(--text-tertiary); }
+.bae-m-icell:hover, .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
+.bae-m-icell.bae-m-idraft-title { height: 30px; font: 700 22px var(--font-sans); }
+.bae-m-icell.bae-m-idraft-year { color: var(--text-tertiary); }
+.bae-m-idraft-cell { display: flex; align-items: center; min-width: 0; }
+.bae-m-idraft-labelrow { flex: 1; min-width: 0; display: flex; gap: var(--space-related); }
+.bae-m-itable-cell { display: flex; align-items: center; min-width: 0; }
