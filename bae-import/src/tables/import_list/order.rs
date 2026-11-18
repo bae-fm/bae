@@ -16,7 +16,7 @@
 
 use super::views::tab_column;
 use super::*;
-use crate::{FolderReleaseDecisionKey, ImportListOrder, TriageTab};
+use crate::{ImportListOrder, TriageTab};
 #[cfg(test)]
 use bae_store::list_windows::Keyed;
 use bae_store::list_windows::{OrderKey, SortValue};
@@ -275,17 +275,6 @@ pub(super) fn uploading_cte() -> String {
     )
 }
 
-/// Which rows a stream of a list's items runs over.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum Shown<'a> {
-    /// What the list shows under its view, its tab's rows read in order and
-    /// each tested; Found's in runs that pass no folded group's members.
-    View,
-    /// What `tab` shows with the filters cleared and the group `opened`
-    /// folded open: the view a release is revealed in, its other folds kept.
-    Revealing { opened: Option<&'a FolderReleaseDecisionKey> },
-}
-
 /// One part of a tab's run of items: Done's uploads, Done's rest, or a whole
 /// tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -296,12 +285,13 @@ enum Part {
 }
 
 /// A stream of one list's items in one tab, in its order: the parts it runs
-/// in, the rows it shows, and what each statement over it binds.
-pub(super) struct Items<'a> {
+/// in, the rows it shows, and what each statement over it binds. The stream
+/// holds what the list shows under its view, its tab's rows read in order
+/// and each tested; Found's in runs that pass no folded group's members.
+pub(super) struct Items {
     list: ImportListId,
     tab: TriageTab,
     order: ImportListOrder,
-    shown: Shown<'a>,
 }
 
 /// A statement over one part of a stream: what it starts with, its rows, and
@@ -351,14 +341,9 @@ impl RangeStatement {
     }
 }
 
-impl<'a> Items<'a> {
-    pub(super) fn new(
-        list: ImportListId,
-        tab: TriageTab,
-        order: ImportListOrder,
-        shown: Shown<'a>,
-    ) -> Self {
-        Self { list, tab, order, shown }
+impl Items {
+    pub(super) fn new(list: ImportListId, tab: TriageTab, order: ImportListOrder) -> Self {
+        Self { list, tab, order }
     }
 
     /// The parts the tab runs in, in order.
@@ -372,56 +357,25 @@ impl<'a> Items<'a> {
     /// The rows the stream shows, over the alias `i`, and the condition on
     /// them past its source.
     fn source(&self) -> (&'static str, &'static str) {
-        match self.shown {
-            Shown::View => (
-                "import_list_item AS i",
-                "i.list_id = :list AND i.tab = :tab",
-            ),
-            Shown::Revealing { .. } => (
-                "import_list_placement AS i",
-                "i.tab = :tab \
-                 AND (i.item = 'group' OR i.group_folder IS NULL \
-                      OR (i.watched_folder_path IS :opened_root AND i.group_folder IS :opened_group) \
-                      OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
-                                     WHERE c.list_id = :list \
-                                       AND c.watched_folder_path = i.watched_folder_path \
-                                       AND c.group_folder = i.group_folder))",
-            ),
-        }
+        ("import_list_item AS i", "i.list_id = :list AND i.tab = :tab")
     }
 
     /// The two sources each run of Found reads: the list's rows, and the
     /// members under their headers, each member in its header's place. A run
-    /// reads a header's members only while the list does not fold the header,
-    /// or while the header is the group the person is opening. The function returns
-    /// `None` for Done and Skipped, which hold no group.
+    /// reads a header's members only while the list does not fold the header.
+    /// The function returns `None` for Done and Skipped, which hold no group.
     fn run_sources(&self) -> Option<(&'static str, &'static str)> {
         if self.tab != TriageTab::Pending {
             return None;
         }
-        match self.shown {
-            Shown::View => Some((
-                "import_list_item AS p WHERE p.list_id = :list AND p.tab = :tab",
-                "import_list_judged AS h \
-                 CROSS JOIN import_list_item AS m \
-                     ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
-                    AND m.group_folder = h.key AND m.item <> 'group' \
-                 WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded",
-            )),
-            Shown::Revealing { .. } => Some((
-                "import_list_placement AS p WHERE p.tab = :tab",
-                "import_list_placement AS h \
-                 CROSS JOIN import_list_placement AS m \
-                     ON m.watched_folder_path = h.watched_folder_path \
-                    AND m.group_folder = h.key AND m.item <> 'group' \
-                 WHERE h.tab = :tab AND h.item = 'group' \
-                   AND ((h.watched_folder_path IS :opened_root AND h.key IS :opened_group) \
-                        OR NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
-                                       WHERE c.list_id = :list \
-                                         AND c.watched_folder_path = h.watched_folder_path \
-                                         AND c.group_folder = h.key))",
-            )),
-        }
+        Some((
+            "import_list_item AS p WHERE p.list_id = :list AND p.tab = :tab",
+            "import_list_judged AS h \
+             CROSS JOIN import_list_item AS m \
+                 ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
+                AND m.group_folder = h.key AND m.item <> 'group' \
+             WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded",
+        ))
     }
 
     /// An expression over the window's row aliased `w`, whose key columns
@@ -503,20 +457,8 @@ impl<'a> Items<'a> {
         extra: &[(&str, &dyn ToSql)],
         run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
-        let (opened_root, opened_group) = match self.shown {
-            Shown::Revealing { opened: Some(opened) } => (
-                Some(coven::path_bytes(&opened.watched_folder_path)),
-                Some(opened.relative_folder.as_bytes().to_vec()),
-            ),
-            Shown::Revealing { opened: None } | Shown::View => (None, None),
-        };
         let tab = tab_column(self.tab);
-        let mut named: Vec<(&str, &dyn ToSql)> = vec![
-            (":list", &self.list.0),
-            (":tab", &tab),
-            (":opened_root", &opened_root),
-            (":opened_group", &opened_group),
-        ];
+        let mut named: Vec<(&str, &dyn ToSql)> = vec![(":list", &self.list.0), (":tab", &tab)];
         named.extend_from_slice(extra);
         let bound: Vec<(&str, &dyn ToSql)> =
             named.into_iter().filter(|(name, _)| names(statement, name)).collect();

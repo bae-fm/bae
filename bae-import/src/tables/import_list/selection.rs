@@ -247,7 +247,7 @@ impl ImportTables {
                 if list_row(&sql, list)?.is_none() {
                     return Ok(None);
                 }
-                Ok(Some(Items::new(list, tab, order, Shown::View).keys_between(&sql, &from, &to)?))
+                Ok(Some(Items::new(list, tab, order).keys_between(&sql, &from, &to)?))
             })
             .await?
             .ok_or(ImportListError::Closed(list))

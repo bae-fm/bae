@@ -63,7 +63,7 @@ pub(super) fn read_window(
     list: &ListRow,
     window: &ListWindow,
 ) -> Result<ImportWindow, DbError> {
-    let items = list.items(Shown::View);
+    let items = list.items();
     let Some(range) = items.range_statement(window)? else {
         return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
     };

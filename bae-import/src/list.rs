@@ -163,14 +163,13 @@ impl ImportListItem {
     }
 }
 
-/// The list view and place that reveal one candidate at its current
-/// placement.
+/// The list view that reveals one candidate at its current placement: its
+/// tab, with the filters cleared and the group `group_key` opened.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateListLocation {
     pub tab: TriageTab,
     /// The Pending group that has to be open for this candidate to be visible.
     pub group_key: Option<FolderReleaseDecisionKey>,
-    pub visible_position: u64,
 }
 
 /// Whether bae watches any folder, whether Found has groups, and the

@@ -49,7 +49,7 @@ mod writes;
 use super::*;
 use crate::list::{ImportListId, ImportListView};
 use crate::PendingFilter;
-use order::{Items, Shown};
+use order::Items;
 
 pub use folder_images::{
     FolderImageFocus, FolderImages, FolderImagesRequest, FolderImagesSnapshot,
@@ -132,8 +132,8 @@ struct ListRow {
 }
 
 impl ListRow {
-    fn items<'a>(&'a self, shown: Shown<'a>) -> Items<'a> {
-        Items::new(self.id, self.view.tab, self.view.order, shown)
+    fn items(&self) -> Items {
+        Items::new(self.id, self.view.tab, self.view.order)
     }
 }
 

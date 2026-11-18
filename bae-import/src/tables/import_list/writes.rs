@@ -6,7 +6,6 @@
 //! selected rows leave the selection, and a fold answers which selected rows
 //! it hid.
 
-use super::order::Shown;
 use super::selection::{shown_among, unshown_among};
 use super::views::{order_column, tab_column};
 use super::*;
@@ -21,7 +20,7 @@ fn opening(
     selected: &[CandidateKey],
 ) -> Result<ImportListOpening, DbError> {
     let row = list_row(sql, list)?.expect("the write found the list open");
-    Ok(match row.items(Shown::View).position_of_first(sql, selected)? {
+    Ok(match row.items().position_of_first(sql, selected)? {
         Some(position) => ImportListOpening::At { position },
         None => ImportListOpening::Top,
     })

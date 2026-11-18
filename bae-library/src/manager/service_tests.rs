@@ -179,9 +179,7 @@ async fn done_runs_the_releases_still_uploading_first() {
     assert_eq!(part(1), bae_store::list_windows::SortValue::Integer(1), "D is in the second");
     assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
-    let location =
-        tables.locate_import_candidate(list, &key("A")).await.unwrap().expect("A is on Done");
-    assert_eq!(location.visible_position, 3);
+    assert_eq!(tables.import_candidate_position(list, &key("A")).await.unwrap(), Some(3));
     let selected = vec![key("A"), key("B")];
     // Changing only the order returns no opening, so the test first sets a
     // search that matches no release, then clears it to open the view.

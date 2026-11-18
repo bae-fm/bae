@@ -230,28 +230,17 @@ pub(super) fn listed(
     Ok(Listed { total: total(items)?, narrowed })
 }
 
-/// The view of a list in which `locate` finds a candidate's place.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum Placing {
-    /// The view that reveals it: its tab with the filters cleared and its
-    /// group folded open.
-    Revealed,
-    /// The view the list shows now, its filters and folds as they are.
-    AsShown,
-}
-
-/// Where the candidate at `key` sits in `list` under `placing`: `None` for a
-/// candidate that view does not show, and `None` around it all once the list
-/// is closed.
-pub(super) fn locate(
+/// The view of `list` that reveals the candidate at `key`: its tab, with the
+/// filters cleared and its group opened. `None` for a candidate no tab
+/// lists, and `None` around it all once the list is closed.
+pub(super) fn reveal_view(
     sql: &SqlReadContext<'_>,
     list: ImportListId,
     key: &CandidateKey,
-    placing: Placing,
 ) -> Result<Option<Option<ImportCandidateListLocation>>, DbError> {
-    let Some(row) = super::list_row(sql, list)? else {
+    if super::list_row(sql, list)?.is_none() {
         return Ok(None);
-    };
+    }
     let Some((root, tab, group_folder)) = sql
         .query_row(
             "SELECT watched_folder_path, tab, group_folder FROM import_list_placement \
@@ -269,21 +258,27 @@ pub(super) fn locate(
     else {
         return Ok(Some(None));
     };
-    let tab = tab_of(&tab)?;
-    let group = group_folder.map(|folder| crate::FolderReleaseDecisionKey {
-        watched_folder_path: root,
-        relative_folder: folder,
-    });
-    let (tab, shown) = match placing {
-        Placing::Revealed => (tab, Shown::Revealing { opened: group.as_ref() }),
-        Placing::AsShown => (row.view.tab, Shown::View),
-    };
-    let position = Items::new(list, tab, row.view.order, shown).position_of(sql, key)?;
-    Ok(Some(position.map(|position| ImportCandidateListLocation {
-        tab,
-        group_key: group,
-        visible_position: position,
+    Ok(Some(Some(ImportCandidateListLocation {
+        tab: tab_of(&tab)?,
+        group_key: group_folder.map(|folder| crate::FolderReleaseDecisionKey {
+            watched_folder_path: root,
+            relative_folder: folder,
+        }),
     })))
+}
+
+/// Where the candidate at `key` sits in what `list` shows under its view
+/// now: `None` for a candidate the view does not show, and `None` around it
+/// all once the list is closed.
+pub(super) fn locate(
+    sql: &SqlReadContext<'_>,
+    list: ImportListId,
+    key: &CandidateKey,
+) -> Result<Option<Option<u64>>, DbError> {
+    let Some(row) = super::list_row(sql, list)? else {
+        return Ok(None);
+    };
+    Ok(Some(row.items().position_of(sql, key)?))
 }
 
 /// The first candidate being identified in `list`'s order, every tab's rows
@@ -333,8 +328,8 @@ impl ImportTables {
         self.store.subscribe(move |sql| tab_counts_on(&sql))
     }
 
-    /// Where the candidate at `candidate_key` sits in the list `list` once
-    /// revealed: on the tab its placement puts it on, with the filters
+    /// The view of the list `list` that reveals the candidate at
+    /// `candidate_key`: the tab its placement puts it on, with the filters
     /// cleared and its group opened, the list's other folds kept. `None` when
     /// the list lists no such candidate.
     pub async fn locate_import_candidate(
@@ -344,7 +339,7 @@ impl ImportTables {
     ) -> Result<Option<crate::ImportCandidateListLocation>, ImportListError> {
         let candidate_key = candidate_key.clone();
         self.store
-            .read(move |sql| locate(&sql, list, &candidate_key, Placing::Revealed))
+            .read(move |sql| reveal_view(&sql, list, &candidate_key))
             .await?
             .ok_or(ImportListError::Closed(list))
     }
@@ -358,9 +353,8 @@ impl ImportTables {
     ) -> Result<Option<u64>, ImportListError> {
         let candidate_key = candidate_key.clone();
         self.store
-            .read(move |sql| locate(&sql, list, &candidate_key, Placing::AsShown))
+            .read(move |sql| locate(&sql, list, &candidate_key))
             .await?
-            .map(|location| location.map(|location| location.visible_position))
             .ok_or(ImportListError::Closed(list))
     }
 

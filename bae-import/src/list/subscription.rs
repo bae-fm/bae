@@ -153,8 +153,8 @@ impl LiveImportList {
         Ok(self.tables.load_import_list_selected(self.list, selected, Some(action)).await?)
     }
 
-    /// The view and place that reveal the candidate at `candidate_key` at its
-    /// current placement: its tab, with the filters cleared and its group
+    /// The view that reveals the candidate at `candidate_key` at its current
+    /// placement: its tab, with the filters cleared and its group
     /// opened. `None` when the list lists no such candidate.
     pub async fn locate_candidate(
         &self,

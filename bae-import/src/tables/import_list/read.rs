@@ -31,7 +31,7 @@ fn position_on(
     key: &OrderKey,
 ) -> Result<u64, DbError> {
     let row = list_row(sql, list)?.ok_or_else(|| closed(list))?;
-    row.items(Shown::View).rows_before(sql, key)
+    row.items().rows_before(sql, key)
 }
 
 impl ImportTables {
@@ -120,7 +120,7 @@ impl ImportTables {
                 let Some(row) = list_row(&sql, list)? else {
                     return Ok(None);
                 };
-                Ok(Some(row.items(Shown::View).key_at(&sql, position)?))
+                Ok(Some(row.items().key_at(&sql, position)?))
             })
             .await?
             .ok_or(ImportListError::Closed(list))

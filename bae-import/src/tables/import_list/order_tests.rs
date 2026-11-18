@@ -333,8 +333,7 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
         ]
     );
     let list = lib.open(view(TriageTab::Pending)).await;
-    let location = tables.locate_import_candidate(list, &lib.key("Single")).await.unwrap().unwrap();
-    assert_eq!(location.visible_position, 4);
+    assert_eq!(tables.import_candidate_position(list, &lib.key("Single")).await.unwrap(), Some(4));
 }
 
 #[tokio::test]
@@ -591,7 +590,7 @@ impl ImportTables {
         self.store
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
-                row.items(Shown::View).window_plans(&sql)
+                row.items().window_plans(&sql)
             })
             .await
     }

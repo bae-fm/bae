@@ -500,7 +500,6 @@ async fn candidate_location_opens_only_its_group() {
         .expect("the candidate is in Pending");
     assert_eq!(location.tab, TriageTab::Pending);
     assert_eq!(location.group_key, Some(fold("Target")));
-    assert_eq!(location.visible_position, 2);
 }
 
 #[tokio::test]
@@ -519,7 +518,6 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
         .expect("the imported candidate is in Done");
     assert_eq!(location.tab, TriageTab::Done);
     assert_eq!(location.group_key, None);
-    assert_eq!(location.visible_position, 0);
     assert_eq!(tables.locate_import_candidate(list, &lib.key("Nowhere")).await.unwrap(), None);
 }
 

@@ -609,9 +609,9 @@ impl ImportTables {
             .read(move |sql| {
                 let row = list_row(&sql, list)?.expect("the test's list is open");
                 let everything = bae_store::ListWindow::top(u64::MAX);
-                let keys = |shown| -> Result<Vec<String>, DbError> {
+                let keys = || -> Result<Vec<String>, DbError> {
                     Ok(row
-                        .items(shown)
+                        .items()
                         .range(&sql, &everything)?
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
@@ -636,7 +636,7 @@ impl ImportTables {
                         .collect::<Result<_, DbError>>()?,
                     crate::TriageTab::Done | crate::TriageTab::Skipped => return Ok(None),
                 };
-                Ok(Some((keys(Shown::View)?, other)))
+                Ok(Some((keys()?, other)))
             })
             .await
     }
