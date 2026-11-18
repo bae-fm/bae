@@ -288,21 +288,48 @@ CREATE TABLE IF NOT EXISTS import_candidate_match_medium (
     CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
 ) STRICT;
 
+-- Each list of releases whose cards the layout write stores: an owner's own
+-- list (a candidate's verdict's, a run's or a typed search's), or the list of
+-- one cell of a verdict's or a run's ledger, named by the cell's `step`,
+-- `position` and `cell`, which are all NULL for the owner's own list. The
+-- write that lays a list out replaces its row, and the list's cards, card
+-- text and row statements go with it.
+CREATE TABLE IF NOT EXISTS import_candidate_card_list (
+    list         INTEGER PRIMARY KEY,
+    content_hash TEXT,
+    identify_run INTEGER,
+    search_run   INTEGER UNIQUE,
+    step         TEXT CHECK (step <> ''),
+    position     INTEGER CHECK (position >= 0),
+    cell         INTEGER CHECK (cell >= 0),
+    UNIQUE (content_hash, step, position, cell),
+    UNIQUE (identify_run, step, position, cell),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
+    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
+    CHECK ((step IS NULL) = (position IS NULL) AND (step IS NULL) = (cell IS NULL)),
+    CHECK (search_run IS NULL OR step IS NULL),
+    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+) STRICT;
+
+-- A verdict-shaped owner has one list of its own; the table's UNIQUE
+-- constraints keep its cells' lists one each, and a search has only its own.
+CREATE UNIQUE INDEX IF NOT EXISTS import_candidate_card_list_own_verdict
+    ON import_candidate_card_list (content_hash) WHERE step IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS import_candidate_card_list_own_run
+    ON import_candidate_card_list (identify_run) WHERE step IS NULL;
+
 -- Each card of a list as the layout write placed it by the identify grouping
 -- rules: its place among the list's cards (`card_order`, 0 first), the id
 -- that names it, the list place of the release whose cover it shows, the
 -- years its releases state, the catalogs it names as a JSON array of
 -- `{catalog, group_url, unread}`, and, for a card that holds one section per
 -- album, each section's album heading as a JSON array of `{title, catalog,
--- group_url, unread}` in section order (NULL for a card of one section). A
--- list and `card` are as `import_candidate_card_text` names them.
+-- group_url, unread}` in section order (NULL for a card of one section).
+-- `card` is the card's number in `import_candidate_match.card`.
 CREATE TABLE IF NOT EXISTS import_candidate_card (
-    content_hash TEXT,
-    identify_run INTEGER,
-    search_run   INTEGER,
-    step         TEXT NOT NULL,
-    position     INTEGER NOT NULL CHECK (position >= 0),
-    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    list         INTEGER NOT NULL
+        REFERENCES import_candidate_card_list (list) ON DELETE CASCADE,
     card         INTEGER NOT NULL CHECK (card >= 0),
     card_order   INTEGER NOT NULL CHECK (card_order >= 0),
     id           TEXT NOT NULL CHECK (id <> ''),
@@ -311,42 +338,22 @@ CREATE TABLE IF NOT EXISTS import_candidate_card (
     year_max     INTEGER,
     sources      TEXT NOT NULL CHECK (json_valid(sources)),
     headings     TEXT CHECK (json_valid(headings)),
-    UNIQUE (content_hash, step, position, cell, card),
-    UNIQUE (identify_run, step, position, cell, card),
-    UNIQUE (search_run, step, position, cell, card),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
-    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
-    CHECK (step <> '' OR (position = 0 AND cell = 0)),
-    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+    UNIQUE (list, card)
 ) STRICT;
 
 -- What each card of a list says, which the layout write stores when it
 -- groups the list's releases into rows and cards: the titles, the artists
--- and the labels the card names, each in `ordinal` order. A list is the
--- owner's own (`step` empty, `position` and `cell` 0) or one cell of its
--- ledger (that cell's key). `card` is the card's number in
--- `import_candidate_match.card`. `text` is the title or label as written, or
--- an artist's credit line as JSON.
+-- and the labels the card names, each in `ordinal` order. `card` is the
+-- card's number in `import_candidate_match.card`. `text` is the title or
+-- label as written, or an artist's credit line as JSON.
 CREATE TABLE IF NOT EXISTS import_candidate_card_text (
-    content_hash TEXT,
-    identify_run INTEGER,
-    search_run   INTEGER,
-    step         TEXT NOT NULL,
-    position     INTEGER NOT NULL CHECK (position >= 0),
-    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    list         INTEGER NOT NULL
+        REFERENCES import_candidate_card_list (list) ON DELETE CASCADE,
     card         INTEGER NOT NULL CHECK (card >= 0),
     kind         TEXT NOT NULL CHECK (kind IN ('title', 'artist', 'label')),
     ordinal      INTEGER NOT NULL CHECK (ordinal >= 0),
     text         TEXT NOT NULL CHECK (text <> ''),
-    UNIQUE (content_hash, step, position, cell, card, kind, ordinal),
-    UNIQUE (identify_run, step, position, cell, card, kind, ordinal),
-    UNIQUE (search_run, step, position, cell, card, kind, ordinal),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
-    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
-    CHECK (step <> '' OR (position = 0 AND cell = 0)),
-    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+    UNIQUE (list, card, kind, ordinal)
 ) STRICT;
 
 -- What a row lists where its records state a fact, as `Pressing::statements`
@@ -359,12 +366,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_card_text (
 -- 0. `value` is the year, the name, the catalog number or the barcode as
 -- written, or a JSON area or list of media counts.
 CREATE TABLE IF NOT EXISTS import_candidate_row_statement (
-    content_hash TEXT,
-    identify_run INTEGER,
-    search_run   INTEGER,
-    step         TEXT NOT NULL,
-    position     INTEGER NOT NULL CHECK (position >= 0),
-    cell         INTEGER NOT NULL CHECK (cell >= 0),
+    list         INTEGER NOT NULL
+        REFERENCES import_candidate_card_list (list) ON DELETE CASCADE,
     listing      TEXT NOT NULL CHECK (listing IN ('offered', 'narrowed_out', 'returned', 'answered')),
     pressing     INTEGER NOT NULL CHECK (pressing >= 0),
     fact         TEXT NOT NULL
@@ -374,13 +377,6 @@ CREATE TABLE IF NOT EXISTS import_candidate_row_statement (
     value        TEXT NOT NULL CHECK (value <> ''),
     catalogs     TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(catalogs) AND json_type(catalogs) = 'array'),
-    UNIQUE (content_hash, step, position, cell, listing, pressing, fact, line, ordinal),
-    UNIQUE (identify_run, step, position, cell, listing, pressing, fact, line, ordinal),
-    UNIQUE (search_run, step, position, cell, listing, pressing, fact, line, ordinal),
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (identify_run) REFERENCES import_candidate_verdict (identify_run) ON DELETE CASCADE,
-    FOREIGN KEY (search_run) REFERENCES import_candidate_search (search_run) ON DELETE CASCADE,
-    CHECK (step <> '' OR (position = 0 AND cell = 0)),
-    CHECK (line = 0 OR fact IN ('label_name', 'catalog_number')),
-    CHECK ((content_hash IS NOT NULL) + (identify_run IS NOT NULL) + (search_run IS NOT NULL) = 1)
+    UNIQUE (list, listing, pressing, fact, line, ordinal),
+    CHECK (line = 0 OR fact IN ('label_name', 'catalog_number'))
 ) STRICT;

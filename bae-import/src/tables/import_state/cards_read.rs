@@ -41,9 +41,9 @@ use std::str::FromStr;
 /// list nothing judges), and the two flags `chosen` and `pick_being_read` of
 /// what the list's candidate picked ([`choice_columns_sql`]). `records`
 /// selects the same releases' `ord` and `record` (the release as
-/// [`match_record_sql`] holds it, which a card carries whole). `text_owner`
-/// is a condition over `t` selecting the list's rows of the card, card text
-/// and row statement tables.
+/// [`match_record_sql`] holds it, which a card carries whole). `list` is the
+/// SQL of the list's `import_candidate_card_list.list`, which names its rows
+/// of the card, card text and row statement tables.
 ///
 /// The statement names each of its WITH names as few times as it can, because
 /// SQLite copies a WITH name's whole definition at every reference, and a
@@ -51,7 +51,7 @@ use std::str::FromStr;
 /// nested too deep" once its cursors pass `SQLITE_LIMIT_EXPR_DEPTH` (1000).
 /// So the releases' JSON comes in at the two places that carry it, through
 /// `records`, never through `recs`.
-pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> String {
+pub(super) fn cards_sql(members: &str, records: &str, list: &str) -> String {
     format!(
         "(WITH \
           recs AS (SELECT m.* FROM ({members}) AS m), \
@@ -100,7 +100,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
                                  'value', t.value, 'catalogs', json(t.catalogs)) \
                                  ORDER BY t.line, t.ordinal) \
                              FROM import_candidate_row_statement AS t \
-                             WHERE {text_owner} AND t.listing = p.kind \
+                             WHERE t.list = {list} AND t.listing = p.kind \
                                AND t.pressing = p.pressing))) AS row \
               FROM pressings AS p \
               LEFT JOIN notes AS n \
@@ -124,13 +124,13 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
               'id', c.id, \
               'titles', json((SELECT json_group_array(t.text ORDER BY t.ordinal) \
                               FROM import_candidate_card_text AS t \
-                              WHERE {text_owner} AND t.card = c.card AND t.kind = 'title')), \
+                              WHERE t.list = {list} AND t.card = c.card AND t.kind = 'title')), \
               'artists', json((SELECT json_group_array(t.text ORDER BY t.ordinal) \
                                FROM import_candidate_card_text AS t \
-                               WHERE {text_owner} AND t.card = c.card AND t.kind = 'artist')), \
+                               WHERE t.list = {list} AND t.card = c.card AND t.kind = 'artist')), \
               'labels', json((SELECT json_group_array(t.text ORDER BY t.ordinal) \
                               FROM import_candidate_card_text AS t \
-                              WHERE {text_owner} AND t.card = c.card AND t.kind = 'label')), \
+                              WHERE t.list = {list} AND t.card = c.card AND t.kind = 'label')), \
               'cover', json((SELECT json(rc.record) FROM ({records}) AS rc \
                              WHERE rc.ord = c.cover_ord)), \
               'leads', json((SELECT json_group_array(json(lead.value)) \
@@ -140,7 +140,7 @@ pub(super) fn cards_sql(members: &str, records: &str, text_owner: &str) -> Strin
               'year_min', c.year_min, 'year_max', c.year_max, \
               'sections', json(cs.sections)) \
               ORDER BY c.card_order) \
-          FROM (SELECT t.* FROM import_candidate_card AS t WHERE {text_owner}) AS c \
+          FROM (SELECT t.* FROM import_candidate_card AS t WHERE t.list = {list}) AS c \
           JOIN card_secs AS cs ON cs.card = c.card)",
         lead_held = pressing_held_sql("r.source", "r.release_id"),
     )
@@ -222,7 +222,10 @@ pub(super) fn search_cards_sql(search_run: &str) -> String {
             "SELECT {ord} AS ord, {record} AS record {from}",
             record = match_record_sql("found"),
         ),
-        &format!("t.search_run = {search_run} AND t.step = ''"),
+        &format!(
+            "(SELECT l.list FROM import_candidate_card_list AS l \
+              WHERE l.search_run = {search_run})"
+        ),
     )
 }
 
@@ -258,7 +261,10 @@ pub(super) fn cell_cards_sql(lookup: &str) -> String {
             "SELECT found.ordinal AS ord, {record} AS record {from}",
             record = match_record_sql("matched"),
         ),
-        &owner.replace("{table}", "t"),
+        &format!(
+            "(SELECT l.list FROM import_candidate_card_list AS l WHERE {})",
+            owner.replace("{table}", "l")
+        ),
     )
 }
 
@@ -299,7 +305,10 @@ pub(super) fn verdict_cards_sql(verdict: &str) -> String {
             "SELECT found.position AS ord, {record} AS record {from}",
             record = match_record_sql("found"),
         ),
-        &format!("{} AND t.step = ''", owner.replace("{table}", "t")),
+        &format!(
+            "(SELECT l.list FROM import_candidate_card_list AS l WHERE {} AND l.step IS NULL)",
+            owner.replace("{table}", "l")
+        ),
     );
     format!(
         "(WITH listed_cards AS MATERIALIZED (SELECT {cards} AS json), \

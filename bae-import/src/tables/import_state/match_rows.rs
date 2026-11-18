@@ -51,21 +51,21 @@ impl MatchOwner<'_> {
         }
     }
 
-    fn content_hash(self) -> Option<String> {
+    pub(super) fn content_hash(self) -> Option<String> {
         match self {
             Self::Verdict(owner) => owner.content_hash(),
             Self::Search(_) => None,
         }
     }
 
-    fn run(self) -> Option<i64> {
+    pub(super) fn run(self) -> Option<i64> {
         match self {
             Self::Verdict(owner) => owner.run(),
             Self::Search(_) => None,
         }
     }
 
-    fn search(self) -> Option<i64> {
+    pub(super) fn search(self) -> Option<i64> {
         match self {
             Self::Verdict(_) => None,
             Self::Search(search) => Some(search),

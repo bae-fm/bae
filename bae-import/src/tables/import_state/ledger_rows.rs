@@ -15,8 +15,9 @@ pub(super) const SQL: &str = include_str!("ledger_rows.sql");
 
 use super::cards_read::{cell_cards_sql, groups_from, StoredCard};
 use super::column_list::Columns;
-use super::layout::{store_list_text, ListLayout, ListOwner};
+use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList};
 use super::lookup_failure_columns::{failure_columns, failure_of};
+use super::match_rows::MatchOwner;
 use super::verdict_rows::Owner;
 use super::*;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
@@ -119,18 +120,23 @@ pub(super) fn step_columns<'a>(
 }
 
 /// Clear the ledger rows `owner` holds; the lookups and the releases they
-/// found go with their rows.
+/// found go with their rows, and each cell's list with its cards.
 pub(super) fn delete_ledger(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
     for table in [
         "import_candidate_lookup_value",
         "import_candidate_lookup_provider",
         "import_candidate_lookup_isrc",
         "import_candidate_lookup_offered_catalog",
-        "import_candidate_card_text",
-        "import_candidate_row_statement",
     ] {
         sql.execute(&format!("DELETE FROM {table} WHERE {} = ?", owner.column()), params![owner])?;
     }
+    sql.execute(
+        &format!(
+            "DELETE FROM import_candidate_card_list WHERE {} = ? AND step IS NOT NULL",
+            owner.column()
+        ),
+        params![owner],
+    )?;
     Ok(())
 }
 
@@ -340,16 +346,11 @@ fn store_lookup(
             ],
         )?;
     }
-    let content_hash = owner.content_hash();
     store_list_text(
         sql,
         ListOwner {
-            content_hash: content_hash.as_deref(),
-            identify_run: owner.run(),
-            search_run: None,
-            step,
-            position: column(position)?,
-            cell: column(cell)?,
+            owner: MatchOwner::Verdict(owner),
+            list: OwnersList::Cell { step, position: column(position)?, cell: column(cell)? },
         },
         &layout,
     )?;

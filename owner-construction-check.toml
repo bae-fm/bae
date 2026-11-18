@@ -1538,6 +1538,7 @@ tables = [
     "import_candidate_match_link",
     "import_candidate_match_album_link",
     "import_candidate_match_medium",
+    "import_candidate_card_list",
     "import_candidate_card",
     "import_candidate_card_text",
     "import_candidate_row_statement",

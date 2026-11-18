@@ -6,9 +6,9 @@
 //! card and row. A read selects what that write stored and never checks or
 //! groups the rows again.
 
-use super::layout::{store_list_text, ListLayout, ListOwner, Place};
+use super::layout::{store_list_text, ListLayout, ListOwner, OwnersList, Place};
 use super::match_record::load_owner_matches_on;
-use super::match_rows::{ordinal_column, Placed, StoredMatches};
+use super::match_rows::{ordinal_column, MatchOwner, Placed, StoredMatches};
 use super::verdict_rows::{outcome_of, verdict_columns, verdict_row_of, Outcome, Owner};
 use super::*;
 use bae_catalogs::search::MetadataResult;
@@ -67,7 +67,11 @@ impl VerdictLayout {
 
     /// Store the text of each card and row as `owner`'s own list.
     pub(super) fn store_text(&self, sql: &CovenWrite<'_>, owner: Owner<'_>) -> Result<(), DbError> {
-        store_list_text(sql, ListOwner::verdict(owner), &self.text)
+        store_list_text(
+            sql,
+            ListOwner { owner: MatchOwner::Verdict(owner), list: OwnersList::OwnList },
+            &self.text,
+        )
     }
 }
 

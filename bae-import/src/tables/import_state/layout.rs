@@ -238,81 +238,58 @@ impl ListLayout {
 /// Whose rows a list's text belongs to, and which list of theirs it is.
 #[derive(Clone, Copy)]
 pub(super) struct ListOwner<'a> {
-    pub(super) content_hash: Option<&'a str>,
-    pub(super) identify_run: Option<i64>,
-    pub(super) search_run: Option<i64>,
-    /// The cell's step, empty for the owner's own list.
-    pub(super) step: &'a str,
-    pub(super) position: i64,
-    pub(super) cell: i64,
+    pub(super) owner: MatchOwner<'a>,
+    pub(super) list: OwnersList<'a>,
 }
 
-impl<'a> ListOwner<'a> {
-    /// A verdict's or a run's own list.
-    pub(super) fn verdict(owner: super::verdict_rows::Owner<'a>) -> Self {
-        Self {
-            content_hash: match owner {
-                super::verdict_rows::Owner::Candidate(content_hash) => Some(content_hash),
-                super::verdict_rows::Owner::Run(_) => None,
-            },
-            identify_run: owner.run(),
-            search_run: None,
-            step: "",
-            position: 0,
-            cell: 0,
-        }
-    }
+/// Which of its owner's lists a list is.
+#[derive(Clone, Copy)]
+pub(super) enum OwnersList<'a> {
+    /// The owner's own list: a verdict's, a run's or a typed search's.
+    OwnList,
+    /// The list of one cell of a verdict's or a run's ledger, by the cell's
+    /// step, its row's position in the step and its place in the row.
+    Cell { step: &'a str, position: i64, cell: i64 },
+}
 
-    /// A search's own list.
-    pub(super) fn search(run: i64) -> Self {
-        Self {
-            content_hash: None,
-            identify_run: None,
-            search_run: Some(run),
-            step: "",
-            position: 0,
-            cell: 0,
+impl<'a> OwnersList<'a> {
+    /// The cell's `step`, `position` and `cell` columns, all NULL for the
+    /// owner's own list.
+    fn columns(self) -> (Option<&'a str>, Option<i64>, Option<i64>) {
+        match self {
+            Self::OwnList => (None, None, None),
+            Self::Cell { step, position, cell } => (Some(step), Some(position), Some(cell)),
         }
     }
 }
 
-/// Write `layout`'s card text and row statements as `owner`'s, in place of
-/// what its list held.
+/// Write `layout`'s cards, card text and row statements as `owner`'s list,
+/// in place of what that list held.
 pub(super) fn store_list_text(
     sql: &CovenWrite<'_>,
     owner: ListOwner<'_>,
     layout: &ListLayout,
 ) -> Result<(), DbError> {
-    let ListOwner { content_hash, identify_run, search_run, step, position, cell } = owner;
-    for table in
-        ["import_candidate_card", "import_candidate_card_text", "import_candidate_row_statement"]
-    {
-        sql.execute(
-            &format!(
-                "DELETE FROM {table} WHERE content_hash IS ?1 AND identify_run IS ?2 \
-                 AND search_run IS ?3 AND step = ?4 AND position = ?5 AND cell = ?6"
-            ),
-            params![content_hash, identify_run, search_run, step, position, cell],
-        )?;
-    }
+    let (content_hash, identify_run, search_run) =
+        (owner.owner.content_hash(), owner.owner.run(), owner.owner.search());
+    let (step, position, cell) = owner.list.columns();
+    sql.execute(
+        "DELETE FROM import_candidate_card_list WHERE content_hash IS ? AND identify_run IS ? \
+         AND search_run IS ? AND step IS ? AND position IS ? AND cell IS ?",
+        params![content_hash, identify_run, search_run, step, position, cell],
+    )?;
+    let list: i64 = sql.query_row(
+        "INSERT INTO import_candidate_card_list \
+             (content_hash, identify_run, search_run, step, position, cell) \
+         VALUES (?, ?, ?, ?, ?, ?) RETURNING list",
+        params![content_hash, identify_run, search_run, step, position, cell],
+        |row| row.get(0),
+    )?;
     let card_text = |card: u32, kind: &str, ordinal: usize, text: &str| {
         sql.execute(
-            "INSERT INTO import_candidate_card_text \
-                 (content_hash, identify_run, search_run, step, position, cell, card, kind, \
-                  ordinal, text) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                identify_run,
-                search_run,
-                step,
-                position,
-                cell,
-                card,
-                kind,
-                ordinal_column(ordinal)?,
-                text
-            ],
+            "INSERT INTO import_candidate_card_text (list, card, kind, ordinal, text) \
+             VALUES (?, ?, ?, ?, ?)",
+            params![list, card, kind, ordinal_column(ordinal)?, text],
         )?;
         Ok::<_, DbError>(())
     };
@@ -340,16 +317,10 @@ pub(super) fn store_list_text(
         });
         sql.execute(
             "INSERT INTO import_candidate_card \
-                 (content_hash, identify_run, search_run, step, position, cell, card, \
-                  card_order, id, cover_ord, year_min, year_max, sources, headings) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 (list, card, card_order, id, cover_ord, year_min, year_max, sources, headings) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
-                content_hash,
-                identify_run,
-                search_run,
-                step,
-                position,
-                cell,
+                list,
                 card.card,
                 card.card_order,
                 card.id,
@@ -376,16 +347,10 @@ pub(super) fn store_list_text(
                 let catalogs: Vec<&str> = catalogs.iter().map(|catalog| catalog.as_str()).collect();
                 sql.execute(
                     "INSERT INTO import_candidate_row_statement \
-                     (content_hash, identify_run, search_run, step, position, cell, listing, \
-                      pressing, fact, line, ordinal, value, catalogs) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     (list, listing, pressing, fact, line, ordinal, value, catalogs) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     params![
-                        content_hash,
-                        identify_run,
-                        search_run,
-                        step,
-                        position,
-                        cell,
+                        list,
                         row.listing,
                         row.pressing,
                         fact,
@@ -470,7 +435,11 @@ pub(super) fn lay_out_search_on(
         )?;
         store_album_link_rows(sql, MatchOwner::Search(run), row.position, &result.album_links)?;
     }
-    store_list_text(sql, ListOwner::search(run), &layout)?;
+    store_list_text(
+        sql,
+        ListOwner { owner: MatchOwner::Search(run), list: OwnersList::OwnList },
+        &layout,
+    )?;
     Ok(read)
 }
 

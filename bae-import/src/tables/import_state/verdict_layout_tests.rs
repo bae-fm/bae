@@ -78,7 +78,8 @@ async fn row_statements(db: &Store, hash: &str) -> Vec<String> {
     db.read(move |sql| {
         Ok(sql.query(
             "SELECT listing || ' ' || pressing || ' ' || fact || ' ' || value \
-             FROM import_candidate_row_statement WHERE content_hash = ? \
+             FROM import_candidate_row_statement \
+             JOIN import_candidate_card_list USING (list) WHERE content_hash = ? \
              ORDER BY listing, pressing, fact, line, ordinal",
             [hash],
             |row| row.get::<_, String>(0),

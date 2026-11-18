@@ -55,7 +55,8 @@ async fn card_text(tables: &ImportTables, run: SearchRun) -> Vec<String> {
         .read(move |sql| {
             Ok(sql.query(
                 "SELECT card || ' ' || kind || ' ' || ordinal || ' ' || text \
-                 FROM import_candidate_card_text WHERE search_run = ? \
+                 FROM import_candidate_card_text \
+                 JOIN import_candidate_card_list USING (list) WHERE search_run = ? \
                  ORDER BY card, kind, ordinal",
                 [run.number()],
                 |row| row.get::<_, String>(0),
@@ -74,7 +75,8 @@ async fn statements(tables: &ImportTables, run: SearchRun) -> Vec<String> {
             Ok(sql.query(
                 "SELECT pressing || ' ' || fact || ' ' || line || ' ' || ordinal || ' ' \
                         || value || ' ' || catalogs \
-                 FROM import_candidate_row_statement WHERE search_run = ? \
+                 FROM import_candidate_row_statement \
+                 JOIN import_candidate_card_list USING (list) WHERE search_run = ? \
                  ORDER BY pressing, fact, line, ordinal",
                 [run.number()],
                 |row| row.get::<_, String>(0),
