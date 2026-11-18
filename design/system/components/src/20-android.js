@@ -126,7 +126,7 @@
     var isError = state === 'error';
     var cells = [];
     for (var i = 0; i < n; i++) {
-      cells.push(h('span', { key: i, 'aria-hidden': true, className: cx('bae-a-pin-cell', state === 'focused' && i === Math.min(value.length, n - 1) && 'bae-a-pin-cell-focused', isError && 'bae-a-pin-cell-error') }, value.charAt(i)));
+      cells.push(h('span', { key: i, className: cx('bae-a-pin-cell', state === 'focused' && i === Math.min(value.length, n - 1) && 'bae-a-pin-cell-focused', isError && 'bae-a-pin-cell-error') }, value.charAt(i)));
     }
     return h('div', { className: cx('bae-a-pin', state === 'off' && 'bae-off') },
       h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', 'aria-disabled': state === 'off' ? true : null, className: 'bae-a-pin-cells' }, cells),
