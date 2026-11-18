@@ -7,9 +7,9 @@ private let logger = Logger.bae("S3KeySheet")
 /// Replacing the S3 key of the library on the Sync page: whether the S3 key
 /// sheet is open and what it shows, the call that checks the key with S3
 /// storage and uses it, and the line after a save that names the old key to
-/// delete. The page owns it: Replace key…, Sign in to S3… and a pending
-/// record's S3 sign-in all open the same sheet. Nothing stores the old key's
-/// id; it goes when the person dismisses the line or the page closes.
+/// delete. The page owns it: Replace key… and Sign in to S3… both open the
+/// same sheet. Nothing stores the old key's id; it goes when the person
+/// dismisses the line or the page closes.
 @MainActor
 @Observable
 final class S3KeyReplacement {
@@ -57,12 +57,13 @@ final class S3KeyReplacement {
     }
 
     #if DEBUG
-        /// A replacement showing the line after `saved`, with no call
-        /// behind it, for a shot.
-        init(saved: Saved) {
+        /// A replacement showing `sheet` and the line after `saved`, with
+        /// no call behind it, for a shot.
+        init(sheet: Sheet? = nil, saved: Saved? = nil) {
             self.makeCancellation = {
                 preconditionFailure("a shot's key sheet makes no call")
             }
+            self.sheet = sheet
             self.saved = saved
         }
     #endif
@@ -163,6 +164,24 @@ struct S3KeySheet: View {
     private var accessKey = ""
     @State
     private var secretKey = ""
+
+    init(replacement: S3KeyReplacement) {
+        self.replacement = replacement
+    }
+
+    #if DEBUG
+        /// The sheet with `accessKey` and `secretKey` already typed, for a
+        /// shot.
+        init(
+            replacement: S3KeyReplacement,
+            accessKey: String,
+            secretKey: String
+        ) {
+            self.replacement = replacement
+            _accessKey = State(initialValue: accessKey)
+            _secretKey = State(initialValue: secretKey)
+        }
+    #endif
 
     var body: some View {
         MacSheet(

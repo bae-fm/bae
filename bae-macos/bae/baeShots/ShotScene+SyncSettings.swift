@@ -10,68 +10,72 @@ extension ShotScene {
     /// restore code shown. Each shows the whole Settings window, as the
     /// boards draw it: the sidebar with Library chosen, and the page over the
     /// Library pane.
-    static let syncSettingsScenes: [ShotScene] = [
-        ShotScene(
-            id: "mac.settings.sync.pending",
-            size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden)
-        ) {
-            ShotStage(
-                syncSettingsWindow(
-                    LibrarySettingsTabPreviewFixture(
-                        storage: PreviewData.previewDropboxStorage
-                    ),
-                    shown: BridgeSyncShown(
-                        status: .waitingToSync,
-                        statusKey: "core.sync.status.waiting_to_sync",
-                        tone: .neutral,
-                        cause: nil,
-                        fix: nil,
-                        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
-                    )
-                )
-            )
-        },
-        ShotScene(
-            id: "mac.settings.sync.setup-undone",
-            size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden)
-        ) {
-            ShotStage(
-                syncSettingsWindow(
-                    LibrarySettingsTabPreviewFixture(storage: nil),
-                    shown: .fixtureNotSynced,
-                    undoneSetup: BridgeUndoneStorageSetup(
-                        operation: 1,
-                        error: BridgeError.Diagnostic(
-                            category: .storageSetupUndone,
-                            detail: "the setup was stopped partway"
+    static let syncSettingsScenes: [ShotScene] =
+        [
+            ShotScene(
+                id: "mac.settings.sync.pending",
+                size: CGSize(width: 690, height: 600),
+                frame: .window(title: "Settings", titleBar: .hidden)
+            ) {
+                ShotStage(
+                    syncSettingsWindow(
+                        LibrarySettingsTabPreviewFixture(
+                            storage: PreviewData.previewDropboxStorage
+                        ),
+                        shown: BridgeSyncShown(
+                            status: .waitingToSync,
+                            statusKey: "core.sync.status.waiting_to_sync",
+                            tone: .neutral,
+                            cause: nil,
+                            fix: nil,
+                            lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
                         )
                     )
                 )
-            )
-        },
-        ShotScene(
-            id: "mac.settings.sync.code-shown",
-            size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden)
-        ) {
-            ShotStage(
-                syncSettingsWindow(
-                    LibrarySettingsTabPreviewFixture(
-                        storage: PreviewData.previewDropboxStorage
-                    ),
-                    shown: .fixtureSynced,
-                    restoreCode: .shown(PreviewData.restoreCodeShare)
+            },
+            ShotScene(
+                id: "mac.settings.sync.setup-undone",
+                size: CGSize(width: 690, height: 600),
+                frame: .window(title: "Settings", titleBar: .hidden)
+            ) {
+                ShotStage(
+                    syncSettingsWindow(
+                        LibrarySettingsTabPreviewFixture(storage: nil),
+                        shown: .fixtureNotSynced,
+                        undoneSetup: BridgeUndoneStorageSetup(
+                            operation: 1,
+                            error: BridgeError.Diagnostic(
+                                category: .storageSetupUndone,
+                                detail: "the setup was stopped partway"
+                            )
+                        )
+                    )
                 )
-            )
-        },
-    ] + s3KeyScenes
+            },
+            ShotScene(
+                id: "mac.settings.sync.code-shown",
+                size: CGSize(width: 690, height: 600),
+                frame: .window(title: "Settings", titleBar: .hidden)
+            ) {
+                ShotStage(
+                    syncSettingsWindow(
+                        LibrarySettingsTabPreviewFixture(
+                            storage: PreviewData.previewDropboxStorage
+                        ),
+                        shown: .fixtureSynced,
+                        restoreCode: .shown(PreviewData.restoreCodeShare)
+                    )
+                )
+            },
+        ] + s3KeyScenes
 
     /// The Sync page of an S3 library (`mac.settings.sync.s3`,
     /// `mac.settings.sync.signed-out-s3` and
     /// `mac.settings.sync.s3-key-replaced`): its key's id with Replace key…,
-    /// and the line after a saved key.
+    /// and the line after a saved key. Then the S3 key sheet over it
+    /// (`mac.settings.sync.s3-replace-key-*` and
+    /// `mac.settings.sync.signed-out-s3-sign-in`): empty, typed, checking
+    /// the key, and refused.
     private static let s3KeyScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.sync.s3",
@@ -99,7 +103,47 @@ extension ShotScene {
                 )
             )
         },
+        ShotScene(
+            id: "mac.settings.sync.s3-replace-key-empty",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3SheetPage(.fields(nil))
+        },
+        ShotScene(
+            id: "mac.settings.sync.s3-replace-key-filled",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3SheetPage(.fields(nil), typed: typedKey)
+        },
+        ShotScene(
+            id: "mac.settings.sync.s3-replace-key-checking",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3SheetPage(.checking, typed: typedKey)
+        },
+        ShotScene(
+            id: "mac.settings.sync.s3-replace-key-refused",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3SheetPage(.fields(.refused), typed: typedKey)
+        },
+        ShotScene(
+            id: "mac.settings.sync.signed-out-s3-sign-in",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3SheetPage(.fields(nil), shown: signedOutOfS3)
+        },
     ]
+
+    /// The new key the boards' sheets show typed.
+    private static let typedKey = (
+        accessKey: "AKIA4EXAMPLENEW", secretKey: "abcdefghijkl"
+    )
 
     /// Signed out of S3, three days after the last sync.
     private static let signedOutOfS3 = BridgeSyncShown(
@@ -134,6 +178,33 @@ extension ShotScene {
             ),
             shown: shown,
             keyReplacement: keyReplacement
+        )
+    }
+
+    /// The page of the boards' S3 library, which records its old key, with
+    /// the S3 key sheet open over it as `sheet` and `typed` show it. The
+    /// page's own replacement stays closed: the scene lays the sheet over
+    /// the window, as `OverWindow` says.
+    @MainActor
+    private static func s3SheetPage(
+        _ sheet: S3KeyReplacement.Sheet,
+        shown: BridgeSyncShown = .fixtureSynced,
+        typed: (accessKey: String, secretKey: String) = ("", "")
+    ) -> ShotStage {
+        ShotStage(
+            OverWindow.sheet(
+                S3KeySheet(
+                    replacement: S3KeyReplacement(sheet: sheet),
+                    accessKey: typed.accessKey,
+                    secretKey: typed.secretKey
+                )
+                .environment(PreviewData.previewSync()),
+                over: s3Window(
+                    key: "AKIA4EXAMPLEOLD",
+                    shown: shown,
+                    keyReplacement: S3KeyReplacement()
+                )
+            )
         )
     }
 

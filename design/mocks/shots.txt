@@ -349,10 +349,16 @@ mac.settings.sync.icloud
 mac.settings.sync.onedrive
 mac.settings.sync.pending
 mac.settings.sync.s3
+mac.settings.sync.s3-key-replaced
+mac.settings.sync.s3-replace-key-checking
+mac.settings.sync.s3-replace-key-empty
+mac.settings.sync.s3-replace-key-filled
+mac.settings.sync.s3-replace-key-refused
 mac.settings.sync.setup-undone
 mac.settings.sync.signed-out-dropbox
 mac.settings.sync.signed-out-icloud
 mac.settings.sync.signed-out-s3
+mac.settings.sync.signed-out-s3-sign-in
 mac.settings.transfers
 mac.settings.transfers.uploads-paused
 mac.settings.window.library-offline
