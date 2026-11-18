@@ -25,20 +25,6 @@ enum LibraryBrowserMode: CaseIterable {
     }
 }
 
-/// The open album the person asked to see, by a navigation such as Go to Now
-/// Playing rather than a click on its card, and the track in it whose row
-/// they asked to see, if any, until the album grid has shown it. The grid
-/// scrolls to wherever core places the album's card, and again each time
-/// core places the card elsewhere before the grid has shown it. It ends
-/// sooner when core places no card of the album, or the person scrolls the
-/// grid, clicks a card or closes the album.
-struct AlbumReveal: Equatable {
-    let albumId: String
-    /// The track whose row the grid scrolls into view and then flashes, or
-    /// `nil` for the album alone.
-    let trackId: String?
-}
-
 enum LibraryNavigationTarget {
     case artist(String)
     case composer(String)
@@ -81,9 +67,10 @@ class UiStore: @unchecked Sendable {
     let pickedTracks = PickedTracks()
     private(set) var showQueue: Bool = false
 
-    /// What the person asked to see of the open album; it always names the
-    /// open album.
-    private(set) var albumReveal: AlbumReveal?
+    /// The requests to show an album in the album grid, which the grid takes
+    /// as they come.
+    @ObservationIgnored
+    let albumReveals = AlbumRevealRequests()
     /// The track whose row flashes, sent once the grid has shown the row a
     /// reveal names, so the flash is seen where the row is.
     @ObservationIgnored
@@ -181,7 +168,7 @@ class UiStore: @unchecked Sendable {
         if let releaseId {
             selectRelease(releaseId, inAlbum: albumId)
         }
-        albumReveal = AlbumReveal(albumId: albumId, trackId: trackId)
+        albumReveals.send(AlbumReveal(albumId: albumId, trackId: trackId))
     }
 
     func navigateToImport() {
@@ -237,24 +224,6 @@ class UiStore: @unchecked Sendable {
         )
     }
 
-    /// End the reveal of `albumId`: the grid has shown it, the grid holds no
-    /// card of the album, or the grid could not read where the album's card
-    /// is. A no-op for a reveal of another album.
-    func endAlbumReveal(of albumId: String) {
-        if albumReveal?.albumId == albumId {
-            albumReveal = nil
-        }
-    }
-
-    /// End the reveal, whichever album it names: the person moved on, by
-    /// scrolling the grid or choosing which album is open.
-    func endAlbumReveal() {
-        // Writing nil over nil would still redraw every reader.
-        if albumReveal != nil {
-            albumReveal = nil
-        }
-    }
-
     /// Flash `trackId`'s row, once the grid has shown it.
     func flashTrack(_ trackId: String) {
         trackFlashes.send(trackId)
@@ -268,16 +237,12 @@ class UiStore: @unchecked Sendable {
         }
     }
 
-    /// Open `albumId`, or close the open album for `nil`, as the person
-    /// clicks a card or closes the detail. The reveal ends: the person chose
-    /// what to look at.
     func selectAlbum(_ albumId: String?) {
         selectedAlbumId = albumId
-        endAlbumReveal()
     }
 
     func closeAlbumDetail() {
-        selectAlbum(nil)
+        selectedAlbumId = nil
     }
 
     func selectRelease(_ releaseId: String, inAlbum albumId: String) {

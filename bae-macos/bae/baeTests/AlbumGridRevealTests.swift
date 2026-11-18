@@ -29,6 +29,9 @@ struct AlbumGridRevealTests {
         var rowsShown = true
         /// Where each track row sits in the visible area.
         var rowFrames: [String: CGRect] = [:]
+        /// The track the grid tells the open album's detail it is revealing,
+        /// as the detail last saw it.
+        var revealing: String?
         /// How many flashes each track's row received.
         var flashes: [String: Int] = [:]
         /// The last track flashed, and where its row sat when the flash came.
@@ -45,6 +48,8 @@ struct AlbumGridRevealTests {
     struct TrackRows: View {
         @Environment(UiStore.self)
         private var uiStore
+        @Environment(\.revealedTrackId)
+        private var revealedTrackId
         let albumId: String
         let stage: Stage
 
@@ -58,6 +63,9 @@ struct AlbumGridRevealTests {
                 else {
                     Color.clear.frame(height: 200)
                 }
+            }
+            .onChange(of: revealedTrackId, initial: true) { _, trackId in
+                stage.revealing = trackId
             }
         }
 
@@ -145,8 +153,7 @@ struct AlbumGridRevealTests {
         _ stage: Stage
     ) async throws {
         try await Wait.until {
-            hosted.uiStore.albumReveal == nil
-                && stage.flashed?.trackId == trackId
+            stage.revealing == nil && stage.flashed?.trackId == trackId
         }
         try await hosted.settle()
     }
@@ -269,29 +276,27 @@ struct AlbumGridRevealTests {
         hosted.uiStore.navigateToAlbum("grid-300", trackId: "grid-300-t28")
         try await hosted.untilScrolled()
         try await hosted.settle()
+        #expect(stage.revealing == "grid-300-t28")
         hosted.uiStore.closeAlbumDetail()
         try await hosted.settle()
-        #expect(hosted.uiStore.albumReveal == nil)
 
-        // Opening the album again later flashes nothing.
+        // Opening the album again later reveals and flashes nothing.
         hosted.uiStore.selectAlbum("grid-300")
         stage.rowsShown = true
         try await Wait.until { stage.rowFrames["grid-300-t29"] != nil }
         try await hosted.settle()
+        #expect(stage.revealing == nil)
         #expect(stage.flashed == nil)
     }
 
-    @Test("an album revealed alone ends its reveal with nothing flashed")
+    @Test("an album revealed alone is scrolled to with nothing flashed")
     func albumAloneFlashesNothing() async throws {
         let stage = Stage()
         let hosted = try await host(stage, preloaded: false)
         defer { hosted.window.close() }
 
         hosted.uiStore.navigateToAlbum("grid-300")
-        try await Wait.until {
-            hosted.uiStore.albumReveal == nil
-                && stage.rowFrames["grid-300-t0"] != nil
-        }
+        try await Wait.until { stage.rowFrames["grid-300-t0"] != nil }
         try await hosted.settle()
 
         #expect(stage.flashed == nil)
@@ -311,7 +316,7 @@ extension AlbumGridRevealTests {
         try await Wait.until { stage.flashed?.flashes == 2 }
         try await hosted.settle()
 
-        #expect(hosted.uiStore.albumReveal == nil)
+        #expect(stage.revealing == nil)
         #expect(stage.flashCount == 2)
         #expect(try inView(stage.flashed?.frame, of: hosted))
     }
@@ -324,7 +329,6 @@ extension AlbumGridRevealTests {
         let top = try #require(hosted.scrollView).contentView.bounds.origin
 
         hosted.uiStore.navigateToAlbum("no-such-album")
-        try await Wait.until { hosted.uiStore.albumReveal == nil }
         try await hosted.settle()
 
         #expect(

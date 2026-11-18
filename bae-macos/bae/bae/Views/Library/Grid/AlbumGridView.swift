@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 import os.log
 
@@ -52,6 +53,13 @@ struct AlbumGridView<ExpansionContent: View>: View {
     /// Where core places the open album's card, read live.
     @State
     private var openPlace = AlbumGridOpenPlace()
+    /// The reveal the grid took from `UiStore.albumReveals` and has not
+    /// shown yet. It follows where core places the album's card, and ends
+    /// once the grid has shown the card or flashed the row, or sooner when
+    /// the grid holds no card of the album, cannot read where the card is,
+    /// or the person scrolls, clicks a card or opens another album.
+    @State
+    private var reveal: AlbumReveal?
 
     /// What the grid asks core to place: the open album, in the group the
     /// person opened it under.
@@ -84,7 +92,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
     /// grid scrolls to. The reveal starts again each time core places the
     /// card elsewhere before the grid has shown it.
     private var revealTarget: RevealTarget? {
-        guard let reveal = uiStore.albumReveal else { return nil }
+        guard let reveal else { return nil }
         guard let answer = openPlace.answer,
             answer.request.albumId == reveal.albumId
         else { return RevealTarget(reveal: reveal, place: .waiting) }
@@ -182,7 +190,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 )
             } action: { _, scroll in
                 viewport.setScroll(scroll)
-                if let reveal = uiStore.albumReveal {
+                if let reveal {
                     albumGridLogger.debug(
                         "reveal of \(reveal.albumId): scroll \(String(describing: scroll))"
                     )
@@ -226,7 +234,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
             // The person scrolling also ends the reveal: the grid no longer
             // shows what they asked to see.
             .onScrollPhaseChange { _, phase in
-                if let reveal = uiStore.albumReveal {
+                if let reveal {
                     albumGridLogger.debug(
                         "reveal of \(reveal.albumId): scroll phase \(String(describing: phase))"
                     )
@@ -239,7 +247,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
                 switch phase {
                 case .tracking, .interacting, .decelerating:
-                    uiStore.endAlbumReveal()
+                    reveal = nil
                 default:
                     break
                 }
@@ -254,12 +262,16 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
                 await openPlace.follow(request, in: library) { error in
                     // The grid cannot show the album without its place.
-                    uiStore.endAlbumReveal(of: request.albumId)
+                    endReveal(of: request.albumId)
                     uiStore.showError(error)
                 }
             }
-            .onChange(of: uiStore.selectedAlbumId) {
+            .onChange(of: uiStore.selectedAlbumId) { _, albumId in
                 viewport.release()
+                // Another album open, or none: the person moved on.
+                if let reveal, reveal.albumId != albumId {
+                    self.reveal = nil
+                }
             }
             .reportsHeaderScroll(id: "albumGrid")
             .focusable()
@@ -271,6 +283,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
                 selection.clear()
                 return .handled
+            }
+            .onReceive(uiStore.albumReveals.requests) { request in
+                reveal = request
             }
             .task(id: revealTarget) {
                 guard let target = revealTarget else { return }
@@ -455,7 +470,8 @@ extension AlbumGridView {
                     slotWidth: metrics.cardWidth,
                     rowWidth: metrics.rowWidth,
                     expansionContent: expansionContent
-                ),
+                )
+                .environment(\.revealedTrackId, reveal?.trackId),
                 cell.id,
                 as: .detail(albumId: albumId),
                 columnCount: metrics.columnCount
@@ -556,7 +572,7 @@ extension AlbumGridView {
             albumGridLogger.warning(
                 "No card of album \(reveal.albumId) under the current sort; ending its reveal"
             )
-            uiStore.endAlbumReveal(of: reveal.albumId)
+            endReveal(of: reveal.albumId)
             return
         case .card(let placed):
             card = placed
@@ -629,11 +645,11 @@ extension AlbumGridView {
     /// An album revealed alone is shown, which ends its reveal. A track's row
     /// is measured from here: where the scroll stops, not on its way.
     private func revealArrived() {
-        guard let reveal = uiStore.albumReveal else { return }
+        guard let reveal else { return }
         guard let trackId = reveal.trackId else {
             albumGridLogger.debug("reveal of \(reveal.albumId): shown")
             viewport.endRevealScroll()
-            uiStore.endAlbumReveal(of: reveal.albumId)
+            endReveal(of: reveal.albumId)
             return
         }
         if let row = viewport.revealedRow(of: trackId, arrived: true) {
@@ -656,14 +672,13 @@ extension AlbumGridView {
     /// above the grid folds away as the grid leaves its top, resizing the
     /// grid under the scroll.
     private func showRevealedRow(_ row: PlacedTrackRow) {
-        guard let reveal = uiStore.albumReveal, reveal.trackId == row.trackId
-        else { return }
+        guard let reveal, reveal.trackId == row.trackId else { return }
         guard let offset = row.scrollOffset else {
             albumGridLogger.debug(
                 "reveal: row \(row.trackId) needs no scroll (\(String(describing: row))); flashing it"
             )
             viewport.endRevealScroll()
-            uiStore.endAlbumReveal(of: reveal.albumId)
+            endReveal(of: reveal.albumId)
             uiStore.flashTrack(row.trackId)
             return
         }
@@ -673,6 +688,14 @@ extension AlbumGridView {
         viewport.revealScrollsToRow()
         viewport.release()
         scrollPosition.scrollTo(y: offset)
+    }
+
+    /// Ends the reveal of `albumId`; a reveal of another album that came
+    /// meanwhile stays.
+    private func endReveal(of albumId: String) {
+        if reveal?.albumId == albumId {
+            reveal = nil
+        }
     }
 
     /// Scrolls the held slot back to the top when the grid moved it.
@@ -741,6 +764,8 @@ extension AlbumGridView {
         }
         else {
             selection.clear()
+            // The person chose what to look at.
+            reveal = nil
             withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
                 let isOpen =
                     uiStore.selectedAlbumId == albumId

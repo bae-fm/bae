@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import SwiftUI
 import Testing
 
@@ -7,6 +8,20 @@ import Testing
 
 @Suite("Queue now-playing navigation", .serialized)
 struct QueueNowPlayingNavigationTests {
+    /// The reveal request waiting for a grid to take it: no grid listens in
+    /// these tests.
+    @MainActor
+    private func waitingReveal(in ui: UiStore) async throws -> AlbumReveal? {
+        var reveals: [AlbumReveal] = []
+        let listening = ui.albumReveals.requests.sink {
+            reveals.append($0)
+            Wait.happened()
+        }
+        defer { listening.cancel() }
+        try await Wait.until { !reveals.isEmpty }
+        return reveals.first
+    }
+
     @MainActor
     @Test(
         "the card reveals the playing track from its art, text, progress, and padding",
@@ -63,7 +78,7 @@ struct QueueNowPlayingNavigationTests {
             #expect(ui.libraryBrowserMode == .albums)
             #expect(ui.selectedAlbumId == "playing-album")
             #expect(
-                ui.albumReveal
+                try await waitingReveal(in: ui)
                     == AlbumReveal(
                         albumId: "playing-album",
                         trackId: "playing-track"

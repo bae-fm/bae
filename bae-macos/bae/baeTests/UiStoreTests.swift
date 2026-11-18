@@ -166,67 +166,22 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.selectedReleaseIdByAlbum["album-1"] == "release-9")
     }
 
-    @Test("navigateToAlbum asks to see the album and the track in it")
-    func navigateToAlbumSetsReveal() {
+    @Test("navigateToAlbum sends the album and the track in it to the grid")
+    @MainActor
+    func navigateToAlbumSendsReveal() async throws {
         let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        #expect(
-            store.albumReveal
-                == AlbumReveal(albumId: "album-1", trackId: "track-7")
-        )
-    }
-
-    @Test("a later navigation asks to see its own album instead")
-    func laterNavigationReplacesReveal() {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        store.navigateToAlbum("album-2")
-        #expect(
-            store.albumReveal == AlbumReveal(albumId: "album-2", trackId: nil)
-        )
-    }
-
-    @Test("opening an album by its card ends the reveal")
-    func selectingAlbumEndsReveal() {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        store.selectAlbum("album-1")
-        #expect(store.albumReveal == nil)
+        var received: [AlbumReveal] = []
+        let listening = store.albumReveals.requests.sink {
+            received.append($0)
+            Wait.happened()
+        }
+        defer { listening.cancel() }
 
         store.navigateToAlbum("album-1", trackId: "track-7")
-        store.selectAlbum("album-2")
-        #expect(store.albumReveal == nil)
-        #expect(store.selectedAlbumId == "album-2")
-    }
 
-    @Test("closing the revealed album ends the reveal")
-    func closingAlbumEndsReveal() {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        store.closeAlbumDetail()
-        #expect(store.selectedAlbumId == nil)
-        #expect(store.albumReveal == nil)
-    }
-
-    @Test("endAlbumReveal(of:) ends only a reveal of the album it names")
-    func endAlbumRevealClearsOnlyItsAlbum() {
-        let store = UiStore()
-        store.navigateToAlbum("album-2")
-
-        store.endAlbumReveal(of: "album-1")
-        #expect(store.albumReveal?.albumId == "album-2")
-
-        store.endAlbumReveal(of: "album-2")
-        #expect(store.albumReveal == nil)
-    }
-
-    @Test("endAlbumReveal() ends the reveal and leaves the album open")
-    func endAlbumRevealEndsAnyReveal() {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        store.endAlbumReveal()
-        #expect(store.albumReveal == nil)
-        #expect(store.selectedAlbumId == "album-1")
+        try await Wait.until {
+            received == [AlbumReveal(albumId: "album-1", trackId: "track-7")]
+        }
     }
 
     @Test("flashTrack sends the track to the rows")
@@ -240,6 +195,77 @@ struct UiStoreLibraryBrowserModeTests {
         store.flashTrack("track-7")
 
         #expect(flashed == ["track-7", "track-7"])
+    }
+}
+
+@MainActor
+@Suite("AlbumRevealRequests")
+struct AlbumRevealRequestsTests {
+    private let first = AlbumReveal(albumId: "album-1", trackId: "track-7")
+    private let second = AlbumReveal(albumId: "album-2", trackId: nil)
+
+    /// What one listener has received so far.
+    private final class Listener {
+        var received: [AlbumReveal] = []
+        private var subscription: AnyCancellable?
+
+        init(_ requests: AlbumRevealRequests) {
+            subscription = requests.requests.sink { [unowned self] in
+                received.append($0)
+                Wait.happened()
+            }
+        }
+
+        func stop() {
+            subscription?.cancel()
+        }
+    }
+
+    @Test("a listener gets each request as it comes")
+    func listenerGetsRequests() async throws {
+        let requests = AlbumRevealRequests()
+        let listener = Listener(requests)
+        defer { listener.stop() }
+
+        requests.send(first)
+        requests.send(second)
+
+        try await Wait.until { listener.received == [first, second] }
+    }
+
+    @Test(
+        "the latest request sent with no listener goes to the next one, once"
+    )
+    func waitingRequestGoesToNextListenerOnce() async throws {
+        let requests = AlbumRevealRequests()
+        requests.send(first)
+        requests.send(second)
+
+        let taker = Listener(requests)
+        defer { taker.stop() }
+        try await Wait.until { taker.received == [second] }
+
+        // The next listener finds nothing waiting: the first request it
+        // gets is the one sent after it began to listen.
+        let later = Listener(requests)
+        defer { later.stop() }
+        requests.send(first)
+        try await Wait.until { later.received == [first] }
+        #expect(taker.received == [second, first])
+    }
+
+    @Test("a request sent once every listener stopped waits for the next")
+    func requestAfterListenerStopsWaits() async throws {
+        let requests = AlbumRevealRequests()
+        let stopped = Listener(requests)
+        stopped.stop()
+
+        requests.send(second)
+
+        let next = Listener(requests)
+        defer { next.stop() }
+        try await Wait.until { next.received == [second] }
+        #expect(stopped.received.isEmpty)
     }
 }
 

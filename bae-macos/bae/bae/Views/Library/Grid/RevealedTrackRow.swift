@@ -19,6 +19,13 @@ struct RevealedTrackRowKey: PreferenceKey {
     }
 }
 
+extension EnvironmentValues {
+    /// The track whose row the album grid is revealing, which the grid sets
+    /// on the album detail it lays out.
+    @Entry
+    var revealedTrackId: String?
+}
+
 extension View {
     /// Marks this view as `trackId`'s row, which a reveal naming the track
     /// scrolls into view and then flashes.
@@ -28,12 +35,12 @@ extension View {
 }
 
 private struct RevealsAsTrackRow: ViewModifier {
-    @Environment(UiStore.self)
-    private var uiStore
+    @Environment(\.revealedTrackId)
+    private var revealedTrackId
     let trackId: String
 
     func body(content: Content) -> some View {
-        let revealed = uiStore.albumReveal?.trackId == trackId
+        let revealed = revealedTrackId == trackId
         content.anchorPreference(
             key: RevealedTrackRowKey.self,
             value: .bounds
