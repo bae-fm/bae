@@ -490,14 +490,6 @@
    "x": 492,
    "y": 10548
   },
-  "android.settings.your-picture.dc.html": {
-   "h": 916,
-   "page": "explore",
-   "title": "Exploration: Your picture and name",
-   "w": 412,
-   "x": 770,
-   "y": 7472
-  },
   "android.album.rating.dc.html": {
    "h": 916,
    "page": "explore",
@@ -561,14 +553,6 @@
    "w": 1200,
    "x": 0,
    "y": 1720
-  },
-  "mac.settings.your-picture.dc.html": {
-   "h": 600,
-   "page": "explore",
-   "title": "Exploration: macOS: your picture and name",
-   "w": 690,
-   "x": 0,
-   "y": 7472
   },
   "mac.album.track-menu-rate.dc.html": {
    "h": 1000,
@@ -4450,6 +4434,22 @@
    "w": 412,
    "x": 3786,
    "y": 20744
+  },
+  "mac.settings.people.picture.dc.html": {
+   "h": 600,
+   "page": "library",
+   "title": "macOS: People and devices, with your picture",
+   "w": 690,
+   "x": 6240,
+   "y": 12968
+  },
+  "android.settings.people.picture.dc.html": {
+   "h": 916,
+   "page": "library",
+   "title": "People and devices, with your picture",
+   "w": 412,
+   "x": 5748,
+   "y": 12968
   }
  },
  "createdOnFiles": {
@@ -4993,15 +4993,6 @@
    "w": 240,
    "maxW": 5324
   },
-  "row-exp-profile": {
-   "page": "explore",
-   "x": 0,
-   "y": 7232,
-   "text": "Exploration: your picture and name (bridge calls, no caller)",
-   "kind": "title1",
-   "w": 240,
-   "maxW": 1762
-  },
   "row-exp-ratings": {
    "page": "explore",
    "x": 0,
@@ -5150,7 +5141,7 @@
    "kind": "title1",
    "maxW": 5128,
    "page": "library",
-   "text": "Change your name",
+   "text": "Change your name and picture",
    "w": 240,
    "x": 0,
    "y": 12728
@@ -6383,8 +6374,6 @@
   "mac.playback.queue.these-tracks.dc.html",
   "mac.settings.playback.loudness.dc.html",
   "android.settings.playback.loudness.dc.html",
-  "mac.settings.your-picture.dc.html",
-  "android.settings.your-picture.dc.html",
   "mac.album.credits.dc.html",
   "android.album.credits.dc.html",
   "android.album.links-and-files.dc.html",
