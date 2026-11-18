@@ -77,21 +77,18 @@ impl MatchOwner<'_> {
 /// rules laid the list out, and what the folder's text agrees with about it.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Placed {
-    pub(super) card: u32,
-    pub(super) record_order: u32,
-    pub(super) section: u32,
-    pub(super) row_order: u32,
+    pub(super) place: super::layout::Place,
     pub(super) agreements: bae_identify::Agreements,
 }
 
 /// Where a stored release is listed, with what an offered or narrowed-out
-/// one carries: its pressing row, where the list's layout puts it, and for an
-/// offered one the note the folder's text names its row by. A search's
+/// one carries: where the list's layout puts it, its pressing row included,
+/// and for an offered one the note the folder's text names its row by. A search's
 /// release is returned, and no pick has read it when it lands.
 #[derive(Clone, Copy)]
 pub(super) enum Written<'a> {
-    Offered(u32, Placed, Option<&'a str>),
-    NarrowedOut(u32, Placed),
+    Offered(Placed, Option<&'a str>),
+    NarrowedOut(Placed),
     Unlisted,
     Returned,
 }
@@ -158,23 +155,25 @@ pub(super) fn store_match(
     let position = ordinal_column(position)?;
     // `store_match` writes a search's release into its own row and card, and
     // the same write then groups the whole list again before it ends.
-    let (listing, pressing, named_note, placed) = match (owner, listing) {
-        (MatchOwner::Verdict(_), Written::Offered(pressing, placed, named_note)) => {
-            (LISTING_OFFERED, Some(i64::from(pressing)), named_note, Some(placed))
+    let (listing, named_note, placed) = match (owner, listing) {
+        (MatchOwner::Verdict(_), Written::Offered(placed, named_note)) => {
+            (LISTING_OFFERED, named_note, Some(placed))
         }
-        (MatchOwner::Verdict(_), Written::NarrowedOut(pressing, placed)) => {
-            (LISTING_NARROWED_OUT, Some(i64::from(pressing)), None, Some(placed))
+        (MatchOwner::Verdict(_), Written::NarrowedOut(placed)) => {
+            (LISTING_NARROWED_OUT, None, Some(placed))
         }
-        (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None, None),
+        (MatchOwner::Verdict(_), Written::Unlisted) => (LISTING_UNLISTED, None, None),
         (MatchOwner::Search(_), Written::Returned) => (
             LISTING_RETURNED,
-            Some(position),
             None,
             Some(Placed {
-                card: to_u32(position, "a search release's place in its list")?,
-                record_order: 0,
-                section: 0,
-                row_order: 0,
+                place: super::layout::Place {
+                    pressing: to_u32(position, "a search release's row in its list")?,
+                    card: to_u32(position, "a search release's place in its list")?,
+                    record_order: 0,
+                    section: 0,
+                    row_order: 0,
+                },
                 agreements: bae_identify::Agreements::NONE,
             }),
         ),
@@ -184,10 +183,11 @@ pub(super) fn store_match(
             Written::Offered(..) | Written::NarrowedOut(..) | Written::Unlisted,
         ) => panic!("{owner:?} stores a release listed as no owner of its kind lists one"),
     };
-    let own_card = placed.map(|placed| i64::from(placed.card));
-    let record_order = placed.map(|placed| i64::from(placed.record_order));
-    let section = placed.map(|placed| i64::from(placed.section));
-    let row_order = placed.map(|placed| i64::from(placed.row_order));
+    let pressing = placed.map(|placed| i64::from(placed.place.pressing));
+    let own_card = placed.map(|placed| i64::from(placed.place.card));
+    let record_order = placed.map(|placed| i64::from(placed.place.record_order));
+    let section = placed.map(|placed| i64::from(placed.place.section));
+    let row_order = placed.map(|placed| i64::from(placed.place.row_order));
     let agrees = placed.map(|placed| placed.agreements).unwrap_or(bae_identify::Agreements::NONE);
     // A search's release hangs off the part that answered with it, which
     // holds releases only while it stands answered.

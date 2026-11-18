@@ -55,14 +55,7 @@ impl VerdictLayout {
     /// Where the release at `index` of [`Findings::releases`] stands, and
     /// what the text agrees with about it.
     pub(super) fn placed(&self, index: usize) -> Placed {
-        let place = self.places[index];
-        Placed {
-            card: place.card,
-            record_order: place.record_order,
-            section: place.section,
-            row_order: place.row_order,
-            agreements: self.agreements[index],
-        }
+        Placed { place: self.places[index], agreements: self.agreements[index] }
     }
 
     /// Store the text of each card and row as `owner`'s own list.
@@ -169,10 +162,10 @@ pub(super) fn lay_out_matches_on(sql: &CovenWrite<'_>, owner: Owner<'_>) -> Resu
                  WHERE {column} = ? AND position = ?"
             ),
             params![
-                placed.card,
-                placed.record_order,
-                placed.section,
-                placed.row_order,
+                placed.place.card,
+                placed.place.record_order,
+                placed.place.section,
+                placed.place.row_order,
                 agrees.disc_id,
                 agrees.barcode,
                 agrees.catalog,

@@ -393,16 +393,11 @@ fn store_matches<'a>(
     rowed("narrowed-out releases", narrowed_matches, narrowed_pressings);
     let mut written: Vec<(&MetadataResult, Written<'_>)> = matches
         .iter()
-        .zip(pressings.iter())
         .enumerate()
-        .map(|(index, (result, pressing))| {
-            (result, Written::Offered(*pressing, layout.placed(index), named_note(result)))
-        })
-        .chain(narrowed_matches.iter().zip(narrowed_pressings.iter()).enumerate().map(
-            |(index, (result, pressing))| {
-                (result, Written::NarrowedOut(*pressing, layout.placed(matches.len() + index)))
-            },
-        ))
+        .map(|(index, result)| (result, Written::Offered(layout.placed(index), named_note(result))))
+        .chain(narrowed_matches.iter().enumerate().map(|(index, result)| {
+            (result, Written::NarrowedOut(layout.placed(matches.len() + index)))
+        }))
         .collect();
     for listed in outcome
         .ledger()
