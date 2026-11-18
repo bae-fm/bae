@@ -47,14 +47,14 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
                 ?.rows
                 ?.toInt() ?: 0
 
-    /** The failure of a read whose latest answer is one; null while every read's latest answer is a value. */
-    private var error by mutableStateOf<PageError?>(null)
-
     /** A failed read, else the list's count once it answers, else waiting for it. */
     override val state: ListPageState
         get() {
-            error?.let { return ListPageState.Failed(it) }
-            val count = reader?.count?.answer ?: return ListPageState.Waiting
+            val list = reader ?: return ListPageState.Waiting
+            (list.failure ?: (sectionsRead as? LiveQueryState.Failed)?.error)?.let { failure ->
+                return ListPageState.Failed(PageError(appContext.getString(loadFailed), failure, errors, ::retry))
+            }
+            val count = list.count.answer ?: return ListPageState.Waiting
             return ListPageState.Counted(count.rows.toInt())
         }
 
@@ -79,13 +79,12 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
         if (active && this.parameter == parameter) return
         close()
         sectionsRead = null
-        error = null
         this.parameter = parameter
         active = true
         generation++
         val opened = open(parameter)
         val current = generation
-        val opening = OpenList(scope, opened, { changed(current) }, { failed(it, current) })
+        val opening = OpenList(scope, opened, {}, { failed(it, current) })
         reader = opening
         sectionDeliveries =
             opened.sections?.let { open ->
@@ -94,9 +93,8 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
                     open(),
                     scope,
                     onValue = {
-                        if (current == generation) {
-                            if (sectionsRead?.answer != it) sectionsRead = LiveQueryState.Answered(it)
-                            changed(current)
+                        if (current == generation && sectionsRead?.answer != it) {
+                            sectionsRead = LiveQueryState.Answered(it)
                         }
                     },
                     onError = {
@@ -135,21 +133,13 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
 
     protected abstract fun open(parameter: Parameter): ListReads<Row>
 
-    /** A read delivered: the failure goes once no read's latest answer is one. */
-    private fun changed(openedGeneration: Int) {
-        if (openedGeneration != generation || !active) return
-        val list = reader ?: return
-        if (list.failure == null && sectionsRead !is LiveQueryState.Failed) error = null
-    }
-
-    /** A failed read stands in place of the rows; the reads go on, and [retry] opens them again. */
+    /** Log a failed read; [state] draws the failure from the read's latest answer. */
     private fun failed(
         value: BridgeException,
         openedGeneration: Int,
     ) {
         if (openedGeneration != generation || !active) return
         logger.error("browser page query failed", value)
-        error = PageError(appContext.getString(loadFailed), value, errors, ::retry)
     }
 
     private fun close() {
