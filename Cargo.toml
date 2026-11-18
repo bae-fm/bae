@@ -128,6 +128,7 @@ coreaudio-rs = { version = "0.14", default-features = false }
 cpal = "0.18.2"
 dirs = "5.0"
 ebur128 = "0.1.10"
+ed25519-dalek = { version = "3.0.0", default-features = false }
 encoding_rs = "0.8"
 ffmpeg-next = { version = "8.1", default-features = false }
 ffmpeg-sys-next = { version = "8.1", default-features = false }
@@ -195,6 +196,7 @@ uniffi = "0.32"
 url = "2.5"
 uuid = "1.0"
 windows-sys = "0.61"
+x25519-dalek = { version = "3.0.0", default-features = false }
 
 [profile.release]
 lto = true

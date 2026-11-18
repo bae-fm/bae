@@ -4,7 +4,7 @@
 //! value longer than 255 bytes is split into consecutive items of the *same*
 //! type, each ≤255 bytes, which a reader concatenates back together — that's how
 //! a 384-byte SRP public key rides in a TLV8 message. This encoding carries the
-//! `/pair-setup` bodies (openairplay spec §9; the type
+//! `/pair-setup` and `/pair-verify` bodies (openairplay spec §9; the type
 //! registry matches pyatv's `hap_tlv8`, MIT).
 //!
 //! Only one level of nesting is used (no TLV-in-TLV), matching the pairing flow.
@@ -14,6 +14,8 @@
 pub(crate) mod tlv_type {
     /// The pairing method (`kTLVType_Method`), `0x00` for pair-setup.
     pub(crate) const METHOD: u8 = 0x00;
+    /// A pairing identifier, bae's or the receiver's (`kTLVType_Identifier`).
+    pub(crate) const IDENTIFIER: u8 = 0x01;
     /// The SRP salt `s` sent by the receiver (`kTLVType_Salt`).
     pub(crate) const SALT: u8 = 0x02;
     /// An SRP or X25519 public key — the receiver's `B`/ephemeral or the sender's
@@ -21,6 +23,9 @@ pub(crate) mod tlv_type {
     pub(crate) const PUBLIC_KEY: u8 = 0x03;
     /// The SRP proof `M1`/`M2` (`kTLVType_Proof`).
     pub(crate) const PROOF: u8 = 0x04;
+    /// A sealed inner TLV8 message, ChaCha20-Poly1305 ciphertext then its tag
+    /// (`kTLVType_EncryptedData`).
+    pub(crate) const ENCRYPTED_DATA: u8 = 0x05;
     /// The pairing state machine step, M1–M6 (`kTLVType_State`; pyatv calls it
     /// `SeqNo`).
     pub(crate) const STATE: u8 = 0x06;
@@ -29,6 +34,8 @@ pub(crate) mod tlv_type {
     /// The seconds a receiver asks the sender to wait after a BackOff error,
     /// little-endian (`kTLVType_RetryDelay`).
     pub(crate) const RETRY_DELAY: u8 = 0x08;
+    /// An Ed25519 signature (`kTLVType_Signature`).
+    pub(crate) const SIGNATURE: u8 = 0x0A;
     /// Apple's pairing flags (`kTLVType_Flags`), carrying the transient-pairing
     /// bit.
     pub(crate) const FLAGS: u8 = 0x13;
@@ -43,6 +50,8 @@ pub(crate) mod state {
     pub(crate) const M2: u8 = 0x02;
     pub(crate) const M3: u8 = 0x03;
     pub(crate) const M4: u8 = 0x04;
+    pub(crate) const M5: u8 = 0x05;
+    pub(crate) const M6: u8 = 0x06;
 }
 
 /// A decoded TLV8 message: its items in order, each type paired with its

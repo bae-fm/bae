@@ -22,16 +22,15 @@ use tracing::warn;
 
 use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
+use super::ap2_pairing::run_transient_pair_setup;
 use super::bplist::{self, Plist};
-use super::check_no_error;
-use super::pairing::{PairingError, TransientPairing, TRANSIENT_HKP};
+use super::pairing::PairingError;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
     RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
-use super::tlv8::Tlv8;
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 
@@ -42,11 +41,6 @@ const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 /// since that issue, which its reporters confirmed on OS 27 receivers. pyatv
 /// sends `AirPlay/550.10`.
 pub(crate) const AP2_USER_AGENT: &str = "AirPlay/999.0.0";
-
-/// The `step` of the rejection of the first transient pair-setup POST: a
-/// receiver that answers it with 470 wants a PIN.
-pub(crate) const PAIR_SETUP_M1: &str = "/pair-setup M1";
-const PAIR_SETUP_M3: &str = "/pair-setup M3";
 
 /// The SETUP session (step 1) body: the timing protocol and session identity the
 /// receiver keys its session on. NTP mode omits the PTP `timingPeerInfo`.
@@ -163,7 +157,7 @@ pub(crate) enum Ap2Error {
     BadBody(&'static str),
     #[error("AirPlay 2 response body is not a readable bplist: {0}")]
     BodyDecode(#[from] bplist::BplistError),
-    /// Transient pair-setup failed.
+    /// Pair-setup or pair-verify failed.
     #[error("AirPlay 2 pairing failed: {0}")]
     Pairing(#[from] PairingError),
 }
@@ -361,48 +355,13 @@ pub(crate) struct Ap2SetupParams {
     pub ptp_anchor: Option<(u64, u32, u64)>,
 }
 
-/// Drive transient pair-setup (SRP) over the plaintext RTSP socket, returning
-/// the SRP key. Every request after M4 is encrypted with keys derived from it,
-/// and the audio key comes from the same secret.
-pub(crate) fn run_pair_setup(conn: &mut RtspConnection) -> Result<Vec<u8>, Ap2Error> {
-    let mut pairing = TransientPairing::new();
-    let m1 = pairing.start()?;
-    let m2 = pair_post(conn, PAIR_SETUP_M1, m1)?;
-    let m3 = pairing.handle_m2(&m2)?;
-    let m4 = pair_post(conn, PAIR_SETUP_M3, m3)?;
-    Ok(pairing.handle_m4(&m4)?)
-}
-
 /// Pair with the receiver once on a connection of its own, which closes when
 /// this returns: what a cast learns about the receiver before playback moves.
 /// Every session start pairs again on its own connection.
 pub(crate) fn pair_once(receiver: IpAddr, airplay_port: u16) -> Result<(), Ap2Error> {
     let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
-    run_pair_setup(&mut conn)?;
+    run_transient_pair_setup(&mut conn)?;
     Ok(())
-}
-
-/// POST a body of the pair-setup named `step`, marked `X-Apple-HKP: 4` as
-/// receivers require, and return the response body. A refused step is the
-/// HomeKit error the body names, since a receiver may answer a refusal with a
-/// non-2xx status and an Error TLV (shairport-sync does); with no readable
-/// error it is the status, naming the POST.
-fn pair_post(
-    conn: &mut RtspConnection,
-    step: &'static str,
-    body: Vec<u8>,
-) -> Result<Vec<u8>, Ap2Error> {
-    let response = conn.request(
-        &RtspRequest::with_body(Method::Post, "/pair-setup", "application/octet-stream", body)
-            .header("X-Apple-HKP", TRANSIENT_HKP),
-    )?;
-    if response.is_success() {
-        return Ok(response.body);
-    }
-    if let Ok(tlv) = Tlv8::decode(&response.body) {
-        check_no_error(&tlv)?;
-    }
-    Err(Ap2Error::Rejected { step, status: response.status })
 }
 
 /// A cloneable handle to a running AirPlay 2 session's controls, matching the
@@ -464,7 +423,7 @@ impl Ap2Session {
         let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
         let local_ip = conn.local_addr();
 
-        let shared = run_pair_setup(&mut conn)?;
+        let shared = run_transient_pair_setup(&mut conn)?;
 
         // Bind the timing/control sockets before SETUP so their ports are announced.
         let sockets = StreamSockets::bind()?;

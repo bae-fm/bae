@@ -328,6 +328,8 @@ impl RtspConnection {
 #[cfg(test)]
 pub(super) struct ParsedRequest {
     pub(super) method: Method,
+    /// The request URI (`/pair-setup`, `rtsp://…`).
+    pub(super) uri: String,
     headers: Vec<(String, String)>,
     pub(super) body: Vec<u8>,
 }
@@ -359,7 +361,8 @@ pub(super) fn read_request(reader: &mut impl BufRead) -> io::Result<Option<Parse
     if reader.read_line(&mut request_line)? == 0 {
         return Ok(None);
     }
-    let method = match request_line.trim_end().split(' ').next().unwrap_or("") {
+    let mut words = request_line.trim_end().split(' ');
+    let method = match words.next().unwrap_or("") {
         "OPTIONS" => Method::Options,
         "ANNOUNCE" => Method::Announce,
         "SETUP" => Method::Setup,
@@ -370,6 +373,7 @@ pub(super) fn read_request(reader: &mut impl BufRead) -> io::Result<Option<Parse
         "POST" => Method::Post,
         other => Method::Other(other.to_string()),
     };
+    let uri = words.next().unwrap_or("").to_string();
 
     let mut headers = Vec::new();
     loop {
@@ -391,7 +395,7 @@ pub(super) fn read_request(reader: &mut impl BufRead) -> io::Result<Option<Parse
         .map_or(0, |(_, v)| v.trim().parse::<usize>().expect("valid content-length"));
     let mut body = vec![0u8; content_length];
     reader.read_exact(&mut body)?;
-    Ok(Some(ParsedRequest { method, headers, body }))
+    Ok(Some(ParsedRequest { method, uri, headers, body }))
 }
 
 #[cfg(test)]

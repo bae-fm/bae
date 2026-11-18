@@ -88,6 +88,11 @@ sha1 = { workspace = true }
 chacha20poly1305 = { workspace = true }
 hkdf = { workspace = true }
 rand_core = { workspace = true }
+# AirPlay 2 pairing with a PIN or a password (src/airplay/pairing.rs,
+# pair_verify.rs): the Ed25519 identities bae and the receiver sign with, and
+# the X25519 exchange each pair-verify keys a session from.
+ed25519-dalek = { workspace = true }
+x25519-dalek = { workspace = true }
 # The id source the AirPlay 2 SETUP's session and group ids come from.
 coven = { workspace = true }
 

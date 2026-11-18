@@ -4,7 +4,8 @@
 )]
 
 use super::*;
-use crate::airplay::ap2_session::{run_pair_setup, Ap2Error, AP2_USER_AGENT, PAIR_SETUP_M1};
+use crate::airplay::ap2_pairing::{run_transient_pair_setup, PAIR_SETUP_M1};
+use crate::airplay::ap2_session::{Ap2Error, AP2_USER_AGENT};
 use crate::airplay::fake_receiver::{serve_transient_pair_setup, SrpServer};
 use crate::airplay::rtsp::RtspConnection;
 use std::net::TcpListener;
@@ -85,7 +86,7 @@ fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<
     });
 
     let mut conn = RtspConnection::connect(addr.ip(), addr.port(), user_agent).unwrap();
-    let sender = run_pair_setup(&mut conn);
+    let sender = run_transient_pair_setup(&mut conn);
     (sender, server.join().unwrap())
 }
 

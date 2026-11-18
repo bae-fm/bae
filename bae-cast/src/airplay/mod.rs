@@ -21,6 +21,14 @@
 
 pub(crate) mod airplay2;
 pub(crate) mod ap2_channel;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "pairing by code is reached only from its tests until a cast asks for codes"
+    )
+)]
+pub(crate) mod ap2_pairing;
 pub(crate) mod ap2_session;
 pub(crate) mod bplist;
 pub(crate) mod capabilities;
@@ -28,7 +36,16 @@ pub(crate) mod crypto;
 pub(crate) mod discovery;
 #[cfg(test)]
 pub(crate) mod fake_receiver;
+pub(crate) mod pair_verify;
 pub(crate) mod pairing;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "pairing by code is reached only from its tests until a cast asks for codes"
+    )
+)]
+pub(crate) mod pairing_keys;
 pub(crate) mod rtp;
 pub(crate) mod rtsp;
 mod secure_rng;

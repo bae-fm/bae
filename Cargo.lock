@@ -987,6 +987,7 @@ dependencies = [
  "cbc",
  "chacha20poly1305 0.10.1",
  "coven",
+ "ed25519-dalek",
  "hex",
  "hkdf 0.12.4",
  "local-ip-address",
@@ -1011,6 +1012,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tracing",
+ "x25519-dalek",
 ]
 
 [[package]]

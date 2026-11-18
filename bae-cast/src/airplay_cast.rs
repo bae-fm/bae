@@ -6,7 +6,8 @@ use bae_diagnostics::Diagnostics;
 use bae_playback::airplay_output::AirPlaySink;
 
 use crate::airplay::airplay2::TimingProtocol;
-use crate::airplay::ap2_session::{Ap2Error, PAIR_SETUP_M1};
+use crate::airplay::ap2_pairing::PAIR_SETUP_M1;
+use crate::airplay::ap2_session::Ap2Error;
 use crate::airplay::capabilities::{Ap2Pairing, Dialect, RaopAuth, RaopEncryption, ReceiverAccess};
 use crate::airplay::pairing::{HomeKitError, PairingError};
 use crate::airplay::sink::{Ap2Sink, RaopSink};
