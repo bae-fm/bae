@@ -168,10 +168,10 @@ async fn remove_device(source: &coven::CovenHandle, device: coven::DeviceId) -> 
     // The write journals the removal; the sync loop claims its slot.
     if let Some(removal) = removal {
         let outcome = source
-            .operation_outcome(removal)
+            .operation_outcome::<coven::ChangeOutcome>(removal)
             .await
             .map_err(|error| format!("the removal's outcome: {error}"))?;
-        if let coven::OperationOutcome::Rejected(reason) = outcome {
+        if let coven::ChangeOutcome::Rejected(reason) = outcome {
             return Err(format!("the removal was refused: {reason:?}"));
         }
         source

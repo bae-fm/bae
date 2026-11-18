@@ -132,8 +132,8 @@ fn open_invite(row: &rusqlite::Row<'_>) -> rusqlite::Result<OpenInvite> {
 fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
     match row.get::<_, String>("kind")?.as_str() {
         "open" => Ok(InviteEntry::Open(open_invite(row)?)),
-        _ => match row.get::<_, coven::OperationOutcome>("outcome")? {
-            coven::OperationOutcome::SharingRefused { account, refusal } => {
+        _ => match row.get::<_, coven::InviteOutcome>("outcome")? {
+            coven::InviteOutcome::SharingRefused { account, refusal } => {
                 Ok(InviteEntry::Refused(RefusedInvite {
                     operation: coven::OperationId(row.get("operation")?),
                     address: account,

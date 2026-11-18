@@ -87,14 +87,6 @@ fn rename(conn: &rusqlite::Connection) -> coven::OperationId {
         .unwrap()
 }
 
-/// The outcome of an operation the provider refused to share for.
-fn refused_outcome() -> coven::OperationOutcome {
-    coven::OperationOutcome::SharingRefused {
-        account: "dan@example.com".into(),
-        refusal: coven::SharingRefusal::TooManyMembers,
-    }
-}
-
 /// End the invite `operation` as the provider's refusal to share with Dan
 /// ends it.
 fn refuse(conn: &rusqlite::Connection, operation: coven::OperationId) {
@@ -174,9 +166,7 @@ fn open_and_refused_invites_are_listed_in_the_order_they_were_made() {
     let first = invite(&conn, 2, Stage::Granting);
     refuse(&conn, first);
     let other_kind = rename(&conn);
-    coven::finish_operation(&conn, other_kind, &refused_outcome()).unwrap();
-    let other_outcome = rename(&conn);
-    coven::finish_operation(&conn, other_outcome, &coven::OperationOutcome::Satisfied).unwrap();
+    coven::finish_operation(&conn, other_kind, coven::ChangeOutcome::Satisfied).unwrap();
     let open = invite(&conn, 5, Stage::Granting);
     let last = invite(&conn, 6, Stage::Granting);
     refuse(&conn, last);

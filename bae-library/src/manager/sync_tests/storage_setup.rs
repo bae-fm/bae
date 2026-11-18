@@ -157,12 +157,12 @@ async fn a_dropped_setup_call_cancels_its_setup() {
             Ok(sql.query(
                 "SELECT outcome FROM coven_operations WHERE kind = 'StorageSetup'",
                 [],
-                |row| row.get::<_, Option<coven::OperationOutcome>>(0),
+                |row| row.get::<_, Option<coven::StorageSetupOutcome>>(0),
             )?)
         })
         .await
         .unwrap();
-    assert_eq!(outcomes, vec![Some(coven::OperationOutcome::Cancelled)]);
+    assert_eq!(outcomes, vec![Some(coven::StorageSetupOutcome::Cancelled)]);
     assert!(!manager.is_sync_configured().await.unwrap());
 }
 

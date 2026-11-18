@@ -61,14 +61,13 @@ enum SetupRow {
 }
 
 impl SetupRow {
-    /// How `outcome` reads; an outcome no storage setup ends with, a refused
-    /// sharing, is an unreadable row.
-    fn of(outcome: Option<coven::OperationOutcome>) -> Result<Self, DbError> {
-        use coven::OperationOutcome as O;
+    /// How `outcome` reads.
+    fn of(outcome: Option<coven::StorageSetupOutcome>) -> Self {
+        use coven::StorageSetupOutcome as O;
         let undone = |detail: String| {
             Self::Undone(UiError::diagnostic(UiErrorCategory::StorageSetupUndone, detail))
         };
-        Ok(match outcome {
+        match outcome {
             None => Self::Running,
             Some(O::Landed(_) | O::Satisfied | O::Stopped(_) | O::Cancelled) => Self::Settled,
             Some(O::Undone(coven::UndoCause::Interrupted)) => {
@@ -86,13 +85,7 @@ impl SetupRow {
             Some(O::Rejected(rejection)) => {
                 undone(format!("the library refused the setup: {rejection:?}"))
             }
-            Some(outcome @ O::SharingRefused { .. }) => {
-                return Err(DbError::unreadable(
-                    "coven_operations.outcome of a storage setup",
-                    outcome,
-                ))
-            }
-        })
+        }
     }
 }
 
@@ -118,7 +111,7 @@ pub(super) const UNDONE_SETUP_JOIN: &str = "LEFT JOIN (SELECT operation, outcome
 /// [`STORAGE_SETUP_COLUMNS`] as read, from column `first` on.
 pub(super) struct StorageSetupColumns {
     running: bool,
-    undone: Option<(coven::OperationId, Option<coven::OperationOutcome>)>,
+    undone: Option<(coven::OperationId, Option<coven::StorageSetupOutcome>)>,
 }
 
 impl StorageSetupColumns {
@@ -141,7 +134,7 @@ impl StorageSetupColumns {
         let Some((operation, outcome)) = self.undone else {
             return Ok(None);
         };
-        match SetupRow::of(outcome)? {
+        match SetupRow::of(outcome) {
             SetupRow::Undone(why) => Ok(Some(StorageSetupState::Undone { operation, why })),
             row @ (SetupRow::Running | SetupRow::Settled) => Err(DbError::unreadable(
                 "coven_operations.outcome of the newest undone storage setup",
@@ -202,10 +195,10 @@ impl SyncStatus {
                         "SELECT outcome FROM coven_operations \
                          WHERE operation = ?1 AND kind = 'StorageSetup'",
                         [operation.0],
-                        |row| row.get::<_, Option<coven::OperationOutcome>>(0),
+                        |row| row.get::<_, Option<coven::StorageSetupOutcome>>(0),
                     )
                     .optional()?;
-                match outcome.map(SetupRow::of).transpose()? {
+                match outcome.map(SetupRow::of) {
                     Some(SetupRow::Undone(_)) => {
                         sql.acknowledge_operation(operation)?;
                         Ok(true)
@@ -230,12 +223,12 @@ impl SyncStatus {
                     |row| {
                         Ok((
                             coven::OperationId(row.get(0)?),
-                            row.get::<_, Option<coven::OperationOutcome>>(1)?,
+                            row.get::<_, Option<coven::StorageSetupOutcome>>(1)?,
                         ))
                     },
                 )?;
                 for (operation, outcome) in ended {
-                    let acknowledged = match (which, SetupRow::of(outcome)?) {
+                    let acknowledged = match (which, SetupRow::of(outcome)) {
                         (_, SetupRow::Running) => false,
                         (Ended::All, _) | (Ended::Settled, SetupRow::Settled) => true,
                         (Ended::Settled, SetupRow::Undone(_)) => false,

@@ -98,7 +98,8 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
             bae_store::read::column_conversion_error(row, 3, "a member change names no member")
         })
     };
-    let change = match row.get::<_, coven::OperationKind>(1)? {
+    let kind = row.get::<_, coven::OperationKind>(1)?;
+    let change = match kind {
         coven::OperationKind::RenameStore => AdminChangeKind::RenameLibrary {
             name: row.get::<_, Option<String>>(6)?.ok_or_else(|| {
                 bae_store::read::column_conversion_error(row, 6, "a rename names no name")
@@ -139,26 +140,45 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
             ))
         }
     };
-    let state = match row.get::<_, Option<coven::OperationOutcome>>(2)? {
-        None => AdminChangeState::Waiting,
-        Some(coven::OperationOutcome::Landed(_) | coven::OperationOutcome::Satisfied) => {
-            AdminChangeState::Done
+    let state = match kind {
+        coven::OperationKind::ReplaceMemberKeys => {
+            match row.get::<_, Option<coven::FreshChangeOutcome>>(2)? {
+                None => AdminChangeState::Waiting,
+                Some(coven::FreshChangeOutcome::Landed(_)) => AdminChangeState::Done,
+                Some(coven::FreshChangeOutcome::Rejected(reason)) => {
+                    AdminChangeState::Refused(reason)
+                }
+                Some(coven::FreshChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+            }
         }
-        Some(coven::OperationOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
-        Some(coven::OperationOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
-        // Only storage setup is cancelled or undone, and only an invite's
-        // grant is refused sharing, never an admin change.
-        Some(
-            outcome @ (coven::OperationOutcome::Cancelled
-            | coven::OperationOutcome::Undone(_)
-            | coven::OperationOutcome::SharingRefused { .. }),
-        ) => {
-            return Err(bae_store::read::column_conversion_error(
-                row,
-                2,
-                format!("an admin change that ended {outcome:?}"),
-            ))
-        }
+        coven::OperationKind::Invite => match row.get::<_, Option<coven::InviteOutcome>>(2)? {
+            None => AdminChangeState::Waiting,
+            Some(coven::InviteOutcome::Landed(_) | coven::InviteOutcome::Satisfied) => {
+                AdminChangeState::Done
+            }
+            Some(coven::InviteOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+            Some(coven::InviteOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+            // A sharing refusal ends the invite itself, which this device
+            // records as no admin change; an approval's binding ends as
+            // a change does.
+            Some(outcome @ coven::InviteOutcome::SharingRefused { .. }) => {
+                return Err(bae_store::read::column_conversion_error(
+                    row,
+                    2,
+                    format!("an approval that ended {outcome:?}"),
+                ))
+            }
+        },
+        // RenameStore, SetRole, RemoveMember and RemoveDevice, the other
+        // kinds the match above reads.
+        _ => match row.get::<_, Option<coven::ChangeOutcome>>(2)? {
+            None => AdminChangeState::Waiting,
+            Some(coven::ChangeOutcome::Landed(_) | coven::ChangeOutcome::Satisfied) => {
+                AdminChangeState::Done
+            }
+            Some(coven::ChangeOutcome::Rejected(reason)) => AdminChangeState::Refused(reason),
+            Some(coven::ChangeOutcome::Stopped(stop)) => AdminChangeState::Stopped(stop),
+        },
     };
     Ok(AdminChange { operation, change, state })
 }
@@ -318,11 +338,11 @@ impl Membership {
                         "SELECT outcome FROM coven_operations \
                          WHERE operation = ?1 AND kind = 'Invite'",
                         [operation.0],
-                        |row| row.get::<_, Option<coven::OperationOutcome>>(0),
+                        |row| row.get::<_, Option<coven::InviteOutcome>>(0),
                     )
                     .optional()?;
                 match outcome.flatten() {
-                    Some(coven::OperationOutcome::SharingRefused { .. }) => {
+                    Some(coven::InviteOutcome::SharingRefused { .. }) => {
                         sql.acknowledge_operation(operation)?;
                         Ok(true)
                     }
