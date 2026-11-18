@@ -100,3 +100,6 @@
 .bae-m-idraft-cell { display: flex; align-items: center; min-width: 0; }
 .bae-m-idraft-labelrow { flex: 1; min-width: 0; display: flex; gap: var(--space-related); }
 .bae-m-itable-cell { display: flex; align-items: center; min-width: 0; }
+.bae-m-ifile-damaged { flex: none; display: inline-flex; align-items: center; gap: var(--space-inline); font: 400 11.5px var(--font-sans); color: var(--warning); }
+.bae-m-ifile-play { flex: none; margin-left: auto; display: inline-flex; align-items: center; }
+.bae-m-ifile-play + .bae-m-ifile-size { margin-left: 0; }

@@ -9,6 +9,8 @@ The draft card: Identify with Automatic, Search and the ⋯ button that opens th
 
 A part with no value draws nothing: no audio line without `audio`, no album pop-up without `album`.
 
+`reason` draws a skipped folder's card, read-only: why bae can't import the folder in a warning notice where Import would be, then the cover and what the folder's tags call the release (`title`, `artist`), or the folder's name (`folder`) when they call it nothing. It has no Identify row, fields, Release grid or records.
+
 Where the import goes is one pop-up button, `to`: This Mac or Cloud. It shows when the library has cloud storage (`cloud`), and it is one stored choice: the bulk pane and Settings → Import show the same one.
 
 **In the code:** macOS: `MacImportDraft` and `ReleaseMetadataHeader` (`Views/Import/Mapping/`, `Views/Components/MetadataForm/`); `ReleaseEditorView` for `editor`.

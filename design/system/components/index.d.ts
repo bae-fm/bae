@@ -139,7 +139,7 @@ export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
 export interface MacImportImagesProps { /** "artwork title|file name", comma-separated. */ images?: string }
 export declare function MacImportImages(props: MacImportImagesProps): React.ReactElement;
-export interface MacReleaseFilesProps { /** "name|size[|other]", comma-separated; `other` opens nothing. */ files?: string }
+export interface MacReleaseFilesProps { /** "name|size[|kind]", comma-separated; kind is `other` (opens nothing), `audio` (plays) or `damaged:why`. */ files?: string }
 export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
 export interface AndroidKeyboardProps {}
 export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;
@@ -359,8 +359,8 @@ export declare function MacImportGroupHeader(props: { name: string; closed?: boo
 export declare function MacImportRow(props: { title?: string; artist?: string; folder?: string; cover?: string; noCover?: boolean; record?: boolean; badge?: string; badgeTone?: 'warning' | 'danger'; state?: 'identifyQueued' | 'identifying' | 'importQueued' | 'importing' | 'uploading'; step?: string; progress?: number; error?: string; grouped?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
 /** Where an import goes: This Mac or Cloud. One stored choice, wherever it shows. */
-export declare function MacImportDestination(props: { to?: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
-export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumOpen?: boolean; albumItems?: string; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
+export declare function MacImportDestination(props: { to: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
+export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumOpen?: boolean; albumItems?: string; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; /** A skipped folder's card, read-only, stating why bae can't import it. */ reason?: string; folder?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file: string; entry?: boolean; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc: string; sheet: string; bound?: string; unbound?: boolean }): React.ReactElement;

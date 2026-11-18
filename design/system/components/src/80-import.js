@@ -51,13 +51,21 @@
     return h('div', { className: 'bae-m-ifl' }, h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-tab' }, h(StatusChip, { tone: 'accent' }, props.tab || 'Found')), h(Sym, { name: 'right', size: 10, className: 'bae-m-tertiary' }), h('button', { type: 'button', className: 'bae-plainbtn bae-m-ifl-reveal bae-muted', 'aria-label': 'Reveal in Finder', title: 'Reveal in Finder' }, h(Sym, { name: 'folder', size: 15 })), h('span', { className: 'bae-ellipsis bae-strong', style: { fontSize: 15 } }, props.folder));
   }
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
-  function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to || 'Cloud', off: props.off }); }
+  function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
   // A field drawn as the value it holds until the pointer is over it or it has focus, for the draft's values and a track's cells: `label` names it, `placeholder` shows while it is empty.
   function cellInput(label, value, placeholder, className) {
     return h('input', { type: 'text', className: cx('bae-m-icell', className), defaultValue: value || '', placeholder: placeholder, 'aria-label': label, spellCheck: false });
   }
   // The draft card: Identify with Automatic, Search and the Metadata menu (⋯); where the import goes and Import; the folder's check in a warning notice; the cover (a plain tile when it has none) and the identity: the album title and year as fields, the album artist as a button with its Library or New badge, the audio line, and the album pop-up; the Release grid of fields and pop-ups; the linked records with Unlink.
   function MacImportDraft(props) {
+    // `reason`: a skipped folder's card, read-only: why bae can't import it where Import would be, then its cover and what its tags call the release (`title`, `artist`), or its `folder` name.
+    if (props.reason) return h('div', { className: 'bae-m-card bae-m-idraft' },
+      h(MacNotice, { tone: 'warning', title: props.reason }),
+      h('div', { className: 'bae-m-idraft-head' },
+        h(Artwork, { title: props.cover, size: 132, radius: 6, missing: !props.cover }),
+        h('div', { className: 'bae-m-idraft-id' }, props.title
+          ? [h('div', { key: 't', className: 'bae-m-idraft-title' }, props.title), props.artist ? h('div', { key: 'a', className: 'bae-muted' }, props.artist) : null]
+          : h('span', { className: 'bae-mono' }, props.folder))));
     var dash = function (v) { return v || '—'; };
     var grid = [
       ['Year', cellInput('Year', props.pressingYear, '—')],
@@ -94,12 +102,16 @@
     return h('div', { className: 'bae-m-ifiles' }, h('div', { className: 'bae-m-formhead' }, 'Images'),
       h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] || p[0] }, h(Artwork, { title: p[0], size: 128, radius: 6 })); })));
   }
-  // The release's files that are no track (a rip log, a cover image): a ruled Files heading, then one line per file, its name in mono and its size at the right. A document, a track sheet or an image is a button named by its file, which opens it; `other` marks a file that opens nothing (`files`: "name|size[|other]", comma-separated).
+  // The release's files that are no track (a rip log, a cover image), or on a skipped folder's pane every file but its images: a ruled Files heading, then one line per file, its name in mono and its size at the right. A document, a track sheet or an image is a button named by its file, which opens it. The third part says what else the file is (`files`: "name|size[|kind]", comma-separated): `other` opens nothing; `audio` is a track that plays, with its Play button before the size; `damaged:why` is a damaged file, marked with why and opening nothing.
   function MacReleaseFiles(props) {
     return h('div', { className: 'bae-m-ifiles' }, h('div', { className: 'bae-m-formhead' }, 'Files'),
       h('div', null, list(props.files).map(function (f) {
-        var p = f.split('|'), other = p[2] === 'other';
-        return h(other ? 'div' : 'button', { key: p[0], type: other ? null : 'button', className: cx(!other && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': other ? null : p[0] }, h('span', { className: 'bae-mono bae-ellipsis' }, p[0]), h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, p[1] || ''));
+        var p = f.split('|'), kind = p[2] || '', damaged = kind.indexOf('damaged:') === 0, opens = !kind;
+        var name = h('span', { key: 'n', className: 'bae-mono bae-ellipsis' }, p[0]);
+        var mark = damaged ? h('span', { key: 'm', className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 12 }), kind.slice('damaged:'.length)) : null;
+        var play = kind === 'audio' ? h('button', { key: 'p', type: 'button', className: 'bae-plainbtn bae-muted bae-m-ifile-play', 'aria-label': 'Play' }, h(Sym, { name: 'play', size: 10 })) : null;
+        var size = h('span', { key: 's', className: 'bae-m-tertiary bae-m-ifile-size' }, p[1] || '');
+        return h(opens ? 'button' : 'div', { key: p[0], type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? p[0] : null }, name, mark, play, size);
       })));
   }
   // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
