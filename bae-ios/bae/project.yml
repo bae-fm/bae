@@ -86,7 +86,7 @@ targets:
       - package: BaeKit
     settings:
       base:
-        # The app's identity, overridden per edition by run.sh and the release
+        # The app's identity, overridden per edition by the release
         # workflow through these private names. Only this target maps them to
         # the standard settings: passing PRODUCT_NAME or
         # PRODUCT_BUNDLE_IDENTIFIER on xcodebuild's command line would also

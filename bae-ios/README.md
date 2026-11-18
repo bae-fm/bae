@@ -27,9 +27,6 @@ xcodegen generate
 open bae.xcodeproj
 ```
 
-`bae-ios/run.sh` builds and runs the app on a simulator; `bae-ios/open.sh`
-builds the bridge and opens the project.
-
 ## Shared package
 
 The generated bridge bindings and the launch pieces the app uses live in the
