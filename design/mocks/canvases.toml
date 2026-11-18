@@ -1,17 +1,16 @@
-# The claude.ai canvases the boards publish to, split by page.
+# The claude.ai canvases the boards publish to, split by page, named by
+# title on whichever account Claude Code is signed in to.
 # `builds design publish-files` reads this file.
 
 [[canvas]]
-url = "https://claude.ai/artifact/59mGrccWpy4FtzYgdfvpvb"
 title = "bae boards: welcome, settings, library"
 launch = "welcome"
 pages = ["welcome", "settings", "library", "logo", "shared"]
 
 [[canvas]]
-url = "https://claude.ai/artifact/3RJUquJJLzUx65cQD6QC4W"
 title = "bae boards: home, import, storage"
 launch = "home"
 pages = ["home", "loading", "search", "import", "storage", "explore"]
 
 [design_system]
-url = "https://claude.ai/artifact/SdtZaYwqSiNuWzC8vQjnEF"
+title = "bae"

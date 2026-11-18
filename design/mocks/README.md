@@ -24,10 +24,14 @@ Yellow notes beside a row name what the code needs.
 A canvas holds at most 512 files, so the boards are published as two
 canvases, split by page:
 
-- https://claude.ai/artifact/59mGrccWpy4FtzYgdfvpvb: the welcome, settings,
-  library, logo and shared pages.
-- https://claude.ai/artifact/3RJUquJJLzUx65cQD6QC4W: the home, loading,
-  search, import, storage and explore pages.
+- "bae boards: welcome, settings, library": the welcome, settings, library,
+  logo and shared pages.
+- "bae boards: home, import, storage": the home, loading, search, import,
+  storage and explore pages.
+
+`canvases.toml` names each canvas and the design system ("bae") by title, and
+the publish finds each one on whichever claude.ai account Claude Code is
+signed in to.
 
 Each gets the boards on its pages and the part of `canvas.json` that places
 them; no board mounts a part from the other canvas. These files are their
