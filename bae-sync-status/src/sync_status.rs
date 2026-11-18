@@ -235,10 +235,7 @@ impl SyncStatusSnapshot {
     /// do, and where this device's storage setup stands.
     pub fn read(coven: coven::SyncStatus, rows: SyncStatusRows) -> Self {
         let SyncStatusRows { pending, start_failure, retry_effect, storage_setup, provider } = rows;
-        let mut snapshot =
-            Self { coven, pending, error: start_failure, retry_effect, storage_setup, provider };
-        snapshot.name_connection_cause();
-        snapshot
+        Self { coven, pending, error: start_failure, retry_effect, storage_setup, provider }
     }
 
     /// Storage is set up on this device: a location is recorded and this
@@ -288,39 +285,6 @@ impl SyncStatusSnapshot {
         match cause {
             coven::SyncCause::Pass(pass) => Some(pass),
             coven::SyncCause::Pending(_) => None,
-        }
-    }
-
-    /// Give the connection's record the error behind it. coven keeps the
-    /// error behind every other record beside it, but a connection's failure
-    /// goes to the last pass, which keeps its text until the next pass
-    /// replaces it.
-    fn name_connection_cause(&mut self) {
-        let Some((failure, error)) = self.connection_error() else {
-            return;
-        };
-        let (failure, error) = (failure, error.to_string());
-        let connection =
-            self.pending.iter_mut().filter(|item| item.subject == PendingSubjectName::Connection);
-        for item in connection {
-            if matches!(&item.wait.reason, coven::PendingReason::Storage { failure: recorded, .. } if *recorded == failure)
-            {
-                item.wait.cause = Some(error.clone());
-            }
-        }
-    }
-
-    /// The storage failure a pass failed on, with its text, when it failed
-    /// on the connection: storage refused it, or couldn't be reached.
-    fn connection_error(&self) -> Option<(coven::StorageFailure, &str)> {
-        match self.shown_pass()? {
-            coven::LastPass::Offline { failure, error }
-            | coven::LastPass::Failed { failure: coven::StatusFailure::Storage(failure), error } => {
-                Some((*failure, error))
-            }
-            coven::LastPass::Synced
-            | coven::LastPass::Blocked { .. }
-            | coven::LastPass::Failed { .. } => None,
         }
     }
 

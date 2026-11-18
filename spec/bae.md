@@ -4405,8 +4405,8 @@ the record, written with it by the run that met the failure, and clears it as
 the library opens, so a record read after reopening has no details and offers
 none. A retry that fails for the same reason leaves its record as it was and
 writes the error it met, which the list then shows. The connection's record
-takes its text from the last pass, whose error coven's sync state carries
-when that pass, failed on the connection, is what names the state. The details are never the record's internal debug text. This list
+holds the error of the pass that failed on the connection, which coven writes
+with it like any other. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
 **Signing in again to the recorded storage.** A device has no way to drop its

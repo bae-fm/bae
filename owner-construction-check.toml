@@ -1840,7 +1840,6 @@ frozen = [
     { path = "bae-store/src/list_windows/range.rs", item = "read_range", shape = "length-branch", count = 1, finding = "`read_range` branches on how many rows there are (found by the check)" },
     { path = "bae-store/src/list_windows/range.rs", item = "read_range", shape = "sort", count = 1, finding = "reverses a backward window's rows, which the statement read in descending order (`reverse`)" },
     { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::failure_recorded", shape = "pick", count = 3, finding = "tests the pending rows for a removal, a key replacement or a failed pass with `any`" },
-    { path = "bae-sync-status/src/sync_status.rs", item = "SyncStatusSnapshot::name_connection_cause", shape = "filter", count = 1, finding = "picks the pending rows about the connection to name their cause (`filter`)" },
     { path = "bae-sync-status/src/sync_status/storage_setup.rs", item = "standing", shape = "pick", count = 2, finding = "`standing` picks with `any` (found by the check)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "length-branch", count = 3, finding = "merges two label lines only when both state names and catalog numbers (`is_empty`)" },
     { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "pick", count = 2, finding = "groups a release's label rows into lines, finding each row's line by name or catalog numbers with `find`" },
