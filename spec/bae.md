@@ -2784,7 +2784,9 @@ download ended, and its whole size after only if the download finished, so the
 bytes never go back as a file lands; a download that failed, was held or was
 dropped counts none of its file. Its rate is what it has moved since it began over the time since. Unpinning removes the release's files from this device in the same write, with room in the cache or not: the pinned whole copy, any cached chunks and the partial download a pin left go once the write has committed, nothing else is evicted, and playing the release again reads from storage. It also ends any request coven still holds to
 keep them here ([coven §17.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#178-cache-and-pinning)); unpinning a selection is one write for
-all its releases, and one that can't unpin is named while the rest unpin.
+all its releases, and one that is gone or holds no files is named while the
+rest unpin. coven has nothing to remove for a file only this device holds, so
+unpinning a local release leaves its files here and refuses nothing.
 
 Unpin asks first while the device's `ask_before_unpinning` setting is on, in
 both apps and everywhere Unpin is offered: the Mac's Storage sheet for a

@@ -59,11 +59,7 @@ pub async fn move_release_to_cloud(
             if !exists {
                 return Err(WriteError::Refused(StorageMoveRefusal::Missing));
             }
-            let files: Vec<coven::FileId> = sql.query(
-                "SELECT file FROM release_files WHERE release_id = ?1 ORDER BY id",
-                [&release_id],
-                |row| row.get(0),
-            )?;
+            let files = release_files_on(&sql, &release_id)?;
             if files.is_empty() {
                 return Err(WriteError::Refused(StorageMoveRefusal::NoFiles));
             }
@@ -91,8 +87,6 @@ pub enum UnpinRefusal {
     Missing,
     /// The release holds no files.
     NoFiles,
-    /// A file of the release is not stored in the cloud.
-    NotInStorage,
 }
 
 /// What one write unpinning a selection did.
@@ -105,30 +99,29 @@ pub struct Unpinned {
     pub refused: Vec<(String, UnpinRefusal)>,
 }
 
-/// One release's files, each with whether it is stored in the cloud: no
-/// device holds it alone.
-const RELEASE_UNPIN_FILES: &str = "SELECT f.file, coven_file_device(c.coordinates) IS NULL \
-     FROM release_files AS f \
-     JOIN coven_files AS c ON c.id = f.file \
-     WHERE f.release_id = ?1 ORDER BY f.id";
-
 /// Unpin every file of `release_id`, as [`unpin_releases`] does for a
 /// release. coven has nothing to remove for a file on one device only.
 pub(crate) fn unpin_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
-    let files: Vec<coven::FileId> =
-        sql.query("SELECT file FROM release_files WHERE release_id = ?1", [release_id], |row| {
-            row.get(0)
-        })?;
-    sql.unpin(&files)?;
+    sql.unpin(&release_files_on(sql, release_id)?)?;
     Ok(())
 }
 
-/// Unpin the files of every release of `release_ids` stored in the cloud, in
-/// one write: coven removes each file's copies from this device in that write,
-/// the pinned whole copy and any cached chunks alike, and the partial download
-/// a pin left. Nothing else is evicted, whatever room the budget has. No
-/// transition is shown on the way. A release that cannot unpin is named with
-/// why and changes nothing; the rest unpin.
+/// The coven files of `release_id`'s files, in their ids' order.
+fn release_files_on(sql: &CovenWrite<'_>, release_id: &str) -> Result<Vec<coven::FileId>, DbError> {
+    Ok(sql.query(
+        "SELECT file FROM release_files WHERE release_id = ?1 ORDER BY id",
+        [release_id],
+        |row| row.get(0),
+    )?)
+}
+
+/// Unpin the files of every release of `release_ids`, in one write: coven
+/// removes each file's copies from this device in that write, the pinned
+/// whole copy and any cached chunks alike, and the partial download a pin
+/// left. Nothing else is evicted, whatever room the budget has, and coven has
+/// nothing to remove for a file on one device only. No transition is shown
+/// on the way. A release that is gone or holds no files is named with why and
+/// changes nothing; the rest unpin.
 pub async fn unpin_releases(store: &Store, release_ids: Vec<String>) -> Result<Unpinned, DbError> {
     store
         .write(move |sql| {
@@ -143,20 +136,12 @@ pub async fn unpin_releases(store: &Store, release_ids: Vec<String>) -> Result<U
                     outcome.refused.push((release_id, UnpinRefusal::Missing));
                     continue;
                 }
-                let files: Vec<(coven::FileId, bool)> =
-                    sql.query(RELEASE_UNPIN_FILES, [&release_id], |row| {
-                        Ok((row.get(0)?, row.get(1)?))
-                    })?;
+                let files = release_files_on(&sql, &release_id)?;
                 if files.is_empty() {
                     outcome.refused.push((release_id, UnpinRefusal::NoFiles));
                     continue;
                 }
-                if files.iter().any(|(_, in_storage)| !in_storage) {
-                    outcome.refused.push((release_id, UnpinRefusal::NotInStorage));
-                    continue;
-                }
                 let count = u32::try_from(files.len()).expect("a release's files fit a u32");
-                let files: Vec<coven::FileId> = files.into_iter().map(|(file, _)| file).collect();
                 sql.unpin(&files)?;
                 outcome.unpinned.push((release_id, count));
             }

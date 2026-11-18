@@ -476,6 +476,30 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
     );
 }
 
+/// Unpinning a release whose files are on this device only refuses nothing:
+/// coven has nothing to remove for such a file, and its original stays.
+#[tokio::test]
+async fn unpinning_a_local_release_leaves_its_files_here() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release = insert_local_release_with_files(
+        manager,
+        temp_dir.path(),
+        "Local",
+        &[("track.flac", b"local audio")],
+    )
+    .await;
+
+    manager.unpin_releases(std::slice::from_ref(&release.id)).await.unwrap();
+
+    let file = release_files(manager, &release.id).await.remove(0);
+    assert!(!file.stored);
+    assert_eq!(
+        manager.records.read_release_file(&file.id, &bae_util::test_files::lease()).await.unwrap(),
+        b"local audio"
+    );
+}
+
 /// Making a release local switches its files in the write that ends its
 /// queue entry: a write that can't end it switches nothing, so the release
 /// is never local with its entry still queued.

@@ -219,9 +219,6 @@ impl LibraryManager {
                     LibraryError::release_missing(&release_id, ReleaseWork::Transfer)
                 }
                 UnpinRefusal::NoFiles => LibraryError::Storage("Release has no files".to_string()),
-                UnpinRefusal::NotInStorage => {
-                    LibraryError::Storage("Cannot unpin a local release".to_string())
-                }
             };
             tracing::error!(%release_id, failure = %error, "release unpin refused");
             self.record_telemetry(TelemetryEvent::StorageTransferFailed {
