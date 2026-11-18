@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS artist_merges (
 CREATE INDEX IF NOT EXISTS idx_artist_merges_into ON artist_merges (into_artist_id);
 
 -- Each merged artist and the artist it shows as: the end of its merge chain.
--- Every merge points at the smaller id of its two artists, so a chain, such as
--- two devices apart leave, ends. An artist absent here shows as itself.
+-- Every merge points at the smaller id of its two artists, so every chain
+-- ends. An artist absent here shows as itself.
 CREATE VIEW IF NOT EXISTS merged_artist_survivors AS
 WITH RECURSIVE hop(start, current) AS (
     SELECT id, into_artist_id FROM artist_merges
@@ -325,8 +325,8 @@ CREATE TABLE IF NOT EXISTS label_merges (
 CREATE INDEX IF NOT EXISTS idx_label_merges_into ON label_merges (into_label_id);
 
 -- Each merged label and the label it shows as: the end of its merge chain.
--- Every merge points at the smaller id of its two labels, so a chain, such as
--- two devices apart leave, ends. A label absent here shows as itself.
+-- Every merge points at the smaller id of its two labels, so every chain
+-- ends. A label absent here shows as itself.
 CREATE VIEW IF NOT EXISTS merged_label_survivors AS
 WITH RECURSIVE hop(start, current) AS (
     SELECT id, into_label_id FROM label_merges
