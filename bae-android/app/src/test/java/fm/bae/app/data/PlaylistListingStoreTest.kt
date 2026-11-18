@@ -78,7 +78,7 @@ class PlaylistListingStoreTest {
         assertEquals(2, reads.size)
         reads.last().emit(BridgeFixtures.playlistListing())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(1, store.totalCount)
+        assertEquals(ListPageState.Counted(1), store.state)
     }
 
     /** A failure replaces the listing the read held, and the read's next value replaces the failure. */
@@ -91,7 +91,7 @@ class PlaylistListingStoreTest {
         reads.single().fail(BridgeException.Diagnostic(BridgeErrorCategory.Database, "read failed"))
         shadowOf(Looper.getMainLooper()).idle()
         assertNull(store.listing)
-        assertEquals(0, store.totalCount)
+        assertTrue(store.state is ListPageState.Failed)
 
         reads.single().emit(BridgeFixtures.playlistListing(listOf(BridgeFixtures.playlistSummary("a"))))
         shadowOf(Looper.getMainLooper()).idle()
