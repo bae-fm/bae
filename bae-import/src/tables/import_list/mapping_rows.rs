@@ -135,27 +135,27 @@ sheets (relative_path, json) AS (
     SELECT s.relative_path,
            json_object(
                'sheet_id', s.relative_path, 'name', s.relative_path, 'size', s.size,
-               'binding', CASE WHEN s.sheet_binding <> 'resolved' THEN s.sheet_binding
-                               ELSE CASE COALESCE(n.count, 0)
-                                    WHEN 0 THEN 'resolved_to_none'
-                                    WHEN 1 THEN 'describes'
-                                    ELSE 'describes_files' END END,
-               'codec', s.sheet_binding_codec,
+               'bound', CASE s.sheet_binding
+                   WHEN 'resolved' THEN CASE COALESCE(n.count, 0)
+                       WHEN 0 THEN json_object('binding', 'resolved_to_none')
+                       WHEN 1 THEN json_object('binding', 'describes', 'audio', json((
+                           SELECT a.json FROM scan_sheet_audio_file AS sa
+                           JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
+                           WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
+                             AND sa.sheet_relative_path = s.relative_path)))
+                       ELSE json_object('binding', 'describes_files', 'audio_count', n.count) END
+                   WHEN 'unresolved' THEN json_object('binding', 'unresolved', 'requested', json((
+                       SELECT json_group_array(r.file_reference ORDER BY r.seq)
+                       FROM refs AS r
+                       WHERE r.sheet = s.relative_path
+                         AND NOT EXISTS (SELECT 1 FROM scan_sheet_audio_file AS sa
+                                         WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate)
+                                           AND sa.candidate_path = :key
+                                           AND sa.sheet_relative_path = s.relative_path
+                                           AND sa.file_reference = r.file_reference))))
+                   WHEN 'refused_codec' THEN json_object('binding', 'refused_codec', 'codec', s.sheet_binding_codec)
+                   ELSE json_object('binding', s.sheet_binding) END,
                'assignment', s.sheet_disc, 'disc_number', s.sheet_disc_number,
-               'audio_count', COALESCE(n.count, 0),
-               'described', CASE WHEN n.count = 1 THEN json((
-                   SELECT a.json FROM scan_sheet_audio_file AS sa
-                   JOIN audio_json AS a ON a.relative_path = sa.audio_relative_path
-                   WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
-                     AND sa.sheet_relative_path = s.relative_path)) END,
-               'requested', json((SELECT json_group_array(r.file_reference ORDER BY r.seq)
-                                  FROM refs AS r
-                                  WHERE r.sheet = s.relative_path
-                                    AND NOT EXISTS (SELECT 1 FROM scan_sheet_audio_file AS sa
-                                                    WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate)
-                                                      AND sa.candidate_path = :key
-                                                      AND sa.sheet_relative_path = s.relative_path
-                                                      AND sa.file_reference = r.file_reference))),
                'references', json((
                    SELECT json_group_array(json_object(
                        'file_reference', r.file_reference,
@@ -316,17 +316,37 @@ struct SheetJson {
     sheet_id: String,
     name: String,
     size: u64,
-    binding: String,
-    codec: Option<String>,
+    bound: BoundJson,
     assignment: String,
     disc_number: Option<i64>,
-    /// How many audio files the sheet is bound to, and the file when it is
-    /// bound to exactly one; `binding` already says which case the sheet is in.
-    audio_count: u32,
-    described: Option<AudioJson>,
-    requested: Vec<String>,
     references: Vec<ReferenceJson>,
     disc_options: Vec<u32>,
+}
+
+/// What a track sheet is bound to, tagged by the binding the statement
+/// reads from the scan and from how many audio files the sheet is bound to.
+#[derive(serde::Deserialize)]
+#[serde(tag = "binding", rename_all = "snake_case")]
+enum BoundJson {
+    /// Resolved, and bound to no audio file, which [`sheet_group`] refuses.
+    ResolvedToNone,
+    /// Resolved, and bound to this one audio file.
+    Describes {
+        audio: AudioJson,
+    },
+    /// Resolved, and bound to this many audio files.
+    DescribesFiles {
+        audio_count: u32,
+    },
+    /// Bound to none, with the files its `FILE` lines ask for and the
+    /// folder lacks.
+    Unresolved {
+        requested: Vec<String>,
+    },
+    RefusedTiming,
+    RefusedCodec {
+        codec: String,
+    },
 }
 
 #[derive(serde::Deserialize)]
@@ -499,30 +519,17 @@ fn container(audio: &AudioJson) -> MappingContainer {
 
 fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
-    let bound = match sheet.binding.as_str() {
-        "describes" => match sheet.described.as_ref() {
-            Some(audio) => SheetBound::Describes(container(audio)),
-            None => return Err(internal(format!("{} describes no audio file", sheet.sheet_id))),
-        },
-        "describes_files" => SheetBound::DescribesFiles { audio_file_count: sheet.audio_count },
-        "resolved_to_none" => {
+    let bound = match sheet.bound {
+        BoundJson::Describes { audio } => SheetBound::Describes(container(&audio)),
+        BoundJson::DescribesFiles { audio_count } => {
+            SheetBound::DescribesFiles { audio_file_count: audio_count }
+        }
+        BoundJson::ResolvedToNone => {
             return Err(internal(format!("{} is bound to no audio", sheet.sheet_id)))
         }
-        "unresolved" => SheetBound::Unresolved { requested: sheet.requested },
-        "refused_timing" => SheetBound::RefusedTiming,
-        "refused_codec" => SheetBound::RefusedCodec {
-            codec: sheet.codec.ok_or_else(|| {
-                internal(format!(
-                    "the sheet {} has the binding refused_codec but names no codec",
-                    sheet.sheet_id
-                ))
-            })?,
-        },
-        other => {
-            return Err(internal(format!(
-                "the statement returned an unknown sheet binding {other}"
-            )))
-        }
+        BoundJson::Unresolved { requested } => SheetBound::Unresolved { requested },
+        BoundJson::RefusedTiming => SheetBound::RefusedTiming,
+        BoundJson::RefusedCodec { codec } => SheetBound::RefusedCodec { codec },
     };
     let assignment = SheetDisc::from_columns(
         &format!("the disc of track sheet {}", sheet.sheet_id),
