@@ -118,7 +118,7 @@
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
   }
 
-  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states). The field outlines the box for the next digit in the accent while the field is `focused`, and shows each digit as the person types it. `state`: normal, focused, error. What's wrong goes under the boxes, in red.
+  // A code the person reads off a receiver's screen and types: one box per digit (`digits`, which core states). The field outlines the box for the next digit in the accent while the field is `focused`, and shows each digit as the person types it. `state`: normal, focused, error, off. What's wrong goes under the boxes, in red.
   function AndroidPinField(props) {
     var state = props.state || 'normal';
     var n = props.digits || 4;
@@ -128,8 +128,8 @@
     for (var i = 0; i < n; i++) {
       cells.push(h('span', { key: i, 'aria-hidden': true, className: cx('bae-a-pin-cell', state === 'focused' && i === Math.min(value.length, n - 1) && 'bae-a-pin-cell-focused', isError && 'bae-a-pin-cell-error') }, value.charAt(i)));
     }
-    return h('div', { className: 'bae-a-pin' },
-      h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', className: 'bae-a-pin-cells' }, cells),
+    return h('div', { className: cx('bae-a-pin', state === 'off' && 'bae-off') },
+      h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', 'aria-disabled': state === 'off' ? true : null, className: 'bae-a-pin-cells' }, cells),
       isError && props.error ? h('div', { className: 'bae-a-field-line bae-a-pin-note' }, props.error) : null);
   }
 
