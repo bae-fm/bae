@@ -216,7 +216,9 @@ extension ImportListSlot {
 
     /// Navigate to the candidate's current authoritative placement, even when
     /// that placement has moved it out of the list presently on screen, and
-    /// select it alone.
+    /// select it alone. Returns where core places the candidate in the view
+    /// the reveal set, which the list opens at; `nil` when that view does
+    /// not show it.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
         guard let handle,
             let location = try await handle.locateCandidate(candidateKey)
@@ -246,13 +248,13 @@ extension ImportListSlot {
             selected: selection.keys.inByteOrder
         )
         selectOnly(candidateKey)
-        guard let list else { return nil }
-        let position = Int(location.visiblePosition)
+        guard let list,
+            let placed = try await handle.candidatePosition(candidateKey)
+        else { return nil }
+        let position = Int(placed)
         await list.reopen(at: position)
         if view == next { answersView = true }
-        let stableKey = location.stableKey
-        let placed = await list.holds(stableKey, at: position)
-        guard !Task.isCancelled, placed else { return nil }
+        guard !Task.isCancelled else { return nil }
         return position
     }
 
@@ -540,15 +542,6 @@ extension ImportListSlot {
 }
 
 extension PaginatedList<BridgeImportListItem> {
-    /// Whether the list holds `stableKey` at `position`, once the list's view
-    /// has answered with the row there.
-    fileprivate func holds(_ stableKey: String, at position: Int) async -> Bool
-    {
-        await withPage(containing: position) {
-            idAt(position) == stableKey
-        }
-    }
-
     /// Whether the text filter or the filter entry narrows the list, as the
     /// list's count says; `false` until core delivers the count.
     var isNarrowed: Bool {

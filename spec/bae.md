@@ -1275,7 +1275,10 @@ rows.
 
 Revealing a candidate — the first one still being identified, or one the
 person asks for — shows it on the tab its placement puts it on, with the
-filters cleared and its group opened, the list's other folds kept.
+filters cleared and its group opened, the list's other folds kept. Once the
+list shows that view, core reads where the candidate sits in it, and the list
+opens there and scrolls to it; a candidate the view no longer shows is
+scrolled to nowhere.
 
 bae reads everything the list shows from tables, each piece its own live query:
 the window of its rows (the rows of its order from the sort values of one row

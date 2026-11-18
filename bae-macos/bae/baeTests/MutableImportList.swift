@@ -83,13 +83,23 @@ final class MutableImportList: @unchecked Sendable {
             setView: { _, _ in
                 BridgeImportListViewChange(opening: .top, left: [])
             },
-            locateCandidate: { [self] key in locate(key) },
-            candidatePosition: { [self] key in locate(key)?.visiblePosition }
+            locateCandidate: { [self] key in
+                position(of: key)
+                    .map { _ in
+                        BridgeImportCandidateListLocation(
+                            tab: .pending,
+                            groupKey: nil
+                        )
+                    }
+            },
+            candidatePosition: { [self] key in
+                position(of: key).map(UInt64.init)
+            }
         )
     }
 
     /// Where the candidate `key` sits among the items now, on Found.
-    private func locate(_ key: Data) -> BridgeImportCandidateListLocation? {
+    private func position(of key: Data) -> Int? {
         lock.withLock {
             items.firstIndex { item in
                 if case .candidate(_, let row, _) = item {
@@ -98,14 +108,6 @@ final class MutableImportList: @unchecked Sendable {
                 else {
                     false
                 }
-            }
-            .map { position in
-                BridgeImportCandidateListLocation(
-                    stableKey: items[position].id,
-                    tab: .pending,
-                    groupKey: nil,
-                    visiblePosition: UInt64(position)
-                )
             }
         }
     }

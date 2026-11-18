@@ -92,14 +92,13 @@ pub enum BridgeImportListItem {
     },
 }
 
-/// The list view and place that reveal one candidate at its current
-/// placement.
+/// The list view that reveals one candidate at its current placement: its
+/// tab, with the filters cleared and the group `group_key` opened. Where the
+/// candidate sits in that view is the list's `candidate_position`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportCandidateListLocation {
-    pub stable_key: String,
     pub tab: BridgeTriageTab,
     pub group_key: Option<BridgeFolderReleaseDecisionKey>,
-    pub visible_position: u64,
 }
 
 /// Where a list's view opens after the app sets the view.

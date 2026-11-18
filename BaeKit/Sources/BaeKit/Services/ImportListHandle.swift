@@ -168,9 +168,8 @@ import Foundation
         }
 
         /// Where the list shows the candidate after it clears the filters and
-        /// opens the candidate's group: its tab, and the position the list's
-        /// view opens at to show it. `nil` when the list lists no such
-        /// candidate.
+        /// opens the candidate's group: its tab, and the group to open. `nil`
+        /// when the list lists no such candidate.
         public func locateCandidate(_ candidateKey: Data) async throws
             -> BridgeImportCandidateListLocation?
         {

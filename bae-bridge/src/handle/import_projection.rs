@@ -542,17 +542,10 @@ impl crate::types::BridgeImportQueueSummary {
 
 impl crate::types::BridgeImportCandidateListLocation {
     pub(crate) fn from_core(location: bae_import::ImportCandidateListLocation) -> Self {
-        let bae_import::ImportCandidateListLocation {
-            stable_key,
-            tab,
-            group_key,
-            visible_position,
-        } = location;
+        let bae_import::ImportCandidateListLocation { tab, group_key, .. } = location;
         Self {
-            stable_key,
             tab: crate::types::BridgeTriageTab::from_core(tab),
             group_key: group_key.map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
-            visible_position,
         }
     }
 }

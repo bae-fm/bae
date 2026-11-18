@@ -215,9 +215,8 @@ struct ImportListSlotTests {
             makeHandle: { _ in
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    locateCandidate: { key in
-                        located(key, at: 61, tab: .pending)
-                    },
+                    locateCandidate: { _ in located(on: .pending) },
+                    candidatePosition: { _ in 61 },
                     firstIdentifyingCandidate: { target }
                 )
             }
@@ -483,18 +482,11 @@ struct ImportListSlotViewChangeTests {
     }
 }
 
-/// Where core says the candidate `key` sits in the fixed list.
+/// Where core says a candidate in no group is revealed: on `tab`.
 private func located(
-    _ key: Data,
-    at position: Int,
-    tab: BridgeTriageTab
+    on tab: BridgeTriageTab
 ) -> BridgeImportCandidateListLocation {
-    BridgeImportCandidateListLocation(
-        stableKey: candidateStableKey(key),
-        tab: tab,
-        groupKey: nil,
-        visiblePosition: UInt64(position)
-    )
+    BridgeImportCandidateListLocation(tab: tab, groupKey: nil)
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {
@@ -516,9 +508,8 @@ final class CandidatePlacementNavigationTests: XCTestCase {
                         await delivery.wait(for: view)
                         return nil
                     },
-                    locateCandidate: { key in
-                        located(key, at: 61, tab: .done)
-                    }
+                    locateCandidate: { _ in located(on: .done) },
+                    candidatePosition: { _ in 61 }
                 )
             }
         )
@@ -545,6 +536,31 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             slot.list?.idAt(61),
             candidateStableKey(targetKey)
         )
+    }
+}
+
+extension CandidatePlacementNavigationTests {
+    @MainActor
+    func testRevealOfACandidateTheViewNoLongerShowsGoesNowhere() async throws {
+        let uiStore = UiStore()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            selection: ImportSelection(),
+            makeHandle: { _ in
+                .stub(
+                    items: (0..<80).map(candidateItem),
+                    locateCandidate: { _ in located(on: .pending) },
+                    candidatePosition: { _ in nil }
+                )
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list?.idAt(0) != nil }
+
+        let position = try await slot.revealCandidate(candidateKey(61))
+
+        XCTAssertNil(position)
     }
 }
 

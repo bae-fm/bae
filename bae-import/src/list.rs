@@ -152,7 +152,6 @@ impl ImportListItem {
 /// placement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateListLocation {
-    pub stable_key: String,
     pub tab: TriageTab,
     /// The Pending group that has to be open for this candidate to be visible.
     pub group_key: Option<FolderReleaseDecisionKey>,

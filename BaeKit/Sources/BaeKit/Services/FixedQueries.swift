@@ -310,20 +310,27 @@
                     setView: { _, _ in nil },
                     setGroupFolded: { _, _, _ in [] },
                     setAllGroupsFolded: { _, _ in [] },
-                    locateCandidate: { locate($0, in: items, on: tab) },
+                    locateCandidate: { key in
+                        position(of: key, in: items)
+                            .map { _ in
+                                BridgeImportCandidateListLocation(
+                                    tab: tab,
+                                    groupKey: nil
+                                )
+                            }
+                    },
                     candidatePosition: {
-                        locate($0, in: items, on: tab)?.visiblePosition
+                        position(of: $0, in: items).map(UInt64.init)
                     },
                     firstIdentifyingCandidate: { nil }
                 )
             }
 
-            /// Where the candidate `key` sits in the fixed `items`, on `tab`.
-            private static func locate(
-                _ key: Data,
-                in items: [BridgeImportListItem],
-                on tab: BridgeTriageTab
-            ) -> BridgeImportCandidateListLocation? {
+            /// Where the candidate `key` sits in the fixed `items`.
+            private static func position(
+                of key: Data,
+                in items: [BridgeImportListItem]
+            ) -> Int? {
                 items.firstIndex { item in
                     switch item {
                     case .candidate(_, let row, _):
@@ -333,14 +340,6 @@
                     case .groupHeader:
                         false
                     }
-                }
-                .map {
-                    BridgeImportCandidateListLocation(
-                        stableKey: items[$0].id,
-                        tab: tab,
-                        groupKey: nil,
-                        visiblePosition: UInt64($0)
-                    )
                 }
             }
         }

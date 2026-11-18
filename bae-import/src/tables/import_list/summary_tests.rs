@@ -500,10 +500,6 @@ async fn candidate_location_opens_only_its_group() {
         .expect("the candidate is in Pending");
     assert_eq!(location.tab, TriageTab::Pending);
     assert_eq!(location.group_key, Some(fold("Target")));
-    assert_eq!(
-        location.stable_key,
-        crate::list::candidate_stable_key(&lib.key("Target/Release 1"))
-    );
     assert_eq!(location.visible_position, 2);
 }
 
