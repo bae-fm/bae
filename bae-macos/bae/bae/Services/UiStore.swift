@@ -26,7 +26,7 @@ enum LibraryBrowserMode: CaseIterable {
 }
 
 /// What a navigation asks the library browser to open.
-enum LibraryNavigationTarget: Equatable {
+enum LibraryNavigationTarget {
     case artist(String)
     case composer(String)
     case work(String)
