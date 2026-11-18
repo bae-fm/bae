@@ -43,8 +43,8 @@ impl LibraryViews {
         })
     }
 
-    /// Follow one page of the composer list under `sort`: the composers from
-    /// the one at the page's first place, read once.
+    /// Follow one page of the composer list under `sort`: the composers at
+    /// the page's places as each write leaves them.
     pub fn subscribe_composer_page(
         &self,
         sort: &[ComposerSortCriterion],
@@ -124,9 +124,9 @@ impl LibraryViews {
         })
     }
 
-    /// Follow one page of the work `work_id`'s children: the children from
-    /// the one at the page's first place, read once, as a media browser
-    /// lists them.
+    /// Follow one page of the work `work_id`'s children: the children at the
+    /// page's places as each write leaves them, as a media browser lists
+    /// them.
     pub fn subscribe_work_child_page(
         &self,
         work_id: &str,

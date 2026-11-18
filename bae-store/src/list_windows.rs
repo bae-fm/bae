@@ -5,7 +5,7 @@
 //!
 //! A jump to a position reads the key of the row at that position by offset
 //! once (`key_at`), and the window starts at that key. A page of a list
-//! (`ListPage`) starts at the key of the row at its offset, read the same
+//! (`ListPage`) follows the key of the row at its offset, read live the same
 //! way, and takes its rows from there as a window does. `RowsBefore` counts
 //! the rows before a key over index ranges in one statement, without
 //! numbering the list. The module keeps nothing about where rows sit between

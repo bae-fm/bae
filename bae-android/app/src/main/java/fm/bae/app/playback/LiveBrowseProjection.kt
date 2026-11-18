@@ -108,11 +108,10 @@ internal class LiveCount(
 /**
  * A database list a controller asks for a page at a time by offset: a browse parent's children, such as an
  * album's tracks or a work's children, or the albums a search lists. For each page asked for, the tree opens the
- * page's live read, whose rows core reads from the key of the row at the page's first place, read once, none past
- * the list's end. The page's first rows
- * answer the request, and each later delivery tells the tree, through [onChanged], that the list changed, with the
- * number of rows unknown. A new request for the same page replaces its read. The list's live count tells the tree
- * its first number of rows and each change to it, and says which is the first.
+ * page's live read, whose rows core reads at the page's places, none past the list's end, as every write leaves
+ * them. The page's first rows answer the request, and each later delivery tells the tree, through [onChanged],
+ * that the list changed, with the number of rows unknown. A new request for the same page replaces its read. The
+ * list's live count tells the tree its first number of rows and each change to it, and says which is the first.
  */
 internal class ChildPages<Row>(
     private val scope: CoroutineScope,

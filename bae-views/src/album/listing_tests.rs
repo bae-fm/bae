@@ -343,9 +343,9 @@ fn page_titles(rows: crate::ListRows) -> Vec<String> {
     rows.into_iter().map(|row| row.album.title).collect()
 }
 
-/// A page of the grid holds the rows from the row at its first place, none
-/// past the grid's end, and follows a write to a row it holds; a page opened
-/// after a row moves reads the rows at its places then.
+/// A page of the grid holds the rows at its places, none past the grid's
+/// end, and follows a write to a row it holds and a write that moves a row
+/// across its first place without changing the count.
 #[tokio::test]
 async fn a_page_holds_the_rows_from_its_first_place() {
     let (db, _dir) = grouped_library().await;
@@ -369,9 +369,16 @@ async fn a_page_holds_the_rows_from_its_first_place() {
         page_titles(crate::test_pages::next_page(&live).await),
         ["Album B", "Album C Renamed"]
     );
-    // "Album 0" sorts first.
+    // "Album 0" sorts first, so the rows at the page's places move down one.
     test_records(&db).rename_album_for_test(&grouped_album(3), "Album 0").await.unwrap();
+    assert_eq!(page_titles(crate::test_pages::next_page(&live).await), ["Album A", "Album B"]);
     assert_eq!(page_titles(first(1).await), ["Album A", "Album B"]);
+    // "Album Z" sorts last, so they move back up.
+    test_records(&db).rename_album_for_test(&grouped_album(3), "Album Z").await.unwrap();
+    assert_eq!(
+        page_titles(crate::test_pages::next_page(&live).await),
+        ["Album B", "Album C Renamed"]
+    );
 }
 
 /// Renaming an album moves it among its artist's albums in the grid grouped

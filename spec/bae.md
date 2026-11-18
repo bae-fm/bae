@@ -4899,14 +4899,17 @@ and each item it opens, once from the database, not through a live query. The
 database picks the one track an item names, so Android Auto never filters rows
 it already holds. Each page that Android Auto shows of the albums, the
 composers, a composer's page, an album's tracks, a work's children or the
-albums a search lists is its own live read: core reads the sort values of the
-row at the page's first place once, by offset, and the page's live read takes at
-most the page's number of rows from those sort values on, through the order's
-index, as a list's window does. Core hands
-Android Auto exactly the page's rows, and none for a page past the list's end,
-so Android Auto never pages through rows it already holds and never compares a
-page with the list's count. A write that adds or removes rows changes the
-list's count, and Android Auto then reads its pages again. The number of rows in
+albums a search lists is two live reads. The first reads the sort values of the
+row at the page's first place, by offset: coven reruns it for each write to the
+list, and it answers one row. The second takes at most the page's number of rows
+from those sort values on, through the order's index, as a list's window does:
+coven reruns it for a write at or before its last row, and core moves it to the
+first read's new sort values each time they change. After every write,
+including one that moves a row across the page's first place, core hands
+Android Auto exactly the rows at the page's places, and none for a page past
+the list's end. Android Auto never pages through rows it already holds and
+never compares a page with the list's count, and a page stays live when the
+list's count changes. The number of rows in
 each such list comes from a count the database takes, never from rows Android
 Auto holds.
 

@@ -53,8 +53,8 @@ impl LibraryViews {
         self.store.read(move |sql| search_library_on(&sql, &pattern, limit_i64)).await
     }
 
-    /// Follow one page of the album `album_id`'s tracks: the tracks from the
-    /// one at the page's first place, read once, as a media browser lists
+    /// Follow one page of the album `album_id`'s tracks: the tracks at the
+    /// page's places as each write leaves them, as a media browser lists
     /// them.
     pub fn subscribe_album_track_page(
         &self,

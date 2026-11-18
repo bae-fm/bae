@@ -7,7 +7,7 @@ use super::*;
 
 impl LibraryViews {
     /// Follow one page of the albums a search for `query` lists: the albums
-    /// from the one at the page's first place, read once. No query (`None`)
+    /// at the page's places as each write leaves them. No query (`None`)
     /// lists none; its page answers with no rows.
     pub fn subscribe_search_album_page(
         &self,

@@ -275,16 +275,23 @@ class LibraryBrowseTreeTest {
 
             handle.albumList.albums = listOf(BridgeFixtures.album(id = "album-new"))
             handle.albumList.changed()
-            assertEquals(listOf(BrowseId.Albums.mediaId to 1), notifications)
+            // The fake delivers its count again with each change; the page's new rows tell the car too.
+            assertEquals(
+                listOf(BrowseId.Albums.mediaId to 1, BrowseId.Albums.mediaId to UNKNOWN_CHILD_COUNT),
+                notifications,
+            )
             assertEquals(
                 BrowseId.Album("album-new").mediaId,
                 tree.children(BrowseId.Albums.mediaId, 0, 20)!!.single().mediaId,
             )
         }
 
-    /** When a write changes the album count, the tree drops the pages it read before and tells the car once. */
+    /**
+     * When a write changes the album count, the tree tells the car the new count, and the page it read before
+     * stays live: its next delivery holds the new rows, which the tree answers the car's next request with.
+     */
     @Test
-    fun aWriteThatChangesTheCountNotifiesExactlyOnce() =
+    fun aWriteThatChangesTheCountKeepsThePageLive() =
         runBlocking {
             val handle = FakeAppHandle(albumList = FakeAlbumList(albums(3)))
             val notifications = mutableListOf<Pair<String, Int>>()
@@ -296,8 +303,12 @@ class LibraryBrowseTreeTest {
             handle.albumList.albums = albums(4)
             handle.albumList.changed()
 
-            assertEquals(listOf(BrowseId.Albums.mediaId to 4), notifications)
+            assertEquals(
+                listOf(BrowseId.Albums.mediaId to 4, BrowseId.Albums.mediaId to UNKNOWN_CHILD_COUNT),
+                notifications,
+            )
             assertEquals(4, tree.children(BrowseId.Albums.mediaId, 0, 20)!!.size)
+            assertEquals(1, handle.albumList.pages.size)
             tree.close()
         }
 

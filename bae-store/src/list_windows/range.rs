@@ -85,8 +85,8 @@ pub fn read_range<R, E>(
 }
 
 /// A page of a list: the `limit` rows from the row at `offset` in the list's
-/// order. A page's live read starts at the key of the row at `offset`, read
-/// once by offset, and takes at most `limit` rows from that key on, as a
+/// order. A page's live read follows the key of the row at `offset`, read
+/// live by offset, and takes at most `limit` rows from that key on, as a
 /// window does; a page that starts past the list's end holds no rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ListPage {
@@ -177,11 +177,14 @@ fn row_key_at<R, E>(
 
 impl crate::Store {
     /// The live read of one page of the list `order` sorts, its rows made
-    /// into a value by `process`. Opening it reads the key of the row at the
-    /// page's offset once, then follows the page's rows from that key as a
-    /// window, which coven reruns for a write at or before its last row
-    /// alone. `read` runs the list's statement under a seek for at most a
-    /// limit and gives each row with its key.
+    /// into a value by `process`. One live read follows the key of the row at
+    /// the page's offset: coven reruns it for each write to the list, and it
+    /// answers one row. The page's rows follow from that key as a window,
+    /// which coven reruns for a write at or before its last row alone, and
+    /// which moves to the key's new value each time the key changes, so the
+    /// page holds the rows at its places after every write. `read` runs the
+    /// list's statement under a seek for at most a limit and gives each row
+    /// with its key.
     pub fn subscribe_list_page<R, T>(
         &self,
         page: ListPage,
@@ -196,38 +199,23 @@ impl crate::Store {
         R: Clone + PartialEq + Send + 'static,
         T: Send + 'static,
     {
-        let store = self.clone();
         let read = std::sync::Arc::new(read);
-        let process = std::sync::Arc::new(process);
-        crate::live_query::LivePage::new(move || {
-            let (store, order, read, process) =
-                (store.clone(), order.clone(), read.clone(), process.clone());
-            Box::pin(async move {
-                let key = {
-                    let (order, read) = (order.clone(), read.clone());
-                    store
-                        .read(move |sql| {
-                            row_key_at(&order, page.offset, &mut |seek, limit| {
-                                read(&sql, seek, limit)
-                            })
-                        })
-                        .await?
-                };
-                // A page past the list's end reads no rows.
-                let window = match key {
-                    Some(from) => ListWindow { from: Some(from), limit: page.limit },
-                    None => ListWindow::top(0),
-                };
-                Ok(store
-                    .subscribe(move |sql| {
-                        let window = read_range(&order, &window, &mut |seek, limit| {
-                            read(&sql, seek, limit)
-                        })?;
-                        Ok(window.rows.into_iter().map(|(row, _)| row).collect::<Vec<R>>())
-                    })
-                    .process(move |rows| process(rows)))
+        let key = {
+            let (order, read) = (order.clone(), read.clone());
+            self.subscribe(move |sql| {
+                row_key_at(&order, page.offset, &mut |seek, limit| read(&sql, seek, limit))
             })
-        })
+        };
+        // The page asks for the window from the key's first answer before
+        // the rows read first runs.
+        let rows = self
+            .subscribe_reconfigurable(ListWindow::top(0), move |window, sql| {
+                let window =
+                    read_range(&order, window, &mut |seek, limit| read(&sql, seek, limit))?;
+                Ok(window.rows.into_iter().map(|(row, _)| row).collect::<Vec<R>>())
+            })
+            .process(process);
+        crate::live_query::LivePage::new(key, rows, page.limit)
     }
 
     /// A live query of one window of the list `order` sorts. When the list's
