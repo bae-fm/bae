@@ -138,7 +138,7 @@
           props.sync === 'paused' ? h(MacIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
-      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
+      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
   }
 
   function MacLibraryHeading(props) {
@@ -286,7 +286,7 @@
     if (!props.title && !props.error) return null;
     return h('div', { className: 'bae-a-npbar' },
       h('div', { className: 'bae-a-np-row' },
-        props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
+        props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6, missing: props.noCover }),
           h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist))),
         h(AndroidIconButton, { box: 40, icon: 'previous', label: 'Previous' }),
         h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting }),
@@ -311,7 +311,7 @@
           props.sync === 'paused' ? h(AndroidIconButton, { icon: 'pause', label: 'Activity' }) : null,
           h(AndroidIconButton, { icon: 'more', label: 'More options' })),
       h('main', { className: 'bae-a-libbody' }, split.content),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
       split.over);
   }
 
@@ -323,7 +323,7 @@
         h('span', { style: { flex: 1 } }),
         props.menu ? h(AndroidIconButton, { icon: 'more', label: 'Album options' }) : null),
       h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, split.content),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
       split.over);
   }
 

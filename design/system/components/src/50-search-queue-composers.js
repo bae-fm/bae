@@ -32,7 +32,7 @@
     return h('aside', { className: 'bae-m-queue' },
       h('div', { className: 'bae-m-queue-head' }, h('h2', null, 'Queue'), h(MacCloseButton)),
       props.title ? h('div', { className: 'bae-m-queue-np' },
-        h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar' }),
+        h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
         h('div', { className: 'bae-m-queue-np-text' },
           h('div', { className: 'bae-m-queue-np-eyebrow' }, 'Now playing'),
           h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
@@ -101,7 +101,7 @@
   function AndroidFullPlayer(props) {
     return h('div', { className: 'bae-a-fullplayer' },
       h(AndroidIconButton, { icon: 'down', label: 'Collapse' }),
-      h(Artwork, { title: props.album || props.title, radius: 10 }),
+      h(Artwork, { title: props.album || props.title, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-fp-title' }, props.title), h('div', { className: 'bae-a-fp-artist' }, props.artist),
       h(AndroidSeekBar, { large: true, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }),
       h('div', { className: 'bae-a-fp-transport' }, h(AndroidIconButton, { box: 56, icon: 'previous', size: 36, label: 'Previous' }), h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: 48 }), h(AndroidIconButton, { box: 56, icon: 'next', size: 36, label: 'Next' })),

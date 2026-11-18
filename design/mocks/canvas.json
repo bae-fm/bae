@@ -4426,6 +4426,30 @@
    "w": 412,
    "x": 1968,
    "y": 5844
+  },
+  "mac.playback.queue.track-removed.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the queue, the playing track removed from the library",
+   "w": 1200,
+   "x": 7680,
+   "y": 4272
+  },
+  "android.playback.bar.track-removed.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The playing track removed from the library",
+   "w": 412,
+   "x": 1476,
+   "y": 240
+  },
+  "android.playback.full-player.track-removed.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The full player, the playing track removed from the library",
+   "w": 412,
+   "x": 2460,
+   "y": 2876
   }
  },
  "createdOnFiles": {
