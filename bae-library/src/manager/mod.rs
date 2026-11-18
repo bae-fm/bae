@@ -552,18 +552,13 @@ impl From<bae_records::DeletionError> for LibraryError {
     }
 }
 
-/// The class a surface words a refused move of a release's files in. A move
-/// needs storage, which is for the person to set up. No other refusal has a
-/// line of its own, so each shows the internal one, and the error's detail
-/// says why the release did not move.
+/// The class a surface words a refused move of a release's files in. No
+/// refusal has a line of its own, so each shows the internal one, and the
+/// error's detail says why the release did not move.
 fn storage_move_refusal_category(
-    refusal: &bae_transfers::StorageMoveRefusal,
+    _refusal: &bae_transfers::StorageMoveRefusal,
 ) -> bae_diagnostics::UiErrorCategory {
-    use bae_transfers::StorageMoveRefusal as R;
-    match refusal {
-        R::NoStorage => bae_diagnostics::UiErrorCategory::Config,
-        R::Missing | R::NoFiles | R::Coven(_) => bae_diagnostics::UiErrorCategory::Internal,
-    }
+    bae_diagnostics::UiErrorCategory::Internal
 }
 
 /// A move's write that failed in the store is the library's store failure.

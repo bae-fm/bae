@@ -301,15 +301,11 @@ impl LibraryManager {
     ///
     /// A start that fails becomes this retry's recorded sync-status error, so
     /// the status line shows why the retry didn't take; it is cleared the moment a retry is under way. A library
-    /// with no provider, and no setup running toward one, is not failing sync,
-    /// it has none, so that refusal goes back to the caller alone rather than
-    /// posing as a sync failure. A setup past its point of no return commits
-    /// its provider only once sync's connection finishes it, so it starts sync
-    /// as a provider does.
+    /// with no storage set up has nothing to start: coven's start does
+    /// nothing and its retry answers that sync is stopped. A setup past its
+    /// point of no return commits its provider only once sync's connection
+    /// finishes it, so it starts sync as a provider does.
     pub async fn reconnect_sync(&self) -> Result<(), LibraryError> {
-        if !self.is_sync_configured().await? && !self.storage_setup_running().await? {
-            return Err(coven::SyncError::NoStorage.into());
-        }
         if !self.is_sync_ready().await? {
             if let Err(error) = self.attach_and_start_sync().await {
                 warn!("sync reconnect failed: {error}");

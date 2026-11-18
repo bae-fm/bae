@@ -11,9 +11,6 @@ use coven::CovenWrite;
 /// release's files to the cloud. The refused write changes nothing.
 #[derive(Debug, thiserror::Error)]
 pub enum StorageMoveRefusal {
-    /// A move to the cloud needs storage set up on this device, and none is.
-    #[error("no storage is set up to move releases to")]
-    NoStorage,
     /// No such release is in the library.
     #[error("the release is not in the library")]
     Missing,
@@ -36,21 +33,14 @@ pub type StorageMoveError = WriteError<StorageMoveRefusal>;
 /// each upload checks the bytes it sends against the hashes the import's read
 /// recorded, and switches the release's files to the cloud together once all
 /// are stored, changing no row. coven refuses the move when any file can't
-/// move, and the write then changes nothing. Without storage set up, the
-/// function refuses the write.
+/// move, and the write then changes nothing. With no storage set up, coven
+/// accepts the move and uploads once storage is connected.
 pub async fn move_release_to_cloud(
     store: &Store,
     release_id: String,
 ) -> Result<u32, StorageMoveError> {
     store
         .write(move |sql| {
-            let storage: bool =
-                sql.query_row("SELECT storage = 'connected' FROM coven_sync_status", [], |row| {
-                    row.get(0)
-                })?;
-            if !storage {
-                return Err(WriteError::Refused(StorageMoveRefusal::NoStorage));
-            }
             let exists: bool = sql.query_row(
                 "SELECT EXISTS (SELECT 1 FROM releases WHERE id = ?1)",
                 [&release_id],

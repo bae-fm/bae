@@ -73,23 +73,24 @@ async fn cancelling_every_upload_beside_a_new_cover_preserves_completed_audio_an
     cover_file(manager.library.manager(), &release.id).await;
 }
 
-/// Moving files to the cloud requires a configured provider; absence is a
-/// setup issue told for every release of the selection, and nothing moves.
+/// With no storage set up, coven accepts a move to the cloud and holds its
+/// files in the upload queue until storage is connected.
 #[tokio::test]
-async fn making_a_release_remote_without_storage_requires_configuration() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let outcome = manager
-        .library
-        .manager()
-        .upload_releases(std::slice::from_ref(&release.id))
-        .await
-        .expect("the refusal is returned as a batch outcome");
-    let UploadReleasesOutcome::Partial { receipt: None, failure } = outcome else {
-        panic!("without storage no release moves");
-    };
-    assert_eq!(failure.release_ids, vec![release.id.clone()]);
-    let bae_diagnostics::UiError::Diagnostic { category, .. } = failure.error;
-    assert_eq!(category, bae_diagnostics::UiErrorCategory::Config);
+async fn making_a_release_remote_without_storage_waits_for_storage() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release = insert_release_with_queued_uploads(
+        manager,
+        &temp_dir.path().join("waiting"),
+        "Album",
+        &[("a.flac", b"first")],
+    )
+    .await;
+    assert!(!manager.is_sync_configured().await.unwrap());
+    assert_eq!(
+        manager.records.queued_upload_count_for_release_for_test(&release.id).await.unwrap(),
+        1
+    );
 }
 
 /// Every surface that offers uploading (the release detail, its storage

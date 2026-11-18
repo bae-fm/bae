@@ -237,11 +237,11 @@ async fn a_local_library_does_not_need_storage_for_its_rows() {
 }
 
 #[tokio::test]
-async fn reconnect_sync_refuses_a_library_with_no_provider() {
+async fn reconnect_sync_starts_nothing_for_a_library_with_no_provider() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
-    let error = manager.reconnect_sync().await.unwrap_err();
-    assert!(matches!(error, LibraryError::Sync(coven::SyncError::NoStorage)));
+    manager.reconnect_sync().await.unwrap();
+    assert!(!manager.is_sync_ready().await.unwrap());
     assert!(manager.sync_status().await.unwrap().error.is_none());
 }
 
