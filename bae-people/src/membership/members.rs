@@ -27,8 +27,8 @@ macro_rules! self_is_admin {
 
 /// The columns [`member_row`] reads of the `coven_members` row `m`: the
 /// member, with their active devices and their removed or replaced ones as
-/// JSON arrays in device-id order, how many of each they have, and whether
-/// the member using this device is an admin. A device id is its eight bytes
+/// JSON arrays in device-id order, and whether the member using this device
+/// is an admin. A device id is its eight bytes
 /// as hex.
 macro_rules! member_columns {
     () => {
@@ -41,10 +41,6 @@ macro_rules! member_columns {
          (SELECT json_group_array(json_array(hex(d.device), d.name, d.state) \
                      ORDER BY d.device) \
           FROM coven_devices AS d WHERE d.member = m.member AND d.state <> 'active'), \
-         (SELECT COUNT(*) FROM coven_devices AS d \
-          WHERE d.member = m.member AND d.state = 'active'), \
-         (SELECT COUNT(*) FROM coven_devices AS d \
-          WHERE d.member = m.member AND d.state <> 'active'), \
          ",
             $crate::membership::self_is_admin!()
         )
@@ -72,7 +68,7 @@ const SELF_IS_ADMIN: &str = concat!("SELECT ", self_is_admin!());
 /// Whether the member using this device is an admin, as the row whose
 /// [`member_columns`] start at column `first` holds it.
 fn self_is_admin_column(row: &Row<'_>, first: usize) -> rusqlite::Result<bool> {
-    row.get(first + 9)
+    row.get(first + 7)
 }
 
 /// The member whose [`member_columns`] start at column `first`.
@@ -89,8 +85,6 @@ pub(crate) fn member_row(row: &Row<'_>, first: usize) -> rusqlite::Result<Member
         access,
         is_self,
         can_remove: MembershipMember::removable(self_is_admin, is_self),
-        active_device_count: row.get(first + 7)?,
-        former_device_count: row.get(first + 8)?,
         active_devices: active
             .into_iter()
             .map(|(id, name, device_is_self)| {

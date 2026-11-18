@@ -479,7 +479,7 @@ extension PeopleAndDevicesPage {
     private func deviceCount(_ member: BridgeMember) -> String {
         // An Int makes the key "%lld devices", as the string catalog has it.
         String(
-            localized: "\(Int(member.activeDeviceCount)) devices",
+            localized: "\(member.activeDevices.count) devices",
             comment: "How many devices a person has in the library"
         )
     }
@@ -567,11 +567,8 @@ extension PeopleAndDevicesPage {
                 }
             }
         }
-        if member.formerDeviceCount > 0 {
-            FormerDevicesDisclosure(
-                devices: member.formerDevices,
-                count: member.formerDeviceCount
-            )
+        if !member.formerDevices.isEmpty {
+            FormerDevicesDisclosure(devices: member.formerDevices)
         }
     }
 

@@ -154,8 +154,6 @@ private fun person(
             access = BridgeMemberAccess.ProviderAccount("$name@example.com"),
             activeDevices = devices,
             formerDevices = formerDevices,
-            activeDeviceCount = devices.size.toUInt(),
-            formerDeviceCount = formerDevices.size.toUInt(),
         )
     val shown = PreviewData.person(member)
     return shown.copy(profile = shown.profile?.copy(name = name, historySharing = history))

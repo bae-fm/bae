@@ -30,7 +30,6 @@ class FormerDevicesTest {
                             BridgeFormerDevice(id = 3uL, name = "Old Phone", state = BridgeFormerDeviceState.REPLACED),
                             BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED),
                         ),
-                    count = 2u,
                 )
             }
         }
@@ -52,7 +51,6 @@ class FormerDevicesTest {
             TestTheme {
                 FormerDevices(
                     devices = listOf(BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED)),
-                    count = 1u,
                 )
             }
         }
