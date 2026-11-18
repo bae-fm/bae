@@ -274,8 +274,9 @@ private final class SavePresetRead {
     }
 }
 
-/// One format in the settings list: the summary opens the edit sheet, and the
-/// ⋯ menu offers Edit… and Delete….
+/// One format in the settings list: its name as text, as the board draws it,
+/// and the ⋯ menu, which offers Edit… and Delete…. A click on the row opens
+/// the edit sheet too.
 private struct PresetRow: View {
     let preset: BridgeSavePreset
     /// Core's answer for the list: the only format left can't be deleted.
@@ -288,11 +289,11 @@ private struct PresetRow: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            Button(action: edit) {
-                SavePresetSummaryRow(preset: preset)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.accentPlain)
+            // The menu's Edit… edits the format from the keyboard and
+            // VoiceOver; the click is for the pointer.
+            SavePresetSummaryRow(preset: preset)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: edit)
             MacMoreMenu {
                 MacMenuItem("Edit…", action: edit)
                 MacMenuItem("Delete…", disabled: !canDelete) {
