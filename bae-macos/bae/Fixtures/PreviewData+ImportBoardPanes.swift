@@ -257,8 +257,7 @@ extension PreviewData {
     static let fieldRecordingsContainer = BridgeMappingContainer(
         fileId: "Field Recordings CD1.flac",
         name: "Field Recordings CD1.flac",
-        size: 340_000_000,
-        audioFormat: previewSourceAudioFormat
+        size: 340_000_000
     )
 
     /// One entry of a sheet: its title, the seconds its slice of the audio
@@ -340,8 +339,7 @@ extension PreviewData {
                                 name: container.name,
                                 startSample: from,
                                 endSample: startSample
-                            ),
-                            audioFormat: previewSourceAudioFormat
+                            )
                         )
                     ),
                     track: edit.tracks[index],

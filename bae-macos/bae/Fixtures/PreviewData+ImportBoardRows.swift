@@ -87,13 +87,13 @@ extension PreviewData {
 
     /// Field Recordings' two discs, listed under their folder's header.
     static func groupItems() -> [BridgeImportListItem] {
-        let header = groupHeaderStableKey(fieldRecordingsGroupKey)
+        let header = groupHeader(
+            key: fieldRecordingsGroupKey,
+            name: "Mara Quill \u{2014} Field Recordings (1979)",
+            entryCount: 2
+        )
         return [
-            groupHeaderItem(
-                key: fieldRecordingsGroupKey,
-                name: "Mara Quill \u{2014} Field Recordings (1979)",
-                entryCount: 2
-            ),
+            .groupHeader(header: header),
             candidateItem(
                 boardRow(
                     .fieldRecordings,
@@ -103,7 +103,7 @@ extension PreviewData {
                     ),
                     record: "board-field-recordings"
                 ),
-                headerKey: header
+                header: header
             ),
             candidateItem(
                 boardRow(
@@ -114,7 +114,7 @@ extension PreviewData {
                         standing: .identifying
                     )
                 ),
-                headerKey: header
+                header: header
             ),
         ]
     }
