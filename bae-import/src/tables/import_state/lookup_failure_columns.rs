@@ -25,10 +25,12 @@ pub(super) fn failure_of(
     kind: Option<String>,
     status: Option<i64>,
 ) -> Result<Option<LookupFailure>, DbError> {
-    let Some(kind) = kind else {
-        return Ok(None);
-    };
-    Ok(Some(match kind.as_str() {
+    kind.map(|kind| failure_named(&kind, status)).transpose()
+}
+
+/// The failure of kind `kind`, with the provider's `status` when it has one.
+pub(super) fn failure_named(kind: &str, status: Option<i64>) -> Result<LookupFailure, DbError> {
+    Ok(match kind {
         "network" => LookupFailure::Network,
         "timeout" => LookupFailure::Timeout,
         "provider" => LookupFailure::Provider {
@@ -41,5 +43,5 @@ pub(super) fn failure_of(
                 .transpose()?,
         },
         other => return Err(DbError::unreadable("a stored lookup failure's kind", other)),
-    }))
+    })
 }

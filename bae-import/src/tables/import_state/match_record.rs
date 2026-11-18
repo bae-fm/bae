@@ -46,15 +46,7 @@ pub(super) fn match_record_sql(found: &str) -> String {
         "region",
         "status",
         "packaging",
-        "cover_url",
-        "cover_label",
-        "cover_source",
-        "cover_standing",
         "source_group_id",
-        "source_tracks_kind",
-        "source_tracks_count",
-        "document_failure",
-        "document_failure_status",
         "named_note",
     ]
     .map(|column| format!("'{column}', {found}.{column}"))
@@ -74,6 +66,17 @@ pub(super) fn match_record_sql(found: &str) -> String {
     format!(
         "json_object({columns}, \
              'discogs_details', json({found}.discogs_details), \
+             'cover', CASE WHEN {found}.cover_url IS NOT NULL THEN json_object( \
+                 'url', {found}.cover_url, 'label', {found}.cover_label, \
+                 'source', {found}.cover_source, 'standing', {found}.cover_standing) END, \
+             'source_tracks', CASE \
+                 WHEN {found}.source_tracks_kind = 'listed' THEN json_object( \
+                     'kind', 'listed', 'count', {found}.source_tracks_count) \
+                 WHEN {found}.source_tracks_kind IS NOT NULL THEN json_object( \
+                     'kind', {found}.source_tracks_kind) END, \
+             'document_failure', CASE WHEN {found}.document_failure IS NOT NULL THEN json_object( \
+                 'kind', {found}.document_failure, \
+                 'status', {found}.document_failure_status) END, \
              'album_first_year', (SELECT fetched.album_first_year FROM source_release AS fetched \
                                   WHERE fetched.catalog = {found}.source \
                                     AND fetched.release_id = {found}.release_id), \
@@ -115,6 +118,34 @@ struct StoredMatchMedium {
     quantity: u32,
 }
 
+/// A match's cover as [`match_record_sql`] holds it: the four columns the
+/// table sets and clears together. Its copies are rows of their own, which
+/// [`match_of`] adds.
+#[derive(serde::Deserialize)]
+struct StoredCover {
+    url: String,
+    label: String,
+    source: String,
+    standing: String,
+}
+
+/// What a match's catalog said of its tracklist, as [`match_record_sql`]
+/// holds it.
+#[derive(serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum StoredSourceTracks {
+    Listed { count: u32 },
+    Nothing,
+    Unreadable,
+}
+
+/// Why a match's document lookup failed, as [`match_record_sql`] holds it.
+#[derive(serde::Deserialize)]
+struct StoredFailure {
+    kind: String,
+    status: Option<i64>,
+}
+
 /// One match as [`match_record_sql`] answers it.
 #[derive(serde::Deserialize)]
 pub(super) struct StoredRecord {
@@ -133,15 +164,10 @@ pub(super) struct StoredRecord {
     status: Option<String>,
     packaging: Option<String>,
     discogs_details: Vec<bae_types::pressing::DiscogsDetail>,
-    cover_url: Option<String>,
-    cover_label: Option<String>,
-    cover_source: Option<String>,
-    cover_standing: Option<String>,
+    cover: Option<StoredCover>,
     source_group_id: Option<String>,
-    source_tracks_kind: Option<String>,
-    source_tracks_count: Option<i64>,
-    document_failure: Option<String>,
-    document_failure_status: Option<i64>,
+    source_tracks: Option<StoredSourceTracks>,
+    document_failure: Option<StoredFailure>,
     album_first_year: Option<i32>,
     named_note: Option<String>,
     labels: Vec<bae_types::pressing::ReleaseLabel>,
@@ -172,15 +198,10 @@ impl StoredRecord {
             status,
             packaging,
             discogs_details,
-            cover_url,
-            cover_label,
-            cover_source,
-            cover_standing,
+            cover,
             source_group_id,
-            source_tracks_kind,
-            source_tracks_count,
+            source_tracks,
             document_failure,
-            document_failure_status,
             album_first_year,
             named_note,
             labels,
@@ -190,36 +211,21 @@ impl StoredRecord {
             links,
             album_link_rows,
         } = self;
-        // The table sets and clears the four cover columns together; the
-        // copies are rows of their own, which [`match_of`] adds.
-        let cover_art = match (cover_url, cover_source, cover_label, cover_standing) {
-            (Some(url), Some(source), Some(label), Some(standing)) => Some(RemoteCover {
-                image: RemoteImageSet::original(url),
-                label: cover_labels::label_of(&label)?,
-                source: catalog_of(&source)?,
-                standing: standing_of(&standing)?,
-            }),
-            _ => None,
-        };
-        let source_tracks = match source_tracks_kind.as_deref() {
-            None => None,
-            Some("nothing") => Some(SourceTracks::Nothing),
-            Some("unreadable") => Some(SourceTracks::Unreadable),
-            Some("listed") => {
-                let count = source_tracks_count.ok_or_else(|| {
-                    DbError::unreadable(
-                        "import_candidate_match.source_tracks_count of a listed tracklist",
-                        None::<i64>,
-                    )
-                })?;
-                Some(SourceTracks::Listed {
-                    count: to_u32(count, "import_candidate_match.source_tracks_count")?,
+        let cover_art = cover
+            .map(|cover| {
+                Ok::<_, DbError>(RemoteCover {
+                    image: RemoteImageSet::original(cover.url),
+                    label: cover_labels::label_of(&cover.label)?,
+                    source: catalog_of(&cover.source)?,
+                    standing: standing_of(&cover.standing)?,
                 })
-            }
-            Some(other) => {
-                return Err(DbError::unreadable("import_candidate_match.source_tracks_kind", other))
-            }
-        };
+            })
+            .transpose()?;
+        let source_tracks = source_tracks.map(|tracks| match tracks {
+            StoredSourceTracks::Listed { count } => SourceTracks::Listed { count },
+            StoredSourceTracks::Nothing => SourceTracks::Nothing,
+            StoredSourceTracks::Unreadable => SourceTracks::Unreadable,
+        });
         let facts = bae_records::records::pressing_columns::facts_without_media_of(
             country,
             region,
@@ -259,10 +265,11 @@ impl StoredRecord {
                 source_group_id,
                 album_links: AlbumLinks::NotAsked,
                 source_tracks,
-                document_failure: super::lookup_failure_columns::failure_of(
-                    document_failure,
-                    document_failure_status,
-                )?,
+                document_failure: document_failure
+                    .map(|failure| {
+                        super::lookup_failure_columns::failure_named(&failure.kind, failure.status)
+                    })
+                    .transpose()?,
                 // The SQL reads the year from the stored catalog release, so
                 // a later fetch of that release changes it.
                 album_first_year,
