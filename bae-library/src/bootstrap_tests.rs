@@ -16,8 +16,6 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
         bae_store::EnteredName::parse("Created Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        bae_store::TestSources::system().clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -83,8 +81,6 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
         bae_store::EnteredName::parse("Cached Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        bae_store::TestSources::system().clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -100,10 +96,11 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
     handle.close().await.unwrap();
 }
 
-/// The library keeps the name the creator typed, trimmed, and asks for their
-/// profile under it.
+/// A created library holds its creator's profile from its first read, offline
+/// and with no storage: the name they typed, trimmed, private history, and a
+/// private circle named for their member id with them as its only member.
 #[tokio::test]
-async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
+async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
     let temp = tempfile::TempDir::new().unwrap();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -113,45 +110,28 @@ async fn a_created_library_keeps_its_creator_s_name_for_their_profile() {
         bae_store::EnteredName::parse("Created Library").unwrap(),
         bae_store::EnteredName::parse("  Robin ").unwrap(),
         "Test Device",
-        sources.clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .unwrap();
     let store = bae_store::test_devices::store_under(handle.clone(), sources.clock().clone());
-    let kept = store
-        .read(|sql| {
-            Ok(sql.query_row("SELECT name FROM creator_name", [], |row| row.get::<_, String>(0))?)
-        })
+    let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
+    let own = people.own_person().await.unwrap().expect("the creator is this device's person");
+    let profile = own.profile.expect("the creation wrote the creator's profile");
+    assert_eq!(profile.id, own.membership.id);
+    assert_eq!(profile.name, "Robin");
+    assert_eq!(profile.history_sharing, bae_people::people::HistorySharing::Private);
+    let circle = store
+        .query_texts_for_test(&format!(
+            "SELECT name FROM coven_circles WHERE circle = '{}'",
+            profile.private_circle
+        ))
         .await
         .unwrap();
-    assert_eq!(kept, "Robin");
+    assert_eq!(circle, [bae_people::people::private_circle_name(&profile.id)]);
+    let members = handle.circles().members(profile.private_circle).await.unwrap();
+    assert_eq!(members.iter().map(|member| member.member).collect::<Vec<_>>(), [profile.id]);
     handle.close().await.unwrap();
-}
-
-/// A creator's name that can't be kept leaves no library behind.
-#[tokio::test]
-async fn a_creator_s_name_that_cant_be_kept_leaves_no_library() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
-    let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
-    let sources = bae_store::TestSources::system();
-    let error = create_keeping(
-        sources.builder(&installation),
-        bae_store::EnteredName::parse("Failed Library").unwrap(),
-        "Test Device",
-        sources.clock().clone(),
-        &bae_diagnostics::Diagnostics::noop(),
-        |_| async {
-            Err(bae_store::DbError::from(coven::CovenError::Database(coven::DbError::StoreClosed)))
-        },
-    )
-    .await
-    .err()
-    .unwrap();
-    assert!(matches!(error, CreateLibraryError::CreatorName(_)), "{error:?}");
-    assert!(installation.stores().await.unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -165,14 +145,15 @@ async fn failed_creation_removes_the_partial_library() {
         bae_store::EnteredName::parse("Failed Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        bae_store::TestSources::system().clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
     .err()
     .unwrap();
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::KeyringLocked);
+    assert_eq!(
+        bae_diagnostics::creation_category(&error),
+        bae_diagnostics::UiErrorCategory::KeyringLocked
+    );
     assert!(installation.stores().await.unwrap().is_empty());
     assert!(!app_dir.active_library_pointer().exists());
 }
@@ -190,8 +171,6 @@ async fn resetting_an_unconnected_store_is_refused_and_changes_nothing() {
         bae_store::EnteredName::parse("Local Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        bae_store::TestSources::system().clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await
@@ -229,12 +208,14 @@ async fn connected_library(
     storage: &std::sync::Arc<coven::MemoryStorage>,
     name: &str,
 ) -> (coven::StoreId, coven::DeviceId, String) {
-    let handle =
-        configure_store(bae_store::test_devices::test_builder(installation), crate::SCHEMA)
-            .storage_connector(storage.clone())
-            .create_store(name, "Test Device", &[], |_, _| Ok(()))
-            .await
-            .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        bae_store::test_devices::test_builder(installation).storage_connector(storage.clone()),
+        crate::SCHEMA,
+        name,
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let setup = handle
         .setup_s3_storage(
             storage.config(),

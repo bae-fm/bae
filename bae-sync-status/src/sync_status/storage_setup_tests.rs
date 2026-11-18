@@ -43,12 +43,12 @@ async fn library(
     device: Arc<coven::MemoryStorage>,
 ) -> (Store, SyncStatus) {
     let installation = coven::Coven::in_memory(app_dir.path().to_path_buf());
-    let handle = bae_store::configure_store(
-        bae_store::test_devices::test_builder(&installation),
+    let handle = bae_store::test_devices::create_test_store(
+        bae_store::test_devices::test_builder(&installation).storage_connector(device),
         crate::test_fixtures::TEST_SCHEMA,
+        "Household",
+        "Test Device",
     )
-    .storage_connector(device)
-    .create_store("Household", "Test Device", &[], |_, _| Ok(()))
     .await
     .unwrap();
     let store = bae_store::test_devices::store_under(handle, Arc::new(coven::SystemClock));

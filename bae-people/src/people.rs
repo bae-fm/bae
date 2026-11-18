@@ -12,7 +12,6 @@ pub use collections::{album_ratings_on, own_track_stars_sql};
 mod history;
 mod joining;
 pub use joining::private_circle_name;
-mod profile_request;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 
@@ -31,15 +30,9 @@ struct PeopleInner {
     /// The installation's budget of open files, which a read of an avatar
     /// takes its place from.
     files: coven::FileBudget,
-    /// Held while a profile is created, so two creations never overlap.
-    profile_creation: tokio::sync::Mutex<()>,
-    /// Held while a play is registered or local history moves into a profile.
-    history_registration: tokio::sync::Mutex<()>,
 }
 
-/// The library's profiles, ratings, playlists and plays over the store. Its
-/// clones share the locks that serialize profile creation and history
-/// registration.
+/// The library's profiles, ratings, playlists and plays over the store.
 #[derive(Clone)]
 pub struct People {
     inner: Arc<PeopleInner>,
@@ -53,14 +46,7 @@ impl std::fmt::Debug for People {
 
 impl People {
     pub fn new(store: Store, files: coven::FileBudget) -> Self {
-        People {
-            inner: Arc::new(PeopleInner {
-                store,
-                files,
-                profile_creation: tokio::sync::Mutex::new(()),
-                history_registration: tokio::sync::Mutex::new(()),
-            }),
-        }
+        People { inner: Arc::new(PeopleInner { store, files }) }
     }
 }
 
@@ -151,31 +137,10 @@ pub struct Avatar {
     pub version: String,
 }
 
-/// The profile this device's person asked for, until it is written: coven
-/// is making their private circle, the library refused it, or this device
-/// stopped for good before it was made (§5.4).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RequestedProfile {
-    pub name: String,
-    pub state: RequestedProfileState,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum RequestedProfileState {
-    /// The circle is being made; the profile is written once its entry
-    /// lands, with sync running.
-    Making,
-    /// The library refused the circle. Asking again acknowledges this and
-    /// asks anew.
-    Refused(coven::OperationRejection),
-    /// This device stopped for good before the circle was made. Asking
-    /// again acknowledges this and asks anew.
-    Stopped(coven::DeviceStop),
-}
-
-/// Someone in the library: their membership, and their profile once they
-/// made one; a new member may still be setting theirs up. A removed
-/// person's profile stays, read-only, but they are no one in the library.
+/// Someone in the library: their membership, and their profile, which a
+/// device of theirs writes as it registers: another device may read the
+/// membership before that write has synced. A removed person's profile
+/// stays, read-only, but they are no one in the library.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Person {
     pub profile: Option<PersonProfile>,
@@ -197,45 +162,14 @@ pub struct PeopleView {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProfileError {
-    #[error("set up storage before creating this person's profile")]
+    #[error("this device is not registered in the library yet")]
     NotRegistered,
     #[error("this person has no profile")]
     Missing,
     #[error("a person's name cannot be empty")]
     EmptyName,
-    #[error("this person already has a profile; rename it to change the name")]
-    AlreadyExists,
-    #[error("this person's private circle has other members or more than one matching circle")]
-    InvalidPrivateCircle,
-    #[error("private circle creation is waiting for operation {0:?}")]
-    CirclePending(coven::OperationId),
     #[error(transparent)]
     Database(#[from] bae_store::DbError),
-    #[error(transparent)]
-    Sync(#[from] coven::SyncError),
-}
-
-/// Why following the person's profile request stopped.
-#[derive(Debug, thiserror::Error)]
-pub enum ProfileRequestError {
-    /// The request whose circle landed was no longer the one stored when
-    /// its profile was to be written, though only that write ends it: a bug
-    /// of bae's. Nothing was written.
-    #[error("the profile request for operation {0:?} changed before its profile was written")]
-    Changed(coven::OperationId),
-    #[error(transparent)]
-    Database(#[from] DbError),
-}
-
-/// A bug the store carried back, which the store reported as it returned;
-/// a changed request holds none.
-impl bae_util::task_failure::ReportedBug for ProfileRequestError {
-    fn reported_bug(&self) -> Option<&coven::task::Bug> {
-        match self {
-            Self::Database(error) => error.reported_bug(),
-            Self::Changed(_) => None,
-        }
-    }
 }
 
 /// A bug the store carried back, which the store reported as it returned;
@@ -244,13 +178,7 @@ impl bae_util::task_failure::ReportedBug for ProfileError {
     fn reported_bug(&self) -> Option<&coven::task::Bug> {
         match self {
             Self::Database(error) => error.reported_bug(),
-            Self::NotRegistered
-            | Self::Missing
-            | Self::EmptyName
-            | Self::AlreadyExists
-            | Self::InvalidPrivateCircle
-            | Self::CirclePending(_)
-            | Self::Sync(_) => None,
+            Self::NotRegistered | Self::Missing | Self::EmptyName => None,
         }
     }
 }
@@ -271,10 +199,7 @@ impl ProfileError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::NotRegistered | Self::Missing | Self::EmptyName | Self::AlreadyExists => {
-                C::Config
-            }
-            Self::InvalidPrivateCircle | Self::CirclePending(_) | Self::Sync(_) => C::Membership,
+            Self::NotRegistered | Self::Missing | Self::EmptyName => C::Config,
             Self::Database(error) => bae_diagnostics::database_category(error),
         }
     }

@@ -506,9 +506,9 @@ impl From<bae_library::LibraryError> for BridgeError {
     }
 }
 
-impl From<bae_library::CreateLibraryError> for BridgeError {
-    fn from(error: bae_library::CreateLibraryError) -> Self {
-        BridgeError::categorized(error.category(), error)
+impl From<coven::StoreCreationError> for BridgeError {
+    fn from(error: coven::StoreCreationError) -> Self {
+        BridgeError::categorized(bae_diagnostics::creation_category(&error), error)
     }
 }
 

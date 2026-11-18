@@ -414,11 +414,6 @@
     <string name="members_joining">正在加入</string>
     <string name="members_invite_shares_access">联网后共享访问权限</string>
     <string name="invite_granting">正在与 %1$s 共享资料库…</string>
-    <string name="settings_profile_making">正在创建你的个人资料…</string>
-    <string name="settings_profile_making_detail">此资料库同步后，你的个人资料就会出现。</string>
-    <string name="settings_profile_refused">无法创建你的个人资料。%1$s</string>
-    <string name="settings_profile_create_prompt">创建你的个人资料，以便库能显示你是谁。</string>
-    <string name="settings_profile_create">创建个人资料</string>
     <string name="operation_rejection_store_owner">拥有资料库云端家园的账户无法移除。</string>
     <string name="operation_rejection_person_gone">此人已不在资料库中。</string>
     <string name="operation_rejection_device_gone">此设备已不在资料库中。</string>

@@ -99,47 +99,6 @@ impl BridgePersonProfile {
     }
 }
 
-/// The profile this device's person asked for, until it is written.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeRequestedProfile {
-    pub name: String,
-    pub state: BridgeRequestedProfileState,
-}
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeRequestedProfileState {
-    /// The person's private circle is being made; the profile is written
-    /// once sync has made it.
-    Making,
-    /// The library refused the circle; asking again asks anew.
-    Refused { reason: super::BridgeOperationRejection },
-    /// This device stopped for good before the circle was made; asking
-    /// again asks anew.
-    Stopped { stop: super::BridgeDeviceStop },
-}
-impl BridgeRequestedProfile {
-    pub(crate) fn from_core(value: bae_people::people::RequestedProfile) -> Self {
-        let bae_people::people::RequestedProfile { name, state } = value;
-        Self {
-            name,
-            state: match state {
-                bae_people::people::RequestedProfileState::Making => {
-                    BridgeRequestedProfileState::Making
-                }
-                bae_people::people::RequestedProfileState::Refused(reason) => {
-                    BridgeRequestedProfileState::Refused {
-                        reason: super::BridgeOperationRejection::from_core(reason),
-                    }
-                }
-                bae_people::people::RequestedProfileState::Stopped(stop) => {
-                    BridgeRequestedProfileState::Stopped {
-                        stop: super::BridgeDeviceStop::from_core(stop),
-                    }
-                }
-            },
-        }
-    }
-}
-
 /// An album's ratings as its page shows them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeAlbumRating {

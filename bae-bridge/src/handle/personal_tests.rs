@@ -26,11 +26,7 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         library.store(),
         &storage,
     ));
-    let made = runtime.block_on(bae_library::test_libraries::made_profile(
-        library.manager(),
-        library.people(),
-        "Robin",
-    ));
+    let made = runtime.block_on(bae_library::test_libraries::own_profile(library.people()));
     let store = library.store().clone();
     let records = library.records().clone();
     let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
@@ -79,8 +75,6 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         app.clone().end_add_device(added.id).await.unwrap();
         assert!(matches!(status.next().await.unwrap(), BridgeAddDeviceStatus::Forgotten));
 
-        // Asking again for the profile the person has, by its name, is done.
-        app.clone().create_profile("Robin".into()).await.unwrap();
         let profile = BridgePersonProfile::from_core(made.clone());
         app.clone().set_history_sharing(BridgeHistorySharing::Household).await.unwrap();
         assert_eq!(

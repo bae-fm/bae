@@ -422,11 +422,6 @@
     <string name="members_joining">Treedt toe</string>
     <string name="members_invite_shares_access">Deelt toegang zodra het apparaat online is</string>
     <string name="invite_granting">Bibliotheek wordt gedeeld met %1$s…</string>
-    <string name="settings_profile_making">Je profiel wordt gemaakt…</string>
-    <string name="settings_profile_making_detail">Je profiel verschijnt zodra deze bibliotheek is gesynchroniseerd.</string>
-    <string name="settings_profile_refused">Je profiel kon niet worden gemaakt. %1$s</string>
-    <string name="settings_profile_create_prompt">Maak je profiel zodat de bibliotheek kan laten zien wie je bent.</string>
-    <string name="settings_profile_create">Profiel maken</string>
     <string name="operation_rejection_store_owner">Het account dat eigenaar is van het cloudthuis van de bibliotheek kan niet worden verwijderd.</string>
     <string name="operation_rejection_person_gone">Die persoon zit niet meer in de bibliotheek.</string>
     <string name="operation_rejection_device_gone">Dat apparaat zit niet meer in de bibliotheek.</string>

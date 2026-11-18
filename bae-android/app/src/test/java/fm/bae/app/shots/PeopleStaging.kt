@@ -43,10 +43,9 @@ internal fun PeoplePageScene(
     refused: List<BridgeRefusedInvite> = emptyList(),
     offline: Boolean = false,
 ) = AndroidSettingsPeople(
-    you = YouActions(NothingFails, {}, {}, {}),
+    you = YouActions(NothingFails, {}, {}),
     people = people,
     selfIsAdmin = selfIsAdmin,
-    requested = null,
     invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
     adminChanges = null,
     callbacks = memberCallbacks(),

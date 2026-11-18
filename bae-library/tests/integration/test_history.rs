@@ -1,5 +1,4 @@
-use bae_library::test_libraries::{connect_storage, storage_library};
-use bae_people::history::HistoryAudience;
+use bae_library::test_libraries::{own_profile, storage_library};
 use bae_people::people::HistorySharing;
 use bae_util::test_ids::test_uuid;
 use std::time::Duration;
@@ -7,14 +6,14 @@ use std::time::Duration;
 #[tokio::test]
 async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) = storage_library(
+    let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
-    let store = library.store().clone();
-    let people = bae_people::People::new(store.clone(), coven::FileBudget::for_test());
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let person = own_profile(library.people()).await;
     let release = test_uuid("history-release");
     let track = test_uuid("history-track");
     bae_records::test_fixtures::album_with_tracks(
@@ -25,7 +24,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     )
     .await;
     let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
-    let mut local = people
+    let mut private_play = people
         .begin_play(
             coven::IdSource::new_id(&coven::UuidIds),
             &track,
@@ -35,29 +34,21 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
         .await
         .unwrap()
         .expect("recorded");
-    local.set_played(Duration::from_secs(19));
-    assert!(!people.record_play(&local).await.unwrap());
+    private_play.set_played(Duration::from_secs(19));
+    assert!(!people.record_play(&private_play).await.unwrap());
     assert!(people.history().await.unwrap().is_empty());
-    local.set_played(Duration::from_secs(20));
-    assert!(people.record_play(&local).await.unwrap());
-    assert_eq!(people.history().await.unwrap()[0].audience, HistoryAudience::DevicePrivate);
-    connect_storage(library.manager(), library.store(), &storage).await;
-    let person =
-        bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
-            .await;
-    let private = HistoryAudience::Person {
-        person: person.id,
-        audience: coven::Audience::Circle(person.private_circle),
-    };
+    private_play.set_played(Duration::from_secs(20));
+    assert!(people.record_play(&private_play).await.unwrap());
+    let private = coven::Audience::Circle(person.private_circle);
     let rows = people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].id, local.entry().id);
+    assert_eq!(rows[0].id, private_play.entry().id);
+    assert_eq!(rows[0].person, person.id);
     assert_eq!(rows[0].audience, private);
     assert_eq!(rows[0].started_at, started);
-    assert!(store.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
     library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
-    local.set_played(Duration::from_secs(24));
-    people.record_play(&local).await.unwrap();
+    private_play.set_played(Duration::from_secs(24));
+    people.record_play(&private_play).await.unwrap();
     assert_eq!(people.history().await.unwrap()[0].audience, private);
     let mut shared = people
         .begin_play(
@@ -80,12 +71,9 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     let rows = people.history().await.unwrap();
     assert_eq!(rows.len(), 2);
     let row = rows.iter().find(|row| row.id == shared.entry().id).unwrap();
-    assert_eq!(
-        row.audience,
-        HistoryAudience::Person { person: person.id, audience: coven::Audience::Store }
-    );
+    assert_eq!((row.person, &row.audience), (person.id, &coven::Audience::Store));
     assert_eq!(row.played, Duration::from_secs(62));
-    assert_ne!(row.id, local.entry().id);
+    assert_ne!(row.id, private_play.entry().id);
     let mut unknown = people
         .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
         .await
@@ -103,7 +91,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
 #[tokio::test]
 async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) = storage_library(
+    let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -119,10 +107,7 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
         &[(&track, "Interlude")],
     )
     .await;
-    connect_storage(library.manager(), library.store(), &storage).await;
-    let person =
-        bae_library::test_libraries::made_profile(library.manager(), library.people(), "Robin")
-            .await;
+    let person = own_profile(library.people()).await;
     let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
     let mut before = people
         .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
@@ -141,11 +126,8 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
     let rows = people.history().await.unwrap();
     assert_eq!(rows.len(), 1);
     assert_eq!(
-        rows[0].audience,
-        HistoryAudience::Person {
-            person: person.id,
-            audience: coven::Audience::Circle(person.private_circle)
-        }
+        (rows[0].person, &rows[0].audience),
+        (person.id, &coven::Audience::Circle(person.private_circle))
     );
 
     library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
@@ -155,68 +137,4 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
         .unwrap()
         .is_some());
     library.manager().close().await.unwrap();
-}
-
-/// A profile can arrive from another device while this device still has
-/// listening from before registration. Retrying profile setup adopts it too.
-#[test]
-fn retrying_profile_setup_adopts_listening_from_before_the_profile_arrived() {
-    bae_library::test_libraries::run_two_device_test(async |devices| {
-        let release = test_uuid("arriving-release");
-        let track = test_uuid("arriving-track");
-        bae_records::test_fixtures::album_with_tracks(
-            devices.a().records(),
-            (&test_uuid("arriving-album"), "Listening"),
-            &release,
-            &[(&track, "Interlude")],
-        )
-        .await;
-        devices.converge("SELECT id FROM tracks").await;
-        devices.b().stop_sync().await;
-        let people = devices.b().people();
-        let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:00:00Z").unwrap();
-        let mut awaiting_profile = people
-            .begin_play(
-                coven::IdSource::new_id(&coven::UuidIds),
-                &track,
-                Some(Duration::from_secs(40)),
-                started,
-            )
-            .await
-            .unwrap()
-            .expect("recorded");
-        awaiting_profile.set_played(Duration::from_secs(30));
-        assert!(people.record_play(&awaiting_profile).await.unwrap());
-
-        let person = bae_library::test_libraries::made_profile(
-            devices.a().manager(),
-            devices.a().people(),
-            "Robin",
-        )
-        .await;
-        devices.b().store().start_sync().await.unwrap();
-        devices
-            .settle("the profile on both devices", async |_, store| {
-                let listed = bae_library::followed::query_matching(
-                    &mut bae_people::People::new(store.clone(), coven::FileBudget::for_test())
-                        .subscribe_people(),
-                    |_| true,
-                )
-                .await;
-                listed.own.iter().chain(&listed.others).any(|person| person.profile.is_some())
-            })
-            .await;
-        let b = devices.b().store();
-        assert!(!b.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
-
-        devices.b().people().create_profile("Robin").await.unwrap();
-        let rows = people.history().await.unwrap();
-        let private = HistoryAudience::Person {
-            person: person.id,
-            audience: coven::Audience::Circle(person.private_circle),
-        };
-        let adopted = rows.iter().find(|row| row.id == awaiting_profile.entry().id).unwrap();
-        assert_eq!(adopted.audience, private);
-        assert!(b.query_texts_for_test("SELECT id FROM local_history").await.unwrap().is_empty());
-    });
 }

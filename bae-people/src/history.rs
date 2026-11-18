@@ -3,22 +3,15 @@
 use std::time::Duration;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HistoryAudience {
-    /// Listening before a registered profile exists remains on this device.
-    DevicePrivate,
-    Person {
-        person: coven::MemberId,
-        audience: coven::Audience,
-    },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HistoryEntry {
     pub id: uuid::Uuid,
     pub track_id: String,
     pub started_at: time::UtcDateTime,
     pub played: Duration,
-    pub audience: HistoryAudience,
+    /// The person the play began as.
+    pub person: coven::MemberId,
+    /// Who sees the play: the store or the person's private circle.
+    pub audience: coven::Audience,
 }
 
 /// Why a play could not be recorded.

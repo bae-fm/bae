@@ -43,19 +43,3 @@ internal fun S3KeyFields(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
     )
 }
-
-/** The name everyone in the library sees for the person. */
-@Composable
-internal fun PersonNameField(
-    name: String,
-    onNameChange: (String) -> Unit,
-) {
-    OutlinedTextField(
-        value = name,
-        onValueChange = onNameChange,
-        label = { Text(stringResource(R.string.onboarding_person_name)) },
-        supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-    )
-}

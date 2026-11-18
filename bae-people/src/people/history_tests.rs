@@ -1,7 +1,7 @@
 //! Recording a play: refused once this device is no longer the person the
 //! play began as.
 
-use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay, PlayRecordError};
+use crate::history::{HistoryEntry, HistoryPlay, PlayRecordError};
 use crate::People;
 use std::time::Duration;
 
@@ -19,7 +19,8 @@ async fn a_play_begun_as_another_person_is_refused() {
             track_id: "track".to_string(),
             started_at: bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap(),
             played: Duration::from_secs(30),
-            audience: HistoryAudience::Person { person, audience: coven::Audience::Store },
+            person,
+            audience: coven::Audience::Store,
         },
         duration: Some(Duration::from_secs(40)),
     };

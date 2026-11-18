@@ -28,7 +28,6 @@ Fully local tables, never declared to coven:
 - **The scan and import tables**: watched folders, scans, import candidates and their drafts.
 - **`source_release`** and the tables under it: what bae extracted from each MusicBrainz and Discogs release it fetched — album and pressing facts, the full tracklist with credits and works, cover options, and what other catalogs call it — keyed by the provider release rather than by a local release. The raw JSON is not kept; any device can fetch a release again.
 - **`local_release_files`**: a local release's file paths and modification times on this device.
-- **`local_history`**: plays from before this device's person had a profile, moved into their private circle when it is made.
 
 Two devices' edits merge cell by cell, the later edit winning a cell both changed. coven keeps the merge bookkeeping in its own tables, so bae's tables carry no clock columns.
 

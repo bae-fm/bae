@@ -22,8 +22,6 @@ async fn dropbox_library(
         bae_store::EnteredName::parse("Household").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        bae_store::TestSources::system().clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

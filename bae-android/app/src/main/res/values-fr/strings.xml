@@ -428,11 +428,6 @@
     <string name="members_joining">Adhésion en cours</string>
     <string name="members_invite_shares_access">Partage l’accès une fois en ligne</string>
     <string name="invite_granting">Partage de la bibliothèque avec %1$s…</string>
-    <string name="settings_profile_making">Création de votre profil…</string>
-    <string name="settings_profile_making_detail">Votre profil apparaîtra une fois cette bibliothèque synchronisée.</string>
-    <string name="settings_profile_refused">Votre profil n’a pas pu être créé. %1$s</string>
-    <string name="settings_profile_create_prompt">Créez votre profil pour que la bibliothèque puisse indiquer qui vous êtes.</string>
-    <string name="settings_profile_create">Créer le profil</string>
     <string name="operation_rejection_store_owner">Le compte propriétaire de l’espace cloud de la bibliothèque ne peut pas être retiré.</string>
     <string name="operation_rejection_person_gone">Cette personne ne fait plus partie de la bibliothèque.</string>
     <string name="operation_rejection_device_gone">Cet appareil ne fait plus partie de la bibliothèque.</string>

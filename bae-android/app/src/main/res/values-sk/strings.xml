@@ -436,11 +436,6 @@
     <string name="members_joining">Pripája sa</string>
     <string name="members_invite_shares_access">Prístup sa zdieľa, keď bude online</string>
     <string name="invite_granting">Knižnica sa zdieľa s adresou %1$s…</string>
-    <string name="settings_profile_making">Vytvára sa váš profil…</string>
-    <string name="settings_profile_making_detail">Váš profil sa zobrazí, keď sa táto knižnica synchronizuje.</string>
-    <string name="settings_profile_refused">Váš profil sa nepodarilo vytvoriť. %1$s</string>
-    <string name="settings_profile_create_prompt">Vytvorte si profil, aby knižnica mohla ukázať, kto ste.</string>
-    <string name="settings_profile_create">Vytvoriť profil</string>
     <string name="operation_rejection_store_owner">Účet, ktorý vlastní cloudový domov knižnice, nemožno odstrániť.</string>
     <string name="operation_rejection_person_gone">Táto osoba už v knižnici nie je.</string>
     <string name="operation_rejection_device_gone">Toto zariadenie už v knižnici nie je.</string>

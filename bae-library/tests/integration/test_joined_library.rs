@@ -67,10 +67,6 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
         let library = household.library(handle.clone(), library_dir.path()).await;
         assert_eq!(handle.unsent_work().await.unwrap().writes, 0);
         assert!(library.people().own_person().await.unwrap().is_none());
-        assert!(matches!(
-            library.people().create_profile("Rowan").await,
-            Err(bae_people::people::ProfileError::NotRegistered)
-        ));
         handle.start_sync().await.unwrap();
         let answer = handle.retry_now().await.unwrap().await;
         assert!(matches!(answer, coven::RetryOutcome::Failed(_)), "{answer:?}");

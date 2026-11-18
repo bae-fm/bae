@@ -92,7 +92,6 @@ import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
-import uniffi.bae_bridge.RequestedProfileSubscription
 import uniffi.bae_bridge.SavePresetSubscription
 import uniffi.bae_bridge.SessionUpNextSubscription
 import uniffi.bae_bridge.StorageQueuesSubscription
@@ -814,10 +813,6 @@ internal open class FakeAppHandle(
 
     override suspend fun avatar(person: String): ByteArray? = unfaked("avatar")
 
-    override suspend fun createProfile(name: String) {
-        unfaked("createProfile")
-    }
-
     override suspend fun libraryName(): String = unfaked("libraryName")
 
     override suspend fun renameProfile(name: String) {
@@ -840,11 +835,6 @@ internal open class FakeAppHandle(
     }
 
     override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
-
-    /** The profile this device's person asked for, which a test delivers to. */
-    val requestedProfile = FakeRequestedProfileSubscription()
-
-    override fun subscribeRequestedProfile(): RequestedProfileSubscription = requestedProfile
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 

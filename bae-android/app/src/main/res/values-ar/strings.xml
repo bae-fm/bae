@@ -454,11 +454,6 @@
     <string name="members_joining">ينضم</string>
     <string name="members_invite_shares_access">تتم مشاركة الوصول عند الاتصال بالإنترنت</string>
     <string name="invite_granting">جارٍ مشاركة المكتبة مع %1$s…</string>
-    <string name="settings_profile_making">جارٍ إنشاء ملف تعريفك…</string>
-    <string name="settings_profile_making_detail">يظهر ملف تعريفك بعد مزامنة هذه المكتبة.</string>
-    <string name="settings_profile_refused">تعذّر إنشاء ملف تعريفك. %1$s</string>
-    <string name="settings_profile_create_prompt">أنشئ ملف تعريفك لتتمكن المكتبة من إظهار هويتك.</string>
-    <string name="settings_profile_create">إنشاء ملف تعريف</string>
     <string name="operation_rejection_store_owner">لا يمكن إزالة الحساب الذي يملك المنزل السحابي للمكتبة.</string>
     <string name="operation_rejection_person_gone">لم يعد هذا الشخص في المكتبة.</string>
     <string name="operation_rejection_device_gone">لم يعد هذا الجهاز في المكتبة.</string>

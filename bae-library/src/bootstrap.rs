@@ -30,30 +30,6 @@ impl RestoreFromCodeError {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum CreateLibraryError {
-    #[error(transparent)]
-    Store(#[from] coven::StoreCreationError),
-    /// The creator's name couldn't be kept, so the library was not kept.
-    #[error("keeping the creator's name: {0}")]
-    CreatorName(#[source] bae_store::DbError),
-    /// The library made, and the creator's name not kept, couldn't be taken
-    /// back: the store stays on this device.
-    #[error("keeping the creator's name: {name}; and the new library was not removed: {removal}")]
-    NotRemoved { name: bae_store::DbError, removal: coven::StoreDeletionError },
-}
-
-impl CreateLibraryError {
-    pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
-        match self {
-            Self::Store(error) => bae_diagnostics::creation_category(error),
-            Self::CreatorName(error) | Self::NotRemoved { name: error, .. } => {
-                bae_diagnostics::database_category(error)
-            }
-        }
-    }
-}
-
 /// `builder` with its file transfers limited as `limits` says, per direction.
 pub(crate) fn with_transfer_limits(
     builder: coven::CovenBuilder,
@@ -72,53 +48,30 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
     )
 }
 
-/// Create a store named `name`, registering this device as `device_name`, and
-/// keep the name of its creator, `creator`, for their profile, which the
-/// library asks for when it opens (§5.4). Retains the
-/// store's open handle, including its identity custody. If the name can't be
-/// kept, the new library is deleted again and the call fails: a library
-/// either keeps its creator's name or doesn't exist.
+/// Create a store named `name`, registering this device as `device_name`, with
+/// its creator, `creator`, as its first member: coven records their name and
+/// their private circle in the store's first slot, and the joining write
+/// gives them their profile as that slot applies, as a joiner's device gives
+/// a joiner theirs (§5.4). Retains the store's open handle, including its
+/// identity custody.
 pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
     creator: bae_store::EnteredName,
     device_name: &str,
-    clock: coven::ClockRef,
-    files: coven::FileBudget,
     diagnostics: &bae_diagnostics::Diagnostics,
-) -> Result<coven::CovenHandle, CreateLibraryError> {
-    create_keeping(builder, name, device_name, clock, diagnostics, |store| async move {
-        bae_people::People::new(store, files).keep_creator_name(&creator).await
-    })
-    .await
-}
-
-/// [`create_library`] with the write that keeps the creator's name given, so
-/// a test can make it fail.
-async fn create_keeping<Keep, Kept>(
-    builder: coven::CovenBuilder,
-    name: bae_store::EnteredName,
-    device_name: &str,
-    clock: coven::ClockRef,
-    diagnostics: &bae_diagnostics::Diagnostics,
-    keep: Keep,
-) -> Result<coven::CovenHandle, CreateLibraryError>
-where
-    Keep: FnOnce(bae_store::Store) -> Kept,
-    Kept: std::future::Future<Output = Result<(), bae_store::DbError>>,
-{
-    let handle = configure_store(builder, crate::SCHEMA)
-        .create_store(name.as_str(), device_name, &[], |_, _| Ok(()))
+) -> Result<coven::CovenHandle, coven::StoreCreationError> {
+    configure_store(builder, crate::SCHEMA)
+        .create_store(
+            name.as_str(),
+            device_name,
+            creator.as_str(),
+            |member| bae_people::people::private_circle_name(&member),
+            &[],
+            |_, _| Ok(()),
+        )
         .await
-        .map_err(|error| CreateLibraryError::Store(coven::task::reported(diagnostics, error)))?;
-    let store = bae_store::Store::new(handle.clone(), clock, diagnostics.bug_sink());
-    match keep(store.clone()).await {
-        Ok(()) => Ok(handle),
-        Err(name) => match store.delete_store().await {
-            Ok(()) => Err(CreateLibraryError::CreatorName(name)),
-            Err(removal) => Err(CreateLibraryError::NotRemoved { name, removal }),
-        },
-    }
+        .map_err(|error| coven::task::reported(diagnostics, error))
 }
 
 /// Restore with a separately entered S3 key and coven's own OAuth presentation.

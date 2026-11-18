@@ -17,7 +17,7 @@ pub async fn storage_library_within(
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let sources =
         super::TestSources::on_budget(&(Arc::new(coven::SystemClock) as coven::ClockRef), files);
-    storage_library_on(directory, providers, http, None, sources).await
+    storage_library_on(directory, providers, http, sources).await
 }
 
 /// Create a store in its own installation, with an injected provider, before
@@ -27,46 +27,28 @@ pub async fn storage_library(
     providers: Providers,
     http: bae_util::http::Http,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
-    storage_library_of(directory, providers, http, None).await
+    storage_library_on(directory, providers, http, super::TestSources::system()).await
 }
 
-/// [`storage_library`] of a creator who typed `creator`, whose name it keeps
-/// as `create_library` does.
-pub async fn storage_library_of(
-    directory: &std::path::Path,
-    providers: Providers,
-    http: bae_util::http::Http,
-    creator: Option<&str>,
-) -> (super::TestLibrary, Arc<MemoryStorage>) {
-    storage_library_on(directory, providers, http, creator, super::TestSources::system()).await
-}
-
-/// Creates a store like [`storage_library_of`] on `sources`.
+/// Creates a store like [`storage_library`] on `sources`.
 async fn storage_library_on(
     directory: &std::path::Path,
     providers: Providers,
     http: bae_util::http::Http,
-    creator: Option<&str>,
     sources: super::TestSources,
 ) -> (super::TestLibrary, Arc<MemoryStorage>) {
     let app_dir = bae_app_dir::AppDir::under_home(directory).unwrap();
     let installation = sources.installation(app_dir.coven_app_dir());
     let storage =
         Arc::new(MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap());
-    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-        .storage_connector(storage.clone())
-        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
-    if let Some(creator) = creator {
-        bae_people::People::new(
-            bae_store::test_devices::store_under(handle.clone(), sources.clock().clone()),
-            sources.files().clone(),
-        )
-        .keep_creator_name(&bae_store::EnteredName::parse(creator).unwrap())
-        .await
-        .unwrap();
-    }
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation).storage_connector(storage.clone()),
+        crate::SCHEMA,
+        "Test Library",
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let library =
         super::test_library_from_handle(handle, directory, providers, http, &sources).await;
     library.manager().start().unwrap();

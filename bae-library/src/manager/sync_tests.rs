@@ -827,17 +827,19 @@ mod sign_in {
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
         let sources = bae_store::TestSources::on(&clock);
-        let handle = bae_store::configure_store(
-            sources.builder(&coven::Coven::in_memory(app_dir.coven_app_dir())),
+        let handle = bae_store::test_devices::create_test_store(
+            sources
+                .builder(&coven::Coven::in_memory(app_dir.coven_app_dir()))
+                .oauth_clients(coven::OAuthClients::new(
+                    Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
+                    Some("onedrive-id".into()),
+                ))
+                .oauth_presenter(presenter)
+                .storage_connector(storage.clone()),
             crate::SCHEMA,
+            "Test Library",
+            "Test Device",
         )
-        .oauth_clients(coven::OAuthClients::new(
-            Some(coven::DropboxClients::FullDropbox { app_key: "dropbox-key".into() }),
-            Some("onedrive-id".into()),
-        ))
-        .oauth_presenter(presenter)
-        .storage_connector(storage.clone())
-        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
         let library = TestLibrary::open(

@@ -420,11 +420,6 @@
     <string name="members_joining">Liittyy</string>
     <string name="members_invite_shares_access">Jakaa käyttöoikeuden, kun laite on verkossa</string>
     <string name="invite_granting">Jaetaan kirjastoa osoitteelle %1$s…</string>
-    <string name="settings_profile_making">Profiiliasi luodaan…</string>
-    <string name="settings_profile_making_detail">Profiilisi näkyy, kun tämä kirjasto on synkronoitu.</string>
-    <string name="settings_profile_refused">Profiiliasi ei voitu luoda. %1$s</string>
-    <string name="settings_profile_create_prompt">Luo profiilisi, jotta kirjasto voi näyttää, kuka olet.</string>
-    <string name="settings_profile_create">Luo profiili</string>
     <string name="operation_rejection_store_owner">Kirjaston pilvikodin omistavaa tiliä ei voi poistaa.</string>
     <string name="operation_rejection_person_gone">Tämä henkilö ei ole enää kirjastossa.</string>
     <string name="operation_rejection_device_gone">Tämä laite ei ole enää kirjastossa.</string>

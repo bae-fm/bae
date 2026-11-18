@@ -192,10 +192,12 @@ pub(super) fn fresh_test_library(
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = bae_library::test_libraries::TestSources::system();
     let handle = runtime
-        .block_on(
-            bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
-                .create_store("Test Library", "Test Device", &[], |_, _| Ok(())),
-        )
+        .block_on(bae_store::test_devices::create_test_store(
+            sources.builder(&installation),
+            bae_library::SCHEMA,
+            "Test Library",
+            "Test Device",
+        ))
         .expect("test store");
     let library = runtime.block_on(bae_library::test_libraries::test_library_from_handle(
         handle,

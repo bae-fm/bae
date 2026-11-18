@@ -50,7 +50,6 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeRefusedInvite
-import uniffi.bae_bridge.BridgeRequestedProfile
 
 private const val TAG = "bae.MembersScreen"
 private val logger = BaeLogger(TAG)
@@ -89,10 +88,6 @@ internal class MembersModel(
      * once it arrives, and the invites a sharing refusal ended, until the person dismisses them.
      */
     var inviteEntries by mutableStateOf<List<BridgeInviteEntry>>(emptyList())
-        private set
-
-    /** The profile this device's person asked for, while it isn't written yet; null before they ask and once it is. */
-    var requestedProfile by mutableStateOf<BridgeRequestedProfile?>(null)
         private set
 
     var error by mutableStateOf<DisplayError?>(null)
@@ -179,19 +174,6 @@ internal class MembersModel(
     /** Subscribe to the people again after a failed read, showing the spinner while it runs. */
     fun retry() = watchPeople()
 
-    /** Follow the profile this person asked for. The request ends in the write that makes the profile, and the people
-     *  subscription shows the profile once core writes it. */
-    private fun subscribeRequestedProfile(): ScreenSubscription<BridgeRequestedProfile?> =
-        ScreenSubscription(
-            appHandle.subscribeRequestedProfile().let { pulled(it::next, it::cancel) },
-            scope,
-            onValue = { value -> requestedProfile = value },
-            onError = { error ->
-                logger.error("reading the requested profile failed", error)
-                this@MembersModel.error = errors.display(error)
-            },
-        )
-
     fun subscribe(): () -> Unit {
         val members =
             ScreenSubscription(
@@ -214,7 +196,6 @@ internal class MembersModel(
                     this@MembersModel.error = errors.display(error)
                 },
             )
-        val requested = subscribeRequestedProfile()
         return {
             members.stop()
             stopWatchingPeople()
@@ -222,7 +203,6 @@ internal class MembersModel(
             waitingRequest.hide()
             invite.hide()
             open.stop()
-            requested.stop()
             adminChanges.hide()
         }
     }

@@ -414,11 +414,6 @@
     <string name="members_joining">참여 중</string>
     <string name="members_invite_shares_access">온라인이 되면 접근 권한을 공유합니다</string>
     <string name="invite_granting">%1$s님과 라이브러리를 공유하는 중…</string>
-    <string name="settings_profile_making">프로필을 만드는 중…</string>
-    <string name="settings_profile_making_detail">이 라이브러리가 동기화되면 프로필이 표시됩니다.</string>
-    <string name="settings_profile_refused">프로필을 만들 수 없습니다. %1$s</string>
-    <string name="settings_profile_create_prompt">라이브러리에 내가 누구인지 표시되도록 프로필을 만드세요.</string>
-    <string name="settings_profile_create">프로필 만들기</string>
     <string name="operation_rejection_store_owner">라이브러리 클라우드 홈을 소유한 계정은 제거할 수 없습니다.</string>
     <string name="operation_rejection_person_gone">그 사람은 더 이상 라이브러리에 없습니다.</string>
     <string name="operation_rejection_device_gone">그 기기는 더 이상 라이브러리에 없습니다.</string>

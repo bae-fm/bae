@@ -15,11 +15,14 @@ async fn synced_closed_library(
     let storage = Arc::new(
         coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
     );
-    let handle = bae_store::configure_store(sources.builder(installation), crate::SCHEMA)
-        .storage_connector(storage.clone())
-        .create_store(name, "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(installation).storage_connector(storage.clone()),
+        crate::SCHEMA,
+        name,
+        "Test Device",
+    )
+    .await
+    .unwrap();
     handle
         .setup_s3_storage(
             storage.config(),

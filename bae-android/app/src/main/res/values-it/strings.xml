@@ -428,11 +428,6 @@
     <string name="members_joining">Si sta unendo</string>
     <string name="members_invite_shares_access">Condivide l’accesso quando è online</string>
     <string name="invite_granting">Condivisione della libreria con %1$s…</string>
-    <string name="settings_profile_making">Creazione del tuo profilo…</string>
-    <string name="settings_profile_making_detail">Il tuo profilo comparirà quando questa libreria si sarà sincronizzata.</string>
-    <string name="settings_profile_refused">Non è stato possibile creare il tuo profilo. %1$s</string>
-    <string name="settings_profile_create_prompt">Crea il tuo profilo così la libreria può mostrare chi sei.</string>
-    <string name="settings_profile_create">Crea profilo</string>
     <string name="operation_rejection_store_owner">L’account proprietario della casa nel cloud della libreria non può essere rimosso.</string>
     <string name="operation_rejection_person_gone">Quella persona non fa più parte della libreria.</string>
     <string name="operation_rejection_device_gone">Quel dispositivo non fa più parte della libreria.</string>

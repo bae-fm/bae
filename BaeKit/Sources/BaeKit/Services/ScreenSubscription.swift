@@ -152,7 +152,6 @@ extension PersonSubscription: PulledSubscription {}
 extension OpenInviteSubscription: PulledSubscription {}
 extension PlaylistsSubscription: PulledSubscription {}
 extension PlaylistDetailSubscription: PulledSubscription {}
-extension RequestedProfileSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
 extension DeviceStorageSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}

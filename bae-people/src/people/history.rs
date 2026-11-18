@@ -1,11 +1,13 @@
 use super::*;
-use crate::history::{HistoryAudience, HistoryEntry, HistoryPlay, PlayRecordError};
+use crate::history::{HistoryEntry, HistoryPlay, PlayRecordError};
 use bae_util::timestamp::StoredTimestamp as _;
 use std::time::Duration;
 
 impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
-    /// `None` when the setting is Off: the play is not recorded at all.
+    /// `None` when the setting is Off, or when this device has no person with
+    /// a profile, such as one removed from the library: the play is not
+    /// recorded at all.
     pub async fn begin_play(
         &self,
         id: uuid::Uuid,
@@ -13,15 +15,13 @@ impl People {
         duration: Option<Duration>,
         started_at: UtcDateTime,
     ) -> Result<Option<HistoryPlay>, DbError> {
-        let audience = match self.own_person().await? {
-            Some(crate::people::Person { profile: Some(profile), membership }) => {
-                let Some(audience) = profile.history_sharing.audience(profile.private_circle)
-                else {
-                    return Ok(None);
-                };
-                HistoryAudience::Person { person: membership.id, audience }
-            }
-            Some(_) | None => HistoryAudience::DevicePrivate,
+        let Some(crate::people::Person { profile: Some(profile), membership }) =
+            self.own_person().await?
+        else {
+            return Ok(None);
+        };
+        let Some(audience) = profile.history_sharing.audience(profile.private_circle) else {
+            return Ok(None);
         };
         Ok(Some(HistoryPlay {
             entry: HistoryEntry {
@@ -29,6 +29,7 @@ impl People {
                 track_id: track_id.to_owned(),
                 started_at,
                 played: Duration::ZERO,
+                person: membership.id,
                 audience,
             },
             duration,
@@ -40,35 +41,13 @@ impl People {
         if !play.qualifies() {
             return Ok(false);
         }
-        let _registration = self.inner.history_registration.lock().await;
-        let mut entry = play.entry.clone();
-        let own = self.own_person().await?;
-        let member = own.as_ref().map(|person| person.membership.id);
-        match entry.audience {
-            HistoryAudience::DevicePrivate => {
-                if let Some(crate::people::Person { profile: Some(profile), membership }) = own {
-                    entry.audience = HistoryAudience::Person {
-                        person: membership.id,
-                        audience: coven::Audience::Circle(profile.private_circle),
-                    };
-                }
-            }
-            HistoryAudience::Person { person, .. } if Some(person) != member => {
-                return Err(PlayRecordError::PersonChanged(person));
-            }
-            HistoryAudience::Person { .. } => {}
+        let entry = play.entry.clone();
+        if self.own_person().await?.map(|person| person.membership.id) != Some(entry.person) {
+            return Err(PlayRecordError::PersonChanged(entry.person));
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
         Ok(self.inner.store.call(move |sql| {
-            match entry.audience {
-                HistoryAudience::DevicePrivate => {
-                    sql.execute("INSERT INTO local_history (id, track_id, started_at, played_ms) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(local_history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms])?;
-                }
-                HistoryAudience::Person { person, audience } => {
-                    sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms, audience])?;
-                    sql.execute("DELETE FROM local_history WHERE id = ?", [entry.id.to_string()])?;
-                }
-            }
+            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms, entry.audience])?;
             Ok(true)
         }).await?)
     }
@@ -83,25 +62,13 @@ impl People {
 
 #[cfg(any(test, feature = "test-utils"))]
 fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>> {
-    sql.query("SELECT id, track_id, started_at, played_ms, person_id, audience FROM history UNION ALL SELECT id, track_id, started_at, played_ms, NULL, NULL FROM local_history ORDER BY started_at DESC, id", [], |row| {
-        let audience = if row.get::<_, Option<String>>(4)?.is_some() {
-            HistoryAudience::Person { person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? }
-        } else { HistoryAudience::DevicePrivate };
+    sql.query("SELECT id, track_id, started_at, played_ms, person_id, audience FROM history ORDER BY started_at DESC, id", [], |row| {
         let started_at = bae_store::read::rfc3339_column(row, "started_at")?;
         let played_ms: i64 = row.get(3)?;
         #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
         let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(3, played_ms))?;
-        Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, started_at, played: Duration::from_millis(played_ms), audience })
+        Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, started_at, played: Duration::from_millis(played_ms), person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? })
     })
-}
-
-pub(super) fn adopt_local_history(
-    sql: &CovenWrite<'_>,
-    profile: &crate::people::PersonProfile,
-) -> rusqlite::Result<()> {
-    sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) SELECT id, ?1, track_id, started_at, played_ms, ?2 FROM local_history", params![profile.id.to_string(), coven::Audience::Circle(profile.private_circle)])?;
-    sql.execute("DELETE FROM local_history", [])?;
-    Ok(())
 }
 
 #[cfg(test)]

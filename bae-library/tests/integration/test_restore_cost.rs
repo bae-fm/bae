@@ -124,11 +124,14 @@ async fn restore_cost(library: Library) {
     let app_dir = AppDir::at(owner_dir.path()).unwrap();
     let sources = bae_store::TestSources::on(&(clock.clone() as coven::ClockRef));
     let installation = Coven::in_memory(app_dir.coven_app_dir());
-    let handle = bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
-        .storage_connector(storage.clone())
-        .create_store("Library", "Ana's Mac", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation).storage_connector(storage.clone()),
+        bae_library::SCHEMA,
+        "Library",
+        "Ana's Mac",
+    )
+    .await
+    .unwrap();
     handle
         .setup_s3_storage(storage.config(), "key".into(), SecretText::new("secret".into()), &|_| ())
         .await

@@ -31,8 +31,6 @@ impl Home {
                 bae_store::EnteredName::parse(name).unwrap(),
                 bae_store::EnteredName::parse("Creator").unwrap(),
                 "Test Device",
-                bae_store::TestSources::system().clock().clone(),
-                coven::FileBudget::for_test(),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await
@@ -201,8 +199,6 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
             bae_store::EnteredName::parse("Locked Library").unwrap(),
             bae_store::EnteredName::parse("Creator").unwrap(),
             "Test Device",
-            bae_store::TestSources::system().clock().clone(),
-            coven::FileBudget::for_test(),
             &bae_diagnostics::Diagnostics::noop(),
         )
         .await

@@ -420,11 +420,6 @@
     <string name="members_joining">Συμμετέχει</string>
     <string name="members_invite_shares_access">Μοιράζεται πρόσβαση όταν συνδεθεί</string>
     <string name="invite_granting">Κοινή χρήση της βιβλιοθήκης με %1$s…</string>
-    <string name="settings_profile_making">Δημιουργείται το προφίλ σας…</string>
-    <string name="settings_profile_making_detail">Το προφίλ σας θα εμφανιστεί μόλις συγχρονιστεί αυτή η βιβλιοθήκη.</string>
-    <string name="settings_profile_refused">Δεν ήταν δυνατή η δημιουργία του προφίλ σας. %1$s</string>
-    <string name="settings_profile_create_prompt">Δημιουργήστε το προφίλ σας για να δείχνει η βιβλιοθήκη ποιος είστε.</string>
-    <string name="settings_profile_create">Δημιουργία προφίλ</string>
     <string name="operation_rejection_store_owner">Ο λογαριασμός στον οποίο ανήκει το σπίτι στο cloud της βιβλιοθήκης δεν μπορεί να αφαιρεθεί.</string>
     <string name="operation_rejection_person_gone">Αυτό το άτομο δεν είναι πλέον στη βιβλιοθήκη.</string>
     <string name="operation_rejection_device_gone">Αυτή η συσκευή δεν είναι πλέον στη βιβλιοθήκη.</string>

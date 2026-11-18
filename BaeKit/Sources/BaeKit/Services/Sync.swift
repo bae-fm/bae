@@ -48,7 +48,6 @@ public final class Sync: Sendable, Observable {
     public let cancelInvite: @Sendable (String) async throws -> Void
     public let setHistorySharing:
         @Sendable (BridgeHistorySharing) async throws -> Void
-    public let createProfile: @Sendable (String) async throws -> Void
     /// Rename this device's person's profile, which everyone in the library
     /// sees.
     public let renameProfile: @Sendable (String) async throws -> Void
@@ -126,9 +125,6 @@ public final class Sync: Sendable, Observable {
                 _ in
                 throw StubError.notImplemented
             },
-        createProfile: @escaping @Sendable (String) async throws -> Void = {
-            _ in throw StubError.notImplemented
-        },
         renameProfile: @escaping @Sendable (String) async throws -> Void = {
             _ in throw StubError.notImplemented
         },
@@ -172,7 +168,6 @@ public final class Sync: Sendable, Observable {
         self.declineJoinRequest = declineJoinRequest
         self.cancelInvite = cancelInvite
         self.setHistorySharing = setHistorySharing
-        self.createProfile = createProfile
         self.renameProfile = renameProfile
         self.retryOutbox = retryOutbox
         self.renameLibrary = renameLibrary
@@ -230,7 +225,6 @@ public final class Sync: Sendable, Observable {
             setHistorySharing: {
                 try await handle.setHistorySharing(sharing: $0)
             },
-            createProfile: { try await handle.createProfile(name: $0) },
             renameProfile: { try await handle.renameProfile(name: $0) },
             retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: { try await handle.renameLibrary(name: $0) },

@@ -2963,12 +2963,11 @@ profile starts private. A play is recorded only as the person it began as:
 once this device is no longer that person, such as one removed from the
 library during the play, saving it is refused.
 
-**Plays before a profile.** A device can play before its person has a profile:
-Ana's new library asks for her profile when it opens, and until her
-private circle is made she has no circle to write into (§5.4). Her plays are kept in the device-local table `local_history`, and
-stay there until her profile exists. When her profile is created, the same
-write moves every one of them into her private circle. They never go to the household on their own: she hadn't chosen to share
-them.
+**Plays without a profile.** A device's person has their profile from the
+moment the device registers (§5.4), and before that the device holds none of
+the library's rows, so it has nothing to play. A play that begins on a device
+that is no longer anyone in the library, such as one removed from it, records
+nothing, as *Off* does.
 
 **Playlists.** A playlist belongs to the person who made it, and is private or
 household, each playlist on its own. Its entries are rows keyed by the playlist
@@ -3077,43 +3076,18 @@ history setting.
   when it names another, the old circle's key being lost with the old keys.
 - **The person who made the library** is its first member and admin from the
   moment it exists, with this device registered, though it has no cloud home
-  yet. **Create new library…** on a
-  Mac asks their name first, and the new library keeps it on this device only
-  (`creator_name`, never synced), the way coven keeps a joiner's. That is a
-  recorded intent, not a profile: nothing reads it as one. Every open of the
-  library reads it: once the library knows the person, at once, one
-  write asks for the profile as below and deletes the kept name, so the two
-  commit or roll back together; a person who made their profile, or asked for
-  one, in Settings meanwhile gets only the deletion. A write that fails leaves
-  the name kept, and the next open asks again. If the name can't be kept, the
-  new library is deleted again and creating fails, so a library either keeps
-  its creator's name or doesn't exist.
-- **Making a profile makes the person's circle**, the one only they are in
-  (§5.3), and moves any plays waiting in `local_history` into it. Rows go into
-  a circle only once its entry has applied
-  ([coven §15.5](https://github.com/bae-fm/coven/blob/main/spec/coven.md#155-running-a-circle)),
-  so asking for a profile is one write that asks coven for the circle, as a
-  step of the write, and records the request in the device-local
-  `profile_request`: the circle's operation, the circle and the name. It
-  needs no connection. Once sync has landed the circle's entry, while the
-  library is open, one write creates the profile, moves the waiting plays
-  into the circle and deletes the request. Until then the
-  person has no profile and their plays stay in `local_history`, and asking
-  again is refused while the circle is being made. A circle the library
-  refused, or one this device's stop for good ended unmade, stays recorded
-  until the person asks again, which acknowledges that outcome and asks anew
-  in the same write. A circle already made for the
-  person, by a profile write that failed after it, is used at once: asking
-  writes the profile in one write.
-- **Settings shows a profile not written yet.** In *You* on People and
-  devices, a person with no profile gets their name field and **Create profile**. While
-  their circle is being made it says, in place of the form, that the profile
-  is being made and appears once the library syncs. A circle that wasn't made
-  shows why
-  above the form, which asks again: why the library refused it, as coven
-  gives the reason (one of its people is no longer in the library, say), or
-  why this device stopped syncing for good before it was made (another
-  device removed it, say), as coven names the stop.
+  yet. **Create new library…** on a Mac asks their name first. coven records
+  that name and their private circle, which bae names `bae-person:` and the
+  member id coven makes for them, as their join facts in the library's first
+  slot, as an admission records a joiner's, and makes the circle with them as
+  its only member
+  ([coven §10.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#103-creating-a-store)).
+  The joining write above runs as that slot applies on this device and
+  inserts their `people` row (that name, private history, that circle), so a
+  library never exists without its creator's profile, offline and before any
+  storage. Each later device of theirs runs the same write at its own
+  registration and finds the row, so a device restored before this one ever
+  uploaded still gets the profile.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:
@@ -3124,11 +3098,11 @@ history setting.
   or an artist image (§4.1). Other devices download it when it is first
   shown.
 - **The people list shows everyone in the library**, each with their profile
-  once they made one, sorted by the profile's name in the device's language.
-  The people with no profile yet come after them, in the order their member
-  ids were made: when the founder created the library, or when an inviter
-  created the invite. A removed person's row stays, read-only, and the list
-  does not show them.
+  once it reaches this device, sorted by the profile's name in the device's
+  language. The people with no profile yet come after them, in the order their
+  member ids were made: when the founder created the library, or when an
+  inviter created the invite. A removed person's row stays, read-only, and the
+  list does not show them.
 
 ### 5.5 "Ana rated this"
 
@@ -3177,8 +3151,7 @@ red, and their devices, each with a ⋯ menu (⋮ on Android) holding *Remove…
 member's person rows open nothing: a member has nothing to do there. On Android
 the Name row opens the rename dialog, whose **Save** is off while the name is
 blank, and listening history is chosen from radio
-rows in a dialog. A person with no profile yet creates one in *You* in place of
-the name (§5.4). Removing a person or a device still asks first. A person's
+rows in a dialog. Removing a person or a device still asks first. A person's
 page closes, and the people page shows, once that person has left the
 library. Rename Library starts from the name as it stands when it opens, and
 the macOS menu bar always shows Rename Library, enabled for an admin.
@@ -3377,10 +3350,8 @@ unverified, their team doesn't share outside the team, their plan has no
 sharing, or the folder holds as many people as the plan allows), ends the
 invite at once instead of being retried, and the invite is a notice until Ana
 dismisses it (**Open invites**, below). Either way the invite carries the
-library's current name and Ana's, the name she goes by (her profile's, else the
-name her pending profile request asked for, else the one her library kept from
-its creation (§5.4)); a person with none of the three can't be an inviter, which
-is a bug of bae's, not a state to show
+library's current name and Ana's, the name on her profile (§5.4); a person with
+no profile can't be an inviter, which is a bug of bae's, not a state to show
 ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)):
 
 Dan taps **Scan code** and scans Ana's screen, or Ana sends him the code and
@@ -5281,10 +5252,9 @@ bae keeps its own directory, `~/.bae` under the person's home, and registers
 each library there by id.
 
 Creating a library registers this device under the device name the person
-gives it and keeps the creator's name for their profile (§5.4). Given no
-library name, bae names the library itself. A blank creator's name fails
-before anything is made, and a name that can't be kept removes the new library
-again.
+gives it and gives the creator their profile, under the name they typed, in
+the same step (§5.4). Given no library name, bae names the library itself. A
+blank creator's name fails before anything is made.
 
 Deleting a saved restore code (§5.6) deletes it, readable or not, with the S3
 key beside it; no library, storage or device's copy changes, and deleting a
@@ -5782,8 +5752,7 @@ one of its files references a coven file that coven records as stored.
 
 ### A.2 People (bae-people)
 
-All sync (§5), except `local_history`, `profile_request` and
-`admin_operations`.
+All sync (§5), except `admin_operations`.
 
 | Table | One row per |
 |---|---|
@@ -5792,9 +5761,7 @@ All sync (§5), except `local_history`, `profile_request` and
 | `history` | play: person, track, when it started, how much was played, audience |
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
-| `local_history` | play on this device before the person had a profile: track, when it started, how much was played (§5.3) |
 | `admin_operations` | admin change this device asked for, while coven lists its operation: keyed by that operation, the library's new name, the person and their new role, the person removed, the device removed, or the person an approval lets in with the name their invite gave them (§5.6) |
-| `profile_request` | the profile this device's person asked for while their private circle is made, at most one: the circle's coven operation, the circle and the name (§5.4) |
 
 ### A.3 Playback
 
@@ -5987,7 +5954,7 @@ rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, whether the reference is trailing or
-bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, `local_history`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
+bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
 `import_candidate_standing`, `import_identification_batch`,
 `import_identify_run` and `import_catalog_apply_step` among them, or the
 transfer queues (A.9), so they never sync.

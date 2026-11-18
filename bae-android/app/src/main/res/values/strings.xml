@@ -481,11 +481,6 @@
     <string name="members_invite_shares_access">Shares access once online</string>
     <!-- %1$s = the address the invite shares with -->
     <string name="invite_granting">Sharing the library with %1$s…</string>
-    <string name="settings_profile_making">Making your profile…</string>
-    <string name="settings_profile_making_detail">Your profile appears once this library syncs.</string>
-    <string name="settings_profile_refused">Your profile could not be made. %1$s</string>
-    <string name="settings_profile_create_prompt">Create your profile so the library can show who you are.</string>
-    <string name="settings_profile_create">Create profile</string>
     <string name="operation_rejection_store_owner">The account that owns the library’s cloud home cannot be removed.</string>
     <string name="operation_rejection_person_gone">That person is no longer in the library.</string>
     <string name="operation_rejection_device_gone">That device is no longer in the library.</string>

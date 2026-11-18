@@ -59,37 +59,3 @@ CREATE TABLE history (
     audience TEXT NOT NULL
 ) STRICT;
 CREATE INDEX history_started_at ON history(started_at);
-
--- Before storage establishes a person, listening stays private on this device.
--- Creating the profile transfers these plays to its private circle atomically.
-CREATE TABLE local_history (
-    id TEXT PRIMARY KEY NOT NULL,
-    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
-    started_at TEXT NOT NULL,
-    played_ms INTEGER NOT NULL CHECK (played_ms > 0)
-) STRICT;
-
--- The name the library's creator typed when they made it, kept until they are
--- a member (storage set up) and one write asks for their profile under it and
--- deletes the row, as coven keeps a joiner's name until a write acknowledges
--- it. It is an intent, not a profile: nothing reads it as one. At most one,
--- and only on the device that made the library. Never synced.
-CREATE TABLE creator_name (
-    singleton INTEGER PRIMARY KEY NOT NULL CHECK (singleton = 1),
-    name TEXT NOT NULL CHECK (length(trim(name)) > 0)
-) STRICT;
-
--- The profile this device's person asked for while their private circle is
--- being made: the operation coven journaled for the circle (as
--- `coven_operations` lists it), the circle it makes, and the name they gave.
--- The write that journals the circle inserts it. Once the circle's entry
--- lands, the write that creates the profile from it, and moves
--- `local_history` into the circle, deletes it; so does the write that
--- acknowledges a circle the library refused. A person asks for one profile,
--- so there is at most one. Never synced.
-CREATE TABLE profile_request (
-    singleton INTEGER PRIMARY KEY NOT NULL CHECK (singleton = 1),
-    operation INTEGER NOT NULL,
-    circle TEXT NOT NULL,
-    name TEXT NOT NULL CHECK (length(trim(name)) > 0)
-) STRICT;

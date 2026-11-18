@@ -29,7 +29,6 @@ import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgePeople
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
-import uniffi.bae_bridge.BridgeRequestedProfile
 
 /** The pages of People and devices: the first, a person's, and this person's own devices. */
 internal sealed interface PeoplePage {
@@ -57,12 +56,11 @@ internal fun peoplePage(key: String): PeoplePage =
         else -> PeoplePage.People
     }
 
-/** What this person can do to themselves on the first page: rename, choose who sees their plays, make a profile. */
+/** What this person can do to themselves on the first page: rename, and choose who sees their plays. */
 internal class YouActions(
     val errors: ErrorDisplays,
     val rename: suspend (String) -> Unit,
     val setHistory: (BridgeHistorySharing) -> Unit,
-    val createProfile: (String) -> Unit,
 )
 
 /** The first page with its bar: People and devices. */
@@ -71,7 +69,6 @@ internal fun AndroidSettingsPeople(
     you: YouActions,
     people: BridgePeople,
     selfIsAdmin: Boolean,
-    requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
     adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
@@ -86,7 +83,6 @@ internal fun AndroidSettingsPeople(
             you = you,
             people = people,
             selfIsAdmin = selfIsAdmin,
-            requested = requested,
             invites = invites,
             adminChanges = adminChanges,
             callbacks = callbacks,
@@ -106,7 +102,6 @@ internal fun PeopleHome(
     you: YouActions,
     people: BridgePeople,
     selfIsAdmin: Boolean,
-    requested: BridgeRequestedProfile?,
     invites: List<BridgeInviteEntry>,
     adminChanges: BridgeAdminChanges?,
     callbacks: MemberCallbacks,
@@ -131,7 +126,7 @@ internal fun PeopleHome(
             item { AdminChangesList(changes = adminChanges, onDismiss = callbacks.onDismissChange) }
         }
         item { AndroidSection(text = stringResource(R.string.members_you)) }
-        item { YouCard(you = you, me = me, requested = requested, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
+        item { YouCard(you = you, me = me, onOpenDevices = { onOpen(PeoplePage.Devices) }) }
         item { AndroidSection(text = stringResource(R.string.people_people)) }
         item {
             PeopleCard(
@@ -199,12 +194,11 @@ private fun PeopleCard(
     }
 }
 
-/** This person's name, role, listening history and devices; before they have a profile, the form that makes it. */
+/** This person's name, role, listening history and devices. */
 @Composable
 private fun YouCard(
     you: YouActions,
     me: BridgePerson?,
-    requested: BridgeRequestedProfile?,
     onOpenDevices: () -> Unit,
 ) {
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -233,9 +227,6 @@ private fun YouCard(
             )
         }
         me?.let { person -> DevicesRow(person.membership, onOpenDevices) }
-    }
-    if (me != null && profile == null) {
-        ProfileSetup(requested = requested, onCreate = you.createProfile)
     }
     profile?.let { shown ->
         YouDialogs(

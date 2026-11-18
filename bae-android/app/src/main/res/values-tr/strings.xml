@@ -422,11 +422,6 @@
     <string name="members_joining">Katılıyor</string>
     <string name="members_invite_shares_access">Çevrimiçi olunca erişimi paylaşır</string>
     <string name="invite_granting">Kitaplık %1$s ile paylaşılıyor…</string>
-    <string name="settings_profile_making">Profiliniz oluşturuluyor…</string>
-    <string name="settings_profile_making_detail">Profiliniz bu kitaplık eşitlendiğinde görünür.</string>
-    <string name="settings_profile_refused">Profiliniz oluşturulamadı. %1$s</string>
-    <string name="settings_profile_create_prompt">Kitaplığın kim olduğunuzu gösterebilmesi için profilinizi oluşturun.</string>
-    <string name="settings_profile_create">Profil oluştur</string>
     <string name="operation_rejection_store_owner">Kitaplığın bulut evinin sahibi olan hesap kaldırılamaz.</string>
     <string name="operation_rejection_person_gone">Bu kişi artık kitaplıkta değil.</string>
     <string name="operation_rejection_device_gone">Bu cihaz artık kitaplıkta değil.</string>

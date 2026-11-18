@@ -1,10 +1,8 @@
 use super::dropbox_sign_in::DropboxSignIn;
 use super::test_joined_library::loaded;
 use bae_library::followed::query_matching;
-use bae_library::test_libraries::{
-    connect_storage, made_profile, made_profile_on, requested_profile, storage_library,
-};
-use bae_people::people::{HistorySharing, ProfileError};
+use bae_library::test_libraries::{own_profile, storage_library};
+use bae_people::people::HistorySharing;
 
 mod avatars;
 mod name_order;
@@ -14,66 +12,33 @@ mod ratings;
 static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
     std::sync::LazyLock::new(bae_diagnostics::Diagnostics::noop);
 
+/// The library's creator has their profile from the library's creation: a
+/// private one, theirs alone in the library, which they rename and whose
+/// history setting they change.
 #[tokio::test]
-async fn a_profile_is_idempotent_once_asked_for() {
+async fn the_creator_changes_the_profile_the_library_was_created_with() {
     let directory = tempfile::tempdir().unwrap();
-    let (library, storage) = storage_library(
+    let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     )
     .await;
     let people = library.people().clone();
-    let listed = query_matching(&mut people.subscribe_people(), |_| true).await;
-    assert!(listed.own.iter().chain(&listed.others).all(|person| person.profile.is_none()));
-    connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Robin").await;
+    let profile = own_profile(&people).await;
+    assert_eq!(profile.name, bae_store::test_devices::TEST_CREATOR);
     assert_eq!(profile.history_sharing, HistorySharing::Private);
-    library.people().create_profile("Robin").await.unwrap();
-    assert_eq!(people.profile(profile.id).await.unwrap(), Some(profile.clone()));
-    assert!(matches!(
-        library.people().create_profile("Another Name").await,
-        Err(ProfileError::AlreadyExists)
-    ));
     let listed = query_matching(&mut people.subscribe_people(), |_| true).await;
     assert!(listed.others.is_empty());
     assert_eq!((listed.people, listed.devices), (1, 1));
     let own = listed.own.expect("the profile's person is this device's");
     assert_eq!(own.profile.as_ref(), Some(&profile));
     assert!(own.membership.is_self);
-    library.people().rename_profile("New Name").await.unwrap();
-    library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
+    people.rename_profile("New Name").await.unwrap();
+    people.set_history_sharing(HistorySharing::Household).await.unwrap();
     let profile = people.profile(profile.id).await.unwrap().unwrap();
     assert_eq!(profile.name, "New Name");
     assert_eq!(profile.history_sharing, HistorySharing::Household);
-    library.manager().close().await.unwrap();
-}
-
-/// The creator's name waits with the library until the open asks for their
-/// profile under it, in one write that also deletes the name.
-#[tokio::test]
-async fn a_creator_s_kept_name_becomes_their_profile_once_storage_is_set_up() {
-    let directory = tempfile::tempdir().unwrap();
-    let (library, storage) = bae_library::test_libraries::storage_library_of(
-        directory.path(),
-        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
-        bae_util::http::Http::for_test(),
-        Some("Robin"),
-    )
-    .await;
-    let listed = query_matching(&mut library.people().subscribe_people(), |_| true).await;
-    assert!(listed.own.iter().chain(&listed.others).all(|person| person.profile.is_none()));
-    connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = requested_profile(library.manager(), library.people()).await;
-    assert_eq!(profile.name, "Robin");
-    let kept = library
-        .store()
-        .read(|sql| {
-            Ok(sql.query_row("SELECT count(*) FROM creator_name", [], |row| row.get::<_, i64>(0))?)
-        })
-        .await
-        .unwrap();
-    assert_eq!(kept, 0);
     library.manager().close().await.unwrap();
 }
 
@@ -116,50 +81,14 @@ async fn inviter_named(
     Ok(info.inviter)
 }
 
-/// An invite names its inviter by the name the person goes by: their
-/// profile's, else the name their pending profile request asked for, else the
-/// name the library kept from its creation. A person with none of the three
-/// gets an error, and coven makes no invite.
+/// An invite names its inviter by their profile's name.
 #[test]
-fn an_invite_names_its_inviter_by_the_name_the_person_goes_by() {
+fn an_invite_names_its_inviter_by_their_profile_s_name() {
     on_app_runtime(async {
-        let clock_of = |sources: &bae_library::test_libraries::TestSources| sources.clock().clone();
-
-        // No name at all.
-        let (_dir, owner, _storage, sources) =
-            Household::owner(coven::CloudProvider::S3, None).await;
-        let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
-        let membership = bae_people::Membership::new(store.clone());
-        let people = bae_people::People::new(store, coven::FileBudget::for_test());
-        assert!(matches!(
-            inviter_named(&owner, &membership).await,
-            Err(bae_people::membership::InviteError::InviterUnnamed)
-        ));
-        let open = owner.read(coven::Invite::list).await.unwrap();
-        assert!(open.is_empty(), "coven was never called: {open:?}");
-
-        // Only the name the library kept from its creation.
-        people.keep_creator_name(&bae_store::EnteredName::parse("Ana").unwrap()).await.unwrap();
-        assert_eq!(inviter_named(&owner, &membership).await.unwrap(), "Ana");
-        owner.close().await.unwrap();
-
-        // Only a pending profile request.
-        let (_dir, owner, _storage, sources) =
-            Household::owner(coven::CloudProvider::S3, None).await;
-        let store = bae_store::test_devices::store_under(owner.clone(), clock_of(&sources));
-        let membership = bae_people::Membership::new(store.clone());
-        bae_people::People::new(store, coven::FileBudget::for_test())
-            .create_profile("Robin")
-            .await
-            .unwrap();
-        assert_eq!(inviter_named(&owner, &membership).await.unwrap(), "Robin");
-        owner.close().await.unwrap();
-
-        // A profile.
         let household = Household::new().await;
         let store = bae_store::test_devices::store_under(
             household.owner.clone(),
-            clock_of(&household.sources),
+            household.sources.clock().clone(),
         );
         let membership = bae_people::Membership::new(store);
         assert_eq!(inviter_named(&household.owner, &membership).await.unwrap(), "Robin");
@@ -322,25 +251,6 @@ impl Household {
     }
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
-        let (dir, owner, storage, sources) = Self::owner(provider, sign_in).await;
-        let people = bae_people::People::new(
-            bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
-            sources.files().clone(),
-        );
-        let robin = made_profile_on(&owner, &people, "Robin").await;
-        Self { _dir: dir, owner, storage, sources, robin }
-    }
-
-    /// The owner's library on its storage, with no profile yet.
-    async fn owner(
-        provider: coven::CloudProvider,
-        sign_in: Option<&DropboxSignIn>,
-    ) -> (
-        tempfile::TempDir,
-        coven::CovenHandle,
-        std::sync::Arc<coven::MemoryStorage>,
-        bae_library::test_libraries::TestSources,
-    ) {
         use coven::Storage;
         let dir = tempfile::tempdir().unwrap();
         let installation =
@@ -358,12 +268,15 @@ impl Household {
             Some(sign_in) => sign_in.configure(builder),
             None => builder,
         };
-        // Made without the creator's profile `create_library` asks for, so
-        // these tests start from a member with none.
-        let owner = bae_store::configure_store(builder, bae_library::SCHEMA)
-            .create_store("Household", "Owner Device", &[], |_, _| Ok(()))
-            .await
-            .unwrap();
+        let owner = bae_library::create_library(
+            builder,
+            bae_store::EnteredName::parse("Household").unwrap(),
+            bae_store::EnteredName::parse("Robin").unwrap(),
+            "Owner Device",
+            &NO_DIAGNOSTICS,
+        )
+        .await
+        .unwrap();
         match storage.config().oauth_access() {
             Some(access) => {
                 owner.authenticate(access).await.unwrap();
@@ -380,7 +293,12 @@ impl Household {
                 .unwrap();
             }
         }
-        (dir, owner, storage, sources)
+        let robin = own_profile(&bae_people::People::new(
+            bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
+            sources.files().clone(),
+        ))
+        .await;
+        Self { _dir: dir, owner, storage, sources, robin }
     }
 
     /// An invite giving S3 storage's `key`, or the Dropbox guest's account,
@@ -515,9 +433,8 @@ async fn joined_profile(
         .unwrap()
         .and_then(|person| person.profile)
         .expect("the joining write made the profile as the device registered");
-    let profile = requested_profile(library.manager(), library.people()).await;
-    assert_eq!(profile, written);
-    (library, profile)
+    library.manager().attach_and_start_sync().await.unwrap();
+    (library, written)
 }
 
 /// An invite the owner's sync has granted: the code to join with, and the
@@ -525,60 +442,6 @@ async fn joined_profile(
 pub(super) struct Invited {
     pub(super) code: String,
     pub(super) member: coven::MemberId,
-}
-
-/// Make a circle named `name` on `owner`, syncing until its entry lands.
-async fn landed_circle(owner: &coven::CovenHandle, name: &str) -> coven::CircleId {
-    let (circle, operation) = Box::pin(owner.circles().create(name)).await.unwrap();
-    owner.start_sync().await.unwrap();
-    assert!(matches!(
-        owner.operation_outcome(operation).await.unwrap(),
-        coven::OperationOutcome::Landed(_)
-    ));
-    owner.stop_sync().await.unwrap();
-    owner
-        .write(move |sql| Ok::<_, coven::CovenError>(sql.acknowledge_operation(operation)?))
-        .await
-        .unwrap();
-    circle
-}
-
-/// A profile whose write failed after its private circle was made retries
-/// with that circle: the one circle of the person's name holding only them,
-/// in one write, with no circle to wait for. Two circles of that name are no
-/// private circle to take.
-#[tokio::test]
-async fn a_profile_takes_the_private_circle_already_made_for_it() {
-    let (_dir, owner, _storage, sources) = Household::owner(coven::CloudProvider::S3, None).await;
-    let member =
-        owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
-    let name = format!("bae-person:{member}");
-    let made = landed_circle(&owner, &name).await;
-    let people = bae_people::People::new(
-        bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
-        sources.files().clone(),
-    );
-    people.create_profile("Robin").await.unwrap();
-    let profile = people.profile(member).await.unwrap().unwrap();
-    assert_eq!(profile.private_circle, made);
-    owner.close().await.unwrap();
-
-    let (_dir, owner, _storage, sources) = Household::owner(coven::CloudProvider::S3, None).await;
-    let member =
-        owner.members().await.unwrap().into_iter().find(|member| member.is_self).unwrap().id;
-    let name = format!("bae-person:{member}");
-    for _ in 0..2 {
-        landed_circle(&owner, &name).await;
-    }
-    let people = bae_people::People::new(
-        bae_store::test_devices::store_under(owner.clone(), sources.clock().clone()),
-        sources.files().clone(),
-    );
-    assert!(matches!(
-        people.create_profile("Robin").await,
-        Err(ProfileError::InvalidPrivateCircle)
-    ));
-    owner.close().await.unwrap();
 }
 
 /// The joining write gives Rowan a profile under the name Robin typed in the

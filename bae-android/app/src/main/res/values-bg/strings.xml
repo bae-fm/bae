@@ -422,11 +422,6 @@
     <string name="members_joining">Присъединява се</string>
     <string name="members_invite_shares_access">Споделя достъп, когато е онлайн</string>
     <string name="invite_granting">Библиотеката се споделя с %1$s…</string>
-    <string name="settings_profile_making">Профилът ви се създава…</string>
-    <string name="settings_profile_making_detail">Профилът ви ще се появи, след като тази библиотека се синхронизира.</string>
-    <string name="settings_profile_refused">Профилът ви не можа да бъде създаден. %1$s</string>
-    <string name="settings_profile_create_prompt">Създайте профила си, за да може библиотеката да показва кой сте.</string>
-    <string name="settings_profile_create">Създай профил</string>
     <string name="operation_rejection_store_owner">Акаунтът, който притежава облачния дом на библиотеката, не може да бъде премахнат.</string>
     <string name="operation_rejection_person_gone">Този човек вече не е в библиотеката.</string>
     <string name="operation_rejection_device_gone">Това устройство вече не е в библиотеката.</string>

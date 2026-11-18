@@ -98,8 +98,6 @@ impl BridgeHost {
                 name,
                 creator,
                 device_name,
-                self.clock.clone(),
-                self.files.clone(),
                 &self.diagnostics,
             )
             .await?,

@@ -312,9 +312,13 @@ impl Store {
         let sources = crate::TestSources::on_budget(&clock, files);
         let installation =
             sources.installation(bae_app_dir::AppDir::at(directory)?.coven_app_dir());
-        let handle = crate::configure_store(sources.builder(&installation), schema)
-            .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-            .await?;
+        let handle = crate::test_devices::create_test_store(
+            sources.builder(&installation),
+            schema,
+            "Test Library",
+            "Test Device",
+        )
+        .await?;
         Ok(Self::new_on(handle, sources, bugs))
     }
 }

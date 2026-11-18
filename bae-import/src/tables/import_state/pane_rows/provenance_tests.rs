@@ -14,11 +14,12 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));
-    let handle = bae_store::configure_store(
+    let handle = bae_store::test_devices::create_test_store(
         bae_store::TestSources::on(&clock).builder(&installation),
         crate::TEST_SCHEMA,
+        "Test Library",
+        "Test Device",
     )
-    .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
     .await
     .unwrap();
     let id = handle.store_id();

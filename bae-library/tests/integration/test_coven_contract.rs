@@ -6,10 +6,14 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let sources = bae_library::test_libraries::TestSources::system();
-    let handle = bae_store::configure_store(sources.builder(&installation), bae_library::SCHEMA)
-        .create_store("Schema Test", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation),
+        bae_library::SCHEMA,
+        "Schema Test",
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let records = bae_records::Records::new(
         bae_store::test_devices::store_under(handle.clone(), sources.clock().clone()),
         sources.ids().clone(),
@@ -62,11 +66,14 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
     let operation = coven::StoreCreationError::Identity(coven::IdentityError::Custody(
         coven::KeyError::Unsupported,
     ));
-    let error = bae_library::CreateLibraryError::Store(coven::StoreCreationError::Cleanup {
+    let error = coven::StoreCreationError::Cleanup {
         operation: Box::new(operation),
         cleanup: Box::new(coven::StoreCreationError::Sync(coven::SyncError::NoStorage)),
-    });
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Keyring);
+    };
+    assert_eq!(
+        bae_diagnostics::creation_category(&error),
+        bae_diagnostics::UiErrorCategory::Keyring
+    );
 }
 
 #[tokio::test]

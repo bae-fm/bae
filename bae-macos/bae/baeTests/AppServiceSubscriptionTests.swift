@@ -206,7 +206,7 @@ struct InvitesSubscriptionTests {
         store.show()
         #expect(
             Set(handle.subscribed.dropFirst())
-                == ["people", "requestedProfile", "invites"]
+                == ["people", "invites"]
         )
         handle.deliverInvites([invite(id: "11")])
         try await Wait.until { store.inviteEntries.map(\.rowId) == ["11"] }
@@ -669,11 +669,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     override func subscribeInvites() -> InvitesSubscription {
         record("invites")
         return invites
-    }
-
-    override func subscribeRequestedProfile() -> RequestedProfileSubscription {
-        record("requestedProfile")
-        return SilentRequestedProfile()
     }
 
     override func subscribeAdminChanges(place: BridgeAdminChangePlace) throws

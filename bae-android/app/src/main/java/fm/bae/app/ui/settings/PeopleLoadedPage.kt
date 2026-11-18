@@ -43,7 +43,6 @@ internal fun LoadedPeoplePage(
                 you = youActions(session),
                 people = people,
                 selfIsAdmin = model.selfIsAdmin,
-                requested = model.requestedProfile,
                 invites = model.inviteEntries,
                 adminChanges =
                     model.adminChangesAt(BridgeAdminChangePlace.People),
@@ -141,9 +140,6 @@ internal fun youActions(session: OpenLibrary): YouActions =
         rename = { name -> session.appHandle.renameProfile(name) },
         setHistory = { chosen ->
             session.messages.perform("set history sharing to $chosen") { session.appHandle.setHistorySharing(chosen) }
-        },
-        createProfile = { name ->
-            session.messages.perform("create the person's profile") { session.appHandle.createProfile(name) }
         },
     )
 

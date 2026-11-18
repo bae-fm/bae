@@ -43,8 +43,6 @@ impl Home {
                 bae_store::EnteredName::parse("Damaged").unwrap(),
                 bae_store::EnteredName::parse("Creator").unwrap(),
                 "Test Device",
-                bae_store::TestSources::system().clock().clone(),
-                coven::FileBudget::for_test(),
                 &bae_diagnostics::Diagnostics::noop(),
             )
             .await

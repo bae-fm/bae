@@ -119,10 +119,10 @@ impl BenchLibrary {
             composition.clock.clone(),
             composition.ids.clone(),
         );
-        let handle = bae_store::configure_store(builder, bae_library::SCHEMA)
-            .create_store(name, name, &[], |_, _| Ok(()))
-            .await
-            .map_err(|error| format!("creating the library failed: {error}"))?;
+        let handle =
+            bae_store::test_devices::create_test_store(builder, bae_library::SCHEMA, name, name)
+                .await
+                .map_err(|error| format!("creating the library failed: {error}"))?;
         let library = Self { handle, _installation: installation, _directory: directory };
         match library.fill(storage, tracks).await {
             Ok(()) => Ok(library),

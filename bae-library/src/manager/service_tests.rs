@@ -24,11 +24,16 @@ async fn opening_a_library_keeps_its_download_queue() {
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let sources = bae_store::TestSources::on(&clock);
-    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-        .storage_connector(Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap()))
-        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation).storage_connector(Arc::new(
+            MemoryStorage::builder().clock(clock.clone()).build().unwrap(),
+        )),
+        crate::SCHEMA,
+        "Test Library",
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let left = sources.store(handle.clone());
     let left = bae_transfers::Downloads::new(left);
     left.enqueue_all(vec![bae_transfers::QueuedPin {

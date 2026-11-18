@@ -2,10 +2,10 @@
 
 use super::super::tests::pull_until;
 
-/// Each answers the library as it stands at once, and the profiles follow
-/// the one made.
+/// Each answers the library as it stands at once, the creator's profile
+/// among them from the library's creation.
 #[test]
-fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
+fn each_pull_answers_at_once_with_the_creator_s_profile() {
     let root = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -13,18 +13,11 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
         .enable_all()
         .build()
         .unwrap();
-    // A library with its storage, which making a profile needs.
-    let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
+    let (library, _storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         root.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
     ));
-    runtime.block_on(bae_library::test_libraries::connect_storage(
-        library.manager(),
-        library.store(),
-        &storage,
-    ));
-    let syncing = bae_library::LibraryManager::clone(library.manager());
     let started = super::super::tests::start_test_handle(runtime, library, root);
     let handle = started.handle().clone();
 
@@ -45,8 +38,13 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
     assert!(!quiet.moving && quiet.uploads.is_none(), "{quiet:?}");
     let people = handle.subscribe_people();
     let alone = pull_until(&handle, || Box::pin(people.clone().next()), |_| true);
-    // The creator is this device's person with no profile yet, and alone.
-    assert!(alone.own.as_ref().is_some_and(|own| own.profile.is_none()), "{alone:?}");
+    // The creator is this device's person, with the profile the library's
+    // creation gave them, and alone.
+    let creator = alone.own.clone().unwrap();
+    assert_eq!(
+        creator.profile.as_ref().map(|profile| profile.name.as_str()),
+        Some(bae_store::test_devices::TEST_CREATOR)
+    );
     assert!(alone.others.is_empty() && alone.people == 1, "{alone:?}");
     assert!(matches!(
         handle.subscribe_person("not a member id".to_string()),
@@ -76,35 +74,13 @@ fn each_pull_answers_at_once_and_the_profiles_follow_a_new_one() {
 
     let name = handle.subscribe_library_name();
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);
-    let requested = handle.subscribe_requested_profile();
-    assert!(pull_until(&handle, || Box::pin(requested.clone().next()), |_| true).is_none());
-    handle.runtime.block_on(handle.clone().create_profile("Ana".to_string())).unwrap();
-    assert_eq!(
-        pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_some),
-        Some(crate::types::BridgeRequestedProfile {
-            name: "Ana".into(),
-            state: crate::types::BridgeRequestedProfileState::Making,
-        })
-    );
-    // The profile is written once sync has made Ana's private circle, and
-    // the request ends with it.
-    handle.runtime.block_on(syncing.attach_and_start_sync()).unwrap();
-    let ana = pull_until(
-        &handle,
-        || Box::pin(people.clone().next()),
-        |people| people.own.as_ref().is_some_and(|own| own.profile.is_some()),
-    )
-    .own
-    .unwrap();
-    assert_eq!(ana.profile.as_ref().map(|profile| profile.name.as_str()), Some("Ana"));
-    // Ana's own page follows her by member id.
-    let page = handle.subscribe_person(ana.membership.id.clone()).unwrap();
+    // The creator's own page follows them by member id.
+    let page = handle.subscribe_person(creator.membership.id.clone()).unwrap();
     let shown = pull_until(&handle, || Box::pin(page.clone().next()), Option::is_some).unwrap();
-    assert_eq!(shown.membership.id, ana.membership.id);
+    assert_eq!(shown.membership.id, creator.membership.id);
     let nobody =
         handle.subscribe_person("00000000-0000-4000-8000-000000000099".to_string()).unwrap();
     assert!(pull_until(&handle, || Box::pin(nobody.clone().next()), |_| true).is_none());
-    pull_until(&handle, || Box::pin(requested.clone().next()), Option::is_none);
     // With a profile the person can make a playlist, and holds none yet.
     let playlists = handle.subscribe_playlists();
     let listing = pull_until(&handle, || Box::pin(playlists.clone().next()), |l| l.can_create);

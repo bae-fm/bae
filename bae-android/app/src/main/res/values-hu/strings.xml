@@ -420,11 +420,6 @@
     <string name="members_joining">Csatlakozik</string>
     <string name="members_invite_shares_access">Online állapotban megosztja a hozzáférést</string>
     <string name="invite_granting">A könyvtár megosztása vele: %1$s…</string>
-    <string name="settings_profile_making">A profilod létrehozása…</string>
-    <string name="settings_profile_making_detail">A profilod akkor jelenik meg, amikor ez a könyvtár szinkronizál.</string>
-    <string name="settings_profile_refused">Nem sikerült létrehozni a profilodat. %1$s</string>
-    <string name="settings_profile_create_prompt">Hozd létre a profilodat, hogy a könyvtár meg tudja mutatni, ki vagy.</string>
-    <string name="settings_profile_create">Profil létrehozása</string>
     <string name="operation_rejection_store_owner">A könyvtár felhőotthonát birtokló fiók nem távolítható el.</string>
     <string name="operation_rejection_person_gone">Ez a személy már nincs a könyvtárban.</string>
     <string name="operation_rejection_device_gone">Ez az eszköz már nincs a könyvtárban.</string>

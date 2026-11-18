@@ -420,11 +420,6 @@
     <string name="members_joining">Går med</string>
     <string name="members_invite_shares_access">Delar åtkomst när enheten är online</string>
     <string name="invite_granting">Delar biblioteket med %1$s…</string>
-    <string name="settings_profile_making">Skapar din profil …</string>
-    <string name="settings_profile_making_detail">Din profil visas när det här biblioteket har synkroniserats.</string>
-    <string name="settings_profile_refused">Din profil kunde inte skapas. %1$s</string>
-    <string name="settings_profile_create_prompt">Skapa din profil så att biblioteket kan visa vem du är.</string>
-    <string name="settings_profile_create">Skapa profil</string>
     <string name="operation_rejection_store_owner">Kontot som äger bibliotekets molnhem kan inte tas bort.</string>
     <string name="operation_rejection_person_gone">Den personen finns inte längre i biblioteket.</string>
     <string name="operation_rejection_device_gone">Den enheten finns inte längre i biblioteket.</string>

@@ -15,15 +15,12 @@ pub use devices::{run_library_test, run_two_device_test, DeviceLibrary, TestDevi
 pub use playback::{
     start_capture_playback, start_manual_playback, start_manual_playback_with_clock,
 };
-pub use profiles::{made_profile, made_profile_on, requested_profile, requested_profile_on};
+pub use profiles::own_profile;
 pub use records::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     test_album, test_release, TEST_RELEASE_FOLDER,
 };
-pub use storage::{
-    connect_storage, remove_uploaded_file, storage_library, storage_library_of,
-    storage_library_within,
-};
+pub use storage::{connect_storage, remove_uploaded_file, storage_library, storage_library_within};
 
 use crate::{CancellationToken, LibraryManager};
 use bae_catalogs::remote_image::RemoteImageCache;
@@ -469,10 +466,15 @@ pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, t
     let sources = TestSources::system();
     let installation = sources.installation(app_dir.coven_app_dir());
     let library = runtime.block_on(async {
-        let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-            .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-            .await
-            .expect("create fresh test store");
+        let handle = crate::create_library(
+            sources.builder(&installation),
+            bae_store::EnteredName::parse("Test Library").unwrap(),
+            bae_store::EnteredName::parse(bae_store::test_devices::TEST_CREATOR).unwrap(),
+            "Test Device",
+            &Diagnostics::noop(),
+        )
+        .await
+        .expect("create fresh test store");
         test_library_from_handle(
             handle,
             tmp.path(),

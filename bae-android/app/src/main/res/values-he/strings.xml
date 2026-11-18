@@ -430,11 +430,6 @@
     <string name="members_joining">מצטרף</string>
     <string name="members_invite_shares_access">ישתף גישה כשיהיה מחובר</string>
     <string name="invite_granting">משתף את הספרייה עם %1$s…</string>
-    <string name="settings_profile_making">הפרופיל שלך נוצר…</string>
-    <string name="settings_profile_making_detail">הפרופיל שלך יופיע אחרי שהספרייה הזו תסונכרן.</string>
-    <string name="settings_profile_refused">לא ניתן היה ליצור את הפרופיל שלך. %1$s</string>
-    <string name="settings_profile_create_prompt">צור את הפרופיל שלך כדי שהספרייה תוכל להראות מי אתה.</string>
-    <string name="settings_profile_create">יצירת פרופיל</string>
     <string name="operation_rejection_store_owner">לא ניתן להסיר את החשבון שבבעלותו הבית בענן של הספרייה.</string>
     <string name="operation_rejection_person_gone">האדם הזה כבר לא בספרייה.</string>
     <string name="operation_rejection_device_gone">המכשיר הזה כבר לא בספרייה.</string>

@@ -347,7 +347,6 @@ task_types = [
     "ReleaseEditDraftSubscription",
     "ReleaseFilesSubscription",
     "SavePresetSubscription",
-    "RequestedProfileSubscription",
     "ScanningFoldersSubscription",
     "SetupStatesSubscription",
     "StorageQueuesSubscription",
@@ -1132,9 +1131,6 @@ tables = [
     "playlists",
     "playlist_entries",
     "history",
-    "local_history",
-    "profile_request",
-    "creator_name",
 ]
 
 [[database.domains]]

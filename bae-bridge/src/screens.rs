@@ -442,18 +442,6 @@ pulled_read! {
 }
 
 pulled_read! {
-    /// The profile this person asked for, until it is written: none before
-    /// they ask and once it is.
-    RequestedProfileSubscription:
-        LiveValues<Option<bae_people::people::RequestedProfile>>
-            => Option<crate::types::BridgeRequestedProfile>,
-    converted by |requested: Option<bae_people::people::RequestedProfile>| {
-        requested.map(crate::types::BridgeRequestedProfile::from_core)
-    },
-    built by requested_profile
-}
-
-pulled_read! {
     /// The library's name.
     LibraryNameSubscription: LiveValues<String> => String,
     converted by |name: String| name,

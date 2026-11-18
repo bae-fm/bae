@@ -438,11 +438,6 @@
     <string name="members_joining">Dołącza</string>
     <string name="members_invite_shares_access">Udostępni dostęp, gdy będzie online</string>
     <string name="invite_granting">Udostępnianie biblioteki: %1$s…</string>
-    <string name="settings_profile_making">Tworzenie Twojego profilu…</string>
-    <string name="settings_profile_making_detail">Twój profil pojawi się po zsynchronizowaniu tej biblioteki.</string>
-    <string name="settings_profile_refused">Nie udało się utworzyć Twojego profilu. %1$s</string>
-    <string name="settings_profile_create_prompt">Utwórz swój profil, aby biblioteka mogła pokazać, kim jesteś.</string>
-    <string name="settings_profile_create">Utwórz profil</string>
     <string name="operation_rejection_store_owner">Nie można usunąć konta, które jest właścicielem domu w chmurze biblioteki.</string>
     <string name="operation_rejection_person_gone">Tej osoby nie ma już w bibliotece.</string>
     <string name="operation_rejection_device_gone">Tego urządzenia nie ma już w bibliotece.</string>

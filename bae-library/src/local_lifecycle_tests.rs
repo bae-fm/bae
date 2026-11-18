@@ -56,12 +56,13 @@ impl Home {
         let storage = Arc::new(
             coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
         );
-        let handle = bae_store::configure_store(
-            bae_store::test_devices::test_builder(&self.installation),
+        let handle = bae_store::test_devices::create_test_store(
+            bae_store::test_devices::test_builder(&self.installation)
+                .storage_connector(storage.clone()),
             crate::SCHEMA,
+            name,
+            "Test Device",
         )
-        .storage_connector(storage.clone())
-        .create_store(name, "Test Device", &[], |_, _| Ok(()))
         .await
         .unwrap();
         self.storages.lock().unwrap().insert(handle.store_id(), storage);

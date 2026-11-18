@@ -414,11 +414,6 @@
     <string name="members_joining">正在加入</string>
     <string name="members_invite_shares_access">連線後共享存取權限</string>
     <string name="invite_granting">正在與 %1$s 共享資料庫…</string>
-    <string name="settings_profile_making">正在建立你的個人檔案…</string>
-    <string name="settings_profile_making_detail">此資料庫同步後，你的個人檔案就會出現。</string>
-    <string name="settings_profile_refused">無法建立你的個人檔案。%1$s</string>
-    <string name="settings_profile_create_prompt">建立你的個人檔案，讓資料庫能顯示你是誰。</string>
-    <string name="settings_profile_create">建立個人檔案</string>
     <string name="operation_rejection_store_owner">擁有資料庫雲端家園的帳號無法移除。</string>
     <string name="operation_rejection_person_gone">此人已不在資料庫中。</string>
     <string name="operation_rejection_device_gone">此裝置已不在資料庫中。</string>

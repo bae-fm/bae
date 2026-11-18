@@ -35,8 +35,6 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.BridgeRefusedInvite
-import uniffi.bae_bridge.BridgeRequestedProfile
-import uniffi.bae_bridge.BridgeRequestedProfileState
 import uniffi.bae_bridge.BridgeSharingRefusal
 import uniffi.bae_bridge.BridgeSyncRetryOutcome
 import uniffi.bae_bridge.MembersSubscription
@@ -312,25 +310,6 @@ class MembersModelTest {
         handle.adminChanges.deliver(BridgeAdminChanges(emptyList(), any = false))
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(BridgeAdminChanges(emptyList(), any = false), model.adminChangesAt(People))
-        stop()
-    }
-
-    /** The request ends in the write that makes the person's profile, which the people subscription shows. */
-    @Test
-    fun eachRequestedProfileValueIsShown() {
-        val handle = SilentMembersHandle()
-        val model =
-            MembersModel(handle, TestErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
-        val stop = model.subscribe()
-        val making = BridgeRequestedProfile(name = "Robin", state = BridgeRequestedProfileState.Making)
-
-        handle.requestedProfile.pulls.deliver(making)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(making, model.requestedProfile)
-
-        handle.requestedProfile.pulls.deliver(null)
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(null, model.requestedProfile)
         stop()
     }
 

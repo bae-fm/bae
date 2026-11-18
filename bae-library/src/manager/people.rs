@@ -26,13 +26,6 @@ impl LibraryManager {
         Ok(self.people.set_avatar(avatar).await?)
     }
 
-    /// The profile this person asked for, until it is written, live.
-    pub fn subscribe_requested_profile(
-        &self,
-    ) -> coven::LiveQuery<Option<bae_people::people::RequestedProfile>, bae_store::DbError> {
-        self.people.subscribe_requested_profile()
-    }
-
     /// The person using this device, the other people, and how many people
     /// and devices the library has, live.
     pub fn subscribe_people(

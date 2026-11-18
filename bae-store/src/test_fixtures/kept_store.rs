@@ -26,10 +26,14 @@ pub async fn create_kept(
 ) -> Store {
     let installation = Coven::in_memory(coven_app_dir(app_dir));
     let sources = TestSources::on(&clock);
-    let handle = configure_store(sources.builder(&installation), schema)
-        .create_store("Kept Library", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .expect("create the kept store");
+    let handle = crate::test_devices::create_test_store(
+        sources.builder(&installation),
+        schema,
+        "Kept Library",
+        "Test Device",
+    )
+    .await
+    .expect("create the kept store");
     installation.save_device_keychain(keychain).expect("save the kept keychain");
     sources.store(handle)
 }

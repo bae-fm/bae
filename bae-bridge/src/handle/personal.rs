@@ -2,7 +2,6 @@ use super::*;
 use crate::types::*;
 
 forward! { async this => {
-    fn create_profile(name: String) -> () { Ok(this.services.create_profile(&name).await?) }
     fn rename_profile(name: String) -> () { Ok(this.services.rename_profile(&name).await?) }
     fn set_history_sharing(sharing: BridgeHistorySharing) -> () { Ok(this.services.set_history_sharing(sharing.into_core()).await?) }
     fn set_avatar(bytes: Option<Vec<u8>>) -> () { Ok(this.services.set_avatar(bytes).await?) }
@@ -37,17 +36,6 @@ impl AppHandle {
     /// Every playlist this device holds, now and after each change.
     pub fn subscribe_playlists(&self) -> std::sync::Arc<crate::PlaylistsSubscription> {
         crate::screens::playlists(self.services.subscribe_playlists(), self.runtime.clone())
-    }
-
-    /// The profile this person asked for, until it is written, now and
-    /// after each change.
-    pub fn subscribe_requested_profile(
-        &self,
-    ) -> std::sync::Arc<crate::RequestedProfileSubscription> {
-        crate::screens::requested_profile(
-            self.services.subscribe_requested_profile(),
-            self.runtime.clone(),
-        )
     }
 
     /// The library's name, now and after each rename.

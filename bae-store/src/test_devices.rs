@@ -17,6 +17,32 @@ pub fn test_builder(installation: &coven::Coven) -> coven::CovenBuilder {
     crate::TestSources::system().builder(installation)
 }
 
+/// The name of the person who creates a test store.
+pub const TEST_CREATOR: &str = "Test Creator";
+
+/// Create a store named `name` on `builder` configured as bae's store on
+/// `schema`, registering this device as `device_name`, with
+/// [`TEST_CREATOR`] as its first member: coven records their name and a
+/// private circle for them as it creates the store, and a schema's joining
+/// write gives them their profile from those facts.
+pub async fn create_test_store(
+    builder: coven::CovenBuilder,
+    schema: crate::Schema,
+    name: &str,
+    device_name: &str,
+) -> Result<coven::CovenHandle, coven::StoreCreationError> {
+    crate::configure_store(builder, schema)
+        .create_store(
+            name,
+            device_name,
+            TEST_CREATOR,
+            |member| format!("test-creator:{member}"),
+            &[],
+            |_, _| Ok(()),
+        )
+        .await
+}
+
 /// The S3 key the library's storage is reached with on every device.
 pub fn owner_credentials() -> coven::S3Credentials {
     coven::S3Credentials {
@@ -34,11 +60,14 @@ pub async fn create_first_store(
     sources: &crate::TestSources,
     storage: Arc<coven::MemoryStorage>,
 ) -> coven::CovenHandle {
-    let handle = crate::configure_store(sources.builder(installation), schema)
-        .storage_connector(storage.clone())
-        .create_store("Two Devices", "Device A", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = create_test_store(
+        sources.builder(installation).storage_connector(storage.clone()),
+        schema,
+        "Two Devices",
+        "Device A",
+    )
+    .await
+    .unwrap();
     let credentials = owner_credentials();
     handle
         .setup_s3_storage(

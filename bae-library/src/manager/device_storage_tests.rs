@@ -261,8 +261,6 @@ async fn data_from_before_a_reset_shows_until_it_is_deleted() {
         bae_store::EnteredName::parse("Local Library").unwrap(),
         bae_store::EnteredName::parse("Creator").unwrap(),
         "Test Device",
-        sources.clock().clone(),
-        coven::FileBudget::for_test(),
         &bae_diagnostics::Diagnostics::noop(),
     )
     .await

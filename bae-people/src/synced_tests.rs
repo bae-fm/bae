@@ -55,14 +55,6 @@ fn people_declarations_match_the_store_audience_and_file_contract() {
 /// named here, so a new table is a decision rather than a row that silently
 /// stays on one device.
 const DEVICE_LOCAL_TABLES: &[&str] = &[
-    // This device's own copies: plays before a person exists.
-    "local_history",
-    // The profile this device's person asked for, while their private
-    // circle is being made.
-    "profile_request",
-    // The name the library's creator typed, kept until they are a member and
-    // a write asks for their profile under it.
-    "creator_name",
     // What each admin change this device asked for changes, while coven
     // lists its operation.
     "admin_operations",

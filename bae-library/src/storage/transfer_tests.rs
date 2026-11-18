@@ -37,11 +37,14 @@ async fn manager_with_recording_transport_over_storage() -> (
         bae_app_dir::AppDir::under_home(home.path()).unwrap().coven_app_dir(),
     );
     let sources = crate::test_libraries::TestSources::system();
-    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-        .storage_connector(storage.clone())
-        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation).storage_connector(storage.clone()),
+        crate::SCHEMA,
+        "Test Library",
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let database = sources.store(handle);
     let store = database.clone();
 

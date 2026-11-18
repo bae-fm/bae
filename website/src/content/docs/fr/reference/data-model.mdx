@@ -28,7 +28,6 @@ Tables entièrement locales, jamais déclarées à coven :
 - **Les tables d’analyse et d’importation** : dossiers surveillés, analyses, candidats à l’importation et leurs brouillons.
 - **`source_release`** et les tables qui en dépendent : ce que bae a extrait de chaque sortie MusicBrainz et Discogs qu’il a récupérée — informations d’album et de pressage, liste complète des pistes avec crédits et œuvres, choix de pochette et nom que lui donnent les autres catalogues — codé par la version du fournisseur plutôt que par une version locale. Le JSON brut n’est pas conservé ; n’importe quel appareil peut récupérer une sortie à nouveau.
 - **`local_release_files`** : les chemins de fichiers et dates de modification d’une sortie locale sur cet appareil.
-- **`local_history`** : les écoutes d’avant que la personne de cet appareil ait un profil, déplacées dans son cercle privé lorsqu’il est créé.
 
 Les modifications de deux appareils fusionnent cellule par cellule, la modification la plus tardive l’emportant sur une cellule que les deux ont changée. coven tient la comptabilité de fusion dans ses propres tables, donc les tables de bae ne portent aucune colonne d’horloge.
 

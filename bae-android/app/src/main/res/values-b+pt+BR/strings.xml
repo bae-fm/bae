@@ -428,11 +428,6 @@
     <string name="members_joining">Entrando</string>
     <string name="members_invite_shares_access">Compartilha o acesso quando estiver online</string>
     <string name="invite_granting">Compartilhando a biblioteca com %1$s…</string>
-    <string name="settings_profile_making">Criando seu perfil…</string>
-    <string name="settings_profile_making_detail">Seu perfil aparecerá quando esta biblioteca sincronizar.</string>
-    <string name="settings_profile_refused">Não foi possível criar seu perfil. %1$s</string>
-    <string name="settings_profile_create_prompt">Crie seu perfil para que a biblioteca possa mostrar quem você é.</string>
-    <string name="settings_profile_create">Criar perfil</string>
     <string name="operation_rejection_store_owner">A conta dona da casa na nuvem da biblioteca não pode ser removida.</string>
     <string name="operation_rejection_person_gone">Essa pessoa não está mais na biblioteca.</string>
     <string name="operation_rejection_device_gone">Esse dispositivo não está mais na biblioteca.</string>

@@ -4,9 +4,8 @@ import os.log
 
 private let logger = Logger.bae("MembershipStore")
 
-/// The store's members joined with their profiles, the profile this device's
-/// person asked for, the invites this device has open and the admin changes
-/// it asked for. The store reads whether this device's person is an admin
+/// The store's members joined with their profiles, the invites this device
+/// has open and the admin changes it asked for. The store reads whether this device's person is an admin
 /// for as long as the library is open, from `start()`: the menu bar always
 /// shows Rename Library, which it enables. The store reads the rest while a
 /// screen shows it, from `show()` to `hide()`: it subscribes to the people,
@@ -27,8 +26,6 @@ public final class MembershipStore {
     public private(set) var selfIsAdmin = false
     /// This device's person's profile, nil until they have one.
     public var selfProfile: BridgePersonProfile? { people?.own?.profile }
-    /// The profile this device's person asked for, until it is written.
-    public private(set) var requestedProfile: BridgeRequestedProfile?
     /// The rows of People's invites in the order they were made: this
     /// device's open invites, each with its request once it arrives, and the
     /// invites a sharing refusal ended, until the person dismisses them.
@@ -212,7 +209,6 @@ public final class MembershipStore {
         hideInvite()
         shownSubscriptions = nil
         people = nil
-        requestedProfile = nil
         inviteEntries = []
         libraryAdminChanges.hide()
         pageAdminChanges.hide()
@@ -297,13 +293,6 @@ extension MembershipStore {
                 onError: { [weak store] error in store?.fail(error) }
             ),
             ScreenSubscription(
-                handle.subscribeRequestedProfile(),
-                onValue: { [weak store] requested in
-                    store?.requestedProfile = requested
-                },
-                onError: { [weak store] error in store?.fail(error) }
-            ),
-            ScreenSubscription(
                 handle.subscribeInvites(),
                 onValue: { [weak store] entries in
                     store?.inviteEntries = entries
@@ -376,7 +365,6 @@ extension MembershipStore {
             selfIsAdmin: Bool,
             invites: [BridgeInvite] = [],
             refusedInvites: [BridgeRefusedInvite] = [],
-            requestedProfile: BridgeRequestedProfile? = nil,
             adminChanges: [BridgeAdminChangePlace: [BridgeAdminChange]] = [:],
             addDeviceStatus: BridgeAddDeviceStatus? = nil
         ) -> MembershipStore {
@@ -418,7 +406,6 @@ extension MembershipStore {
             store.inviteEntries =
                 invites.map { .open(invite: $0) }
                 + refusedInvites.map { .refused(refused: $0) }
-            store.requestedProfile = requestedProfile
             return store
         }
     #endif

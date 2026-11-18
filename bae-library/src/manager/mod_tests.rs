@@ -56,11 +56,14 @@ pub(super) async fn setup_test_manager_with(
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
     let sources = bae_store::TestSources::on(&clock);
-    let handle = bae_store::configure_store(sources.builder(&installation), crate::SCHEMA)
-        .storage_connector(storage.clone())
-        .create_store("Test Library", "Test Device", &[], |_, _| Ok(()))
-        .await
-        .unwrap();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation).storage_connector(storage.clone()),
+        crate::SCHEMA,
+        "Test Library",
+        "Test Device",
+    )
+    .await
+    .unwrap();
     let database = sources.store(handle);
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let manager = TestLibrary::open_with(

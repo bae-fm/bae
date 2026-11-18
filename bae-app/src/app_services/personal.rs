@@ -3,7 +3,6 @@ use bae_people::collections::{CollectionError, RatingTarget, Stars};
 use bae_people::people::Sharing;
 
 impl AppServices {
-    delegate_async!(people, create_profile => create_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(people, rename_profile => rename_profile(name: &str) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(people, set_history_sharing => set_history_sharing(sharing: bae_people::people::HistorySharing) -> Result<(), bae_people::people::ProfileError>);
     delegate_async!(manager, set_avatar => set_avatar(bytes: Option<Vec<u8>>) -> Result<(), bae_library::people::AvatarError>);
@@ -14,7 +13,6 @@ impl AppServices {
     ) -> bae_store::live_query::LiveValues<bae_views::playlists::PlaylistListing> {
         self.inner.manager.values_until_closed(self.inner.views.subscribe_playlists())
     }
-    delegate_values!(subscribe_requested_profile => subscribe_requested_profile() -> Option<bae_people::people::RequestedProfile>);
     delegate_values!(subscribe_people => subscribe_people() -> bae_people::people::PeopleView);
     delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);

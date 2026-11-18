@@ -381,9 +381,6 @@ extension PeopleAndDevicesPage {
                     }
                 }
             }
-            else {
-                ProfileCreationRows()
-            }
             if let me = selfPerson {
                 LabeledContent("Role", value: me.membership.role.label)
             }

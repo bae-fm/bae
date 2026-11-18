@@ -430,11 +430,6 @@
     <string name="members_joining">Pridružuje se</string>
     <string name="members_invite_shares_access">Dijeli pristup kad bude na mreži</string>
     <string name="invite_granting">Dijeljenje fonoteke s %1$s…</string>
-    <string name="settings_profile_making">Izrađuje se vaš profil…</string>
-    <string name="settings_profile_making_detail">Vaš profil pojavit će se kad se ova fonoteka sinkronizira.</string>
-    <string name="settings_profile_refused">Vaš profil nije bilo moguće izraditi. %1$s</string>
-    <string name="settings_profile_create_prompt">Izradite svoj profil kako bi fonoteka mogla pokazati tko ste.</string>
-    <string name="settings_profile_create">Izradi profil</string>
     <string name="operation_rejection_store_owner">Račun koji je vlasnik doma u oblaku fonoteke ne može se ukloniti.</string>
     <string name="operation_rejection_person_gone">Ta osoba više nije u fonoteci.</string>
     <string name="operation_rejection_device_gone">Taj uređaj više nije u fonoteci.</string>

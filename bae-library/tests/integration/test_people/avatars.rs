@@ -1,4 +1,5 @@
 use super::*;
+use bae_library::test_libraries::connect_storage;
 
 /// A PNG of `width` by `height` pixels in one color.
 fn solid_png(width: u32, height: u32, color: [u8; 3]) -> Vec<u8> {
@@ -22,7 +23,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
     .await;
     let people = library.people().clone();
     connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Rowan").await;
+    let profile = own_profile(library.people()).await;
     assert_eq!(library.people().avatar(profile.id).await.unwrap(), None);
     let first_source = solid_png(16, 16, [120, 40, 200]);
     let second_source = solid_png(16, 16, [20, 160, 90]);
@@ -87,7 +88,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
     )
     .await;
     connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Rowan").await;
+    let profile = own_profile(library.people()).await;
     let edge = bae_util::stored_image::STORED_MAX_EDGE;
     let photo = png(image::RgbImage::from_fn(edge * 5, edge * 10 / 3, |x, y| {
         let mixed = x.wrapping_mul(2_654_435_761) ^ y.wrapping_mul(2_246_822_519);
@@ -120,7 +121,7 @@ async fn a_png_avatar_is_stored_as_covers_are() {
     )
     .await;
     connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Rowan").await;
+    let profile = own_profile(library.people()).await;
     let picked = solid_png(16, 16, [120, 40, 200]);
 
     library.manager().set_avatar(Some(picked.clone())).await.unwrap();
@@ -143,7 +144,7 @@ async fn an_undecodable_avatar_is_refused() {
     )
     .await;
     connect_storage(library.manager(), library.store(), &storage).await;
-    let profile = made_profile(library.manager(), library.people(), "Rowan").await;
+    let profile = own_profile(library.people()).await;
 
     let error = library
         .manager()

@@ -1,5 +1,5 @@
 //! People and devices: Add Device's pairing, the admin changes a device asks
-//! for, invites, a profile request, and the membership read without a provider.
+//! for, invites, and the membership read without a provider.
 
 use super::DeviceCutOff;
 use crate::manager::tests::*;
@@ -7,7 +7,6 @@ use crate::test_libraries::run_two_device_test;
 use crate::test_libraries::{run_library_test, TestDevice};
 use bae_people::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 use bae_people::membership::ActiveDevice;
-use bae_people::people::{RequestedProfile, RequestedProfileState};
 
 /// The first device's status of a pairing, once the new device's request has
 /// come: waiting for the person's decision, with the name the new device gave
@@ -367,62 +366,6 @@ async fn membership_reads_committed_local_state_without_a_provider() {
     let membership = manager.membership.members().await.unwrap();
     assert!(!manager.is_sync_configured().await.unwrap());
     assert!(membership.members.iter().all(|member| member.is_self));
-}
-
-/// Robin asks for her profile on her tablet while it is offline, and her
-/// laptop removes the tablet before the request syncs. The tablet shows the
-/// profile being made; once it syncs and applies its own removal, coven
-/// ends the circle unmade, and the tablet shows that its removal stopped
-/// it. Asking again there is refused, and the stop stays shown.
-#[test]
-fn a_profile_request_shows_the_stop_that_ended_its_circle() {
-    run_two_device_test(async |devices| {
-        let tablet = devices.b();
-        tablet.stop_sync().await;
-        let mut requested = tablet.manager().subscribe_requested_profile();
-        crate::followed::query_matching(&mut requested, Option::is_none).await;
-        tablet.people().create_profile("Robin").await.unwrap();
-        crate::followed::query_matching(&mut requested, |requested| {
-            requested
-                == &Some(RequestedProfile {
-                    name: "Robin".into(),
-                    state: RequestedProfileState::Making,
-                })
-        })
-        .await;
-
-        let tablet_id = tablet.store().device_id();
-        let laptop = devices.a();
-        let tablet_active = || async {
-            laptop
-                .membership()
-                .members()
-                .await
-                .unwrap()
-                .members
-                .iter()
-                .any(|member| member.active_devices.iter().any(|d| d.id == tablet_id))
-        };
-        laptop.wait_until("the tablet's registration", tablet_active).await;
-        laptop.membership().remove_device(tablet_id).await.unwrap();
-        laptop.wait_until("the tablet's removal", || async { !tablet_active().await }).await;
-
-        tablet.store().start_sync().await.unwrap();
-        let stopped = RequestedProfile {
-            name: "Robin".into(),
-            state: RequestedProfileState::Stopped(coven::DeviceStop::Removed(
-                coven::Removal::Device,
-            )),
-        };
-        crate::followed::query_matching(&mut requested, |requested| {
-            requested.as_ref() == Some(&stopped)
-        })
-        .await;
-        assert!(tablet.people().create_profile("Robin").await.is_err());
-        let mut after = tablet.manager().subscribe_requested_profile();
-        let first = after.next_inline().await.unwrap().unwrap();
-        assert_eq!(first, Some(stopped));
-    });
 }
 
 /// Robin's library is on S3, where no account is shared and none holds the
