@@ -557,7 +557,11 @@ impl<'a> Items<'a> {
 
     /// How many key columns the widest order of the tab's parts has.
     fn key_width(&self) -> usize {
-        self.parts().iter().map(|&part| self.part_order(part).term_count()).max().unwrap_or(0)
+        self.parts()
+            .iter()
+            .map(|&part| self.part_order(part).term_count())
+            .max()
+            .expect("every tab runs in at least one part")
     }
 
     /// The list key of the row of a compound statement whose arms select
