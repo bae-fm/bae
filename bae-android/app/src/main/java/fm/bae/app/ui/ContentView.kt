@@ -388,10 +388,11 @@ private fun LibraryOpenScreen(
                 withDismissAction = true,
                 duration = SnackbarDuration.Long,
             )
-        session.dismissPlaybackFailure()
+        // Cast before dismissing: the dismissal ends this effect once core clears the failure.
         if (result == SnackbarResult.ActionPerformed && pairingLost != null) {
             session.castStart.cast(pairingLost.receiver)
         }
+        session.dismissPlaybackFailure()
     }
     // An AirPlay receiver's request for its PIN or password, over whatever is on screen.
     val codeSheet by session.castStart.codeSheet.collectAsState()
