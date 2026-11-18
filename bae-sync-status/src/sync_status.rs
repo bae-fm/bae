@@ -211,7 +211,7 @@ pub fn sync_status_rows_on(
 fn recorded_location_on(
     sql: &coven::SqlReadContext<'_>,
 ) -> Result<Option<coven::StorageConfig>, DbError> {
-    Ok(sql.query_row("SELECT location FROM coven_sync_status", [], |row| row.get(0))?)
+    Ok(sql.query_row(bae_store::RECORDED_LOCATION, [], |row| row.get(0))?)
 }
 
 impl SyncStatusSnapshot {
@@ -242,6 +242,19 @@ impl SyncStatusSnapshot {
     /// The provider of the location recorded on this device, while one is.
     pub fn provider(&self) -> Option<coven::CloudProvider> {
         self.location.as_ref().map(coven::StorageConfig::provider)
+    }
+
+    /// Whether the recorded location has a folder the person can open in a
+    /// browser: a Dropbox shared folder or a OneDrive folder whose label the
+    /// latest connection read.
+    pub fn has_folder_to_open(&self) -> bool {
+        matches!(
+            self.location,
+            Some(
+                coven::StorageConfig::Dropbox { folder_label: Some(_), .. }
+                    | coven::StorageConfig::OneDrive { folder_label: Some(_), .. }
+            )
+        )
     }
 
     /// Storage is set up on this device: a location is recorded and this

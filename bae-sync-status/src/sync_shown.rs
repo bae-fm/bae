@@ -203,11 +203,10 @@ impl SyncStatusSnapshot {
             SyncState::StorageFull(_) => {
                 let shown = SyncShown::new(W::StorageFull, T::Danger)
                     .because(SyncCauseLine::FreeStorageSpace);
-                match self.provider() {
-                    Some(CloudProvider::Dropbox | CloudProvider::OneDrive) => {
-                        shown.fixed_by(SyncFix::OpenInBrowser)
-                    }
-                    _ => shown,
+                if self.has_folder_to_open() {
+                    shown.fixed_by(SyncFix::OpenInBrowser)
+                } else {
+                    shown
                 }
             }
             SyncState::FolderMissing(_) => SyncShown::new(W::FolderMissing, T::Danger),

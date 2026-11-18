@@ -32,7 +32,9 @@ pub use schema::{
     NAME_KEY, NAME_LIST_KEY, NATURAL_ORDER, SEARCH_PATTERN,
 };
 mod store;
-pub use store::{utc_now, StorageSetupSteps, Store, UNMETERED_ONLY, UPLOADS_PAUSED};
+pub use store::{
+    utc_now, StorageSetupSteps, Store, RECORDED_LOCATION, UNMETERED_ONLY, UPLOADS_PAUSED,
+};
 mod store_read;
 pub use store_read::StoreRead;
 #[cfg(any(test, feature = "test-utils"))]

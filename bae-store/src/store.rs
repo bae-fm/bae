@@ -8,7 +8,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 mod coven_capabilities;
-pub use coven_capabilities::{StorageSetupSteps, UNMETERED_ONLY, UPLOADS_PAUSED};
+pub use coven_capabilities::{
+    StorageSetupSteps, RECORDED_LOCATION, UNMETERED_ONLY, UPLOADS_PAUSED,
+};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 

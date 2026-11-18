@@ -9,7 +9,15 @@ fn finished() -> std::time::SystemTime {
     std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000)
 }
 
-/// A location on `provider`, with no labels.
+/// A folder label with a page to open.
+fn folder_label() -> coven::FolderLabel {
+    coven::FolderLabel {
+        name: "Music".into(),
+        web_url: url::Url::parse("https://example.com/folder").unwrap(),
+    }
+}
+
+/// A location on `provider`, a Dropbox or OneDrive one with a folder label.
 pub(crate) fn location_on(provider: coven::CloudProvider) -> coven::StorageConfig {
     match provider {
         coven::CloudProvider::S3 => coven::StorageConfig::S3 {
@@ -19,15 +27,15 @@ pub(crate) fn location_on(provider: coven::CloudProvider) -> coven::StorageConfi
             profile: None,
         },
         coven::CloudProvider::Dropbox => coven::StorageConfig::Dropbox {
-            location: coven::DropboxLocation::AppFolder,
+            location: coven::DropboxLocation::SharedFolder { namespace_id: "1".into() },
             account_label: None,
-            folder_label: None,
+            folder_label: Some(folder_label()),
         },
         coven::CloudProvider::OneDrive => coven::StorageConfig::OneDrive {
             drive_id: "drive".into(),
             folder_id: "folder".into(),
             account_label: None,
-            folder_label: None,
+            folder_label: Some(folder_label()),
         },
         coven::CloudProvider::CloudKit => coven::StorageConfig::CloudKit {
             container: "container".into(),
@@ -40,6 +48,11 @@ pub(crate) fn location_on(provider: coven::CloudProvider) -> coven::StorageConfi
 /// The top block for `state` in a library on `provider`, sync having last
 /// finished at [`finished`], with nothing pending and no failed start.
 fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShown {
+    shown_on_location(location_on(provider), state)
+}
+
+/// The top block for `state` in a library at `location`, as [`shown_on`].
+fn shown_on_location(location: coven::StorageConfig, state: coven::SyncState) -> SyncShown {
     SyncStatusSnapshot::read(
         coven::SyncStatus { state, last_synced: Some(finished()) },
         SyncStatusRows {
@@ -47,7 +60,7 @@ fn shown_on(provider: coven::CloudProvider, state: coven::SyncState) -> SyncShow
             start_failure: None,
             retry_effect: coven::RetryEffect::Pass,
             storage_setup: None,
-            location: Some(location_on(provider)),
+            location: Some(location),
         },
     )
     .shown()
@@ -205,7 +218,25 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         Some(C::FreeStorageSpace),
         Some(F::OpenInBrowser),
     );
-    check(shown_on(P::S3, full), W::StorageFull, T::Danger, Some(C::FreeStorageSpace), None);
+    check(
+        shown_on(P::S3, full.clone()),
+        W::StorageFull,
+        T::Danger,
+        Some(C::FreeStorageSpace),
+        None,
+    );
+    // Dropbox's App folder has no folder label, so no page to open.
+    let app_folder = |state| {
+        shown_on_location(
+            coven::StorageConfig::Dropbox {
+                location: coven::DropboxLocation::AppFolder,
+                account_label: None,
+                folder_label: None,
+            },
+            state,
+        )
+    };
+    check(app_folder(full), W::StorageFull, T::Danger, Some(C::FreeStorageSpace), None);
 }
 
 /// Sync failed always offers Retry now, and says why in the words of its

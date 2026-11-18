@@ -10,6 +10,11 @@ pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 /// network row says.
 pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
 
+/// The location recorded on this device with its account and folder labels,
+/// as coven's sync status row holds it; none while no storage is set up. It
+/// reads as `Option<coven::StorageConfig>`.
+pub const RECORDED_LOCATION: &str = "SELECT location FROM coven_sync_status";
+
 /// Where a storage setup reports each step coven runs, as coven reports it.
 pub type StorageSetupSteps<'a> =
     &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);

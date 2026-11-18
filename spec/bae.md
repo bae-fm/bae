@@ -4079,8 +4079,8 @@ storage* where the line names the place the library is kept.
     requests because its clock is off.* / *Set the date and time automatically
     in System Settings.*; on Android, *in Settings*.
   - Cloud full: *Changes, new music and covers cannot upload until there is
-    space in Dropbox.*, with *Open in browser* for Dropbox and OneDrive and
-    *Open System Settings…* for iCloud. An S3 library reads *Your S3 service
+    space in Dropbox.*, with *Open in browser* for a Dropbox or OneDrive library whose folder has a
+    label to open, and *Open System Settings…* for iCloud. An S3 library reads *Your S3 service
     has no space left for this library.* / *Ask whoever manages it for more.*,
     with no button.
   - Sync failed, for any failure with no state of its own, always with a

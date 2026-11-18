@@ -59,7 +59,7 @@ fn config_on(
             [],
             save_preset_row,
         )?,
-        storage: sql.query_row("SELECT location FROM coven_sync_status", [], |row| row.get(0))?,
+        storage: sql.query_row(bae_store::RECORDED_LOCATION, [], |row| row.get(0))?,
     })
 }
 
