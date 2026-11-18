@@ -183,10 +183,12 @@ private final class RangeReads {
         _ to: AlbumGridSelection.Anchor
     ) async throws -> [String] {
         asked.append(Ask(from: from, to: to))
+        Wait.happened()
         if held {
             await withCheckedContinuation { waiting = $0 }
         }
         answered = true
+        Wait.happened()
         guard let answer else { throw NoAnswer() }
         return answer
     }
@@ -200,5 +202,7 @@ private final class RangeReads {
 
 @MainActor
 private final class FailureRecord {
-    var error: (any Error)?
+    var error: (any Error)? {
+        didSet { Wait.happened() }
+    }
 }
