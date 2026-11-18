@@ -64,18 +64,8 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
     let (pins, locals) =
         (StreamWriter::new(pin_values.clone()), StreamWriter::new(local_values.clone()));
     let write = |read: std::collections::BTreeMap<String, DownloadTransfer>| {
-        pins.reset(release_transfers_held(read.clone(), |transfer| {
-            pin_progress(transfer).map(|progress| BridgeFastValue::Download {
-                progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-            })
-        }));
-        locals.reset(release_transfers_held(read, |transfer| {
-            move_to_this_device_progress(transfer).map(|progress| {
-                BridgeFastValue::MoveToThisDevice {
-                    progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
-                }
-            })
-        }));
+        pins.reset(release_transfers_held(read.clone(), pin_value));
+        locals.reset(release_transfers_held(read, move_to_this_device_value));
     };
 
     write(downloads(&[("pinning", &pin), ("local", &local)]));

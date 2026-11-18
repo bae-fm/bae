@@ -231,22 +231,26 @@ fn activity_bars_held(bars: bae_library::ActivityBars) -> HashMap<Vec<u8>, Bridg
         .collect()
 }
 
-/// The pin of a download, if that is what it is.
-fn pin_progress(
-    transfer: bae_transfers::DownloadTransfer,
-) -> Option<bae_transfers::DownloadTransferProgress> {
+/// A download as the pins' stream holds it: its progress if it is a pin,
+/// else nothing.
+fn pin_value(transfer: bae_transfers::DownloadTransfer) -> Option<BridgeFastValue> {
     match transfer {
-        bae_transfers::DownloadTransfer::Pin(progress) => Some(progress),
+        bae_transfers::DownloadTransfer::Pin(progress) => Some(BridgeFastValue::Download {
+            progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
+        }),
         bae_transfers::DownloadTransfer::MoveToThisDevice(_) => None,
     }
 }
 
-/// The move-to-this-device of a download, if that is what it is.
-fn move_to_this_device_progress(
-    transfer: bae_transfers::DownloadTransfer,
-) -> Option<bae_transfers::MoveToThisDeviceTransferProgress> {
+/// A download as the moves-to-this-device stream holds it: its progress if
+/// it is a move to this device, else nothing.
+fn move_to_this_device_value(transfer: bae_transfers::DownloadTransfer) -> Option<BridgeFastValue> {
     match transfer {
-        bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => Some(progress),
+        bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => {
+            Some(BridgeFastValue::MoveToThisDevice {
+                progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
+            })
+        }
         bae_transfers::DownloadTransfer::Pin(_) => None,
     }
 }
@@ -260,11 +264,7 @@ pub(crate) fn download_transfers(
         let mut transfers = services.watch_download_transfers();
         async move {
             while let Some(downloads) = transfers.next().await {
-                writer.reset(release_transfers_held(downloads, |transfer| {
-                    pin_progress(transfer).map(|progress| BridgeFastValue::Download {
-                        progress: crate::types::BridgeDownloadTransferProgress::from_core(progress),
-                    })
-                }));
+                writer.reset(release_transfers_held(downloads, pin_value));
             }
         }
     })
@@ -279,15 +279,7 @@ pub(crate) fn move_to_this_device_transfers(
         let mut transfers = services.watch_download_transfers();
         async move {
             while let Some(downloads) = transfers.next().await {
-                writer.reset(release_transfers_held(downloads, |transfer| {
-                    move_to_this_device_progress(transfer).map(|progress| {
-                        BridgeFastValue::MoveToThisDevice {
-                            progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(
-                                progress,
-                            ),
-                        }
-                    })
-                }));
+                writer.reset(release_transfers_held(downloads, move_to_this_device_value));
             }
         }
     })
