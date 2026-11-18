@@ -7,36 +7,51 @@ import Foundation
 /// section that shows it before that section's view mounts; a later request
 /// replaces it, and the next listener takes it once.
 final class HeldRequests<Request>: @unchecked Sendable {
+    private let listening: Listening<Request>
+
+    /// Each listener gets the request waiting for one, if any, then the
+    /// requests sent from then on, on the main queue's next turn, so a
+    /// request never arrives while SwiftUI subscribes the listener.
+    ///
+    /// Built once, so every read of it is the same publisher. It holds the
+    /// listeners' state and not this object, so nothing holds itself.
+    let requests: AnyPublisher<Request, Never>
+
+    init() {
+        let listening = Listening<Request>()
+        self.listening = listening
+        requests = Deferred { listening.subscribe() }
+            .receive(on: DispatchQueue.main)
+            .eraseToAnyPublisher()
+    }
+
+    func send(_ request: Request) {
+        listening.send(request)
+    }
+}
+
+/// Who listens to held requests, and the request waiting for a listener.
+/// Each subscription holds it for as long as it is subscribed.
+private final class Listening<Request>: @unchecked Sendable {
     private let lock = NSLock()
     private let sent = PassthroughSubject<Request, Never>()
     /// The latest request sent while nothing listened.
     private var waiting: Request?
     private var listeners = 0
 
-    /// Each listener gets the request waiting for one, if any, then the
-    /// requests sent from then on, on the main queue's next turn, so a
-    /// request never arrives while SwiftUI subscribes the listener. A
-    /// subscription may outlive the requests, as a browse session's does the
-    /// UiStore a test makes for it, so it holds them weakly.
-    private(set) lazy var requests: AnyPublisher<Request, Never> =
-        Deferred { [weak self] () -> AnyPublisher<Request, Never> in
-            guard let self else { return Empty().eraseToAnyPublisher() }
-            let waiting = lock.withLock {
-                listeners += 1
-                defer { self.waiting = nil }
-                return self.waiting
-            }
-            return waiting.publisher
-                .append(sent)
-                .handleEvents(receiveCancel: { [weak self] in
-                    self?.stopListening()
-                })
-                .eraseToAnyPublisher()
+    func subscribe() -> AnyPublisher<Request, Never> {
+        let waiting = lock.withLock {
+            listeners += 1
+            defer { self.waiting = nil }
+            return self.waiting
         }
-        .receive(on: DispatchQueue.main)
-        .eraseToAnyPublisher()
+        return waiting.publisher
+            .append(sent)
+            .handleEvents(receiveCancel: { self.unsubscribe() })
+            .eraseToAnyPublisher()
+    }
 
-    private func stopListening() {
+    private func unsubscribe() {
         lock.withLock { listeners -= 1 }
     }
 
