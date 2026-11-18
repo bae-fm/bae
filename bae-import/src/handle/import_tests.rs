@@ -85,7 +85,7 @@ async fn a_refused_start_whose_candidate_changed_meanwhile_files_no_bug_report()
 
 /// What the import writes is the draft: the import's own read storing the
 /// release again after it was applied, its tracklist and credits changed by
-/// its editors, changes nothing the candidate imports (B2).
+/// its editors, changes nothing the candidate imports.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() {
     // The pick offers the group's album address, which the archive holds no
@@ -164,7 +164,7 @@ async fn a_release_stored_again_after_apply_changes_nothing_the_draft_imports() 
 
 /// A draft read from the files' tags, and a draft typed over a blank one,
 /// import exactly as the draft stands: nothing is read from the tags again,
-/// and nothing a blank release would say fills a field (B14).
+/// and nothing a blank release would say fills a field.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_tags_draft_and_a_blank_draft_import_exactly_the_draft() {
     for from_tags in [true, false] {
