@@ -24,17 +24,21 @@ struct ImportPreviewDataTests {
                 return false
             }
         )
+        guard case .groupHeader(let groupHeader) = items[groupIndex] else {
+            Issue.record("the group's row is its header")
+            return
+        }
 
-        let headerKeys = items[(groupIndex + 1)...]
+        let headers = items[(groupIndex + 1)...]
             .compactMap { item in
-                if case .candidate(_, _, let headerKey) = item {
-                    return headerKey
+                if case .candidate(_, _, let header) = item {
+                    return header
                 }
                 return nil
             }
 
-        #expect(!headerKeys.isEmpty)
-        #expect(headerKeys.allSatisfy { $0 == items[groupIndex].id })
+        #expect(!headers.isEmpty)
+        #expect(headers.allSatisfy { $0 == groupHeader })
     }
 
     @MainActor

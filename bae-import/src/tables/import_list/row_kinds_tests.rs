@@ -233,7 +233,7 @@ async fn import_list_row_kinds_cost() {
             let started = Instant::now();
             let (read, _) = read_window(&lib, kind, LIMIT).await;
             runs.push(started.elapsed());
-            rows = read.read.rows.len();
+            rows = read.rows.len();
         }
         runs.sort();
         report(
@@ -254,7 +254,7 @@ async fn import_list_row_kinds_cost() {
 async fn statements_of(kind: Kind, rows: u64) -> usize {
     let lib = library_of(kind, rows).await;
     let (read, statements) = read_window(&lib, kind, rows).await;
-    assert_eq!(read.read.rows.len() as u64, rows, "{kind:?}: the window holds every row");
+    assert_eq!(read.rows.len() as u64, rows, "{kind:?}: the window holds every row");
     statements
 }
 

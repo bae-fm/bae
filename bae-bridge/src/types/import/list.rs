@@ -54,17 +54,24 @@ pub struct BridgePendingFilterEntry {
     pub selectable: bool,
 }
 
+/// A group's header: the group, how the list shows it, and how many of its
+/// entries the list holds. `stable_key` is its item's.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportGroupHeader {
+    pub stable_key: String,
+    pub group: BridgeTriageGroup,
+    pub watched_folder_path: Vec<u8>,
+    pub expanded: bool,
+    /// How many entries the group holds in this tab, after the filter.
+    pub entry_count: u32,
+}
+
 /// One item at one offset. `stable_key` identifies it across reruns — the id a
 /// paged list holds positions by.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportListItem {
     GroupHeader {
-        stable_key: String,
-        group: BridgeTriageGroup,
-        watched_folder_path: Vec<u8>,
-        expanded: bool,
-        /// How many entries the group holds in this tab, after the filter.
-        entry_count: u32,
+        header: BridgeImportGroupHeader,
     },
     /// A candidate's row, presented as what the candidate reads as on
     /// whichever tab places it. A Done row is the row it was in Found, its
@@ -73,13 +80,16 @@ pub enum BridgeImportListItem {
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
-        /// The stable key of the header of the group it is listed under, for
-        /// a member of a group, whether or not the window holds the header.
-        header_key: Option<String>,
+        /// The header of the group it is listed under, for a member of a
+        /// group, whether or not the window holds the header's own row.
+        header: Option<BridgeImportGroupHeader>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it.
-    Invalid { stable_key: String, invalid_candidate: BridgeInvalidCandidate },
+    Invalid {
+        stable_key: String,
+        invalid_candidate: BridgeInvalidCandidate,
+    },
 }
 
 /// The list view and place that reveal one candidate at its current

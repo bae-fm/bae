@@ -11,14 +11,15 @@
 //! and its catalog records — and how that release's upload stands. None of
 //! it opens the folder's files. A group's header says how many of its releases the
 //! filters keep, whether the list folds it, and whether its folder is offered
-//! to be read as one release, as its placement holds it.
+//! to be read as one release, as its placement holds it. Each member of a
+//! group reads its group's header beside its own row.
 
 use super::actions::action_columns;
 use super::listed::{ListedColumns, LISTED_COLUMNS};
 use super::order::Item;
 use super::*;
 use crate::candidate_detail::ListedRelease;
-use crate::list::{ImportListItem, ImportWindow};
+use crate::list::{ImportGroupHeader, ImportListItem, ImportWindow};
 use crate::tables::folder_scans::{
     self, cover_version_joins, CoverVersionColumns, COVER_VERSION_COLUMNS,
 };
@@ -47,13 +48,15 @@ use rusqlite::ToSql;
 use std::path::PathBuf;
 
 /// Reads the window `window` of the list `list` in one statement: the items
-/// of its range, each with its key, and the header of the group they start
-/// inside of.
+/// of its range, each with its key, and each member of a group with its
+/// group's header.
 ///
 /// The range is the statement's first table. The statement numbers the
-/// range's items in the order the parts of its UNION return them. A member
-/// of a group at the window's start leads with a row for its header, which
-/// is not one of the window's items.
+/// range's items in the order the parts of its UNION return them, and reads
+/// each item's header beside it. The statement names the range once: each
+/// further reference to it would expand the range's views again, and a
+/// range over a text filter's views would pass SQLite's limit on the
+/// cursors one statement opens.
 pub(super) fn read_window(
     sql: &SqlReadContext<'_>,
     list: &ListRow,
@@ -61,10 +64,7 @@ pub(super) fn read_window(
 ) -> Result<ImportWindow, DbError> {
     let items = list.items(Shown::View);
     let Some(range) = items.range_statement(window)? else {
-        return Ok(ImportWindow {
-            read: bae_store::WindowRead { window: window.clone(), rows: Vec::new() },
-            leading_header: None,
-        });
+        return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
     };
     let statement = format!(
         "WITH keyed AS ( \
@@ -80,31 +80,23 @@ pub(super) fn read_window(
         range_params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
     named.push((":limit", &limit));
     let rows = items.query(sql, &statement, &named, |row| {
-        let role: String = row.get("role")?;
         let item: String = row.get("item")?;
         let ordered = items.led_key(row)?;
         let stored = match item.as_str() {
             "group" => StoredItem::Header(read_header(row)?),
             _ => StoredItem::Release(Box::new(read_release(row)?)),
         };
-        Ok((role, item, ordered, stored))
+        Ok((item, ordered, stored))
     })?;
     let mut read = Vec::new();
-    let mut leading_header = None;
-    for (role, item, ordered, stored) in rows {
+    for (item, ordered, stored) in rows {
         let shown = match stored {
-            StoredItem::Header(header) => header_item(header)?,
+            StoredItem::Header(header) => ImportListItem::GroupHeader(group_header(header)?),
             StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
         };
-        match role.as_str() {
-            "leading" => leading_header = Some(shown),
-            _ => read.push((shown, ordered)),
-        }
+        read.push((shown, ordered));
     }
-    Ok(ImportWindow {
-        read: bae_store::WindowRead { window: window.clone(), rows: read },
-        leading_header,
-    })
+    Ok(ImportWindow { window: window.clone(), rows: read })
 }
 
 /// What one row of the window's statement holds, by its kind.
@@ -123,27 +115,34 @@ struct HeaderRow {
     combinable: bool,
 }
 
-/// The header columns of a row of a group whose key is the expression `key`.
-/// The entry count counts the placement rows under the group's folder that
-/// the pending filter keeps, unless a text filter is active, when it counts
-/// the matching rows instead. The placement's `combinable` column says
-/// whether bae offers to import the folder as one release
-/// (`import_list_recombine`).
-fn header_columns(key: &str) -> String {
+/// The key of the group whose header the row of item `w` shows: the item's
+/// own for a header, its group's for a member, and none for a release in no
+/// group.
+const HEADER_FOLDER: &str = "CASE w.item WHEN 'group' THEN w.key ELSE w.group_folder END";
+
+/// The header columns of the row of item `w`: its own for a header, its
+/// group's for a member, from the header's placement `hp`, and none for a
+/// release in no group. The entry count counts the placement rows under the
+/// group's folder that the pending filter keeps, unless a text filter is
+/// active, when it counts the matching rows instead. The placement's
+/// `combinable` column says whether bae offers to import the folder as one
+/// release (`import_list_recombine`).
+fn header_columns() -> String {
     format!(
-        "hp.group_name AS header_name, \
+        "w.watched_folder_path AS header_root, {HEADER_FOLDER} AS header_folder, \
+         hp.group_name AS header_name, \
          NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
                      WHERE c.list_id = :list AND c.watched_folder_path = w.watched_folder_path \
-                       AND c.group_folder = {key}) AS header_expanded, \
+                       AND c.group_folder = {HEADER_FOLDER}) AS header_expanded, \
          CASE WHEN hp.key IS NULL THEN NULL \
               WHEN (SELECT pattern IS NOT NULL FROM import_list_view WHERE id = :list) \
               THEN (SELECT count(*) FROM import_list_matching AS m \
                     WHERE m.list_id = :list AND m.watched_folder_path = w.watched_folder_path \
-                      AND m.group_folder = {key}) \
+                      AND m.group_folder = {HEADER_FOLDER}) \
               ELSE (SELECT COUNT(*) FROM import_list_view AS v \
                     JOIN import_list_placement AS m \
                         ON m.watched_folder_path = w.watched_folder_path \
-                       AND m.group_folder = {key} AND m.item <> 'group' \
+                       AND m.group_folder = {HEADER_FOLDER} AND m.item <> 'group' \
                        AND (v.pending_filter = 'all' OR m.pending_entry = v.pending_filter) \
                     WHERE v.id = :list) END AS header_entries, \
          hp.combinable AS header_combinable"
@@ -161,9 +160,18 @@ fn read_header(row: &Row<'_>) -> rusqlite::Result<HeaderRow> {
     })
 }
 
-fn header_item(header: HeaderRow) -> Result<ImportListItem, DbError> {
+/// The header of the group of the row of a release, when it is a member of
+/// one.
+fn read_member_header(row: &Row<'_>) -> rusqlite::Result<Option<HeaderRow>> {
+    match row.get::<_, Option<RelativeFolder>>("header_folder")? {
+        Some(_) => read_header(row).map(Some),
+        None => Ok(None),
+    }
+}
+
+fn group_header(header: HeaderRow) -> Result<ImportGroupHeader, DbError> {
     let HeaderRow { root, folder, name, expanded, entry_count, combinable } = header;
-    Ok(ImportListItem::GroupHeader {
+    Ok(ImportGroupHeader {
         group: TriageGroup {
             key: FolderReleaseDecisionKey {
                 watched_folder_path: root.clone(),
@@ -198,9 +206,8 @@ struct ReleaseRows {
     facts: RuntimeFactColumns,
     /// What the scan read of a folder that failed validation.
     invalid: Option<folder_scans::InvalidColumns>,
-    /// The header of the group the release is listed under, by its stable
-    /// key.
-    header_key: Option<String>,
+    /// The header of the group the release is listed under.
+    header: Option<HeaderRow>,
     /// How the imported release's upload stands.
     upload: Option<UploadProgress>,
     /// The catalogs the imported release's records name.
@@ -220,7 +227,8 @@ struct ReleaseRows {
 
 /// The statement's last part: each item of the range, a group's header or a
 /// release's rows, by its key, in the window's order. A group's header reads
-/// its placement; a release reads its placement and the keyed rows beside it.
+/// its header; a release reads its placement, the keyed rows beside it and
+/// the header of its group.
 fn rows_statement(columns: &str) -> String {
     use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
@@ -229,12 +237,6 @@ fn rows_statement(columns: &str) -> String {
         "cover.file_id",
     );
     let link_records = claimed_records_sql("link.content_hash");
-    // The statement's rows are each of the range's items once as a `row`, and
-    // the first of them again as the `leading` header of its group when it is
-    // a member of one.
-    let item = "CASE r.role WHEN 'leading' THEN 'group' ELSE w.item END";
-    let key = "CASE r.role WHEN 'leading' THEN w.group_folder ELSE w.key END";
-    let header_columns = header_columns(key);
     format!(
         "SELECT p.watched_folder_path, p.key, \
                 p.has_summary, p.shown_title, p.shown_credits, {LISTED_COLUMNS}, \
@@ -243,12 +245,9 @@ fn rows_statement(columns: &str) -> String {
                 g.blocked, g.blocked_subject, g.blocked_holder, \
                 failure.content_hash IS NOT NULL AS failed, {FAILURE_REASON_COLUMNS}, \
                 {RUNTIME_FACT_COLUMNS}, \
-                p.group_folder AS group_folder, \
                 {library_cover} AS library_cover, \
                 {PROVENANCE_COLUMNS}, {RELEASE_LINK_COLUMNS}, {cover}, {invalid}, {actions}, \
-                CASE r.role WHEN 'row' THEN w.n - 1 ELSE -1 END AS pos, \
-                r.role AS role, {item} AS item, w.part AS part, \
-                w.watched_folder_path AS header_root, {key} AS header_folder, {header_columns}, \
+                w.item AS item, w.part AS part, {header_columns}, \
                 {RELEASE_UPLOAD_COUNT_COLUMNS}, \
                 CASE WHEN origin.release_id IS NOT NULL THEN {library_records} END \
                     AS library_records, \
@@ -257,17 +256,13 @@ fn rows_statement(columns: &str) -> String {
                      THEN ({link_records}) END AS link_records, \
                 {COVER_VERSION_COLUMNS}, {columns} \
          FROM keyed AS w \
-         JOIN (SELECT 'row' AS role UNION ALL SELECT 'leading') AS r \
-             ON r.role = 'row' \
-                OR (w.n = 1 AND w.item <> 'group' AND w.group_folder IS NOT NULL) \
          LEFT JOIN import_list_placement AS hp \
-             ON {item} = 'group' \
-            AND hp.watched_folder_path = w.watched_folder_path \
-            AND hp.item = 'group' AND hp.key = {key} \
+             ON hp.watched_folder_path = w.watched_folder_path \
+            AND hp.item = 'group' AND hp.key = {HEADER_FOLDER} \
          LEFT JOIN import_list_placement AS p \
-             ON {item} <> 'group' \
+             ON w.item <> 'group' \
             AND p.watched_folder_path = w.watched_folder_path \
-            AND p.key = {key} AND p.item <> 'group' \
+            AND p.key = w.key AND p.item <> 'group' \
          LEFT JOIN scan_candidate AS c \
              ON c.watched_folder_path = p.watched_folder_path AND c.path = p.key \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
@@ -287,7 +282,7 @@ fn rows_statement(columns: &str) -> String {
          LEFT JOIN ({RELEASES_SENDING}) AS sending ON sending.release_id = storage.release_id \
          {covers} \
          {invalid_join} \
-         ORDER BY pos",
+         ORDER BY w.n",
         cover = cover_read_columns(),
         library_cover = bae_records::records::files::cover_version_sql("origin.release_id"),
         library_records = release_records_json_sql("origin.release_id"),
@@ -295,6 +290,7 @@ fn rows_statement(columns: &str) -> String {
         invalid = invalid_columns.0,
         invalid_join = invalid_columns.1,
         actions = action_columns(),
+        header_columns = header_columns(),
     )
 }
 
@@ -328,15 +324,7 @@ fn read_release(row: &Row<'_>) -> rusqlite::Result<ReleaseRows> {
         },
         facts: RuntimeFactColumns::read(row, 25)?,
         invalid: folder_scans::InvalidColumns::read(row)?,
-        header_key: row
-            .get::<_, Option<RelativeFolder>>("group_folder")?
-            .map(|folder| {
-                Ok::<_, rusqlite::Error>(crate::list::group_stable_key(&FolderReleaseDecisionKey {
-                    watched_folder_path: path_column::get(row, 0)?,
-                    relative_folder: folder,
-                }))
-            })
-            .transpose()?,
+        header: read_member_header(row)?,
         upload: release_upload_progress_in_row(row)?,
         library_records: match row.get::<_, Option<String>>("library_records")? {
             Some(_) => records_column(row, "library_records")?,
@@ -403,7 +391,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
         block,
         failure,
         facts,
-        header_key,
+        header,
         upload,
         library_records,
         library_records_kind,
@@ -468,7 +456,7 @@ fn candidate_item(release: ReleaseRows) -> Result<ImportListItem, DbError> {
     Ok(ImportListItem::Candidate {
         row,
         live: crate::CandidateLiveState::of(actions, facts, standing),
-        header_key,
+        header: header.map(group_header).transpose()?,
     })
 }
 

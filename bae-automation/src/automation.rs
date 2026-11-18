@@ -117,7 +117,7 @@ impl Automation {
                         candidates.push(automation_candidate_from_invalid(&row));
                         continue;
                     }
-                    ImportListItem::GroupHeader { .. } => continue,
+                    ImportListItem::GroupHeader(_) => continue,
                 };
                 let Some(detail) = self
                     .services

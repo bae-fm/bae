@@ -37,12 +37,11 @@ fn import_list_window(
 ) -> bae_views::LiveListWindow {
     bae_views::LiveListWindow::new(
         list.until_closed(list.subscribe_window(window)),
-        |_read, window: bae_import::ImportWindow| {
-            let bae_import::ImportWindow { read, leading_header } = window;
+        |_read, read: bae_import::ImportWindow| {
             let (items, keys) = read.rows.into_iter().unzip();
             Some(bae_views::ListWindowValue {
                 window: read.window,
-                rows: bae_views::ListRows::Import { items, leading_header },
+                rows: bae_views::ListRows::Import(items),
                 keys,
             })
         },

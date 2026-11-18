@@ -27,7 +27,7 @@ fn combinable(read: &ImportListRead) -> Vec<(String, bool)> {
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {
-            ImportListItem::GroupHeader { group, .. } => {
+            ImportListItem::GroupHeader(crate::ImportGroupHeader { group, .. }) => {
                 Some((group.name.clone(), group.combinable))
             }
             _ => None,

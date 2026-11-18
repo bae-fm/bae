@@ -77,7 +77,12 @@ async fn a_list_counts_what_it_lists() {
                     .iter()
                     .flat_map(|window| window.rows.iter().map(|(item, _key)| item))
                 {
-                    let ImportListItem::GroupHeader { group, entry_count, .. } = item else {
+                    let ImportListItem::GroupHeader(crate::ImportGroupHeader {
+                        group,
+                        entry_count,
+                        ..
+                    }) = item
+                    else {
                         continue;
                     };
                     let members = kept

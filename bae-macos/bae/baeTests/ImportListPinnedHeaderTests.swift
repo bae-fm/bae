@@ -5,36 +5,18 @@ import Testing
 @testable import bae
 
 /// The header pinned over the top of the import list is the header of the
-/// group the row on top is listed under, read from that row's header key,
-/// never the last header the table happened to have loaded above it.
+/// group the row on top is listed under, which that row carries, never the
+/// last header the table happened to have loaded above it.
 @Suite("Import list pinned header")
 struct ImportListPinnedHeaderTests {
-    @Test("a member pins its group's header once a window delivers it")
-    func memberPinsItsHeaderOnceDelivered() {
-        // The list has loaded the rows on top, but not the window that holds
-        // their header, far above.
-        var landed = Self.rows(in: 50..<81)
-        let loading = ImportListPinnedHeader.over(
-            top: 60,
-            item: { landed[$0] },
-            header: { _ in nil }
-        )
+    @Test("a member pins the header it carries, whatever rows the list holds")
+    func memberPinsItsHeader() {
+        // The list holds the rows on top, but not the header's own row, far
+        // above.
+        let landed = Self.rows(in: 50..<81)
         #expect(
-            loading == ImportListPinnedHeader(key: Self.header.id, header: nil)
-        )
-
-        landed[0] = Self.header
-        let pinned = ImportListPinnedHeader.over(
-            top: 60,
-            item: { landed[$0] },
-            header: { key in landed.values.first { $0.id == key } }
-        )
-        #expect(
-            pinned
-                == ImportListPinnedHeader(
-                    key: Self.header.id,
-                    header: Self.header
-                )
+            Self.pinned(over: 60, landed: landed)
+                == ImportListPinnedHeader(header: Self.header)
         )
     }
 
@@ -55,10 +37,7 @@ struct ImportListPinnedHeaderTests {
         let landed = Self.rows(in: 0..<50)
         #expect(
             Self.pinned(over: 0, landed: landed)
-                == ImportListPinnedHeader(
-                    key: Self.header.id,
-                    header: Self.header
-                )
+                == ImportListPinnedHeader(header: Self.header)
         )
     }
 
@@ -71,49 +50,11 @@ struct ImportListPinnedHeaderTests {
         #expect(inside?.ends(below: 60) { landed[$0] } == false)
     }
 
-    /// The list's view opens inside the group. The pinned header is the
-    /// header that its window returns with its rows, though the window
-    /// doesn't hold the header's own row.
-    @MainActor
-    @Test("a window that starts inside a group pins the header it delivers")
-    func windowStartingInsideTheGroupPinsItsLeadingHeader() async throws {
-        let header = Self.header
-        let list = PaginatedList<BridgeImportListItem>(
-            queries: .fixed(
-                Self.list,
-                answers: UnansweredCount(),
-                extra: BridgeListCountExtra.import(
-                    narrowed: nil,
-                    tabs: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0)
-                ),
-                leadingHeader: { position in
-                    position > 0 && position < 80 ? header : nil
-                }
-            ),
-            onError: { _ in }
-        )
-        await list.reopen(at: 60)
-
-        #expect(list.row(of: header.id) == nil)
-        let pinned = ImportListPinnedHeader.over(
-            top: 60,
-            item: { list.row(at: $0) },
-            header: { list.row(of: $0) ?? list.leadingHeader(of: $0) }
-        )
-        #expect(
-            pinned == ImportListPinnedHeader(key: header.id, header: header)
-        )
-    }
-
     private static func pinned(
         over top: Int,
         landed: [Int: BridgeImportListItem]
     ) -> ImportListPinnedHeader? {
-        ImportListPinnedHeader.over(
-            top: top,
-            item: { landed[$0] },
-            header: { key in landed.values.first { $0.id == key } }
-        )
+        ImportListPinnedHeader.over(top: top, item: { landed[$0] })
     }
 }
 
@@ -122,7 +63,7 @@ struct ImportListPinnedHeaderTests {
 extension ImportListPinnedHeaderTests {
     /// A group's header at 0, its 79 members under it, and a release in no
     /// group after them.
-    private static let header = PreviewData.groupHeaderItem(
+    private static let header = PreviewData.groupHeader(
         key: BridgeFolderReleaseDecisionKey(
             watchedFolderPath: Data("/library".utf8),
             relativeFolder: Data("Group".utf8)
@@ -132,9 +73,9 @@ extension ImportListPinnedHeaderTests {
     )
 
     private static let list: [BridgeImportListItem] =
-        [header]
-        + (1..<80).map { member(index: $0, headerKey: header.id) }
-        + [member(index: 80, headerKey: nil)]
+        [.groupHeader(header: header)]
+        + (1..<80).map { member(index: $0, header: header) }
+        + [member(index: 80, header: nil)]
 
     /// The rows of `list` at `positions`, as the pages holding them landed.
     private static func rows(
@@ -145,7 +86,7 @@ extension ImportListPinnedHeaderTests {
 
     private static func member(
         index: Int,
-        headerKey: String?
+        header: BridgeImportGroupHeader?
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -168,7 +109,7 @@ extension ImportListPinnedHeaderTests {
                 metadataProvenance: nil,
                 reading: .unidentified
             ),
-            headerKey: headerKey
+            header: header
         )
     }
 }

@@ -157,7 +157,7 @@ impl ImportTables {
                 ))
             })
             .process(|(rows, count, summary, entries, selection)| {
-                Ok(crate::list::ImportListRead::of(rows.read, count, summary, entries, selection))
+                Ok(crate::list::ImportListRead::of(rows, count, summary, entries, selection))
             })
             .await
     }

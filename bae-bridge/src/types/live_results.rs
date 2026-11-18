@@ -126,13 +126,10 @@ pub enum BridgeListRows {
     SearchAlbums {
         rows: Vec<crate::types::BridgeAlbumSearchResult>,
     },
-    /// The import list's items, and the header of the group the first of
-    /// them is a member of when the window starts inside the group, which
-    /// the window does not hold.
+    /// The import list's items.
     #[cfg(desktop)]
     Import {
         items: Vec<crate::types::BridgeImportListItem>,
-        leading_header: Option<crate::types::BridgeImportListItem>,
     },
 }
 

@@ -272,7 +272,7 @@ async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
         projection.windows.iter().flat_map(|window| window.rows.iter().map(|(item, _key)| item))
     {
         match item {
-            crate::ImportListItem::GroupHeader { group, .. } => {
+            crate::ImportListItem::GroupHeader(crate::ImportGroupHeader { group, .. }) => {
                 headers.push((group.name.clone(), group.combinable));
             }
             crate::ImportListItem::Candidate { row, .. } => {

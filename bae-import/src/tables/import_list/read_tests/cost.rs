@@ -46,8 +46,7 @@ async fn measure_view(
             let mut rows = 0;
             for _ in 0..RUNS {
                 let started = Instant::now();
-                rows =
-                    tables.read_import_window(list, range.clone()).await.unwrap().read.rows.len();
+                rows = tables.read_import_window(list, range.clone()).await.unwrap().rows.len();
                 scroll.push(started.elapsed());
 
                 let started = Instant::now();
@@ -266,7 +265,6 @@ async fn measure_import_list_first_selected(db: &Store) {
             .read_import_window(list, from(&key, 10))
             .await
             .unwrap()
-            .read
             .rows
             .iter()
             .filter_map(|(item, _key)| match item {

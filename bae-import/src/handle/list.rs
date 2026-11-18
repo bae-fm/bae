@@ -35,7 +35,7 @@ impl ImportServiceHandle {
         let window = bae_store::ListWindow::top(u64::MAX);
         let read = self.services.tables.read_import_window(list, window).await;
         self.services.tables.close_import_list(list).await?;
-        Ok(read?.read.rows.into_iter().map(|(item, _key)| item).collect())
+        Ok(read?.rows.into_iter().map(|(item, _key)| item).collect())
     }
 
     /// Each watched folder's scan status: the first value at once, then a

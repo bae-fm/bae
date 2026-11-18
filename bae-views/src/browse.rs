@@ -45,13 +45,9 @@ pub enum ListRows {
     WorkChildren(Vec<crate::album_detail::WorkChild>),
     /// The albums a library search lists, in title order.
     SearchAlbums(Vec<crate::album_detail::AlbumSearchResult>),
-    /// The import list's items, and the header of the group the first of
-    /// them is a member of when the window starts inside the group.
+    /// The import list's items.
     #[cfg(desktop)]
-    Import {
-        items: Vec<bae_import::ImportListItem>,
-        leading_header: Option<bae_import::ImportListItem>,
-    },
+    Import(Vec<bae_import::ImportListItem>),
 }
 
 /// One delivery of a list's window: the request it answers, its rows, and

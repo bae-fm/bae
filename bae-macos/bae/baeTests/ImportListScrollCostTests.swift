@@ -79,7 +79,7 @@ enum ScrollCostFixture {
             // The first groups take one row more, so the 200 rows fill all 30.
             let members =
                 foundRows / groups + (group < foundRows % groups ? 1 : 0)
-            let header = PreviewData.groupHeaderItem(
+            let header = PreviewData.groupHeader(
                 key: BridgeFolderReleaseDecisionKey(
                     watchedFolderPath: PreviewData.importWatchedFolderPath,
                     relativeFolder: Data("Collection \(group)".utf8)
@@ -87,7 +87,7 @@ enum ScrollCostFixture {
                 name: "Collection \(group)",
                 entryCount: UInt32(members)
             )
-            items.append(header)
+            items.append(.groupHeader(header: header))
             for _ in 0..<members {
                 var member = found[row % found.count]
                 member.candidateKey = key("found", row)
@@ -96,7 +96,7 @@ enum ScrollCostFixture {
                 items.append(
                     PreviewData.candidateItem(
                         member,
-                        headerKey: header.id
+                        header: header
                     )
                 )
                 row += 1

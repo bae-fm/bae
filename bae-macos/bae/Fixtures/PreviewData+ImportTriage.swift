@@ -446,20 +446,14 @@ extension PreviewData {
     ) -> [BridgeImportListItem] {
         switch tab {
         case .pending:
+            let header = groupHeader(
+                key: importTabGroupKey,
+                name: "Artist Collection",
+                entryCount: UInt32(triageGroupedRows.count)
+            )
             return importTabPendingRows.map(candidateItem)
-                + [
-                    groupHeaderItem(
-                        key: importTabGroupKey,
-                        name: "Artist Collection",
-                        entryCount: UInt32(triageGroupedRows.count)
-                    )
-                ]
-                + triageGroupedRows.map {
-                    candidateItem(
-                        $0,
-                        headerKey: groupHeaderStableKey(importTabGroupKey)
-                    )
-                }
+                + [.groupHeader(header: header)]
+                + triageGroupedRows.map { candidateItem($0, header: header) }
         case .done:
             return importTabDoneRows.map(candidateItem)
         case .skipped:

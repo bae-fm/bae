@@ -107,7 +107,6 @@ async fn done_with_two_uploading(
 /// The release names one read of a list shows, in order.
 fn done_names(window: &bae_import::ImportWindow) -> Vec<String> {
     window
-        .read
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {
@@ -175,7 +174,7 @@ async fn done_runs_the_releases_still_uploading_first() {
     assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows, 4);
     // A key leads with the number of the part its row is in: C and B are
     // still uploading, A and D are not.
-    let part = |at: usize| across.read.rows[at].1.values()[0].clone();
+    let part = |at: usize| across.rows[at].1.values()[0].clone();
     assert_eq!(part(0), bae_store::list_windows::SortValue::Integer(0), "B is in the first part");
     assert_eq!(part(1), bae_store::list_windows::SortValue::Integer(1), "D is in the second");
     assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
@@ -229,7 +228,6 @@ fn done_uploads(
     window: &bae_import::ImportWindow,
 ) -> Vec<(String, Option<bae_records::UploadProgress>)> {
     window
-        .read
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {
@@ -353,7 +351,7 @@ async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(0)));
     let initial = window.next().await.expect("the initial value");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
-    assert!(initial.result.unwrap().read.rows.is_empty());
+    assert!(initial.result.unwrap().rows.is_empty());
 
     window.set(bae_store::ListWindow::top(50)).expect("the window is requested");
     let requested = window.next().await.expect("the requested value");

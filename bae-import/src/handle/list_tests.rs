@@ -56,7 +56,7 @@ impl LiveList {
         tokio::spawn(async move {
             while let Some(event) = window.next_inline().await {
                 let window = event.result.expect("the window reads");
-                rows.send_modify(|state| state.shown = Some(keys_of(&window.read.rows)));
+                rows.send_modify(|state| state.shown = Some(keys_of(&window.rows)));
             }
         });
         let mut entries = list.subscribe_filter_entries();
@@ -254,7 +254,7 @@ async fn one_row_on_the_page(
     let list = handle.open_list(ImportListView::default()).await.expect("the list opens");
     let mut window = list.subscribe_window(ListWindow::top(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
-    let on_page = keys_of(&initial.read.rows);
+    let on_page = keys_of(&initial.rows);
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
     let mut entries = list.subscribe_filter_entries();
     let entries_read = entries.next_inline().await.expect("the query stays open").unwrap();
@@ -270,7 +270,7 @@ async fn one_row_on_the_page(
 fn candidate_key(item: &crate::ImportListItem) -> Option<&crate::CandidateKey> {
     match item {
         crate::ImportListItem::Candidate { row, .. } => Some(&row.candidate_key),
-        crate::ImportListItem::GroupHeader { .. } | crate::ImportListItem::Invalid { .. } => None,
+        crate::ImportListItem::GroupHeader(_) | crate::ImportListItem::Invalid { .. } => None,
     }
 }
 
@@ -821,7 +821,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         fixture.import.open_list(crate::ImportListView::default()).await.expect("the list opens");
     let mut window = list.subscribe_window(page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
-    let on_page = keys_of(&initial.read.rows);
+    let on_page = keys_of(&initial.rows);
     assert_eq!(on_page.len(), 1, "the window holds one row");
     let on_key = on_page.into_iter().next().expect("one row");
     let off_key = [first, second]
@@ -862,7 +862,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     requests.set(ListWindow::top(2)).unwrap();
     let widened = loop {
         let value = window.next_inline().await.expect("the query stays open").result.unwrap();
-        if value.read.rows.len() == 2 {
+        if value.rows.len() == 2 {
             break value;
         }
     };
@@ -901,7 +901,6 @@ fn page_live_of(
     window: &ImportWindow,
 ) -> std::collections::BTreeMap<crate::CandidateKey, crate::CandidateLiveState> {
     window
-        .read
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {

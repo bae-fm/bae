@@ -294,7 +294,7 @@ extension ImportCandidateTablePlaceTests {
             Self.scroll(table, toRow: 20)
             try await Wait.until { slot.place?.position == 20 }
             #expect(Self.topRow(of: table) == 20)
-            #expect(coordinator.pinnedHeader()?.key == Self.headerItem(20).id)
+            #expect(coordinator.pinnedHeader()?.header == Self.header(20))
             #expect(!coordinator.pinnedStrip.isHidden)
             #expect(
                 coordinator.pinnedStrip.frame.height
@@ -309,8 +309,7 @@ extension ImportCandidateTablePlaceTests {
             table.enclosingScrollView?.reflectScrolledClipView(clipView)
             #expect(Self.topRow(of: table) == 19)
             let pinned = try #require(coordinator.pinnedHeader())
-            #expect(pinned.key == Self.headerItem(0).id)
-            #expect(pinned.header != nil)
+            #expect(pinned.header == Self.header(0))
             #expect(pinned.ends(below: 19) { coordinator.item(at: $0) })
             #expect(!coordinator.pinnedStrip.isHidden)
         }
@@ -417,9 +416,14 @@ extension ImportCandidateTablePlaceTests {
         candidateItem(index, folderName: "Release \(index)")
     }
 
-    /// A group's header at `index`.
+    /// The header row of the group at `index`.
     private static func headerItem(_ index: Int) -> BridgeImportListItem {
-        PreviewData.groupHeaderItem(
+        .groupHeader(header: header(index))
+    }
+
+    /// The header of the group at `index`.
+    private static func header(_ index: Int) -> BridgeImportGroupHeader {
+        PreviewData.groupHeader(
             key: BridgeFolderReleaseDecisionKey(
                 watchedFolderPath: Data("/library".utf8),
                 relativeFolder: Data("Group \(index)".utf8)
@@ -443,7 +447,7 @@ extension ImportCandidateTablePlaceTests {
                 return candidateItem(
                     index,
                     folderName: "Release \(index)",
-                    headerKey: header.map { headerItem($0).id }
+                    header: header.map { Self.header($0) }
                 )
             }
     }
@@ -451,7 +455,7 @@ extension ImportCandidateTablePlaceTests {
     private static func candidateItem(
         _ index: Int,
         folderName: String,
-        headerKey: String? = nil
+        header: BridgeImportGroupHeader? = nil
     ) -> BridgeImportListItem {
         PreviewData.candidateItem(
             BridgeTriageRow(
@@ -474,7 +478,7 @@ extension ImportCandidateTablePlaceTests {
                 metadataProvenance: nil,
                 reading: .unidentified
             ),
-            headerKey: headerKey
+            header: header
         )
     }
 }

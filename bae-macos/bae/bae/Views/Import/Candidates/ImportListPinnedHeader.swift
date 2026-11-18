@@ -2,28 +2,20 @@ import AppKit
 import BaeKit
 
 /// The group header pinned over the top of the import list: the header of
-/// the group the row on top is listed under. Each member names its header by
-/// the header's key, so the header is known from the row on top alone,
-/// whichever rows are loaded; a window that starts inside a group delivers
-/// that group's header beside its rows.
+/// the group the row on top is listed under. Each member carries its group's
+/// header, so the header is known from the row on top alone, whichever rows
+/// the list holds.
 struct ImportListPinnedHeader: Equatable {
-    /// The header's key.
-    let key: String
-    /// The header, when the list holds it as a loaded row or as a window's
-    /// leading header.
-    let header: BridgeImportListItem?
+    let header: BridgeImportGroupHeader
 
     /// The header pinned while the row at `top` is on top: a header on top
     /// pins itself, and a release in no group, or a row that is not loaded,
-    /// pins none. `header` finds the header of a key among the rows and
-    /// leading headers the list holds.
+    /// pins none.
     static func over(
         top: Int,
-        item: (Int) -> BridgeImportListItem?,
-        header: (String) -> BridgeImportListItem?
+        item: (Int) -> BridgeImportListItem?
     ) -> ImportListPinnedHeader? {
-        guard let key = headerKey(of: top, item: item) else { return nil }
-        return ImportListPinnedHeader(key: key, header: header(key))
+        header(of: top, item: item).map(ImportListPinnedHeader.init)
     }
 
     /// Whether the group ends with the row at `top`: the row below it has
@@ -31,20 +23,21 @@ struct ImportListPinnedHeader: Equatable {
     /// leaves with the row on top as it scrolls away.
     func ends(below top: Int, item: (Int) -> BridgeImportListItem?) -> Bool {
         guard item(top + 1) != nil else { return false }
-        return Self.headerKey(of: top + 1, item: item) != key
+        return Self.header(of: top + 1, item: item)?.stableKey
+            != header.stableKey
     }
 
-    /// The key of the header the row at `row` is listed under: the row's own
-    /// for a header, its group's header for a member.
-    private static func headerKey(
+    /// The header the row at `row` is listed under: the row itself for a
+    /// header, its group's header for a member.
+    private static func header(
         of row: Int,
         item: (Int) -> BridgeImportListItem?
-    ) -> String? {
+    ) -> BridgeImportGroupHeader? {
         switch item(row) {
-        case .groupHeader(let stableKey, _, _, _, _):
-            stableKey
-        case .candidate(_, _, let headerKey?):
-            headerKey
+        case .groupHeader(let header):
+            header
+        case .candidate(_, _, let header?):
+            header
         case .candidate, .invalid, nil:
             nil
         }

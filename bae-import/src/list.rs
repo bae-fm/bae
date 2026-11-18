@@ -76,13 +76,7 @@ pub struct ImportListId(pub(crate) i64);
 /// One item in the list.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportListItem {
-    GroupHeader {
-        group: TriageGroup,
-        watched_folder_path: std::path::PathBuf,
-        expanded: bool,
-        /// How many entries the group holds in this tab, after the filter.
-        entry_count: u32,
-    },
+    GroupHeader(ImportGroupHeader),
     /// A candidate, presented as what the candidate reads as on whichever tab
     /// places it. A Done row is the row it was in Found, its import status
     /// naming the one release this device imported from its files; it is
@@ -92,15 +86,35 @@ pub enum ImportListItem {
         /// What is running for the candidate, as the read found it, and the
         /// commands and state the row has with it.
         live: CandidateLiveState,
-        /// The stable key of the header of the group it is listed under,
-        /// for a member of a group. The list's query reads this key with the
-        /// row, so a surface knows the row's header as soon as it has the
-        /// row, whichever window holds the header.
-        header_key: Option<String>,
+        /// The header of the group it is listed under, for a member of a
+        /// group. The list's query reads the header with the row, so a
+        /// surface has the row's header as soon as it has the row, whichever
+        /// window holds the header's own row.
+        header: Option<ImportGroupHeader>,
     },
     /// A folder that failed validation, presented as what the scan read of
     /// it. It offers nothing to do, and nothing runs for it.
-    Invalid { row: InvalidRow },
+    Invalid {
+        row: InvalidRow,
+    },
+}
+
+/// A group's header: the group, how the list shows it, and how many of its
+/// entries the list holds.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportGroupHeader {
+    pub group: TriageGroup,
+    pub watched_folder_path: std::path::PathBuf,
+    pub expanded: bool,
+    /// How many entries the group holds in this tab, after the filter.
+    pub entry_count: u32,
+}
+
+impl ImportGroupHeader {
+    /// The stable key of the header's item.
+    pub fn stable_key(&self) -> String {
+        group_stable_key(&self.group.key)
+    }
 }
 
 /// The stable key of a group's header item.
@@ -125,7 +139,7 @@ impl ImportListItem {
     /// unambiguous.
     pub fn stable_key(&self) -> String {
         match self {
-            Self::GroupHeader { group, .. } => group_stable_key(&group.key),
+            Self::GroupHeader(header) => header.stable_key(),
             Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { row, .. } => {
                 format!("invalid:{}", hex::encode(coven::path_bytes(&row.folder)))
@@ -199,14 +213,8 @@ pub struct ImportListViewChange {
     pub left: Vec<crate::CandidateKey>,
 }
 
-/// One window of the list as it is read: its items, and the header of the
-/// group the first of them is a member of when the window starts inside the
-/// group, so a pinned header has it whichever windows are loaded.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportWindow {
-    pub read: WindowRead<ImportListItem>,
-    pub leading_header: Option<ImportListItem>,
-}
+/// One window of the list as it is read: its items, each with its key.
+pub type ImportWindow = WindowRead<ImportListItem>;
 
 /// What a view narrows its rows by: the tab, the text filter and the filter
 /// entry, as the view states them.

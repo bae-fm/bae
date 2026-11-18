@@ -85,16 +85,15 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let mut window = tables.subscribe_import_window(list, first(50));
     let mut count = tables.subscribe_import_count(list);
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(candidate_names(&unkeyed(&initial.read.rows)), ["release"]);
+    assert_eq!(candidate_names(&unkeyed(&initial.rows)), ["release"]);
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
     let initial_counts = tables.load_tab_counts().await.unwrap();
     assert_eq!((initial_counts.pending, initial_counts.done), (1, 0));
 
     imported_release(&db, &candidate).await;
 
-    let imported =
-        next_until(&mut window, "an empty Pending", |read| read.read.rows.is_empty()).await;
-    assert!(imported.read.rows.is_empty(), "Pending no longer holds the row");
+    let imported = next_until(&mut window, "an empty Pending", |read| read.rows.is_empty()).await;
+    assert!(imported.rows.is_empty(), "Pending no longer holds the row");
     assert_eq!(count_until(&mut count, "no rows", |count| count.rows == 0).await.rows, 0);
     assert_eq!(tables.load_tab_counts().await.unwrap().done, 1);
 }
@@ -133,7 +132,7 @@ async fn a_moved_folder_stays_done() {
     assert_eq!(moved.files.content_hash(), imported.files.content_hash());
     let list = open_in_path_order(&db, crate::TriageTab::Done).await;
     let read = tables.read_import_window(list, first(50)).await.unwrap();
-    assert_eq!(candidate_names(&unkeyed(&read.read.rows)), vec!["renamed".to_string()]);
+    assert_eq!(candidate_names(&unkeyed(&read.rows)), vec!["renamed".to_string()]);
     assert_eq!(tables.load_tab_counts().await.unwrap().pending, 0);
 }
 
@@ -207,13 +206,13 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's rerun at its last row");
     assert!(count.is_marked_for_rerun());
     let grown = below.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(candidate_names(&unkeyed(&grown.read.rows)).last().map(String::as_str), Some("Z"));
+    assert_eq!(candidate_names(&unkeyed(&grown.rows)).last().map(String::as_str), Some("Z"));
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 7);
 
     lib.run(lib.scan("A0")).await;
     assert!(above.is_marked_for_rerun(), "A0 sorts into the upper window");
     let grown = above.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(candidate_names(&unkeyed(&grown.read.rows)), ["A", "A0", "B"]);
+    assert_eq!(candidate_names(&unkeyed(&grown.rows)), ["A", "A0", "B"]);
 }
 
 /// Scans the folders and opens a list that shows the ones whose name contains
@@ -240,10 +239,7 @@ async fn a_search_window_delivers_without_its_count() {
     let tables = lib.tables();
     let mut window = tables.subscribe_import_window(list, first(50));
     let delivered = window.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(
-        candidate_names(&unkeyed(&delivered.read.rows)),
-        ["A wanted", "C wanted", "E wanted"]
-    );
+    assert_eq!(candidate_names(&unkeyed(&delivered.rows)), ["A wanted", "C wanted", "E wanted"]);
     let count = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap();
     assert_eq!(count.rows, 3);
 }
@@ -270,10 +266,7 @@ async fn a_scan_item_reruns_the_search_window_holding_it_and_the_count() {
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's rerun at its last row");
     assert!(count.is_marked_for_rerun());
     let grown = below.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(
-        candidate_names(&unkeyed(&grown.read.rows)).last().map(String::as_str),
-        Some("Z wanted")
-    );
+    assert_eq!(candidate_names(&unkeyed(&grown.rows)).last().map(String::as_str), Some("Z wanted"));
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 7);
 }
 
@@ -321,12 +314,12 @@ async fn import_list_wakes_on_a_scan_item() {
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
     let mut window = tables.subscribe_import_window(list, first(50));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(candidate_names(&unkeyed(&initial.read.rows)), vec!["first".to_string()]);
+    assert_eq!(candidate_names(&unkeyed(&initial.rows)), vec!["first".to_string()]);
 
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "second")).await.unwrap();
-    let grown = next_until(&mut window, "both folders", |read| read.read.rows.len() == 2).await;
+    let grown = next_until(&mut window, "both folders", |read| read.rows.len() == 2).await;
     assert_eq!(
-        candidate_names(&unkeyed(&grown.read.rows)),
+        candidate_names(&unkeyed(&grown.rows)),
         vec!["first".to_string(), "second".to_string()]
     );
 }
@@ -392,7 +385,7 @@ async fn chain(
         // A window after the first starts at the row the last one ended at.
         let repeated = usize::from(window.from.is_some());
         let limit = window.limit;
-        let rows = tables.read_import_window(list, window).await.unwrap().read.rows;
+        let rows = tables.read_import_window(list, window).await.unwrap().rows;
         let last = rows.last().map(|(_, key)| key.clone());
         let full = rows.len() as u64 == limit;
         items.extend(rows.into_iter().skip(repeated).map(|(item, _key)| item));
@@ -408,7 +401,7 @@ async fn whole(
     tables: &crate::tables::ImportTables,
     list: ImportListId,
 ) -> Vec<crate::list::ImportListItem> {
-    let rows = tables.read_import_window(list, first(u64::MAX)).await.unwrap().read.rows;
+    let rows = tables.read_import_window(list, first(u64::MAX)).await.unwrap().rows;
     rows.into_iter().map(|(item, _key)| item).collect()
 }
 
@@ -466,7 +459,7 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
     assert_eq!(chain(&tables, list, 10).await, everything);
     for offset in [0, 10, 55, 100, everything.len() as u64 - 1] {
         let key = tables.import_key_at(list, offset).await.unwrap().unwrap();
-        let window = tables.read_import_window(list, from(&key, 10)).await.unwrap().read;
+        let window = tables.read_import_window(list, from(&key, 10)).await.unwrap();
         let wanted: Vec<_> = everything.iter().skip(offset as usize).take(10).cloned().collect();
         let held: Vec<_> = window.rows.into_iter().map(|(item, _key)| item).collect();
         assert_eq!(held, wanted, "a window from the key at {offset}");
@@ -547,7 +540,7 @@ async fn a_fold_reruns_the_windows_holding_the_group() {
     assert!(below.is_marked_for_rerun(), "the window holding the group reruns");
     assert!(above.is_marked_for_rerun(), "coven bounds neither window's rerun at its last row");
     let folded = below.next_inline().await.expect("the query stays open").result.unwrap();
-    assert!(!items_sequence(&unkeyed(&folded.read.rows)).contains(&"candidate C/One".to_string()));
+    assert!(!items_sequence(&unkeyed(&folded.rows)).contains(&"candidate C/One".to_string()));
 }
 
 /// What the selected rows hold is a live query keyed by its request: new

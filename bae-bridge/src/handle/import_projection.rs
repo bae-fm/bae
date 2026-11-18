@@ -442,30 +442,36 @@ mirror_struct! {
     },
 }
 
+impl crate::types::BridgeImportGroupHeader {
+    pub(crate) fn from_core(header: bae_import::ImportGroupHeader) -> Self {
+        let stable_key = header.stable_key();
+        let bae_import::ImportGroupHeader { group, watched_folder_path, expanded, entry_count } =
+            header;
+        Self {
+            stable_key,
+            group: crate::types::BridgeTriageGroup {
+                key: crate::types::BridgeFolderReleaseDecisionKey::from_core(group.key),
+                name: group.name,
+                combinable: group.combinable,
+            },
+            watched_folder_path: coven::path_bytes(&watched_folder_path),
+            expanded,
+            entry_count,
+        }
+    }
+}
+
 impl crate::types::BridgeImportListItem {
     pub(crate) fn from_core(item: bae_import::ImportListItem) -> Self {
         let stable_key = item.stable_key();
         match item {
-            bae_import::ImportListItem::GroupHeader {
-                group,
-                watched_folder_path,
-                expanded,
-                entry_count,
-            } => Self::GroupHeader {
-                stable_key,
-                group: crate::types::BridgeTriageGroup {
-                    key: crate::types::BridgeFolderReleaseDecisionKey::from_core(group.key),
-                    name: group.name,
-                    combinable: group.combinable,
-                },
-                watched_folder_path: coven::path_bytes(&watched_folder_path),
-                expanded,
-                entry_count,
+            bae_import::ImportListItem::GroupHeader(header) => Self::GroupHeader {
+                header: crate::types::BridgeImportGroupHeader::from_core(header),
             },
-            bae_import::ImportListItem::Candidate { row, live, header_key } => Self::Candidate {
+            bae_import::ImportListItem::Candidate { row, live, header } => Self::Candidate {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row, live),
-                header_key,
+                header: header.map(crate::types::BridgeImportGroupHeader::from_core),
             },
             bae_import::ImportListItem::Invalid { row } => Self::Invalid {
                 stable_key,

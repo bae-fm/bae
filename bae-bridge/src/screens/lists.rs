@@ -145,12 +145,11 @@ impl BridgeListRows {
                     .collect(),
             },
             #[cfg(desktop)]
-            bae_views::ListRows::Import { items, leading_header } => BridgeListRows::Import {
+            bae_views::ListRows::Import(items) => BridgeListRows::Import {
                 items: items
                     .into_iter()
                     .map(crate::types::BridgeImportListItem::from_core)
                     .collect(),
-                leading_header: leading_header.map(crate::types::BridgeImportListItem::from_core),
             },
         }
     }

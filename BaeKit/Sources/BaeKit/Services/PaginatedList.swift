@@ -469,12 +469,6 @@ extension PaginatedList {
         return delivered.start + at
     }
 
-    /// The row that belongs above the window's rows without being among
-    /// them, when `id` is that row of the window the list holds.
-    public func leadingHeader(of id: Row.ID) -> Row? {
-        delivered?.leadingHeader.flatMap { $0.id == id ? $0 : nil }
-    }
-
     /// The row of `id` the list holds, or nil if the window doesn't hold it.
     /// A row shown more than once is the same row at each place.
     public func row(of id: Row.ID) -> Row? {

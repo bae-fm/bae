@@ -35,19 +35,18 @@ extension PreviewData {
     static func candidateItem(
         _ row: BridgeTriageRow
     ) -> BridgeImportListItem {
-        candidateItem(row, headerKey: nil)
+        candidateItem(row, header: nil)
     }
 
-    /// `row` listed under the group header with the stable key `headerKey`,
-    /// or in no group.
+    /// `row` listed under the group header `header`, or in no group.
     static func candidateItem(
         _ row: BridgeTriageRow,
-        headerKey: String?
+        header: BridgeImportGroupHeader?
     ) -> BridgeImportListItem {
         .candidate(
             stableKey: "candidate:\(hex(row.candidateKey))",
             row: row,
-            headerKey: headerKey
+            header: header
         )
     }
 
@@ -67,14 +66,15 @@ extension PreviewData {
         "group:\(hex(key.watchedFolderPath)):\(hex(key.relativeFolder))"
     }
 
-    static func groupHeaderItem(
+    /// The header of the group `key` names.
+    static func groupHeader(
         key: BridgeFolderReleaseDecisionKey,
         name: String,
         expanded: Bool = true,
         combinable: Bool = false,
         entryCount: UInt32
-    ) -> BridgeImportListItem {
-        .groupHeader(
+    ) -> BridgeImportGroupHeader {
+        BridgeImportGroupHeader(
             stableKey: groupHeaderStableKey(key),
             group: BridgeTriageGroup(
                 key: key,
@@ -84,6 +84,25 @@ extension PreviewData {
             watchedFolderPath: key.watchedFolderPath,
             expanded: expanded,
             entryCount: entryCount
+        )
+    }
+
+    /// The header row of the group `key` names.
+    static func groupHeaderItem(
+        key: BridgeFolderReleaseDecisionKey,
+        name: String,
+        expanded: Bool = true,
+        combinable: Bool = false,
+        entryCount: UInt32
+    ) -> BridgeImportListItem {
+        .groupHeader(
+            header: groupHeader(
+                key: key,
+                name: name,
+                expanded: expanded,
+                combinable: combinable,
+                entryCount: entryCount
+            )
         )
     }
 

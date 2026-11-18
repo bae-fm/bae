@@ -164,7 +164,6 @@ impl DecisionFixture {
                 let window =
                     live.next_inline().await.expect("the query stays open").result.unwrap();
                 let names: Vec<String> = window
-                    .read
                     .rows
                     .iter()
                     .filter_map(|(item, _key)| match item {

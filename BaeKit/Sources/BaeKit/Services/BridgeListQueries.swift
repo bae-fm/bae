@@ -6,15 +6,10 @@ public struct ListViewDelivery<Row: Sendable>: Sendable {
     /// The position of the first row.
     public let start: Int
     public let rows: [Row]
-    /// A row that belongs above the window's first row without being in the
-    /// window: the import list's header of the group the window starts
-    /// inside. Nil for a list with no such row.
-    public let leadingHeader: Row?
 
-    public init(start: Int, rows: [Row], leadingHeader: Row? = nil) {
+    public init(start: Int, rows: [Row]) {
         self.start = start
         self.rows = rows
-        self.leadingHeader = leadingHeader
     }
 }
 
@@ -106,23 +101,16 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
             self.init(
                 calls: handle.calls(of: list),
                 sections: sections,
-                rows: rows,
-                leadingHeader: nil
+                rows: rows
             )
         }
 
         /// The reads of the import list `list`, which names its own list.
         public init(
             importList list: ImportList,
-            rows: @escaping @Sendable (BridgeListRows) -> [Row],
-            leadingHeader: @escaping @Sendable (BridgeListRows) -> Row?
+            rows: @escaping @Sendable (BridgeListRows) -> [Row]
         ) {
-            self.init(
-                calls: list,
-                sections: nil,
-                rows: rows,
-                leadingHeader: leadingHeader
-            )
+            self.init(calls: list, sections: nil, rows: rows)
         }
 
         private init(
@@ -130,8 +118,7 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
             sections: (
                 @Sendable () -> PulledValues<[BridgeLibraryBrowseSection]>
             )?,
-            rows: @escaping @Sendable (BridgeListRows) -> [Row],
-            leadingHeader: (@Sendable (BridgeListRows) -> Row?)?
+            rows: @escaping @Sendable (BridgeListRows) -> [Row]
         ) {
             self.init(
                 view: { first, last in
@@ -146,8 +133,7 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
                         values: PulledValues(subscription) { value in
                             ListViewDelivery(
                                 start: Int(value.start),
-                                rows: rows(value.rows),
-                                leadingHeader: leadingHeader?(value.rows)
+                                rows: rows(value.rows)
                             )
                         }
                     )

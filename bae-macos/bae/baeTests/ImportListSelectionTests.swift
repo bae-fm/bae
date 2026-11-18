@@ -30,11 +30,11 @@ struct ImportListSelectionTests {
         uiStore.setImportCandidateTab(.pending)
         let store = PreviewData.importTabScene().store
         let slot = try await Self.selectingSlot(
-            items: (grouped ? [Self.groupHeader] : [])
+            items: (grouped ? [.groupHeader(header: Self.groupHeader)] : [])
                 + [
                     PreviewData.candidateItem(
                         PreviewData.triageRowIdentified,
-                        headerKey: grouped ? Self.groupHeader.id : nil
+                        header: grouped ? Self.groupHeader : nil
                     )
                 ],
             store: store,
@@ -133,7 +133,7 @@ struct ImportListSelectionTests {
     func headersAreNotSelected() async throws {
         let uiStore = UiStore()
         let store = PreviewData.importTabScene().store
-        let header = PreviewData.groupHeaderItem(
+        let header = PreviewData.groupHeader(
             key: BridgeFolderReleaseDecisionKey(
                 watchedFolderPath: Data("/library".utf8),
                 relativeFolder: Data("Group".utf8)
@@ -145,10 +145,10 @@ struct ImportListSelectionTests {
         let slot = try await Self.selectingSlot(
             items: [
                 PreviewData.candidateItem(PreviewData.triageRowIdentified),
-                header,
+                .groupHeader(header: header),
                 PreviewData.candidateItem(
                     PreviewData.triageRowUnidentified,
-                    headerKey: header.id
+                    header: header
                 ),
             ],
             store: store,
@@ -247,7 +247,7 @@ struct ImportListSelectionTests {
     }
 
     /// The header of a group, `Group`, under the library's folder.
-    private static let groupHeader = PreviewData.groupHeaderItem(
+    private static let groupHeader = PreviewData.groupHeader(
         key: BridgeFolderReleaseDecisionKey(
             watchedFolderPath: Data("/library".utf8),
             relativeFolder: Data("Group".utf8)

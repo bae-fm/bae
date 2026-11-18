@@ -158,16 +158,14 @@
         public static func fixedDelivery(
             first: Int,
             last: Int,
-            rows: [Row],
-            leadingHeader: @Sendable (_ position: Int) -> Row? = { _ in nil }
+            rows: [Row]
         ) -> ListViewDelivery<Row> {
             let screen = last - first + 1
             let start = min(max(0, first - screen), rows.count)
             let end = min(start + 3 * screen, rows.count)
             return ListViewDelivery(
                 start: start,
-                rows: start < end ? Array(rows[start..<end]) : [],
-                leadingHeader: start < end ? leadingHeader(start) : nil
+                rows: start < end ? Array(rows[start..<end]) : []
             )
         }
 
@@ -176,8 +174,7 @@
         /// around them.
         private static func fixedView(
             of rows: [Row],
-            answers: UnansweredCount,
-            leadingHeader: @escaping @Sendable (_ position: Int) -> Row?
+            answers: UnansweredCount
         ) -> @Sendable (UInt64, UInt64) -> ListViewQuery<Row> {
             { first, last in
                 let requests = FixedRequests<ClosedRange<Int>>(answers: answers)
@@ -188,8 +185,7 @@
                         return Self.fixedDelivery(
                             first: shown.lowerBound,
                             last: shown.upperBound,
-                            rows: rows,
-                            leadingHeader: leadingHeader
+                            rows: rows
                         )
                     },
                     cancel: { requests.close() }
@@ -209,16 +205,9 @@
             _ rows: [Row],
             answers: UnansweredCount,
             sections: [BridgeLibraryBrowseSection] = [],
-            extra: BridgeListCountExtra = .none,
-            leadingHeader: @escaping @Sendable (_ position: Int) -> Row? = {
-                _ in nil
-            }
+            extra: BridgeListCountExtra = .none
         ) -> BridgeListQueries<Row> {
-            let view = Self.fixedView(
-                of: rows,
-                answers: answers,
-                leadingHeader: leadingHeader
-            )
+            let view = Self.fixedView(of: rows, answers: answers)
             let count: @Sendable () -> PulledValues<BridgeListCount> = {
                 let value = BridgeListCount(
                     rows: UInt64(rows.count),

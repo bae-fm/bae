@@ -652,15 +652,14 @@ extension ImportCandidateTableCoordinator {
         return row < 0 ? rowCount - 1 : min(row, rowCount - 1)
     }
 
-    /// The header of the group the row on top is listed under, as the rows
-    /// that have landed say.
+    /// The header of the group the row on top is listed under, as that row
+    /// carries it.
     func pinnedHeader() -> ImportListPinnedHeader? {
         guard let top = topRow else { return nil }
         let list = list
         return ImportListPinnedHeader.over(
             top: top,
-            item: { list.row(at: $0) },
-            header: { list.row(of: $0) ?? list.leadingHeader(of: $0) }
+            item: { list.row(at: $0) }
         )
     }
 
@@ -669,7 +668,7 @@ extension ImportCandidateTableCoordinator {
     /// none over a release in no group.
     fileprivate func refreshPinnedHeader() {
         guard let tableView, let scrollView, let top = topRow,
-            let pinned = pinnedHeader(), let header = pinned.header
+            let pinned = pinnedHeader()
         else {
             pinnedStrip.hide()
             return
@@ -682,7 +681,7 @@ extension ImportCandidateTableCoordinator {
             : 0
         pinnedStrip.show(
             ImportListEntry(
-                item: header,
+                item: .groupHeader(header: pinned.header),
                 coverContent: nil,
                 actions: actions,
                 environment: environment

@@ -156,7 +156,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         let reading = window.clone();
         let reader = tokio::spawn(async move {
             while let Ok(event) = reading.next().await {
-                let delivered = event.result.expect("the window reads").read.rows.len();
+                let delivered = event.result.expect("the window reads").rows.len();
                 tx.send_replace(delivered as u64);
             }
         });

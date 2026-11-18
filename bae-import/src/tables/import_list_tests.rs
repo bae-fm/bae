@@ -376,7 +376,9 @@ pub(crate) fn items_sequence(items: &[ImportListItem]) -> Vec<String> {
     items
         .iter()
         .map(|item| match item {
-            ImportListItem::GroupHeader { group, .. } => format!("group {}", group.name),
+            ImportListItem::GroupHeader(crate::ImportGroupHeader { group, .. }) => {
+                format!("group {}", group.name)
+            }
             ImportListItem::Candidate { row, .. } => format!("candidate {}", display_path(row)),
             ImportListItem::Invalid { row, .. } => {
                 format!("invalid {}", shown_folder(&row.folder, &row.watched_folder_path))
@@ -582,7 +584,6 @@ pub(crate) fn rows(projection: &ImportListRead) -> Vec<crate::TriageRow> {
 /// The release rows one window holds.
 pub(crate) fn window_rows(window: &crate::ImportWindow) -> Vec<crate::TriageRow> {
     window
-        .read
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {

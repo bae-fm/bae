@@ -8,8 +8,9 @@ import Foundation
     extension BridgeImportListItem: Identifiable {
         public var id: String {
             switch self {
-            case .groupHeader(let stableKey, _, _, _, _),
-                .candidate(let stableKey, _, _),
+            case .groupHeader(let header):
+                return header.stableKey
+            case .candidate(let stableKey, _, _),
                 .invalid(let stableKey, _):
                 return stableKey
             }
@@ -19,22 +20,12 @@ import Foundation
     extension BridgeListRows {
         /// The items of an import list's window.
         fileprivate var importItems: [BridgeImportListItem] {
-            guard case .import(let items, _) = self else {
+            guard case .import(let items) = self else {
                 preconditionFailure(
                     "the import list delivered rows of another list"
                 )
             }
             return items
-        }
-
-        /// The header of the group an import list's window starts inside.
-        fileprivate var importLeadingHeader: BridgeImportListItem? {
-            guard case .import(_, let header) = self else {
-                preconditionFailure(
-                    "the import list delivered rows of another list"
-                )
-            }
-            return header
         }
     }
 
@@ -112,8 +103,7 @@ import Foundation
             self.init(
                 queries: BridgeListQueries(
                     importList: list,
-                    rows: { $0.importItems },
-                    leadingHeader: { $0.importLeadingHeader }
+                    rows: { $0.importItems }
                 ),
                 summary: { PulledValues(list.subscribeSummary()) },
                 filterEntries: {

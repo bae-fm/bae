@@ -44,7 +44,7 @@ async fn opened_at(
             let key = tables.import_key_at(list, position).await.unwrap().expect("a row there");
             let from = bae_store::ListWindow { from: Some(key), limit: 1 };
             let first = tables.read_import_window(list, from).await.unwrap();
-            let shown = items_sequence(&unkeyed(&first.read.rows));
+            let shown = items_sequence(&unkeyed(&first.rows));
             let selected = lib.read(list).await;
             let whole = sequence(&selected);
             assert_eq!(shown[0], whole[position as usize], "the window from the key starts there");

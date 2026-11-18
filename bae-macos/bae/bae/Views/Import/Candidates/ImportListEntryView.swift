@@ -62,20 +62,22 @@ struct ImportListEntryView: View {
     private var content: some View {
         let actions = entry.actions
         switch entry.item {
-        case .groupHeader(_, let group, _, let expanded, _):
+        case .groupHeader(let header):
             MacImportGroupHeader(
-                group: group,
-                expanded: expanded,
-                onSetExpanded: { actions.onSetGroupExpanded(group, $0) },
-                onCombine: { actions.onCombineFolder(group.key) }
+                group: header.group,
+                expanded: header.expanded,
+                onSetExpanded: {
+                    actions.onSetGroupExpanded(header.group, $0)
+                },
+                onCombine: { actions.onCombineFolder(header.group.key) }
             )
-        case .candidate(_, let row, let headerKey):
+        case .candidate(_, let row, let header):
             // Every tab's row, drawn the same: a Done row is the row it was
             // in Found, and offers the release imported from it.
             MacImportRow(
                 row: row,
                 coverContent: entry.coverContent,
-                isGroupMember: headerKey != nil,
+                isGroupMember: header != nil,
                 menuOffers: { actions.menuOffers(row) },
                 onPerform: actions.onPerform,
                 onShowInLibrary: row.importedRelease.map { release in
