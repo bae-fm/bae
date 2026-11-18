@@ -532,6 +532,42 @@ async fn an_unreachable_storage_shows_once_as_its_connection_record() {
     manager.library.manager().close().await.unwrap();
 }
 
+/// A device stopped at a slot only a newer app reads shows that failure
+/// once, as the slot's pending record.
+#[test]
+fn a_blocked_slot_shows_once_as_its_slot_record() {
+    crate::test_libraries::run_two_device_test(async |devices| {
+        let manager = devices.a().manager();
+        let album = create_test_album();
+        manager.records.insert_album(&album).await.unwrap();
+        devices.converge("SELECT id FROM albums").await;
+
+        let mut raised = crate::SCHEMA.migrations();
+        raised.push(coven::Migration::breaking(
+            2,
+            "index works by title",
+            bae_records::test_fixtures::WORKS_BY_TITLE,
+            coven::OldWrites::Drop,
+            crate::SCHEMA.synced_tables(),
+        ));
+        devices.a_mut().reopen_with(raised).await;
+        let other = create_test_album();
+        devices.a().manager().records.insert_album(&other).await.unwrap();
+        devices.a().manager().store.sync_now();
+
+        let b = devices.b();
+        b.wait_until("the second device stopping for the update", || async {
+            let status = b.manager().sync_status().await.unwrap();
+            matches!(status.shown_pass(), Some(coven::LastPass::Blocked { .. }))
+                && status.failure_recorded
+        })
+        .await;
+        let status = b.manager().sync_status().await.unwrap();
+        assert_eq!(status.shown_failure(), None);
+        assert!(status.attention_count >= 1);
+    });
+}
+
 /// Each failure coven retries by itself is retried by a pass at once, which
 /// syncs: storage unreachable, a server error, throttling without a cooldown, a conflict, an expired upload session. A
 /// missing object fails no pass here: the pass reads it as absent.

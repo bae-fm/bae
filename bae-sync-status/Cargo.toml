@@ -34,8 +34,6 @@ bae-records = { workspace = true, features = ["test-utils"] }
 bae-people = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
-# The JSON coven keeps its sync state and pending records in.
-serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
