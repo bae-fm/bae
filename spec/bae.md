@@ -205,8 +205,8 @@ Play plays the tracks the library holds from the first as a list of tracks
 (§7.1), Play next and Add to queue put the tracks the library holds in Up next
 in that order, and Add to playlist appends the tracks to the playlist in that
 order in one write: when the library lacks any of the tracks, Add to playlist
-adds none of them. New playlist starts a playlist holding them, or fails as Add
-to playlist does.
+adds none of them. New playlist starts a playlist holding the tracks the library
+holds.
 
 On macOS the person picks several albums in the album grid the same way:
 cmd-click picks or unpicks an album, shift-click picks the albums of the cards
@@ -4947,7 +4947,7 @@ it played everything named:
 |---|---|
 | Playing | everything named plays |
 | Playing without releases | those of several releases that hold no tracks are left out; the outcome carries how many, and the line says it |
-| Playing without tracks | those tracks of a list the library doesn't hold are left out; the outcome carries how many, and the line says it |
+| Playing without tracks | those tracks of a given list the library doesn't hold are left out; the outcome carries how many, and the line says it. A play of tracks the person picked (§2.1) leaves out the ones the library lacks and says nothing of them |
 | Nothing to play | what was named holds no tracks; the queue is as it was |
 | Start track gone | the track to start from is no longer on the release or in the library, or the list has none at its index; the queue is as it was |
 

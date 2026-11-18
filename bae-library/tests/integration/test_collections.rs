@@ -208,9 +208,10 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
 
 /// Picked tracks make a playlist, and go onto one, in the order their
 /// release lists them, whatever order the picks came in; a pick the library
-/// lacks adds none of them.
+/// lacks makes a new playlist hold the rest and adds none of them to an
+/// existing one.
 #[tokio::test]
-async fn picked_tracks_go_into_a_playlist_in_their_release_s_order_or_not_at_all() {
+async fn picked_tracks_go_into_a_playlist_in_their_release_s_order() {
     let directory = tempfile::tempdir().unwrap();
     let (library, storage) = storage_library(
         directory.path(),
@@ -262,9 +263,12 @@ async fn picked_tracks_go_into_a_playlist_in_their_release_s_order_or_not_at_all
         library.manager().append_playlist_entries(id, picked(&[&second, &unknown, &first])).await;
     assert!(refused.is_err());
     assert_eq!(tracks(id).await.len(), 4);
-    let refused =
-        library.manager().create_playlist("Morning", Sharing::Private, picked(&[&unknown])).await;
-    assert!(refused.is_err());
+    let morning = library
+        .manager()
+        .create_playlist("Morning", Sharing::Private, picked(&[&second, &unknown, &first]))
+        .await
+        .unwrap();
+    assert_eq!(tracks(morning).await, vec![first.clone(), second.clone()]);
     library.manager().close().await.unwrap();
 }
 

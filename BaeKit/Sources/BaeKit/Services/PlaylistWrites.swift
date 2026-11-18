@@ -5,8 +5,8 @@ import Foundation
 /// move an entry, delete it.
 public struct PlaylistWrites: Sendable {
     /// Make a playlist holding the tracks a person picked, `trackIds` in no
-    /// order, in the order their release lists them, and return its id. A
-    /// failed write, such as one naming a track the library lacks, leaves no
+    /// order, in the order their release lists them, and return its id. The
+    /// playlist holds the picks the library holds. A failed write leaves no
     /// playlist.
     public let createOfPicked:
         @Sendable (

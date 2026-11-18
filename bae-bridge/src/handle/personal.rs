@@ -9,7 +9,7 @@ forward! { async this => {
     fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
     fn create_playlist(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),track_ids.into()).await?.to_string()) }
-    /// Make a playlist holding the tracks a person picked, in the order their release lists them. A pick the library lacks fails the write.
+    /// Make a playlist holding the tracks a person picked, in the order their release lists them. A pick the library lacks is left out.
     fn create_playlist_of_picked(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),crate::from_app::picked(track_ids)).await?.to_string()) }
     fn play_playlist(playlist_id: String, start_position_id: Option<String>, shuffle: bool) -> BridgePlayOutcome {
         let start = start_position_id.map(|id| id.parse().map_err(BridgeError::config)).transpose()?;
