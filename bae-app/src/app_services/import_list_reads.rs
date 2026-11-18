@@ -118,5 +118,7 @@ impl AppServices {
     #[cfg(any(test, feature = "test-utils"))]
     delegate_async!(import, import_list_key_at_for_test => list_key_at(request: ImportListRequest, position: u64) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError>);
     #[cfg(any(test, feature = "test-utils"))]
+    delegate_async!(import, read_import_list_for_test => read_list_for_test(request: ImportListRequest, selected: Vec<bae_import::CandidateKey>) -> Result<bae_import::ImportListRead, bae_store::DbError>);
+    #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(import, follow_import_list_for_test => follow_list(request: ImportListRequest, window: bae_store::ListWindow) -> bae_import::FollowedImportList);
 }

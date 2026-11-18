@@ -814,9 +814,12 @@ pub(crate) fn page_window(limit: u64) -> bae_store::ListWindow {
 /// The list's next value, with everything else the list shows read beside
 /// it.
 pub(crate) async fn next_page(
+    fixture: &Fixture,
     list: &crate::list::FollowedImportList,
 ) -> crate::list::ImportListRead {
-    tokio::time::timeout(HANG_GUARD, list.next(Vec::new())).await.expect("the list delivers")
+    tokio::time::timeout(HANG_GUARD, fixture.import.next_list_read(list, Vec::new()))
+        .await
+        .expect("the list delivers")
 }
 
 /// How many of Found's rows a snapshot counts under `filter`.

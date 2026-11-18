@@ -1601,7 +1601,6 @@ frozen = [
 allowed = [
     { path = "bae-import/src/list.rs", item = "ImportListRequest::keeps_all", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
     { path = "bae-import/src/tables/import_list/judged.rs", item = "Fragments::folds_sql", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
-    { path = "bae-import/src/list/test_read.rs", item = "FollowedImportList", shape = "kept-state", count = 1, reason = "a test helper that follows one list: it keeps the request and window it follows with, as a screen does" },
     { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-views/src/list_view.rs", item = "State::take", shape = "kept-state", count = 4, reason = "keeps the latest answer of the window's live query and of its position's, when each answers the window last requested, which a long list's view may hold" },
     { path = "bae-views/src/list_view.rs", item = "State::take_fresh", shape = "kept-state", count = 1, reason = "marks the latest answers of the window's and its position's live queries as sent; a flag over the answers a long list's view may hold, not rows" },

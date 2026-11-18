@@ -174,13 +174,13 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     fixture.provider.hold("/release/mb-row?");
     fixture.scan(1).await;
     let list = list_subscription(&fixture, page_window(50)).await;
-    let initial = next_page(&list).await;
+    let initial = next_page(&fixture, &list).await;
     assert_eq!(counted(&initial, crate::PendingFilter::Identified), 0);
 
     fixture.start_explicit_lookup(&dir);
     let reading = tokio::time::timeout(HANG_GUARD, async {
         loop {
-            let snapshot = next_page(&list).await;
+            let snapshot = next_page(&fixture, &list).await;
             if page_live(&snapshot)[&key].facts.identification
                 == Some(crate::IdentificationStatus::ReadingPick { import_asked: false })
             {

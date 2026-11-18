@@ -162,8 +162,14 @@ async fn the_draft_keeps_its_label_rows_as_typed() {
 }
 
 /// The next snapshot the list delivers, with the selection of `selected`.
-async fn delivered(list: &FollowedImportList, selected: &[crate::CandidateKey]) -> ImportListRead {
-    tokio::time::timeout(HANG_GUARD, list.next(selected.to_vec())).await.expect("the list delivers")
+async fn delivered(
+    handle: &ImportServiceHandle,
+    list: &FollowedImportList,
+    selected: &[crate::CandidateKey],
+) -> ImportListRead {
+    tokio::time::timeout(HANG_GUARD, handle.next_list_read(list, selected.to_vec()))
+        .await
+        .expect("the list delivers")
 }
 
 /// The candidate rows `snapshot` holds: each one's stable key, and its row.
@@ -207,14 +213,15 @@ fn field_edits() -> Vec<DraftFieldEdit> {
 async fn edits_under(view: ImportListView) {
     let (handle, _tmp, key) = picked_fixture("edited-while-selected").await;
     let list = handle.subscribe_whole_list(view);
-    let opened = delivered(&list, &[]).await;
+    let opened = delivered(&handle, &list, &[]).await;
     let stable_key = crate::list::candidate_stable_key(&key);
     assert_eq!(
         candidate_rows(&opened).into_iter().map(|(stable, _)| stable).collect::<Vec<_>>(),
         vec![stable_key.clone()],
         "the view shows the identified row"
     );
-    let selected = list.read(vec![key.clone()]).await;
+    let selected =
+        handle.read_list_for_test(list.request().clone(), vec![key.clone()]).await.unwrap();
     assert_eq!(selected.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
 
     for edit in field_edits() {
@@ -244,7 +251,7 @@ async fn edits_under(view: ImportListView) {
         .unwrap();
 
     let edited = loop {
-        let snapshot = delivered(&list, std::slice::from_ref(&key)).await;
+        let snapshot = delivered(&handle, &list, std::slice::from_ref(&key)).await;
         let rows = candidate_rows(&snapshot);
         let shows_title = rows.iter().any(|(_, row)| {
             row.metadata_summary

@@ -8,7 +8,7 @@ use bae_import::selection::SingleSelection;
 use bae_import::{
     Admission, ArtistAssignment, CandidateAction, CandidateKey, CandidateRuntimeChange,
     CandidateRuntimeSnapshot, FollowedImportList, ImportListItem, ImportListOrder, ImportListRead,
-    ImportListView, PendingFilter, TriageTab,
+    ImportListRequest, ImportListView, ImportListViewChange, PendingFilter, TriageTab,
 };
 use bae_store::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
@@ -61,10 +61,65 @@ async fn tab_counts_until(
     .expect("the tab counts get there");
 }
 
+/// A list the test follows through one window, and the services it reads
+/// everything else the list shows through.
+struct Followed<'a> {
+    services: &'a AppServices,
+    list: FollowedImportList,
+}
+
+impl Followed<'_> {
+    fn request(&self) -> ImportListRequest {
+        self.list.request().clone()
+    }
+
+    /// Everything the list shows now, and what `selected` holds.
+    async fn read(&self, selected: Vec<CandidateKey>) -> ImportListRead {
+        self.services
+            .read_import_list_for_test(self.request(), selected)
+            .await
+            .expect("the list reads")
+    }
+
+    /// The window's next value, with everything else the list shows and
+    /// what `selected` holds read beside it.
+    async fn next(&self, selected: Vec<CandidateKey>) -> ImportListRead {
+        self.list.changed().await;
+        self.read(selected).await
+    }
+
+    /// The keys of every row the list shows: what Select All selects.
+    async fn keys(&self) -> Result<Vec<CandidateKey>, bae_import::ImportError> {
+        self.services.import_list_keys(self.request()).await
+    }
+
+    /// The rows of `selected` the list shows, in its order.
+    async fn selected(
+        &self,
+        selected: Vec<CandidateKey>,
+    ) -> Result<bae_import::selection::SelectedRows, bae_import::ImportError> {
+        self.services.import_list_selected(self.request(), selected, None).await
+    }
+
+    /// Show `view`, the folds unchanged, with `selected` the keys the test
+    /// keeps selected, as a surface opens a new list under the new request;
+    /// the change names where it opens and the ones the new view takes out.
+    async fn set_view(
+        &mut self,
+        view: ImportListView,
+        selected: Vec<CandidateKey>,
+    ) -> Result<ImportListViewChange, bae_import::ImportError> {
+        let request = ImportListRequest { view, ..self.request() };
+        let change = self.services.import_list_view_change(request.clone(), selected).await?;
+        self.list = self.services.follow_import_list_for_test(request, ListWindow::top(50));
+        Ok(change)
+    }
+}
+
 /// The list's snapshots, each with the selection of `selected`, until one
 /// `accept` admits.
 async fn until(
-    list: &FollowedImportList,
+    list: &Followed<'_>,
     selected: &[CandidateKey],
     accept: impl Fn(&ImportListRead) -> bool,
 ) -> ImportListRead {
@@ -86,8 +141,11 @@ async fn list_showing(
     services: &AppServices,
     view: ImportListView,
     count: u64,
-) -> (FollowedImportList, ImportListRead) {
-    let list = services.follow_import_list_for_test(view.into(), ListWindow::top(50));
+) -> (Followed<'_>, ImportListRead) {
+    let list = Followed {
+        services,
+        list: services.follow_import_list_for_test(view.into(), ListWindow::top(50)),
+    };
     let snapshot = until(&list, &[], |snapshot| {
         snapshot.count.rows == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
@@ -97,7 +155,7 @@ async fn list_showing(
 }
 
 /// The keys of `selected` the list shows, in its order.
-async fn selected_keys(list: &FollowedImportList, selected: &[CandidateKey]) -> Vec<CandidateKey> {
+async fn selected_keys(list: &Followed<'_>, selected: &[CandidateKey]) -> Vec<CandidateKey> {
     list.selected(selected.to_vec())
         .await
         .unwrap()
@@ -162,7 +220,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
     let not_looked_up =
         ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
-    let (list, shown) = list_showing(&services, not_looked_up, 3).await;
+    let (mut list, shown) = list_showing(&services, not_looked_up, 3).await;
     let picked: Vec<CandidateKey> = on_page(&shown).into_iter().take(2).collect();
     let selected = list.read(picked.clone()).await;
     assert_eq!(selected.selection.count, 2);
@@ -208,7 +266,7 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     let tmp = TempDir::new().unwrap();
     let services = open(&tmp.path().join("db")).await;
     scan_albums(&services, &tmp.path().join("Collection"), 3).await;
-    let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
+    let (mut list, _) = list_showing(&services, ImportListView::default(), 3).await;
     let mut selected = list.keys().await.unwrap();
 
     let change = list

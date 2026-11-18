@@ -388,6 +388,6 @@ async fn a_folder_removed_and_found_again_starts_with_no_standing() {
 
     assert_eq!(fixture.identification_status(&key).await, None);
     let list = list_subscription(&fixture, page_window(50)).await;
-    let (_, live) = &page_rows(&next_page(&list).await)[&key];
+    let (_, live) = &page_rows(&next_page(&fixture, &list).await)[&key];
     assert_eq!(live.facts.identification, None, "the row shows no failure");
 }

@@ -712,7 +712,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     fixture.scan(1).await;
 
     let list = list_subscription(&fixture, page_window(50)).await;
-    let initial = next_page(&list).await;
+    let initial = next_page(&fixture, &list).await;
     let idle = page_live(&initial).remove(&key).expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
@@ -720,7 +720,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     assert_eq!(counted(&initial.pending_filter_entries, crate::PendingFilter::InProgress), Some(0));
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
-    let claimed = next_page(&list).await;
+    let claimed = next_page(&fixture, &list).await;
     let queued = &page_live(&claimed)[&key];
     assert_eq!(queued.facts.import, Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)));
     assert_eq!(
@@ -746,7 +746,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         )
         .await;
     fixture.import.emit_event_for_test(reported(&key, preparing("import-1")));
-    let taken_up = &page_live(&next_page(&list).await)[&key];
+    let taken_up = &page_live(&next_page(&fixture, &list).await)[&key];
     assert_eq!(
         taken_up.facts.import,
         Some(crate::ImportStep::Preparing(crate::PrepareStep::ValidatingSourceFiles)),
@@ -764,7 +764,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
             crate::ImportStep::Running(crate::ImportPhase::MeasuringLoudness),
         )
         .await;
-    let measuring = &page_live(&next_page(&list).await)[&key];
+    let measuring = &page_live(&next_page(&fixture, &list).await)[&key];
     assert_eq!(
         measuring.facts.import,
         Some(crate::ImportStep::Running(crate::ImportPhase::MeasuringLoudness))
@@ -784,7 +784,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     fixture
         .import
         .emit_event_for_test(reported(&key, running(crate::ImportPhase::Finalizing, None)));
-    let writing = next_page(&list).await;
+    let writing = next_page(&fixture, &list).await;
     let writing_live = &page_live(&writing)[&key];
     assert_eq!(
         writing_live.facts.import,
@@ -800,7 +800,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     // A window move is one more request to the same query, and the rows it
     // reads carry where each stands.
     list.set_window(page_window(49));
-    let moved = next_page(&list).await;
+    let moved = next_page(&fixture, &list).await;
     assert_eq!(
         moved.windows[0].rows, writing.windows[0].rows,
         "the window move read the rows as they were delivered"

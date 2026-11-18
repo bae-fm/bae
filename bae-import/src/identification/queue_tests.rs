@@ -738,7 +738,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     fixture.scan(MAX_IN_FLIGHT + 1).await;
 
     let list = list_subscription(&fixture, page_window(50)).await;
-    let initial = next_page(&list).await;
+    let initial = next_page(&fixture, &list).await;
     let keys: Vec<crate::CandidateKey> =
         dirs.iter().map(|dir| crate::CandidateKey::folder(dir)).collect();
     for key in &keys {
@@ -758,7 +758,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     // Every slot holds a lookup the provider has not answered, so the row
     // over the cap waits.
     let waiting = loop {
-        let snapshot = next_page(&list).await;
+        let snapshot = next_page(&fixture, &list).await;
         let runs = keys.iter().filter(|key| status(&snapshot, key) == running).count();
         let waits: Vec<&crate::CandidateKey> =
             keys.iter().filter(|key| status(&snapshot, key) == queued).collect();
@@ -771,7 +771,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     // row's run takes it, held at its own lookup.
     fixture.provider.let_one_through();
     loop {
-        let snapshot = next_page(&list).await;
+        let snapshot = next_page(&fixture, &list).await;
         match status(&snapshot, &waiting) {
             Some(crate::IdentificationStatus::Queued) => {}
             Some(crate::IdentificationStatus::Running) => break,

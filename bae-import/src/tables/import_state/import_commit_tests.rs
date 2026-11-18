@@ -455,7 +455,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     fixture.identify_ready(&dir, "mb-standing-import", "rg-standing-import").await;
 
     let list = list_subscription(&fixture, page_window(50)).await;
-    let initial = next_page(&list).await;
+    let initial = next_page(&fixture, &list).await;
     assert!(!page_rows(&initial)[&key].1.facts.importing());
     let tables = crate::tables::ImportTables::new(fixture.db.clone());
     assert_eq!(tables.load_tab_counts().await.unwrap().done, 0);
@@ -483,7 +483,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     fixture.import.start_import(&key).await.unwrap();
     let mut importing = 0;
     loop {
-        let snapshot = next_page(&list).await;
+        let snapshot = next_page(&fixture, &list).await;
         match page_rows(&snapshot).remove(&key) {
             Some((_, live)) if live.facts.importing() => importing += 1,
             Some((_, live)) => assert_eq!(

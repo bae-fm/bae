@@ -487,7 +487,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     fixture.scan(1).await;
 
     let list = list_subscription(&fixture, page_window(50)).await;
-    let initial = next_page(&list).await;
+    let initial = next_page(&fixture, &list).await;
     let (_, at_rest) = &page_rows(&initial)[&key];
     assert_eq!(at_rest.facts.identification, None);
     assert_eq!(at_rest.standing, Some(crate::PendingStanding::NotLookedUp));
@@ -495,7 +495,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     fixture.identification().rerun_identify(key.clone());
     let mut identifying = 0;
     let answered = loop {
-        let snapshot = next_page(&list).await;
+        let snapshot = next_page(&fixture, &list).await;
         let (_, live) = page_rows(&snapshot).remove(&key).expect("the row stays on Found");
         if live.facts.identifying() {
             assert!(

@@ -405,7 +405,22 @@ impl ImportServiceHandle {
         request: impl Into<crate::ImportListRequest>,
         window: bae_store::ListWindow,
     ) -> crate::list::FollowedImportList {
-        crate::list::FollowedImportList::follow(self.clone(), request.into(), window)
+        let request = request.into();
+        let windows = self.subscribe_list_window(request.clone(), window);
+        crate::list::FollowedImportList::follow(request, windows)
+    }
+
+    /// Everything `list` shows once its window delivers its next value, with
+    /// what the rows at `selected` hold and offer, read beside it in one
+    /// snapshot.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn next_list_read(
+        &self,
+        list: &crate::list::FollowedImportList,
+        selected: Vec<crate::CandidateKey>,
+    ) -> crate::list::ImportListRead {
+        list.changed().await;
+        self.read_list_for_test(list.request().clone(), selected).await.expect("the list reads")
     }
 
     /// The list `request` shows, read through every row, once `accept`
@@ -420,7 +435,7 @@ impl ImportServiceHandle {
     ) -> crate::list::ImportListRead {
         let list = self.subscribe_whole_list(request);
         loop {
-            let read = list.next(Vec::new()).await;
+            let read = self.next_list_read(&list, Vec::new()).await;
             if accept(&read) {
                 return read;
             }
