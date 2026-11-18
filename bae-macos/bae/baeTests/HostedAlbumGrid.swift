@@ -71,6 +71,7 @@ struct HostedAlbumGrid {
             defer: false
         )
         window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
         window.contentView = host
         window.orderFront(nil)
         let hosted = HostedAlbumGrid(
