@@ -187,7 +187,6 @@ pub(crate) fn claimed_records_sql(hash: &str) -> String {
     )
 }
 
-/// One stored claimed record's columns.
 #[derive(serde::Deserialize)]
 struct RecordColumns {
     catalog: String,
@@ -196,46 +195,33 @@ struct RecordColumns {
     album: Option<String>,
 }
 
-impl RecordColumns {
-    fn record(self) -> Result<ReleaseRecord, DbError> {
-        let reference = MetadataRef::new(super::match_rows::catalog_of(&self.catalog)?, self.key);
-        match self.kind.as_str() {
-            "pressing" => Ok(ReleaseRecord::new(&reference, self.album)),
-            "album" => Ok(ReleaseRecord::album(&reference)),
-            other => Err(DbError::unreadable("a claimed record's kind", other)),
-        }
-    }
-}
-
 /// The records a [`claimed_records_sql`] column holds.
 pub(crate) fn claimed_records_of_json(json: &str) -> Result<Vec<ReleaseRecord>, DbError> {
     let rows: Vec<RecordColumns> = serde_json::from_str(json)
         .map_err(|error| DbError::unreadable_json("the claimed records", json, error))?;
-    rows.into_iter().map(RecordColumns::record).collect()
+    rows.into_iter()
+        .map(|row| {
+            let reference = MetadataRef::new(super::match_rows::catalog_of(&row.catalog)?, row.key);
+            match row.kind.as_str() {
+                "pressing" => Ok(ReleaseRecord::new(&reference, row.album)),
+                "album" => Ok(ReleaseRecord::album(&reference)),
+                other => Err(DbError::unreadable("a claimed record's kind", other)),
+            }
+        })
+        .collect()
 }
 
-/// The stored records the link of the candidate `content_hash` claims, in
-/// the order surfaces list them.
+/// The stored records the link of the candidate `content_hash` claims, read
+/// by [`claimed_records_sql`] as its own statement.
 fn load_claimed_records_on<S: coven::SqlRead>(
     sql: &S,
     content_hash: &str,
 ) -> Result<Vec<ReleaseRecord>, DbError> {
-    sql.query(
-        "SELECT catalog, kind, key, album FROM import_candidate_claimed_record \
-         WHERE content_hash = ? ORDER BY position",
-        [content_hash],
-        |row| {
-            Ok(RecordColumns {
-                catalog: row.get(0)?,
-                kind: row.get(1)?,
-                key: row.get(2)?,
-                album: row.get(3)?,
-            })
-        },
-    )?
-    .into_iter()
-    .map(RecordColumns::record)
-    .collect()
+    let json: String =
+        sql.query_row(&format!("SELECT ({})", claimed_records_sql("?")), [content_hash], |row| {
+            row.get(0)
+        })?;
+    claimed_records_of_json(&json)
 }
 
 impl ImportTables {

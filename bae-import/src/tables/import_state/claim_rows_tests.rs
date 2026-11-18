@@ -63,17 +63,8 @@ fn pressing(record: LookupRef, partners: Vec<LookupRef>) -> ReleaseLink {
 /// The stored records the link of `content_hash` claims.
 async fn stored_records(db: &Store, content_hash: &str) -> Vec<(Catalog, String, Option<String>)> {
     let content_hash = content_hash.to_owned();
-    let json: String = db
-        .read(move |sql| {
-            Ok(sql.query_row(
-                &format!("SELECT ({})", claimed_records_sql("?")),
-                [content_hash],
-                |row| row.get(0),
-            )?)
-        })
+    db.read(move |sql| load_claimed_records_on(&sql, &content_hash))
         .await
-        .unwrap();
-    claimed_records_of_json(&json)
         .unwrap()
         .iter()
         .map(|record| {
