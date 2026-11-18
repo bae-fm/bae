@@ -4035,14 +4035,6 @@
    "x": 1296,
    "y": 5432
   },
-  "android.welcome.open-failed.dc.html": {
-   "h": 916,
-   "page": "welcome",
-   "title": "Welcome: a library failed to open",
-   "w": 412,
-   "x": 1294,
-   "y": 15556
-  },
   "mac.welcome.libraries.damaged-join.dc.html": {
    "h": 600,
    "page": "welcome",
@@ -4426,6 +4418,14 @@
    "w": 412,
    "x": 10684,
    "y": 8652
+  },
+  "android.welcome.opening.damaged.dc.html": {
+   "h": 916,
+   "page": "welcome",
+   "title": "The library's data is damaged",
+   "w": 412,
+   "x": 1968,
+   "y": 5844
   }
  },
  "createdOnFiles": {
@@ -6412,6 +6412,7 @@
   "android.welcome.opening.finding-libraries.dc.html",
   "android.welcome.opening.steps.dc.html",
   "android.welcome.opening.failed.dc.html",
+  "android.welcome.opening.damaged.dc.html",
   "android.welcome.opening.start-failed.dc.html",
   "mac.welcome.opening.finding-libraries.dc.html",
   "mac.welcome.opening.steps.dc.html",
@@ -6507,7 +6508,6 @@
   "mac.import.list.folder-not-watched.dc.html",
   "mac.playback.casting.no-volume.dc.html",
   "android.playback.full-player.no-volume.dc.html",
-  "android.welcome.open-failed.dc.html",
   "mac.welcome.libraries.damaged-join.dc.html",
   "mac.welcome.libraries.discard-join.dc.html",
   "android.welcome.libraries.damaged-join.dc.html",
