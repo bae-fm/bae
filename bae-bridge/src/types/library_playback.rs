@@ -679,12 +679,6 @@ pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
     BridgeDurationClock::from_millis(ms)
 }
 
-/// The clock for a track's length ("3:07"), which every track has.
-#[uniffi::export]
-pub fn bridge_length_clock(ms: u64) -> BridgeDurationClock {
-    BridgeDurationClock::of_length(ms)
-}
-
 /// The two clocks a seek bar shows. Mirror of bae-util's `SeekBarClocks`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSeekBarClocks {

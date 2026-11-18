@@ -139,7 +139,7 @@ extension PreviewData {
                 albumTitle: "Album Title A",
                 coverImage: nil
             ),
-            durationClock: bridgeLengthClock(ms: 210_000)
+            durationClock: BridgeDurationClock.length(ms: 210_000)
         ),
         BridgeQueueEntry(
             entryId: "e-02",
@@ -152,7 +152,7 @@ extension PreviewData {
                 albumTitle: "Album Title A",
                 coverImage: nil
             ),
-            durationClock: bridgeLengthClock(ms: 240_000)
+            durationClock: BridgeDurationClock.length(ms: 240_000)
         ),
         BridgeQueueEntry(
             entryId: "e-03",
@@ -165,7 +165,7 @@ extension PreviewData {
                 albumTitle: "Album Title B",
                 coverImage: nil
             ),
-            durationClock: bridgeLengthClock(ms: 198_000)
+            durationClock: BridgeDurationClock.length(ms: 198_000)
         ),
         BridgeQueueEntry(
             entryId: "e-04",
@@ -178,7 +178,7 @@ extension PreviewData {
                 albumTitle: "Album Title B",
                 coverImage: nil
             ),
-            durationClock: bridgeLengthClock(ms: 225_000)
+            durationClock: BridgeDurationClock.length(ms: 225_000)
         ),
         BridgeQueueEntry(
             entryId: "e-05",
@@ -191,7 +191,7 @@ extension PreviewData {
                 albumTitle: "Album Title C",
                 coverImage: nil
             ),
-            durationClock: bridgeLengthClock(ms: 187_000)
+            durationClock: BridgeDurationClock.length(ms: 187_000)
         ),
     ]
 

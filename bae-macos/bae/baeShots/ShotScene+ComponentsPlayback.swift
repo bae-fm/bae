@@ -188,7 +188,7 @@ extension ShotScene {
                             imageType: .cover
                         )
                     ),
-                    durationClock: bridgeLengthClock(ms: 272_000)
+                    durationClock: BridgeDurationClock.length(ms: 272_000)
                 ),
                 isHovered: hover,
                 onHoverChanged: { _ in },
@@ -371,7 +371,7 @@ extension ShotScene {
                 albumTitle: album,
                 coverImage: cover(album)
             ),
-            durationClock: bridgeLengthClock(ms: duration)
+            durationClock: BridgeDurationClock.length(ms: duration)
         )
     }
 

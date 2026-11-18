@@ -101,9 +101,10 @@ extension PreviewData {
                                             name: track.file,
                                             layout: .file
                                         ),
-                                        durationClock: bridgeLengthClock(
-                                            ms: track.durationMs
-                                        ),
+                                        durationClock:
+                                            BridgeDurationClock.length(
+                                                ms: track.durationMs
+                                            ),
                                         positionText: "\(index + 1)"
                                     ),
                                     artistStanding: nil
@@ -344,10 +345,14 @@ extension PreviewData {
                     ),
                     track: edit.tracks[index],
                     position: "\(index + 1)",
-                    length: bridgeLengthClock(ms: entry.seconds * 1_000),
+                    length: BridgeDurationClock.length(
+                        ms: entry.seconds * 1_000
+                    ),
                     listedLength: entry.seconds == entry.listedSeconds
                         ? nil
-                        : bridgeLengthClock(ms: entry.listedSeconds * 1_000),
+                        : BridgeDurationClock.length(
+                            ms: entry.listedSeconds * 1_000
+                        ),
                     artistStanding: nil
                 )
             }

@@ -170,7 +170,7 @@ struct ImportMappingTracksLayoutTests {
             source: pairedMapping.source,
             track: pairedMapping.track,
             position: "1",
-            length: bridgeLengthClock(ms: 180_000),
+            length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
             artistStanding: nil
         )
@@ -204,8 +204,8 @@ struct ImportMappingTracksLayoutTests {
             source: pairedMapping.source,
             track: pairedMapping.track,
             position: "1",
-            length: bridgeLengthClock(ms: 180_000),
-            listedLength: bridgeLengthClock(ms: 210_000),
+            length: BridgeDurationClock.length(ms: 180_000),
+            listedLength: BridgeDurationClock.length(ms: 210_000),
             artistStanding: nil
         )
 
@@ -379,7 +379,7 @@ extension ImportMappingTracksLayoutTests {
                 file: .standalone(fileId: "track.flac")
             ),
             position: "1",
-            length: bridgeLengthClock(ms: 180_000),
+            length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
             artistStanding: nil
         )
@@ -451,7 +451,7 @@ extension ImportMappingTracksLayoutTests {
                 )
             ),
             position: String(number),
-            length: bridgeLengthClock(ms: 180_000),
+            length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
             artistStanding: nil
         )

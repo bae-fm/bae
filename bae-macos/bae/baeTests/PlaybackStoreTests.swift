@@ -35,7 +35,7 @@ private func queueEntry(_ entryId: String) -> BridgeQueueEntry {
             albumTitle: "Album Title",
             coverImage: nil
         ),
-        durationClock: bridgeLengthClock(ms: 180_000)
+        durationClock: BridgeDurationClock.length(ms: 180_000)
     )
 }
 

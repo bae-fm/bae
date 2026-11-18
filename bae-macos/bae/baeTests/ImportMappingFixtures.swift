@@ -78,7 +78,9 @@ extension MappingFixtures {
                 file: .standalone(fileId: "\(index).flac")
             ),
             position: "\(index)",
-            length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
+            length: BridgeDurationClock.length(
+                ms: UInt64(200_000 + index * 1000)
+            ),
             listedLength: nil,
             artistStanding: nil
         )
@@ -113,7 +115,9 @@ extension MappingFixtures {
                                     file: .standalone(fileId: "13.flac")
                                 ),
                                 position: "13",
-                                length: bridgeLengthClock(ms: UInt64(213_000)),
+                                length: BridgeDurationClock.length(
+                                    ms: UInt64(213_000)
+                                ),
                                 listedLength: nil,
                                 artistStanding: nil
                             )
@@ -190,7 +194,7 @@ extension MappingFixtures {
                             file: .standalone(fileId: containerId)
                         ),
                         position: "1",
-                        length: bridgeLengthClock(ms: 2_400_000),
+                        length: BridgeDurationClock.length(ms: 2_400_000),
                         listedLength: nil,
                         artistStanding: nil
                     )
@@ -257,7 +261,9 @@ extension MappingFixtures {
                 )
             ),
             position: "\(index + 1)",
-            length: bridgeLengthClock(ms: UInt64(200_000 + index * 1000)),
+            length: BridgeDurationClock.length(
+                ms: UInt64(200_000 + index * 1000)
+            ),
             listedLength: nil,
             artistStanding: nil
         )
@@ -306,7 +312,7 @@ extension MappingFixtures {
                                 file: .standalone(fileId: "\(index).flac")
                             ),
                             position: "\(index)",
-                            length: bridgeLengthClock(
+                            length: BridgeDurationClock.length(
                                 ms: UInt64(200_000 + index * 1000)
                             ),
                             listedLength: nil,

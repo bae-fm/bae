@@ -66,10 +66,14 @@ extension PreviewData {
             source: .file(file: mappingAudio(index)),
             track: confirmEditValues.tracks[index - 1],
             position: "\(index)",
-            length: bridgeLengthClock(ms: UInt64(180_000 + index * 15000)),
+            length: BridgeDurationClock.length(
+                ms: UInt64(180_000 + index * 15000)
+            ),
             // Track 4's release lists a longer length than its audio measures.
             listedLength: index == 4
-                ? bridgeLengthClock(ms: UInt64(180_000 + index * 15000 + 21000))
+                ? BridgeDurationClock.length(
+                    ms: UInt64(180_000 + index * 15000 + 21000)
+                )
                 : nil,
             artistStanding: nil
         )
@@ -196,7 +200,7 @@ extension PreviewData {
                             ),
                             track: moreTracksEditValues.tracks[0],
                             position: "1",
-                            length: bridgeLengthClock(ms: 2_720_000),
+                            length: BridgeDurationClock.length(ms: 2_720_000),
                             listedLength: nil,
                             artistStanding: nil
                         )
@@ -230,7 +234,7 @@ extension PreviewData {
             source: .sheetEntry(entry: entry),
             track: confirmEditValues.tracks[index],
             position: "\(index + 1)",
-            length: bridgeLengthClock(ms: durationMs),
+            length: BridgeDurationClock.length(ms: durationMs),
             listedLength: nil,
             artistStanding: nil
         )

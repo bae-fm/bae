@@ -41,7 +41,7 @@ extension PreviewData {
                 id: id,
                 title: title,
                 durationMs: durationMs,
-                durationClock: bridgeLengthClock(ms: durationMs),
+                durationClock: BridgeDurationClock.length(ms: durationMs),
                 artistLine: .named(displayArtist ?? "Artist Name"),
                 displayArtist: displayArtist.map(BridgeCreditLine.named),
                 positionText: position,

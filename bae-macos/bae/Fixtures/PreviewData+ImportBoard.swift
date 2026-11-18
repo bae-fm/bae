@@ -263,7 +263,7 @@ extension PreviewData {
                                     ),
                                     track: edit.tracks[index],
                                     position: "\(index + 1)",
-                                    length: bridgeLengthClock(
+                                    length: BridgeDurationClock.length(
                                         ms: track.durationMs
                                     ),
                                     listedLength: nil,

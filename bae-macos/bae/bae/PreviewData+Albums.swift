@@ -20,7 +20,9 @@
                         id: "t-d\(side)-\(index + 1)",
                         title: name,
                         durationMs: durationMs,
-                        durationClock: bridgeLengthClock(ms: durationMs),
+                        durationClock: BridgeDurationClock.length(
+                            ms: durationMs
+                        ),
                         artistLine: .named(artist),
                         displayArtist: nil,
                         positionText: positionText(index),
@@ -301,7 +303,9 @@
                 .map { track, entry in
                     var track = track
                     track.durationMs = entry.1 * 1000
-                    track.durationClock = bridgeLengthClock(ms: entry.1 * 1000)
+                    track.durationClock = BridgeDurationClock.length(
+                        ms: entry.1 * 1000
+                    )
                     return track
                 }
             release.trackGroups = [

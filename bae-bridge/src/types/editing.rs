@@ -493,27 +493,6 @@ impl BridgePressingFactEdit {
             ),
         }
     }
-
-    /// This choice, applied to the facts a form holds — what a form bound to
-    /// a value rather than a candidate does with it.
-    pub(crate) fn applied_to(self, facts: BridgePressingFacts) -> BridgePressingFacts {
-        let mut facts = facts.into_core();
-        self.into_core().apply(&mut facts);
-        BridgePressingFacts::from_core(facts)
-    }
-}
-
-/// `facts` with `edit` applied, the way the draft applies it: a medium with a
-/// count of zero is left out, a detail is kept once. A form bound to a value
-/// rather than to a draft in core, as a preview's is, applies each choice
-/// through this.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_apply_pressing_fact(
-    facts: BridgePressingFacts,
-    edit: BridgePressingFactEdit,
-) -> BridgePressingFacts {
-    edit.applied_to(facts)
 }
 
 /// Raw edit-metadata form values, exactly as the editor shows them — text
