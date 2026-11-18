@@ -4551,10 +4551,8 @@ playing from  Album Title, tracks 4–11
 
 When track 3 ends, Up next drains first, then the release continues at track
 4. While the next track loads, the now-playing bar, the queue's now-playing
-card, Android's full player and the system's media controls show it.
-Playback writes the track it loads to its row before it prepares the
-track's audio, and the row the app reads carries that track's title,
-artists and cover, so the app shows a track at every moment of a track
+card, Android's full player and the system's media controls show it, with its
+title, artists and cover, so the app shows a track at every moment of a track
 change.
 The speaker mark on an album's track list is on the track loading, and Go to
 Now Playing opens its album.
@@ -4572,8 +4570,7 @@ the cursor; it leaves out any track the library doesn't hold and plays a track
 named twice twice. A start the list doesn't have, or a start track the library
 doesn't hold, plays nothing. Albums picked together in the album grid, played, queued or
 dragged to the queue, go in the grid's order under its sort and grouping,
-which core reads for the ids it is handed, whatever order they were picked
-in. Its rows are filled once, when playing starts; after that they
+whatever order they were picked in. Its rows are filled once, when playing starts; after that they
 can be removed and reordered but never grow. A release named twice among
 several plays twice. Removing the playing row leaves the track after it
 next. Once its last row leaves, removed or its track deleted from the
@@ -4590,28 +4587,16 @@ removable, reorderable and skipped to on its own.
 | Clear up next | empties Up next only |
 | Clear playing from | drops what's playing from; the current track plays on, then Up next, then playback stops |
 
-bae offers *Shuffle library* while the library holds a track; the album grid's
-count says whether it does, beside how many albums there are.
+bae offers *Shuffle library* while the library holds a track.
 
 A spoken request to play something ("play" and a name, from a car's controls)
 plays the first track the library search finds, else the first track of the
 first album it finds that has a track on its main release. The search says
-which, and nothing plays when it finds neither. Android Auto reads that answer,
-and each item it opens, once from the database, not through a live query. The
-database picks the one track an item names, so Android Auto never filters rows
-it already holds. Each page that Android Auto shows of the albums, the
-composers, a composer's page, an album's tracks, a work's children or the
-albums a search lists is one live read: one statement that takes at most the
-page's number of rows from the row at the page's first place on, which a
-subquery of the same statement finds by offset. coven reruns the statement for
-every write to the list, since it cannot tell which writes leave the
-subquery's row in place. After every write, including one that moves a row
-across the page's first place, core hands Android Auto exactly the rows at the
-page's places, and none for a page past the list's end. Android Auto never
-pages through rows it already holds and never compares a page with the list's
-count, and a page stays live when the list's count changes. The number of rows in
-each such list comes from a count the database takes, never from rows Android
-Auto holds.
+which, and nothing plays when it finds neither. Each page that Android Auto
+shows of the albums, the composers, a composer's page, an album's tracks, a
+work's children or the albums a search lists shows, after every write, exactly
+the rows at the page's places, including after a write that moves a row across
+the page's first place, and none for a page past the list's end.
 
 Every play (a release, several, a list of tracks, the library shuffled)
 answers whoever asked with what it did, and the app shows it in words unless
@@ -4639,13 +4624,6 @@ deleted), playback stops with an error shown. It shows nothing for a command tha
 changed: that is rare, and the screen already shows the queue as it now is,
 so the gesture just ends.
 
-The queue screens read What's playing from's tracks as any other list. They read
-the tracks after the current one through one window, a range of the order the
-part reads in (its own, or the shuffled one while shuffle is on), which core
-keeps around the rows on screen. They read the list's count in a query of its
-own, and a jump to a row reads the sort values at that row's position. coven
-reruns the window only for a write at or before its last row; moving on to the
-next track moves the list's top.
 When shuffle turns on or off, the queue keeps showing the rows of the old order
 until the new order's count and first rows arrive, so the list never empties
 between the two.
@@ -4657,12 +4635,11 @@ opens the list in the other order, and the new list shows no failure of the old
 one.
 
 On Android, the system's playlist (the notification, the lock screen and
-Android Auto) is the current track, then one live query's rows: Up Next, then
+Android Auto) is the current track, then Up Next from its first track, then
 the tracks after the current one in the order of what's playing from, at most
-100 in all. The query reads Up Next from its first track, and the tracks of
-what's playing from from the one after the current track, each in its own
-order. When that read fails, the queue screen shows its error in place of the
-rows until the read returns rows again.
+100 in all, and it follows the queue as it changes. When bae can't read those
+tracks, the queue screen shows its error in place of the rows until it can
+read them again.
 
 Dragging a row in the queue sends nothing until it is dropped: the drop is the
 one reorder, however many rows the held row passed. While it is held, the Mac
@@ -4674,10 +4651,10 @@ will land.
 The queue screens keep a row dragged to a new place there until its move
 returns, so it never jumps back while the move is on its way. When the move
 returns, the part draws its rows, which show what is stored: the row in its new
-place, or where it was when the move failed or moved nothing. A move names the
-entry, its part and the place among the part's rows it goes to (for what's
-playing from, among the tracks after the playing one), and core finds the row it
-then sits before, whether the screen has read that row or not.
+place, or where it was when the move failed or moved nothing. A drop puts the
+entry at the place among its part's rows where the person dropped it (for
+what's playing from, among the tracks after the playing one), whether or not
+the screen has shown the row it then sits before.
 
 A track deleted from the library leaves every place it sits in the queue. A
 deleted track that is playing stops, and playback goes on with what's next;
@@ -4740,8 +4717,8 @@ open; once it is closed, the bar's second line says "Side A ended".
   release's mediums. A medium with no physical carrier, a download or a disc
   of unstated carrier, never pauses.
 - **The countdown.** The pause can end on its own after 5, 15, 30, 45 or 60
-  seconds. Every device's UI counts down to one moment core sets, so they show
-  the same number. Closing the prompt stops the countdown and waits for Play.
+  seconds. Every device counts down to the same moment, so they show the same
+  number. Closing the prompt stops the countdown and waits for Play.
 - **Settings.** Pausing is on by default: a side break is part of how the
   record was made. Turning it on also catches a crossing already prepared.
   Playback settings show it as *Pause between sides and discs*, with
@@ -4790,63 +4767,22 @@ storage a range at a time
 ([coven §17.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#177-reading-a-file)).
 Reading ahead keeps playback from waiting on the network, and a seek fetches
 only what is under the new position. One buffer per file serves every track
-that plays from it, so the eleven tracks of a disc image share one.
-The buffer fetches a 4 MiB window at a time and drops what lies more than a
-window behind the track furthest back in the file, except the file's first
-window and the 32 KiB after it, which it keeps while the file is open:
-opening a file reads its first 32 KiB, which has the buffer read ahead the
-32 KiB after the first window, and some files are read at their end before
-the read comes back (an MP3 with no ID3v2 tag is looked at for an ID3v1 tag
-in its last 128 bytes), so none of the start is fetched twice. An open file
-holds about that one window more than the windows around its tracks.
+that plays from it, so the eleven tracks of a disc image share one. The buffer
+fetches a 4 MiB window at a time and drops what lies more than a window behind
+the track furthest back in the file, keeping the file's start while the file
+is open.
 
-A track start in a FLAC, WavPack, Opus or Vorbis file jumps to the byte
-import recorded for it, since those files' frames state their own position;
-in an MP3 it starts at the file's first frame, since an MP3 track is a whole
-file (a CUE sheet over lossy audio is not bound); in any other it seeks to its
-first sample, the recorded byte fetched ahead.
-The scan read every disc image, so import can always read where each of its
-tracks starts; an image where it can't fails the import, so no track is
-stored without its start byte.
-A seek inside a track
-is left to FFmpeg, which seeks through the file's own index where it has one:
-a FLAC's seektable, APE's, an MP4's sample table. A FLAC with scrub points
-(§3.7) has no index FFmpeg can use, or one too sparse to land a seek near
-its target, so the seek jumps to the last point at or before the new
-position and decodes forward to it: one window fetched from the point,
-instead of a search across the file with one fetch per step, or a decode of
-everything from a seektable point minutes earlier.
-A FLAC with neither, such as an unimported file's preview, is searched by
-bisection, which can't place a sample in its last frames or in a FLAC of one
-frame: a seek it can't place decodes from where the audio begins and plays from
-the sample asked for, and one that can't even do that fails the playback.
-Any other seek FFmpeg can't make (a jump to a recorded byte, or to a recorded
-MP3 frame) fails the playback too: bae never plays from wherever the failed
-seek left the reader. So does a recorded position that can't be a start: a byte
-at or past the file's end, one above `i64::MAX`, or a recorded frame given to a
-format that has none (only FLAC and MP3 have them). The failure names the
-record.
-An MP3 has no index FFmpeg seeks by both exactly and directly: with fast seek
-or `usetoc` it places the seek from the file's bitrate or its table of
-contents, an estimate, and without them, as bae opens an MP3, it reads forward
-from the frames it has indexed. So the seek decodes
-from the last scrub point (§3.7) that plays the new position exactly, or from
-the file's start before the first, and plays the samples a play from the
-start plays there. In each case the first sample played is the one asked for.
-Playback holds the places of the files of the playing track and of the track
-preloaded after it, four in all, taken in one wait when a track loads with
-nothing playing and given back when playback stops. A track reads at most two
-files, its own and the one holding its pregap; a switch to another track gives
-up the buffers of the files the new track does not play before its own files
-open. A preview takes one place for its probe and keeps it for its fill while
-it plays.
-A file's buffer, made when a track that plays from it loads, fetches first,
-beside the read that opens the file, the window that track's decode reads
-first: the byte import recorded at a track start, the scrub point a load at a
-saved position starts from. A load that seeks by FFmpeg's index fetches what
-the decode asks for, since only FFmpeg knows where that lands.
-Any other lossy track is seeked a little early and decoded up to the new
-position, so its decoder has the frames before it.
+A track starts at its first sample, and a seek inside a track plays from the
+sample asked for, in every format bae plays: bae uses where import recorded
+each track's start, the file's own index where it has one, and the scrub
+points import recorded (§3.7), so a seek fetches about one window instead of
+searching across the file. The scan read every disc image, so import can
+always read where each of its tracks starts; an image where it can't fails the
+import, so no track is stored without its start. A seek bae can't place fails
+the playback, as does a recorded position that can't be a start, and the
+failure names the record: bae never plays from wherever a failed seek left
+the reader. A track's load, or a load at a saved position, fetches first the
+window its decode reads first.
 
 The seek bar never leaves the player. Under the played part it draws, in a
 lighter fill, the parts of the playing track whose bytes its file's buffer
@@ -4867,19 +4803,15 @@ shows follows the dragged position: the elapsed time, and the remaining time
 where the bar counts down. The playing position, which keeps moving while
 they drag, doesn't move the time, and neither the time nor the fill steps
 back to it between the drop and the seek landing. On release the player
-seeks there; playback names the seek's target as the position when it accepts
-the seek (§9.4), so the bar shows it from the next frame, and the playing
-position follows from there. A seek that fails
+seeks there, the bar shows the seek's target from the next frame, and the
+playing position follows from there. A seek that fails
 ends playback with its error, as any failure of the player does (§7.6), and
 the bar then shows no time, as it does when nothing plays: the dropped
 position is never left standing.
 
 While the person waits on a track to start, or on a seek to land, and one
-of the playing track's reads fetches from storage (coven tells a read that
-fetches how many of its bytes are in hand), an arc turns around the
-play/pause control: playback writes the wait into `playback_now` with the
-loading state (§9.4) as it starts and as it ends, and the arc shows what the
-row holds. Reading ahead while the track plays, a preload of the
+of the playing track's reads fetches from storage, an arc turns around the
+play/pause control. Reading ahead while the track plays, a preload of the
 next track, and a load this device serves from its own copy or the cache show
 no arc. The playing track's reads, in every file it plays from (a pregap at
 the end of the file before included), go ahead of a preload's, which waits
@@ -4892,19 +4824,12 @@ reported, rather than left behind a frozen position bar.
 
 A panic in playback is a bug, reported to the crash reporter. One that
 leaves the track unable to go on stops playback with an error the person
-sees, rather than a frozen position bar: a panic in a command the player is
-serving (the player then serves the next), in the fill reading a track's bytes
-(which fails its buffer, so the decoder stops at once instead of waiting for
-bytes), in the decoder, or in the output pulling samples for the device or a
-receiver. A panic folding one progress event into what the screens show
-loses that event, and the next one shows. A preview whose event listener
-panics ends with an error.
-A preview that can't start (its file can't be read, or its audio stream won't
+sees, rather than a frozen position bar, and the player serves the next
+command. A preview that can't start (its file can't be read, or its audio stream won't
 open) or that fails as it plays or as it is moved (a seek, or starting again on
 a new device) ends with an error of its own, which the
 screens show as they show a playback error. It never stops the main player: that
-plays on, or gets back the resume the preview owed it. A buffer a panic left partway through a change
-drops its bytes, and its fill fetches them again.
+plays on, or gets back the resume the preview owed it.
 
 ### 7.7 Outputs
 
@@ -4999,8 +4924,8 @@ until the receiver ends it.
 
 The sheet is titled Pair with and the receiver's name, with a line under the
 title that says why it asks and what to enter, a field, Cancel and Pair.
-A PIN field has one box for each digit, as many as the receiver's PIN has
-(stated by core, never by the app), takes digits only, and keeps leading zeros.
+A PIN field has one box for each digit, as many as the receiver's PIN has,
+takes digits only, and keeps leading zeros.
 A password field shows dots. Pair stays off until the PIN has all its digits, or
 the password has a character. The lines under the title are:
 
@@ -5089,12 +5014,11 @@ counts as open only while the app is on screen. The two share one search: the
 second to open joins it and keeps what it found, and it ends when the last of
 them closes or casting is turned off. Desktops and Android browse the network
 themselves.
-The picker and the page list what discovery found from a device-local table,
-by name, after the receiver playback is cast to, which playback names with its
-kind, model and address, so it is listed while a new search hasn't found it again: one task
-merges every source's list and writes it whole, in one write per change, in
-the order the changes came. No discovery outlives the process that ran it, so
-the table is emptied as the library opens. A receiver carries, besides its
+The picker and the page list the receivers found, by name, after the receiver
+playback is cast to, which stays listed while a new search hasn't found it
+again. bae keeps what discovery found in a device-local table, which it empties
+as the library opens, since no discovery outlives the process that ran it. A
+receiver carries, besides its
 id, name and kind, the model it states of itself and the address discovery
 found it at. The model is the Cast `md` record, the AirPlay `model` record
 (`am` on a RAOP service), or the UPnP description's `modelName`; a receiver that
@@ -5141,8 +5065,7 @@ paused, and the picker says the receiver was lost. The server a Chromecast or
 UPnP renderer fetches from that panics ends the cast, and the next cast starts
 a new one. Connecting to a Chromecast that panics fails the cast as bae's own
 error, not as an unreachable device. An advertisement or search answer whose
-reading panics is left out of the picker, and browsing goes on; so does the
-watcher that applies the setting as it changes. bae waits at most
+reading panics is left out of the picker, and browsing goes on. bae waits at most
 ten seconds on an AirPlay receiver's control connection — to connect, send a
 request, or hear back — so a receiver that stops answering without closing it
 can't hold up ending the session.
@@ -5158,9 +5081,9 @@ Android bae reopens the output on the new device, and a change while paused
 takes effect on resume. On Linux the sound server, PipeWire or PulseAudio,
 moves them; with ALSA alone there is no default device to follow. On the
 desktop, when the device goes away and there is none to move to, playback
-stops and says the audio device isn't available, and a preview ends. Volume
-and mute live in core, so unmuting restores the level last set; muting leaves
-the level shown where it was, beside the mute.
+stops and says the audio device isn't available, and a preview ends.
+Unmuting restores the level last set; muting leaves the level shown where it
+was, beside the mute.
 
 **Sample rates.** On macOS bae plays at the native sample rate: when the
 output device supports the track's rate, a track or a preview that starts a
@@ -5211,16 +5134,12 @@ ends or the session closes. A composer there lists its page's rows (§2.4), a
 work opening its parts and releases and a credit opening its album. An album
 lists its main release's tracks, in playing order. A work lists its parts, in
 their order, then the releases that perform it, ordered as its page orders
-them, each opening its album. When the controller asks for a page of an
-album's or a work's list, bae reads the page's rows live, from the page's first
-row up to the row after its last. bae tells the controller each time a row on
-the page changes and each time the list's count changes, and reads the page
-again when the controller asks for it again. A search there lists the first 50
-albums library search finds, in title order. When the controller asks for a
-page of them, bae reads the page's rows live in the same way. bae tells the
-controller each time a row on the page changes and each time the number of
-those albums changes, and reads the page again when the controller asks for it
-again. bae answers a request for a page only for the phrase that controller
+them, each opening its album. After the controller asks for a page of an
+album's or a work's list, bae tells it each time a row on the page changes and
+each time the list's count changes, and reads the page again when the
+controller asks for it again. A search there lists the first 50 albums library
+search finds, in title order, and bae tells the controller of changes to a
+page of them the same way. bae answers a request for a page only for the phrase that controller
 searched for last, and refuses one for any other phrase.
 A controller that sends one track plays its release from that track; one that
 sends two or more plays those tracks, in the order sent, as a list of tracks
@@ -5228,8 +5147,8 @@ sends two or more plays those tracks, in the order sent, as a list of tracks
 
 **The home-screen widget.** Android's now-playing widget shows the track the
 open library plays, with Play or Pause and Next, and a tap elsewhere opens the
-app. The app updates it on each change of track or of playing, from the values
-the in-app player bar shows, and saves nothing about it to a file. With no
+app. The widget changes with each change of track or of playing, and shows
+what the in-app player bar shows. With no
 library open nothing plays, so the widget shows no track and offers nothing to
 resume.
 
