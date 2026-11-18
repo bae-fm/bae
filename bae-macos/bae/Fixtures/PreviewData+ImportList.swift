@@ -137,17 +137,11 @@ extension PreviewData {
 
     static func importQueueSummary(
         hasWatchedFolders: Bool,
-        hasGroups: Bool = false,
-        filterText: String = ""
+        hasGroups: Bool = false
     ) -> BridgeImportQueueSummary {
         BridgeImportQueueSummary(
             hasWatchedFolders: hasWatchedFolders,
-            hasGroups: hasGroups,
-            narrowing: BridgeImportListNarrowing(
-                tab: .pending,
-                filterText: filterText,
-                pendingFilter: .all
-            )
+            hasGroups: hasGroups
         )
     }
 

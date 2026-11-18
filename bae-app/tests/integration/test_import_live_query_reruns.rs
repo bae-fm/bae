@@ -128,16 +128,14 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // its own: the seed alone, which the scan's folders sort after, and the
     // one from the seed on, which holds the scan's folders; the scans'
     // progress, and the pane on the seed, each read as the app reads it.
-    let list = services
-        .subscribe_import_list(ImportListView {
-            tab: TriageTab::Pending,
-            order: ImportListOrder::PathAscending,
-            ..ImportListView::default()
-        })
-        .await
-        .unwrap();
-    let seed_key = list.key_at(0).await.unwrap().expect("the seed is listed");
-    let mut count = list.subscribe_count();
+    let list = bae_import::ImportListRequest::of(ImportListView {
+        tab: TriageTab::Pending,
+        order: ImportListOrder::PathAscending,
+        ..ImportListView::default()
+    });
+    let seed_key =
+        services.import_list_key_at(list.clone(), 0).await.unwrap().expect("the seed is listed");
+    let mut count = services.import_list_count_for_test(list.clone());
     let (count_tx, mut list_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
     let count_reader = tokio::spawn(async move {
         while let Some(read) = count.next_inline().await {
@@ -150,7 +148,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         ("window above the scan", ListWindow::top(1)),
         ("window that holds the scan", ListWindow { from: Some(seed_key.clone()), limit: 50 }),
     ] {
-        let window = list.until_closed(list.subscribe_window(window));
+        let window = services.import_list_window_for_test(list.clone(), window);
         let (tx, seen) = tokio::sync::watch::channel(0_u64);
         let window = Arc::new(window);
         let reading = window.clone();
@@ -279,12 +277,11 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     assert_eq!(pane_counted.runs, 0, "the scan's writes of other folders reran the candidate pane");
 
     // Each of these readers fails on a read that reports its query ended, as
-    // the count's does once the list closes and the pane's and the progress's
-    // do once the store closes, so they stop first.
+    // the pane's, the progress's and the count's do once the store closes, so
+    // they stop first.
     for reader in [pane_reader, progress_reader, count_reader] {
         reader.abort();
         assert!(reader.await.unwrap_err().is_cancelled());
     }
-    list.cancel().await.unwrap();
     services.close().await.unwrap();
 }

@@ -18,10 +18,6 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
     /// filter. The filter field reads it, so a new count redraws only the
     /// field.
     let narrowed: () -> BridgeNarrowedCount?
-    /// Whether the list shows the view the person asked for. Until the read
-    /// answering it lands, the list holds the previous view's rows: they stay
-    /// unshown and out of reach rather than standing in for this view's.
-    let answersView: Bool
     @ViewBuilder
     let trailing: () -> Trailing
     @ViewBuilder
@@ -56,9 +52,6 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
             }
         } content: {
             content()
-                .opacity(answersView ? 1 : 0)
-                .allowsHitTesting(answersView)
-                .accessibilityHidden(!answersView)
         }
     }
 }

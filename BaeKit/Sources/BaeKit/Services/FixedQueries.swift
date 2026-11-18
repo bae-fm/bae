@@ -263,8 +263,9 @@
         extension ImportListHandle {
             /// An import list over fixed, already-ordered `items`, for shots and
             /// tests, on `tab`: the list's view answers the rows on screen with
-            /// the items around them, a view or fold changes nothing, and the list finds a
-            /// candidate at its place in `items`.
+            /// the items around them under every request, a view or fold opens
+            /// at the top and hides nothing, and the list finds a candidate at
+            /// its place in `items`.
             public static func fixed(
                 items: [BridgeImportListItem],
                 tab: BridgeTriageTab,
@@ -276,18 +277,13 @@
                 let queries = BridgeListQueries<BridgeImportListItem>
                     .fixed(items, answers: UnansweredCount(), extra: extra)
                 return ImportListHandle(
-                    queries: queries,
+                    queries: { _ in queries },
                     summary: {
                         PulledValues<BridgeImportQueueSummary>
                             .fixed(
                                 BridgeImportQueueSummary(
                                     hasWatchedFolders: false,
-                                    hasGroups: false,
-                                    narrowing: BridgeImportListNarrowing(
-                                        tab: tab,
-                                        filterText: "",
-                                        pendingFilter: .all
-                                    )
+                                    hasGroups: false
                                 )
                             )
                     },
@@ -307,9 +303,11 @@
                                 )
                         )
                     },
-                    setView: { _, _ in nil },
-                    setGroupFolded: { _, _, _ in [] },
-                    setAllGroupsFolded: { _, _ in [] },
+                    viewChange: { _, _ in
+                        BridgeImportListViewChange(opening: .top, left: [])
+                    },
+                    hiddenByFold: { _, _, _ in [] },
+                    groupKeys: { [] },
                     locateCandidate: { key in
                         position(of: key, in: items)
                             .map { _ in
@@ -319,10 +317,10 @@
                                 )
                             }
                     },
-                    candidatePosition: {
-                        position(of: $0, in: items).map(UInt64.init)
+                    candidatePosition: { _, key in
+                        position(of: key, in: items).map(UInt64.init)
                     },
-                    firstIdentifyingCandidate: { nil }
+                    firstIdentifyingCandidate: { _ in nil }
                 )
             }
 

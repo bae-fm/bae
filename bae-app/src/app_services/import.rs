@@ -2,7 +2,7 @@
 //! event bus, and the list and per-candidate subscriptions.
 
 use super::*;
-use bae_import::{ImportCandidateDetail, ImportListView, LiveImportList};
+use bae_import::ImportCandidateDetail;
 
 impl AppServices {
     /// The library albums a parsed, non-blank query finds, as the album
@@ -203,27 +203,6 @@ impl AppServices {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_scan_event_for_test(&self) -> bae_import::ScanEvents {
         self.inner.import.every_scan_event_for_test()
-    }
-
-    /// Open an import list showing `view`, with nothing folded and nothing
-    /// selected. The caller opens its view, count, summary, filter entries
-    /// and selection as live reads of the list, and closing the list ends
-    /// them.
-    pub async fn subscribe_import_list(
-        &self,
-        view: ImportListView,
-    ) -> Result<LiveImportList, bae_library::LibraryError> {
-        Ok(self.inner.import.open_list(view).await?)
-    }
-
-    /// Every item of the list showing `view`, once, for a caller with no list
-    /// open. This function opens a list for the read and closes it
-    /// afterward.
-    pub async fn load_import_items(
-        &self,
-        view: ImportListView,
-    ) -> Result<Vec<bae_import::ImportListItem>, bae_library::LibraryError> {
-        Ok(self.inner.import.load_list(view).await?)
     }
 
     /// The import pane's candidate as it changes, read for the key the

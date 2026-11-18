@@ -82,8 +82,8 @@ async fn import_list_moves_a_row_to_done_when_this_device_imports_its_files() {
     let candidate = scan_finished(&db, root, "release").await;
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
-    let mut window = tables.subscribe_import_window(list, first(50));
-    let mut count = tables.subscribe_import_count(list);
+    let mut window = tables.subscribe_import_window(list.clone(), first(50));
+    let mut count = tables.subscribe_import_count(list.clone());
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&unkeyed(&initial.rows)), ["release"]);
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
@@ -131,7 +131,7 @@ async fn a_moved_folder_stays_done() {
     let moved = scan_finished(&db, root, "renamed").await;
     assert_eq!(moved.files.content_hash(), imported.files.content_hash());
     let list = open_in_path_order(&db, crate::TriageTab::Done).await;
-    let read = tables.read_import_window(list, first(50)).await.unwrap();
+    let read = tables.read_import_window(list.clone(), first(50)).await.unwrap();
     assert_eq!(candidate_names(&unkeyed(&read.rows)), vec!["renamed".to_string()]);
     assert_eq!(tables.load_tab_counts().await.unwrap().pending, 0);
 }
@@ -148,7 +148,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
     let release = imported_release(&db, &candidate).await;
 
     let list = open_in_path_order(&db, crate::TriageTab::Done).await;
-    let mut count = tables.subscribe_import_count(list);
+    let mut count = tables.subscribe_import_count(list.clone());
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap().rows, 1);
 
     bae_records::test_fixtures::delete_release(
@@ -161,7 +161,7 @@ async fn deleting_the_release_puts_its_folder_back_in_found() {
 }
 
 /// Folders scanned into a list of `names`, in path order, and the list.
-async fn scanned_list(names: &[&str]) -> (Library, ImportListId) {
+async fn scanned_list(names: &[&str]) -> (Library, ImportListRequest) {
     let lib = Library::new().await;
     lib.run(scanned_with_states(&lib, names)).await;
     let list =
@@ -193,10 +193,10 @@ async fn settled<T: Clone + PartialEq + Send + 'static, Request>(
 async fn a_scan_item_reruns_the_windows_and_the_count() {
     let (lib, list) = scanned_list(&["A", "B", "C", "D", "E", "F"]).await;
     let tables = lib.tables();
-    let middle = tables.import_key_at(list, 3).await.unwrap().unwrap();
-    let mut above = tables.subscribe_import_window(list, first(3));
-    let mut below = tables.subscribe_import_window(list, from(&middle, 50));
-    let mut count = tables.subscribe_import_count(list);
+    let middle = tables.import_key_at(list.clone(), 3).await.unwrap().unwrap();
+    let mut above = tables.subscribe_import_window(list.clone(), first(3));
+    let mut below = tables.subscribe_import_window(list.clone(), from(&middle, 50));
+    let mut count = tables.subscribe_import_count(list.clone());
     settled(&mut above).await;
     settled(&mut below).await;
     count.next_inline().await.expect("the query stays open").unwrap();
@@ -217,7 +217,7 @@ async fn a_scan_item_reruns_the_windows_and_the_count() {
 
 /// Scans the folders and opens a list that shows the ones whose name contains
 /// "wanted".
-async fn searching_list(names: &[&str]) -> (Library, ImportListId) {
+async fn searching_list(names: &[&str]) -> (Library, ImportListRequest) {
     let lib = Library::new().await;
     lib.run(scanned_with_states(&lib, names)).await;
     let list = lib
@@ -237,10 +237,10 @@ async fn a_search_window_delivers_without_its_count() {
     let (lib, list) =
         searching_list(&["A wanted", "B other", "C wanted", "D other", "E wanted"]).await;
     let tables = lib.tables();
-    let mut window = tables.subscribe_import_window(list, first(50));
+    let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let delivered = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&unkeyed(&delivered.rows)), ["A wanted", "C wanted", "E wanted"]);
-    let count = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap();
+    let count = tables.subscribe_import_count(list.clone()).next_inline().await.unwrap().unwrap();
     assert_eq!(count.rows, 3);
 }
 
@@ -253,10 +253,10 @@ async fn a_scan_item_reruns_the_search_window_holding_it_and_the_count() {
         searching_list(&["A wanted", "B wanted", "C wanted", "D wanted", "E wanted", "F wanted"])
             .await;
     let tables = lib.tables();
-    let middle = tables.import_key_at(list, 3).await.unwrap().unwrap();
-    let mut above = tables.subscribe_import_window(list, first(3));
-    let mut below = tables.subscribe_import_window(list, from(&middle, 50));
-    let mut count = tables.subscribe_import_count(list);
+    let middle = tables.import_key_at(list.clone(), 3).await.unwrap().unwrap();
+    let mut above = tables.subscribe_import_window(list.clone(), first(3));
+    let mut below = tables.subscribe_import_window(list.clone(), from(&middle, 50));
+    let mut count = tables.subscribe_import_count(list.clone());
     settled(&mut above).await;
     settled(&mut below).await;
     count.next_inline().await.expect("the query stays open").unwrap();
@@ -285,8 +285,8 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     tables.finish_folder_scan(root, generation, None).await.unwrap();
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
-    let mut window = tables.subscribe_import_window(list, first(50));
-    let mut count = tables.subscribe_import_count(list);
+    let mut window = tables.subscribe_import_window(list.clone(), first(50));
+    let mut count = tables.subscribe_import_count(list.clone());
     settled(&mut window).await;
     count.next_inline().await.expect("the query stays open").unwrap();
 
@@ -312,7 +312,7 @@ async fn import_list_wakes_on_a_scan_item() {
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
-    let mut window = tables.subscribe_import_window(list, first(50));
+    let mut window = tables.subscribe_import_window(list.clone(), first(50));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(candidate_names(&unkeyed(&initial.rows)), vec!["first".to_string()]);
 
@@ -350,8 +350,8 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
         .unwrap();
 
     let list = open_in_path_order(&db, crate::TriageTab::Pending).await;
-    let mut window = tables.subscribe_import_window(list, first(50));
-    let mut count = tables.subscribe_import_count(list);
+    let mut window = tables.subscribe_import_window(list.clone(), first(50));
+    let mut count = tables.subscribe_import_count(list.clone());
     let mut scans = tables.subscribe_scanning_folders();
     settled(&mut window).await;
     count.next_inline().await.expect("the query stays open").unwrap();
@@ -376,7 +376,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
 /// that holds fewer rows than its limit.
 async fn chain(
     tables: &crate::tables::ImportTables,
-    list: ImportListId,
+    list: &ImportListRequest,
     page: u64,
 ) -> Vec<crate::list::ImportListItem> {
     let mut items = Vec::new();
@@ -385,7 +385,7 @@ async fn chain(
         // A window after the first starts at the row the last one ended at.
         let repeated = usize::from(window.from.is_some());
         let limit = window.limit;
-        let rows = tables.read_import_window(list, window).await.unwrap().rows;
+        let rows = tables.read_import_window(list.clone(), window).await.unwrap().rows;
         let last = rows.last().map(|(_, key)| key.clone());
         let full = rows.len() as u64 == limit;
         items.extend(rows.into_iter().skip(repeated).map(|(item, _key)| item));
@@ -399,9 +399,9 @@ async fn chain(
 /// The whole list as one window reads it.
 async fn whole(
     tables: &crate::tables::ImportTables,
-    list: ImportListId,
+    list: &ImportListRequest,
 ) -> Vec<crate::list::ImportListItem> {
-    let rows = tables.read_import_window(list, first(u64::MAX)).await.unwrap().rows;
+    let rows = tables.read_import_window(list.clone(), first(u64::MAX)).await.unwrap().rows;
     rows.into_iter().map(|(item, _key)| item).collect()
 }
 
@@ -415,25 +415,22 @@ async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     grow_grouped_import_list(&db, tmp.path(), 0, 300).await;
-    let list = tables
-        .open_import_list(ImportListView {
-            tab: crate::TriageTab::Pending,
-            filter_text: String::new(),
-            pending_filter: PendingFilter::All,
-            // The folders a later scan adds sort first.
-            order: ImportListOrder::PathDescending,
-        })
-        .await
-        .unwrap();
-    let everything = whole(&tables, list).await;
+    let list = ImportListRequest::of(ImportListView {
+        tab: crate::TriageTab::Pending,
+        filter_text: String::new(),
+        pending_filter: PendingFilter::All,
+        // The folders a later scan adds sort first.
+        order: ImportListOrder::PathDescending,
+    });
+    let everything = whole(&tables, &list).await;
     assert!(everything.len() > 300, "the groups' headers are items too");
     for page in [7, 10, 64] {
-        assert_eq!(chain(&tables, list, page).await, everything, "pages of {page}");
+        assert_eq!(chain(&tables, &list, page).await, everything, "pages of {page}");
     }
     grow_grouped_import_list(&db, tmp.path(), 300, 305).await;
-    let grown = whole(&tables, list).await;
+    let grown = whole(&tables, &list).await;
     assert!(grown.len() > everything.len());
-    assert_eq!(chain(&tables, list, 10).await, grown, "after the scan");
+    assert_eq!(chain(&tables, &list, 10).await, grown, "after the scan");
 }
 
 /// A text-filtered list read as a chain holds what one window over it holds,
@@ -445,27 +442,24 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     grow_import_list(&db, tmp.path(), 0, 2_000).await;
-    let list = tables
-        .open_import_list(ImportListView {
-            tab: crate::TriageTab::Pending,
-            filter_text: "Album 1".to_string(),
-            pending_filter: PendingFilter::All,
-            order: ImportListOrder::PathAscending,
-        })
-        .await
-        .unwrap();
-    let everything = whole(&tables, list).await;
+    let list = ImportListRequest::of(ImportListView {
+        tab: crate::TriageTab::Pending,
+        filter_text: "Album 1".to_string(),
+        pending_filter: PendingFilter::All,
+        order: ImportListOrder::PathAscending,
+    });
+    let everything = whole(&tables, &list).await;
     assert!(everything.len() > 100, "the filter keeps enough rows to scroll through");
-    assert_eq!(chain(&tables, list, 10).await, everything);
+    assert_eq!(chain(&tables, &list, 10).await, everything);
     for offset in [0, 10, 55, 100, everything.len() as u64 - 1] {
-        let key = tables.import_key_at(list, offset).await.unwrap().unwrap();
-        let window = tables.read_import_window(list, from(&key, 10)).await.unwrap();
+        let key = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
+        let window = tables.read_import_window(list.clone(), from(&key, 10)).await.unwrap();
         let wanted: Vec<_> = everything.iter().skip(offset as usize).take(10).cloned().collect();
         let held: Vec<_> = window.rows.into_iter().map(|(item, _key)| item).collect();
         assert_eq!(held, wanted, "a window from the key at {offset}");
         assert_eq!(
             tables
-                .subscribe_import_position(list, key)
+                .subscribe_import_position(list.clone(), key)
                 .next_inline()
                 .await
                 .expect("the query stays open")
@@ -478,69 +472,38 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
 }
 
 /// A text-filtered list's count, which counts what its search finds, counts
-/// again when a scan adds matching folders, when its groups fold and when
-/// they open, as a read with nothing kept does.
+/// again when a scan adds matching folders, and a request that folds every
+/// group counts fewer items than the one that opens them, as a read with
+/// nothing kept does.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     use crate::{ImportListOrder, ImportListView, PendingFilter};
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     grow_grouped_import_list(&db, tmp.path(), 0, 100).await;
-    let list = tables
-        .open_import_list(ImportListView {
-            tab: crate::TriageTab::Pending,
-            filter_text: "Album 1".to_string(),
-            pending_filter: PendingFilter::All,
-            order: ImportListOrder::PathAscending,
-        })
-        .await
-        .unwrap();
-    let mut query = tables.subscribe_import_count(list);
+    let list = ImportListRequest::of(ImportListView {
+        tab: crate::TriageTab::Pending,
+        filter_text: "Album 1".to_string(),
+        pending_filter: PendingFilter::All,
+        order: ImportListOrder::PathAscending,
+    });
+    let mut query = tables.subscribe_import_count(list.clone());
     let before = query.next_inline().await.unwrap().unwrap();
-    assert_eq!(before.rows, whole(&tables, list).await.len() as u64);
-    let mut follows = async |what: &str| {
-        let fresh = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count;
-        count_until(&mut query, &format!("{fresh:?} after {what}"), |count| *count == fresh).await
+    assert_eq!(before.rows, whole(&tables, &list).await.len() as u64);
+    let folded = ImportListRequest {
+        folded: tables.import_group_keys().await.unwrap().into_iter().collect(),
+        ..list.clone()
     };
-    tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();
-    let folded = follows("folding every group").await;
+    let hidden = tables.read_import_list_for_test(folded.clone(), Vec::new()).await.unwrap().count;
     assert!(
-        folded.rows < before.rows,
-        "folded groups hide their members: {folded:?} of {before:?}"
+        hidden.rows < before.rows,
+        "folded groups hide their members: {hidden:?} of {before:?}"
     );
-    tables.set_import_list_groups_folded(list, false, Vec::new()).await.unwrap();
-    assert_eq!(follows("opening every group").await, before);
+    assert_eq!(hidden.rows, whole(&tables, &folded).await.len() as u64);
     grow_grouped_import_list(&db, tmp.path(), 100, 200).await;
-    let grown = follows("a scan adds matching folders").await;
+    let fresh = tables.read_import_list_for_test(list.clone(), Vec::new()).await.unwrap().count;
+    let grown = count_until(&mut query, "the scan's folders", |count| *count == fresh).await;
     assert!(grown.rows > before.rows, "the scan's folders count: {grown:?} of {before:?}");
-}
-
-/// A fold changes the windows holding the group and moves the ones below it;
-/// the window above it reruns too, as for a scan item, and delivers the rows
-/// it held.
-#[tokio::test]
-async fn a_fold_reruns_the_windows_holding_the_group() {
-    let lib = Library::new().await;
-    lib.run(scanned_with_states(
-        &lib,
-        &["A/One", "A/Two", "B/One", "B/Two", "C/One", "C/Two", "Loose"],
-    ))
-    .await;
-    let tables = lib.tables();
-    let list =
-        lib.open(ordered(crate::TriageTab::Pending, crate::ImportListOrder::PathAscending)).await;
-    // Group A and its members, then group B and C's.
-    let cut = tables.import_key_at(list, 3).await.unwrap().unwrap();
-    let mut above = tables.subscribe_import_window(list, first(3));
-    let mut below = tables.subscribe_import_window(list, from(&cut, 50));
-    settled(&mut above).await;
-    settled(&mut below).await;
-
-    tables.set_import_list_group_folded(list, lib.group_key("C"), true, Vec::new()).await.unwrap();
-    assert!(below.is_marked_for_rerun(), "the window holding the group reruns");
-    assert!(above.is_marked_for_rerun(), "coven bounds neither window's rerun at its last row");
-    let folded = below.next_inline().await.expect("the query stays open").result.unwrap();
-    assert!(!items_sequence(&unkeyed(&folded.rows)).contains(&"candidate C/One".to_string()));
 }
 
 /// What the selected rows hold is a live query keyed by its request: new

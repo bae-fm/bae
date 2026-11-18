@@ -1,29 +1,14 @@
 use super::*;
 
-#[uniffi::export(async_runtime = "tokio")]
-impl AppHandle {
-    /// Open an import list showing `view`, with nothing folded.
-    pub async fn subscribe_import_list(
-        &self,
-        view: crate::types::BridgeImportListView,
-    ) -> Result<std::sync::Arc<crate::ImportList>, BridgeError> {
-        let runtime = self.runtime.clone();
-        let services = self.services.clone();
-        runtime
-            .clone()
-            .run("AppHandle.subscribe_import_list", move || async move {
-                let inner = services
-                    .subscribe_import_list(view.into_core())
-                    .await
-                    .map_err(BridgeError::from)?;
-                Ok(crate::screens::import_list(inner, services, runtime))
-            })
-            .await
-    }
-}
-
 #[uniffi::export]
 impl AppHandle {
+    /// The import list the app reads and acts on: its reads take the view and
+    /// folds the app shows in their request, and it hands out the progress of
+    /// the bulk actions over the app's selection.
+    pub fn import_list(&self) -> std::sync::Arc<crate::ImportList> {
+        crate::screens::import_list(self.services.clone(), self.runtime.clone())
+    }
+
     /// Where each watched folder's scan stands, now and as it changes.
     pub fn subscribe_folder_scans(&self) -> std::sync::Arc<crate::FolderScansSubscription> {
         crate::screens::folder_scans(self.services.subscribe_folder_scans(), self.runtime.clone())

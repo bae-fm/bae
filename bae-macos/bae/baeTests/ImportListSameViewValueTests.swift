@@ -25,7 +25,7 @@ struct ImportListSameViewValueTests {
             importStore: store,
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in source.handle }
+            makeHandle: { source.handle }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.row(at: 1) != nil }
@@ -50,7 +50,6 @@ struct ImportListSameViewValueTests {
             try await Wait.untilSteady { table.selectedRowIndexes }
 
             #expect(table.selectedRowIndexes == [0])
-            #expect(slot.answersView)
             #expect(slot.selection.keys == [edited.candidateKey])
             #expect(window.firstResponder === focused)
         }

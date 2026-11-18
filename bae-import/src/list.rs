@@ -1,16 +1,17 @@
 //! The import tab's list: one ordered sequence of items, served a window at a
 //! time.
 //!
-//! Each surface's list is a row of its own (`import_list`), holding its view
-//! and the groups it folds shut, and what the list shows is a query over that
-//! row and the placement the import tables keep (`import_list_placement`).
-//! Each window of it is a live query of its own whose request is a range of
-//! the list's order, and the count, the summary, Found's filter entries and
-//! what the selection offers are live queries of their own: coven reruns each
-//! live query whose reads a write changed. Changing the view or folding a
-//! group is a write, and coven reruns the live queries it changes. The surface
-//! keeps the rows the person selects, and passes their keys to the selection's
-//! live query and to each action on them.
+//! The surface keeps the list's view and the groups it folds shut, and each
+//! read of the list takes them as its request ([`ImportListRequest`]): what
+//! the list shows is a query over that request and the placement the import
+//! tables keep (`import_list_placement`). Each window of it is a live query of
+//! its own whose request is a range of the list's order, and the count, the
+//! summary, Found's filter entries and what the selection offers are live
+//! queries of their own: coven reruns each live query whose reads a write
+//! changed. Showing another view or folding a group is the surface opening new
+//! reads under a new request. The surface keeps the rows the person selects,
+//! and passes their keys to the selection's live query and to each action on
+//! them.
 //!
 //! What is running for a candidate right now — a run queued or in flight, an
 //! import that owns it — is in the standings table the candidate runtime
@@ -23,21 +24,19 @@ use bae_store::WindowRead;
 
 mod path_order;
 mod pending_filter;
-mod subscription;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_read;
 
 pub(crate) use path_order::release_keys_in_path_order;
 pub use pending_filter::{PendingFilter, PendingFilterEntry};
-pub use subscription::{ImportListFailure, LiveImportList};
 #[cfg(any(test, feature = "test-utils"))]
 pub use test_read::{FollowedImportList, ImportListRead};
 
 pub use super::triage::TriageTab;
 
 /// What the list is currently showing: which tab, which filters, and in which
-/// direction. Which groups it folds shut is the list's too, written on their
-/// own ([`LiveImportList::set_group_folded`]).
+/// direction. Which groups it folds shut is not part of it: the request holds
+/// those beside it ([`ImportListRequest`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListView {
     pub tab: TriageTab,
@@ -69,9 +68,50 @@ pub enum ImportListOrder {
     PathDescending,
 }
 
-/// One list a surface has open: the id of its `import_list` row.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImportListId(pub(crate) i64);
+/// What every read of the import list takes: the view the surface shows and
+/// the groups it folds shut. The surface owns both, and each read builds its
+/// statement from them.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ImportListRequest {
+    pub view: ImportListView,
+    /// The groups the list folds shut: their members are not in it. A group
+    /// that leaves the list and comes back under the same folder comes back
+    /// folded.
+    pub folded: std::collections::BTreeSet<FolderReleaseDecisionKey>,
+}
+
+impl From<ImportListView> for ImportListRequest {
+    /// The request showing `view` with no group folded.
+    fn from(view: ImportListView) -> Self {
+        Self { view, folded: Default::default() }
+    }
+}
+
+impl ImportListRequest {
+    /// The request showing `view` with no group folded.
+    pub fn of(view: ImportListView) -> Self {
+        view.into()
+    }
+
+    /// Whether the text filter narrows the tab, which only a read of every
+    /// row's text can count.
+    pub(crate) fn filters_text(&self) -> bool {
+        !self.view.filter_text.is_empty()
+    }
+
+    /// Whether the text filter or Found's filter entry narrows the tab.
+    pub(crate) fn narrows(&self) -> bool {
+        self.filters_text()
+            || (self.view.tab == TriageTab::Pending
+                && self.view.pending_filter != PendingFilter::All)
+    }
+
+    /// Whether the list shows every row of its tab: nothing narrows it and no
+    /// group is folded shut.
+    pub(crate) fn keeps_all(&self) -> bool {
+        !self.narrows() && self.folded.is_empty()
+    }
+}
 
 /// One item in the list.
 #[derive(Debug, Clone, PartialEq)]
@@ -172,19 +212,15 @@ pub struct ImportCandidateListLocation {
     pub group_key: Option<FolderReleaseDecisionKey>,
 }
 
-/// Whether bae watches any folder, whether Found has groups, and the
-/// narrowing, which a surface shows beside the list's rows and counts. The
-/// summary has its own live query, so the rows a scan writes do not rerun it.
+/// Whether bae watches any folder and whether Found has groups, which a
+/// surface shows beside the list's rows. The summary has its own live query,
+/// so the rows a scan writes do not rerun it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportQueueSummary {
     /// Whether bae watches any folder: with none, the surface shows no list.
     pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
-    /// What the view asked the rows to be narrowed by when this read was
-    /// made: what the count's `narrowed` counts under, so a surface shows
-    /// the count only beside the filter it is for.
-    pub narrowing: ImportListNarrowing,
 }
 
 /// How many items the list holds, how many of its tab's entries its
@@ -203,19 +239,17 @@ pub struct ImportListCount {
     pub tabs: crate::TriageTabCounts,
 }
 
-/// Where a list's view opens once it is set: what a list narrowed anew shows
-/// on top.
+/// Where a list's view opens: what a list narrowed anew shows on top.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ImportListOpening {
     /// The list's top: the view shows none of the selected rows.
     Top,
-    /// The first selected row the new view shows, as the write that set the
-    /// view found it: the position the row sits at, where the list's view
-    /// opens.
+    /// The first selected row the new view shows: the position the row sits
+    /// at, where the list's view opens.
     At { position: u64 },
 }
 
-/// What setting a list's view came to: where the new view opens, and the
+/// What showing another view comes to: where the new view opens, and the
 /// selected rows it takes out of the selection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListViewChange {
@@ -228,15 +262,6 @@ pub struct ImportListViewChange {
 
 /// One window of the list as it is read: its items, each with its key.
 pub type ImportWindow = WindowRead<ImportListItem>;
-
-/// What a view narrows its rows by: the tab, the text filter and the filter
-/// entry, as the view states them.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportListNarrowing {
-    pub tab: TriageTab,
-    pub filter_text: String,
-    pub pending_filter: PendingFilter,
-}
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -253,8 +253,9 @@ where Row.ID: Sendable {
 
     private func openCount() {
         countDeliveries?.stop()
+        guard let query = opened({ try queries.count() }) else { return }
         countDeliveries = ScreenSubscription(
-            queries.count(),
+            query,
             onValue: { [weak self] count in self?.apply(count) },
             onError: { [weak self] error in self?.failed(error) }
         )
@@ -293,10 +294,14 @@ where Row.ID: Sendable {
         view?.deliveries.stop()
         firstAnswered = false
         reported = rows
-        let query = queries.view(
-            UInt64(rows.lowerBound),
-            UInt64(rows.upperBound)
-        )
+        guard
+            let query = opened({
+                try queries.view(
+                    UInt64(rows.lowerBound),
+                    UInt64(rows.upperBound)
+                )
+            })
+        else { return }
         view = OpenView(
             query: query,
             deliveries: ScreenSubscription(
@@ -400,9 +405,10 @@ where Row.ID: Sendable {
 
     // MARK: - Failures
 
-    private func failed(_ error: any Error) {
+    fileprivate func failed(_ error: any Error) {
         if !firstReadAnswered {
             initialLoadError = DisplayError(error)
+            rowWaiting.releaseAll()
             settled()
             return
         }
@@ -412,19 +418,34 @@ where Row.ID: Sendable {
 }
 
 extension PaginatedList {
-    // MARK: - Another order
+    // MARK: - Waiting for the count and where the list opened
 
-    /// Read the rows again in another order. The view's window starts at a
-    /// row's sort values in the order the list opened it in, so the list
-    /// opens a new view at the rows on screen, and keeps its count: another
-    /// order moves the rows, not how many there are. The list keeps drawing
-    /// the rows in the old order until the new view answers, and this call
-    /// waits for that answer.
-    public func reorder() async {
-        openView(at: visible)
-        await firstAnswerWaiting.wait(
-            unless: firstAnswered || initialLoadError != nil
+    /// Wait until the list's count has answered, or the first read failed.
+    public func waitForCount() async {
+        // The count settles the wait for a row past any the list holds.
+        await rowWaiting.wait(
+            key: Int.max,
+            unless: count != nil || initialLoadError != nil
         )
+    }
+
+    /// The position of the first row on screen: the top of the rows the
+    /// screen holds, of the last reveal that waits, or of where the view
+    /// opened.
+    public var topPosition: Int {
+        visible.lowerBound
+    }
+
+    /// What `open` returns, or nil after reporting its failure: a list over
+    /// a request core refuses opens no read.
+    fileprivate func opened<T>(_ open: () throws -> T) -> T? {
+        do {
+            return try open()
+        }
+        catch {
+            failed(error)
+            return nil
+        }
     }
 }
 

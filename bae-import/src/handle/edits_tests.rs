@@ -206,7 +206,7 @@ fn field_edits() -> Vec<DraftFieldEdit> {
 /// view moved.
 async fn edits_under(view: ImportListView) {
     let (handle, _tmp, key) = picked_fixture("edited-while-selected").await;
-    let list = handle.subscribe_whole_list(view).await;
+    let list = handle.subscribe_whole_list(view);
     let opened = delivered(&list, &[]).await;
     let stable_key = crate::list::candidate_stable_key(&key);
     assert_eq!(
@@ -263,7 +263,6 @@ async fn edits_under(view: ImportListView) {
     );
     assert_eq!(edited.selection.single, Some(SingleSelection::Candidate { key: key.clone() }));
     assert_eq!(edited.selection, selected.selection, "no edit moved the selection");
-    assert_eq!(edited.summary.narrowing, selected.summary.narrowing, "no edit moved the view");
     let draft = pane(&handle, &key).await.draft().unwrap().metadata_draft.clone();
     assert_eq!(draft.pressing.year, "1998");
     shut_down(handle).await;

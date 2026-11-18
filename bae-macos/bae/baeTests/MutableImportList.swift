@@ -79,10 +79,7 @@ final class MutableImportList: @unchecked Sendable {
     /// which says where a candidate sits among the items as they are now.
     var handle: ImportListHandle {
         .stub(
-            queries: queries,
-            setView: { _, _ in
-                BridgeImportListViewChange(opening: .top, left: [])
-            },
+            queries: { [self] _ in queries },
             locateCandidate: { [self] key in
                 position(of: key)
                     .map { _ in
@@ -92,7 +89,7 @@ final class MutableImportList: @unchecked Sendable {
                         )
                     }
             },
-            candidatePosition: { [self] key in
+            candidatePosition: { [self] _, key in
                 position(of: key).map(UInt64.init)
             }
         )

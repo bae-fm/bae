@@ -133,8 +133,8 @@ struct MacImportSidebarContainer: View {
 
     /// What the list is narrowed by as the person has it now: the tab, the
     /// typed text and the filter entry.
-    private var shownNarrowing: BridgeImportListNarrowing {
-        BridgeImportListNarrowing(
+    private var shownNarrowing: ImportListNarrowing {
+        ImportListNarrowing(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
             pendingFilter: uiStore.importCandidatePendingFilter
@@ -146,8 +146,7 @@ struct MacImportSidebarContainer: View {
             activeTab: activeTabBinding,
             listSlot: listSlot,
             filterText: filterTextBinding,
-            narrowed: { listSlot.narrowedCount(under: shownNarrowing) },
-            answersView: listSlot.answersView
+            narrowed: { listSlot.narrowedCount(under: shownNarrowing) }
         ) {
             IdentificationProgressSlot(
                 importStore: importStore,
@@ -322,9 +321,11 @@ extension MacImportSidebarContainer {
 
 /// The list's table, or the empty tab, or a narrowed list with no matches.
 /// The view draws a plain surface until the list query and the summary have
-/// returned their first values, while another view shows the rows, and while
-/// core has not returned the count: a list core has not counted yet is
-/// neither empty nor filled, and only the count tells them apart.
+/// returned their first values, and while core has not returned the count: a
+/// list core has not counted yet is neither empty nor filled, and only the
+/// count tells them apart. The slot shows a list only once it has its first
+/// rows and its count, so another tab, filter, search or order keeps drawing
+/// the rows it had until the new one's arrive.
 /// A view of its own so that the list's count and the summary are read here
 /// and not by the list's chrome.
 private struct ImportCandidateListSwitch<Table: View>: View {
@@ -338,7 +339,7 @@ private struct ImportCandidateListSwitch<Table: View>: View {
             if let count = list.count, count.rows > 0 {
                 table()
             }
-            else if listSlot.answersView, list.count != nil {
+            else if list.count != nil {
                 ContentUnavailableView {
                     Text(
                         list.isNarrowed ? "No matches" : "Nothing here yet"

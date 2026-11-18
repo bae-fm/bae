@@ -14,20 +14,22 @@ struct RunningSelectionAction {
 }
 
 /// The calls the selection makes, as values a test can replace. Each goes to
-/// the import list the sidebar reads now, with the keys the screen keeps
-/// selected.
+/// the import list with the request the sidebar shows and the keys the screen
+/// keeps selected.
 struct ImportSelectionOperations: Sendable {
-    /// The keys of the rows the list shows from one row to another, both
-    /// included, on the tab and in the order the screen shows: what
-    /// Shift-clicking a row selects.
+    /// The keys of the rows the list `request` shows from one row to another,
+    /// both included: what Shift-clicking a row selects.
     let keysBetween:
-        @Sendable (BridgeTriageTab, BridgeImportListOrder, Data, Data)
-            async throws -> [Data]
-    /// The keys of every row the list shows: what Select All selects.
-    let allKeys: @Sendable () async throws -> [Data]
-    let sourceFolders: @Sendable ([Data]) async throws -> [Data]
-    let combine: @Sendable ([Data]) async throws -> Data
-    let separate: @Sendable ([Data]) async throws -> [Data]
+        @Sendable (BridgeImportListRequest, Data, Data) async throws -> [Data]
+    /// The keys of every row the list `request` shows: what Select All
+    /// selects.
+    let allKeys: @Sendable (BridgeImportListRequest) async throws -> [Data]
+    let sourceFolders:
+        @Sendable (BridgeImportListRequest, [Data]) async throws -> [Data]
+    let combine:
+        @Sendable (BridgeImportListRequest, [Data]) async throws -> Data
+    let separate:
+        @Sendable (BridgeImportListRequest, [Data]) async throws -> [Data]
     /// A new stream for one action's progress: unfed until `run` feeds it
     /// from the list it runs on.
     let progressStream:
@@ -36,40 +38,38 @@ struct ImportSelectionOperations: Sendable {
         >
     let run:
         @Sendable (
+            BridgeImportListRequest,
             BridgeCandidateAction,
             [Data],
             LatestStream<BridgeSelectionActionProgress>
         ) async throws -> [BridgeSelectionActionFailure]
 
-    static func live(list: ImportListSelectionOwner)
+    static func live(list: any ImportListProtocol)
         -> ImportSelectionOperations
     {
         ImportSelectionOperations(
-            keysBetween: { tab, order, from, to in
-                try await list.current()
-                    .keysBetween(
-                        tab: tab,
-                        order: order,
-                        from: from,
-                        to: to
-                    )
+            keysBetween: { request, from, to in
+                try await list.keysBetween(request: request, from: from, to: to)
             },
-            allKeys: { try await list.current().keys() },
+            allKeys: { try await list.keys(request: $0) },
             sourceFolders: {
-                try await list.current().selectionSourceFolders(selected: $0)
+                try await list.selectionSourceFolders(
+                    request: $0,
+                    selected: $1
+                )
             },
             combine: {
-                try await list.current().combineSelection(selected: $0)
+                try await list.combineSelection(request: $0, selected: $1)
             },
             separate: {
-                try await list.current().separateSelection(selected: $0)
+                try await list.separateSelection(request: $0, selected: $1)
             },
             progressStream: { .bulkActionProgress() },
-            run: { action, selected, progress in
-                let list = try list.current()
+            run: { request, action, selected, progress in
                 let feed = progress.feed(from: list)
                 defer { feed.cancel() }
                 return try await list.runSelectionAction(
+                    request: request,
                     action: action,
                     selected: selected
                 )
@@ -80,39 +80,14 @@ struct ImportSelectionOperations: Sendable {
     /// Operations that change nothing, for shots and tests that never act
     /// on the selection.
     static let inert = ImportSelectionOperations(
-        keysBetween: { _, _, _, _ in [] },
-        allKeys: { [] },
-        sourceFolders: { _ in [] },
-        combine: { _ in throw StubError.notImplemented },
-        separate: { _ in throw StubError.notImplemented },
+        keysBetween: { _, _, _ in [] },
+        allKeys: { _ in [] },
+        sourceFolders: { _, _ in [] },
+        combine: { _, _ in throw StubError.notImplemented },
+        separate: { _, _ in throw StubError.notImplemented },
         progressStream: { .bulkActionProgress() },
-        run: { _, _, _ in [] }
+        run: { _, _, _, _ in [] }
     )
-}
-
-/// The import list the selection's calls go to: the list the sidebar reads
-/// now. A list rebuilt after a failed read is a new list, and the selection
-/// starts empty on it.
-final class ImportListSelectionOwner: @unchecked Sendable {
-    private let lock = NSLock()
-    private var list: (any ImportListProtocol)?
-
-    /// Make `list` the one the selection's calls go to.
-    func own(_ list: any ImportListProtocol) {
-        lock.withLock { self.list = list }
-    }
-
-    func current() throws -> any ImportListProtocol {
-        guard let list = lock.withLock({ self.list }) else {
-            throw ImportListSelectionOwnerError.noList
-        }
-        return list
-    }
-}
-
-/// The selection was acted on before the import list was read.
-enum ImportListSelectionOwnerError: Error {
-    case noList
 }
 
 /// The import list's selection, which the screen keeps: the keys of the rows
@@ -151,6 +126,10 @@ final class ImportSelection {
     /// earlier list changes nothing.
     @ObservationIgnored
     private(set) var generation = 0
+    /// The request of the list the sidebar shows, which each read of rows
+    /// takes.
+    @ObservationIgnored
+    private(set) var request = ImportListRequests.initial
     /// Where a failure to tell the read the keys goes.
     @ObservationIgnored
     var onError: @MainActor (any Error) -> Void = { _ in }
@@ -170,6 +149,12 @@ final class ImportSelection {
         keys = []
     }
 
+    /// Take `request` as the list the sidebar shows: the reads and actions
+    /// that follow take it.
+    func show(_ request: BridgeImportListRequest) {
+        self.request = request
+    }
+
     /// Take core's latest summary.
     func apply(_ summary: BridgeSelectionSummary) {
         guard summary != self.summary else { return }
@@ -185,21 +170,17 @@ final class ImportSelection {
     }
 
     /// Make `edit`, the change a click or key made, to the keys the
-    /// selection holds now. Core reads the rows a Shift-click adds on `tab`
-    /// in `order`, the tab and order the screen shows.
-    func edit(
-        _ edit: ImportListSelectionRequest.Edit,
-        on tab: BridgeTriageTab,
-        in order: BridgeImportListOrder
-    ) {
+    /// selection holds now. Core reads the rows a Shift-click adds in the
+    /// list the screen shows.
+    func edit(_ edit: ImportListSelectionRequest.Edit) {
         switch edit {
         case .only(let keys):
             select(keys)
         case .adjust(let add, let remove, let range):
             select(keys.union(add).subtracting(remove))
             guard let range else { return }
-            readKeys(adding: true) {
-                try await $0.keysBetween(tab, order, range.from, range.to)
+            readKeys(adding: true) { operations, request in
+                try await operations.keysBetween(request, range.from, range.to)
             }
         }
     }
@@ -207,7 +188,9 @@ final class ImportSelection {
     /// Select every row the list shows, whether or not its page has loaded,
     /// once core reads their keys.
     func selectAll() {
-        readKeys(adding: false) { try await $0.allKeys() }
+        readKeys(adding: false) { operations, request in
+            try await operations.allKeys(request)
+        }
     }
 
     /// Read keys from core with `read`, and add them to the selection or
@@ -216,13 +199,15 @@ final class ImportSelection {
     private func readKeys(
         adding: Bool,
         _ read:
-            @escaping @Sendable (ImportSelectionOperations) async throws ->
-            [Data]
+            @escaping @Sendable (
+                ImportSelectionOperations, BridgeImportListRequest
+            ) async throws -> [Data]
     ) {
         let operations = operations
+        let request = request
         keysRead.replace(
             "Selection keys read",
-            work: { try await read(operations) },
+            work: { try await read(operations, request) },
             onSuccess: { [weak self] found in
                 guard let self else { return }
                 replace(adding ? keys.union(found) : Set(found))
@@ -249,13 +234,13 @@ final class ImportSelection {
     }
 
     func sourceFolders() async throws -> [Data] {
-        try await operations.sourceFolders(keys.inByteOrder)
+        try await operations.sourceFolders(request, keys.inByteOrder)
     }
 
     /// Read every selected folder the list shows as one release, and select
     /// it.
     func combine() async throws -> Data {
-        let key = try await operations.combine(keys.inByteOrder)
+        let key = try await operations.combine(request, keys.inByteOrder)
         select([key])
         return key
     }
@@ -264,7 +249,7 @@ final class ImportSelection {
     /// select them.
     @discardableResult
     func separate() async throws -> [Data] {
-        let separated = try await operations.separate(keys.inByteOrder)
+        let separated = try await operations.separate(request, keys.inByteOrder)
         select(Set(separated))
         return separated
     }
@@ -303,6 +288,7 @@ final class ImportSelection {
         let failures: [BridgeSelectionActionFailure]
         do {
             failures = try await operations.run(
+                request,
                 action,
                 keys.inByteOrder,
                 progress
@@ -329,6 +315,21 @@ final class ImportSelection {
             )
         )
     }
+}
+
+/// The requests the import list's calls take.
+enum ImportListRequests {
+    /// The request of a list showing Found, newest first, with nothing
+    /// narrowed and no group folded.
+    static let initial = BridgeImportListRequest(
+        view: BridgeImportListView(
+            tab: .pending,
+            filterText: "",
+            pendingFilter: .all,
+            order: .newestFirst
+        ),
+        folded: []
+    )
 }
 
 extension Set<Data> {

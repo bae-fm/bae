@@ -3,38 +3,56 @@ import Combine
 import Foundation
 import Observation
 
+/// What narrows the import list's rows: the tab, the typed text and Found's
+/// filter entry. A count belongs to the narrowing its list was read under.
+struct ImportListNarrowing: Equatable {
+    let tab: BridgeTriageTab
+    let filterText: String
+    let pendingFilter: BridgePendingFilter
+
+    init(of view: BridgeImportListView) {
+        tab = view.tab
+        filterText = view.filterText
+        pendingFilter = view.pendingFilter
+    }
+
+    init(
+        tab: BridgeTriageTab,
+        filterText: String,
+        pendingFilter: BridgePendingFilter
+    ) {
+        self.tab = tab
+        self.filterText = filterText
+        self.pendingFilter = pendingFilter
+    }
+}
+
 /// Holds the import sidebar's `PaginatedList`, the reads around it and the
-/// view they show. The list stays loaded while the view changes.
+/// view and folds it shows. A change to the view or the folds opens a new
+/// list under the new request.
 ///
-/// The view — which tab, which filter text, which order — and the groups
-/// folded shut decide which items sit at which positions, so they are core's
-/// list's rather than applied to the rows after they arrive. A view change
-/// is a write. When the new view has another tab, filter or search, the
-/// write returns where the new view opens; the slot then drops the list's
-/// view and count and reads them again from that place, so core reads every
-/// value they deliver after the write. Until the new view's rows arrive, the
-/// rows the list holds are the previous view's, which the sidebar does not
-/// show as this one's. Which groups are folded is core's alone; each
-/// header says whether it is open.
+/// The view (which tab, which filter text, which order) and the groups
+/// folded shut decide which items sit at which positions, so the slot keeps
+/// them and every read of the list takes them in its request. When the person
+/// changes either, the slot reads the new request's first rows and count in a
+/// new list, and the sidebar keeps drawing the old list until the new one has
+/// both. A new tab, filter or search first asks core where the new view opens
+/// and which selected rows it doesn't show, and the new list opens there. A
+/// new order opens the new list at the row on top. A fold asks core which
+/// selected rows it hid and opens the new list at the row on top, and the
+/// table puts the release that was on top back on top.
 ///
 /// `UiStore` keeps the tab and the filter text as session state, so every
 /// setter of them here writes both: the store the sidebar renders from, and
-/// the view core answers.
+/// the view the list reads.
 @MainActor
 @Observable
 final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
-    /// Whether the rows the list holds answer the view it shows: false from
-    /// the moment another tab, filter or order is asked for until the list's
-    /// view read under it has delivered its rows. Before then the list's rows
-    /// are the previous view's.
-    private(set) var answersView = true
     private(set) var sortOrder: BridgeImportListOrder
     /// The row each opening of the list puts on top: its first selected row,
-    /// or its top. Core answers an opening only when another tab, filter or
-    /// search narrows the list anew, and the table scrolls to each position
-    /// `openings` sends. A table not shown then finds the opening in
-    /// `place`.
+    /// or its top. The table scrolls to each position `openings` sends. A
+    /// table not shown then finds the opening in `place`.
     @ObservationIgnored
     let openings = PassthroughSubject<Int, Never>()
     /// Where the person is in the list, as the table last recorded it. Held
@@ -46,12 +64,17 @@ final class ImportListSlot {
     private let defaults: UserDefaults
     private static let sortPreferenceKey = "importCandidateSortOrder"
 
-    /// The view core answers the list for.
+    /// The view the person asked for.
     @ObservationIgnored
     private(set) var view: BridgeImportListView
+    /// The groups the person folded shut.
     @ObservationIgnored
-    private let makeHandle:
-        (BridgeImportListView) async throws -> ImportListHandle
+    private var folded: Set<BridgeFolderReleaseDecisionKey> = []
+    /// The request the list on screen reads, which the filter field's count
+    /// is checked against.
+    private(set) var shown: BridgeImportListRequest?
+    @ObservationIgnored
+    private let makeHandle: () async throws -> ImportListHandle
     @ObservationIgnored
     private var handle: ImportListHandle?
     @ObservationIgnored
@@ -59,7 +82,8 @@ final class ImportListSlot {
     @ObservationIgnored
     private let uiStore: UiStore
     /// The keys of the rows the person selected, which the table draws its
-    /// highlight from and each view change and fold passes to core.
+    /// highlight from and each change of the view and the folds passes to
+    /// core.
     let selection: ImportSelection
     /// Where the selection's values go beside the selection the panes read.
     @ObservationIgnored
@@ -69,17 +93,14 @@ final class ImportListSlot {
     /// the selection.
     @ObservationIgnored
     private var surroundings: [any Sendable] = []
-    /// The last fold asked for, which the next one waits on.
-    @ObservationIgnored
-    private var foldTask: Task<Void, Never>?
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
-    /// The last view change asked for, which the next one waits on so the
-    /// writes reach core in the order they were made.
+    /// The last change asked for, which the next one waits on so the changes
+    /// reach core in the order they were made.
     @ObservationIgnored
-    private var viewChange: Task<Void, Never>?
+    private var changeTask: Task<Void, Never>?
     /// Set when a read failed. The reads behind a failed one are finished,
-    /// so the next view change has to build a new list rather than reopen
+    /// so the next change has to build a new list rather than read under
     /// the list whose reads have ended.
     @ObservationIgnored
     private var sourceFailed = false
@@ -87,7 +108,7 @@ final class ImportListSlot {
     /// Why the list could not be read, for as long as that stands.
     ///
     /// A read that fails delivers no rows, no watched folders and no summary,
-    /// which is indistinguishable from a library that has none — so the import
+    /// which is indistinguishable from a library that has none, so the import
     /// tab must render this rather than its "add a folder" prompt. Nil is the
     /// only state in which the absence of folders means the person has not
     /// added any.
@@ -102,8 +123,7 @@ final class ImportListSlot {
             @escaping @MainActor @Sendable (BridgeSelectionSummary) -> Void = {
                 _ in
             },
-        makeHandle:
-            @escaping (BridgeImportListView) async throws -> ImportListHandle
+        makeHandle: @escaping () async throws -> ImportListHandle
     ) {
         self.importStore = importStore
         self.uiStore = uiStore
@@ -119,29 +139,21 @@ final class ImportListSlot {
                 forKey: Self.sortPreferenceKey
             ) ?? .newestFirst
         sortOrder = initialOrder
-        let initialView = BridgeImportListView(
+        view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
             pendingFilter: uiStore.importCandidatePendingFilter,
             order: initialOrder
         )
-        view = initialView
     }
 
-    /// What `view` narrows the list by.
-    private static func narrowing(
-        of view: BridgeImportListView
-    ) -> BridgeImportListNarrowing {
-        BridgeImportListNarrowing(
-            tab: view.tab,
-            filterText: view.filterText,
-            pendingFilter: view.pendingFilter
-        )
+    /// The request for the view and folds the person asked for.
+    private var asked: BridgeImportListRequest {
+        BridgeImportListRequest(view: view, folded: folded.inKeyOrder)
     }
 
     /// Build the list and read its first rows. Called once the app's
-    /// subscriptions start, and again when a view change follows a failed
-    /// read.
+    /// subscriptions start, and again when a change follows a failed read.
     func startLoad() {
         reloadTask?.cancel()
         reloadTask = Task { [weak self] in
@@ -171,16 +183,15 @@ final class ImportListSlot {
         updateView { $0.order = order }
     }
 
-    /// How many of the tab's rows the list shows, when core counted the list
-    /// under `narrowing`, the filter the field holds now; nil when core
-    /// counted the rows for another filter or has not counted them yet, so
-    /// the field shows a count only next to the filter core counted it for.
+    /// How many of the tab's rows the list shows, when the list on screen
+    /// was read under `narrowing`, the filter the field holds now; nil when
+    /// the list was read for another filter or has not counted yet, so the
+    /// field shows a count only next to the filter core counted it for.
     func narrowedCount(
-        under narrowing: BridgeImportListNarrowing
+        under narrowing: ImportListNarrowing
     ) -> BridgeNarrowedCount? {
-        guard answersView, narrowing == Self.narrowing(of: view) else {
-            return nil
-        }
+        guard let shown, narrowing == ImportListNarrowing(of: shown.view)
+        else { return nil }
         return list?.narrowed
     }
 
@@ -199,7 +210,7 @@ final class ImportListSlot {
 
 }
 
-// MARK: - Revealing, view changes and loading
+// MARK: - Revealing, changes and loading
 
 extension ImportListSlot {
     /// Navigate to the first candidate the identification count is still
@@ -208,7 +219,9 @@ extension ImportListSlot {
         -> (candidateKey: Data, position: Int)?
     {
         guard let handle,
-            let candidateKey = try await handle.firstIdentifyingCandidate(),
+            let candidateKey = try await handle.firstIdentifyingCandidate(
+                sortOrder
+            ),
             let position = try await revealCandidate(candidateKey)
         else { return nil }
         return (candidateKey, position)
@@ -216,9 +229,8 @@ extension ImportListSlot {
 
     /// Navigate to the candidate's current authoritative placement, even when
     /// that placement has moved it out of the list presently on screen, and
-    /// select it alone. Returns where core places the candidate in the view
-    /// the reveal set, which the list opens at; `nil` when that view does
-    /// not show it.
+    /// select it alone. Returns where the list opened by the reveal places
+    /// the candidate; `nil` when that list does not show it.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
         guard let handle,
             let location = try await handle.locateCandidate(candidateKey)
@@ -228,32 +240,32 @@ extension ImportListSlot {
         uiStore.setImportCandidateTab(location.tab)
         uiStore.setImportCandidateFilterText("")
         uiStore.setImportCandidatePendingFilter(.all)
-        if let groupKey = location.groupKey {
-            _ = try await handle.setGroupFolded(
-                groupKey,
-                false,
-                selected: selection.keys.inByteOrder
-            )
-        }
         var next = view
         next.tab = location.tab
         next.filterText = ""
         next.pendingFilter = .all
         view = next
-        answersView = false
-        // The reveal's own place replaces the one the view would open at,
-        // and the candidate alone replaces the selection.
-        _ = try await handle.setView(
-            next,
-            selected: selection.keys.inByteOrder
-        )
-        selectOnly(candidateKey)
-        guard let list,
-            let placed = try await handle.candidatePosition(candidateKey)
-        else { return nil }
-        let position = Int(placed)
-        await list.reopen(at: position)
-        if view == next { answersView = true }
+        let outcome = await enqueue {
+            [self] () async -> Result<Int?, any Error> in
+            if let groupKey = location.groupKey {
+                folded.remove(groupKey)
+            }
+            let request = asked
+            do {
+                guard
+                    let placed = try await handle.candidatePosition(
+                        request,
+                        candidateKey
+                    )
+                else { return .success(nil) }
+                selectOnly(candidateKey)
+                try await show(request, at: Int(placed))
+                return .success(Int(placed))
+            }
+            catch { return .failure(error) }
+        }
+        .value
+        let position = try outcome.get()
         guard !Task.isCancelled else { return nil }
         return position
     }
@@ -267,56 +279,113 @@ extension ImportListSlot {
         // shows what it could not load, and the next thing the person does
         // with the list is what asks core again.
         if sourceFailed {
-            answersView = false
             startLoad()
             return
         }
         guard handle != nil else { return }
-        show(next)
+        enqueue { [self] in await reconcile() }
     }
 
-    /// Ask core's list for `next`, and open the list's view again where it
-    /// opens, unless another view was asked for since.
-    private func show(_ next: BridgeImportListView) {
-        answersView = false
-        let previous = viewChange
-        viewChange = Task { [weak self] in
+    /// Run `work` after the changes asked for before it have finished, so
+    /// core gets them in the order the person made them.
+    @discardableResult
+    private func enqueue<Value: Sendable>(
+        _ work: @escaping @MainActor () async -> Value
+    ) -> Task<Value, Never> {
+        let previous = changeTask
+        let task = Task { @MainActor in
             await previous?.value
-            guard let self, view == next, let handle, let list else { return }
-            let generation = selection.generation
-            let change: BridgeImportListViewChange?
-            do {
-                change = try await handle.setView(
+            return await work()
+        }
+        changeTask = Task { @MainActor in _ = await task.value }
+        return task
+    }
+
+    /// Show the list under the view and folds asked for now, unless it is
+    /// the list on screen.
+    private func reconcile() async {
+        let next = asked
+        guard let handle, let before = shown, before != next else { return }
+        do {
+            if ImportListNarrowing(of: before.view)
+                != ImportListNarrowing(of: next.view)
+            {
+                // Another tab, filter or search opens where the first
+                // selected row it shows sits, or at its top, and takes the
+                // selected rows it doesn't show out of the selection.
+                let generation = selection.generation
+                let change = try await handle.viewChange(
                     next,
                     selected: selection.keys.inByteOrder
                 )
+                if selection.generation == generation {
+                    selection.remove(change.left)
+                }
+                let position: Int
+                switch change.opening {
+                case .top: position = 0
+                case .at(let at): position = Int(at)
+                }
+                try await show(next, at: position, opening: true)
             }
-            catch {
-                fail(error)
-                return
+            else if before.view.order != next.view.order {
+                // Another order moves the rows, not which rows there are: the
+                // list opens at the row on top.
+                try await show(next, at: list?.topPosition ?? 0)
             }
-            // The rows the new tab, filter or search doesn't show leave the
-            // selection, even when the person has asked for another view
-            // since this change started.
-            if let change, selection.generation == generation {
-                selection.remove(change.left)
+            else {
+                // A fold takes the selected rows it hides out of the
+                // selection.
+                let generation = selection.generation
+                let hidden = try await handle.hiddenByFold(
+                    before: before,
+                    after: next,
+                    selected: selection.keys.inByteOrder
+                )
+                if selection.generation == generation {
+                    selection.remove(hidden)
+                }
+                try await show(next, at: list?.topPosition ?? 0)
             }
-            guard view == next else { return }
-            switch change?.opening {
-            case .top:
-                await list.reopen(at: 0)
-                open(at: 0)
-            case .at(let position):
-                await list.reopen(at: Int(position))
-                open(at: Int(position))
-            case nil:
-                // A change of order alone answers no opening: the table keeps
-                // its scroll position, and the rows redraw in the new order
-                // under it.
-                await list.reorder()
-            }
-            if view == next { answersView = true }
         }
+        catch {
+            fail(error)
+        }
+    }
+
+    /// Read `request` in a new list opened at `position`, and show it in
+    /// place of the list on screen once it has its first rows and its count:
+    /// until then the sidebar keeps drawing the list it has. With `opening`,
+    /// the table scrolls to `position`.
+    private func show(
+        _ request: BridgeImportListRequest,
+        at position: Int,
+        opening: Bool = false
+    ) async throws {
+        guard let handle else { return }
+        let next = PaginatedList<BridgeImportListItem>(
+            queries: handle.queries(request),
+            onError: { [weak self] error in self?.fail(error) }
+        )
+        await next.reopen(at: position)
+        await next.waitForCount()
+        guard !Task.isCancelled else {
+            next.cancel()
+            return
+        }
+        if let failed = next.initialLoadError {
+            next.cancel()
+            sourceFailed = true
+            loadFailure = failed
+            uiStore.showError(failed)
+            return
+        }
+        let previous = list
+        list = next
+        shown = request
+        selection.show(request)
+        previous?.cancel()
+        if opening { open(at: position) }
     }
 
     /// A read failed: report it, and have the next change rebuild the list.
@@ -331,10 +400,10 @@ extension ImportListSlot {
     private func reload() async {
         sourceFailed = false
         loadFailure = nil
-        let requested = view
+        let requested = asked
         let made: ImportListHandle
         do {
-            made = try await makeHandle(requested)
+            made = try await makeHandle()
         }
         catch {
             fail(error)
@@ -342,14 +411,8 @@ extension ImportListSlot {
         }
         guard !Task.isCancelled else { return }
         list?.cancel()
-        if let replaced = handle {
-            Task { [uiStore] in
-                do { try await replaced.close() }
-                catch { uiStore.showError(error) }
-            }
-        }
         let newList = PaginatedList<BridgeImportListItem>(
-            queries: made.queries,
+            queries: made.queries(requested),
             onError: { [weak self] error in self?.fail(error) }
         )
         openSurroundings(of: made)
@@ -357,7 +420,7 @@ extension ImportListSlot {
         // The first read's failure never reaches `onError`: `PaginatedList`
         // keeps it as `initialLoadError` for a list view to render inline, the
         // way every other list surface reads it. The import tab is not a bare
-        // list — it decides between three panes before one is drawn — so it has
+        // list (it decides between three panes before one is drawn), so it has
         // to read that outcome here, or a library nobody could look at renders
         // as a library with no folders.
         if let initial = newList.initialLoadError {
@@ -368,20 +431,17 @@ extension ImportListSlot {
         guard !Task.isCancelled else { return }
         handle = made
         list = newList
+        shown = requested
+        selection.show(requested)
         // A list built anew opens at its top.
         open(at: 0)
-        // The list was read under the view asked for when it was built; one
-        // asked for since is asked for now.
-        if view == requested {
-            answersView = true
-        }
-        else {
-            show(view)
-        }
+        // The list was read under the request asked for when it was built;
+        // one asked for since is asked for now.
+        enqueue { [self] in await reconcile() }
     }
 
     /// Open the reads that follow what surrounds the list; they end with the
-    /// list. The selection starts empty on the list.
+    /// library. The selection starts empty on the list.
     private func openSurroundings(of handle: ImportListHandle) {
         let importStore = importStore
         let selectionQuery = handle.selection()
@@ -439,14 +499,15 @@ extension ImportListSlot {
                 importStore: importStore,
                 uiStore: uiStore,
                 selection: selection,
-                makeHandle: { _ in handle }
+                makeHandle: { handle }
             )
             let list = PaginatedList<BridgeImportListItem>(
-                queries: handle.queries,
+                queries: handle.queries(slot.asked),
                 onError: { _ in }
             )
             list.preloadRows(rows: items, extra: extra)
             slot.list = list
+            slot.shown = slot.asked
             slot.handle = handle
             return slot
         }
@@ -462,44 +523,45 @@ extension ImportListSlot {
         _ group: BridgeFolderReleaseDecisionKey,
         _ expanded: Bool
     ) {
-        foldGroups {
-            try await $0.setGroupFolded(group, !expanded, selected: $1)
+        foldGroups { folded, _ in
+            expanded ? folded.subtracting([group]) : folded.union([group])
         }
     }
 
     /// Fold every group open or shut as one change.
     func setAllGroupsExpanded(_ expanded: Bool) {
-        foldGroups { try await $0.setAllGroupsFolded(!expanded, selected: $1) }
+        foldGroups { _, handle in
+            expanded ? [] : Set(try await handle.groupKeys())
+        }
     }
 
-    /// Send a fold to core's list, with the keys the selection holds then,
-    /// once the folds asked for before it have finished, so core makes them
-    /// in the order the person made them. Then take the selected rows the
-    /// fold hid out of the selection. The slot reports a failure. The slot
-    /// rebuilds a list whose read failed instead, and the rebuilt list
-    /// starts with no group folded.
+    /// Change the folded groups to what `fold` makes of them once the changes
+    /// asked for before it have finished, so core gets them in the order the
+    /// person made them. The slot reports a failure. The slot rebuilds a list
+    /// whose read failed instead, and the rebuilt list starts with no group
+    /// folded.
     private func foldGroups(
         _ fold:
-            @escaping @MainActor (ImportListHandle, [Data]) async throws ->
-            [Data]
+            @escaping @MainActor (
+                Set<BridgeFolderReleaseDecisionKey>, ImportListHandle
+            ) async throws -> Set<BridgeFolderReleaseDecisionKey>
     ) {
         if sourceFailed {
+            folded = []
             startLoad()
             return
         }
-        guard let handle else { return }
-        let previous = foldTask
-        foldTask = Task { [uiStore, selection] in
-            await previous?.value
+        guard handle != nil else { return }
+        enqueue { [self] in
+            guard let handle else { return }
             do {
-                let generation = selection.generation
-                let hidden = try await fold(handle, selection.keys.inByteOrder)
-                guard selection.generation == generation else { return }
-                selection.remove(hidden)
+                folded = try await fold(folded, handle)
             }
             catch {
                 uiStore.showError(error)
+                return
             }
+            await reconcile()
         }
     }
 }
@@ -512,10 +574,11 @@ extension ImportListSlot {
     /// when the place's row is not a candidate's, or the view does not show
     /// the candidate. The slot reports a failed read and answers `nil`.
     func position(ofPlace place: ImportListPlace) async -> Int? {
-        guard case .candidate(let candidateKey) = place.row, let handle
+        guard case .candidate(let candidateKey) = place.row, let handle,
+            let shown
         else { return nil }
         do {
-            return try await handle.candidatePosition(candidateKey)
+            return try await handle.candidatePosition(shown, candidateKey)
                 .map(Int.init)
         }
         catch {
@@ -534,10 +597,9 @@ extension ImportListSlot {
     }
 
     /// Make `edit`, the change a click or key made, to the selection. Core
-    /// reads the rows a Shift-click adds on the tab and in the order the slot
-    /// shows.
+    /// reads the rows a Shift-click adds in the list the slot shows.
     func editSelection(_ edit: ImportListSelectionRequest.Edit) {
-        selection.edit(edit, on: view.tab, in: view.order)
+        selection.edit(edit)
     }
 }
 
@@ -570,5 +632,22 @@ extension PaginatedList<BridgeImportListItem> {
             )
         }
         return (narrowed, tabs)
+    }
+}
+
+extension Set<BridgeFolderReleaseDecisionKey> {
+    /// The keys in the order of their bytes, so a request holds the same
+    /// folds in one order.
+    var inKeyOrder: [BridgeFolderReleaseDecisionKey] {
+        sorted { first, second in
+            if first.watchedFolderPath != second.watchedFolderPath {
+                return first.watchedFolderPath.lexicographicallyPrecedes(
+                    second.watchedFolderPath
+                )
+            }
+            return first.relativeFolder.lexicographicallyPrecedes(
+                second.relativeFolder
+            )
+        }
     }
 }

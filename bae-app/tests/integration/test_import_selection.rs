@@ -45,8 +45,7 @@ async fn tab_counts_until(
     services: &AppServices,
     accept: impl Fn(&bae_import::TriageTabCounts) -> bool,
 ) {
-    let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
-    let counts = bae_app::import_list_count(&list);
+    let counts = services.import_list_count(bae_import::ImportListRequest::default());
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let count = counts.next().await.expect("the list's count answers");
@@ -88,8 +87,7 @@ async fn list_showing(
     view: ImportListView,
     count: u64,
 ) -> (FollowedImportList, ImportListRead) {
-    let list = services.subscribe_import_list(view).await.unwrap();
-    let list = FollowedImportList::follow(list, ListWindow::top(50));
+    let list = services.follow_import_list_for_test(view.into(), ListWindow::top(50));
     let snapshot = until(&list, &[], |snapshot| {
         snapshot.count.rows == count
             && snapshot.windows.iter().map(|window| window.rows.len() as u64).sum::<u64>() == count
@@ -189,7 +187,7 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
     assert_eq!(left.selection.count, 2, "the hidden rows stay selected");
     assert!(selected_keys(&list, &picked).await.is_empty(), "no action applies to a hidden row");
 
-    let change = list.set_view(ImportListView::default(), picked.clone()).await.unwrap().unwrap();
+    let change = list.set_view(ImportListView::default(), picked.clone()).await.unwrap();
     assert!(change.left.is_empty(), "the new view shows both rows");
     let all = until(&list, &picked, |snapshot| on_page(snapshot).len() == 3).await;
     assert_eq!(all.selection.count, 2);
@@ -219,7 +217,6 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
             selected.clone(),
         )
         .await
-        .unwrap()
         .unwrap();
     assert_eq!(change.left.len(), 2, "the filter hides two selected rows");
     selected.retain(|key| !change.left.contains(key));
@@ -228,7 +225,7 @@ async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     let kept = selected_keys(&list, &selected).await;
     assert_eq!(kept, selected);
 
-    let change = list.set_view(ImportListView::default(), selected.clone()).await.unwrap().unwrap();
+    let change = list.set_view(ImportListView::default(), selected.clone()).await.unwrap();
     assert!(change.left.is_empty(), "clearing the filter hides nothing");
     let cleared = until(&list, &selected, |snapshot| on_page(snapshot).len() == 3).await;
     assert_eq!(cleared.selection.count, 1);
@@ -245,7 +242,7 @@ fn descending() -> ImportListView {
 /// The candidate keys `view` shows, top to bottom.
 async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<bae_import::CandidateKey> {
     services
-        .load_import_items(view)
+        .load_import_items(bae_import::ImportListRequest::of(view))
         .await
         .unwrap()
         .into_iter()

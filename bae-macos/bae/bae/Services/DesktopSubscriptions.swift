@@ -207,10 +207,8 @@ final class DesktopSubscriptions {
             importStore: importStore,
             uiStore: uiStore
         )
-        let selectionOwner = ImportListSelectionOwner()
-        let importSelection = ImportSelection(
-            operations: .live(list: selectionOwner)
-        )
+        let list = appHandle.importList()
+        let importSelection = ImportSelection(operations: .live(list: list))
         self.importSelection = importSelection
         let applySelection = Self.selectionSink(
             importSelection: importSelection,
@@ -230,11 +228,7 @@ final class DesktopSubscriptions {
             uiStore: uiStore,
             selection: importSelection,
             onSelection: applySelection,
-            makeHandle: { view in
-                let list = try await appHandle.subscribeImportList(view: view)
-                selectionOwner.own(list)
-                return ImportListHandle(list: list)
-            }
+            makeHandle: { ImportListHandle(list: list) }
         )
     }
 

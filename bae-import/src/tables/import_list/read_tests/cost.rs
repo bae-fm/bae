@@ -27,18 +27,19 @@ async fn measure_view(
     let tables = crate::tables::ImportTables::new(db.clone());
     use crate::{ImportListOrder, ImportListView};
     for order in [ImportListOrder::PathAscending, ImportListOrder::NewestFirst] {
-        let list = tables
-            .open_import_list(ImportListView {
-                tab: crate::TriageTab::Pending,
-                filter_text: filter_text.clone(),
-                pending_filter,
-                order,
-            })
-            .await
-            .unwrap();
+        let list = ImportListRequest::of(ImportListView {
+            tab: crate::TriageTab::Pending,
+            filter_text: filter_text.clone(),
+            pending_filter,
+            order,
+        });
         let order_name = format!("{order:?}{variant}");
         for (at, offset) in offsets(n) {
-            let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has rows");
+            let key = tables
+                .import_key_at(list.clone(), offset)
+                .await
+                .unwrap()
+                .expect("the list has rows");
             let range = ListWindow { from: Some(key.clone()), limit: LIMIT };
             let mut scroll = Vec::with_capacity(RUNS);
             let mut jump = Vec::with_capacity(RUNS);
@@ -46,18 +47,23 @@ async fn measure_view(
             let mut rows = 0;
             for _ in 0..RUNS {
                 let started = Instant::now();
-                rows = tables.read_import_window(list, range.clone()).await.unwrap().rows.len();
+                rows = tables
+                    .read_import_window(list.clone(), range.clone())
+                    .await
+                    .unwrap()
+                    .rows
+                    .len();
                 scroll.push(started.elapsed());
 
                 let started = Instant::now();
-                let reached = tables.import_key_at(list, offset).await.unwrap().unwrap();
+                let reached = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
                 let jumped = ListWindow { from: Some(reached), limit: LIMIT };
-                tables.read_import_window(list, jumped).await.unwrap();
+                tables.read_import_window(list.clone(), jumped).await.unwrap();
                 jump.push(started.elapsed());
 
                 let started = Instant::now();
                 tables
-                    .subscribe_import_position(list, key.clone())
+                    .subscribe_import_position(list.clone(), key.clone())
                     .next_inline()
                     .await
                     .unwrap()
@@ -70,7 +76,6 @@ async fn measure_view(
                 report(name, &order_name, reach, at, offset, n, (runs[RUNS / 2], rows));
             }
         }
-        tables.close_import_list(list).await.unwrap();
     }
 }
 
@@ -145,10 +150,8 @@ async fn import_list_search_window_cost() {
 /// How many rows a list holding `view` shows, headers included.
 pub(super) async fn rows_shown(db: &Store, view: crate::ImportListView) -> u64 {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let list = tables.open_import_list(view).await.unwrap();
-    let total = tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows;
-    tables.close_import_list(list).await.unwrap();
-    total
+    let list = crate::ImportListRequest::of(view);
+    tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows
 }
 
 pub(super) fn found_view(
@@ -191,9 +194,8 @@ async fn measure_import_list_narrowed(db: &Store) {
     }
 }
 
-/// What typing a search costs: the write that sets the list's search and
-/// the read of its first window that follows, the median of [`RUNS`] searches
-/// each typed after the list's search was cleared, for a search that keeps
+/// What typing a search costs: the read of the first window under a request
+/// with the search, the median of [`RUNS`] searches, for a search that keeps
 /// about one release in ten (`+text`) and one that keeps every release
 /// (`+every`), reported under `import_list_typed` with `n` the items the
 /// search keeps.
@@ -201,36 +203,23 @@ async fn measure_import_list_typed(db: &Store) {
     use crate::{ImportListOrder::PathAscending, PendingFilter};
     let tables = crate::tables::ImportTables::new(db.clone());
     for (variant, text) in [("+text", "Album 1"), ("+every", "album")] {
-        let list = tables
-            .open_import_list(found_view("", PendingFilter::All, PathAscending))
-            .await
-            .unwrap();
+        let list =
+            crate::ImportListRequest::of(found_view(text, PendingFilter::All, PathAscending));
         let mut runs = Vec::with_capacity(RUNS);
         let mut kept = 0;
         for _ in 0..RUNS {
             let started = Instant::now();
-            tables
-                .set_import_list_view(
-                    list,
-                    found_view(text, PendingFilter::All, PathAscending),
-                    Vec::new(),
-                )
-                .await
-                .unwrap();
-            let mut window = tables.subscribe_import_window(list, first(LIMIT));
+            let mut window = tables.subscribe_import_window(list.clone(), first(LIMIT));
             window.next_inline().await.unwrap().result.unwrap();
             runs.push(started.elapsed());
-            kept = tables.subscribe_import_count(list).next_inline().await.unwrap().unwrap().rows;
-            tables
-                .set_import_list_view(
-                    list,
-                    found_view("", PendingFilter::All, PathAscending),
-                    Vec::new(),
-                )
+            kept = tables
+                .subscribe_import_count(list.clone())
+                .next_inline()
                 .await
-                .unwrap();
+                .unwrap()
+                .unwrap()
+                .rows;
         }
-        tables.close_import_list(list).await.unwrap();
         runs.sort();
         report(
             "import_list_typed",
@@ -244,25 +233,21 @@ async fn measure_import_list_typed(db: &Store) {
     }
 }
 
-/// The write that opens a view at its first selected row, with one row
+/// The read of where a view opens, at its first selected row, with one row
 /// selected at the middle of the list and one at its end: the median of
-/// [`RUNS`] writes to each of two orders, reported under
+/// [`RUNS`] reads of each of two orders, reported under
 /// `import_list_first_selected`. The middle row is the first selected in
 /// ascending order and the end row in descending order, so `at` names that
-/// row and `offset` the place the write opened the view at. A write that
-/// changes only the order returns no opening, so before each timed write an
-/// untimed one searches for a text no row holds, and the timed write clears
-/// that search.
+/// row and `offset` the place the read opened the view at.
 async fn measure_import_list_first_selected(db: &Store) {
     use crate::{ImportListOrder::PathAscending, ImportListOrder::PathDescending, PendingFilter};
     let tables = crate::tables::ImportTables::new(db.clone());
-    let list =
-        tables.open_import_list(found_view("", PendingFilter::All, PathAscending)).await.unwrap();
+    let list = crate::ImportListRequest::of(found_view("", PendingFilter::All, PathAscending));
     let total = rows_shown(db, found_view("", PendingFilter::All, PathAscending)).await;
     let candidates = async |offset: u64| -> Vec<crate::CandidateKey> {
-        let key = tables.import_key_at(list, offset).await.unwrap().unwrap();
+        let key = tables.import_key_at(list.clone(), offset).await.unwrap().unwrap();
         tables
-            .read_import_window(list, from(&key, 10))
+            .read_import_window(list.clone(), from(&key, 10))
             .await
             .unwrap()
             .rows
@@ -281,20 +266,14 @@ async fn measure_import_list_first_selected(db: &Store) {
     for run in 0..2 * RUNS + 2 {
         let which = (run % 2 == 1) as usize;
         let order = [PathDescending, PathAscending][which];
-        tables
-            .set_import_list_view(
-                list,
-                found_view("no folder holds this text", PendingFilter::All, order),
+        let started = Instant::now();
+        let change = tables
+            .import_list_view_change(
+                crate::ImportListRequest::of(found_view("", PendingFilter::All, order)),
                 selected.clone(),
             )
             .await
             .unwrap();
-        let started = Instant::now();
-        let change = tables
-            .set_import_list_view(list, found_view("", PendingFilter::All, order), selected.clone())
-            .await
-            .unwrap()
-            .expect("the write that clears the search answers where the view opens");
         let took = started.elapsed();
         if run >= 2 {
             runs[which].push(took);
@@ -316,7 +295,6 @@ async fn measure_import_list_first_selected(db: &Store) {
             (runs[which][RUNS / 2], 1),
         );
     }
-    tables.close_import_list(list).await.unwrap();
 }
 
 /// The window reads of a list of groups of five albums, every group open,

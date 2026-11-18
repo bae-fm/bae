@@ -14,7 +14,7 @@
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
-use crate::{ImportListView, ImportWindow, LiveImportList, PendingFilter};
+use crate::{ImportListRequest, ImportListView, ImportWindow, PendingFilter};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::{discogs_release_json, mb_release_json, mb_titled_release_json};
@@ -33,7 +33,6 @@ struct ListState {
 /// The list under one filter entry, followed through one window over every
 /// item and the filter's entries, each its own live query.
 struct LiveList {
-    _list: LiveImportList,
     state: tokio::sync::watch::Receiver<ListState>,
 }
 
@@ -45,13 +44,14 @@ fn keys_of(
 
 impl LiveList {
     async fn new(handle: &ImportServiceHandle, filter: PendingFilter) -> Self {
-        let list = handle
-            .open_list(ImportListView { pending_filter: filter, ..ImportListView::default() })
-            .await
-            .expect("the list opens");
+        let tables = &handle.services.tables;
+        let request = ImportListRequest::of(ImportListView {
+            pending_filter: filter,
+            ..ImportListView::default()
+        });
         let (state, receiver) = tokio::sync::watch::channel(ListState::default());
         let state = std::sync::Arc::new(state);
-        let mut window = list.subscribe_window(ListWindow::top(u64::MAX));
+        let mut window = tables.subscribe_import_window(request, ListWindow::top(u64::MAX));
         let rows = state.clone();
         tokio::spawn(async move {
             while let Some(event) = window.next_inline().await {
@@ -59,13 +59,13 @@ impl LiveList {
                 rows.send_modify(|state| state.shown = Some(keys_of(&window.rows)));
             }
         });
-        let mut entries = list.subscribe_filter_entries();
+        let mut entries = tables.subscribe_import_filter_entries();
         tokio::spawn(async move {
             while let Some(entries_read) = entries.next_inline().await {
                 state.send_modify(|state| state.entries = entries_read.expect("the entries read"));
             }
         });
-        Self { _list: list, state: receiver }
+        Self { state: receiver }
     }
 
     /// Wait until the list shows exactly `expected`; at once when it already
@@ -217,7 +217,6 @@ async fn the_entry_counts_follow_what_is_running() {
 /// first item alone, which the other row comes after, and the filter's
 /// entries, each its own live query.
 struct OnePage {
-    _list: LiveImportList,
     window: coven::ReconfigurableLiveQuery<ListWindow, ImportWindow, DbError>,
     entries: coven::LiveQuery<Vec<crate::PendingFilterEntry>, DbError>,
 }
@@ -251,19 +250,22 @@ async fn one_row_on_the_page(
     for key in [&first_key, &second_key] {
         handle.select_candidate_file_tags(key.clone()).await.unwrap();
     }
-    let list = handle.open_list(ImportListView::default()).await.expect("the list opens");
-    let mut window = list.subscribe_window(ListWindow::top(1));
+    let tables = &handle.services.tables;
+    let mut window = tables.subscribe_import_window(
+        ImportListRequest::of(ImportListView::default()),
+        ListWindow::top(1),
+    );
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_page = keys_of(&initial.rows);
     assert_eq!(on_page.len(), 1, "the page holds one row: {on_page:?}");
-    let mut entries = list.subscribe_filter_entries();
+    let mut entries = tables.subscribe_import_filter_entries();
     let entries_read = entries.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(counted(&entries_read, PendingFilter::All), Some(2));
     assert_eq!(counted(&entries_read, PendingFilter::InProgress), Some(0));
     assert_eq!(counted(&entries_read, PendingFilter::Identified), Some(0));
     let on_page = on_page.into_iter().next().expect("one row");
     let off_page = if on_page == first_key { second_key } else { first_key };
-    (handle, tmp, OnePage { _list: list, window, entries }, on_page, off_page)
+    (handle, tmp, OnePage { window, entries }, on_page, off_page)
 }
 
 /// The candidate whose row `item` is.
@@ -817,9 +819,8 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
     fixture.scan(2).await;
 
-    let list =
-        fixture.import.open_list(crate::ImportListView::default()).await.expect("the list opens");
-    let mut window = list.subscribe_window(page_window(1));
+    let tables = &fixture.import.services.tables;
+    let mut window = tables.subscribe_import_window(ImportListRequest::default(), page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_page = keys_of(&initial.rows);
     assert_eq!(on_page.len(), 1, "the window holds one row");
@@ -830,7 +831,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         .find(|key| *key != on_key)
         .expect("the other candidate is off the page");
     let requests = window.requests();
-    let mut entries = list.subscribe_filter_entries();
+    let mut entries = tables.subscribe_import_filter_entries();
     entries.next_inline().await.expect("the query stays open").unwrap();
 
     fixture.import.claim_candidate_for_import(&off_key, "import-off").await;
@@ -923,12 +924,11 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     fixture.set_identify_automatically(false).await;
     fixture.scan(2).await;
 
-    let list =
-        fixture.import.open_list(crate::ImportListView::default()).await.expect("the list opens");
-    let mut window = list.subscribe_window(page_window(1));
+    let tables = &fixture.import.services.tables;
+    let mut window = tables.subscribe_import_window(ImportListRequest::default(), page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_key = page_live_of(&initial).into_keys().next().expect("the window holds one row");
-    let mut entries = list.subscribe_filter_entries();
+    let mut entries = tables.subscribe_import_filter_entries();
     let before = entries.next_inline().await.expect("the query stays open").unwrap();
     let off_dir = [&first, &second]
         .into_iter()

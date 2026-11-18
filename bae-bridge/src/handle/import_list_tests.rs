@@ -1,8 +1,8 @@
 //! The import list's selection through the bridge object the macOS app holds.
 
 use crate::types::{
-    BridgeImportListItem, BridgeImportListOrder, BridgeImportListView, BridgeListRows,
-    BridgeListView, BridgePendingFilter, BridgeSelectionSummary, BridgeTriageTab,
+    BridgeImportListItem, BridgeImportListOrder, BridgeImportListRequest, BridgeImportListView,
+    BridgeListRows, BridgeListView, BridgePendingFilter, BridgeSelectionSummary, BridgeTriageTab,
 };
 use std::sync::Arc;
 
@@ -84,24 +84,27 @@ fn separating_the_selection_selects_the_releases_it_returns() {
         handle.handle().services.set_identify_automatically(false).await.unwrap();
         handle.handle().services.import_add_watched_folder(music.clone()).await.unwrap();
     });
-    let list = handle
-        .handle()
-        .runtime
-        .block_on(handle.handle().subscribe_import_list(BridgeImportListView {
+    let list = handle.handle().import_list();
+    let request = BridgeImportListRequest {
+        view: BridgeImportListView {
             tab: BridgeTriageTab::Pending,
             filter_text: String::new(),
             pending_filter: BridgePendingFilter::All,
             order: BridgeImportListOrder::PathAscending,
-        }))
-        .expect("the list opens");
-    let window = list.subscribe_list_view(0, 9);
+        },
+        folded: Vec::new(),
+    };
+    let window = list.subscribe_list_view(request.clone(), 0, 9).unwrap();
     let selection = list.subscribe_selection();
     until(handle.handle(), &window, |value| rows(value) == parts);
 
     selection.set_selected(parts.clone()).unwrap();
     until_selected(handle.handle(), &selection, |summary| summary.count == 2);
-    let combined =
-        handle.handle().runtime.block_on(list.clone().combine_selection(parts.clone())).unwrap();
+    let combined = handle
+        .handle()
+        .runtime
+        .block_on(list.clone().combine_selection(request.clone(), parts.clone()))
+        .unwrap();
     selection.set_selected(vec![combined.clone()]).unwrap();
     until_selected(handle.handle(), &selection, |summary| summary.count == 1);
     until(handle.handle(), &window, |value| rows(value) == vec![combined.clone()]);
@@ -109,14 +112,13 @@ fn separating_the_selection_selects_the_releases_it_returns() {
     let returned = handle
         .handle()
         .runtime
-        .block_on(list.clone().separate_selection(vec![combined.clone()]))
+        .block_on(list.clone().separate_selection(request.clone(), vec![combined.clone()]))
         .unwrap();
     assert_eq!(returned, parts);
     until(handle.handle(), &window, |value| rows(value) == parts);
     selection.set_selected(returned).unwrap();
     let separated = until_selected(handle.handle(), &selection, |summary| summary.count == 2);
     assert_eq!(separated.count, 2);
-    handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
 /// A bulk action writes its progress into the stream the app reads while it
@@ -136,17 +138,17 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         handle.handle().services.set_identify_automatically(false).await.unwrap();
         handle.handle().services.import_add_watched_folder(music.clone()).await.unwrap();
     });
-    let list = handle
-        .handle()
-        .runtime
-        .block_on(handle.handle().subscribe_import_list(BridgeImportListView {
+    let list = handle.handle().import_list();
+    let request = BridgeImportListRequest {
+        view: BridgeImportListView {
             tab: BridgeTriageTab::Pending,
             filter_text: String::new(),
             pending_filter: BridgePendingFilter::All,
             order: BridgeImportListOrder::PathAscending,
-        }))
-        .expect("the list opens");
-    let window = list.subscribe_list_view(0, 9);
+        },
+        folded: Vec::new(),
+    };
+    let window = list.subscribe_list_view(request.clone(), 0, 9).unwrap();
     let selection = list.subscribe_selection();
     until(handle.handle(), &window, |value| rows(value) == [key.clone()]);
     selection.set_selected(vec![key.clone()]).unwrap();
@@ -156,10 +158,11 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     handle
         .handle()
         .runtime
-        .block_on(
-            list.clone()
-                .run_selection_action(crate::types::BridgeCandidateAction::Skip, vec![key.clone()]),
-        )
+        .block_on(list.clone().run_selection_action(
+            request.clone(),
+            crate::types::BridgeCandidateAction::Skip,
+            vec![key.clone()],
+        ))
         .unwrap();
     assert_eq!(
         handle.handle().runtime.block_on(progress.clone().next()),
@@ -172,10 +175,11 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
     handle
         .handle()
         .runtime
-        .block_on(
-            list.clone()
-                .run_selection_action(crate::types::BridgeCandidateAction::Skip, vec![key.clone()]),
-        )
+        .block_on(list.clone().run_selection_action(
+            request.clone(),
+            crate::types::BridgeCandidateAction::Skip,
+            vec![key.clone()],
+        ))
         .unwrap();
     assert_eq!(
         handle.handle().runtime.block_on(progress.clone().next()),
@@ -183,7 +187,6 @@ fn a_cancelled_progress_stream_hears_no_later_action() {
         "a cancelled stream hears no later action"
     );
     assert_eq!(progress.latest(Vec::new()), None);
-    handle.handle().runtime.block_on(list.clone().cancel()).expect("cancel the list");
 }
 
 /// A refusal of the import list's grouping calls crosses in the class core

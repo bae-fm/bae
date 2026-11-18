@@ -9,29 +9,40 @@ import XCTest
 private struct ReadFailed: Error {}
 
 extension ImportListHandle {
-    /// A handle over `items` whose view changes, folds and reads are the
-    /// given stand-ins, and change nothing otherwise.
+    /// A handle over `items` whose reads are the given stand-ins, and change
+    /// nothing otherwise: a view opens at the top, a fold hides nothing, and
+    /// no candidate is found.
     static func stub(
         items: [BridgeImportListItem] = [],
-        queries: BridgeListQueries<BridgeImportListItem>? = nil,
-        setView:
-            @escaping @Sendable (BridgeImportListView, [Data]) async throws
-            -> BridgeImportListViewChange? = { _, _ in nil },
-        setGroupFolded:
-            @escaping @Sendable (BridgeFolderReleaseDecisionKey, Bool, [Data])
-            async throws -> [Data] = { _, _, _ in [] },
-        setAllGroupsFolded:
-            @escaping @Sendable (Bool, [Data]) async throws -> [Data] = {
-                _,
-                _ in []
+        queries:
+            (
+                @Sendable (BridgeImportListRequest) -> BridgeListQueries<
+                    BridgeImportListItem
+                >
+            )? = nil,
+        viewChange:
+            @escaping @Sendable (BridgeImportListRequest, [Data]) async throws
+            -> BridgeImportListViewChange = { _, _ in
+                BridgeImportListViewChange(opening: .top, left: [])
             },
+        hiddenByFold:
+            @escaping @Sendable (
+                BridgeImportListRequest, BridgeImportListRequest, [Data]
+            ) async throws -> [Data] = { _, _, _ in [] },
+        groupKeys:
+            @escaping @Sendable () async throws
+            -> [BridgeFolderReleaseDecisionKey] = { [] },
         locateCandidate:
             @escaping @Sendable (Data) async throws
             -> BridgeImportCandidateListLocation? = { _ in nil },
         candidatePosition:
-            @escaping @Sendable (Data) async throws -> UInt64? = { _ in nil },
+            @escaping @Sendable (BridgeImportListRequest, Data) async throws
+            -> UInt64? = { _, _ in nil },
         firstIdentifyingCandidate:
-            @escaping @Sendable () async throws -> Data? = { nil }
+            @escaping @Sendable (BridgeImportListOrder) async throws -> Data? =
+            {
+                _ in nil
+            }
     ) -> ImportListHandle {
         let fixed = ImportListHandle.fixed(items: items, tab: .pending)
         return ImportListHandle(
@@ -39,9 +50,9 @@ extension ImportListHandle {
             summary: fixed.summary,
             filterEntries: fixed.filterEntries,
             selection: fixed.selection,
-            setView: setView,
-            setGroupFolded: setGroupFolded,
-            setAllGroupsFolded: setAllGroupsFolded,
+            viewChange: viewChange,
+            hiddenByFold: hiddenByFold,
+            groupKeys: groupKeys,
             locateCandidate: locateCandidate,
             candidatePosition: candidatePosition,
             firstIdentifyingCandidate: firstIdentifyingCandidate
@@ -50,24 +61,26 @@ extension ImportListHandle {
 
     /// A handle whose every window read fails.
     static func failing() -> ImportListHandle {
-        stub(queries: .failing(ReadFailed(), answers: UnansweredCount()))
+        stub(queries: { _ in
+            .failing(ReadFailed(), answers: UnansweredCount())
+        })
     }
 }
 
-private final class RecordedImportView: @unchecked Sendable {
+private final class RecordedImportRequest: @unchecked Sendable {
     private let lock = NSLock()
-    private var view: BridgeImportListView?
+    private var request: BridgeImportListRequest?
 
-    var last: BridgeImportListView? {
-        lock.withLock { view }
+    var last: BridgeImportListRequest? {
+        lock.withLock { request }
     }
 
-    func set(_ view: BridgeImportListView) {
-        lock.recording { self.view = view }
+    func set(_ request: BridgeImportListRequest) {
+        lock.recording { self.request = request }
     }
 }
 
-/// A view change that waits until the test lets it answer.
+/// A read that waits until the test lets it answer.
 private final class AppliedViewResolver: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Never>?
@@ -144,18 +157,18 @@ struct ImportListSlotTests {
         let suite = "ImportListSlotTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let requests = RecordedImportView()
+        let requests = RecordedImportRequest()
         func makeSlot() -> ImportListSlot {
             ImportListSlot(
                 importStore: ImportStore(),
                 uiStore: UiStore(),
                 selection: ImportSelection(),
                 defaults: defaults,
-                makeHandle: { view in
-                    requests.set(view)
-                    return .stub(setView: { view, _ in
-                        requests.set(view)
-                        return nil
+                makeHandle: {
+                    .stub(queries: { request in
+                        requests.set(request)
+                        return ImportListHandle.fixed(items: [], tab: .pending)
+                            .queries(request)
                     })
                 }
             )
@@ -164,19 +177,19 @@ struct ImportListSlotTests {
         #expect(slot.sortOrder == .newestFirst)
         slot.startLoad()
         try await Wait.until { slot.list != nil }
-        #expect(requests.last?.order == .newestFirst)
+        #expect(requests.last?.view.order == .newestFirst)
 
         for order: BridgeImportListOrder in [
             .oldestFirst, .pathDescending, .pathAscending, .newestFirst,
         ] {
             slot.setSortOrder(order)
             #expect(slot.sortOrder == order)
-            try await Wait.until { requests.last?.order == order }
+            try await Wait.until { requests.last?.view.order == order }
             let reopened = makeSlot()
             #expect(reopened.sortOrder == order)
             reopened.startLoad()
             try await Wait.until { reopened.list != nil }
-            #expect(requests.last?.order == order)
+            #expect(requests.last?.view.order == order)
         }
     }
 
@@ -187,7 +200,7 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in .failing() }
+            makeHandle: { .failing() }
         )
 
         #expect(slot.loadFailure == nil)
@@ -212,12 +225,12 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
                     locateCandidate: { _ in located(on: .pending) },
-                    candidatePosition: { _ in 61 },
-                    firstIdentifyingCandidate: { target }
+                    candidatePosition: { _, _ in 61 },
+                    firstIdentifyingCandidate: { _ in target }
                 )
             }
         )
@@ -240,7 +253,7 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
                     locateCandidate: { _ in
@@ -257,8 +270,8 @@ struct ImportListSlotTests {
     }
 
     /// A view change sends core the selected keys and removes from the
-    /// selection the keys its write returns; a fold does the same with the
-    /// keys of the rows it hid.
+    /// selection the keys it returns; a fold does the same with the keys of
+    /// the rows it hid.
     @Test("a view change and a fold take out the selected rows they hide")
     func viewChangesAndFoldsTakeOutWhatTheyHide() async throws {
         let first = candidateKey(1)
@@ -270,20 +283,21 @@ struct ImportListSlotTests {
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: selection,
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<5).map(candidateItem),
-                    setView: { _, selected in
+                    viewChange: { _, selected in
                         sent.record(Set(selected))
                         return BridgeImportListViewChange(
                             opening: .top,
                             left: [first]
                         )
                     },
-                    setAllGroupsFolded: { _, selected in
+                    hiddenByFold: { _, _, selected in
                         sent.record(Set(selected))
                         return [second]
-                    }
+                    },
+                    groupKeys: { [boxGroup] }
                 )
             }
         )
@@ -298,100 +312,112 @@ struct ImportListSlotTests {
         #expect(sent.all == [[first, second, third], [second, third]])
     }
 
-    /// Folding is core's list's: the slot tells it which group to fold or
-    /// open, and folds every group in one call.
-    @Test("folding a group asks core's list to fold it")
-    func foldingAsksCoresList() async throws {
+    /// Folds are the slot's: each fold opens the list under a request that
+    /// holds the folded groups, and folding every group folds the groups core
+    /// names.
+    @Test("folding a group reads the list under the groups it folds")
+    func foldingReadsTheListUnderItsFolds() async throws {
         let folds = CallLog<String>()
-        let group = BridgeFolderReleaseDecisionKey(
-            watchedFolderPath: Data("/library".utf8),
-            relativeFolder: Data("Box".utf8)
-        )
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
-                    setGroupFolded: { group, folded, _ in
-                        let folder =
-                            String(bytes: group.relativeFolder, encoding: .utf8)
-                            ?? "not UTF-8"
-                        folds.record("\(folder) \(folded)")
+                    hiddenByFold: { _, after, _ in
+                        folds.record(
+                            after.folded
+                                .map {
+                                    String(
+                                        bytes: $0.relativeFolder,
+                                        encoding: .utf8
+                                    )
+                                        ?? "not UTF-8"
+                                }
+                                .joined(separator: ",")
+                        )
                         return []
                     },
-                    setAllGroupsFolded: { folded, _ in
-                        folds.record("all \(folded)")
-                        return []
-                    }
+                    groupKeys: { [boxGroup] }
                 )
             }
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
 
-        slot.setGroupExpanded(group, false)
+        slot.setGroupExpanded(boxGroup, false)
         try await Wait.until { folds.all.count == 1 }
-        slot.setGroupExpanded(group, true)
+        slot.setGroupExpanded(boxGroup, true)
         try await Wait.until { folds.all.count == 2 }
         slot.setAllGroupsExpanded(false)
         try await Wait.until { folds.all.count == 3 }
 
-        #expect(folds.all == ["Box true", "Box false", "all true"])
+        #expect(folds.all == ["Box", "", "Box"])
     }
 }
 
-/// A view change: the write that sets it, the windows read after it and the
-/// row the table shows.
+/// The group a test folds.
+private let boxGroup = BridgeFolderReleaseDecisionKey(
+    watchedFolderPath: Data("/library".utf8),
+    relativeFolder: Data("Box".utf8)
+)
+
+/// A view change: the read of where it opens, the list read after it and the
+/// rows the table shows.
 @MainActor
 @Suite("Import list slot view changes")
 struct ImportListSlotViewChangeTests {
-    /// Another tab is another view: until the write returns and the windows
-    /// the slot reads after it return their rows, the list holds the previous tab's
-    /// rows, which the slot does not take as the new tab's.
-    @Test("the list takes a new tab's rows only after its windows return them")
-    func aNewTabIsAnsweredByItsOwnRead() async throws {
+    /// Another tab is another request: until core answers where it opens and
+    /// the list read under it has its rows and count, the slot keeps the
+    /// previous tab's list on screen.
+    @Test("the sidebar keeps the previous list until the new tab's list reads")
+    func aNewTabKeepsThePreviousListUntilItsOwnReads() async throws {
         let delivery = AppliedViewResolver()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<3).map(candidateItem),
-                    setView: { view, _ in
-                        await delivery.wait(for: view)
-                        return nil
+                    viewChange: { request, _ in
+                        await delivery.wait(for: request.view)
+                        return BridgeImportListViewChange(
+                            opening: .top,
+                            left: []
+                        )
                     }
                 )
             }
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
-        #expect(slot.answersView)
+        let previous = slot.list
 
         slot.setTab(.done)
-        #expect(!slot.answersView)
         try await Wait.until { !delivery.requests.isEmpty }
         #expect(delivery.requests.last?.tab == .done)
+        #expect(slot.list === previous)
+        #expect(slot.shown?.view.tab == .pending)
 
         delivery.resolve()
-        try await Wait.until { slot.answersView }
+        try await Wait.until { slot.shown?.view.tab == .done }
+        #expect(slot.list !== previous)
     }
 
-    /// The write that sets a view returns the row where it opens; the slot
-    /// reads the windows again from there, sends the row as an opening and
-    /// takes it as the person's place.
-    @Test("a view change opens its windows at the row the write returns")
+    /// Core returns the row where a view opens; the slot reads the new list
+    /// from there, sends the row as an opening and takes it as the person's
+    /// place.
+    @Test("a view change opens its list at the row core returns")
     func aViewChangeOpensAtItsOpening() async throws {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    setView: { _, _ in
+                    viewChange: { _, _ in
                         BridgeImportListViewChange(
                             opening: .at(position: 60),
                             left: []
@@ -407,7 +433,9 @@ struct ImportListSlotViewChangeTests {
         #expect(opened == [0])
 
         slot.setTab(.done)
-        try await Wait.until { slot.answersView && opened == [0, 60] }
+        try await Wait.until {
+            slot.shown?.view.tab == .done && opened == [0, 60]
+        }
 
         #expect(slot.place?.position == 60)
         #expect(slot.list?.row(at: 60) != nil)
@@ -415,19 +443,25 @@ struct ImportListSlotViewChangeTests {
         listening.cancel()
     }
 
-    /// For another order, core returns no opening row: the slot sends none,
-    /// and the person's place stays the same while the table draws the rows
-    /// in the new order.
-    @Test("a view change for which core returns no opening opens nothing")
-    func aViewChangeWithNoOpeningOpensNothing() async throws {
+    /// For another order the slot asks core nothing and sends no opening: the
+    /// person's place stays the same while the table draws the rows in the new
+    /// order.
+    @Test("another order opens the list without an opening")
+    func anotherOrderOpensNothing() async throws {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: UiStore(),
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    setView: { _, _ in nil }
+                    viewChange: { _, _ in
+                        Issue.record("another order asks for no opening")
+                        return BridgeImportListViewChange(
+                            opening: .top,
+                            left: []
+                        )
+                    }
                 )
             }
         )
@@ -439,44 +473,44 @@ struct ImportListSlotViewChangeTests {
         slot.place = place
 
         slot.setSortOrder(.oldestFirst)
-        try await Wait.until { slot.answersView }
+        try await Wait.until { slot.shown?.view.order == .oldestFirst }
 
         #expect(opened == [0])
         #expect(slot.place == place)
         listening.cancel()
     }
 
-    /// The slot asks core for the list under the entry the person chose, and
-    /// keeps it as the sidebar's own.
+    /// The slot reads the list under the entry the person chose, and keeps it
+    /// as the sidebar's own.
     @Test("a chosen entry narrows the view")
     func aChosenEntryNarrowsTheView() async throws {
-        let requests = RecordedImportView()
+        let requests = RecordedImportRequest()
         let uiStore = UiStore()
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { view in
-                requests.set(view)
-                return .stub(setView: { view, _ in
-                    requests.set(view)
-                    return nil
+            makeHandle: {
+                .stub(queries: { request in
+                    requests.set(request)
+                    return ImportListHandle.fixed(items: [], tab: .pending)
+                        .queries(request)
                 })
             }
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
-        #expect(requests.last?.pendingFilter == BridgePendingFilter.all)
+        #expect(requests.last?.view.pendingFilter == BridgePendingFilter.all)
 
         slot.setPendingFilter(.needsYou)
         try await Wait.until {
-            requests.last?.pendingFilter == BridgePendingFilter.needsYou
+            requests.last?.view.pendingFilter == BridgePendingFilter.needsYou
         }
         #expect(uiStore.importCandidatePendingFilter == .needsYou)
 
         slot.setPendingFilter(.all)
         try await Wait.until {
-            requests.last?.pendingFilter == BridgePendingFilter.all
+            requests.last?.view.pendingFilter == BridgePendingFilter.all
         }
         #expect(uiStore.importCandidatePendingFilter == .all)
     }
@@ -501,15 +535,14 @@ final class CandidatePlacementNavigationTests: XCTestCase {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
-                    setView: { view, _ in
-                        await delivery.wait(for: view)
-                        return nil
-                    },
                     locateCandidate: { _ in located(on: .done) },
-                    candidatePosition: { _ in 61 }
+                    candidatePosition: { request, _ in
+                        await delivery.wait(for: request.view)
+                        return 61
+                    }
                 )
             }
         )
@@ -547,11 +580,11 @@ extension CandidatePlacementNavigationTests {
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in
+            makeHandle: {
                 .stub(
                     items: (0..<80).map(candidateItem),
                     locateCandidate: { _ in located(on: .pending) },
-                    candidatePosition: { _ in nil }
+                    candidatePosition: { _, _ in nil }
                 )
             }
         )
@@ -586,7 +619,7 @@ struct ImportListSlotSavedOrderTests {
             uiStore: UiStore(),
             selection: ImportSelection(),
             defaults: defaults,
-            makeHandle: { _ in .failing() }
+            makeHandle: { .failing() }
         )
 
         #expect(slot.sortOrder == .newestFirst)

@@ -1,14 +1,15 @@
 //! A list's selection, which the surface keeps as the keys of the rows the
 //! person selected: what those rows hold and offer, read as a live query of
 //! its own whatever the list shows; the ones the list shows, in its order,
-//! which a bulk action takes; and the keys a Shift run and Select All select.
+//! which a bulk action takes; the keys a Shift run and Select All select; and
+//! which selected rows another view or a fold takes out of the list.
 
 use super::actions::{action_columns, offers};
 use super::order::{sorted_terms, unit_join, uploading_cte, Item};
 use super::*;
 use crate::selection::{SelectedCandidate, SelectedRows, SelectionSummary, SingleSelection};
 use crate::triage::SelectionOffer;
-use crate::{CandidateAction, CandidateKey};
+use crate::{CandidateAction, CandidateKey, ImportListOpening, ImportListViewChange};
 
 /// What the rows at `keys` hold and offer, in one statement, whatever the
 /// list shows: how many rows the keys name, the one row when they name one,
@@ -99,30 +100,27 @@ pub(super) fn selection(
     Ok(summary)
 }
 
-/// The rows at `keys` the list `list` shows, in its order, and, when the
-/// caller names a command in `acting`, only the rows that offer it; `None`
-/// once the list is closed.
+/// The rows at `keys` the list `request` shows, in its order, and, when the
+/// caller names a command in `acting`, only the rows that offer it.
 pub(super) fn selected(
     sql: &impl coven::SqlRead,
-    list: ImportListId,
+    request: &ImportListRequest,
     keys: &[CandidateKey],
     acting: Option<CandidateAction>,
-) -> Result<Option<SelectedRows>, DbError> {
-    let Some(row) = super::list_row(sql, list)? else {
-        return Ok(None);
-    };
+) -> Result<SelectedRows, DbError> {
     // Combining acts on every selected row, whatever each offers.
     let offering = match acting {
         Some(CandidateAction::Combine) | None => "1".to_string(),
         Some(action) => format!("(p.item = 'candidate' AND {})", offers(action)),
     };
-    let rows = sql.query(
+    let keys = crate::tables::key_hex_list(keys.iter());
+    let rows = Items::new(request.clone()).query(
+        sql,
         &format!(
             "WITH {uploading} \
              SELECT p.item, p.key, c.name \
              FROM json_each(:keys) AS asked \
-             JOIN import_list_shown AS shown \
-                 ON shown.list_id = :list AND shown.key = unhex(asked.value) \
+             JOIN {shown} AS shown ON shown.key = unhex(asked.value) \
              JOIN import_list_placement AS p ON p.key = shown.key AND p.item <> 'group' \
              {unit} \
              JOIN scan_candidate AS c \
@@ -132,13 +130,11 @@ pub(super) fn selected(
              WHERE {offering} \
              ORDER BY u.position IS NULL, u.position, {terms}",
             uploading = uploading_cte(),
+            shown = request.shown(),
             unit = unit_join("p", "unit"),
-            terms = sorted_terms(row.view.order, "p", "unit"),
+            terms = sorted_terms(request.view.order, "p", "unit"),
         ),
-        named_params! {
-            ":keys": crate::tables::key_hex_list(keys.iter()),
-            ":list": list.0,
-        },
+        &[(":keys", &keys)],
         |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, CandidateKey>(1)?, row.get::<_, String>(2)?))
         },
@@ -152,105 +148,149 @@ pub(super) fn selected(
             Item::Invalid | Item::Group => selected.invalid.push(key),
         }
     }
-    Ok(Some(selected))
+    Ok(selected)
 }
 
-/// The keys of `keys` whose rows the list `list` shows.
-pub(super) fn shown_among(
+/// Where the list `request` shows opens: the position of the first of `keys`
+/// it shows, or its top when it shows none; and the keys it doesn't show,
+/// which leave the selection.
+pub(super) fn view_change(
     sql: &impl coven::SqlRead,
-    list: ImportListId,
+    request: &ImportListRequest,
     keys: &[CandidateKey],
-) -> Result<Vec<CandidateKey>, DbError> {
-    Ok(sql.query(
-        "SELECT shown.key FROM json_each(:keys) AS asked \
-         JOIN import_list_shown AS shown \
-             ON shown.list_id = :list AND shown.key = unhex(asked.value)",
-        named_params! {
-            ":keys": crate::tables::key_hex_list(keys.iter()),
-            ":list": list.0,
-        },
+) -> Result<ImportListViewChange, DbError> {
+    let items = Items::new(request.clone());
+    let opening = match items.position_of_first(sql, keys)? {
+        Some(position) => ImportListOpening::At { position },
+        None => ImportListOpening::Top,
+    };
+    let left = items.query(
+        sql,
+        &format!(
+            "SELECT unhex(asked.value) FROM json_each(:keys) AS asked \
+             WHERE NOT EXISTS (SELECT 1 FROM {shown} AS shown \
+                               WHERE shown.key = unhex(asked.value))",
+            shown = request.shown(),
+        ),
+        &[(":keys", &crate::tables::key_hex_list(keys.iter()))],
         |row| row.get(0),
-    )?)
+    )?;
+    Ok(ImportListViewChange { opening, left })
 }
 
-/// The keys of `keys` whose rows the list `list` doesn't show.
-pub(super) fn unshown_among(
+/// The keys of `keys` whose rows the list `before` showed and the list
+/// `after` doesn't: what a fold hid. The two requests differ in their folds
+/// only, so the statement reads `before`'s from `:folded_before`.
+pub(super) fn hidden_by(
     sql: &impl coven::SqlRead,
-    list: ImportListId,
+    before: &ImportListRequest,
+    after: &ImportListRequest,
     keys: &[CandidateKey],
 ) -> Result<Vec<CandidateKey>, DbError> {
-    Ok(sql.query(
-        "SELECT unhex(asked.value) FROM json_each(:keys) AS asked \
-         WHERE NOT EXISTS (SELECT 1 FROM import_list_shown AS shown \
-                           WHERE shown.list_id = :list AND shown.key = unhex(asked.value))",
-        named_params! {
-            ":keys": crate::tables::key_hex_list(keys.iter()),
-            ":list": list.0,
-        },
+    let folded_before = before.folded_json();
+    Items::new(after.clone()).query(
+        sql,
+        &format!(
+            "SELECT unhex(asked.value) FROM json_each(:keys) AS asked \
+             WHERE EXISTS (SELECT 1 FROM {before} AS shown \
+                           WHERE shown.key = unhex(asked.value)) \
+               AND NOT EXISTS (SELECT 1 FROM {after} AS shown \
+                               WHERE shown.key = unhex(asked.value))",
+            before = before.fragments_folding(":folded_before").shown(),
+            after = after.shown(),
+        ),
+        &[(":keys", &crate::tables::key_hex_list(keys.iter())), (":folded_before", &folded_before)],
         |row| row.get(0),
+    )
+}
+
+/// The key of every Found group's header: what folding every group folds.
+pub(super) fn group_keys(
+    sql: &impl coven::SqlRead,
+) -> Result<Vec<crate::FolderReleaseDecisionKey>, DbError> {
+    Ok(sql.query(
+        "SELECT watched_folder_path, key FROM import_list_placement \
+         WHERE tab = 'pending' AND item = 'group'",
+        [],
+        |row| {
+            Ok(crate::FolderReleaseDecisionKey {
+                watched_folder_path: path_column::get(row, 0)?,
+                relative_folder: row.get(1)?,
+            })
+        },
     )?)
 }
 
 impl ImportTables {
-    /// The rows at `keys` the list `list` shows, in its order: what a bulk
+    /// The rows at `keys` the list `request` shows, in its order: what a bulk
     /// action runs over. When the caller names a command in `acting`, the
     /// method returns only the rows that offer it.
     pub async fn load_import_list_selected(
         &self,
-        list: ImportListId,
+        request: ImportListRequest,
         keys: Vec<CandidateKey>,
         acting: Option<CandidateAction>,
-    ) -> Result<SelectedRows, ImportListError> {
-        self.store
-            .read(move |sql| selected(&sql, list, &keys, acting))
-            .await?
-            .ok_or(ImportListError::Closed(list))
+    ) -> Result<SelectedRows, DbError> {
+        self.store.read(move |sql| selected(&sql, &request, &keys, acting)).await
     }
 
-    /// The keys of every release the list `list` shows, loaded by a surface
-    /// or not: what Select All selects.
+    /// The keys of every release the list `request` shows, loaded by a
+    /// surface or not: what Select All selects.
     pub async fn import_list_keys(
         &self,
-        list: ImportListId,
-    ) -> Result<Vec<CandidateKey>, ImportListError> {
+        request: ImportListRequest,
+    ) -> Result<Vec<CandidateKey>, DbError> {
         self.store
             .read(move |sql| {
-                if list_row(&sql, list)?.is_none() {
-                    return Ok(None);
-                }
-                Ok(Some(sql.query(
-                    "SELECT key FROM import_list_shown WHERE list_id = ?",
-                    [list.0],
+                Items::new(request.clone()).query(
+                    &sql,
+                    &format!("SELECT key FROM {}", request.shown()),
+                    &[],
                     |row| row.get(0),
-                )?))
+                )
             })
-            .await?
-            .ok_or(ImportListError::Closed(list))
+            .await
     }
 
-    /// The releases the list `list` shows from the release `from` to the
+    /// The releases the list `request` shows from the release `from` to the
     /// release `to`, both included, in the list's order: what Shift-clicking
-    /// a row selects. The surface passes the tab and order it shows the list
-    /// in as `tab` and `order`. When the list shows only one of `from` and
-    /// `to`, the method returns that release alone. When the list shows
-    /// neither, or shows another tab, the method returns no keys.
+    /// a row selects. When the list shows only one of `from` and `to`, the
+    /// method returns that release alone. When it shows neither, the method
+    /// returns no keys.
     pub async fn import_list_keys_between(
         &self,
-        list: ImportListId,
-        tab: crate::TriageTab,
-        order: crate::ImportListOrder,
+        request: ImportListRequest,
         from: CandidateKey,
         to: CandidateKey,
-    ) -> Result<Vec<CandidateKey>, ImportListError> {
-        self.store
-            .read(move |sql| {
-                if list_row(&sql, list)?.is_none() {
-                    return Ok(None);
-                }
-                Ok(Some(Items::new(list, tab, order).keys_between(&sql, &from, &to)?))
-            })
-            .await?
-            .ok_or(ImportListError::Closed(list))
+    ) -> Result<Vec<CandidateKey>, DbError> {
+        self.store.read(move |sql| Items::new(request).keys_between(&sql, &from, &to)).await
+    }
+
+    /// Where the list `request` shows opens, and which of the selected keys
+    /// it doesn't show.
+    pub async fn import_list_view_change(
+        &self,
+        request: ImportListRequest,
+        selected: Vec<CandidateKey>,
+    ) -> Result<ImportListViewChange, DbError> {
+        self.store.read(move |sql| view_change(&sql, &request, &selected)).await
+    }
+
+    /// The keys of `selected` that the list showed under `before` and doesn't
+    /// under `after`, which differ in their folds only.
+    pub async fn import_list_hidden_by(
+        &self,
+        before: ImportListRequest,
+        after: ImportListRequest,
+        selected: Vec<CandidateKey>,
+    ) -> Result<Vec<CandidateKey>, DbError> {
+        self.store.read(move |sql| hidden_by(&sql, &before, &after, &selected)).await
+    }
+
+    /// The key of every group header Found holds: the folds when the surface
+    /// folds every group.
+    pub async fn import_group_keys(&self) -> Result<Vec<crate::FolderReleaseDecisionKey>, DbError> {
+        self.store.read(move |sql| group_keys(&sql)).await
     }
 }
 

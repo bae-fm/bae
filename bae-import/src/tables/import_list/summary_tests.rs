@@ -5,6 +5,7 @@ use super::*;
 use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
+use crate::ImportListView;
 use crate::TriageTab;
 use bae_catalogs::search::MetadataResult;
 
@@ -40,7 +41,6 @@ fn releases(projection: &ImportListRead) -> Vec<String> {
 #[tokio::test]
 async fn a_list_counts_what_it_lists() {
     let lib = grouped_in_two_entries().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     for filter in [
         PendingFilter::All,
         PendingFilter::NeedsYou,
@@ -54,14 +54,11 @@ async fn a_list_counts_what_it_lists() {
             };
             let kept = releases(&lib.shown(view.clone()).await);
             for folded in [&[][..], &["A"][..], &["A", "B"][..]] {
-                let list = lib.open(view.clone()).await;
+                let mut list = lib.open(view.clone()).await;
                 for group in folded {
-                    tables
-                        .set_import_list_group_folded(list, lib.group_key(group), true, Vec::new())
-                        .await
-                        .unwrap();
+                    list = list.folding(lib.group_key(group));
                 }
-                let read = lib.read(list).await;
+                let read = lib.read(&list).await;
                 let what = format!("{filter:?}, text {text:?}, folded {folded:?}");
                 assert_eq!(read.count.rows as usize, sequence(&read).len(), "{what}");
                 match filter != PendingFilter::All || !text.is_empty() {
@@ -146,14 +143,6 @@ async fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     assert_eq!(whole.count.narrowed, None);
     assert_eq!(whole.count.rows, 4);
     assert!(whole.summary.has_watched_folders);
-    assert_eq!(
-        whole.summary.narrowing,
-        crate::ImportListNarrowing {
-            tab: TriageTab::Pending,
-            filter_text: String::new(),
-            pending_filter: PendingFilter::All,
-        }
-    );
 }
 
 impl Library {
@@ -366,11 +355,10 @@ async fn a_chosen_entry_holding_no_row_stays_chosen() {
     let lib = every_kind().await;
     running(&lib).await;
     let list = lib.open(under(TriageTab::Pending, PendingFilter::InProgress)).await;
-    assert_eq!(lib.read(list).await.count.rows, 2);
+    assert_eq!(lib.read(&list).await.count.rows, 2);
     lib.run(lib.reopened()).await;
-    let ended = lib.read(list).await;
+    let ended = lib.read(&list).await;
     assert_eq!(ended.count.rows, 0);
-    assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
     assert_eq!(ended.count.narrowed, Some(crate::NarrowedCount { shown: 0, total: 14 }));
 }
 
@@ -436,9 +424,9 @@ async fn the_first_identifying_candidate_follows_the_queue_order() {
         lib.scan("Release 1") + lib.scan("Release 2") + lib.identifying("Release 2", "running"),
     )
     .await;
-    let first = |view: ImportListView| async {
-        let list = lib.open(view).await;
-        tables.first_identifying_import_candidate(list).await.unwrap()
+    let first = |view: ImportListView| {
+        let tables = tables.clone();
+        async move { tables.first_identifying_import_candidate(view.order).await.unwrap() }
     };
     assert_eq!(first(view(TriageTab::Pending)).await, Some(lib.key("Release 2")));
     let filtered =
@@ -462,9 +450,8 @@ async fn the_first_identifying_candidate_of_a_group_is_its_first_member() {
             + lib.identifying("Group/Release 1", "running"),
     )
     .await;
-    let list = lib.open(view(TriageTab::Pending)).await;
     assert_eq!(
-        tables.first_identifying_import_candidate(list).await.unwrap(),
+        tables.first_identifying_import_candidate(view(TriageTab::Pending).order).await.unwrap(),
         Some(lib.key("Group/Release 1"))
     );
 }
@@ -481,20 +468,12 @@ async fn candidate_location_opens_only_its_group() {
             + lib.scan("Target/Release 1"),
     )
     .await;
-    let list = lib
-        .open(ImportListView {
-            filter_text: "does not match".to_string(),
-            pending_filter: PendingFilter::NeedsYou,
-            ..view(TriageTab::Pending)
-        })
-        .await;
     let fold = |group: &str| crate::FolderReleaseDecisionKey {
         watched_folder_path: lib.root.clone(),
         relative_folder: crate::RelativeFolder::test(group),
     };
-    tables.set_import_list_groups_folded(list, true, Vec::new()).await.unwrap();
     let location = tables
-        .locate_import_candidate(list, &lib.key("Target/Release 1"))
+        .locate_import_candidate(&lib.key("Target/Release 1"))
         .await
         .unwrap()
         .expect("the candidate is in Pending");
@@ -510,15 +489,14 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
         scanned_with_states(&lib, &["Release"]) + lib.imported("Release", "2026-01-02T00:00:00Z"),
     )
     .await;
-    let list = lib.open(view(TriageTab::Pending)).await;
     let location = tables
-        .locate_import_candidate(list, &lib.key("Release"))
+        .locate_import_candidate(&lib.key("Release"))
         .await
         .unwrap()
         .expect("the imported candidate is in Done");
     assert_eq!(location.tab, TriageTab::Done);
     assert_eq!(location.group_key, None);
-    assert_eq!(tables.locate_import_candidate(list, &lib.key("Nowhere")).await.unwrap(), None);
+    assert_eq!(tables.locate_import_candidate(&lib.key("Nowhere")).await.unwrap(), None);
 }
 
 /// Locating a candidate clears the filters, so a row the entry hides is
@@ -527,9 +505,8 @@ async fn candidate_location_follows_an_import_from_pending_to_done() {
 async fn locating_a_candidate_ignores_the_pending_filter() {
     let lib = every_kind().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
-    let list = lib.open(under(TriageTab::Pending, PendingFilter::Identified)).await;
     let location = tables
-        .locate_import_candidate(list, &lib.key("Unidentified"))
+        .locate_import_candidate(&lib.key("Unidentified"))
         .await
         .unwrap()
         .expect("the candidate is found");
@@ -551,12 +528,9 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     .await;
     let list = lib.open(view(TriageTab::Pending)).await;
     let target = lib.key("Target/Release 1");
-    let open = tables.import_candidate_position(list, &target).await.unwrap();
-    tables
-        .set_import_list_group_folded(list, lib.group_key("Earlier"), true, Vec::new())
-        .await
-        .unwrap();
-    let folded = tables.import_candidate_position(list, &target).await.unwrap();
+    let open = tables.import_candidate_position(list.clone(), &target).await.unwrap();
+    let list = list.folding(lib.group_key("Earlier"));
+    let folded = tables.import_candidate_position(list.clone(), &target).await.unwrap();
     assert_eq!(
         (open, folded),
         (Some(4), Some(2)),
@@ -564,7 +538,7 @@ async fn a_candidate_position_counts_what_the_view_shows() {
     );
     let member = lib.key("Earlier/Release 1");
     assert_eq!(
-        tables.import_candidate_position(list, &member).await.unwrap(),
+        tables.import_candidate_position(list.clone(), &member).await.unwrap(),
         None,
         "the view does not show a member of a folded group"
     );
@@ -579,7 +553,7 @@ async fn the_list_count_carries_the_tab_counts() {
     let lib = Library::new().await;
     let tables = crate::tables::ImportTables::new(lib.db.clone());
     let list = lib.open(view(TriageTab::Done)).await;
-    let mut live = tables.subscribe_import_count(list);
+    let mut live = tables.subscribe_import_count(list.clone());
     let none = live.next_inline().await.expect("the query stays open").unwrap();
     assert_eq!(none.tabs, crate::TriageTabCounts::default());
 

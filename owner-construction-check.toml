@@ -294,7 +294,6 @@ task_types = [
     "LiveListWindow",
     "LiveAlbumSelection",
     "LiveLibrarySearch",
-    "LiveImportList",
     "LiveReleaseFiles",
     "LiveStorageSelection",
     "LiveDetail",
@@ -1417,8 +1416,6 @@ homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_l
 tables = [
     "import_list_placement",
     "import_list_search",
-    "import_list",
-    "import_list_collapsed",
 ]
 
 [[database.domains]]
@@ -1531,13 +1528,6 @@ frozen = [
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::bound", shape = "filter", count = 1, finding = "`Items::bound` filters with `filter` (found by the check)" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "join", count = 1, finding = "`Items::unled` joins by a key or place with `get` (found by the check)" },
     { path = "bae-import/src/tables/import_list/order.rs", item = "names", shape = "pick", count = 1, finding = "`names` picks with `any` (found by the check)" },
-    { path = "bae-import/src/tables/import_list/read.rs", item = "ImportTables::import_key_at", shape = "keyed-statement", count = 1, finding = "reads the key at a position with `key_at`, keyed by the list row the first statement returned" },
-    { path = "bae-import/src/tables/import_list/read.rs", item = "position_on", shape = "keyed-statement", count = 1, finding = "counts the items before a key with `rows_before`, keyed by the list row the first statement returned" },
-    { path = "bae-import/src/tables/import_list/read.rs", item = "window_on", shape = "keyed-statement", count = 1, finding = "reads the window with `read_window`, keyed by the list row the first statement returned" },
-    { path = "bae-import/src/tables/import_list/selection.rs", item = "selected", shape = "keyed-statement", count = 1, finding = "reads the selected items keyed by the list row the first statement returned" },
-    { path = "bae-import/src/tables/import_list/summary.rs", item = "count", shape = "keyed-statement", count = 1, finding = "counts the listed items with `listed`, keyed by the list and tabs the first statements returned" },
-    { path = "bae-import/src/tables/import_list/summary.rs", item = "first_identifying", shape = "keyed-statement", count = 1, finding = "reads the first identifying item keyed by the list row the first statement returned" },
-    { path = "bae-import/src/tables/import_list/summary.rs", item = "locate", shape = "keyed-statement", count = 1, finding = "reads an item's place keyed by the list row the first statement returned" },
     { path = "bae-import/src/tables/import_state/cards_read.rs", item = "statements_of", shape = "length-branch", count = 1, finding = "`statements_of` branches on how many rows there are (found by the check)" },
     { path = "bae-import/src/tables/import_state/file_decision_rows.rs", item = "ImportTables::load_candidate_file_edits_of", shape = "group", count = 1, finding = "`ImportTables::load_candidate_file_edits_of` groups with `collect::<HashMap>` (found by the check)" },
     { path = "bae-import/src/tables/import_state/file_decision_rows.rs", item = "load_stored_candidate_edits_on", shape = "group", count = 1, finding = "`load_stored_candidate_edits_on` groups with `collect::<HashMap>` (found by the check)" },
@@ -1609,6 +1599,11 @@ frozen = [
     { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
 ]
 allowed = [
+    { path = "bae-import/src/list.rs", item = "ImportListRequest::filters_text", shape = "length-branch", count = 1, reason = "tests whether the person typed search text; text the view owns, not rows" },
+    { path = "bae-import/src/list.rs", item = "ImportListRequest::keeps_all", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
+    { path = "bae-import/src/tables/import_list/judged.rs", item = "ImportListRequest::kept_sql", shape = "length-branch", count = 1, reason = "tests whether the request wrote any filter test into the statement; the statement's parts, not rows" },
+    { path = "bae-import/src/tables/import_list/judged.rs", item = "Fragments::folds_sql", shape = "length-branch", count = 1, reason = "tests whether the person folded any group; the request's folds, which the view owns, not rows" },
+    { path = "bae-import/src/list/test_read.rs", item = "FollowedImportList", shape = "kept-state", count = 1, reason = "a test helper that follows one list: it keeps the request and window it follows with, as a screen does" },
     { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
     { path = "bae-views/src/list_view.rs", item = "State::take", shape = "kept-state", count = 4, reason = "keeps the latest answer of the window's live query and of its position's, when each answers the window last requested, which a long list's view may hold" },
     { path = "bae-views/src/list_view.rs", item = "State::take_fresh", shape = "kept-state", count = 1, reason = "marks the latest answers of the window's and its position's live queries as sent; a flag over the answers a long list's view may hold, not rows" },

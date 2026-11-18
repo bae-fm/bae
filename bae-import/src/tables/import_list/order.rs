@@ -14,7 +14,6 @@
 //! order. The first part is the outbox's handful; the second is read by its
 //! index like any other tab.
 
-use super::views::tab_column;
 use super::*;
 use crate::{ImportListOrder, TriageTab};
 #[cfg(test)]
@@ -286,12 +285,10 @@ enum Part {
 
 /// A stream of one list's items in one tab, in its order: the parts it runs
 /// in, the rows it shows, and what each statement over it binds. The stream
-/// holds what the list shows under its view, its tab's rows read in order
+/// holds what the list shows under its request, its tab's rows read in order
 /// and each tested; Found's in runs that pass no folded group's members.
 pub(super) struct Items {
-    list: ImportListId,
-    tab: TriageTab,
-    order: ImportListOrder,
+    request: ImportListRequest,
 }
 
 /// A statement over one part of a stream: what it starts with, its rows, and
@@ -342,13 +339,21 @@ impl RangeStatement {
 }
 
 impl Items {
-    pub(super) fn new(list: ImportListId, tab: TriageTab, order: ImportListOrder) -> Self {
-        Self { list, tab, order }
+    pub(super) fn new(request: ImportListRequest) -> Self {
+        Self { request }
+    }
+
+    fn tab(&self) -> TriageTab {
+        self.request.view.tab
+    }
+
+    fn order(&self) -> ImportListOrder {
+        self.request.view.order
     }
 
     /// The parts the tab runs in, in order.
     fn parts(&self) -> &'static [Part] {
-        match self.tab {
+        match self.tab() {
             TriageTab::Done => &[Part::Uploading, Part::Settled],
             TriageTab::Pending | TriageTab::Skipped => &[Part::Whole],
         }
@@ -356,25 +361,29 @@ impl Items {
 
     /// The rows the stream shows, over the alias `i`, and the condition on
     /// them past its source.
-    fn source(&self) -> (&'static str, &'static str) {
-        ("import_list_item AS i", "i.list_id = :list AND i.tab = :tab")
+    fn source(&self) -> (String, &'static str) {
+        (format!("{} AS i", self.request.items()), "i.tab = :tab")
     }
 
     /// The two sources each run of Found reads: the list's rows, and the
     /// members under their headers, each member in its header's place. A run
     /// reads a header's members only while the list does not fold the header.
     /// The function returns `None` for Done and Skipped, which hold no group.
-    fn run_sources(&self) -> Option<(&'static str, &'static str)> {
-        if self.tab != TriageTab::Pending {
+    pub(super) fn run_sources(&self) -> Option<(String, String)> {
+        if self.tab() != TriageTab::Pending {
             return None;
         }
         Some((
-            "import_list_item AS p WHERE p.list_id = :list AND p.tab = :tab",
-            "import_list_judged AS h \
-             CROSS JOIN import_list_item AS m \
-                 ON m.list_id = h.list_id AND m.watched_folder_path = h.watched_folder_path \
-                AND m.group_folder = h.key AND m.item <> 'group' \
-             WHERE h.list_id = :list AND h.tab = :tab AND h.item = 'group' AND NOT h.folded",
+            format!("{} AS p WHERE p.tab = :tab", self.request.items()),
+            format!(
+                "{judged} AS h \
+                 CROSS JOIN {items} AS m \
+                     ON m.watched_folder_path = h.watched_folder_path \
+                    AND m.group_folder = h.key AND m.item <> 'group' \
+                 WHERE h.tab = :tab AND h.item = 'group' AND NOT h.folded",
+                judged = self.request.judged(),
+                items = self.request.items(),
+            ),
         ))
     }
 
@@ -388,7 +397,8 @@ impl Items {
             return "NULL".to_string();
         };
         // Each member sorts under its header `h` as the run reads it.
-        let after = unit_order(self.order, "h", "m").after_row(|at| format!("{w}.order_key_{at}"));
+        let after =
+            unit_order(self.order(), "h", "m").after_row(|at| format!("{w}.order_key_{at}"));
         format!(
             "CASE WHEN {w}.item <> 'group' AND {w}.group_folder IS NOT NULL \
                   THEN NOT EXISTS (SELECT 1 FROM {members} \
@@ -405,7 +415,7 @@ impl Items {
         // Done's and Skipped's rows are read off the order indexes, which hold
         // no Found row; naming that lets SQLite read them, since it can't tell
         // from the bound tab.
-        let (join, condition) = match self.tab {
+        let (join, condition) = match self.tab() {
             TriageTab::Pending => (unit_join("i", "unit"), condition.to_string()),
             TriageTab::Done | TriageTab::Skipped => {
                 (String::new(), format!("{condition} AND i.tab <> 'pending'"))
@@ -444,9 +454,9 @@ impl Items {
             Part::Uploading => Some("u.position"),
             Part::Whole | Part::Settled => None,
         };
-        match self.tab {
-            TriageTab::Pending => unit_order(self.order, "unit", "i"),
-            TriageTab::Done | TriageTab::Skipped => list_order(self.order, lead, "i"),
+        match self.tab() {
+            TriageTab::Pending => unit_order(self.order(), "unit", "i"),
+            TriageTab::Done | TriageTab::Skipped => list_order(self.order(), lead, "i"),
         }
     }
 
@@ -457,8 +467,15 @@ impl Items {
         extra: &[(&str, &dyn ToSql)],
         run: impl FnOnce(&[(&str, &dyn ToSql)]) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
-        let tab = tab_column(self.tab);
-        let mut named: Vec<(&str, &dyn ToSql)> = vec![(":list", &self.list.0), (":tab", &tab)];
+        let tab = tab_column(self.tab());
+        let filter = pending_filter_column(self.request.view.pending_filter);
+        let folded = self.request.folded_json();
+        let mut named: Vec<(&str, &dyn ToSql)> = vec![
+            (":tab", &tab),
+            (":filter", &filter),
+            (":filter_text", &self.request.view.filter_text),
+            (":folded", &folded),
+        ];
         named.extend_from_slice(extra);
         let bound: Vec<(&str, &dyn ToSql)> =
             named.into_iter().filter(|(name, _)| names(statement, name)).collect();
@@ -483,7 +500,9 @@ impl Items {
         let everything = order.everything();
         let seek = seek.unwrap_or(&everything);
         match self.run_sources() {
-            Some(sources) => format!("SELECT 1 FROM ({})", run(self.order, sources, seek)),
+            Some((rows, members)) => {
+                format!("SELECT 1 FROM ({})", run(self.order(), (&rows, &members), seek))
+            }
             None => {
                 let PartSql { with, from, .. } = self.part(part);
                 format!("{with} SELECT 1 FROM {from} AND {}", order.condition(seek))
@@ -537,12 +556,12 @@ impl Items {
 
     /// [`Self::window_statement`] with `tail` after its ORDER BY.
     fn window_statement_with(&self, part: Part, seek: &Seek, tail: &str) -> String {
-        if let Some(sources) = self.run_sources() {
+        if let Some((rows, members)) = self.run_sources() {
             // Each term sorts its result column, the first four being the
             // key and its group; a column keeps its expression's collation.
             return format!(
                 "{run} ORDER BY {ordering} {tail}",
-                run = run(self.order, sources, seek),
+                run = run(self.order(), (&rows, &members), seek),
                 ordering = self.part_order(part).column_ordering(seek, 5),
             );
         }
@@ -770,11 +789,11 @@ impl Items {
         let numbered = match self.run_sources() {
             // Found's runs all sit in one part, and the statement numbers
             // them in their order.
-            Some(sources) => format!(
+            Some((rows, members)) => format!(
                 "SELECT r.*, row_number() OVER (ORDER BY {ordering}) - 1 AS position \
                  FROM ({run}) AS r",
                 ordering = order.key_ordering("r"),
-                run = run(self.order, sources, &order.everything()),
+                run = run(self.order(), (&rows, &members), &order.everything()),
             ),
             None => {
                 let PartSql { with, from, order: ordering } = self.part(part);

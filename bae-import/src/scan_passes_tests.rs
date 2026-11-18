@@ -149,13 +149,10 @@ impl DecisionFixture {
         settled: &[&str],
     ) -> Vec<Vec<String>> {
         let tables = self.test.tables().clone();
-        let list = tables
-            .open_import_list(crate::ImportListView {
-                order: crate::ImportListOrder::PathAscending,
-                ..crate::ImportListView::default()
-            })
-            .await
-            .unwrap();
+        let list = crate::ImportListRequest::of(crate::ImportListView {
+            order: crate::ImportListOrder::PathAscending,
+            ..crate::ImportListView::default()
+        });
         let whole = bae_store::ListWindow::top(u64::MAX);
         let mut live = tables.subscribe_import_window(list, whole);
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();

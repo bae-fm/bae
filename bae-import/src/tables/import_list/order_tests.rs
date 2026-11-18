@@ -6,6 +6,7 @@ use super::*;
 use crate::list::ImportListRead;
 use crate::tables::import_list::tests::*;
 use crate::ImportListItem;
+use crate::ImportListView;
 use bae_catalogs::search::MetadataResult;
 
 impl Library {
@@ -45,14 +46,10 @@ async fn the_descending_order_reverses_the_whole_queue() {
 #[tokio::test]
 async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.scan("Group/Release 1") + lib.scan("Group/Release 2")).await;
     let list = lib.open(view(TriageTab::Pending)).await;
-    tables
-        .set_import_list_group_folded(list, lib.group_key("Group"), true, Vec::new())
-        .await
-        .unwrap();
-    let read = lib.read(list).await;
+    let list = list.folding(lib.group_key("Group"));
+    let read = lib.read(&list).await;
     assert_eq!(sequence(&read), ["group Group"]);
     assert_eq!(read.count.rows, 1);
     let ImportListItem::GroupHeader(header) = &read.windows[0].rows[0].0 else {
@@ -62,12 +59,9 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     assert_eq!(header.entry_count, 2, "the header still says how much is folded away");
     assert!(header.shows_no_member(), "the folded header is its group's last row");
 
-    tables
-        .set_import_list_group_folded(list, lib.group_key("Group"), false, Vec::new())
-        .await
-        .unwrap();
+    let list = list.unfolding(&lib.group_key("Group"));
     assert_eq!(
-        sequence(&lib.read(list).await),
+        sequence(&lib.read(&list).await),
         ["group Group", "candidate Group/Release 1", "candidate Group/Release 2"]
     );
 }
@@ -149,7 +143,7 @@ async fn a_window_starting_inside_a_group_carries_its_header() {
     lib.run(lib.scan("A/Disc 1") + lib.scan("A/Disc 2") + lib.scan("A/Disc 3") + lib.scan("Loose"))
         .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let window = lib.window_at(list, 2, 3).await;
+    let window = lib.window_at(&list, 2, 3).await;
     assert_eq!(
         items_sequence(&unkeyed(&window.rows)),
         ["candidate A/Disc 2", "candidate A/Disc 3", "candidate Loose"]
@@ -160,7 +154,7 @@ async fn a_window_starting_inside_a_group_carries_its_header() {
     assert_eq!(header.group.name, "A");
     assert_eq!(header.entry_count, 3, "the header counts the group's members");
 
-    let top = lib.window_at(list, 0, 2).await;
+    let top = lib.window_at(&list, 0, 2).await;
     let ImportListItem::GroupHeader(own) = &unkeyed(&top.rows)[0] else {
         panic!("the list's top is the group's header");
     };
@@ -172,7 +166,6 @@ async fn a_window_starting_inside_a_group_carries_its_header() {
 #[tokio::test]
 async fn a_folded_lists_members_name_their_header() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(
         lib.scan("A/Disc 1")
             + lib.scan("A/Disc 2")
@@ -183,8 +176,8 @@ async fn a_folded_lists_members_name_their_header() {
     )
     .await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    tables.set_import_list_group_folded(list, lib.group_key("A"), true, Vec::new()).await.unwrap();
-    let read = lib.read(list).await;
+    let list = list.folding(lib.group_key("A"));
+    let read = lib.read(&list).await;
     assert_eq!(
         sequence(&read),
         [
@@ -198,7 +191,7 @@ async fn a_folded_lists_members_name_their_header() {
     );
     let b = header_of(&lib, "B");
     assert_eq!(header_keys(&items_of(&read)), [None, None, b.clone(), b.clone(), b.clone(), None]);
-    let window = lib.window_at(list, 3, 3).await;
+    let window = lib.window_at(&list, 3, 3).await;
     assert_eq!(
         items_sequence(&unkeyed(&window.rows)),
         ["candidate B/Disc 2", "candidate B/Disc 3", "candidate Loose"]
@@ -239,7 +232,7 @@ async fn a_groups_last_member_says_it_ends_the_group() {
         ImportListOrder::PathDescending,
     ] {
         let list = lib.open(ordered(TriageTab::Pending, order)).await;
-        let items = items_of(&lib.read(list).await);
+        let items = items_of(&lib.read(&list).await);
         let keys = header_keys(&items);
         // A member ends its group when the row after it is not a member of
         // the same group.
@@ -249,7 +242,7 @@ async fn a_groups_last_member_says_it_ends_the_group() {
         assert_eq!(group_ends(&items), expected, "{order:?}");
         assert_eq!(expected.iter().filter(|ends| **ends == Some(true)).count(), 2, "{order:?}");
         for (at, ends) in (0..).zip(&expected) {
-            let window = lib.window_at(list, at, 1).await;
+            let window = lib.window_at(&list, at, 1).await;
             assert_eq!(group_ends(&unkeyed(&window.rows)), [*ends], "{order:?} at {at}");
         }
     }
@@ -333,7 +326,10 @@ async fn default_is_newest_first_and_groups_use_their_newest_member() {
         ]
     );
     let list = lib.open(view(TriageTab::Pending)).await;
-    assert_eq!(tables.import_candidate_position(list, &lib.key("Single")).await.unwrap(), Some(4));
+    assert_eq!(
+        tables.import_candidate_position(list.clone(), &lib.key("Single")).await.unwrap(),
+        Some(4)
+    );
 }
 
 #[tokio::test]
@@ -368,25 +364,24 @@ async fn name_orders_ignore_dates_and_case_ties_do_not_split_groups() {
 #[tokio::test]
 async fn filtering_collapsing_and_paging_preserve_group_date_order() {
     let lib = Library::new().await;
-    let tables = crate::tables::ImportTables::new(lib.db.clone());
     lib.run(lib.dated(&[("A/Old", 10), ("B/Old", 20), ("A/New", 30)])).await;
     let filtered = ImportListView { filter_text: "Old".into(), ..view(TriageTab::Pending) };
     let list = lib.open(filtered).await;
     assert_eq!(
-        sequence(&lib.read(list).await),
+        sequence(&lib.read(&list).await),
         ["group A", "candidate A/Old", "group B", "candidate B/Old"]
     );
     assert_eq!(
-        items_sequence(&unkeyed(&lib.window_at(list, 1, 2).await.rows)),
+        items_sequence(&unkeyed(&lib.window_at(&list, 1, 2).await.rows)),
         ["candidate A/Old", "group B"]
     );
-    tables.set_import_list_group_folded(list, lib.group_key("A"), true, Vec::new()).await.unwrap();
-    assert_eq!(sequence(&lib.read(list).await), ["group A", "group B", "candidate B/Old"]);
+    let list = list.folding(lib.group_key("A"));
+    assert_eq!(sequence(&lib.read(&list).await), ["group A", "group B", "candidate B/Old"]);
 }
 
 /// Done shows two parts, the uploading releases and the rest, but bae still
 /// reads the key at a position, the count before a key and a release's
-/// position with one statement each, after it reads the list's own row.
+/// position with one statement each.
 #[tokio::test]
 async fn positions_in_done_are_read_in_one_statement() {
     let lib = Library::new().await;
@@ -400,15 +395,15 @@ async fn positions_in_done_are_read_in_one_statement() {
     let tables = lib.tables();
     let list = lib.open(view(TriageTab::Done)).await;
     let log = lib.db.record_statements_for_test().await.unwrap();
-    let key = tables.import_key_at(list, 2).await.unwrap().expect("the list has items");
-    assert_eq!(log.take().len(), 2, "the list's row, then the key at the position");
-    let rows_before = tables.import_rows_before_for_test(list, key).await.unwrap();
+    let key = tables.import_key_at(list.clone(), 2).await.unwrap().expect("the list has items");
+    assert_eq!(log.take().len(), 1, "the key at the position");
+    let rows_before = tables.import_rows_before_for_test(list.clone(), key).await.unwrap();
     assert_eq!(rows_before, 2);
-    assert_eq!(log.take().len(), 2, "the list's row, then the count before the key");
+    assert_eq!(log.take().len(), 1, "the count before the key");
 }
 
-/// read_import_window reads a window in one statement after it reads the
-/// list's row, whatever the window's rows hold: each member's group header
+/// read_import_window reads a window in one statement, whatever the window's
+/// rows hold: each member's group header
 /// and each release's rows come in the same statement as the window's keys.
 #[tokio::test]
 async fn a_window_is_read_in_one_statement() {
@@ -416,13 +411,13 @@ async fn a_window_is_read_in_one_statement() {
     lib.run(lib.scan("Group/One") + lib.scan("Group/Two") + lib.scan("Solo")).await;
     let tables = lib.tables();
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let inside = tables.import_key_at(list, 1).await.unwrap().expect("the list has items");
+    let inside = tables.import_key_at(list.clone(), 1).await.unwrap().expect("the list has items");
     let log = lib.db.record_statements_for_test().await.unwrap();
     let window = tables
-        .read_import_window(list, bae_store::ListWindow { from: Some(inside), limit: 1 })
+        .read_import_window(list.clone(), bae_store::ListWindow { from: Some(inside), limit: 1 })
         .await
         .unwrap();
-    assert_eq!(log.take().len(), 2, "the list's row, then the window");
+    assert_eq!(log.take().len(), 1, "the window");
     assert_eq!(items_sequence(&unkeyed(&window.rows)), ["candidate Group/One"]);
     assert!(headers(&unkeyed(&window.rows))[0].is_some(), "the member carries its header");
 }
@@ -434,9 +429,9 @@ async fn a_jump_past_the_end_starts_at_the_last_item() {
     let lib = Library::new().await;
     lib.run(lib.scan("A") + lib.scan("B") + lib.scan("C")).await;
     let list = lib.open(ordered(TriageTab::Pending, ImportListOrder::PathAscending)).await;
-    let window = lib.window_at(list, 5, 5).await;
+    let window = lib.window_at(&list, 5, 5).await;
     assert_eq!(items_sequence(&unkeyed(&window.rows)), ["candidate C"]);
-    assert_eq!(lib.read(list).await.count.rows, 3);
+    assert_eq!(lib.read(&list).await.count.rows, 3);
     let empty = Library::new().await;
     let none = empty.open(view(TriageTab::Pending)).await;
     assert!(empty.tables().import_key_at(none, 0).await.unwrap().is_none());
@@ -585,26 +580,25 @@ impl ImportTables {
     /// each seek from a row, for a test that holds every order to its index.
     async fn import_list_window_plans(
         &self,
-        list: ImportListId,
+        list: ImportListRequest,
     ) -> Result<Vec<Vec<Vec<String>>>, DbError> {
-        self.store
-            .read(move |sql| {
-                let row = list_row(&sql, list)?.expect("the test's list is open");
-                row.items().window_plans(&sql)
-            })
-            .await
+        self.store.read(move |sql| Items::new(list).window_plans(&sql)).await
     }
 
     /// Returns SQLite's plan for the search counts query, one line per step,
     /// so a test can check that the query uses the search index.
-    async fn import_list_search_plan(&self, list: ImportListId) -> Result<Vec<String>, DbError> {
+    async fn import_list_search_plan(
+        &self,
+        list: ImportListRequest,
+    ) -> Result<Vec<String>, DbError> {
         self.store
             .read(move |sql| {
-                Ok(sql.query(
-                    &format!("EXPLAIN QUERY PLAN {}", summary::SEARCH_COUNTS),
-                    named_params! { ":list": list.0 },
+                Items::new(list.clone()).query(
+                    &sql,
+                    &format!("EXPLAIN QUERY PLAN {}", summary::search_counts(&list)),
+                    &[],
                     |row| row.get::<_, String>(3),
-                )?)
+                )
             })
             .await
     }
@@ -627,7 +621,7 @@ async fn every_order_reads_its_windows_off_its_index() {
     ] {
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
             let list = lib.open(ordered(tab, order)).await;
-            let plans = tables.import_list_window_plans(list).await.unwrap();
+            let plans = tables.import_list_window_plans(list.clone()).await.unwrap();
             // Done's last part is its settled releases, read off the index;
             // its first, the handful still uploading, is sorted by queue.
             // Each part is read by its offset, off its order's index, and
@@ -698,16 +692,15 @@ async fn found_reads_its_windows_off_its_runs() {
         (ImportListOrder::PathDescending, "import_list_path_descending"),
     ] {
         for folded in [false, true] {
-            let list = lib.open(ordered(TriageTab::Pending, order)).await;
-            tables
-                .set_import_list_group_folded(list, lib.group_key("Box"), folded, Vec::new())
-                .await
-                .unwrap();
+            let mut list = lib.open(ordered(TriageTab::Pending, order)).await;
+            if folded {
+                list = list.folding(lib.group_key("Box"));
+            }
             // Found runs in one part, read by its offset off the three runs'
             // indexes, and by each seek from its first item, which searches
             // them, or reaches the row it holds every term up to the folder
             // and its number equal to by that number.
-            let plans = tables.import_list_window_plans(list).await.unwrap().concat();
+            let plans = tables.import_list_window_plans(list.clone()).await.unwrap().concat();
             let (by_offset, seeks) = plans.split_first().expect("a part is read by its offset");
             assert!(!seeks.is_empty(), "{order:?} folded {folded}: {plans:?}");
             for run in ["_unfolded", "_headers", "_members"] {
@@ -718,7 +711,11 @@ async fn found_reads_its_windows_off_its_runs() {
             }
             for plan in &plans {
                 assert!(
-                    !plan.iter().any(|step| step.starts_with("SCAN")),
+                    // The folded groups are one JSON parameter read once as a
+                    // list subquery; no other table is scanned.
+                    !plan
+                        .iter()
+                        .any(|step| step.starts_with("SCAN") && !step.starts_with("SCAN f VIRTUAL")),
                     "{order:?} folded {folded} scans: {plan:?}"
                 );
                 assert!(

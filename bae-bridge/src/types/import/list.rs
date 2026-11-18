@@ -17,8 +17,7 @@ pub enum BridgeImportListOrder {
 }
 
 /// What the list is showing. A change to any of it changes which items sit at
-/// which offsets, so it travels as one value. Which groups are folded shut is
-/// the list's too, written by `set_group_folded`.
+/// which offsets, so it travels as one value.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
@@ -26,6 +25,16 @@ pub struct BridgeImportListView {
     /// Which of Found's rows the list shows.
     pub pending_filter: BridgePendingFilter,
     pub order: BridgeImportListOrder,
+}
+
+/// What every read of the import list takes: the view the app shows and the
+/// groups it folds shut. The app keeps both, and a change to either is a new
+/// read under a new request.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportListRequest {
+    pub view: BridgeImportListView,
+    /// The groups the list folds shut: their members are not in it.
+    pub folded: Vec<BridgeFolderReleaseDecisionKey>,
 }
 
 /// One entry of Found's filter menu: which of Found's rows the list shows.
@@ -114,25 +123,23 @@ pub struct BridgeImportCandidateListLocation {
     pub group_key: Option<BridgeFolderReleaseDecisionKey>,
 }
 
-/// Where a list's view opens after the app sets the view.
+/// Where a list's view opens.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportListOpening {
     /// The list's top: the view shows none of the selected rows.
     Top,
-    /// The first selected row the new view shows, as the write that set the
-    /// view found it: the position the row sits at, where the list's view
-    /// opens.
+    /// The first selected row the new view shows: the position the row sits
+    /// at, where the list's view opens.
     At { position: u64 },
 }
 
-/// What setting a list's view came to. Mirrors
+/// What showing another view comes to. Mirrors
 /// `bae_import::ImportListViewChange`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportListViewChange {
     pub opening: BridgeImportListOpening,
-    /// The keys of the selected rows that leave the selection: on another
-    /// tab, filter or search, each selected row the new view doesn't show,
-    /// and none on another order.
+    /// The keys of the selected rows that leave the selection: each selected
+    /// row the new view doesn't show.
     pub left: Vec<Vec<u8>>,
 }
 
@@ -146,18 +153,6 @@ pub struct BridgeImportQueueSummary {
     pub has_watched_folders: bool,
     /// Whether Found has any group, which folding every group acts on.
     pub has_groups: bool,
-    /// What the view asked the rows to be narrowed by when this read was
-    /// made: the filter the count's `narrowed` counts under.
-    pub narrowing: BridgeImportListNarrowing,
-}
-
-/// What a view narrows its rows by. Mirrors
-/// `bae_import::ImportListNarrowing`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeImportListNarrowing {
-    pub tab: BridgeTriageTab,
-    pub filter_text: String,
-    pub pending_filter: BridgePendingFilter,
 }
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.

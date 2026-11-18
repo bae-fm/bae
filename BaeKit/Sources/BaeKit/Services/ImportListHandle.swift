@@ -29,13 +29,18 @@ import Foundation
         }
     }
 
-    /// The open import list: its view and count as the generic list reads
-    /// them, the reads of what surrounds the list, and the writes
-    /// that change what it shows. Every read it makes ends with the list.
+    /// The import list: its view and count as the generic list reads them
+    /// under a request, the reads of what surrounds the list, and the reads
+    /// that answer what a view or a fold changes. Each call that reads rows
+    /// takes the request the screen shows, which holds the view and the
+    /// folded groups.
     public struct ImportListHandle: Sendable {
-        /// The view and count of the list's rows.
-        public let queries: BridgeListQueries<BridgeImportListItem>
-        /// The watched folders, whether Found has groups, and the narrowing.
+        /// The view and count of the rows the list `request` shows.
+        public let queries:
+            @Sendable (BridgeImportListRequest) -> BridgeListQueries<
+                BridgeImportListItem
+            >
+        /// The watched folders and whether Found has groups.
         public let summary:
             @Sendable () -> PulledValues<BridgeImportQueueSummary>
         /// Found's filter entries with how many rows each holds.
@@ -45,21 +50,26 @@ import Foundation
         /// the person can run on them. The screen sets the selected keys on
         /// the query, and the query reads the rows at those keys.
         public let selection: @Sendable () -> ImportSelectionQuery
-        private let applyView:
-            @Sendable (BridgeImportListView, [Data]) async throws
-                -> BridgeImportListViewChange?
-        private let fold:
-            @Sendable (BridgeFolderReleaseDecisionKey, Bool, [Data])
-                async throws -> [Data]
-        private let foldAll: @Sendable (Bool, [Data]) async throws -> [Data]
+        private let change:
+            @Sendable (BridgeImportListRequest, [Data]) async throws
+                -> BridgeImportListViewChange
+        private let hidden:
+            @Sendable (
+                BridgeImportListRequest, BridgeImportListRequest, [Data]
+            ) async throws -> [Data]
+        private let groups:
+            @Sendable () async throws -> [BridgeFolderReleaseDecisionKey]
         private let locate:
             @Sendable (Data) async throws -> BridgeImportCandidateListLocation?
-        private let position: @Sendable (Data) async throws -> UInt64?
-        private let firstIdentifying: @Sendable () async throws -> Data?
-        private let closeList: @Sendable () async throws -> Void
+        private let position:
+            @Sendable (BridgeImportListRequest, Data) async throws -> UInt64?
+        private let firstIdentifying:
+            @Sendable (BridgeImportListOrder) async throws -> Data?
 
         public init(
-            queries: BridgeListQueries<BridgeImportListItem>,
+            queries:
+                @escaping @Sendable (BridgeImportListRequest) ->
+                BridgeListQueries<BridgeImportListItem>,
             summary:
                 @escaping @Sendable () -> PulledValues<BridgeImportQueueSummary>,
             filterEntries:
@@ -67,131 +77,131 @@ import Foundation
                     [BridgePendingFilterEntry]
                 >,
             selection: @escaping @Sendable () -> ImportSelectionQuery,
-            setView:
-                @escaping @Sendable (BridgeImportListView, [Data]) async throws
-                -> BridgeImportListViewChange?,
-            setGroupFolded:
+            viewChange:
+                @escaping @Sendable (BridgeImportListRequest, [Data])
+                async throws -> BridgeImportListViewChange,
+            hiddenByFold:
                 @escaping @Sendable (
-                    BridgeFolderReleaseDecisionKey, Bool, [Data]
+                    BridgeImportListRequest, BridgeImportListRequest, [Data]
                 ) async throws -> [Data],
-            setAllGroupsFolded:
-                @escaping @Sendable (Bool, [Data]) async throws -> [Data],
+            groupKeys:
+                @escaping @Sendable () async throws
+                -> [BridgeFolderReleaseDecisionKey],
             locateCandidate:
                 @escaping @Sendable (Data) async throws
                 -> BridgeImportCandidateListLocation?,
             candidatePosition:
-                @escaping @Sendable (Data) async throws -> UInt64?,
+                @escaping @Sendable (BridgeImportListRequest, Data) async throws
+                -> UInt64?,
             firstIdentifyingCandidate:
-                @escaping @Sendable () async throws -> Data?,
-            close: @escaping @Sendable () async throws -> Void = {}
+                @escaping @Sendable (BridgeImportListOrder) async throws
+                -> Data?
         ) {
             self.queries = queries
             self.summary = summary
             self.filterEntries = filterEntries
             self.selection = selection
-            applyView = setView
-            fold = setGroupFolded
-            foldAll = setAllGroupsFolded
+            change = viewChange
+            hidden = hiddenByFold
+            groups = groupKeys
             locate = locateCandidate
             position = candidatePosition
             firstIdentifying = firstIdentifyingCandidate
-            closeList = close
         }
 
-        /// The handle of the open list `list`.
+        /// The handle of the import list `list`.
         public init(list: ImportList) {
             self.init(
-                queries: BridgeListQueries(
-                    importList: list,
-                    rows: { $0.importItems }
-                ),
+                queries: { request in
+                    BridgeListQueries(
+                        importList: list,
+                        request: request,
+                        rows: { $0.importItems }
+                    )
+                },
                 summary: { PulledValues(list.subscribeSummary()) },
                 filterEntries: {
                     PulledValues(list.subscribeFilterEntries())
                 },
                 selection: { ImportSelectionQuery(list.subscribeSelection()) },
-                setView: { try await list.setView(view: $0, selected: $1) },
-                setGroupFolded: {
-                    try await list.setGroupFolded(
-                        group: $0,
-                        folded: $1,
+                viewChange: {
+                    try await list.viewChange(request: $0, selected: $1)
+                },
+                hiddenByFold: {
+                    try await list.hiddenByFold(
+                        before: $0,
+                        after: $1,
                         selected: $2
                     )
                 },
-                setAllGroupsFolded: {
-                    try await list.setAllGroupsFolded(folded: $0, selected: $1)
-                },
+                groupKeys: { try await list.groupKeys() },
                 locateCandidate: {
                     try await list.locateCandidate(candidateKey: $0)
                 },
                 candidatePosition: {
-                    try await list.candidatePosition(candidateKey: $0)
+                    try await list.candidatePosition(
+                        request: $0,
+                        candidateKey: $1
+                    )
                 },
                 firstIdentifyingCandidate: {
-                    try await list.firstIdentifyingCandidate()
-                },
-                close: { try await list.cancel() }
+                    try await list.firstIdentifyingCandidate(order: $0)
+                }
             )
         }
 
-        /// Show `view`, where the screen keeps the rows at `selected`
-        /// selected, and answer where it opens, at the first of those rows
-        /// it shows or the list's top, and which of them leave the
-        /// selection: on another tab, filter or search, the ones the new view
-        /// doesn't show. `nil` when it is the view the list already shows.
-        /// The caller drops the list's view and opens a new one at that
-        /// place.
-        public func setView(
-            _ view: BridgeImportListView,
+        /// Where the list `request` shows opens, at the first of `selected`
+        /// it shows or the list's top, and which of `selected` it doesn't
+        /// show, which leave the selection.
+        public func viewChange(
+            _ request: BridgeImportListRequest,
             selected: [Data]
-        ) async throws -> BridgeImportListViewChange? {
-            try await applyView(view, selected)
+        ) async throws -> BridgeImportListViewChange {
+            try await change(request, selected)
         }
 
-        /// Fold one group shut, or open it, and answer with the keys of
-        /// `selected` whose rows the fold hid.
-        public func setGroupFolded(
-            _ group: BridgeFolderReleaseDecisionKey,
-            _ folded: Bool,
+        /// The keys of `selected` that the list showed under `before` and
+        /// doesn't show under `after`, which differ in their folds only:
+        /// what a fold hid.
+        public func hiddenByFold(
+            before: BridgeImportListRequest,
+            after: BridgeImportListRequest,
             selected: [Data]
         ) async throws -> [Data] {
-            try await fold(group, folded, selected)
+            try await hidden(before, after, selected)
         }
 
-        /// Fold every group shut, or open them all, as one change, and answer
-        /// with the keys of `selected` whose rows the fold hid.
-        public func setAllGroupsFolded(
-            _ folded: Bool,
-            selected: [Data]
-        ) async throws -> [Data] {
-            try await foldAll(folded, selected)
+        /// The key of every group header Found holds, which folding every
+        /// group folds.
+        public func groupKeys() async throws
+            -> [BridgeFolderReleaseDecisionKey]
+        {
+            try await groups()
         }
 
         /// Where the list shows the candidate after it clears the filters and
         /// opens the candidate's group: its tab, and the group to open. `nil`
-        /// when the list lists no such candidate.
+        /// when no tab lists such a candidate.
         public func locateCandidate(_ candidateKey: Data) async throws
             -> BridgeImportCandidateListLocation?
         {
             try await locate(candidateKey)
         }
 
-        /// Where the list shows the candidate under its view now, its filters
-        /// and folds as they are. `nil` when the view does not show it.
-        public func candidatePosition(_ candidateKey: Data) async throws
-            -> UInt64?
-        {
-            try await position(candidateKey)
+        /// Where the list `request` shows the candidate. `nil` when it does
+        /// not show it.
+        public func candidatePosition(
+            _ request: BridgeImportListRequest,
+            _ candidateKey: Data
+        ) async throws -> UInt64? {
+            try await position(request, candidateKey)
         }
 
-        /// Close the list: every read opened from it ends, and its folds go.
-        public func close() async throws {
-            try await closeList()
-        }
-
-        /// The first candidate still being identified, in the list's order.
-        public func firstIdentifyingCandidate() async throws -> Data? {
-            try await firstIdentifying()
+        /// The first candidate still being identified, in the order `order`.
+        public func firstIdentifyingCandidate(
+            _ order: BridgeImportListOrder
+        ) async throws -> Data? {
+            try await firstIdentifying(order)
         }
     }
 #endif

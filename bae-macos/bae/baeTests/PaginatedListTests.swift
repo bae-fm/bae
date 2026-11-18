@@ -55,8 +55,6 @@ private final class ProbeList: @unchecked Sendable {
     private var open: [View] = []
     private let counts = Feed<BridgeListCount>()
     private var countHeld = false
-    private var viewsHeld = false
-    private var heldViews: [View] = []
 
     init(_ ids: [String]) {
         albums = ids.map { makeBridgeAlbum(id: $0) }
@@ -67,19 +65,6 @@ private final class ProbeList: @unchecked Sendable {
     /// Answer no count until `releaseCount`: the view answers while the list
     /// still waits for the count.
     func holdCount() { lock.withLock { countHeld = true } }
-
-    /// Answer no view the list opens until `releaseViews`.
-    func holdViews() { lock.withLock { viewsHeld = true } }
-
-    /// Answer each view a held read opened.
-    func releaseViews() {
-        let held = lock.withLock {
-            viewsHeld = false
-            defer { heldViews = [] }
-            return heldViews
-        }
-        for view in held { place(view) }
-    }
 
     /// Fail the count read with `error`.
     func failCount(_ error: any Error) { counts.fail(error) }
@@ -159,12 +144,8 @@ private final class ProbeList: @unchecked Sendable {
         BridgeListQueries(
             view: { [self] first, last in
                 let view = View(Int(first)...Int(last))
-                let held = lock.withLock {
-                    open.append(view)
-                    if viewsHeld { heldViews.append(view) }
-                    return viewsHeld
-                }
-                if !held { place(view) }
+                lock.withLock { open.append(view) }
+                place(view)
                 return ListViewQuery(
                     setVisible: { [self] first, last in
                         view.show(Int(first)...Int(last))
@@ -445,53 +426,6 @@ struct PaginatedListTests {
         try await Wait.until { list.idAt(5) == nil }
         #expect(idsAt(list, 0...4) == ids(0...4).map(Optional.init))
         for task in tasks { task.cancel() }
-        list.cancel()
-    }
-}
-
-extension PaginatedListTests {
-    /// Another order opens a new view at the rows on screen, and the total
-    /// count stays the same.
-    @MainActor
-    @Test("another order reads a new view at the rows on screen")
-    func reorderOpensAtTheRowsOnScreen() async throws {
-        let probe = ProbeList(ids(0...999))
-        let list = try await open(probe)
-        let holds = held(list, 400...410)
-        try await Wait.until { list.idAt(400) != nil }
-
-        probe.holdCount()
-        await list.reorder()
-
-        #expect(probe.views.last?.reported.first == 400...410)
-        #expect(list.idAt(400) == "a0400")
-        #expect(list.count?.rows == 1000, "another order keeps the count")
-        for hold in holds { hold.cancel() }
-        list.cancel()
-    }
-
-    /// The list draws the rows it has until the new view in the new order
-    /// answers, so the screen never empties when the order changes.
-    @MainActor
-    @Test("another order keeps the rows on screen until its view answers")
-    func reorderKeepsTheRowsUntilItsViewAnswers() async throws {
-        let probe = ProbeList(ids(0...999))
-        let list = try await open(probe)
-        let holds = held(list, 400...410)
-        try await Wait.until {
-            idsAt(list, 400...410) == ids(400...410).map(Optional.init)
-        }
-        let opened = probe.views.count
-
-        probe.holdViews()
-        let reorder = Task { await list.reorder() }
-        try await Wait.until { probe.views.count > opened }
-
-        #expect(idsAt(list, 400...410) == ids(400...410).map(Optional.init))
-        probe.releaseViews()
-        await reorder.value
-        #expect(list.idAt(400) == "a0400")
-        for hold in holds { hold.cancel() }
         list.cancel()
     }
 }

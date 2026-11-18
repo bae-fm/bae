@@ -1067,8 +1067,10 @@ On Found, the list shows a release nested below a folder in that folder's group,
 and it also shows there a release at that folder while another release sits
 below it: the group sorts by its newest member's date and its folder, its header
 leads its members, and folding the group shut keeps the header, still counting
-its members, and leaves the members out of the list. Each list keeps its folds,
-and folding or opening every group is one change. A header offers to read its
+its members, and leaves the members out of the list. The screen keeps which
+groups it folds, and each read of the list takes them: a group that leaves the
+list and comes back under the same folder comes back folded. Folding or opening
+every group is one change. A header offers to read its
 folder as one release (§3.1) when a stored reading of the folder keeps its
 releases apart, or, with nothing stored, when the folder is the nearest one
 above some release that holds two releases or more, counting the releases of
@@ -1197,8 +1199,8 @@ until its first rows arrive, the list keeps drawing the rows it has, and
 shows neither *Nothing here yet* nor *No matches* for the new view (§9.2).
 
 A list narrowed anew (another tab, filter or search) shows on top the row its
-view opened at: its first selected row as it sat when the view was set, or its
-top while no selected row is shown. Changing the order keeps the list's scroll
+view opened at: its first selected row as it sat when the person asked for the
+view, or its top while no selected row is shown. Changing the order keeps the list's scroll
 and every selected row, and the list draws the rows in the old order until the
 rows in the new order arrive. Selecting rows moves the list nowhere. As rows
 come and go, the list keeps the release on top where it is, its filters and
@@ -5867,11 +5869,6 @@ Beside them, keyed by the release an import made:
 |---|---|
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Triggers write it in the same write that changes any table it comes from, so it never lags behind them. One index per order, holding Imported's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row (§3.2) |
-| `import_list` | each import list a surface has open: its tab, filter entry, search text and order |
-| `import_list_collapsed` | the groups a list folds shut; one goes with its group's header |
-
-No list outlives the process that opened it, so `import_list` and the tables
-hanging off it are emptied as the library opens, with the standings.
 
 ### A.8 Catalog releases
 

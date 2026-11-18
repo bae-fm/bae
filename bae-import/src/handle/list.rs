@@ -10,32 +10,214 @@ impl ImportServiceHandle {
         self.services.diagnostics.bug_sink()
     }
 
-    /// Open an import list showing `view`, with nothing folded and nothing
-    /// selected. Closing the library ends it.
-    pub async fn open_list(
+    /// One window of the list `request` shows as a live query whose window
+    /// the caller changes on the same query. It ends when the library
+    /// closes.
+    pub fn subscribe_list_window(
         &self,
-        view: crate::ImportListView,
-    ) -> Result<crate::LiveImportList, crate::ImportError> {
-        Ok(crate::LiveImportList::open(
-            self.services.tables.clone(),
-            self.services.closing.child_token(),
-            self.bugs(),
-            view,
-        )
-        .await?)
+        request: crate::ImportListRequest,
+        initial: bae_store::ListWindow,
+    ) -> bae_store::live_query::CancellableLiveQuery<
+        bae_store::ListWindow,
+        crate::ImportWindow,
+        bae_store::DbError,
+    > {
+        self.until_closed(self.services.tables.subscribe_import_window(request, initial))
     }
 
-    /// Every item of the list showing `view`, once, for a caller with no
-    /// list open: the function opens a list for the read and closes it after.
+    /// How many items the list `request` shows holds and how many its
+    /// narrowing keeps, live.
+    pub fn subscribe_list_count(
+        &self,
+        request: crate::ImportListRequest,
+    ) -> coven::LiveQuery<crate::ImportListCount, bae_store::DbError> {
+        self.services.tables.subscribe_import_count(request)
+    }
+
+    /// How many items of the list `request` shows sit before the one at a
+    /// key, as a live query whose key the caller changes on the same query.
+    /// It ends when the library closes.
+    pub fn subscribe_list_position(
+        &self,
+        request: crate::ImportListRequest,
+        initial: bae_store::list_windows::OrderKey,
+    ) -> bae_store::live_query::CancellableLiveQuery<
+        bae_store::list_windows::OrderKey,
+        u64,
+        bae_store::DbError,
+    > {
+        self.until_closed(self.services.tables.subscribe_import_position(request, initial))
+    }
+
+    /// Whether bae watches any folder and whether Found has groups, live.
+    pub fn subscribe_list_summary(
+        &self,
+    ) -> bae_store::live_query::LiveValues<crate::ImportQueueSummary> {
+        self.values_until_closed(self.services.tables.subscribe_import_summary())
+    }
+
+    /// Every entry of Found's filter with how many of Found's rows it holds,
+    /// live.
+    pub fn subscribe_filter_entries(
+        &self,
+    ) -> bae_store::live_query::LiveValues<Vec<crate::PendingFilterEntry>> {
+        self.values_until_closed(self.services.tables.subscribe_import_filter_entries())
+    }
+
+    /// What the rows at the caller's keys hold and the actions the person
+    /// can run on them, whether or not a list shows them, as a live query
+    /// whose keys the caller changes on the same query.
+    pub fn subscribe_list_selection(
+        &self,
+    ) -> bae_store::live_query::CancellableLiveQuery<
+        std::collections::BTreeSet<crate::CandidateKey>,
+        crate::selection::SelectionSummary,
+        bae_store::DbError,
+    > {
+        self.until_closed(self.services.tables.subscribe_import_selection())
+    }
+
+    /// `query` as a subscription a surface pulls the values of, which the
+    /// library's closing ends.
+    pub fn until_closed<Request, Projection>(
+        &self,
+        query: coven::ReconfigurableLiveQuery<Request, Projection, bae_store::DbError>,
+    ) -> bae_store::live_query::CancellableLiveQuery<Request, Projection, bae_store::DbError>
+    where
+        Request: Clone + PartialEq + Send + Sync + 'static,
+        Projection: Clone + PartialEq + Send + 'static,
+    {
+        bae_store::live_query::CancellableLiveQuery::new(
+            query,
+            self.services.closing.child_token(),
+            self.bugs(),
+        )
+    }
+
+    /// `query`'s values for a surface to pull, which the library's closing
+    /// ends.
+    pub fn values_until_closed<T: Clone + PartialEq + Send + 'static>(
+        &self,
+        query: impl bae_store::live_query::IntoLiveSource<T>,
+    ) -> bae_store::live_query::LiveValues<T> {
+        bae_store::live_query::LiveValues::new(
+            query,
+            self.services.closing.child_token(),
+            self.bugs(),
+        )
+    }
+
+    /// The key of the item at `position` in the list `request` shows, or of
+    /// its last item when it ends before it; `None` for a list with no items.
+    pub async fn list_key_at(
+        &self,
+        request: crate::ImportListRequest,
+        position: u64,
+    ) -> Result<Option<bae_store::list_windows::OrderKey>, bae_store::DbError> {
+        self.services.tables.import_key_at(request, position).await
+    }
+
+    /// The keys of every release the list `request` shows, whether or not a
+    /// surface loaded it: what Select All selects.
+    pub async fn list_keys(
+        &self,
+        request: crate::ImportListRequest,
+    ) -> Result<Vec<crate::CandidateKey>, crate::ImportError> {
+        Ok(self.services.tables.import_list_keys(request).await?)
+    }
+
+    /// The releases the list `request` shows from the release `from` to the
+    /// release `to`, both included, in the list's order: what a Shift gesture
+    /// selects.
+    pub async fn list_keys_between(
+        &self,
+        request: crate::ImportListRequest,
+        from: crate::CandidateKey,
+        to: crate::CandidateKey,
+    ) -> Result<Vec<crate::CandidateKey>, crate::ImportError> {
+        Ok(self.services.tables.import_list_keys_between(request, from, to).await?)
+    }
+
+    /// The rows at `selected` the list `request` shows, in its order: what a
+    /// bulk action runs over; when `acting` names a command, only the rows
+    /// that offer it.
+    pub async fn list_selected(
+        &self,
+        request: crate::ImportListRequest,
+        selected: Vec<crate::CandidateKey>,
+        acting: Option<crate::CandidateAction>,
+    ) -> Result<crate::selection::SelectedRows, crate::ImportError> {
+        Ok(self.services.tables.load_import_list_selected(request, selected, acting).await?)
+    }
+
+    /// Where the list `request` shows opens, at the first of `selected` it
+    /// shows or at its top, and which of `selected` it doesn't show, which
+    /// leave the selection.
+    pub async fn list_view_change(
+        &self,
+        request: crate::ImportListRequest,
+        selected: Vec<crate::CandidateKey>,
+    ) -> Result<crate::ImportListViewChange, crate::ImportError> {
+        Ok(self.services.tables.import_list_view_change(request, selected).await?)
+    }
+
+    /// The keys of `selected` that the list showed under `before` and doesn't
+    /// show under `after`, which differ in their folds only: what a fold hid.
+    pub async fn list_hidden_by(
+        &self,
+        before: crate::ImportListRequest,
+        after: crate::ImportListRequest,
+        selected: Vec<crate::CandidateKey>,
+    ) -> Result<Vec<crate::CandidateKey>, crate::ImportError> {
+        Ok(self.services.tables.import_list_hidden_by(before, after, selected).await?)
+    }
+
+    /// The key of every group header Found holds: what folding every group
+    /// folds.
+    pub async fn group_keys(
+        &self,
+    ) -> Result<Vec<crate::FolderReleaseDecisionKey>, crate::ImportError> {
+        Ok(self.services.tables.import_group_keys().await?)
+    }
+
+    /// The view that reveals the candidate at `candidate_key`: its tab, with
+    /// the filters cleared and its group opened. `None` when no tab lists
+    /// such a candidate.
+    pub async fn locate_candidate(
+        &self,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<Option<crate::ImportCandidateListLocation>, crate::ImportError> {
+        Ok(self.services.tables.locate_import_candidate(candidate_key).await?)
+    }
+
+    /// Where the candidate at `candidate_key` sits in what the list `request`
+    /// shows; `None` when it does not show it.
+    pub async fn candidate_position(
+        &self,
+        request: crate::ImportListRequest,
+        candidate_key: &crate::CandidateKey,
+    ) -> Result<Option<u64>, crate::ImportError> {
+        Ok(self.services.tables.import_candidate_position(request, candidate_key).await?)
+    }
+
+    /// The first candidate in the order `order`, every tab's rows unfiltered,
+    /// whose identification is queued, running or having its answer written.
+    pub async fn first_identifying_candidate(
+        &self,
+        order: crate::ImportListOrder,
+    ) -> Result<Option<crate::CandidateKey>, crate::ImportError> {
+        Ok(self.services.tables.first_identifying_import_candidate(order).await?)
+    }
+
+    /// Every item of the list `request` shows, once, for a caller with no
+    /// list open.
     pub async fn load_list(
         &self,
-        view: crate::ImportListView,
+        request: crate::ImportListRequest,
     ) -> Result<Vec<crate::ImportListItem>, crate::ImportError> {
-        let list = self.services.tables.open_import_list(view).await?;
         let window = bae_store::ListWindow::top(u64::MAX);
-        let read = self.services.tables.read_import_window(list, window).await;
-        self.services.tables.close_import_list(list).await?;
-        Ok(read?.rows.into_iter().map(|(item, _key)| item).collect())
+        let read = self.services.tables.read_import_window(request, window).await?;
+        Ok(read.rows.into_iter().map(|(item, _key)| item).collect())
     }
 
     /// Each watched folder's scan status: the first value at once, then a
@@ -194,38 +376,49 @@ impl ImportServiceHandle {
         }
     }
 
-    /// The list for `view` followed through one window over every item, for
-    /// a test that watches it change.
+    /// Everything the list `request` shows, with its count, summary, filter
+    /// entries and what the rows at `selected` hold and offer, in one read.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn subscribe_whole_list(
+    pub async fn read_list_for_test(
         &self,
-        view: crate::ImportListView,
-    ) -> crate::list::FollowedImportList {
-        self.follow_list(view, bae_store::ListWindow::top(u64::MAX)).await
+        request: crate::ImportListRequest,
+        selected: Vec<crate::CandidateKey>,
+    ) -> Result<crate::list::ImportListRead, bae_store::DbError> {
+        self.services.tables.read_import_list_for_test(request, selected).await
     }
 
-    /// The list for `view` followed through `window`, for a test that
+    /// The list `request` shows followed through one window over every item,
+    /// for a test that watches it change.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_whole_list(
+        &self,
+        request: impl Into<crate::ImportListRequest>,
+    ) -> crate::list::FollowedImportList {
+        self.follow_list(request, bae_store::ListWindow::top(u64::MAX))
+    }
+
+    /// The list `request` shows followed through `window`, for a test that
     /// watches what changes off the window.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn follow_list(
+    pub fn follow_list(
         &self,
-        view: crate::ImportListView,
+        request: impl Into<crate::ImportListRequest>,
         window: bae_store::ListWindow,
     ) -> crate::list::FollowedImportList {
-        let list = self.open_list(view).await.expect("the import list opens");
-        crate::list::FollowedImportList::follow(list, window)
+        crate::list::FollowedImportList::follow(self.clone(), request.into(), window)
     }
 
-    /// The list for `view`, read through every row, once `accept` admits
-    /// it. The query delivers the new list after the commit it reflects, so
-    /// a test that just observed a scan event waits here for the read.
+    /// The list `request` shows, read through every row, once `accept`
+    /// admits it. The query delivers the new list after the commit it
+    /// reflects, so a test that just observed a scan event waits here for the
+    /// read.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn wait_for_list(
         &self,
-        view: crate::ImportListView,
+        request: impl Into<crate::ImportListRequest>,
         mut accept: impl FnMut(&crate::list::ImportListRead) -> bool,
     ) -> crate::list::ImportListRead {
-        let list = self.subscribe_whole_list(view).await;
+        let list = self.subscribe_whole_list(request);
         loop {
             let read = list.next(Vec::new()).await;
             if accept(&read) {

@@ -107,9 +107,10 @@ impl Automation {
         let percents = self.services.import_percents();
         let mut candidates = Vec::new();
         for tab in [TriageTab::Pending, TriageTab::Done, TriageTab::Skipped] {
-            let view = ImportListView { tab, ..ImportListView::default() };
+            let request =
+                ImportListRequest::of(ImportListView { tab, ..ImportListView::default() });
             let items =
-                self.services.load_import_items(view).await.map_err(AutomationError::from)?;
+                self.services.load_import_items(request).await.map_err(AutomationError::from)?;
             for item in items {
                 let candidate_key = match item {
                     ImportListItem::Candidate { row, .. } => row.candidate_key,

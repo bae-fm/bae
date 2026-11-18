@@ -803,7 +803,7 @@ pub(crate) async fn list_subscription(
     fixture: &Fixture,
     window: bae_store::ListWindow,
 ) -> crate::list::FollowedImportList {
-    fixture.import.follow_list(crate::ImportListView::default(), window).await
+    fixture.import.follow_list(crate::ImportListView::default(), window)
 }
 
 /// The window of the first `limit` items.

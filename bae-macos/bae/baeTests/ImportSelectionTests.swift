@@ -25,28 +25,36 @@ extension ImportSelectionOperations {
     static func stub(
         keysBetween:
             @escaping @Sendable (
-                BridgeTriageTab,
-                BridgeImportListOrder,
+                BridgeImportListRequest,
                 Data,
                 Data
-            ) async throws -> [Data] = { _, _, _, _ in [] },
-        allKeys: @escaping @Sendable () async throws -> [Data] = { [] },
-        combine: @escaping @Sendable ([Data]) async throws -> Data = { _ in
-            throw StubError.notImplemented
-        },
-        separate: @escaping @Sendable ([Data]) async throws -> [Data] = { _ in
-            throw StubError.notImplemented
-        },
+            ) async throws -> [Data] = { _, _, _ in [] },
+        allKeys:
+            @escaping @Sendable (BridgeImportListRequest) async throws -> [Data] =
+            { _ in [] },
+        combine:
+            @escaping @Sendable (BridgeImportListRequest, [Data]) async throws
+            -> Data = { _, _ in
+                throw StubError.notImplemented
+            },
+        separate:
+            @escaping @Sendable (BridgeImportListRequest, [Data]) async throws
+            -> [Data] = { _, _ in
+                throw StubError.notImplemented
+            },
         progressStream:
             @escaping @Sendable () -> LatestStream<
                 BridgeSelectionActionProgress
             > = { .bulkActionProgress() },
         run:
             @escaping @Sendable (
+                BridgeImportListRequest,
                 BridgeCandidateAction,
                 [Data],
                 LatestStream<BridgeSelectionActionProgress>
-            ) async throws -> [BridgeSelectionActionFailure] = { _, _, _ in [] }
+            ) async throws -> [BridgeSelectionActionFailure] = { _, _, _, _ in
+                []
+            }
     ) -> ImportSelectionOperations {
         ImportSelectionOperations(
             keysBetween: keysBetween,
@@ -67,7 +75,7 @@ struct ImportSelectionTests {
     func cancelRunningAction() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, _, _ in
+            operations: .stub(run: { _, _, _, _ in
                 entered.continuation.yield(())
                 try await Task.neverAnswers()
             })
@@ -103,7 +111,7 @@ struct ImportSelectionTests {
         let album = Data("/music/Album".utf8)
         let other = Data("/music/Other Album".utf8)
         let selection = ImportSelection(
-            operations: .stub(run: { action, keys, _ in
+            operations: .stub(run: { _, action, keys, _ in
                 requested.record(action)
                 sent.record(keys)
                 return [
@@ -154,7 +162,7 @@ struct ImportSelectionTests {
         let selection = ImportSelection(
             operations: .stub(
                 progressStream: { progress.stream },
-                run: { _, _, _ in
+                run: { _, _, _, _ in
                     progress.set(
                         BridgeSelectionActionProgress(
                             completed: 1,
@@ -233,8 +241,8 @@ struct ImportSelectionReplacementTests {
     func combiningSelectsTheRelease() async throws {
         let sent = CallLog<[Data]>()
         let selection = ImportSelection(
-            operations: .stub(combine: {
-                sent.record($0)
+            operations: .stub(combine: { _, keys in
+                sent.record(keys)
                 return Self.combined
             })
         )
@@ -248,7 +256,7 @@ struct ImportSelectionReplacementTests {
     @Test("separating selects the releases it returns")
     func separatingSelectsTheReleases() async throws {
         let selection = ImportSelection(
-            operations: .stub(separate: { _ in Self.parts })
+            operations: .stub(separate: { _, _ in Self.parts })
         )
         selection.select([Self.combined])
         try await selection.separate()
@@ -278,8 +286,8 @@ struct ImportSelectionKeysReadTests {
             }
         }
         return .stub(
-            keysBetween: { _, _, _, _ in try await read() },
-            allKeys: { try await read() }
+            keysBetween: { _, _, _ in try await read() },
+            allKeys: { _ in try await read() }
         )
     }
 
@@ -317,9 +325,7 @@ struct ImportSelectionKeysReadTests {
                 add: [from, to],
                 remove: [],
                 range: .init(from: from, to: to)
-            ),
-            on: .pending,
-            in: .pathAscending
+            )
         )
         #expect(selection.keys == [from, to])
         var iterator = entered.stream.makeAsyncIterator()
@@ -333,7 +339,7 @@ struct ImportSelectionKeysReadTests {
     func rangeJoinsTheKeptKeys() async throws {
         let between = [Data("/music/A".utf8), Data("/music/B".utf8)]
         let selection = ImportSelection(
-            operations: .stub(keysBetween: { _, _, _, _ in between })
+            operations: .stub(keysBetween: { _, _, _ in between })
         )
         selection.select([Self.clicked])
         selection.edit(
@@ -341,9 +347,7 @@ struct ImportSelectionKeysReadTests {
                 add: [between[0]],
                 remove: [],
                 range: .init(from: between[0], to: between[1])
-            ),
-            on: .pending,
-            in: .pathAscending
+            )
         )
         try await Wait.until { selection.keys.count == 3 }
         #expect(selection.keys == Set(between + [Self.clicked]))
@@ -364,12 +368,10 @@ struct ImportSelectionEditTests {
         let selection = ImportSelection()
         selection.select([hidden, shown])
         selection.edit(
-            .adjust(add: [clicked], remove: [shown], range: nil),
-            on: .pending,
-            in: .pathAscending
+            .adjust(add: [clicked], remove: [shown], range: nil)
         )
         #expect(selection.keys == [hidden, clicked])
-        selection.edit(.only([shown]), on: .pending, in: .pathAscending)
+        selection.edit(.only([shown]))
         #expect(selection.keys == [shown])
     }
 }

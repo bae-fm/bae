@@ -1,5 +1,5 @@
 impl crate::types::BridgeFolderReleaseDecisionKey {
-    pub(super) fn from_core(key: bae_import::FolderReleaseDecisionKey) -> Self {
+    pub(crate) fn from_core(key: bae_import::FolderReleaseDecisionKey) -> Self {
         let bae_import::FolderReleaseDecisionKey { watched_folder_path, relative_folder } = key;
         Self {
             watched_folder_path: coven::path_bytes(&watched_folder_path),
@@ -419,16 +419,6 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeImportListNarrowing = bae_import::ImportListNarrowing,
-    from_core: fn,
-    fields: {
-        tab: (crate::types::BridgeTriageTab),
-        filter_text,
-        pending_filter: (crate::types::BridgePendingFilter),
-    },
-}
-
-mirror_struct! {
     crate::types::BridgeImportListView = bae_import::ImportListView,
     into_core: pub(crate) fn,
     fields: {
@@ -437,6 +427,23 @@ mirror_struct! {
         pending_filter: (crate::types::BridgePendingFilter),
         order: (crate::types::BridgeImportListOrder),
     },
+}
+
+impl crate::types::BridgeImportListRequest {
+    /// The request the app names. Only a folded group's bytes no folder here
+    /// has, which core never gave the app, fail.
+    pub(crate) fn into_core(
+        self,
+    ) -> Result<bae_import::ImportListRequest, crate::types::BridgeError> {
+        let Self { view, folded } = self;
+        Ok(bae_import::ImportListRequest {
+            view: view.into_core(),
+            folded: folded
+                .into_iter()
+                .map(crate::types::BridgeFolderReleaseDecisionKey::into_core)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 impl crate::types::BridgeImportGroupHeader {
@@ -535,12 +542,8 @@ impl crate::types::BridgeFolderScanAlert {
 
 impl crate::types::BridgeImportQueueSummary {
     pub(crate) fn from_core(summary: bae_import::ImportQueueSummary) -> Self {
-        let bae_import::ImportQueueSummary { has_watched_folders, has_groups, narrowing } = summary;
-        Self {
-            has_watched_folders,
-            has_groups,
-            narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
-        }
+        let bae_import::ImportQueueSummary { has_watched_folders, has_groups } = summary;
+        Self { has_watched_folders, has_groups }
     }
 }
 

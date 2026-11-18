@@ -199,7 +199,7 @@ struct ImportListSelectionTests {
                 PreviewData.candidateItem(PreviewData.triageRowIdentified)
             ],
             selection: ImportSelection(
-                operations: .stub(allKeys: { everything })
+                operations: .stub(allKeys: { _ in everything })
             )
         )
         try await ImportListHosting.withList(
@@ -238,7 +238,7 @@ struct ImportListSelectionTests {
             importStore: store,
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in source.handle }
+            makeHandle: { source.handle }
         )
         slot.startLoad()
         try await Wait.until {
@@ -296,12 +296,7 @@ enum ImportListHosting {
     /// A summary of a queue with nothing watched and no narrowing.
     static let settledSummary = BridgeImportQueueSummary(
         hasWatchedFolders: false,
-        hasGroups: false,
-        narrowing: BridgeImportListNarrowing(
-            tab: .pending,
-            filterText: "",
-            pendingFilter: .all
-        )
+        hasGroups: false
     )
 
     /// Host the list, wait for its table to lay out its rows, and hand the

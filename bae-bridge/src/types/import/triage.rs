@@ -19,7 +19,7 @@ pub struct BridgeFolderCandidate {
     pub skipped: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeFolderReleaseDecisionKey {
     /// The watched folder, as coven's bytes for its path.
     pub watched_folder_path: Vec<u8>,

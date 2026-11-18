@@ -15,10 +15,10 @@ use tempfile::TempDir;
 /// The folder names of the pending rows the queue holds, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
     let items = handle
-        .load_list(crate::ImportListView {
+        .load_list(crate::ImportListRequest::of(crate::ImportListView {
             order: crate::ImportListOrder::PathAscending,
             ..crate::ImportListView::default()
-        })
+        }))
         .await
         .unwrap();
     items

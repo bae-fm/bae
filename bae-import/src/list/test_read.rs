@@ -35,62 +35,98 @@ impl ImportListRead {
 /// it holds. The test keeps the selected keys, as a surface does, and passes
 /// them to each call that reads or changes what they select.
 pub struct FollowedImportList {
-    list: super::LiveImportList,
-    windows: bae_store::live_query::CancellableLiveQuery<
-        bae_store::ListWindow,
-        super::ImportWindow,
-        bae_store::DbError,
+    handle: crate::ImportServiceHandle,
+    /// The request the list shows and the window it reads it through.
+    shown: std::sync::Mutex<(super::ImportListRequest, bae_store::ListWindow)>,
+    windows: std::sync::Mutex<
+        std::sync::Arc<
+            bae_store::live_query::CancellableLiveQuery<
+                bae_store::ListWindow,
+                super::ImportWindow,
+                bae_store::DbError,
+            >,
+        >,
     >,
 }
 
 impl FollowedImportList {
-    /// Show `view` in the list, with `selected` the keys the test keeps
-    /// selected; the change names the ones the new view takes out.
+    /// The list `request` shows, followed through `window`.
+    pub(crate) fn follow(
+        handle: crate::ImportServiceHandle,
+        request: super::ImportListRequest,
+        window: bae_store::ListWindow,
+    ) -> Self {
+        let windows = handle.subscribe_list_window(request.clone(), window.clone());
+        Self {
+            handle,
+            shown: std::sync::Mutex::new((request, window)),
+            windows: std::sync::Mutex::new(std::sync::Arc::new(windows)),
+        }
+    }
+
+    fn request(&self) -> super::ImportListRequest {
+        self.shown.lock().expect("the followed request").0.clone()
+    }
+
+    /// Show `view`, the folds unchanged, with `selected` the keys the test
+    /// keeps selected; the change names where it opens and the ones the new
+    /// view takes out.
     pub async fn set_view(
         &self,
         view: crate::ImportListView,
         selected: Vec<crate::CandidateKey>,
-    ) -> Result<Option<crate::ImportListViewChange>, super::ImportListFailure> {
-        self.list.set_view(view, selected).await
+    ) -> Result<super::ImportListViewChange, crate::ImportError> {
+        let request = super::ImportListRequest { view, ..self.request() };
+        self.show(request, selected).await
+    }
+
+    /// Show `request`, with `selected` the keys the test keeps selected.
+    async fn show(
+        &self,
+        request: super::ImportListRequest,
+        selected: Vec<crate::CandidateKey>,
+    ) -> Result<super::ImportListViewChange, crate::ImportError> {
+        let change = self.handle.list_view_change(request.clone(), selected).await?;
+        let window = self.shown.lock().expect("the followed request").1.clone();
+        *self.windows.lock().expect("the followed window") =
+            std::sync::Arc::new(self.handle.subscribe_list_window(request.clone(), window.clone()));
+        *self.shown.lock().expect("the followed request") = (request, window);
+        Ok(change)
     }
 
     /// The keys of every row the list shows: what Select All selects.
-    pub async fn keys(&self) -> Result<Vec<crate::CandidateKey>, super::ImportListFailure> {
-        self.list.keys().await
+    pub async fn keys(&self) -> Result<Vec<crate::CandidateKey>, crate::ImportError> {
+        self.handle.list_keys(self.request()).await
     }
 
     /// The rows of `selected` the list shows, in its order.
     pub async fn selected(
         &self,
         selected: Vec<crate::CandidateKey>,
-    ) -> Result<crate::selection::SelectedRows, super::ImportListFailure> {
-        self.list.selected(selected).await
-    }
-
-    /// `list` followed through `window`.
-    pub fn follow(list: super::LiveImportList, window: bae_store::ListWindow) -> Self {
-        let windows = list.until_closed(list.subscribe_window(window));
-        Self { list, windows }
+    ) -> Result<crate::selection::SelectedRows, crate::ImportError> {
+        self.handle.list_selected(self.request(), selected, None).await
     }
 
     /// Read `window` from now on.
     pub fn set_window(&self, window: bae_store::ListWindow) {
-        if self.windows.set(window).is_err() {
+        self.shown.lock().expect("the followed request").1 = window.clone();
+        if self.windows.lock().expect("the followed window").set(window).is_err() {
             panic!("the list is open");
         }
     }
 
     /// Everything the list shows now, and what `selected` holds.
     pub async fn read(&self, selected: Vec<crate::CandidateKey>) -> ImportListRead {
-        self.list.read_for_test(selected).await
+        self.handle.read_list_for_test(self.request(), selected).await.expect("the list reads")
     }
 
     /// The next value of the window, with everything else the list shows and
     /// what `selected` holds read beside it.
     pub async fn next(&self, selected: Vec<crate::CandidateKey>) -> ImportListRead {
-        if self.windows.next().await.is_err() {
+        let windows = self.windows.lock().expect("the followed window").clone();
+        if windows.next().await.is_err() {
             panic!("the import list stays open");
         }
-        self.list.read_for_test(selected).await
+        self.read(selected).await
     }
 }

@@ -121,27 +121,19 @@ fn done_names(window: &bae_import::ImportWindow) -> Vec<String> {
         .collect()
 }
 
-/// A list opened as the import handle opens one: closing the library ends
-/// it.
-async fn open_list(
-    manager: &TestLibrary,
-    view: bae_import::ImportListView,
-) -> Result<bae_import::LiveImportList, bae_import::ImportError> {
-    manager.start_import().await?.open_list(view).await
-}
-
-/// `limit` items of `list` from the item at `offset`: the key a jump to the
-/// offset reads, and the window from it.
+/// `limit` items of the list `list` shows from the item at `offset`: the key
+/// a jump to the offset reads, and the window from it.
 async fn read_list(
     db: &bae_store::Store,
-    list: bae_import::ImportListId,
+    list: &bae_import::ImportListRequest,
     offset: u64,
     limit: u64,
 ) -> bae_import::ImportWindow {
     let tables = bae_import::tables::ImportTables::new(db.clone());
-    let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
+    let key =
+        tables.import_key_at(list.clone(), offset).await.unwrap().expect("the list has items");
     let window = bae_store::ListWindow { from: Some(key), limit };
-    tables.read_import_window(list, window).await.unwrap()
+    tables.read_import_window(list.clone(), window).await.unwrap()
 }
 
 /// Done runs the releases coven still has uploads queued for first, the first
@@ -164,57 +156,44 @@ async fn done_runs_the_releases_still_uploading_first() {
         (bae_import::ImportListOrder::PathAscending, ["C", "B", "A", "D"]),
         (bae_import::ImportListOrder::PathDescending, ["C", "B", "D", "A"]),
     ] {
-        let list = tables.open_import_list(done(order)).await.unwrap();
+        let list = bae_import::ImportListRequest::of(done(order));
         assert_eq!(
-            done_names(&read_list(&manager.store, list, 0, 50).await),
+            done_names(&read_list(&manager.store, &list, 0, 50).await),
             expected,
             "{order:?}"
         );
     }
 
-    let list =
-        tables.open_import_list(done(bae_import::ImportListOrder::NewestFirst)).await.unwrap();
-    let across = read_list(&manager.store, list, 1, 2).await;
+    let list = bae_import::ImportListRequest::of(done(bae_import::ImportListOrder::NewestFirst));
+    let across = read_list(&manager.store, &list, 1, 2).await;
     assert_eq!(done_names(&across), ["B", "D"], "a window across the two parts");
-    assert_eq!(tables.read_import_list_for_test(list, Vec::new()).await.unwrap().count.rows, 4);
+    assert_eq!(
+        tables.read_import_list_for_test(list.clone(), Vec::new()).await.unwrap().count.rows,
+        4
+    );
     // A key leads with the number of the part its row is in: C and B are
     // still uploading, A and D are not.
     let part = |at: usize| across.rows[at].1.values()[0].clone();
     assert_eq!(part(0), bae_store::list_windows::SortValue::Integer(0), "B is in the first part");
     assert_eq!(part(1), bae_store::list_windows::SortValue::Integer(1), "D is in the second");
-    assert_eq!(done_names(&read_list(&manager.store, list, 3, 5).await), ["A"]);
+    assert_eq!(done_names(&read_list(&manager.store, &list, 3, 5).await), ["A"]);
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
-    assert_eq!(tables.import_candidate_position(list, &key("A")).await.unwrap(), Some(3));
+    assert_eq!(tables.import_candidate_position(list.clone(), &key("A")).await.unwrap(), Some(3));
     let selected = vec![key("A"), key("B")];
-    // Changing only the order returns no opening, so the test first sets a
-    // search that matches no release, then clears it to open the view.
-    tables
-        .set_import_list_view(
-            list,
-            bae_import::ImportListView {
-                filter_text: "no release holds this text".to_string(),
-                ..done(bae_import::ImportListOrder::OldestFirst)
-            },
-            selected.clone(),
-        )
-        .await
-        .unwrap();
+    let oldest_first =
+        bae_import::ImportListRequest::of(done(bae_import::ImportListOrder::OldestFirst));
     let opening = tables
-        .set_import_list_view(
-            list,
-            done(bae_import::ImportListOrder::OldestFirst),
-            selected.clone(),
-        )
+        .import_list_view_change(oldest_first.clone(), selected.clone())
         .await
         .unwrap()
-        .map(|change| change.opening);
+        .opening;
     assert!(
-        matches!(opening, Some(bae_import::ImportListOpening::At { position: 1, .. })),
+        matches!(opening, bae_import::ImportListOpening::At { position: 1, .. }),
         "the view opens at B, still uploading, behind C: {opening:?}"
     );
     assert_eq!(
         tables
-            .load_import_list_selected(list, selected, None)
+            .load_import_list_selected(oldest_first, selected, None)
             .await
             .unwrap()
             .candidates
@@ -250,17 +229,15 @@ async fn a_done_row_carries_its_release_upload() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     done_with_two_uploading(&test, temp_dir.path()).await;
-    let list = open_list(
-        &test.library,
-        bae_import::ImportListView {
+    let import = test.library.start_import().await.unwrap();
+    let subscription = import.subscribe_list_window(
+        bae_import::ImportListRequest::of(bae_import::ImportListView {
             tab: bae_import::TriageTab::Done,
             order: bae_import::ImportListOrder::PathAscending,
             ..bae_import::ImportListView::default()
-        },
-    )
-    .await
-    .unwrap();
-    let subscription = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50)));
+        }),
+        bae_store::ListWindow::top(50),
+    );
     let waiting = Some(bae_records::UploadProgress { queued: 1, uploading: 0 });
     assert_eq!(
         done_uploads(&subscription.next().await.unwrap().result.unwrap()),
@@ -317,24 +294,12 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
     let keys = done_with_two_uploading(&test, temp_dir.path()).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
-    let list = tables
-        .open_import_list(bae_import::ImportListView {
-            tab: bae_import::TriageTab::Done,
-            order: bae_import::ImportListOrder::NewestFirst,
-            ..bae_import::ImportListView::default()
-        })
-        .await
-        .unwrap();
-    let run = tables
-        .import_list_keys_between(
-            list,
-            bae_import::TriageTab::Done,
-            bae_import::ImportListOrder::NewestFirst,
-            key("A"),
-            key("B"),
-        )
-        .await
-        .unwrap();
+    let list = bae_import::ImportListRequest::of(bae_import::ImportListView {
+        tab: bae_import::TriageTab::Done,
+        order: bae_import::ImportListOrder::NewestFirst,
+        ..bae_import::ImportListView::default()
+    });
+    let run = tables.import_list_keys_between(list, key("A"), key("B")).await.unwrap();
     assert_eq!(
         run.iter()
             .map(|run_key| keys.iter().find(|(_, key)| key == run_key).unwrap().0.clone())
@@ -345,13 +310,15 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
 }
 
 /// A window is the query's request: moving it reruns the read as a request
-/// change, and a window set after a view change reads the new view from its
-/// first value.
+/// change.
 #[tokio::test]
 async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let (test, _temp_dir) = setup_test_manager().await;
-    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
-    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(0)));
+    let import = test.library.start_import().await.unwrap();
+    let window = import.subscribe_list_window(
+        bae_import::ImportListRequest::default(),
+        bae_store::ListWindow::top(0),
+    );
     let initial = window.next().await.expect("the initial value");
     assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert!(initial.result.unwrap().rows.is_empty());
@@ -359,59 +326,19 @@ async fn moving_a_window_reruns_the_list_as_a_request_change() {
     window.set(bae_store::ListWindow::top(50)).expect("the window is requested");
     let requested = window.next().await.expect("the requested value");
     assert_eq!(requested.cause, coven::LiveQueryCause::Request);
-
-    let change = list
-        .set_view(
-            bae_import::ImportListView {
-                tab: bae_import::TriageTab::Done,
-                ..bae_import::ImportListView::default()
-            },
-            Vec::new(),
-        )
-        .await
-        .unwrap();
-    assert!(matches!(
-        change.map(|change| change.opening),
-        Some(bae_import::ImportListOpening::Top)
-    ));
-    let summary = list.subscribe_summary().next_inline().await.expect("the summary").unwrap();
-    assert_eq!(summary.narrowing.tab, bae_import::TriageTab::Done);
-}
-
-/// Cancelling settles a pending read and closes the list: its row goes, and a
-/// later change to it answers that the list was closed.
-#[tokio::test]
-async fn cancelling_closes_the_list() {
-    let (test, _temp_dir) = setup_test_manager().await;
-    let manager = test.library.manager();
-    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
-    let window = list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50)));
-    window.next().await.expect("the initial value");
-
-    list.cancel().await.unwrap();
-
-    assert!(manager
-        .store
-        .query_texts_for_test("SELECT CAST(id AS TEXT) FROM import_list")
-        .await
-        .unwrap()
-        .is_empty());
-    assert!(matches!(
-        list.set_view(bae_import::ImportListView::default(), Vec::new()).await,
-        Err(bae_import::ImportListFailure::Closed)
-    ));
-    assert!(window.next().await.is_err(), "the window's read ended with the list");
 }
 
 /// Closing the library ends a list's waiting read before the store closes:
-/// the read answers that the list was cancelled, never that the store it read
-/// is closed. The app quits with the import tab's read waiting like this.
+/// the read answers that it was cancelled, never that the store it read is
+/// closed. The app quits with the import tab's read waiting like this.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let (test, _temp_dir) = setup_test_manager().await;
-    let list = open_list(&test.library, bae_import::ImportListView::default()).await.unwrap();
-    let subscription =
-        Arc::new(list.until_closed(list.subscribe_window(bae_store::ListWindow::top(50))));
+    let import = test.library.start_import().await.unwrap();
+    let subscription = Arc::new(import.subscribe_list_window(
+        bae_import::ImportListRequest::default(),
+        bae_store::ListWindow::top(50),
+    ));
     subscription.next().await.expect("the initial value");
     let waiting = tokio::spawn({
         let subscription = subscription.clone();

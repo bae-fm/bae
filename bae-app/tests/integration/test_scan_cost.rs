@@ -116,11 +116,13 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
         .expect("the test library's services start");
     let mut events = services.every_scan_event_for_test();
 
-    let list = match list_open {
+    let reader = match list_open {
         false => None,
         true => {
-            let list = services.subscribe_import_list(ImportListView::default()).await.unwrap();
-            let window = list.until_closed(list.subscribe_window(ListWindow::top(50)));
+            let window = services.import_list_window_for_test(
+                bae_import::ImportListRequest::of(ImportListView::default()),
+                ListWindow::top(50),
+            );
             let reader = tokio::spawn(async move {
                 let mut answers = 0_u64;
                 while window.next().await.is_ok() {
@@ -128,7 +130,7 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
                 }
                 answers
             });
-            Some((list, reader))
+            Some(reader)
         }
     };
 
@@ -172,11 +174,10 @@ async fn measure(shape: Shape, count: usize, list_open: bool) {
         total.as_secs_f64() * 1_000.0 / count as f64,
         per_folder.join(" "),
     );
-    if let Some((list, reader)) = list {
-        list.cancel().await.unwrap();
+    services.close().await.unwrap();
+    if let Some(reader) = reader {
         println!("  the list answered {} times", reader.await.unwrap());
     }
-    services.close().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]

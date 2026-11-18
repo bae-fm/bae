@@ -11,7 +11,7 @@ use crate::tables::tests::*;
 use crate::FolderReleaseDecisionKey;
 use crate::PendingFilterEntry;
 use crate::{
-    ImportListId, ImportListItem, ImportListOrder, ImportListView, PendingFilter, TriageTab,
+    ImportListItem, ImportListOrder, ImportListRequest, ImportListView, PendingFilter, TriageTab,
 };
 use bae_catalogs::catalog::LookupCatalog;
 use bae_catalogs::search::{MetadataResult, SourceTracks};
@@ -264,14 +264,14 @@ impl Library {
         .await;
     }
 
-    /// Open a list showing `view`.
-    pub(crate) async fn open(&self, view: ImportListView) -> ImportListId {
-        self.tables().open_import_list(view).await.unwrap()
+    /// The request showing `view`, with no group folded.
+    pub(crate) async fn open(&self, view: ImportListView) -> ImportListRequest {
+        ImportListRequest::of(view)
     }
 
     /// One read of `list` through one window over every item, with nothing
     /// selected. Found's items read in runs and read sorted must agree.
-    pub(crate) async fn read(&self, list: ImportListId) -> ImportListRead {
+    pub(crate) async fn read(&self, list: &ImportListRequest) -> ImportListRead {
         self.read_selecting(list, Vec::new()).await
     }
 
@@ -280,16 +280,18 @@ impl Library {
     /// sorted must agree.
     pub(crate) async fn read_selecting(
         &self,
-        list: ImportListId,
+        list: &ImportListRequest,
         selected: Vec<crate::CandidateKey>,
     ) -> ImportListRead {
         let tables = self.tables();
-        let read = tables.read_import_list_for_test(list, selected).await.unwrap();
-        if let Some((walked, other)) = tables.import_list_read_both_ways(list).await.unwrap() {
+        let read = tables.read_import_list_for_test(list.clone(), selected).await.unwrap();
+        if let Some((walked, other)) =
+            tables.import_list_read_both_ways(list.clone()).await.unwrap()
+        {
             assert_eq!(
                 walked, other,
                 "{:?}: the tab's rows in order against its other read",
-                read.summary.narrowing
+                list.view
             );
         }
         read
@@ -300,14 +302,15 @@ impl Library {
     /// it.
     pub(crate) async fn window_at(
         &self,
-        list: ImportListId,
+        list: &ImportListRequest,
         offset: u64,
         limit: u64,
     ) -> crate::ImportWindow {
         let tables = self.tables();
-        let key = tables.import_key_at(list, offset).await.unwrap().expect("the list has items");
+        let key =
+            tables.import_key_at(list.clone(), offset).await.unwrap().expect("the list has items");
         tables
-            .read_import_window(list, bae_store::ListWindow { from: Some(key), limit })
+            .read_import_window(list.clone(), bae_store::ListWindow { from: Some(key), limit })
             .await
             .unwrap()
     }
@@ -315,7 +318,7 @@ impl Library {
     /// One read of a list opened on `view`.
     pub(crate) async fn shown(&self, view: ImportListView) -> ImportListRead {
         let list = self.open(view).await;
-        self.read(list).await
+        self.read(&list).await
     }
 
     /// The items a list opened on `view` shows.
@@ -335,6 +338,20 @@ impl Library {
 /// `tab` in the default order, unfiltered.
 pub(crate) fn view(tab: TriageTab) -> ImportListView {
     ImportListView { tab, ..ImportListView::default() }
+}
+
+impl ImportListRequest {
+    /// This request with `group` folded shut.
+    pub(crate) fn folding(mut self, group: FolderReleaseDecisionKey) -> Self {
+        self.folded.insert(group);
+        self
+    }
+
+    /// This request with `group` open.
+    pub(crate) fn unfolding(mut self, group: &FolderReleaseDecisionKey) -> Self {
+        self.folded.remove(group);
+        self
+    }
 }
 
 /// The items one read holds, one readable line each: a header by its
@@ -589,11 +606,8 @@ impl ImportTables {
     pub(crate) async fn load_import_list_read(
         &self,
         read: ListRead,
-    ) -> Result<ImportListRead, ImportListError> {
-        let list = self.open_import_list(read.view).await?;
-        let projection = self.read_import_list_for_test(list, read.selected).await;
-        self.close_import_list(list).await?;
-        Ok(projection?)
+    ) -> Result<ImportListRead, DbError> {
+        self.read_import_list_for_test(ImportListRequest::of(read.view), read.selected).await
     }
 
     /// Every item a list shows, read from its tab's rows in order — Found's
@@ -603,30 +617,31 @@ impl ImportTables {
     /// or Skipped, because the list reads those rows only in order.
     pub(crate) async fn import_list_read_both_ways(
         &self,
-        list: ImportListId,
+        list: ImportListRequest,
     ) -> Result<Option<(Vec<String>, Vec<String>)>, DbError> {
         self.store
             .read(move |sql| {
-                let row = list_row(&sql, list)?.expect("the test's list is open");
+                let items = order::Items::new(list.clone());
                 let everything = bae_store::ListWindow::top(u64::MAX);
                 let keys = || -> Result<Vec<String>, DbError> {
-                    Ok(row
-                        .items()
+                    Ok(items
                         .range(&sql, &everything)?
                         .into_iter()
                         .map(|item| format!("{:?} {}", item.item, hex::encode(&item.key)))
                         .collect())
                 };
-                let other = match row.view.tab {
-                    crate::TriageTab::Pending => sql
+                let other = match list.view.tab {
+                    crate::TriageTab::Pending => items
                         .query(
+                            &sql,
                             &format!(
-                                "SELECT i.item, i.key FROM import_list_item AS i {join} \
-                             WHERE i.list_id = ? AND i.tab = 'pending' ORDER BY {terms}",
+                                "SELECT i.item, i.key FROM {source} AS i {join} \
+                             WHERE i.tab = 'pending' ORDER BY {terms}",
+                                source = list.items(),
                                 join = order::unit_join("i", "unit"),
-                                terms = order::sorted_terms(row.view.order, "i", "unit"),
+                                terms = order::sorted_terms(list.view.order, "i", "unit"),
                             ),
-                            [list.0],
+                            &[],
                             |row| Ok((row.get::<_, String>(0)?, row.get::<_, Vec<u8>>(1)?)),
                         )?
                         .into_iter()
@@ -643,16 +658,12 @@ impl ImportTables {
 }
 
 /// A list opened on `tab` in path order.
-pub(crate) async fn open_in_path_order(db: &Store, tab: crate::TriageTab) -> ImportListId {
-    let tables = crate::tables::ImportTables::new(db.clone());
-    tables
-        .open_import_list(crate::ImportListView {
-            tab,
-            order: crate::ImportListOrder::PathAscending,
-            ..crate::ImportListView::default()
-        })
-        .await
-        .unwrap()
+pub(crate) async fn open_in_path_order(_db: &Store, tab: crate::TriageTab) -> ImportListRequest {
+    ImportListRequest::of(crate::ImportListView {
+        tab,
+        order: crate::ImportListOrder::PathAscending,
+        ..crate::ImportListView::default()
+    })
 }
 
 /// Store `name`'s candidate under `root` as one finished scan of it, and

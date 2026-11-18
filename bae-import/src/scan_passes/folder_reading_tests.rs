@@ -258,13 +258,10 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
 /// whether it can separate.
 async fn offers(db: &Store) -> (Vec<(String, bool)>, Vec<(String, bool)>) {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let list = tables
-        .open_import_list(crate::ImportListView {
-            order: crate::ImportListOrder::PathAscending,
-            ..crate::ImportListView::default()
-        })
-        .await
-        .unwrap();
+    let list = crate::ImportListRequest::of(crate::ImportListView {
+        order: crate::ImportListOrder::PathAscending,
+        ..crate::ImportListView::default()
+    });
     let projection = tables.read_import_list_for_test(list, Vec::new()).await.unwrap();
     let mut headers = Vec::new();
     let mut rows = Vec::new();

@@ -15,24 +15,26 @@ struct NarrowedCountTests {
         let uiStore = UiStore()
         uiStore.setImportCandidateFilterText(text)
         let handle = ImportListHandle.stub(
-            queries: .fixed(
-                [],
-                answers: UnansweredCount(),
-                extra: BridgeListCountExtra.import(
-                    narrowed: BridgeNarrowedCount(shown: 7, total: 84),
-                    tabs: BridgeTriageTabCounts(
-                        pending: 84,
-                        done: 0,
-                        skipped: 0
+            queries: { _ in
+                .fixed(
+                    [],
+                    answers: UnansweredCount(),
+                    extra: BridgeListCountExtra.import(
+                        narrowed: BridgeNarrowedCount(shown: 7, total: 84),
+                        tabs: BridgeTriageTabCounts(
+                            pending: 84,
+                            done: 0,
+                            skipped: 0
+                        )
                     )
                 )
-            )
+            }
         )
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
             selection: ImportSelection(),
-            makeHandle: { _ in handle }
+            makeHandle: { handle }
         )
         slot.startLoad()
         try await Wait.until { slot.list?.count != nil }
@@ -42,8 +44,8 @@ struct NarrowedCountTests {
     private func narrowing(
         text: String,
         filter: BridgePendingFilter = .all
-    ) -> BridgeImportListNarrowing {
-        BridgeImportListNarrowing(
+    ) -> ImportListNarrowing {
+        ImportListNarrowing(
             tab: .pending,
             filterText: text,
             pendingFilter: filter

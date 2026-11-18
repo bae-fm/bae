@@ -39,8 +39,8 @@ public struct ListViewQuery<Row: Sendable>: Sendable {
 /// its row count, each a live read.
 public struct BridgeListQueries<Row: Sendable>: Sendable {
     public let view:
-        @Sendable (_ first: UInt64, _ last: UInt64) -> ListViewQuery<Row>
-    public let count: @Sendable () -> PulledValues<BridgeListCount>
+        @Sendable (_ first: UInt64, _ last: UInt64) throws -> ListViewQuery<Row>
+    public let count: @Sendable () throws -> PulledValues<BridgeListCount>
     /// The album grid grouped by artist: each artist's heading with where its
     /// albums start. Other lists have none.
     public let sections:
@@ -48,8 +48,8 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
 
     public init(
         view:
-            @escaping @Sendable (UInt64, UInt64) -> ListViewQuery<Row>,
-        count: @escaping @Sendable () -> PulledValues<BridgeListCount>,
+            @escaping @Sendable (UInt64, UInt64) throws -> ListViewQuery<Row>,
+        count: @escaping @Sendable () throws -> PulledValues<BridgeListCount>,
         sections: (
             @Sendable () -> PulledValues<[BridgeLibraryBrowseSection]>
         )? = nil
@@ -61,12 +61,11 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
 }
 
 #if os(macOS)
-    /// The two list calls, which `AppHandle` and the import list's handle
-    /// both make.
+    /// The two list calls, which `AppHandle` and the import list both make.
     protocol ListCalls: Sendable {
-        func subscribeListView(first: UInt64, last: UInt64)
+        func subscribeListView(first: UInt64, last: UInt64) throws
             -> ListViewSubscription
-        func subscribeListCount() -> ListCountSubscription
+        func subscribeListCount() throws -> ListCountSubscription
     }
 
     extension AppHandleProtocol {
@@ -80,18 +79,36 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
         let handle: any AppHandleProtocol
         let list: BridgeList
 
-        func subscribeListView(first: UInt64, last: UInt64)
+        func subscribeListView(first: UInt64, last: UInt64) throws
             -> ListViewSubscription
         {
             handle.subscribeListView(list: list, first: first, last: last)
         }
 
-        func subscribeListCount() -> ListCountSubscription {
+        func subscribeListCount() throws -> ListCountSubscription {
             handle.subscribeListCount(list: list)
         }
     }
 
-    extension ImportList: ListCalls {}
+    /// The calls of the import list under `request`.
+    private struct ImportListCalls: ListCalls {
+        let list: ImportList
+        let request: BridgeImportListRequest
+
+        func subscribeListView(first: UInt64, last: UInt64) throws
+            -> ListViewSubscription
+        {
+            try list.subscribeListView(
+                request: request,
+                first: first,
+                last: last
+            )
+        }
+
+        func subscribeListCount() throws -> ListCountSubscription {
+            try list.subscribeListCount(request: request)
+        }
+    }
 
     extension BridgeListQueries {
         /// The reads of `list` through `handle`, taking its rows out of the
@@ -112,12 +129,17 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
             )
         }
 
-        /// The reads of the import list `list`, which names its own list.
+        /// The reads of the import list `list` under `request`.
         public init(
             importList list: ImportList,
+            request: BridgeImportListRequest,
             rows: @escaping @Sendable (BridgeListRows) -> [Row]
         ) {
-            self.init(calls: list, sections: nil, rows: rows)
+            self.init(
+                calls: ImportListCalls(list: list, request: request),
+                sections: nil,
+                rows: rows
+            )
         }
 
         private init(
@@ -129,7 +151,7 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
         ) {
             self.init(
                 view: { first, last in
-                    let subscription = calls.subscribeListView(
+                    let subscription = try calls.subscribeListView(
                         first: first,
                         last: last
                     )
@@ -146,7 +168,7 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
                     )
                 },
                 count: {
-                    PulledValues(calls.subscribeListCount())
+                    PulledValues(try calls.subscribeListCount())
                 },
                 sections: sections
             )

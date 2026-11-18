@@ -48,7 +48,7 @@ use bae_store::ListWindow;
 use rusqlite::ToSql;
 use std::path::PathBuf;
 
-/// Reads the window `window` of the list `list` in one statement: the items
+/// Reads the window `window` of the list `request` shows in one statement: the items
 /// of its range, each with its key, and each member of a group with its
 /// group's header.
 ///
@@ -60,10 +60,10 @@ use std::path::PathBuf;
 /// cursors one statement opens.
 pub(super) fn read_window(
     sql: &SqlReadContext<'_>,
-    list: &ListRow,
+    request: &ImportListRequest,
     window: &ListWindow,
 ) -> Result<ImportWindow, DbError> {
-    let items = list.items();
+    let items = Items::new(request.clone());
     let Some(range) = items.range_statement(window)? else {
         return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
     };
@@ -73,7 +73,7 @@ pub(super) fn read_window(
              FROM ({range}) AS k) \
          {rows}",
         range = range.sql(),
-        rows = rows_statement(&range.columns, &items.ends_group("w")),
+        rows = rows_statement(&range.columns, &items.ends_group("w"), request),
     );
     let limit = bae_store::list_windows::sql_bound(range.limit);
     let range_params = range.params();
@@ -128,25 +128,32 @@ const HEADER_FOLDER: &str = "CASE w.item WHEN 'group' THEN w.key ELSE w.group_fo
 /// active, when it counts the matching rows instead. The placement's
 /// `combinable` column says whether bae offers to import the folder as one
 /// release (`import_list_recombine`).
-fn header_columns() -> String {
+fn header_columns(request: &ImportListRequest) -> String {
+    let counted = match request.filters_text() {
+        true => format!(
+            "SELECT count(*) FROM {matching} AS m \
+             WHERE m.watched_folder_path = w.watched_folder_path \
+               AND m.group_folder = {HEADER_FOLDER}",
+            matching = request.matching(),
+        ),
+        false => format!(
+            "SELECT COUNT(*) FROM import_list_placement AS m \
+             WHERE m.watched_folder_path = w.watched_folder_path \
+               AND m.group_folder = {HEADER_FOLDER} AND m.item <> 'group' \
+               AND {kept}",
+            kept = match request.view.pending_filter {
+                PendingFilter::All => "1".to_string(),
+                _ => "m.pending_entry = :filter".to_string(),
+            },
+        ),
+    };
     format!(
         "w.watched_folder_path AS header_root, {HEADER_FOLDER} AS header_folder, \
          hp.group_name AS header_name, \
-         NOT EXISTS (SELECT 1 FROM import_list_collapsed AS c \
-                     WHERE c.list_id = :list AND c.watched_folder_path = w.watched_folder_path \
-                       AND c.group_folder = {HEADER_FOLDER}) AS header_expanded, \
-         CASE WHEN hp.key IS NULL THEN NULL \
-              WHEN (SELECT pattern IS NOT NULL FROM import_list_view WHERE id = :list) \
-              THEN (SELECT count(*) FROM import_list_matching AS m \
-                    WHERE m.list_id = :list AND m.watched_folder_path = w.watched_folder_path \
-                      AND m.group_folder = {HEADER_FOLDER}) \
-              ELSE (SELECT COUNT(*) FROM import_list_view AS v \
-                    JOIN import_list_placement AS m \
-                        ON m.watched_folder_path = w.watched_folder_path \
-                       AND m.group_folder = {HEADER_FOLDER} AND m.item <> 'group' \
-                       AND (v.pending_filter = 'all' OR m.pending_entry = v.pending_filter) \
-                    WHERE v.id = :list) END AS header_entries, \
-         hp.combinable AS header_combinable"
+         NOT {folded} AS header_expanded, \
+         CASE WHEN hp.key IS NULL THEN NULL ELSE ({counted}) END AS header_entries, \
+         hp.combinable AS header_combinable",
+        folded = request.folds_sql("w.watched_folder_path", HEADER_FOLDER),
     )
 }
 
@@ -277,7 +284,7 @@ impl ShownColumns {
 /// its header; a release reads its placement, the keyed rows beside it, the
 /// header of its group and whether it ends its group, as `ends_group`
 /// reads it.
-fn rows_statement(columns: &str, ends_group: &str) -> String {
+fn rows_statement(columns: &str, ends_group: &str, request: &ImportListRequest) -> String {
     use crate::tables::import_state::failure_rows::FAILURE_REASON_COLUMNS;
     let invalid_columns = folder_scans::invalid_columns_sql("c");
     let covers = cover_version_joins(
@@ -339,7 +346,7 @@ fn rows_statement(columns: &str, ends_group: &str) -> String {
         invalid = invalid_columns.0,
         invalid_join = invalid_columns.1,
         actions = action_columns(),
-        header_columns = header_columns(),
+        header_columns = header_columns(request),
     )
 }
 
