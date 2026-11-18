@@ -77969,7 +77969,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθήκευση"
+            "value" : "Αποθηκευτικός χώρος"
           }
         },
         "es" : {
@@ -78041,7 +78041,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Magazyn"
+            "value" : "Pamięć masowa"
           }
         },
         "pt-BR" : {
@@ -78142,7 +78142,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαχείριση αποθήκευσης"
+            "value" : "Διαχείριση αποθηκευτικού χώρου"
           }
         },
         "es" : {
@@ -78214,7 +78214,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Menedżer magazynu"
+            "value" : "Menedżer pamięci masowej"
           }
         },
         "pt-BR" : {
@@ -78315,7 +78315,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Διαχείριση αποθήκευσης"
+            "value" : "Διαχείριση αποθηκευτικού χώρου"
           }
         },
         "es" : {
@@ -78387,7 +78387,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Menedżer magazynu"
+            "value" : "Menedżer pamięci masowej"
           }
         },
         "pt-BR" : {
@@ -78488,7 +78488,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθήκευση…"
+            "value" : "Αποθηκευτικός χώρος…"
           }
         },
         "es" : {
@@ -78560,7 +78560,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Magazyn…"
+            "value" : "Pamięć masowa…"
           }
         },
         "pt-BR" : {
@@ -141628,7 +141628,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Άνοιγμα διαχείρισης αποθήκευσης"
+            "value" : "Άνοιγμα διαχείρισης αποθηκευτικού χώρου"
           }
         },
         "es" : {
@@ -141700,7 +141700,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otwórz menedżer magazynu"
+            "value" : "Otwórz menedżer pamięci masowej"
           }
         },
         "pt-BR" : {
