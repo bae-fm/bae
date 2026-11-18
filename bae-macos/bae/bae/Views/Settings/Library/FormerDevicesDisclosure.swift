@@ -6,6 +6,7 @@ import SwiftUI
 /// for them.
 struct FormerDevicesDisclosure: View {
     let devices: [BridgeFormerDevice]
+    let count: UInt32
 
     @State
     private var isExpanded = false
@@ -26,7 +27,7 @@ struct FormerDevicesDisclosure: View {
         } label: {
             // An Int makes the key "Removed devices (%lld)", as the string
             // catalog has it.
-            Text("Removed devices (\(devices.count))")
+            Text("Removed devices (\(Int(count)))")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
         }

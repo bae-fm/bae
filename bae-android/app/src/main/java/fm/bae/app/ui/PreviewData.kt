@@ -372,6 +372,8 @@ object PreviewData {
                     BridgeFormerDevice(id = 3uL, name = "Old Phone", state = BridgeFormerDeviceState.REPLACED),
                     BridgeFormerDevice(id = 4uL, name = "Tablet", state = BridgeFormerDeviceState.REMOVED),
                 ),
+            activeDeviceCount = 2u,
+            formerDeviceCount = 2u,
         )
 
     fun person(member: BridgeMember = member()): BridgePerson =

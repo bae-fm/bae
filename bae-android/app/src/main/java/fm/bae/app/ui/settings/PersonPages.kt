@@ -149,10 +149,10 @@ internal fun DevicesPage(
 
 @Composable
 private fun FormerDevicesIfAny(member: BridgeMember) {
-    if (member.formerDevices.isNotEmpty()) {
+    if (member.formerDeviceCount > 0u) {
         // The design sets the removed devices a gap of their own below the devices card.
         Box(modifier = Modifier.padding(top = ThemeSpace.related)) {
-            FormerDevices(devices = member.formerDevices)
+            FormerDevices(devices = member.formerDevices, count = member.formerDeviceCount)
         }
     }
 }

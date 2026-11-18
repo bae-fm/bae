@@ -172,11 +172,12 @@ fn profiles_ratings_playlists_and_history_use_the_same_store() {
         let members = membership.clone().next().await.unwrap();
         membership.cancel().await.unwrap();
         assert!(members.self_is_admin);
-        assert_eq!(members.members[0].active_devices.len(), 1);
         let device = &members.members[0].active_devices[0];
         assert!(device.is_self);
         assert!(!device.can_remove);
         assert!(members.members[0].former_devices.is_empty());
+        let member = &members.members[0];
+        assert_eq!((member.active_device_count, member.former_device_count), (1, 0));
         let people = app.clone().subscribe_people();
         let read = people.clone().next().await.unwrap();
         assert_eq!(read.own.unwrap().membership.id, profile.id);

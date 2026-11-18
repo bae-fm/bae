@@ -27,7 +27,7 @@ fn a_members_access_is_an_account_a_key_or_not_yet_recorded() {
     let read = |account: Option<&str>, access_key_id: Option<&str>| {
         connection.query_row(
             "SELECT '00000000-0000-4000-8000-000000000001', 'admin', 1, \
-             ?1, ?2, '[]', '[]', 1",
+             ?1, ?2, '[]', '[]', 0, 0, 1",
             [account, access_key_id],
             |row| super::members::member_row(row, 0),
         )
@@ -53,7 +53,7 @@ fn a_members_removal_flags_follow_the_admin_column_of_their_row() {
         connection
             .query_row(
                 "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
-                 NULL, NULL, '[[\"01\",\"Phone\",false]]', '[]', ?1",
+                 NULL, NULL, '[[\"01\",\"Phone\",false]]', '[]', 1, 0, ?1",
                 [self_is_admin],
                 |row| super::members::member_row(row, 0),
             )
@@ -75,7 +75,7 @@ fn a_former_devices_state_reads_by_coven_s_name() {
     let read = |former: &str| {
         connection.query_row(
             "SELECT '00000000-0000-4000-8000-000000000001', 'member', 0, \
-             NULL, NULL, '[]', ?1, 0",
+             NULL, NULL, '[]', ?1, 0, 2, 0",
             [former],
             |row| super::members::member_row(row, 0),
         )

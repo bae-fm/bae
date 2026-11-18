@@ -80,6 +80,11 @@ pub struct BridgeMember {
     pub can_remove: bool,
     pub active_devices: Vec<BridgeActiveDevice>,
     pub former_devices: Vec<BridgeFormerDevice>,
+    /// How many devices can sync for them.
+    pub active_device_count: u32,
+    /// How many of their devices lost access because someone removed them or
+    /// a newer device replaced them.
+    pub former_device_count: u32,
 }
 impl BridgeMember {
     fn from_core(value: bae_people::membership::MembershipMember) -> Self {
@@ -91,6 +96,8 @@ impl BridgeMember {
             can_remove,
             active_devices,
             former_devices,
+            active_device_count,
+            former_device_count,
         } = value;
         Self {
             id: id.0.to_string(),
@@ -100,6 +107,8 @@ impl BridgeMember {
             can_remove,
             active_devices: active_devices.into_iter().map(BridgeActiveDevice::from_core).collect(),
             former_devices: former_devices.into_iter().map(BridgeFormerDevice::from_core).collect(),
+            active_device_count,
+            former_device_count,
         }
     }
 }
