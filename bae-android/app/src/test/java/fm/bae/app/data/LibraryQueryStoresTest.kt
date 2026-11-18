@@ -30,8 +30,9 @@ class LibraryQueryStoresTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
+    /** The last text's results stay while the new text's query runs, and the new text's failure replaces them. */
     @Test
-    fun switchingSearchQueryClearsPriorValueBeforeTheNewQueryErrors() =
+    fun switchingSearchQueryKeepsThePriorResultsUntilTheNewQueryAnswers() =
         runTest(main) {
             val failure = queryFailure()
             val handle =
@@ -46,14 +47,50 @@ class LibraryQueryStoresTest {
             val store = SearchQueryStore(Library(handle), backgroundScope)
             store.activate("query-a")
             passDebounce()
-            assertTrue(store.state.value is LiveQueryState.Answered)
+            assertEquals(
+                "query-a",
+                store.state.value.answer
+                    ?.query,
+            )
 
             store.activate("query-b")
-            assertEquals(LiveQueryState.Waiting, store.state.value)
+            assertEquals(
+                "query-a",
+                store.state.value.answer
+                    ?.query,
+            )
             passDebounce()
 
             assertEquals(LiveQueryState.Failed(failure), store.state.value)
             assertEquals("typing moves one search, never opens another", 1, handle.searchSubscriptions.size)
+        }
+
+    /** A new text's results replace the last text's once its query answers. */
+    @Test
+    fun aNewTextsResultsReplaceTheLastOnes() =
+        runTest(main) {
+            val handle =
+                FakeAppHandle(
+                    searchResults = { query ->
+                        BridgeFixtures.searchResults(
+                            albums = listOf(BridgeFixtures.albumSearchResult(id = "album-$query")),
+                        )
+                    },
+                )
+            val store = SearchQueryStore(Library(handle), backgroundScope)
+            store.activate("query-a")
+            passDebounce()
+
+            store.activate("query-b")
+            passDebounce()
+
+            assertEquals(
+                listOf("album-query-b"),
+                store.state.value.answer
+                    ?.results
+                    ?.albums
+                    ?.map { it.id },
+            )
         }
 
     @Test

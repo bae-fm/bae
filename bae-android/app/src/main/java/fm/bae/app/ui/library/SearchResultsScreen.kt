@@ -77,11 +77,12 @@ fun SearchResultsScreen(
             // Library search is a local read; nothing shows until it lands.
             LiveQueryState.Waiting -> {}
 
+            // The last text's results stay until the new text's query answers.
             is LiveQueryState.Answered -> {
-                val results = answer.value
+                val results = answer.value.results
                 if (results.hasNoResults()) {
                     Text(
-                        text = stringResource(R.string.search_no_results, query),
+                        text = stringResource(R.string.search_no_results, answer.value.query),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                     )

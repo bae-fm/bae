@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -155,7 +156,35 @@ class ListBrowserPageStoreTest {
 
         assertEquals(ids(0..9), fixture.ids(0..9))
         assertNull(fixture.store.rowAt(10))
-        assertEquals(10, fixture.store.totalCount)
+        assertEquals(ListPageState.Counted(10), fixture.store.state)
+    }
+
+    /** A new sort keeps the rows drawn until the new sort's reads answer, then draws theirs and ends the old reads. */
+    @Test
+    fun aNewSortKeepsTheRowsDrawnUntilItsReadsAnswer() {
+        val fixture = open(albums(ids(0..29)), deliverImmediately = false)
+        fixture.list.changed()
+        fixture.idle()
+        val old = fixture.list.views.single()
+
+        fixture.store.activate(BridgeSortCriterion(BridgeSortField.TITLE, BridgeSortDirection.DESCENDING))
+        fixture.idle()
+        assertEquals(ListPageState.Counted(30), fixture.store.state)
+        assertEquals(ids(0..29), fixture.ids(0..29))
+        assertFalse(old.cancelled)
+
+        fixture.list.albums = albums(ids(0..9))
+        fixture.list.views
+            .last()
+            .deliver()
+        fixture.list.counts
+            .last()
+            .deliver()
+        fixture.idle()
+
+        assertEquals(ListPageState.Counted(10), fixture.store.state)
+        assertEquals(ids(0..9), fixture.ids(0..9))
+        assertTrue(old.cancelled)
     }
 
     @Test

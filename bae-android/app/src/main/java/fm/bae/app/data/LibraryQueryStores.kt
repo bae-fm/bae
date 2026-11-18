@@ -134,17 +134,24 @@ internal class DetailQueryStore<Id, Value>(
     }
 }
 
+/** One search's results, with the text they answer. */
+internal data class SearchAnswer(
+    val query: String,
+    val results: BridgeSearchResults,
+)
+
 /**
  * The search screen's one live search. [activate] moves it to the field's text once typing pauses,
  * so a run of keystrokes is one query change on one subscription; [deactivate] closes it when the
- * screen goes. Only a value answering the query standing now is shown.
+ * screen goes. Only a value answering the query standing now replaces [state], so the last text's
+ * results stay until the new text's query answers.
  */
 internal class SearchQueryStore(
     private val library: Library,
     private val scope: CoroutineScope,
 ) {
-    private val mutableState = MutableStateFlow<LiveQueryState<BridgeSearchResults>>(LiveQueryState.Waiting)
-    val state: StateFlow<LiveQueryState<BridgeSearchResults>> = mutableState.asStateFlow()
+    private val mutableState = MutableStateFlow<LiveQueryState<SearchAnswer>>(LiveQueryState.Waiting)
+    val state: StateFlow<LiveQueryState<SearchAnswer>> = mutableState.asStateFlow()
     private var query: String? = null
     private var search: LibrarySearch? = null
     private var deliveries: ScreenSubscription<BridgeLibrarySearchSnapshot>? = null
@@ -154,7 +161,8 @@ internal class SearchQueryStore(
         val trimmed = value.trim()
         if (query == trimmed) return
         query = trimmed
-        mutableState.value = LiveQueryState.Waiting
+        // The last text's failure goes; the last text's results stay until the new text's query answers.
+        if (mutableState.value is LiveQueryState.Failed) mutableState.value = LiveQueryState.Waiting
         debounce?.cancel()
         if (trimmed.isEmpty()) {
             search?.let { setQuery(it, null) }
@@ -175,6 +183,7 @@ internal class SearchQueryStore(
         deliveries = null
         query = null
         search = null
+        mutableState.value = LiveQueryState.Waiting
     }
 
     /** Open the standing query again, on a new search, after it failed. */
@@ -196,8 +205,9 @@ internal class SearchQueryStore(
                 scope,
                 onValue = { snapshot ->
                     // Only a value answering the query standing now is shown.
-                    if (snapshot.query != null && snapshot.query == query) {
-                        mutableState.value = LiveQueryState.Answered(snapshot.results)
+                    val answered = snapshot.query
+                    if (answered != null && answered == query) {
+                        mutableState.value = LiveQueryState.Answered(SearchAnswer(answered, snapshot.results))
                     }
                 },
                 onError = { error -> mutableState.value = LiveQueryState.Failed(error) },
