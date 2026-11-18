@@ -35,12 +35,12 @@ extension BridgeSyncCause {
                 comment:
                     "Sync failed: the library's database on this Mac couldn't be read."
             )
-        case .scanNewRestoreCode:
+        case .enterNewRestoreCode:
             String(
                 localized:
-                    "Scan the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent.",
+                    "Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent.",
                 comment:
-                    "Sync status line after another of the person's devices made a new restore code: scanning it restores the library on this Mac, and the restore loses what this Mac had not sent."
+                    "Sync status line after another of the person's devices made a new restore code: entering it restores the library on this Mac, and the restore loses what this Mac had not sent."
             )
         }
     }

@@ -4040,7 +4040,7 @@ storage* where the line names the place the library is kept.
     until then.*
   - New restore code, after another of the person's devices made a new
     restore code, naming that device: *You made the new code on your iPhone.* /
-    *Scan the new restore code to restore the library on this Mac. The restore
+    *Enter the new restore code to restore the library on this Mac. The restore
     discards any changes this Mac has not sent.*, with *Enter restore code…*.
     Sync stays stopped until the person scans the code, and the scan restores
     this device as a new device that takes its place (below).

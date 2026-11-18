@@ -463,7 +463,7 @@
     <string name="sync_cause_disk_full">Bu cihazın yeri kalmadı. Biraz yer açın, bae yeniden deneyecek.</string>
     <string name="sync_cause_keys_unreadable">bae, bu cihazda kayıtlı anahtarlarını okuyamadı.</string>
     <string name="sync_cause_library_unreadable">bae, bu cihazdaki kitaplığı okuyamadı.</string>
-    <string name="sync_cause_scan_new_restore_code">Bu cihazdaki kitaplığı geri yüklemek için yeni geri yükleme kodunu tarayın. Geri yükleme, bu cihazın göndermediği tüm değişiklikleri atar.</string>
+    <string name="sync_cause_enter_new_restore_code">Bu cihazdaki kitaplığı geri yüklemek için yeni geri yükleme kodunu girin. Geri yükleme, bu cihazın göndermediği tüm değişiklikleri atar.</string>
     <string name="pins_at_once">Eşzamanlı sabitlemeler</string>
     <string name="pinning_empty">Sabitlenecek bir şey yok</string>
     <string name="pinning_load_failed">Sabitlemeler yüklenemedi.</string>

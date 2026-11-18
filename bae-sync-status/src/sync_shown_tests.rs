@@ -167,7 +167,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         dropbox(keys_replaced),
         W::NewRestoreCode,
         T::Warning,
-        Some(C::ScanNewRestoreCode),
+        Some(C::EnterNewRestoreCode),
         Some(F::EnterRestoreCode),
     );
     check(

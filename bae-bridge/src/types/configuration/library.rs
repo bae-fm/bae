@@ -568,10 +568,10 @@ pub enum BridgeSyncCause {
     DeviceKeysUnreadable,
     /// bae could not read the library on this device.
     LibraryUnreadable,
-    /// Another of the person's devices made a new restore code: scanning it
+    /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device, and the restore discards what
     /// this device has not sent.
-    ScanNewRestoreCode,
+    EnterNewRestoreCode,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -705,7 +705,7 @@ impl BridgeSyncCause {
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::LibraryUnreadable => return Self::LibraryUnreadable,
-            C::ScanNewRestoreCode => return Self::ScanNewRestoreCode,
+            C::EnterNewRestoreCode => return Self::EnterNewRestoreCode,
             C::ProviderError { provider, detail } => BridgeMessage {
                 key: "core.sync.cause.provider_error".to_string(),
                 args: vec![

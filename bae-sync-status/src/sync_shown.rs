@@ -85,11 +85,11 @@ pub enum SyncCauseLine {
     DeviceDiskFailed,
     DeviceKeysUnreadable,
     LibraryUnreadable,
-    /// Another of the person's devices made a new restore code: scanning it
+    /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device as a new device, and the restore
     /// discards what this device has not sent, since coven refuses every
     /// write signed with the keys the new code replaced.
-    ScanNewRestoreCode,
+    EnterNewRestoreCode,
     /// The provider answered with an error, told as the provider told it.
     ProviderError {
         provider: CloudProvider,
@@ -221,7 +221,7 @@ impl SyncStatusSnapshot {
                 .fixed_by(SyncFix::RemoveFromThisDevice),
             SyncState::NeedsReset { reason: ResetReason::MemberKeysReplaced { .. }, .. } => {
                 SyncShown::new(W::NewRestoreCode, T::Warning)
-                    .because(SyncCauseLine::ScanNewRestoreCode)
+                    .because(SyncCauseLine::EnterNewRestoreCode)
                     .fixed_by(SyncFix::EnterRestoreCode)
             }
             SyncState::NeedsReset {

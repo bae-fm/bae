@@ -180,7 +180,7 @@ class SyncScreenTest {
                         status = BridgeSyncStatusWord.NEW_RESTORE_CODE,
                         statusKey = "core.sync.status.new_restore_code",
                         tone = BridgeSyncTone.WARNING,
-                        cause = BridgeSyncCause.ScanNewRestoreCode,
+                        cause = BridgeSyncCause.EnterNewRestoreCode,
                         fix = BridgeSyncFix.EnterRestoreCode,
                         lastSynced = null,
                     ),
@@ -202,7 +202,7 @@ class SyncScreenTest {
         compose.onNodeWithText("New restore code").assertExists()
         compose
             .onNodeWithText(
-                "Scan the new restore code to restore the library on this device. " +
+                "Enter the new restore code to restore the library on this device. " +
                     "The restore discards any changes this device has not sent.",
             ).assertExists()
         compose.onNodeWithText("Enter restore code…").performClick()

@@ -855,8 +855,8 @@ fn device_causes_are_the_platforms_to_word() {
         BridgeSyncCause::LibraryUnreadable
     );
     assert_eq!(
-        BridgeSyncCause::from_core(C::ScanNewRestoreCode),
-        BridgeSyncCause::ScanNewRestoreCode
+        BridgeSyncCause::from_core(C::EnterNewRestoreCode),
+        BridgeSyncCause::EnterNewRestoreCode
     );
 }
 

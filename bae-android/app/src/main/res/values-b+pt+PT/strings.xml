@@ -462,7 +462,7 @@
     <string name="sync_cause_disk_full">Este dispositivo ficou sem espaço. Liberte algum e o bae tentará novamente.</string>
     <string name="sync_cause_keys_unreadable">O bae não conseguiu ler as chaves guardadas neste dispositivo.</string>
     <string name="sync_cause_library_unreadable">O bae não conseguiu ler a biblioteca neste dispositivo.</string>
-    <string name="sync_cause_scan_new_restore_code">Digitalize o novo código de restauração para restaurar a biblioteca neste dispositivo. O restauro descarta as alterações que este dispositivo ainda não enviou.</string>
+    <string name="sync_cause_enter_new_restore_code">Introduza o novo código de restauração para restaurar a biblioteca neste dispositivo. O restauro descarta as alterações que este dispositivo ainda não enviou.</string>
     <string name="pins_at_once">Fixações em simultâneo</string>
     <string name="pinning_empty">Nada para fixar</string>
     <string name="pinning_load_failed">Não foi possível carregar as suas fixações.</string>
