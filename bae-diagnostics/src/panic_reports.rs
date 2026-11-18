@@ -47,7 +47,7 @@ thread_local! {
     /// Whether this is the reporting thread. A panic on it, the reporter's
     /// own, is only logged: reporting it would hand the reporter a report of
     /// its own failure, again each time it fails.
-    static REPORTING: Cell<bool> = const { Cell::new(false) };
+    static REPORTING: Cell<bool> = Cell::default();
 }
 
 /// Report every panic in the process to `bugs`, once each, from now on: the

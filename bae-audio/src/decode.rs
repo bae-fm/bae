@@ -34,10 +34,7 @@ const CHANNEL_COUNT_ERROR: &str = "channel count must be greater than zero";
 
 // One decode runs on one thread, so a thread-local counts its FFmpeg errors.
 thread_local! {
-    // clippy::missing_const_for_thread_local fires spuriously on the Android target
-    // even though `= const { ... }` is already the const form; suppress the false positive.
-    #[allow(clippy::missing_const_for_thread_local)]
-    static FFMPEG_DECODE_ERRORS: Cell<u32> = const { Cell::new(0) };
+    static FFMPEG_DECODE_ERRORS: Cell<u32> = Cell::default();
 }
 
 fn reset_ffmpeg_errors() {
