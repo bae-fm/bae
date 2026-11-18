@@ -94,71 +94,19 @@ impl AppServices {
             },
         )
     }
-
-    /// The reads of the albums library search's `query` lists; no query
-    /// (`None`) lists none.
-    pub fn search_album_list(&self, query: Option<bae_views::LibrarySearchQuery>) -> ListReads {
-        let (window_query, position_query) = (query.clone(), query.clone());
-        list_reads(
-            self,
-            move |services, window| {
-                services.subscribe_search_album_window(window_query.clone(), window)
-            },
-            move |services, key| {
-                services.subscribe_search_album_position(position_query.clone(), key)
-            },
-            move |services, position| {
-                let query = query.clone();
-                async move { services.inner.views.search_album_key_at(query, position).await }
-            },
-        )
-    }
-
-    /// The reads of the album `album_id`'s tracks.
-    pub fn album_track_list(&self, album_id: String) -> ListReads {
-        let (window_id, position_id) = (album_id.clone(), album_id.clone());
-        list_reads(
-            self,
-            move |services, window| services.subscribe_album_track_window(&window_id, window),
-            move |services, key| services.subscribe_album_track_position(&position_id, key),
-            move |services, position| {
-                let album_id = album_id.clone();
-                async move { services.inner.views.album_track_key_at(&album_id, position).await }
-            },
-        )
-    }
-
-    /// The reads of the work `work_id`'s children.
-    pub fn work_child_list(&self, work_id: String) -> ListReads {
-        let (window_id, position_id) = (work_id.clone(), work_id.clone());
-        list_reads(
-            self,
-            move |services, window| services.subscribe_work_child_window(&window_id, window),
-            move |services, key| services.subscribe_work_child_position(&position_id, key),
-            move |services, position| {
-                let work_id = work_id.clone();
-                async move { services.inner.views.work_child_key_at(&work_id, position).await }
-            },
-        )
-    }
 }
 
 impl AppServices {
-    /// One page of the album grid under `sort`, flat or grouped by artist:
-    /// the rows at the page's places, the first value at once, then one after
-    /// each write that changes them.
+    /// One page of the flat album grid under `sort`: the rows from the
+    /// page's first place, the first value at once, then one after each
+    /// write that changes them.
     pub fn subscribe_album_page(
         &self,
         sort: &[bae_views::AlbumSortCriterion],
-        group_by_artist: bool,
         page: bae_store::ListPage,
     ) -> bae_store::live_query::LiveValues<bae_views::ListRows> {
         let manager = &self.inner.manager;
-        manager.values_until_closed(self.inner.views.subscribe_album_page(
-            sort,
-            group_by_artist,
-            page,
-        ))
+        manager.values_until_closed(self.inner.views.subscribe_album_page(sort, page))
     }
 
     /// One page of the composer list under `sort`.
@@ -440,20 +388,6 @@ impl AppServices {
         )
     }
 
-    /// One window of the albums library search's `query` lists; no query
-    /// (`None`) lists none.
-    pub fn subscribe_search_album_window(
-        &self,
-        query: Option<bae_views::LibrarySearchQuery>,
-        window: bae_store::ListWindow,
-    ) -> bae_views::LiveListWindow {
-        list_window(
-            &self.inner.manager,
-            self.inner.views.subscribe_search_album_window(query, window),
-            bae_views::album::resolve_search_album_window,
-        )
-    }
-
     /// How many albums library search's `query` lists; no query (`None`)
     /// lists none.
     pub fn subscribe_search_album_count(
@@ -461,32 +395,6 @@ impl AppServices {
         query: Option<bae_views::LibrarySearchQuery>,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         list_rows(&self.inner.manager, self.inner.views.subscribe_search_album_count(query))
-    }
-
-    /// How many of the albums library search's `query` lists come before the
-    /// row at `key`.
-    pub fn subscribe_search_album_position(
-        &self,
-        query: Option<bae_views::LibrarySearchQuery>,
-        key: bae_store::list_windows::OrderKey,
-    ) -> bae_views::LiveListPosition {
-        list_position(
-            &self.inner.manager,
-            self.inner.views.subscribe_search_album_position(query, key),
-        )
-    }
-
-    /// One window of the album `album_id`'s tracks.
-    pub fn subscribe_album_track_window(
-        &self,
-        album_id: &str,
-        window: bae_store::ListWindow,
-    ) -> bae_views::LiveListWindow {
-        list_window(
-            &self.inner.manager,
-            self.inner.views.subscribe_album_track_window(album_id, window),
-            bae_views::album::resolve_album_track_window,
-        )
     }
 
     /// How many tracks the album `album_id` lists.
@@ -497,51 +405,12 @@ impl AppServices {
         list_rows(&self.inner.manager, self.inner.views.subscribe_album_track_count(album_id))
     }
 
-    /// How many of the album `album_id`'s tracks come before the row at
-    /// `key`.
-    pub fn subscribe_album_track_position(
-        &self,
-        album_id: &str,
-        key: bae_store::list_windows::OrderKey,
-    ) -> bae_views::LiveListPosition {
-        list_position(
-            &self.inner.manager,
-            self.inner.views.subscribe_album_track_position(album_id, key),
-        )
-    }
-
-    /// One window of the work `work_id`'s children.
-    pub fn subscribe_work_child_window(
-        &self,
-        work_id: &str,
-        window: bae_store::ListWindow,
-    ) -> bae_views::LiveListWindow {
-        list_window(
-            &self.inner.manager,
-            self.inner.views.subscribe_work_child_window(work_id, window),
-            bae_views::composer::resolve_work_child_window,
-        )
-    }
-
     /// How many children the work `work_id` has.
     pub fn subscribe_work_child_count(
         &self,
         work_id: &str,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
         list_rows(&self.inner.manager, self.inner.views.subscribe_work_child_count(work_id))
-    }
-
-    /// How many of the work `work_id`'s children come before the row at
-    /// `key`.
-    pub fn subscribe_work_child_position(
-        &self,
-        work_id: &str,
-        key: bae_store::list_windows::OrderKey,
-    ) -> bae_views::LiveListPosition {
-        list_position(
-            &self.inner.manager,
-            self.inner.views.subscribe_work_child_position(work_id, key),
-        )
     }
 }
 

@@ -14,7 +14,6 @@ mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
 mod search_albums;
 use search_albums::first_search_albums_on;
-pub use search_albums::resolve_search_album_window;
 
 impl LibraryViews {
     /// Search the library for a parsed, non-blank query. The result count is
@@ -51,45 +50,26 @@ impl LibraryViews {
         self.store.read(move |sql| search_library_on(&sql, &pattern, limit_i64)).await
     }
 
-    /// Follow one window of the album `album_id`'s tracks: a range of
-    /// [`album_track_order`] (`list_windows`), which coven reruns for a write
-    /// inside it alone.
-    pub fn subscribe_album_track_window(
-        &self,
-        album_id: &str,
-        initial: ListWindow,
-    ) -> coven::ReconfigurableLiveQuery<
-        ListWindow,
-        WindowRead<DbTrackSearchResult>,
-        bae_store::DbError,
-    > {
-        let album_id = album_id.to_string();
-        let order = album_track_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
-            album_track_rows_on(sql, &album_id, &read_order, seek, limit)
-        })
-    }
-
     /// Follow one page of the album `album_id`'s tracks: the tracks at the
     /// page's places, as a media browser lists them.
     pub fn subscribe_album_track_page(
         &self,
         album_id: &str,
         page: ListPage,
-    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+    ) -> bae_store::live_query::LivePage<crate::ListRows> {
         let album_id = album_id.to_string();
         let order = album_track_order();
         let read_order = order.clone();
-        self.store
-            .subscribe_list_page(page, order, move |sql, seek, limit| {
-                album_track_rows_on(sql, &album_id, &read_order, seek, limit)
-            })
-            .process(|rows| Ok(album_track_rows(rows)))
+        self.store.subscribe_list_page(
+            page,
+            order,
+            move |sql, seek, limit| album_track_rows_on(sql, &album_id, &read_order, seek, limit),
+            |rows| Ok(album_track_rows(rows)),
+        )
     }
 
     /// Follow how many tracks the album `album_id` lists. The count runs as a
-    /// separate query from the windows' rows.
+    /// separate query from the pages' rows.
     pub fn subscribe_album_track_count(
         &self,
         album_id: &str,
@@ -105,45 +85,6 @@ impl LibraryViews {
                 |row| count_column::<u64>(row, "count"),
             )?)
         })
-    }
-
-    /// Follow how many of the album `album_id`'s tracks come before the row
-    /// at a key; the caller changes the key on the same query.
-    pub fn subscribe_album_track_position(
-        &self,
-        album_id: &str,
-        initial: OrderKey,
-    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let album_id = album_id.to_string();
-        let order = album_track_order();
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            bae_store::list_windows::rows_before_on(
-                &sql,
-                TRACK_HIT_FROM,
-                Some(&album_track_filter()),
-                &[(":album_id", &album_id)],
-                &order,
-                key,
-            )
-        })
-    }
-
-    /// The key of the album `album_id`'s track at `position`, or of its last
-    /// track when the list ends before it; `None` for an album with no tracks.
-    pub async fn album_track_key_at(
-        &self,
-        album_id: &str,
-        position: u64,
-    ) -> Result<Option<OrderKey>, DbError> {
-        let album_id = album_id.to_string();
-        let order = album_track_order();
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    album_track_rows_on(&sql, &album_id, &order, seek, limit)
-                })
-            })
-            .await
     }
 
     /// The track `track_id` of the release `release_id` as a browse item shows
@@ -257,25 +198,25 @@ impl LibraryViews {
             .process(|window| window.try_map_rows(AlbumAppearanceRow::process))
     }
 
-    /// Follow one page of the album list under `sort`, flat or grouped by
-    /// artist: the rows at the page's places, as the grid shows them.
+    /// Follow one page of the flat album list under `sort`: the albums from
+    /// the page's first place, as the grid shows them.
     pub fn subscribe_album_page(
         &self,
         sort: &[AlbumSortCriterion],
-        group_by_artist: bool,
         page: ListPage,
-    ) -> coven::LiveQuery<crate::ListRows, DbError> {
-        let (_, order) = album_browse_order(sort, group_by_artist);
+    ) -> bae_store::live_query::LivePage<crate::ListRows> {
+        let (_, order) = album_browse_order(sort, false);
         let read_order = order.clone();
-        self.store
-            .subscribe_list_page(page, order, move |sql, seek, limit| {
-                album_rows_on(sql, group_by_artist, &read_order, seek, limit)
-            })
-            .process(|rows| {
+        self.store.subscribe_list_page(
+            page,
+            order,
+            move |sql, seek, limit| album_rows_on(sql, false, &read_order, seek, limit),
+            |rows| {
                 Ok(album_rows(
                     rows.into_iter().map(AlbumAppearanceRow::process).collect::<Result<_, _>>()?,
                 ))
-            })
+            },
+        )
     }
 
     /// Follow how many rows the album grid has: its albums, and flat or
@@ -839,12 +780,6 @@ pub struct AlbumDetailProjection {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LibrarySearchProjection {
     pub results: DbLibrarySearchResults,
-}
-
-/// One delivery of a window of an album's tracks as a media browser lists
-/// them.
-pub fn resolve_album_track_window(read: WindowRead<DbTrackSearchResult>) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, album_track_rows)
 }
 
 /// An album's tracks as a media browser lists them.

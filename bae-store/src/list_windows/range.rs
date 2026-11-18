@@ -85,23 +85,13 @@ pub fn read_range<R, E>(
 }
 
 /// A page of a list: the `limit` rows from the row at `offset` in the list's
-/// order, read by offset; none when the list ends at or before `offset`. A
-/// page's statement has an OFFSET, so coven reruns it for every write to
-/// what it reads, and its rows are always the rows at the page's places.
+/// order. A page's live read starts at the key of the row at `offset`, read
+/// once by offset, and takes at most `limit` rows from that key on, as a
+/// window does; a page that starts past the list's end holds no rows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ListPage {
     pub offset: u64,
     pub limit: u64,
-}
-
-/// `page`'s rows from `read`, which runs the list's statement under a seek
-/// for at most the limit it is given.
-pub fn read_page<R, E>(
-    order: &ListOrder,
-    page: ListPage,
-    read: &mut impl FnMut(&Seek, u64) -> Result<Vec<Keyed<R>>, E>,
-) -> Result<Vec<R>, E> {
-    Ok(read(&order.at_offset(page.offset), page.limit)?.into_iter().map(|(row, _)| row).collect())
 }
 
 /// One statement that counts the rows of `from`, a statement's FROM clause,
@@ -169,17 +159,30 @@ pub fn key_at<R, E>(
     position: u64,
     read: &mut impl FnMut(&Seek, u64) -> Result<Vec<Keyed<R>>, E>,
 ) -> Result<Option<OrderKey>, E> {
-    if let Some((_, key)) = read(&order.at_offset(position), 1)?.pop() {
+    if let Some(key) = row_key_at(order, position, read)? {
         return Ok(Some(key));
     }
     Ok(read(&order.everything_reversed(), 1)?.pop().map(|(_, key)| key))
 }
 
+/// The key of the row at `position`, read by offset; `None` when the list
+/// ends at or before it.
+fn row_key_at<R, E>(
+    order: &ListOrder,
+    position: u64,
+    read: &mut impl FnMut(&Seek, u64) -> Result<Vec<Keyed<R>>, E>,
+) -> Result<Option<OrderKey>, E> {
+    Ok(read(&order.at_offset(position), 1)?.pop().map(|(_, key)| key))
+}
+
 impl crate::Store {
-    /// A live query of one page of the list `order` sorts. `read` runs the
-    /// list's statement under a seek for at most a limit and gives each row
-    /// with its key.
-    pub fn subscribe_list_page<R>(
+    /// The live read of one page of the list `order` sorts, its rows made
+    /// into a value by `process`. Opening it reads the key of the row at the
+    /// page's offset once, then follows the page's rows from that key as a
+    /// window, which coven reruns for a write at or before its last row
+    /// alone. `read` runs the list's statement under a seek for at most a
+    /// limit and gives each row with its key.
+    pub fn subscribe_list_page<R, T>(
         &self,
         page: ListPage,
         order: ListOrder,
@@ -187,12 +190,43 @@ impl crate::Store {
             + Send
             + Sync
             + 'static,
-    ) -> coven::LiveQuery<Vec<R>, crate::DbError>
+        process: impl Fn(Vec<R>) -> Result<T, crate::DbError> + Send + Sync + 'static,
+    ) -> crate::live_query::LivePage<T>
     where
-        R: Send + 'static,
+        R: Clone + PartialEq + Send + 'static,
+        T: Send + 'static,
     {
-        self.subscribe(move |sql| {
-            read_page(&order, page, &mut |seek, limit| read(&sql, seek, limit))
+        let store = self.clone();
+        let read = std::sync::Arc::new(read);
+        let process = std::sync::Arc::new(process);
+        crate::live_query::LivePage::new(move || {
+            let (store, order, read, process) =
+                (store.clone(), order.clone(), read.clone(), process.clone());
+            Box::pin(async move {
+                let key = {
+                    let (order, read) = (order.clone(), read.clone());
+                    store
+                        .read(move |sql| {
+                            row_key_at(&order, page.offset, &mut |seek, limit| {
+                                read(&sql, seek, limit)
+                            })
+                        })
+                        .await?
+                };
+                // A page past the list's end reads no rows.
+                let window = match key {
+                    Some(from) => ListWindow { from: Some(from), limit: page.limit },
+                    None => ListWindow::top(0),
+                };
+                Ok(store
+                    .subscribe(move |sql| {
+                        let window = read_range(&order, &window, &mut |seek, limit| {
+                            read(&sql, seek, limit)
+                        })?;
+                        Ok(window.rows.into_iter().map(|(row, _)| row).collect::<Vec<R>>())
+                    })
+                    .process(move |rows| process(rows)))
+            })
         })
     }
 

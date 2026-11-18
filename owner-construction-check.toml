@@ -305,6 +305,9 @@ task_types = [
     "CancellableLiveQuery",
     # One live query's results for an async reader, for as long as it reads.
     "LiveResults",
+    # One list page's live query for an async reader, opened on its first
+    # pull, for as long as it reads.
+    "PageSource",
     "AddDeviceStatusSubscription",
     "AdminChangesSubscription",
     "AlbumDetailSubscription",

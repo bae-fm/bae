@@ -49,14 +49,15 @@ impl LibraryViews {
         &self,
         sort: &[ComposerSortCriterion],
         page: ListPage,
-    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+    ) -> bae_store::live_query::LivePage<crate::ListRows> {
         let order = composer_order(sort);
         let read_order = order.clone();
-        self.store
-            .subscribe_list_page(page, order, move |sql, seek, limit| {
-                composer_rows_on(sql, &read_order, seek, limit)
-            })
-            .process(|rows| Ok(crate::ListRows::Composers(rows)))
+        self.store.subscribe_list_page(
+            page,
+            order,
+            move |sql, seek, limit| composer_rows_on(sql, &read_order, seek, limit),
+            |rows| Ok(crate::ListRows::Composers(rows)),
+        )
     }
 
     /// Follow how many composers the list has. The count runs as a separate
@@ -123,41 +124,26 @@ impl LibraryViews {
         })
     }
 
-    /// Follow one window of the work `work_id`'s children: a range of
-    /// [`work_child_order`] (`list_windows`).
-    pub fn subscribe_work_child_window(
-        &self,
-        work_id: &str,
-        initial: ListWindow,
-    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbWorkChild>, bae_store::DbError>
-    {
-        let work_id = work_id.to_string();
-        let order = work_child_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| {
-            work_child_rows_on(sql, &work_id, &read_order, seek, limit)
-        })
-    }
-
     /// Follow one page of the work `work_id`'s children: the children at the
     /// page's places, as a media browser lists them.
     pub fn subscribe_work_child_page(
         &self,
         work_id: &str,
         page: ListPage,
-    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+    ) -> bae_store::live_query::LivePage<crate::ListRows> {
         let work_id = work_id.to_string();
         let order = work_child_order();
         let read_order = order.clone();
-        self.store
-            .subscribe_list_page(page, order, move |sql, seek, limit| {
-                work_child_rows_on(sql, &work_id, &read_order, seek, limit)
-            })
-            .process(|rows| Ok(work_child_rows(rows)))
+        self.store.subscribe_list_page(
+            page,
+            order,
+            move |sql, seek, limit| work_child_rows_on(sql, &work_id, &read_order, seek, limit),
+            |rows| Ok(work_child_rows(rows)),
+        )
     }
 
     /// Follow how many children the work `work_id` has. The count runs as a
-    /// separate query from the windows' rows.
+    /// separate query from the pages' rows.
     pub fn subscribe_work_child_count(
         &self,
         work_id: &str,
@@ -171,57 +157,11 @@ impl LibraryViews {
             )?)
         })
     }
-
-    /// Follow how many of the work `work_id`'s children come before the row
-    /// at a key; the caller changes the key on the same query.
-    pub fn subscribe_work_child_position(
-        &self,
-        work_id: &str,
-        initial: OrderKey,
-    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, bae_store::DbError> {
-        let work_id = work_id.to_string();
-        let order = work_child_order();
-        self.store.subscribe_reconfigurable(initial, move |key, sql| {
-            bae_store::list_windows::rows_before_on(
-                &sql,
-                &format!("FROM ({}) child", work_children_sql()),
-                None,
-                &[(":work_id", &work_id)],
-                &order,
-                key,
-            )
-        })
-    }
-
-    /// The key of the work `work_id`'s child at `position`, or of its last
-    /// child when the list ends before it; `None` for a work with no
-    /// children.
-    pub async fn work_child_key_at(
-        &self,
-        work_id: &str,
-        position: u64,
-    ) -> Result<Option<OrderKey>, DbError> {
-        let work_id = work_id.to_string();
-        let order = work_child_order();
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    work_child_rows_on(&sql, &work_id, &order, seek, limit)
-                })
-            })
-            .await
-    }
 }
 
 /// One delivery of a composer list window as the list shows it.
 pub fn resolve_composer_window(read: WindowRead<DbComposerSummary>) -> crate::ListWindowValue {
     crate::ListWindowValue::of(read, crate::ListRows::Composers)
-}
-
-/// One delivery of a window of a work's children as a media browser lists
-/// them.
-pub fn resolve_work_child_window(read: WindowRead<DbWorkChild>) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, work_child_rows)
 }
 
 /// A work's children as a media browser lists them.

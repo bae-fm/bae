@@ -343,40 +343,35 @@ fn page_titles(rows: crate::ListRows) -> Vec<String> {
     rows.into_iter().map(|row| row.album.title).collect()
 }
 
-/// A page of the grid holds the rows at its places, holds none past the
-/// grid's end, and follows a write that moves another row into its places.
+/// A page of the grid holds the rows from the row at its first place, none
+/// past the grid's end, and follows a write to a row it holds; a page opened
+/// after a row moves reads the rows at its places then.
 #[tokio::test]
-async fn a_page_holds_the_rows_at_its_places() {
+async fn a_page_holds_the_rows_from_its_first_place() {
     let (db, _dir) = grouped_library().await;
     let views = crate::LibraryViews::new(db.clone());
     let sort =
         [AlbumSortCriterion { field: AlbumSortField::Title, direction: SortDirection::Ascending }];
     let page = |offset| bae_store::ListPage { offset, limit: 2 };
     let first = |offset| {
-        let mut live = views.subscribe_album_page(&sort, true, page(offset));
-        async move {
-            tokio::time::timeout(HANG_GUARD, live.next_inline())
-                .await
-                .expect("a page answers")
-                .expect("the query stays open")
-                .unwrap()
-        }
+        let values =
+            crate::test_pages::page_values(views.subscribe_album_page(&sort, page(offset)));
+        async move { crate::test_pages::next_page(&values).await }
     };
-    assert_eq!(page_titles(first(1).await), ["Album B", "Album D"]);
-    assert_eq!(page_titles(first(4).await), ["Album C"]);
+    assert_eq!(page_titles(first(1).await), ["Album B", "Album C"]);
+    assert_eq!(page_titles(first(4).await), ["Album E"]);
     assert_eq!(page_titles(first(5).await), Vec::<String>::new());
 
-    let mut live = views.subscribe_album_page(&sort, true, page(3));
-    let before = live.next_inline().await.expect("the query stays open").unwrap();
-    assert_eq!(page_titles(before), ["Album A", "Album C"]);
-    test_records(&db).rename_album_for_test(&grouped_album(2), "Album 0").await.unwrap();
-    let after = tokio::time::timeout(HANG_GUARD, live.next_inline())
-        .await
-        .expect("the write reruns the page")
-        .expect("the query stays open")
-        .unwrap();
-    // "Album 0" sorts before "Album A" among artist A's albums.
-    assert_eq!(page_titles(after), ["Album 0", "Album A"]);
+    let live = crate::test_pages::page_values(views.subscribe_album_page(&sort, page(1)));
+    assert_eq!(page_titles(crate::test_pages::next_page(&live).await), ["Album B", "Album C"]);
+    test_records(&db).rename_album_for_test(&grouped_album(2), "Album C Renamed").await.unwrap();
+    assert_eq!(
+        page_titles(crate::test_pages::next_page(&live).await),
+        ["Album B", "Album C Renamed"]
+    );
+    // "Album 0" sorts first.
+    test_records(&db).rename_album_for_test(&grouped_album(3), "Album 0").await.unwrap();
+    assert_eq!(page_titles(first(1).await), ["Album A", "Album B"]);
 }
 
 /// Renaming an album moves it among its artist's albums in the grid grouped

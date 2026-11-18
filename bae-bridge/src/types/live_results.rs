@@ -44,12 +44,6 @@ pub enum BridgeList {
     Composers { sort: Vec<crate::types::BridgeComposerSortCriterion> },
     /// The rows of a composer's page.
     ComposerPage { artist_id: String },
-    /// An album's tracks as a media browser lists them: its main release's,
-    /// in playing order.
-    AlbumTracks { album_id: String },
-    /// A work's children as a media browser lists them: its parts, then the
-    /// releases that perform it.
-    WorkChildren { work_id: String },
     /// The download queue, in the order queued.
     Downloads,
     /// The context's tracks after the playing one, in the context lane's
@@ -57,10 +51,6 @@ pub enum BridgeList {
     Upcoming { shuffled: bool },
     /// The artists an artist picker's `text` finds; blank text finds none.
     ArtistSearch { text: String },
-    /// The albums library search lists for `query` as a media browser lists
-    /// them: the first it finds, up to library search's result limit
-    /// (`SEARCH_RESULT_LIMIT`), in title order. A blank query lists none.
-    SearchAlbums { query: String },
     /// The Storage Manager's releases under `sort` and `filter`, narrowed by
     /// the library search `search` finds when it is not blank.
     Storage {
@@ -70,12 +60,12 @@ pub enum BridgeList {
     },
 }
 
-/// Which list a media browser reads a page of: the lists it shows a page at
-/// a time.
+/// Which list a media browser reads a page or the count of: the lists it
+/// shows a page at a time.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePagedList {
-    /// The album grid under `sort`, flat or grouped by artist.
-    AlbumGrid { sort: Vec<crate::types::BridgeSortCriterion>, group_by_artist: bool },
+    /// The flat album grid under `sort`.
+    AlbumGrid { sort: Vec<crate::types::BridgeSortCriterion> },
     /// The composer list under `sort`.
     Composers { sort: Vec<crate::types::BridgeComposerSortCriterion> },
     /// The rows of a composer's page.

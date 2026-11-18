@@ -222,17 +222,20 @@ internal open class FakeAppHandle(
         list: BridgePagedList,
         offset: ULong,
         limit: ULong,
-    ): ListPageSubscription =
-        fakeList(
-            when (list) {
-                is BridgePagedList.AlbumGrid -> BridgeList.AlbumGrid(list.sort, list.groupByArtist)
-                is BridgePagedList.Composers -> BridgeList.Composers(list.sort)
-                is BridgePagedList.ComposerPage -> BridgeList.ComposerPage(list.artistId)
-                is BridgePagedList.AlbumTracks -> BridgeList.AlbumTracks(list.albumId)
-                is BridgePagedList.WorkChildren -> BridgeList.WorkChildren(list.workId)
-                is BridgePagedList.SearchAlbums -> BridgeList.SearchAlbums(list.query)
-            },
-        ).openPage(offset, limit)
+    ): ListPageSubscription = fakePagedList(list).openPage(offset, limit)
+
+    override fun subscribeListPageCount(list: BridgePagedList): ListCountSubscription = fakePagedList(list).openCount()
+
+    /** The paged list [list] names, which a test changes and delivers. */
+    fun fakePagedList(list: BridgePagedList): FakeList<*> =
+        when (list) {
+            is BridgePagedList.AlbumGrid -> albumList
+            is BridgePagedList.Composers -> composerList
+            is BridgePagedList.ComposerPage -> composerPage(list.artistId)
+            is BridgePagedList.AlbumTracks -> albumTrackList(list.albumId)
+            is BridgePagedList.WorkChildren -> workChildList(list.workId)
+            is BridgePagedList.SearchAlbums -> searchAlbumList(list.query)
+        }
 
     private val composerPageLists = mutableMapOf<String, FakeComposerPage>()
     private val albumTrackLists = mutableMapOf<String, FakeList<BridgeBrowseTrack>>()
@@ -251,23 +254,7 @@ internal open class FakeAppHandle(
             }
 
             is BridgeList.ComposerPage -> {
-                composerPageLists.getOrPut(
-                    list.artistId,
-                ) { FakeComposerPage(composerDetailRows[list.artistId].orEmpty()) }
-            }
-
-            is BridgeList.AlbumTracks -> {
-                albumTrackList(list.albumId)
-            }
-
-            is BridgeList.WorkChildren -> {
-                workChildLists.getOrPut(list.workId) {
-                    FakeList(workChildren[list.workId].orEmpty(), ::workChildId, { BridgeListRows.WorkChildren(it) })
-                }
-            }
-
-            is BridgeList.SearchAlbums -> {
-                searchAlbumList(list.query)
+                composerPage(list.artistId)
             }
 
             is BridgeList.Artists,
@@ -317,6 +304,16 @@ internal open class FakeAppHandle(
                 initialSearchError(query)?.let { Result.failure(it) } ?: Result.success(searchResults(query))
             }
         }.also(searchSubscriptions::add)
+
+    /** The composer [artistId]'s page rows, which a test changes and delivers. */
+    private fun composerPage(artistId: String): FakeComposerPage =
+        composerPageLists.getOrPut(artistId) { FakeComposerPage(composerDetailRows[artistId].orEmpty()) }
+
+    /** The work [workId]'s children as the bridge lists them. */
+    private fun workChildList(workId: String): FakeList<BridgeWorkChild> =
+        workChildLists.getOrPut(workId) {
+            FakeList(workChildren[workId].orEmpty(), ::workChildId, { BridgeListRows.WorkChildren(it) })
+        }
 
     /** The album [albumId]'s tracks as the bridge lists them, which a test changes and delivers. */
     fun albumTrackList(albumId: String): FakeList<BridgeBrowseTrack> =

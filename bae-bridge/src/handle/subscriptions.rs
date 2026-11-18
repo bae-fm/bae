@@ -27,8 +27,6 @@ impl AppHandle {
                 services.composer_list(BridgeList::composer_sort(sort))
             }
             BridgeList::ComposerPage { artist_id } => services.composer_page_list(artist_id),
-            BridgeList::AlbumTracks { album_id } => services.album_track_list(album_id),
-            BridgeList::WorkChildren { work_id } => services.work_child_list(work_id),
             BridgeList::Downloads => services.download_list(),
             BridgeList::Upcoming { shuffled } => services.upcoming_list(shuffled),
             BridgeList::Storage { sort, filter, search } => {
@@ -37,9 +35,6 @@ impl AppHandle {
             BridgeList::ArtistSearch { text } => {
                 services.artist_search_list(BridgeList::search_query(&text))
             }
-            BridgeList::SearchAlbums { query } => {
-                services.search_album_list(BridgeList::search_query(&query))
-            }
         };
         crate::screens::list_view(
             services.open_list_view(reads, bae_views::list_view::Visible::new(first, last)),
@@ -47,9 +42,10 @@ impl AppHandle {
         )
     }
 
-    /// Read live the `limit` rows of `list` from position `offset`: the rows
-    /// at those places, none past the list's end, again after each write
-    /// that changes them.
+    /// Read live the `limit` rows of `list` from position `offset`: core reads
+    /// the key of the row at `offset` once, then follows at most `limit` rows
+    /// from that key, none for a page past the list's end, again after each
+    /// write that changes them.
     pub fn subscribe_list_page(
         &self,
         list: BridgePagedList,
@@ -59,8 +55,8 @@ impl AppHandle {
         let services = &self.services;
         let page = bae_store::ListPage { offset, limit };
         let live = match list {
-            BridgePagedList::AlbumGrid { sort, group_by_artist } => {
-                services.subscribe_album_page(&BridgeList::album_sort(sort), group_by_artist, page)
+            BridgePagedList::AlbumGrid { sort } => {
+                services.subscribe_album_page(&BridgeList::album_sort(sort), page)
             }
             BridgePagedList::Composers { sort } => {
                 services.subscribe_composer_page(&BridgeList::composer_sort(sort), page)
@@ -81,6 +77,32 @@ impl AppHandle {
         crate::screens::list_page(live, self.runtime.clone())
     }
 
+    /// Read live how many rows the paged list `list` has, with the values its
+    /// count carries (`BridgeListCountExtra`).
+    pub fn subscribe_list_page_count(
+        &self,
+        list: BridgePagedList,
+    ) -> Arc<crate::ListCountSubscription> {
+        let services = &self.services;
+        let live = match list {
+            BridgePagedList::AlbumGrid { .. } => services.subscribe_album_count(false),
+            BridgePagedList::Composers { .. } => services.subscribe_composer_count(),
+            BridgePagedList::ComposerPage { artist_id } => {
+                services.subscribe_composer_page_count(&artist_id)
+            }
+            BridgePagedList::AlbumTracks { album_id } => {
+                services.subscribe_album_track_count(&album_id)
+            }
+            BridgePagedList::WorkChildren { work_id } => {
+                services.subscribe_work_child_count(&work_id)
+            }
+            BridgePagedList::SearchAlbums { query } => {
+                services.subscribe_search_album_count(BridgeList::search_query(&query))
+            }
+        };
+        crate::screens::list_count(live, self.runtime.clone())
+    }
+
     /// Read live how many rows `list` has, with the values its count carries
     /// (`BridgeListCountExtra`).
     pub fn subscribe_list_count(&self, list: BridgeList) -> Arc<crate::ListCountSubscription> {
@@ -93,12 +115,6 @@ impl AppHandle {
             BridgeList::ComposerPage { artist_id } => {
                 self.services.subscribe_composer_page_count(&artist_id)
             }
-            BridgeList::AlbumTracks { album_id } => {
-                self.services.subscribe_album_track_count(&album_id)
-            }
-            BridgeList::WorkChildren { work_id } => {
-                self.services.subscribe_work_child_count(&work_id)
-            }
             BridgeList::Downloads => self.services.subscribe_download_count(),
             BridgeList::Upcoming { shuffled } => self.services.subscribe_upcoming_count(shuffled),
             BridgeList::Storage { filter, search, .. } => {
@@ -106,9 +122,6 @@ impl AppHandle {
             }
             BridgeList::ArtistSearch { text } => {
                 self.services.subscribe_artist_search_count(BridgeList::search_query(&text))
-            }
-            BridgeList::SearchAlbums { query } => {
-                self.services.subscribe_search_album_count(BridgeList::search_query(&query))
             }
         };
         crate::screens::list_count(live, self.runtime.clone())

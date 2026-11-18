@@ -1,5 +1,5 @@
 //! An album's tracks as a media browser lists them: its main release's, in
-//! playing order, read as a window from a track's key on, over
+//! playing order, read a page at a time from a track's key on, over
 //! libraries written through the records domain's own writes.
 
 use super::*;
@@ -31,11 +31,11 @@ async fn paged_album() -> (LibraryViews, bae_store::Store, tempfile::TempDir) {
     (LibraryViews::new(db.clone()), db, tmp)
 }
 
-/// Each track's id and title in one delivery of a window of the album's
+/// Each track's id and title in one delivery of a page of the album's
 /// tracks.
-fn tracks_of(read: WindowRead<DbTrackSearchResult>) -> Vec<(String, String)> {
-    let crate::ListRows::AlbumTracks(rows) = resolve_album_track_window(read).rows else {
-        panic!("a window of an album's tracks holds tracks");
+fn tracks_of(rows: crate::ListRows) -> Vec<(String, String)> {
+    let crate::ListRows::AlbumTracks(rows) = rows else {
+        panic!("a page of an album's tracks holds tracks");
     };
     rows.into_iter().map(|track| (track.id, track.title)).collect()
 }
@@ -44,40 +44,39 @@ fn track(id: &str, title: &str) -> (String, String) {
     (id.to_string(), title.to_string())
 }
 
-/// A window holds its limit of the main release's tracks from a track's key
-/// on, in playing order, never another release's.
+/// A page holds its limit of the main release's tracks from the track at its
+/// first place, in playing order, never another release's.
 #[tokio::test]
-async fn an_albums_tracks_are_its_main_releases_in_windows_from_a_key() {
+async fn an_albums_tracks_are_its_main_releases_in_pages() {
     let (views, _db, _tmp) = paged_album().await;
+    let page = |offset| {
+        crate::test_pages::page_values(
+            views.subscribe_album_track_page(ALBUM, bae_store::ListPage { offset, limit: 2 }),
+        )
+    };
 
-    let mut live = views.subscribe_album_track_window(ALBUM, ListWindow::top(2));
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(tracks_of(read), [track(FIRST, "First"), track(SECOND, "Second")]);
-
-    let third = views.album_track_key_at(ALBUM, 2).await.unwrap().expect("a third track");
-    let mut live =
-        views.subscribe_album_track_window(ALBUM, ListWindow { from: Some(third), limit: 2 });
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(tracks_of(read), [track(THIRD, "Third")]);
-
-    let second = views.album_track_key_at(ALBUM, 1).await.unwrap().expect("a second track");
-    let mut position = views.subscribe_album_track_position(ALBUM, second);
-    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 1);
+    let rows = crate::test_pages::next_page(&page(0)).await;
+    assert_eq!(tracks_of(rows), [track(FIRST, "First"), track(SECOND, "Second")]);
+    let rows = crate::test_pages::next_page(&page(2)).await;
+    assert_eq!(tracks_of(rows), [track(THIRD, "Third")]);
+    let rows = crate::test_pages::next_page(&page(3)).await;
+    assert_eq!(tracks_of(rows), Vec::<(String, String)>::new());
 }
 
-/// A window of the album's tracks follows a rename of a track inside it, and
+/// A page of the album's tracks follows a rename of a track inside it, and
 /// the count of the tracks follows the album to the release that becomes its
 /// main one when the test deletes the first release.
 #[tokio::test]
-async fn a_window_follows_a_renamed_track_and_the_count_follows_the_main_release() {
+async fn a_page_follows_a_renamed_track_and_the_count_follows_the_main_release() {
     let (views, db, _tmp) = paged_album().await;
-    let mut live = views.subscribe_album_track_window(ALBUM, ListWindow::top(3));
-    live.next_inline().await.expect("the query stays open").result.unwrap();
+    let live = crate::test_pages::page_values(
+        views.subscribe_album_track_page(ALBUM, bae_store::ListPage { offset: 0, limit: 3 }),
+    );
+    crate::test_pages::next_page(&live).await;
 
     test_records(&db).rename_track_for_test(SECOND, "Second Renamed").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
     assert_eq!(
-        tracks_of(read.unwrap()),
+        tracks_of(crate::test_pages::next_page(&live).await),
         [track(FIRST, "First"), track(SECOND, "Second Renamed"), track(THIRD, "Third")]
     );
 

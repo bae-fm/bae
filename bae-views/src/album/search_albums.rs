@@ -1,29 +1,11 @@
 //! The albums a library search lists: the first albums it finds, in title
 //! order, ties going by id. Library search reads its first albums here, and a
-//! media browser reads the first [`crate::SEARCH_RESULT_LIMIT`] of them as a
-//! list, through one window around the page it shows.
+//! media browser reads the first [`crate::SEARCH_RESULT_LIMIT`] of them a
+//! page at a time.
 
 use super::*;
 
 impl LibraryViews {
-    /// Follow one window of the albums a search for `query` lists: a range
-    /// of [`search_album_order`] (`list_windows`), which coven reruns for a
-    /// write inside it alone. No query (`None`) lists none; its window
-    /// answers with no rows.
-    pub fn subscribe_search_album_window(
-        &self,
-        query: Option<crate::LibrarySearchQuery>,
-        initial: ListWindow,
-    ) -> coven::ReconfigurableLiveQuery<ListWindow, WindowRead<DbAlbumSearchResult>, DbError> {
-        let pattern = query.map(|query| search_pattern(query.as_str()));
-        let order = search_album_order();
-        let read_order = order.clone();
-        self.store.subscribe_list_window(initial, order, move |sql, seek, limit| match &pattern {
-            Some(pattern) => search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit),
-            None => Ok(Vec::new()),
-        })
-    }
-
     /// Follow one page of the albums a search for `query` lists: the albums
     /// at the page's places. No query (`None`) lists none; its page answers
     /// with no rows.
@@ -31,23 +13,26 @@ impl LibraryViews {
         &self,
         query: Option<crate::LibrarySearchQuery>,
         page: ListPage,
-    ) -> coven::LiveQuery<crate::ListRows, DbError> {
+    ) -> bae_store::live_query::LivePage<crate::ListRows> {
         let pattern = query.map(|query| search_pattern(query.as_str()));
         let order = search_album_order();
         let read_order = order.clone();
-        self.store
-            .subscribe_list_page(page, order, move |sql, seek, limit| match &pattern {
+        self.store.subscribe_list_page(
+            page,
+            order,
+            move |sql, seek, limit| match &pattern {
                 Some(pattern) => {
                     search_album_rows_on(sql, pattern, LISTED, &read_order, seek, limit)
                 }
                 None => Ok(Vec::new()),
-            })
-            .process(|rows| Ok(search_album_rows(rows)))
+            },
+            |rows| Ok(search_album_rows(rows)),
+        )
     }
 
     /// Follow how many albums a search for `query` lists: the albums it
     /// finds, up to [`crate::SEARCH_RESULT_LIMIT`]. The count runs as a
-    /// separate query from the windows' rows. No query (`None`) lists none.
+    /// separate query from the pages' rows. No query (`None`) lists none.
     pub fn subscribe_search_album_count(
         &self,
         query: Option<crate::LibrarySearchQuery>,
@@ -58,58 +43,6 @@ impl LibraryViews {
             None => Ok(0),
         })
     }
-
-    /// Follow how many of the albums a search for `query` lists come before
-    /// the row at a key; the caller changes the key on the same query.
-    pub fn subscribe_search_album_position(
-        &self,
-        query: Option<crate::LibrarySearchQuery>,
-        initial: OrderKey,
-    ) -> coven::ReconfigurableLiveQuery<OrderKey, u64, DbError> {
-        let pattern = query.map(|query| search_pattern(query.as_str()));
-        let order = search_album_order();
-        let cap = bae_store::list_windows::sql_bound(LISTED);
-        self.store.subscribe_reconfigurable(initial, move |key, sql| match &pattern {
-            Some(pattern) => bae_store::list_windows::rows_before_on(
-                &sql,
-                &search_album_from(),
-                None,
-                &[(":pattern", pattern), (":cap", &cap)],
-                &order,
-                key,
-            ),
-            None => Ok(0),
-        })
-    }
-
-    /// The key of the album at `position` of those a search for `query`
-    /// lists, or of the last one when the list ends before it; `None` when
-    /// it lists none.
-    pub async fn search_album_key_at(
-        &self,
-        query: Option<crate::LibrarySearchQuery>,
-        position: u64,
-    ) -> Result<Option<OrderKey>, DbError> {
-        let Some(query) = query else {
-            return Ok(None);
-        };
-        let pattern = search_pattern(query.as_str());
-        let order = search_album_order();
-        self.store
-            .read(move |sql| {
-                key_at(&order, position, &mut |seek, limit| {
-                    search_album_rows_on(&sql, &pattern, LISTED, &order, seek, limit)
-                })
-            })
-            .await
-    }
-}
-
-/// One delivery of a window of the albums a search lists.
-pub fn resolve_search_album_window(
-    read: WindowRead<DbAlbumSearchResult>,
-) -> crate::ListWindowValue {
-    crate::ListWindowValue::of(read, search_album_rows)
 }
 
 /// The albums a search lists, as a media browser lists them.

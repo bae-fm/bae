@@ -1,11 +1,10 @@
 //! A work's children as a media browser lists them: its parts, then the
-//! releases that perform it, read as a window from a child's key on.
+//! releases that perform it, read a page at a time from a child's key on.
 
 use crate::*;
 use bae_records::test_fixtures::library::RecordsFixture;
 use bae_records::test_fixtures::test_records;
 use bae_store::test_fixtures::temp_db;
-use bae_util::test_channels::HANG_GUARD;
 
 const COMPOSER_A: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c01";
 const PAGED_WORK: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c11";
@@ -16,12 +15,11 @@ const ALPHA_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c22";
 const BETA_ALBUM: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c31";
 const BETA_RELEASE: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c32";
 
-/// Each child's id in one delivery of a window of a work's children: a
-/// part's work id, or a release's id.
-fn children_of(read: WindowRead<DbWorkChild>) -> Vec<String> {
-    let crate::ListRows::WorkChildren(rows) = crate::composer::resolve_work_child_window(read).rows
-    else {
-        panic!("a window of a work's children holds children");
+/// Each child's id in one delivery of a page of a work's children: a part's
+/// work id, or a release's id.
+fn children_of(rows: crate::ListRows) -> Vec<String> {
+    let crate::ListRows::WorkChildren(rows) = rows else {
+        panic!("a page of a work's children holds children");
     };
     rows.into_iter()
         .map(|child| match child {
@@ -34,11 +32,11 @@ fn children_of(read: WindowRead<DbWorkChild>) -> Vec<String> {
 /// A work's children are its parts in their place among its parts whatever
 /// their titles, then each release that performs it, once however many of
 /// its tracks do, in the order its page lists them: bae sorts the releases
-/// by their album's title. A window holds its limit of children from a
-/// child's key on, and follows a renamed album that moves its release into
-/// the window. The count is a live query of its own.
+/// by their album's title. A page holds its limit of children from the child
+/// at its first place, and follows a renamed album that moves its release
+/// into the page. The count is a live query of its own.
 #[tokio::test]
-async fn a_works_children_are_its_parts_then_its_releases_in_windows_from_a_key() {
+async fn a_works_children_are_its_parts_then_its_releases_in_pages() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     RecordsFixture::new()
         .artist(COMPOSER_A, "Composer Name")
@@ -67,21 +65,20 @@ async fn a_works_children_are_its_parts_then_its_releases_in_windows_from_a_key(
         .await;
     let views = LibraryViews::new(db.clone());
 
-    let mut live = views.subscribe_work_child_window(PAGED_WORK, ListWindow::top(3));
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(children_of(read), [FIRST_PART, SECOND_PART, ALPHA_RELEASE]);
-    let fourth = views.work_child_key_at(PAGED_WORK, 3).await.unwrap().expect("a fourth child");
-    let mut last_live =
-        views.subscribe_work_child_window(PAGED_WORK, ListWindow { from: Some(fourth), limit: 3 });
-    let read = last_live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(children_of(read), [BETA_RELEASE]);
+    let page = |offset| {
+        crate::test_pages::page_values(
+            views.subscribe_work_child_page(PAGED_WORK, bae_store::ListPage { offset, limit: 3 }),
+        )
+    };
+    let live = page(0);
+    let rows = crate::test_pages::next_page(&live).await;
+    assert_eq!(children_of(rows), [FIRST_PART, SECOND_PART, ALPHA_RELEASE]);
+    let rows = crate::test_pages::next_page(&page(3)).await;
+    assert_eq!(children_of(rows), [BETA_RELEASE]);
     let mut count = views.subscribe_work_child_count(PAGED_WORK);
     assert_eq!(count.next_inline().await.expect("the query stays open").unwrap(), 4);
-    let third = views.work_child_key_at(PAGED_WORK, 2).await.unwrap().expect("a third child");
-    let mut position = views.subscribe_work_child_position(PAGED_WORK, third);
-    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 2);
 
     test_records(&db).rename_album_for_test(BETA_ALBUM, "Aardvark Album").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
-    assert_eq!(children_of(read.unwrap()), [FIRST_PART, SECOND_PART, BETA_RELEASE]);
+    let rows = crate::test_pages::next_page(&live).await;
+    assert_eq!(children_of(rows), [FIRST_PART, SECOND_PART, BETA_RELEASE]);
 }

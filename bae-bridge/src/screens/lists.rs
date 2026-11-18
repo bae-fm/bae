@@ -39,8 +39,9 @@ impl ListViewSubscription {
 }
 
 pulled_read! {
-    /// One page of a list, read live: the rows at the page's places, none
-    /// past the list's end, as a media browser shows them.
+    /// One page of a list, read live: the rows from the key of the row at
+    /// the page's first place, read once, none past the list's end, as a
+    /// media browser shows them.
     ListPageSubscription:
         bae_store::live_query::LiveValues<bae_views::ListRows> => BridgeListRows,
     converted by BridgeListRows::from_core,

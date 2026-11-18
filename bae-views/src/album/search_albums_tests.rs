@@ -1,7 +1,7 @@
 //! These tests check the albums a search lists as a media browser pages
-//! through them. The browser reads a window of them from an album's key on,
-//! live. A live query counts the albums. Each test writes its library
-//! through the records domain's own writes.
+//! through them. The browser reads each page of them from the album at the
+//! page's first place on, live. A live query counts the albums. Each test
+//! writes its library through the records domain's own writes.
 
 use super::*;
 use bae_records::test_fixtures::library::RecordsFixture;
@@ -34,61 +34,59 @@ fn window_query() -> Option<crate::LibrarySearchQuery> {
     crate::LibrarySearchQuery::parse("Window")
 }
 
-/// Each album's title in one delivery of a window of the albums a search
+/// Each album's title in one delivery of a page of the albums a search
 /// lists.
-fn titles_of(read: WindowRead<DbAlbumSearchResult>) -> Vec<String> {
-    let crate::ListRows::SearchAlbums(rows) = resolve_search_album_window(read).rows else {
-        panic!("a window of a search's albums holds albums");
+fn titles_of(rows: crate::ListRows) -> Vec<String> {
+    let crate::ListRows::SearchAlbums(rows) = rows else {
+        panic!("a page of a search's albums holds albums");
     };
     rows.into_iter().map(|album| album.title).collect()
 }
 
-/// The key of the album at `position` of those the search lists.
-async fn key_of(views: &LibraryViews, position: u64) -> OrderKey {
-    views.search_album_key_at(window_query(), position).await.unwrap().expect("an album there")
+/// The page of `limit` albums `query` lists from `offset`, pulled.
+fn page(
+    views: &LibraryViews,
+    query: Option<crate::LibrarySearchQuery>,
+    offset: u64,
+    limit: u64,
+) -> bae_store::live_query::LiveValues<crate::ListRows> {
+    crate::test_pages::page_values(
+        views.subscribe_search_album_page(query, bae_store::ListPage { offset, limit }),
+    )
 }
 
-/// A window holds its limit of the search's albums from an album's key on,
-/// in title order, and a key past the last album is the last album's. With
-/// no query, the search lists no album.
+/// A page holds its limit of the search's albums from the album at its first
+/// place, in title order, and none past the last album. With no query, the
+/// search lists no album.
 #[tokio::test]
-async fn a_search_window_holds_its_albums_from_a_key() {
+async fn a_search_page_holds_its_albums_from_its_first_place() {
     let (views, _db, _tmp) = searched_library().await;
 
-    let mut live = views.subscribe_search_album_window(window_query(), ListWindow::top(2));
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(titles_of(read), ["Window A", "Window B"]);
-
-    let third = ListWindow { from: Some(key_of(&views, 2).await), limit: 2 };
-    let mut live = views.subscribe_search_album_window(window_query(), third);
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(titles_of(read), ["Window C"]);
-
-    assert_eq!(key_of(&views, 3).await, key_of(&views, 2).await);
-    assert_eq!(views.search_album_key_at(None, 0).await.unwrap(), None);
-    let mut none = views.subscribe_search_album_window(None, ListWindow::top(2));
-    let read = none.next_inline().await.expect("the query stays open").result.unwrap();
-    assert!(read.rows.is_empty());
-    let mut position =
-        views.subscribe_search_album_position(window_query(), key_of(&views, 1).await);
-    assert_eq!(position.next_inline().await.expect("the query stays open").result.unwrap(), 1);
+    let rows = crate::test_pages::next_page(&page(&views, window_query(), 0, 2)).await;
+    assert_eq!(titles_of(rows), ["Window A", "Window B"]);
+    let rows = crate::test_pages::next_page(&page(&views, window_query(), 2, 2)).await;
+    assert_eq!(titles_of(rows), ["Window C"]);
+    let rows = crate::test_pages::next_page(&page(&views, window_query(), 3, 2)).await;
+    assert!(titles_of(rows).is_empty());
+    let rows = crate::test_pages::next_page(&page(&views, None, 0, 2)).await;
+    assert!(titles_of(rows).is_empty());
 }
 
-/// A window follows a rename of an album it holds, so its next read shows
-/// the album's new name.
+/// A page follows a rename of an album it holds, so its next read shows the
+/// album's new name.
 #[tokio::test]
-async fn a_renamed_album_in_a_window_shows_its_new_name_on_the_windows_next_read() {
+async fn a_renamed_album_in_a_page_shows_its_new_name_on_the_pages_next_read() {
     let (views, db, _tmp) = searched_library().await;
-    let mut live = views.subscribe_search_album_window(window_query(), ListWindow::top(2));
-    live.next_inline().await.expect("the query stays open").result.unwrap();
+    let live = page(&views, window_query(), 0, 2);
+    crate::test_pages::next_page(&live).await;
 
     test_records(&db).rename_album_for_test(WINDOW_B, "Window B Renamed").await.unwrap();
-    let read = tokio::time::timeout(HANG_GUARD, live.next_inline()).await.unwrap().unwrap().result;
-    assert_eq!(titles_of(read.unwrap()), ["Window A", "Window B Renamed"]);
+    let rows = crate::test_pages::next_page(&live).await;
+    assert_eq!(titles_of(rows), ["Window A", "Window B Renamed"]);
 }
 
-/// A search lists at most [`crate::SEARCH_RESULT_LIMIT`] albums: a window
-/// near the limit ends at it.
+/// A search lists at most [`crate::SEARCH_RESULT_LIMIT`] albums: a page near
+/// the limit ends at it.
 #[tokio::test]
 async fn a_search_lists_no_album_past_its_limit() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
@@ -104,16 +102,9 @@ async fn a_search_lists_no_album_past_its_limit() {
     fixture.write(&test_records(&db)).await;
     let views = LibraryViews::new(db.clone());
 
-    let from = views
-        .search_album_key_at(window_query(), listed - 2)
-        .await
-        .unwrap()
-        .expect("an album there");
-    let mut live = views
-        .subscribe_search_album_window(window_query(), ListWindow { from: Some(from), limit: 10 });
-    let read = live.next_inline().await.expect("the query stays open").result.unwrap();
+    let rows = crate::test_pages::next_page(&page(&views, window_query(), listed - 2, 10)).await;
     assert_eq!(
-        titles_of(read),
+        titles_of(rows),
         [format!("Window {:03}", listed - 2), format!("Window {:03}", listed - 1)]
     );
     let mut count = views.subscribe_search_album_count(window_query());

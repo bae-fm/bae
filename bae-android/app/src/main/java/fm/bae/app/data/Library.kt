@@ -80,9 +80,8 @@ class Library(
                 } else {
                     null
                 },
-        ) { rows ->
-            (rows as? BridgeListRows.Albums)?.rows ?: error("the album grid delivered rows of another list")
-        }
+            rows = ::albumRows,
+        )
 
     /** The reads of [list], taking its rows out of the variant of [BridgeListRows] they come in. */
     internal fun <Row> listReads(
@@ -166,15 +165,11 @@ class Library(
 
     /** The composer list under one sort. */
     internal fun composerList(sortCriterion: BridgeComposerSortCriterion): ListReads<BridgeComposerSummary> =
-        listReads(BridgeList.Composers(listOf(sortCriterion))) { rows ->
-            (rows as? BridgeListRows.Composers)?.rows ?: error("the composer list delivered rows of another list")
-        }
+        listReads(BridgeList.Composers(listOf(sortCriterion)), rows = ::composerRows)
 
     /** One composer's page rows. */
     internal fun composerPageList(artistId: String): ListReads<BridgeComposerDetailRow> =
-        listReads(BridgeList.ComposerPage(artistId)) { rows ->
-            (rows as? BridgeListRows.ComposerPage)?.rows ?: error("a composer's page delivered rows of another list")
-        }
+        listReads(BridgeList.ComposerPage(artistId), rows = ::composerPageRows)
 
     /** The artist list under one sort. */
     internal fun artistList(sortCriterion: BridgeArtistSortCriterion): ListReads<BridgeArtistSummary> =
