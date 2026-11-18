@@ -92,14 +92,15 @@ async fn making_a_release_remote_without_storage_requires_configuration() {
     assert_eq!(category, bae_diagnostics::UiErrorCategory::Config);
 }
 
-/// Uploading reads this device's originals, so every surface that offers it —
-/// the release detail, its storage summary, and the Storage Manager row —
-/// offers it only for a release the library records this device holding the
-/// originals of: not for a release another device imported. The disk is not
-/// asked: an original gone since import still offers it, and the move then
-/// fails reading the file.
+/// Every surface that offers uploading (the release detail, its storage
+/// summary, and the Storage Manager row) offers it for every release not in
+/// the cloud, a release another device imported among them: bae asks coven
+/// nothing ahead of the move. coven refuses to move a file another device
+/// holds, and the refusal names the release. The disk is not asked either: an
+/// original gone since import still offers it, and the move then fails reading
+/// the file.
 #[test]
-fn upload_is_offered_only_where_this_device_holds_the_originals() {
+fn upload_is_offered_for_a_release_another_device_holds_and_coven_refuses_it() {
     crate::test_libraries::run_two_device_test(async |devices| {
         let first = TempDir::new().unwrap();
         let elsewhere = release_on_the_first_device(devices, first.path(), "Album B").await;
@@ -143,9 +144,17 @@ async fn check_upload_offered(
     };
 
     assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
-    assert_eq!(offered(elsewhere.id.clone()).await, Vec::new());
+    assert_eq!(offered(elsewhere.id.clone()).await, vec![ReleaseStorageAction::Upload]);
     std::fs::remove_file(originals.join("track.flac")).unwrap();
     assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
+
+    let outcome = manager.upload_releases(std::slice::from_ref(&elsewhere.id)).await.unwrap();
+    let UploadReleasesOutcome::Partial { receipt: None, failure } = outcome else {
+        panic!("coven refuses to move a release another device holds: {outcome:?}");
+    };
+    assert_eq!(failure.release_ids, vec![elsewhere.id.clone()]);
+    let bae_diagnostics::UiError::Diagnostic { detail, .. } = failure.error;
+    assert!(detail.contains("coven refused to move a file"), "coven's reason: {detail}");
 }
 
 /// The Storage Manager row of a release with files waiting to upload says

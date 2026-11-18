@@ -86,22 +86,21 @@ fn transitioning_sql(release: &str) -> String {
 /// expression naming its id) offers, beside its `release_storage` row
 /// `storage`: one `can_<action>` for each, and `transitioning`.
 ///
-/// Storage needs the library to sync; a release mid-transition offers none.
-/// `Upload` moves the files of a release not in storage, from this device's
-/// originals, so a release offers it only when each audio file is on this
-/// device. A release in storage offers `Pin` or `Unpin` by whether this device
-/// keeps every file, and `MoveToThisDevice`.
+/// A release mid-transition offers none. A release not in storage offers
+/// `Upload` while storage is connected, and a release in storage offers `Pin`
+/// or `Unpin` by whether this device keeps every file, and `MoveToThisDevice`.
+/// Nothing here asks what coven would refuse: coven refuses a move of a file
+/// another device holds, or a pin or a move to this device with no storage,
+/// and the app shows coven's reason.
 pub(crate) fn storage_action_columns(release: &str) -> String {
-    let offered = format!(
-        "(SELECT storage = 'connected' FROM coven_sync_status) AND NOT {transitioning}",
-        transitioning = transitioning_sql(release),
-    );
+    let offered = format!("NOT {transitioning}", transitioning = transitioning_sql(release));
+    // coven queues a move with no storage connected rather than refusing it,
+    // so the offer of Upload waits for storage itself.
+    let connected = "(SELECT storage = 'connected' FROM coven_sync_status)";
     let stored = "COALESCE(storage.stored = 1, 0)";
     let pinned = format!("COALESCE({RELEASE_STORAGE_PINNED}, 0)");
-    let elsewhere =
-        format!("EXISTS (SELECT 1 FROM release_audio_elsewhere WHERE release_id = {release})");
     format!(
-        "({offered} AND NOT {stored} AND NOT {elsewhere}) AS can_upload, \
+        "({offered} AND {connected} AND NOT {stored}) AS can_upload, \
          ({offered} AND {stored} AND NOT {pinned}) AS can_pin, \
          ({offered} AND {stored} AND {pinned}) AS can_unpin, \
          ({offered} AND {stored}) AS can_move_to_this_device, \

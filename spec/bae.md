@@ -2448,21 +2448,23 @@ names that device in the album and release views: "On Ana's Mac". bae names the
 device that alone holds the audio file with the lowest file id among the
 release's audio files that another device alone holds. The view
 `release_audio_elsewhere` joins coven's registration of each device in
-`coven_devices` to coven's record of each file, and both the query that reads
-the release and the storage actions read the view. The album and release
+`coven_devices` to coven's record of each file, and the query that reads the
+release reads the view. The album and release
 views stop showing the line once coven records the file in storage, and show
 the device's new state when a member removes the device. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",
 and one replaced when it was reset reads "On Ana's Mac, a replaced device":
 its files stay on it, and no device can move them to storage any more. Such
-a release offers nothing here, neither moving it to storage, which uploads
-the originals, nor pinning it (§4.3). Playing it fails with the same line:
+a release still offers moving it to storage here, and coven refuses the move,
+the app showing coven's reason that another device holds the file; it offers
+no pinning, since not every file of it is in storage (§4.3). Playing it fails
+with the same line:
 the line names the device that coven reports when it fails to read the file,
 with the name and state that coven's registration of that device holds at
 that moment.
 
-Whether this device can play a release, and whether it offers moving it to
-storage, comes from these records alone; bae doesn't ask the disk whether
+Whether this device can play a release comes from these records alone; bae
+doesn't ask the disk whether
 an original is still there. An original gone or changed since import fails
 what reads it, when it reads it: playing a track says its original files are
 missing or changed, moving the release to storage fails as it reads the
@@ -2650,7 +2652,10 @@ file that only waits has no rate, and a pause ends every measurement. While its 
 the release offers no storage action but cancelling, which would race it
 otherwise. The query that reads a release's storage state decides each
 action it offers (upload, pin, unpin, move to this device) as a column of its
-own, and the Storage Manager's selection offers an action when every selected
+own. No column asks what coven would refuse: a release offers each action its
+place allows, and when coven refuses one, the app shows coven's reason. Upload
+alone also waits for storage to be connected, since coven queues a move with
+no storage rather than refusing it. The Storage Manager's selection offers an action when every selected
 release does (the least of each column over the selected rows), and only
 cancelling when a selected release is moving or its move failed (the greatest
 of those two flags over them). The answer names the releases it was asked

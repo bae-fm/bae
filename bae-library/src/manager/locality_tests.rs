@@ -210,7 +210,8 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
 
 /// Pin keeps stored files on this device, so neither device offers it for a
 /// release whose audio is on one device only, and both offer it once that
-/// audio is in the cloud.
+/// audio is in the cloud. Until then each device offers Upload, which coven
+/// refuses on the device that doesn't hold the files.
 #[test]
 fn pin_is_offered_only_for_a_release_in_the_cloud() {
     crate::test_libraries::run_two_device_test(async |devices| {
@@ -220,7 +221,10 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
             offered(devices.a().manager(), &release.id).await,
             (vec![ReleaseStorageAction::Upload], None)
         );
-        assert_eq!(offered(devices.b().manager(), &release.id).await, (Vec::new(), None));
+        assert_eq!(
+            offered(devices.b().manager(), &release.id).await,
+            (vec![ReleaseStorageAction::Upload], None)
+        );
 
         devices.a().manager().upload_release(&release.id).await.unwrap();
         devices
