@@ -6,6 +6,13 @@ public final class Sync: Sendable, Observable {
     public let saveSyncConfig:
         @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup) async throws ->
             BridgeStorageSetup
+    /// Check a new S3 key, its id then its secret, with the library's S3
+    /// storage and, once the check passes, use it in place of the one the
+    /// library records for this person. The cancellation stops the check;
+    /// once it passed, the call finishes.
+    public let useAccessKey:
+        @Sendable (String, String, BridgeCancellation) async throws ->
+            BridgeAccessKeyOutcome
     /// A new storage setup to follow, for the view that shows the setup.
     public let followStorageSetup:
         @MainActor @Sendable () -> StorageSetupFollowing
@@ -64,6 +71,11 @@ public final class Sync: Sendable, Observable {
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig, BridgeLibrarySetup)
             async throws -> BridgeStorageSetup = { _, _ in
+                throw StubError.notImplemented
+            },
+        useAccessKey:
+            @escaping @Sendable (String, String, BridgeCancellation)
+            async throws -> BridgeAccessKeyOutcome = { _, _, _ in
                 throw StubError.notImplemented
             },
         followStorageSetup:
@@ -149,6 +161,7 @@ public final class Sync: Sendable, Observable {
         nudges: SyncNudges = SyncNudges()
     ) {
         self.saveSyncConfig = saveSyncConfig
+        self.useAccessKey = useAccessKey
         self.followStorageSetup = followStorageSetup
         self.cancelStorageSetup = cancelStorageSetup
         self.dismissUndoneStorageSetup = dismissUndoneStorageSetup
@@ -187,6 +200,13 @@ public final class Sync: Sendable, Observable {
                 try await handle.saveSyncConfig(
                     configData: $0,
                     setup: $1
+                )
+            },
+            useAccessKey: {
+                try await handle.useAccessKey(
+                    accessKeyId: $0,
+                    secretAccessKey: $1,
+                    cancellation: $2
                 )
             },
             followStorageSetup: { StorageSetupFollowing(host: host) },

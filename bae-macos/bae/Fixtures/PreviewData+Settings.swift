@@ -212,8 +212,13 @@ extension PreviewData {
     /// people.
     @MainActor
     static func connectedConfigStore(
-        storage: BridgeStorageLocation
+        storage: BridgeStorageLocation,
+        storageAccess: BridgeMemberAccess? = nil
     ) -> ConfigStore {
-        makeConfigStore(libraryFullWidth: false, storage: storage)
+        makeConfigStore(
+            libraryFullWidth: false,
+            storage: storage,
+            storageAccess: storageAccess
+        )
     }
 }

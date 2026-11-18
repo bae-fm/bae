@@ -66,7 +66,89 @@ extension ShotScene {
                 )
             )
         },
+    ] + s3KeyScenes
+
+    /// The Sync page of an S3 library (`mac.settings.sync.s3`,
+    /// `mac.settings.sync.signed-out-s3` and
+    /// `mac.settings.sync.s3-key-replaced`): its key's id with Replace key…,
+    /// and the line after a saved key.
+    private static let s3KeyScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.settings.sync.s3",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3Page(key: "AKIA4EXAMPLEOLD")
+        },
+        ShotScene(
+            id: "mac.settings.sync.signed-out-s3",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3Page(key: "AKIA4EXAMPLEOLD", shown: signedOutOfS3)
+        },
+        ShotScene(
+            id: "mac.settings.sync.s3-key-replaced",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            s3Page(
+                key: "AKIA4EXAMPLENEW",
+                keyReplacement: S3KeyReplacement(
+                    saved: .init(oldKey: "AKIA4EXAMPLEOLD")
+                )
+            )
+        },
     ]
+
+    /// Signed out of S3, three days after the last sync.
+    private static let signedOutOfS3 = BridgeSyncShown(
+        status: .signedOutOfS3,
+        statusKey: "core.sync.status.signed_out_s3",
+        tone: .warning,
+        cause: .changesStayOnDevice,
+        fix: .enterAccessKey,
+        lastSynced: Date(timeIntervalSinceNow: -3 * 86_400)
+    )
+
+    /// The S3 storage the boards draw.
+    private static let boardS3Storage = BridgeStorageLocation.s3(
+        bucket: "my-bucket",
+        region: "us-east-1",
+        endpoint: "https://s3.home.lan",
+        profile: nil
+    )
+
+    /// The Sync page of the boards' S3 library, which records `key` for the
+    /// person.
+    @MainActor
+    private static func s3Window(
+        key: String,
+        shown: BridgeSyncShown,
+        keyReplacement: S3KeyReplacement
+    ) -> some View {
+        syncSettingsWindow(
+            LibrarySettingsTabPreviewFixture(
+                storage: boardS3Storage,
+                storageAccess: .s3AccessKey(accessKeyId: key)
+            ),
+            shown: shown,
+            keyReplacement: keyReplacement
+        )
+    }
+
+    /// The page of the boards' S3 library, which records `key` for the
+    /// person.
+    @MainActor
+    private static func s3Page(
+        key: String,
+        shown: BridgeSyncShown = .fixtureSynced,
+        keyReplacement: S3KeyReplacement = S3KeyReplacement()
+    ) -> ShotStage {
+        ShotStage(
+            s3Window(key: key, shown: shown, keyReplacement: keyReplacement)
+        )
+    }
 }
 
 /// The Settings window around the Sync page of `fixture`'s library: the
@@ -79,7 +161,8 @@ private func syncSettingsWindow(
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
-    )
+    ),
+    keyReplacement: S3KeyReplacement = S3KeyReplacement()
 ) -> some View {
     SettingsWindowShot(
         shown: shown,
@@ -88,7 +171,8 @@ private func syncSettingsWindow(
             fixture,
             shown: shown,
             undoneSetup: undoneSetup,
-            restoreCode: restoreCode
+            restoreCode: restoreCode,
+            keyReplacement: keyReplacement
         )
     )
 }

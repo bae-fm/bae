@@ -189,7 +189,8 @@ struct LibrarySettingsTab: View {
 }
 
 /// The Sync page: the state sync is in, with its cause, its fix and when it
-/// last finished, then where the library is stored and its restore code.
+/// last finished, then where the library is stored and its restore code. On an
+/// S3 library the page replaces the library's key.
 private struct SyncSettingsPage: View {
     let restoreCode: RestoreCodeReveal
     let onResetDevice: () -> Void
@@ -201,6 +202,26 @@ private struct SyncSettingsPage: View {
     private var configStore
     @Environment(\.dismiss)
     private var dismiss
+    /// The S3 key sheet and the line after a save, which go when the page
+    /// closes.
+    @State
+    private var keyReplacement: S3KeyReplacement
+
+    init(
+        restoreCode: RestoreCodeReveal,
+        keyReplacement: S3KeyReplacement = S3KeyReplacement(),
+        onResetDevice: @escaping () -> Void,
+        onRestoreFromCode: @escaping () -> Void,
+        onCheckForUpdates: @escaping () -> Void,
+        onRemoveLibrary: @escaping () -> Void
+    ) {
+        self.restoreCode = restoreCode
+        _keyReplacement = State(initialValue: keyReplacement)
+        self.onResetDevice = onResetDevice
+        self.onRestoreFromCode = onRestoreFromCode
+        self.onCheckForUpdates = onCheckForUpdates
+        self.onRemoveLibrary = onRemoveLibrary
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -212,6 +233,14 @@ private struct SyncSettingsPage: View {
             form
         }
         .navigationBarBackButtonHidden(true)
+        .sheet(
+            isPresented: Binding(
+                get: { keyReplacement.isOpen },
+                set: { open in if !open { keyReplacement.cancel() } }
+            )
+        ) {
+            S3KeySheet(replacement: keyReplacement)
+        }
     }
 
     private var form: some View {
@@ -224,15 +253,37 @@ private struct SyncSettingsPage: View {
                         onResetDevice: onResetDevice,
                         onRestoreFromCode: onRestoreFromCode,
                         onCheckForUpdates: onCheckForUpdates,
-                        onRemoveLibrary: onRemoveLibrary
+                        onRemoveLibrary: onRemoveLibrary,
+                        onEnterAccessKey: { keyReplacement.open() }
                     )
                 )
             }
             if let location = configStore.storage {
-                Section("Cloud home") {
+                Section {
                     CloudProviderConnectedSection(location: location)
+                    if case .s3 = location,
+                        case .s3AccessKey(let keyId) = configStore.config
+                            .storageAccess
+                    {
+                        LabeledContent("Access key ID") {
+                            HStack {
+                                Text(verbatim: keyId)
+                                    .foregroundStyle(.secondary)
+                                Button("Replace key…") { keyReplacement.open() }
+                            }
+                        }
+                    }
                     if let folder = location.folderLabel {
                         OpenFolderInBrowserRow(folder: folder)
+                    }
+                } header: {
+                    Text("Cloud home")
+                } footer: {
+                    if let saved = keyReplacement.saved {
+                        S3KeySavedNotice(
+                            saved: saved,
+                            onDismiss: { keyReplacement.dismissSaved() }
+                        )
                     }
                 }
                 LibraryRestoreCodeSection(
@@ -250,13 +301,16 @@ private struct SyncSettingsPage: View {
 
 #if DEBUG
     // periphery:ignore - called by baeShots
-    /// The Sync page with actions that do nothing, for a shot.
+    /// The Sync page with actions that do nothing, for a shot, its S3 key
+    /// sheet and saved line as `keyReplacement` holds them.
     @MainActor
     func syncSettingsPageWithInertActions(
-        restoreCode: RestoreCodeReveal
+        restoreCode: RestoreCodeReveal,
+        keyReplacement: S3KeyReplacement = S3KeyReplacement()
     ) -> some View {
         SyncSettingsPage(
             restoreCode: restoreCode,
+            keyReplacement: keyReplacement,
             onResetDevice: {},
             onRestoreFromCode: {},
             onCheckForUpdates: {},
@@ -290,6 +344,28 @@ private struct LibraryRestoreCodeSection: View {
                     location: location.accountLine
                 )
             }
+        )
+    }
+}
+
+/// The line after a saved S3 key: which old key to delete in the provider's
+/// console, when the library recorded one, until the person dismisses it.
+private struct S3KeySavedNotice: View {
+    let saved: S3KeyReplacement.Saved
+    let onDismiss: () -> Void
+
+    var body: some View {
+        Notice(
+            title: String(localized: "Saved the new S3 key."),
+            advice: saved.oldKey.map { oldKey in
+                String(
+                    localized:
+                        "Delete the old key, \(oldKey), in your S3 provider’s console."
+                )
+            },
+            error: nil,
+            tone: .info,
+            onDismiss: onDismiss
         )
     }
 }

@@ -17,13 +17,15 @@ struct SyncFixActions {
     let onCheckForUpdates: () -> Void
     /// Asks whether to remove the active library from this Mac.
     let onRemoveLibrary: () -> Void
+    /// Opens the S3 key sheet, for a new key for the library's S3 storage.
+    let onEnterAccessKey: () -> Void
 }
 
 /// The top of the Sync page: the state in words and the color core gives it,
 /// then its cause, its fix and when sync last finished, each only when core
 /// sends one. Until the status is first read it shows nothing.
 struct SyncStatusBlock: View {
-    /// The library's storage, which a fix connects again or opens.
+    /// The library's storage, whose folder a fix opens.
     let location: BridgeStorageLocation?
     let actions: SyncFixActions
 
@@ -93,22 +95,12 @@ struct SyncFixButton: View {
     @State
     private var reconnection = StorageReconnection()
     @State
-    private var askingForKey = false
-    @State
     private var error: DisplayError?
 
     var body: some View {
         Button(title, action: run)
             .buttonStyle(PrimaryButtonStyle())
             .disabled(reconnection.isRunning)
-            .sheet(isPresented: $askingForKey) {
-                if let location {
-                    S3KeySheet(
-                        location: location,
-                        onDismiss: { askingForKey = false }
-                    )
-                }
-            }
             .onDisappear { reconnection.cancel() }
         if let steps = reconnection.steps {
             MacProgressContainer(steps: steps.steps) { EmptyView() }
@@ -129,7 +121,9 @@ struct SyncFixButton: View {
         case .signIn(let provider):
             String(localized: "Sign in to \(provider.displayName)…")
         case .enterAccessKey:
-            String(localized: "Enter access key…")
+            // S3 goes by its short name in a sentence, the same in every
+            // language, as the other providers go by theirs.
+            String(localized: "Sign in to \("S3")…")
         case .openSystemSettings:
             String(localized: "Open System Settings…")
         case .resetDevice:
@@ -163,7 +157,7 @@ struct SyncFixButton: View {
                 preconditionFailure("sign-in needs the OAuth build")
             #endif
         case .enterAccessKey:
-            askingForKey = true
+            actions.onEnterAccessKey()
         case .openSystemSettings:
             openSystemSettings()
         case .resetDevice:

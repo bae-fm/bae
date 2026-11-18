@@ -17,9 +17,17 @@ struct LibrarySettingsTabPreviewFixture {
     let libraryName = LibraryNameStore.stub(name: "Preview Library")
     let membership: MembershipStore
 
-    init(storage: BridgeStorageLocation?) {
+    init(
+        storage: BridgeStorageLocation?,
+        storageAccess: BridgeMemberAccess? = nil
+    ) {
         configStore =
-            storage.map { PreviewData.connectedConfigStore(storage: $0) }
+            storage.map {
+                PreviewData.connectedConfigStore(
+                    storage: $0,
+                    storageAccess: storageAccess
+                )
+            }
             ?? PreviewData.configStore()
         membership = MembershipStore.stub(
             people: storage.map { PreviewData.members(reaching: $0) }
@@ -63,8 +71,9 @@ func librarySettingsTabPreview(
 }
 
 /// The Sync page over `fixture`'s library, its sync as `shown` says, with
-/// a storage setup that ended undone, when given,
-/// and its restore code masked unless `restoreCode` says otherwise.
+/// a storage setup that ended undone, when given, its restore code masked
+/// unless `restoreCode` says otherwise, and the S3 key sheet and saved line as
+/// `keyReplacement` holds them.
 @MainActor
 func syncSettingsPagePreview(
     _ fixture: LibrarySettingsTabPreviewFixture,
@@ -72,7 +81,8 @@ func syncSettingsPagePreview(
     undoneSetup: BridgeUndoneStorageSetup? = nil,
     restoreCode: RestoreCodeReveal.State = .masked(
         PreviewData.restoreCodeShare
-    )
+    ),
+    keyReplacement: S3KeyReplacement = S3KeyReplacement()
 ) -> some View {
     let sync = PreviewData.previewSync()
     let status = SyncStatusStore(
@@ -94,7 +104,8 @@ func syncSettingsPagePreview(
                 syncSettingsPageWithInertActions(
                     restoreCode: RestoreCodeReveal(
                         previewState: restoreCode
-                    )
+                    ),
+                    keyReplacement: keyReplacement
                 )
                 .environment(sync)
                 #if BAE_OAUTH_PROVIDERS

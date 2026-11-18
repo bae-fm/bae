@@ -10,24 +10,15 @@ struct RestoreS3KeySheet: View {
     var body: some View {
         MacSheet(
             "S3 key",
-            message: "Enter your credentials for the S3 bucket.",
+            message: "Enter your credentials for your S3 storage.",
             width: 440
         ) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                FieldColumn {
-                    MacTextField("Access key ID") {
-                        TextField("Access key ID", text: $form.accessKey)
-                            .labelsHidden()
-                            .boxedTextField()
-                    }
-                    MacTextField("Secret access key") {
-                        SecureField("Secret access key", text: $form.secretKey)
-                            .labelsHidden()
-                            .boxedTextField()
-                    }
-                }
+            S3KeyFields(
+                accessKey: $form.accessKey,
+                secretKey: $form.secretKey
+            ) {
                 if let error = form.error {
-                    Notice(error: error)
+                    Notice(error: error, look: .quiet)
                 }
             }
         } footer: {
