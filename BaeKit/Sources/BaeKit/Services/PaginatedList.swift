@@ -77,8 +77,9 @@ where Row.ID: Sendable {
     }
 
     /// The rows the view last delivered. Views read it while they draw, so
-    /// Observation tracks it.
-    private var delivered: ListViewDelivery<Row>?
+    /// Observation tracks it: a view that keeps the delivery as a value,
+    /// such as a lazy grid's slots, draws again when the next one arrives.
+    public private(set) var delivered: ListViewDelivery<Row>?
 
     @ObservationIgnored
     private let queries: BridgeListQueries<Row>
@@ -456,9 +457,7 @@ extension PaginatedList {
     /// The row the list holds at `position`, or nil if the view's window
     /// doesn't hold it.
     public func row(at position: Int) -> Row? {
-        guard let delivered else { return nil }
-        let at = position - delivered.start
-        return delivered.rows.indices.contains(at) ? delivered.rows[at] : nil
+        delivered?.row(at: position)
     }
 
     /// The artist heading whose albums include `position`.

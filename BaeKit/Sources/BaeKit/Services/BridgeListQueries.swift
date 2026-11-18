@@ -11,6 +11,13 @@ public struct ListViewDelivery<Row: Sendable>: Sendable {
         self.start = start
         self.rows = rows
     }
+
+    /// The row at list position `position`, or nil if the window doesn't
+    /// hold it.
+    public func row(at position: Int) -> Row? {
+        let at = position - start
+        return rows.indices.contains(at) ? rows[at] : nil
+    }
 }
 
 /// A live read of one list's view: core keeps one window of the list around

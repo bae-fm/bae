@@ -363,12 +363,16 @@ extension AlbumGridView {
         )
     }
 
+    /// The grid's slots, each album read from the rows the list's view
+    /// delivered last. The grid reads the delivery here, as it draws, so it
+    /// draws its slots again when the next delivery arrives.
     private func cells(columnCount: Int) -> AlbumGridLayout {
-        AlbumGridLayout(
+        let delivered = list.delivered
+        return AlbumGridLayout(
             totalCount: list.positionCount,
             sections: groupByArtist ? list.sections : [],
             columnCount: columnCount,
-            idAt: { list.idAt($0) },
+            idAt: { delivered?.row(at: $0)?.id },
             open: openCard?.card
         )
     }
