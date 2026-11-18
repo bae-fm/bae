@@ -320,6 +320,7 @@ impl ImportService {
             db_release,
             mediums,
             existing_album_id,
+            album_picked_new,
             track_artists,
             album_artists,
             work_graph,
@@ -330,8 +331,9 @@ impl ImportService {
             records,
             ..
         } = prepared;
-        let new_album = existing_album_id.is_none().then_some(&*db_album);
-        let album_id = existing_album_id.as_deref().unwrap_or(&db_album.id);
+        let new_album = existing_album_id
+            .is_none()
+            .then_some(crate::tables::NewAlbum { row: &*db_album, picked_new: *album_picked_new });
 
         debug!(
             "Starting {} import for release {} ({} files)",
@@ -596,46 +598,47 @@ impl ImportService {
         };
         // Staging the originals queues a cloud import's uploads in the import
         // transaction.
-        self.finalize_import_atomic(
-            commit_guard,
-            new_album,
-            db_release,
-            tracks_to_files,
-            crate::tables::ImportRows {
-                mediums,
-                track_artists,
-                album_artists,
-                works: &work_graph.works,
-                work_artists: &work_graph.work_artists,
-                work_parts: &work_graph.work_parts,
-                track_works: &work_graph.track_works,
-                release_artist_roles,
-                track_artist_roles,
-                artists: bae_records::ArtistCredits {
-                    credits: artist_credits,
-                    picked: picked_artists,
+        let album_id = self
+            .finalize_import_atomic(
+                commit_guard,
+                new_album,
+                db_release,
+                tracks_to_files,
+                crate::tables::ImportRows {
+                    mediums,
+                    track_artists,
+                    album_artists,
+                    works: &work_graph.works,
+                    work_artists: &work_graph.work_artists,
+                    work_parts: &work_graph.work_parts,
+                    track_works: &work_graph.track_works,
+                    release_artist_roles,
+                    track_artist_roles,
+                    artists: bae_records::ArtistCredits {
+                        credits: artist_credits,
+                        picked: picked_artists,
+                    },
+                    audio_formats: &built_audio.audio_formats,
+                    audio_segments: &built_audio.audio_segments,
+                    scrub_points: &loudness.scrub_points,
+                    records,
                 },
-                audio_formats: &built_audio.audio_formats,
-                audio_segments: &built_audio.audio_segments,
-                scrub_points: &loudness.scrub_points,
-                records,
-            },
-            prepared_files,
-            library_image,
-            artist_images,
-        )
-        .await?;
+                prepared_files,
+                library_image,
+                artist_images,
+            )
+            .await?;
 
         let progress = match destination {
             ImportDestination::Cloud => ImportProgress::RemoteUploadQueued {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
-                album_id: album_id.to_string(),
+                album_id: album_id.clone(),
             },
             ImportDestination::ThisDevice => ImportProgress::Complete {
                 id: db_release.id.to_string(),
                 import_id: import_id.to_string(),
-                album_id: album_id.to_string(),
+                album_id: album_id.clone(),
             },
         };
         self.event_tx.send(crate::ImportEvent::ImportProgress {
@@ -660,14 +663,14 @@ impl ImportService {
     async fn finalize_import_atomic(
         &self,
         guard: crate::tables::ImportCommitGuard,
-        album: Option<&DbAlbum>,
+        album: Option<crate::tables::NewAlbum<'_>>,
         release: &DbRelease,
         tracks_to_files: &[TrackFile],
         rows: crate::tables::ImportRows<'_>,
         files: Vec<PreparedImportFile>,
         library_image: Option<(&bae_records::DbLibraryImage, &[u8])>,
         artist_images: &[DiscogsArtistImage],
-    ) -> Result<(), crate::ImportError> {
+    ) -> Result<String, crate::ImportError> {
         let pictures = self.staged_artist_pictures(&rows.artists, artist_images).await?;
         let images: Vec<_> =
             pictures.images.iter().map(|(image, bytes)| (image, bytes.as_slice())).collect();
@@ -686,8 +689,8 @@ impl ImportService {
                     images: &images,
                 },
             )
-            .await?;
-        Ok(())
+            .await
+            .map_err(crate::ImportError::from)
     }
 }
 

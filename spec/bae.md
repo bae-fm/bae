@@ -2087,7 +2087,11 @@ Ana clicks Import. bae:
    left untitled takes its file's name. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
    write took its last release (§2.1), fails the import as `AlbumGone`, which
-   writes nothing and tells the person to pick another album or New album. Each credit, role
+   writes nothing and tells the person to pick another album or New album.
+   The same write decides a new album's id: the album takes its group's id
+   (§2.6), except that a New album the person picked keeps its own id when
+   the library holds the group's album, even one that another import of the
+   group wrote after this import was prepared. Each credit, role
    and composer is its own artist credit until that transaction decides which
    library artist it is (§2.3), so two credits naming one artist write one.
    Each label is its own statement until the same transaction decides which

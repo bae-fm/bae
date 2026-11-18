@@ -748,7 +748,10 @@ async fn a_done_row_reads_its_library_release() {
             ),
     )
     .await;
-    let (album_id, release_id) = (lib.album_id("release"), lib.release_id("release"));
+    // The album takes its release group's id.
+    let album_id = bae_records::identity::album_id_for_records(std::slice::from_ref(&pressing))
+        .expect("the record names a group");
+    let release_id = lib.release_id("release");
     let artist = musicbrainz_artist(artist_mbid);
     let artist_row =
         records.find_artist_by_id(&artist).await.unwrap().expect("the library holds the artist");

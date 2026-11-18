@@ -183,7 +183,9 @@ impl Library {
 
     /// `candidate`, the release scanned at `display_path`, imported by this
     /// device as [`Library::imported`] imports one, its album titled
-    /// `album_title` and the release filed under `records`.
+    /// `album_title` and the release filed under `records`. The album takes
+    /// the id of the release group `records` name, else
+    /// [`Library::album_id`].
     pub(crate) fn import_of(
         &self,
         candidate: FolderCandidate,
@@ -262,7 +264,8 @@ impl Library {
         (album, release)
     }
 
-    /// The id of the album [`Self::imported`] writes for `display_path`.
+    /// The id of the album [`Self::imported`] writes for `display_path`
+    /// when its records name no release group.
     pub(crate) fn album_id(&self, display_path: &str) -> String {
         bae_util::test_ids::test_uuid(&format!("album {display_path}"))
     }
@@ -333,7 +336,7 @@ pub(crate) async fn commit_import(
                 },
                 import_id,
             },
-            album,
+            album.map(|row| crate::tables::NewAlbum { row, picked_new: false }),
             release,
             tracks,
             crate::tables::ImportRows { mediums: &mediums, records, ..Default::default() },

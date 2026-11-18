@@ -80,20 +80,52 @@ fn require_import_commit_guard(
     }
 }
 
+/// Whether the library holds the album `album_id`, read inside the commit's
+/// own write, so no write that adds or deletes the album can land between
+/// this read and the release's rows.
+fn album_held_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
+    Ok(sql.query_row("SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)", [album_id], |row| {
+        row.get(0)
+    })?)
+}
+
 /// Refuse the import unless the existing album its release files under is
-/// still in the library. Read inside the commit's own write, so no write
-/// that deletes the album can land between this read and the release's rows.
+/// still in the library.
 fn require_album_on(sql: &CovenWrite<'_>, album_id: &str) -> Result<(), ImportCommitError> {
-    let held: bool = sql
-        .query_row("SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)", [album_id], |row| {
-            row.get(0)
-        })
-        .map_err(DbError::from)?;
-    if held {
+    if album_held_on(sql, album_id)? {
         Ok(())
     } else {
         Err(WriteError::Refused(ImportCommitRefusal::AlbumGone { album_id: album_id.to_string() }))
     }
+}
+
+/// A new album an import writes for its release, under its own id until the
+/// commit decides which id it takes.
+#[derive(Clone, Copy)]
+pub(crate) struct NewAlbum<'a> {
+    pub row: &'a DbAlbum,
+    /// Whether the person picked New album, rather than leaving the album to
+    /// the release's records.
+    pub picked_new: bool,
+}
+
+/// The id a new album takes, decided inside the commit against the library
+/// as it stands: a release group is one album, so a new album takes the id
+/// derived from the group its records name. A New album the person picked
+/// keeps its own id when the library already holds the group's album, even
+/// one an import of the group committed after this import was prepared.
+fn new_album_id_on(
+    sql: &CovenWrite<'_>,
+    album: &DbAlbum,
+    picked_new: bool,
+    records: &[bae_catalogs::records::ReleaseRecord],
+) -> Result<String, DbError> {
+    Ok(match bae_records::identity::album_id_for_records(records) {
+        Some(group_album_id) if !(picked_new && album_held_on(sql, &group_album_id)?) => {
+            group_album_id
+        }
+        _ => album.id.clone(),
+    })
 }
 
 /// End the import attempt the commit is, inside it: the release landing
@@ -287,21 +319,23 @@ pub(crate) struct NewArtistImages<'a> {
 impl ImportTables {
     /// Finalize an import in one transaction. Nothing of it is in the DB yet except
     /// the import record — every row below lands together or not at all.
+    /// Returns the id of the album the release files under.
     pub(crate) async fn finalize_import_atomic(
         &self,
         ids: &dyn coven::IdSource,
         guard: ImportCommitGuard,
-        // `None` when the album is an existing one, already in the DB.
-        album: Option<&DbAlbum>,
+        // `None` when the album is an existing one, already in the DB, which
+        // `release` names.
+        album: Option<NewAlbum<'_>>,
         release: &DbRelease,
         tracks_to_files: &[crate::TrackFile],
         rows: ImportRows<'_>,
         files: Vec<crate::service::PreparedImportFile>,
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: NewArtistImages<'_>,
-    ) -> Result<(), ImportCommitError> {
-        let album = album.cloned();
-        let release = release.clone();
+    ) -> Result<String, ImportCommitError> {
+        let album = album.map(|album| (album.row.clone(), album.picked_new));
+        let mut release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
         let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
@@ -365,11 +399,19 @@ impl ImportTables {
                         .collect::<Result<Vec<coven::FileId>, _>>()?;
                     let tx = &sql;
                     require_import_commit_guard(tx, &guard)?;
-                    // A new album is written below; an existing one must
-                    // still be there.
-                    if album.is_none() {
-                        require_album_on(tx, &release.album_id)?;
-                    }
+                    // A new album is written below, under the id decided
+                    // here; an existing one must still be there.
+                    let album = match album {
+                        None => {
+                            require_album_on(tx, &release.album_id)?;
+                            None
+                        }
+                        Some((mut album, picked_new)) => {
+                            album.id = new_album_id_on(tx, &album, picked_new, &records)?;
+                            release.album_id = album.id.clone();
+                            Some(album)
+                        }
+                    };
                     end_import_attempt_of_commit(tx, &guard)?;
 
                     // Every credit is decided here, against the library as it
@@ -387,7 +429,10 @@ impl ImportTables {
                     }
                     resolved.write_on(tx)?;
                     let artist_ids = resolved.id_map(&artist_credits);
-                    let album_artists = relink_album_artists(&album_artists, &artist_ids);
+                    let mut album_artists = relink_album_artists(&album_artists, &artist_ids);
+                    for album_artist in &mut album_artists {
+                        album_artist.album_id = release.album_id.clone();
+                    }
                     let track_artists = relink_track_artists(&track_artists, &artist_ids);
                     let release_artist_roles =
                         relink(&release_artist_roles, &artist_ids, "release artist role", |role| {
@@ -401,10 +446,10 @@ impl ImportTables {
                         &mut link.artist_id
                     });
 
-                    // A new album for a release group carries the group's id, so
-                    // its row can be here already, written by an import of the
-                    // group that committed since this one chose its album: the
-                    // import writes it whole either way.
+                    // A new album that takes its release group's id with no
+                    // New album pick can be here already, written by an
+                    // import of the group that committed since this one was
+                    // prepared: the import writes it whole either way.
                     if let Some(album) = &album {
                         upsert_album_row(tx, album)?;
                         replace_album_artists(tx, &album.id, &album_artists, &now)?;
@@ -500,11 +545,10 @@ impl ImportTables {
                         upsert_library_image_row(tx, image, file)?;
                     }
 
-                    Ok(())
+                    Ok(release.album_id)
                 },
             )
             .await
-            .map(|_| ())
     }
 }
 

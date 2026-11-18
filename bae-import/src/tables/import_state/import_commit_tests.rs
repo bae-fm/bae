@@ -97,7 +97,7 @@ fn test_track(id: &str, release_id: &str, title: &str, now: time::UtcDateTime) -
 /// of them.
 #[derive(Default)]
 struct Commit<'a> {
-    album: Option<&'a DbAlbum>,
+    album: Option<crate::tables::NewAlbum<'a>>,
     track_files: &'a [crate::TrackFile],
     rows: crate::tables::ImportRows<'a>,
     files: Vec<crate::service::PreparedImportFile>,
@@ -165,7 +165,7 @@ async fn commit_import(db: &Store, release: &DbRelease, commit: Commit<'_>) {
             commit.artist_images,
         )
         .await
-        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -381,7 +381,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &db,
         &release,
         Commit {
-            album: Some(&album),
+            album: Some(crate::tables::NewAlbum { row: &album, picked_new: false }),
             track_files: &track_files,
             rows: crate::tables::ImportRows {
                 artists: bae_records::ArtistCredits { credits: &credits, picked: &picked },
@@ -561,7 +561,7 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         &db,
         &release,
         Commit {
-            album: Some(&album),
+            album: Some(crate::tables::NewAlbum { row: &album, picked_new: false }),
             track_files: &track_files,
             rows: crate::tables::ImportRows {
                 artists: bae_records::ArtistCredits { credits: &credits, picked: &[] },
@@ -601,4 +601,105 @@ async fn an_import_whose_ids_name_two_library_entries_goes_by_musicbrainz() {
         .await
         .unwrap();
     assert_eq!(placed, [(None, Some(label_by_musicbrainz))]);
+}
+
+/// Put an album titled `title` of one release and one track in the library
+/// under `album_id`.
+async fn seed_album_with_id(db: &Store, album_id: &str, title: &str) {
+    let records = bae_records::test_fixtures::test_records(db);
+    let artist = test_artist(
+        &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        "Seeded Artist",
+        time::UtcDateTime::UNIX_EPOCH,
+    );
+    records.insert_artist(&artist).await.unwrap();
+    let mut album = DbAlbum::new_test(title, &coven::UuidIds);
+    album.id = album_id.to_string();
+    let release =
+        DbRelease::new_test(&album.id, &coven::IdSource::new_id(&coven::UuidIds).to_string());
+    records
+        .insert_album_with_release_and_tracks(
+            &album,
+            &[bae_records::DbAlbumArtist::new_test(&album.id, &artist.id)],
+            &release,
+            &[bae_records::DbReleaseMedium::new_test(&release.id)],
+            &[DbTrack::new_test(
+                &release.id,
+                &coven::IdSource::new_id(&coven::UuidIds).to_string(),
+                "Track 1",
+                1,
+            )],
+            &[],
+        )
+        .await
+        .unwrap();
+}
+
+/// The record of one MusicBrainz pressing of the release group `mb-group`.
+fn record_of_group() -> Vec<bae_catalogs::records::ReleaseRecord> {
+    use bae_catalogs::catalog::Catalog;
+    use bae_catalogs::records::{MetadataRef, ReleaseRecord};
+    vec![ReleaseRecord::new(
+        &MetadataRef::new(Catalog::MusicBrainz, "mb-release".to_string()),
+        Some("mb-group".to_string()),
+    )]
+}
+
+/// Commit a New album pick for a release of the group `records` names, and
+/// return the album the release files under.
+async fn commit_new_album_pick(
+    db: &Store,
+    records: &[bae_catalogs::records::ReleaseRecord],
+) -> String {
+    let now = time::UtcDateTime::UNIX_EPOCH;
+    let album = test_album(ALBUM_A, "Album Title", now);
+    let release = test_release(RELEASE_A, &album.id, now);
+    commit_import(
+        db,
+        &release,
+        Commit {
+            album: Some(crate::tables::NewAlbum { row: &album, picked_new: true }),
+            rows: crate::tables::ImportRows { records, ..Default::default() },
+            ..Default::default()
+        },
+    )
+    .await;
+    bae_records::test_fixtures::test_records(db)
+        .find_release_by_id(RELEASE_A)
+        .await
+        .unwrap()
+        .expect("the commit wrote the release")
+        .album_id
+}
+
+/// A New album pick whose group's album an import of the group committed
+/// after this import was prepared keeps its own id, and leaves the group's
+/// album as it was.
+#[tokio::test]
+async fn a_new_album_pick_beside_a_group_album_committed_since_keeps_its_own_id() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = record_of_group();
+    let group_id = bae_records::identity::album_id_for_records(&records).expect("a named group");
+    seed_album_with_id(&db, &group_id, "Group Album Title").await;
+
+    assert_eq!(commit_new_album_pick(&db, &records).await, ALBUM_A);
+    let library = bae_records::test_fixtures::test_records(&db);
+    let group_album = library.find_album_by_id(&group_id).await.unwrap().unwrap();
+    assert_eq!(group_album.title, "Group Album Title");
+    let own_album = library.find_album_by_id(ALBUM_A).await.unwrap().unwrap();
+    assert_eq!(own_album.title, "Album Title");
+}
+
+/// A New album pick whose group has no album in the library takes the
+/// group's id.
+#[tokio::test]
+async fn a_new_album_pick_with_no_group_album_takes_the_groups_id() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let records = record_of_group();
+    let group_id = bae_records::identity::album_id_for_records(&records).expect("a named group");
+
+    assert_eq!(commit_new_album_pick(&db, &records).await, group_id);
+    let library = bae_records::test_fixtures::test_records(&db);
+    assert_eq!(library.find_album_by_id(&group_id).await.unwrap().unwrap().title, "Album Title");
+    assert!(library.find_album_by_id(ALBUM_A).await.unwrap().is_none());
 }

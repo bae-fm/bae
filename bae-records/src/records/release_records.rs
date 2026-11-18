@@ -52,21 +52,6 @@ impl Records {
         self.store.read(move |sql| records_target_album_on(&sql, &release_id, &records)).await
     }
 
-    /// Whether the library holds the album `album_id`; an album is deleted
-    /// with its last release, so it holds a release.
-    pub async fn album_exists(&self, album_id: &str) -> Result<bool, DbError> {
-        let album_id = album_id.to_string();
-        self.store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?1)",
-                    [album_id],
-                    |row| row.get(0),
-                )?)
-            })
-            .await
-    }
-
     /// Replace a release's record rows and move the release between albums
     /// when the target differs from the source, in one transaction (see
     /// `set_records_on`).

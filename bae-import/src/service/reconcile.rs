@@ -34,8 +34,8 @@ impl ImportService {
     ///
     /// A release joins the library album `album_pick` names, else (with no
     /// pick) the one its records name; one with neither — read from its files or from nothing —
-    /// lands on a fresh album. `picked` are the artist rows that are library artists a
-    /// person picked.
+    /// lands on a new album, whose id the commit decides. `picked` are the artist rows that are
+    /// library artists a person picked.
     ///
     /// Artists are not decided here. Every artist link keeps naming its credit,
     /// and the commit resolves the credits inside its own transaction, against
@@ -48,7 +48,7 @@ impl ImportService {
         picked_artists: std::collections::HashSet<String>,
     ) -> Result<PreparedMetadata, crate::ImportError> {
         let bae_records::ReleaseRows {
-            album: mut db_album,
+            album: db_album,
             release: mut db_release,
             mediums,
             tracks: track_rows,
@@ -68,37 +68,14 @@ impl ImportService {
             crate::AlbumPick::New => None,
             crate::AlbumPick::Records => self.records.album_records_name(&records, &[]).await?,
         };
-        match &existing_album_id {
-            Some(album_id) => {
-                db_release.album_id = album_id.clone();
-                // The album is already in the library with its own artists;
-                // this release's album credits are not written.
-                album_artists.clear();
-            }
-            // A release group is one album: a new album for one takes the id
-            // derived from the group.
-            None => {
-                // A new album the person asked for beside an album the
-                // library already holds under the group's id keeps its own id.
-                let group_album_id = bae_records::identity::album_id_for_records(&records);
-                let group_album_id = match group_album_id {
-                    Some(group_album_id)
-                        if album_pick == crate::AlbumPick::New
-                            && self.records.album_exists(&group_album_id).await? =>
-                    {
-                        None
-                    }
-                    other => other,
-                };
-                if let Some(group_album_id) = group_album_id {
-                    db_album.id = group_album_id;
-                    db_release.album_id = db_album.id.clone();
-                    for album_artist in &mut album_artists {
-                        album_artist.album_id = db_album.id.clone();
-                    }
-                }
-            }
+        if let Some(album_id) = &existing_album_id {
+            db_release.album_id = album_id.clone();
+            // The album is already in the library with its own artists;
+            // this release's album credits are not written.
+            album_artists.clear();
         }
+        // A new album's id is the commit's to decide, against the library
+        // as it stands when the release is written.
 
         retain_referenced_artists(
             &mut artists,
@@ -119,6 +96,7 @@ impl ImportService {
             db_release,
             mediums,
             track_rows,
+            album_picked_new: album_pick == crate::AlbumPick::New,
             existing_album_id,
             track_artists,
             album_artists,

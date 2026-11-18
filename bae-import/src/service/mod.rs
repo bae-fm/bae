@@ -64,6 +64,10 @@ struct PreparedMetadata {
     /// commit (`resolve_track_files`).
     track_rows: Vec<bae_records::TrackRow>,
     existing_album_id: Option<String>,
+    /// Whether the person picked New album, so that a new album keeps its
+    /// own id when the library holds its release group's album as the
+    /// commit writes it.
+    album_picked_new: bool,
     track_artists: Vec<DbTrackArtist>,
     /// Empty when the release joins an album already in the library.
     album_artists: Vec<DbAlbumArtist>,

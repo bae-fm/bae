@@ -56,7 +56,7 @@ pub use import_list::{
 };
 pub(crate) use import_state::{
     CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows,
+    CandidateSaved, CommittingCandidate, ImportClaim, ImportCommitGuard, ImportRows, NewAlbum,
     NewArtistImages, RunVerdictSaved, ScannedCandidateKey,
 };
 pub use import_state::{
