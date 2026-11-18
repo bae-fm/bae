@@ -14,8 +14,9 @@
 
 use super::match_record::{match_record_sql, StoredRecord};
 use super::*;
+use crate::tables::album_link_rows::AlbumLinkRow;
 use bae_catalogs::catalog::{Catalog, LookupCatalog};
-use bae_catalogs::records::{LookupRef, MetadataRef};
+use bae_catalogs::records::LookupRef;
 use bae_catalogs::search::MetadataResult;
 use bae_identify::release_group::{
     AlbumHeading, Pressing, PressingSection, ReleaseGroup, ReleaseGroupSource, RowChoice,
@@ -427,13 +428,13 @@ impl StoredDecision {
 /// and the album each catalog files them under.
 #[derive(serde::Deserialize)]
 struct StoredSharedAlbum {
-    leads: Vec<StoredRef>,
-    albums: Vec<StoredRef>,
+    leads: Vec<StoredLead>,
+    albums: Vec<AlbumLinkRow>,
 }
 
-/// A release or an album a catalog names.
+/// A row's lead release: the catalog that names it and its key there.
 #[derive(serde::Deserialize)]
-struct StoredRef {
+struct StoredLead {
     catalog: String,
     key: String,
 }
@@ -443,16 +444,12 @@ impl StoredSharedAlbum {
         let leads = self
             .leads
             .into_iter()
-            .map(|lead| {
-                LookupCatalog::from_str(&lead.catalog)
-                    .map(|catalog| LookupRef::new(catalog, lead.key))
-                    .map_err(|_unknown| DbError::unreadable("a shared album's lead", &lead.catalog))
-            })
+            .map(|lead| Ok(LookupRef::new(super::match_rows::source_of(&lead.catalog)?, lead.key)))
             .collect::<Result<Vec<_>, DbError>>()?;
         let albums = self
             .albums
             .into_iter()
-            .map(|album| Ok(MetadataRef::new(catalog_of(&album.catalog)?, album.key)))
+            .map(AlbumLinkRow::album)
             .collect::<Result<Vec<_>, DbError>>()?;
         let link = AlbumLink::new(albums).ok_or_else(|| {
             DbError::unreadable("a shared album's albums", "none, or two of one catalog")
