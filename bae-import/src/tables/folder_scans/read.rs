@@ -14,7 +14,7 @@ use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
     InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile, SheetDisc,
-    SkippedFile, SkippedTags,
+    SkippedFile,
 };
 use crate::tables::FinishRead;
 use crate::CandidateKey;
@@ -406,9 +406,9 @@ struct CandidateRow {
     files: String,
     parts: String,
     skipped_files: String,
-    /// What the tags of a release that failed validation call it, when they
-    /// name an album.
-    skipped_tags: Option<SkippedTags>,
+    /// What a folder that failed validation stores: none for a row of
+    /// another kind.
+    invalid: Option<InvalidColumns>,
 }
 
 /// The entries `entries` names, each read with what hangs off it.
@@ -417,18 +417,15 @@ pub(crate) fn load_candidate_items_rows(
     entries: EntryRows<'_>,
     sources: RowSources,
 ) -> Result<FinishRead<Vec<StoredScanItem>>, DbError> {
+    let (invalid_columns, invalid_joins) = invalid_columns_sql("candidate");
     let rows = sql.query(
         &format!(
             "SELECT candidate.watched_folder_path, candidate.path, candidate.generation, candidate.kind, candidate.name, \
                     candidate.relative_folder, candidate.folder, candidate.file_root, \
                     candidate.scope, candidate.file_edit_revision, candidate.grouping_key, \
                     {files} AS files, {PARTS_JSON} AS parts, \
-                    {skipped_files} AS skipped_files, \
-                    tags.album_title AS skipped_album_title, tags.credits AS skipped_credits \
-             FROM scan_candidate AS candidate \
-             LEFT JOIN scan_skipped_tags AS tags \
-                 ON tags.watched_folder_path = candidate.watched_folder_path \
-                AND tags.candidate_path = candidate.path \
+                    {skipped_files} AS skipped_files, {invalid_columns} \
+             FROM scan_candidate AS candidate {invalid_joins} \
              WHERE {} AND {} \
              ORDER BY candidate.path",
             entries.condition(),
@@ -453,15 +450,7 @@ pub(crate) fn load_candidate_items_rows(
                 files: row.get("files")?,
                 parts: row.get("parts")?,
                 skipped_files: row.get("skipped_files")?,
-                skipped_tags: row
-                    .get::<_, Option<String>>("skipped_album_title")?
-                    .map(|album_title| {
-                        Ok::<_, rusqlite::Error>(SkippedTags {
-                            album_title,
-                            artist: crate::tables::stored_credits::line_column(row, "skipped_credits")?,
-                        })
-                    })
-                    .transpose()?,
+                invalid: InvalidColumns::read(row)?,
             })
         },
     )?;
@@ -477,7 +466,17 @@ pub(crate) fn load_candidate_items_rows(
                     relative_folder: row.relative_folder,
                     grouping: row.grouping_key,
                     files: skipped_files_of(&row.path, &row.skipped_files)?,
-                    tags: row.skipped_tags,
+                    // The schema holds a reason on every row of an invalid
+                    // folder.
+                    tags: row
+                        .invalid
+                        .ok_or_else(|| {
+                            DbError::unreadable(
+                                format!("the reason folder {} failed validation", row.path),
+                                None::<String>,
+                            )
+                        })?
+                        .tags(),
                 }),
                 kind @ ("tentative" | "valid") => {
                     let candidate = FolderCandidate {

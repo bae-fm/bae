@@ -87,6 +87,11 @@ impl InvalidColumns {
         }))
     }
 
+    /// What the folder's tags call it, when they name an album.
+    pub(crate) fn tags(self) -> Option<SkippedTags> {
+        self.tags
+    }
+
     /// The row of the folder stored at `key` under `watched_folder_path`,
     /// named `folder_name`.
     pub(crate) fn row(
