@@ -68,11 +68,7 @@ impl People {
                     "INSERT INTO playlists (id, person_id, name, audience) VALUES (?, ?, ?, ?)",
                     params![row.id.to_string(), row.person.to_string(), row.name, row.audience],
                 )?;
-                let reading = match tracks {
-                    bae_records::TrackList::Given(_) => bae_records::TrackReading::Named,
-                    bae_records::TrackList::Picked(_) => bae_records::TrackReading::Held,
-                };
-                let track_ids = tracks.ordered_on(sql, reading)?;
+                let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
                 assert!(positions.len() >= track_ids.len(), "a position id for each entry");
                 for (position, (position_id, track_id)) in positions.iter().zip(&track_ids).enumerate() {
                     sql.execute(

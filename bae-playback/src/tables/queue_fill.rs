@@ -217,20 +217,17 @@ pub(super) fn fill_on(
             // fill names the ones the library lacks. A picked list counts only
             // the tracks the library holds, in the order their release lists
             // them, and names none.
-            let (reading, left_out) = match &tracks {
-                bae_records::TrackList::Given(_) => (
-                    bae_records::TrackReading::Named,
-                    sql.query(
-                        "SELECT j.value FROM json_each(?) j \
-                         WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE id = j.value) \
-                         ORDER BY j.key",
-                        [tracks.ids_json()],
-                        |row| row.get::<_, String>(0),
-                    )?,
-                ),
-                bae_records::TrackList::Picked(_) => (bae_records::TrackReading::Held, Vec::new()),
+            let left_out = match &tracks {
+                bae_records::TrackList::Given(_) => sql.query(
+                    "SELECT j.value FROM json_each(?) j \
+                     WHERE NOT EXISTS (SELECT 1 FROM tracks WHERE id = j.value) \
+                     ORDER BY j.key",
+                    [tracks.ids_json()],
+                    |row| row.get::<_, String>(0),
+                )?,
+                bae_records::TrackList::Picked(_) => Vec::new(),
             };
-            let track_ids = tracks.ordered_on(sql, reading)?;
+            let track_ids = tracks.ordered_leaving_out_missing_picks(sql)?;
             if track_ids.is_empty() {
                 return Ok(ContextFilled::NoTracks);
             }

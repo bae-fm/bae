@@ -84,6 +84,33 @@ impl TrackList {
         };
         Ok(sql.query(&statement, [self.ids_json()], |row| row.get(0))?)
     }
+
+    /// The list's ids in its order for an action that leaves out what the
+    /// person picked and the library lacks: a given list's every id, and a
+    /// picked list's held ids. The picks left out go in one warning, since
+    /// the app shows nothing of them.
+    pub fn ordered_leaving_out_missing_picks(
+        &self,
+        sql: &impl coven::SqlRead,
+    ) -> Result<Vec<String>, DbError> {
+        let reading = match self {
+            Self::Given(_) => TrackReading::Named,
+            Self::Picked(_) => TrackReading::Held,
+        };
+        let ordered = self.ordered_on(sql, reading)?;
+        if let Self::Picked(picked) = self {
+            let mut left_out = Vec::new();
+            for id in picked {
+                if !ordered.contains(id) {
+                    left_out.push(id);
+                }
+            }
+            if let [_, ..] = left_out.as_slice() {
+                tracing::warn!(?left_out, "picked tracks the library lacks left out");
+            }
+        }
+        Ok(ordered)
+    }
 }
 
 #[cfg(test)]
