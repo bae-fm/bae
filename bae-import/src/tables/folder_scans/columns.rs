@@ -5,7 +5,7 @@
 use super::*;
 use crate::cue_sheet::CdRipper;
 use crate::folder_scanner::{
-    AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
+    AudioDamage, FileRole, ProposedRole, ReleaseFileScope, SheetAudioFile, SheetBinding,
 };
 use crate::VolumeKind;
 use bae_records::DocumentKind;
@@ -159,10 +159,7 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
                 SheetBinding::RefusedTiming { .. } => ("refused_timing", None),
                 SheetBinding::RefusedCodec { codec } => ("refused_codec", Some(codec.as_str())),
             };
-            let (sheet_disc, sheet_disc_number) = match disc {
-                SheetDisc::Disc { number } => ("disc", Some(*number)),
-                SheetDisc::Ignored => ("ignored", None),
-            };
+            let (sheet_disc, sheet_disc_number) = disc.columns();
             RoleColumns {
                 role: "track_sheet",
                 document_kind: None,
@@ -207,18 +204,5 @@ pub(super) fn sheet_binding_of(
             Ok(SheetBinding::RefusedCodec { codec: codec.ok_or_else(|| malformed("codec"))? })
         }
         other => Err(DbError::unreadable("scan_candidate_file.sheet_binding", other)),
-    }
-}
-
-pub(super) fn sheet_disc_of(stored: &str, number: Option<i64>) -> Result<SheetDisc, DbError> {
-    match stored {
-        "disc" => {
-            let number = number.ok_or_else(|| {
-                DbError::unreadable("the number of a scan sheet disc", None::<i64>)
-            })?;
-            Ok(SheetDisc::Disc { number: to_u32(number, "a sheet's disc number")? })
-        }
-        "ignored" => Ok(SheetDisc::Ignored),
-        other => Err(DbError::unreadable("scan_candidate_file.sheet_disc", other)),
     }
 }

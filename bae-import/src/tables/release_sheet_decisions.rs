@@ -42,10 +42,7 @@ pub(super) fn store_on(
         let Some(sheet_file_id) = file_ids.get(sheet) else {
             continue;
         };
-        let (kind, number) = match disc {
-            SheetDisc::Ignored => ("ignored", None),
-            SheetDisc::Disc { number } => ("disc", Some(*number)),
-        };
+        let (kind, number) = disc.columns();
         sql.execute(
             "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) VALUES (?, ?, ?)",
             params![sheet_file_id, kind, number],
@@ -56,12 +53,12 @@ pub(super) fn store_on(
             continue;
         };
         for (reference, decision) in references.iter() {
-            let audio_file_id = match decision {
-                UserSheetBinding::Describes { file_id } => match file_ids.get(file_id.as_str()) {
+            let audio_file_id = match decision.stored_file() {
+                Some(file_id) => match file_ids.get(file_id) {
                     Some(audio_file_id) => Some(*audio_file_id),
                     None => continue,
                 },
-                UserSheetBinding::Cleared => None,
+                None => None,
             };
             sql.execute(
                 "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
@@ -121,20 +118,18 @@ impl ImportTables {
             .await?;
         let mut edits = CandidateFileEdits::default();
         for (sheet, reference, audio) in binding_rows {
-            let decision = match audio {
-                Some(file_id) => UserSheetBinding::Describes { file_id },
-                None => UserSheetBinding::Cleared,
-            };
-            edits.sheet_bindings.set_reference(sheet, reference, decision);
+            edits.sheet_bindings.set_reference(
+                sheet,
+                reference,
+                UserSheetBinding::from_stored_file(audio),
+            );
         }
         for (sheet, kind, number) in disc_rows {
-            let disc = match (kind.as_str(), number) {
-                ("ignored", None) => SheetDisc::Ignored,
-                ("disc", Some(number)) => SheetDisc::Disc {
-                    number: to_u32(number, &format!("the disc number stored for {sheet}"))?,
-                },
-                _ => return Err(DbError::unreadable("release_sheet_discs.disc", kind)),
-            };
+            let disc = SheetDisc::from_columns(
+                &format!("the release_sheet_discs row of {sheet}"),
+                &kind,
+                number,
+            )?;
             edits.sheet_discs.set(sheet, disc);
         }
         Ok(edits)

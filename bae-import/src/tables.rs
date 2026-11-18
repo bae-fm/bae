@@ -18,6 +18,7 @@ mod layout_text;
 mod release_edit_session;
 mod release_groupings;
 mod release_sheet_decisions;
+mod sheet_decision_columns;
 mod skipped_candidates;
 mod source_releases;
 mod stored_credits;

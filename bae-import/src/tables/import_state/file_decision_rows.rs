@@ -27,10 +27,7 @@ pub(super) fn insert_file_edits(
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
     for (sheet_id, disc) in edits.sheet_discs.iter() {
-        let (kind, number) = match disc {
-            SheetDisc::Ignored => ("ignored", None),
-            SheetDisc::Disc { number } => ("disc", Some(*number)),
-        };
+        let (kind, number) = disc.columns();
         sql.execute(
             "INSERT INTO import_candidate_sheet_disc \
                  (content_hash, sheet_id, disc, disc_number) VALUES (?, ?, ?, ?)",
@@ -39,12 +36,8 @@ pub(super) fn insert_file_edits(
     }
     for (sheet_id, references) in edits.sheet_bindings.iter() {
         for (reference, decision) in references.iter() {
-            let file_id = match decision {
-                UserSheetBinding::Describes { file_id } => Some(file_id.as_str()),
-                UserSheetBinding::Cleared => None,
-            };
             sql.execute("INSERT INTO import_candidate_sheet_reference (content_hash, sheet_id, file_reference, file_id) VALUES (?, ?, ?, ?)",
-                params![content_hash, sheet_id, reference, file_id])?;
+                params![content_hash, sheet_id, reference, decision.stored_file()])?;
         }
     }
     Ok(())
@@ -118,36 +111,21 @@ impl StoredFileEdits {
         let discs: Vec<StoredSheetDisc> = serde_json::from_str(&self.sheet_discs)
             .map_err(|error| unreadable_json("sheet discs", &self.sheet_discs, error))?;
         for stored in discs {
-            let disc = match stored.disc.as_str() {
-                "ignored" => SheetDisc::Ignored,
-                "disc" => {
-                    let number = stored.disc_number.ok_or_else(|| {
-                        DbError::unreadable(
-                            format!("the disc number stored for sheet {}", stored.sheet_id),
-                            None::<i64>,
-                        )
-                    })?;
-                    SheetDisc::Disc {
-                        number: to_u32(
-                            number,
-                            &format!("the disc number stored for {}", stored.sheet_id),
-                        )?,
-                    }
-                }
-                other => {
-                    return Err(DbError::unreadable("import_candidate_sheet_disc.disc", other))
-                }
-            };
+            let disc = SheetDisc::from_columns(
+                &format!("the import_candidate_sheet_disc row of {}", stored.sheet_id),
+                &stored.disc,
+                stored.disc_number,
+            )?;
             edits.sheet_discs.set(stored.sheet_id, disc);
         }
         let references: Vec<StoredSheetReference> = serde_json::from_str(&self.sheet_references)
             .map_err(|error| unreadable_json("sheet references", &self.sheet_references, error))?;
         for stored in references {
-            let decision = match stored.file_id {
-                Some(file_id) => UserSheetBinding::Describes { file_id },
-                None => UserSheetBinding::Cleared,
-            };
-            edits.sheet_bindings.set_reference(stored.sheet_id, stored.file_reference, decision);
+            edits.sheet_bindings.set_reference(
+                stored.sheet_id,
+                stored.file_reference,
+                UserSheetBinding::from_stored_file(stored.file_id),
+            );
         }
         Ok(edits)
     }

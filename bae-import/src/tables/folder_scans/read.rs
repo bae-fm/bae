@@ -13,7 +13,7 @@ use super::*;
 use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
-    InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
+    InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile, SheetDisc,
     SkippedFile, SkippedTags,
 };
 use crate::tables::FinishRead;
@@ -586,7 +586,11 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                             row.sheet_audio.into_iter().map(StoredSheetAudio::audio_file).collect(),
                             row.sheet_binding_codec,
                         )?,
-                        disc: sheet_disc_of(
+                        disc: SheetDisc::from_columns(
+                            &format!(
+                                "the disc of track sheet {} under {candidate_path}",
+                                row.relative_path
+                            ),
                             &row.sheet_disc.ok_or_else(|| missing("disc"))?,
                             row.sheet_disc_number,
                         )?,

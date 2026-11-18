@@ -318,7 +318,7 @@ struct SheetJson {
     binding: String,
     codec: Option<String>,
     assignment: String,
-    disc_number: Option<u32>,
+    disc_number: Option<i64>,
     /// How many audio files the sheet is bound to, and the file when it is
     /// bound to exactly one; `binding` already says which case the sheet is in.
     audio_count: u32,
@@ -529,15 +529,11 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
             )))
         }
     };
-    let assignment = match (sheet.assignment.as_str(), sheet.disc_number) {
-        ("disc", Some(number)) => SheetDisc::Disc { number },
-        ("ignored", None) => SheetDisc::Ignored,
-        (other, number) => {
-            return Err(internal(format!(
-                "the statement returned an unknown sheet disc {other} {number:?}"
-            )))
-        }
-    };
+    let assignment = SheetDisc::from_columns(
+        &format!("the disc of track sheet {}", sheet.sheet_id),
+        &sheet.assignment,
+        sheet.disc_number,
+    )?;
     let reference_options = sheet
         .references
         .into_iter()
