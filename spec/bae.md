@@ -6247,7 +6247,7 @@ detail:
 | `ReplacementUnfinished` | finishes the reset or the restore of this device's copy that stopped partway: the one the category names, never the other (§6.4) |
 | `RestoreRegistered` | finishes the restore: it was cancelled after this device was added to the library, so it can't be taken back (§6.4) |
 | `MemberKeysReplaced` | scans the new restore code: another of their devices made a new restore code, and the scan restores this device as a new device, which starts without the changes this device had not sent (§6.4) |
-| `StorageSetupUndone` | sets the library's storage up again: a setup ended undone with nobody there to hear it, such as one bae was stopped partway through (§6.2) |
+| `StorageSetupUndone` | sets the library's storage up again: a storage setup ended undone, and the Sync page shows it until the person dismisses it or starts another setup (§6.2) |
 | `StorageSetupFinishing` | waits for the storage setup already running, then tries again (§6.2) |
 | `DeletionUnfinished` | finishes removing the library from this device, which stopped partway (§6.4) |
 | `DeletionSignInRequired` | signs in to the library's storage again, then removes the library (§6.4) |
