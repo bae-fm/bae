@@ -3755,8 +3755,7 @@ same code, which Settings keeps there alone.
 **What setup shows while it runs.** Setting storage up, or reconnecting
 it after signing in again or with a new S3 key, waits on the provider, at
 most a minute of rate limits, and on a reconnect loading what other devices
-published. So each setup call is handed a stream of its own, of the kind a
-setup call reports in (§9.1), and writes into it the steps coven reports
+published. So setup shows each step coven reports
 ([coven §20.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#208-checking-a-provider-before-use)):
 checking the location holds nothing but this library on S3, Dropbox and
 OneDrive, detecting the settings on S3, preparing iCloud, reading the account
@@ -3767,36 +3766,29 @@ a spinner, counted for loading's steps. Signing in to Dropbox or OneDrive in
 the browser, listing the provider's folders, and making a new folder (which
 Dropbox also shares) each say so while they run, on both apps, the last naming
 the folder. On macOS the check of a folder the person chose on Dropbox or
-OneDrive names it too, "Checking the folder Music…". The dev reset connects its
-storage without such a stream: it reports connecting storage as its own step.
+OneDrive names it too, "Checking the folder Music…". The dev reset reports
+connecting storage as one step of its own.
 
 **Cancelling, and a setup bae was stopped partway through.** coven journals
 each setup before its first write to storage, and from its point of no return,
 creating the library in storage or recording changed access, a setup finishes
 rather than undoing ([coven
 §11.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#116-every-call-that-writes-to-storage-in-steps)).
-A setup sheet offers Cancel while a setup runs until it reaches that point:
-core tells the sheet, beside the setup's steps, whether the setup is past it,
-and from then the sheet hides Cancel and stays to show the setup finishing.
-Cancel asks core to cancel the setup. coven undoes it between setup's steps,
-not in the middle of a request, so the sheet says "Cancelling…" in place of
-the step until the call ends as cancelled, which shows nothing; then the
-sheet shows the provider's screen again as it was entered.
-A setup call that is dropped, as closing its screen drops it, cancels its
-setup the same way: coven would otherwise run it to its end with nobody
-waiting. A setup bae was stopped partway through is undone as the
+A setup sheet offers Cancel while a setup runs until it reaches that point;
+once the setup is past it, the sheet hides Cancel and stays to show the setup
+finishing. Cancel undoes the setup between its steps, not in the middle of a
+request, so the sheet says "Cancelling…" in place of the step until the setup
+ends as cancelled, which shows nothing; then the sheet shows the provider's
+screen again as it was entered. Closing the setup's screen cancels its setup
+the same way. A setup bae was stopped partway through is undone as the
 library opens if it hadn't reached that point, and otherwise finishes once
 sync starts, which the library does at launch for it as for a library with
 storage set up. While a setup runs, the Sync page says "Setting up your cloud home…"
 in place of any state that names no problem; a library with no location
 recorded yet shows that where Settings would offer setting up sync, and
-Settings reads the location again once the setup stops running, since it
-records the location as it ends. A setup's call hears how it ended, and
-acknowledges it in coven's list of operations; one that finished or was
-cancelled with nobody to hear it is acknowledged as the library opens. One
-that ended undone with nobody to hear it, such as one bae was stopped partway
-through, shows on Settings' Sync page, why with *Dismiss*, until the person
-dismisses it. Starting a setup while another runs, a call still under way or
+Settings shows the location once the setup ends. A setup that ended undone
+with nobody waiting on it, such as one bae was stopped partway through, shows
+on Settings' Sync page, why with *Dismiss*, until the person dismisses it. Starting a setup while another runs, a call still under way or
 one from before that sync finishes, is refused, saying to try again once it
 has. A cancel counts from the moment the setup's call starts.
 
@@ -3826,7 +3818,7 @@ and *Create* adds the new folder to the list and chooses it. A name already
 taken there is refused with a line naming it, leaving the list as it was. Set up
 needs a chosen folder, and checks it first: a folder holding anything returns to
 the list, saying the folder isn't empty and to choose an empty one or make a new
-one (coven's `OwnLocationRequired`), and that folder isn't set up until another
+one, and that folder isn't set up until another
 is chosen. The picker moves into a folder only once its folders have loaded; a
 listing that fails leaves it where it was, with the failure, and a top that
 fails to list shows only that. On the Mac *New folder…* and *Look again*, which lists the
@@ -3844,10 +3836,9 @@ account names them, and coven records them with the location
 Settings' Sync page shows that name as *Folder*, under the account, with
 *Open in browser*, which opens the folder's page at the provider; when no app
 on the device opens it, the section says so. S3 and iCloud show neither, and
-nor does Dropbox's App folder, which has no label. Settings reads the
-location each time its sync section opens, on a Mac and on Android, so a
-folder renamed at the provider shows its new name from the first time the
-section opens after a connection has recorded it; a read that fails shows why
+nor does Dropbox's App folder, which has no label. On a Mac and on Android, a
+folder renamed at the provider shows its new name the first time the section
+opens after a connection has recorded it; a location bae can't read shows why
 in the section.
 
 **iCloud setup** uses the Apple Account the device is signed in to, and keeps
@@ -3861,13 +3852,10 @@ storage settings can't be read never hides the others: the list carries each
 library with its settings or why they can't be read, shows that reason in
 place of the account, and offers no Open for it. A store whose name can't be read is listed by its id
 instead of failing the listing, with no Open either. Launch and switching
-libraries pass over it. Core decides which library a switch to the next or
-previous one opens: the listing names, beside its libraries, the library after
-and the library before the active one among those that open (wrapping at the
-ends), and names none when no other library opens. The listing also says
-whether it holds more than one library, in any state, which is when the
-switcher shows, and the phone lists
-again after each open so the active library is the one core names. Switching keeps the open library until the next one
+libraries pass over it. A switch to the next or previous library opens the one
+after or before the active one among those that open, wrapping at the ends,
+and does nothing when no other library opens. The switcher shows when the
+device holds more than one library, in any state. Switching keeps the open library until the next one
 has opened; a switch whose open fails leaves the open library on screen with
 the failure shown over it.
 
@@ -3902,13 +3890,9 @@ bae declares its four kinds of file when the store opens, each a coven
 `release_files`, the person's own; `covers`, `artist_images` and `avatars`,
 bae's own. Each file is downloaded when it is first read.
 
-Appendix B lists every declaration. Each part that declares synced tables has
-tests holding its declarations to its rows of that list, each table with its
-identity, audience, owner flag and file references with their bindings, and
-its namespaces with their kinds and budgets, and holding every table the part
-creates to one of two lists, declared or device-local, so a new table stays on
-one device only when that was decided. A part that declares no synced table
-keeps every table it creates on the device.
+Appendix B lists every declaration. Every table bae creates is either
+declared or listed as device-local, so a new table stays on one device only
+when that was decided.
 
 Two devices' edits merge cell by cell: an edit to a column the other left alone
 survives, and of two edits to one column the later wins
@@ -3929,16 +3913,14 @@ queue is held and no bytes move, it is a pause symbol in the spinner's place,
 so the hold stays in reach: a queue is held while its line in the Activity
 panel shows what holds it in place of its count, whatever holds it (Paused,
 Waiting for network, Waiting for Wi-Fi, Retrying at its time). A held queue
-with no line, no release waiting in it, doesn't show it. Core works this out
-with the rest of the activity; the apps only draw it. With none of these it is
-absent. A pass alone doesn't spin it: an idle library runs one
+with no line, no release waiting in it, doesn't show it. With none of these it
+is absent. A pass alone doesn't spin it: an idle library runs one
 every half minute, and the button would blink for nothing.
 
 Clicking it opens the Activity panel, a popover on macOS and a sheet on the
-phones, updating as it changes. What it shows of sync is the sync status the
-Sync page reads (below), with what the upload and download queues hold read in
-the same read of the library's tables. Bytes moving change none of them, so
-they send it nothing. What needs the person comes first, under *Needs
+phones, updating as it changes. It shows the same sync status as the Sync page
+(below), and what the upload and download queues hold. What needs the person
+comes first, under *Needs
 attention*, one row each, a line between rows: the app's own problems (the
 sign-in settings it can't read; on macOS a library that failed to open while
 another stays open), each its title alone, saying what failed; a failure to read sync's state;
@@ -3963,16 +3945,9 @@ keeps a copy on this one. Every count is in releases, a release done once all
 its files are, and every bar is filled by the bytes of the batch done (for
 uploads, the bytes the providers confirmed), each release counting its size: a
 done release all of it, an upload its stored files and its files' shares on the
-way, the pin or move-to-this-device downloading its share. A live query
-of the tables gives each line's share of its batch's bytes done, and each
-file bae is sending, or release it is downloading, with its share of the
-batch. A watcher in core adds to the share done each of those shares times
-how far its transfer has got, and computes each line's bar again whenever the
-query returns new rows or a transfer moves. The watcher keeps no copy of the
-bars it sent and no record of finished transfers: a finished file or release
-counts in the share done once the query returns rows that show it stored.
-The stream of the Activity bars carries each line's bar under the line's
-name, and the panel draws it. A release
+way, the pin or move-to-this-device downloading its share. Each bar moves as
+its transfers move, and a finished file or release counts as done once bae
+records it stored. A release
 removed from the library counts none of its bytes. A bar moves while a release's
 files transfer and its count waits. A batch is everything the queue has held
 since it was last empty, so a count only grows, and it starts over once the
@@ -4006,8 +3981,7 @@ and when several hold the first of these shows: Not synced, Removed from the
 library, Device needs reset, New restore code, Update needed, Signed out, No
 access, Folder missing, Clock is wrong, Cloud full, Waiting for access,
 Offline · unsent changes, Offline, Sync failed, Syncing…, Waiting to sync,
-Synced. core picks the words, the color and the button; the apps draw what core
-sends and add nothing of their own. Mac and Android show the same words and
+Synced. Mac and Android show the same words and
 the same button for each state, except that a line or button that names the
 device says *this Mac* on the Mac and *this device* on Android, and a state
 only the Mac has. The lines below are the Mac's.
@@ -4125,9 +4099,7 @@ release in the Storage manager, not on the Sync page.
 The page never says "Sync stopped", "Checking sync…" or "Disconnect". Until
 the status is first read it shows nothing in the block, and if it can't be
 read the block says "Could not read sync status", with *bae could not read
-this library’s sync status.* / *Restart bae.* The app shows this state itself
-when it cannot read the status, with words from its own catalog: core sends only
-the status it read. The Library page's Sync row shows the state only, and the
+this library’s sync status.* / *Restart bae.* The Library page's Sync row shows the state only, and the
 Library row in Android's settings and the Library item in the Mac's settings
 sidebar show it only while it is amber or red.
 
@@ -4159,13 +4131,11 @@ can act. A change of this device's that waits for the data it changes to be
 updated to this version of bae says that, not that it waits for earlier
 changes. A record whose condition changes keeps its place. The error behind
 a record opens from its notice's *Details* (§9.7), to copy: its text names
-every cause below it, with secrets and URLs already cut by coven. coven keeps that text beside
-the record, written with it by the run that met the failure, and clears it as
-the library opens, so a record read after reopening has no details and offers
-none. A retry that fails for the same reason leaves its record as it was and
-writes the error it met, which the list then shows. The connection's record
-holds the error of the pass that failed on the connection, which coven writes
-with it like any other. The details are never the record's internal debug text. This list
+every cause below it, with secrets and URLs already cut by coven. A record
+read after the library reopens has no details and offers none. A retry that
+fails for the same reason leaves its record as it was and shows the error it
+met. The connection's record holds the error of the pass that failed on the
+connection. The details are never the record's internal debug text. This list
 replaces any banner of blocked work: there is one place to look.
 
 **Signing in again to the recorded storage.** A device has no way to drop its
@@ -4187,9 +4157,8 @@ release file or cover no row names any more, kept only by a lost value
 naming it, as a file of a release that is gone; a file no row here names, of
 no namespace bae knows, is a file. A move's record, about an original its
 upload found missing or changed, is named by the release file whose original
-coven records at that path on this device. The list is one query over coven's pending
-records, coven's records of the files they name and the library's rows, so a
-record is named as its row stands in the same read. Any other subject, such
+coven records at that path on this device. A record is named as its row stands
+now. Any other subject, such
 as an operation or the connection, is named by what it is. In the upload list
 itself a file's row already names it, so its record there says only why it
 waits.
@@ -4212,7 +4181,7 @@ is about another device's upload.
 Ben's laptop has two problems: Dropbox wants him to sign in again, which the
 Sync page's status names, with a *Sign in* button, and a file of his vinyl rip
 moved before it uploaded, which its release's row in Storage Manager names.
-*Sign in*: core signs in with the access the library's folder needs, then
+*Sign in*: bae signs in with the access the library's folder needs, then
 connects that location again. On a library in
 S3 storage, *Sign in* asks for a new access key for that S3 storage instead, the same
 form Settings shows a device that lost its key, and connects the S3 storage again
@@ -4247,7 +4216,7 @@ offers nothing.
   replaced
   ([coven §12.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#123-replacing-a-members-keys)).
   So the state says, before the scan, that the restore discards them.
-  *Scan restore code…* opens the camera for the new code. Core checks first
+  *Scan restore code…* opens the camera for the new code. bae checks first
   that the code restores this library; another library's code, or an invite,
   changes nothing. coven then restores this device with the code: a new device
   loads the library beside this device's copy, takes its place once it has
@@ -4258,7 +4227,7 @@ offers nothing.
   screen says why, an older code saying that the code from the other device
   restores the library, and the person can scan again. A restore that stops
   after the new device registers stays unfinished until the person finishes
-  it, as `ReplacementUnfinished` says.
+  it (below).
 
 "Synced" means coven finished a pass and nothing is pending. Until the status
 has been read the line says it is checking rather than claim the library is
@@ -4271,8 +4240,7 @@ doing, and who is in the library. A local action that ends at once shows no
 spinner either, its control only disabled while it runs: deleting a saved
 restore code, saving or refreshing the MCP and Subsonic servers, and the
 invite form reading where the library is stored, whose access fields show once
-it has. While Android removes a release's download,
-its control says so in core's words for that transfer.
+it has. While Android removes a release's download, its control says so.
 
 - **Launching offline.** A failed connect at start-up opens the library with
   sync not running, and the Sync page says why, with *Reconnect* as the fix,
@@ -4314,10 +4282,6 @@ its control says so in core's words for that transfer.
   last attempt got no answer from storage and runs a pass at once; a wait
   after storage answered, such as with a server error, keeps its time
   ([coven §6.7](https://github.com/bae-fm/coven/blob/main/spec/coven.md#67-waiting-and-retrying)).
-  On Android that watch is a class in coven's Android library
-  (`fm.coven:coven-network`, from coven-foundation's `android/maven` folder,
-  found through `cargo metadata`), which the app packages; a store can't open
-  without it.
 - **Retrying now.** Pulling the library down to refresh on a phone asks to
   retry everything now: every ordinary backoff ends, whether storage
   answered the last attempt or not, and a pass runs
@@ -4362,10 +4326,9 @@ this one
 which coven reports as the last pass's failure. There, and only there (a copy
 behind another installation resets at once, below), bae
 offers Reset from cloud: load the library from storage again under a fresh
-device id. A failed open offers Reset from cloud only when core fails the
-open as `ResetFromCloud`, which core does when the library has storage to
-load the library from. The app offers Reset from cloud beside the failure,
-where the app shows the failure (§5.6). Before bae resets, a warning says
+device id. A failed open offers Reset from cloud only when the library has
+storage to load the library from, beside the failure, where the app shows it
+(§5.6). Before bae resets, a warning says
 that bae will discard edits on this device that haven't synced. bae warned
 the person before they chose, so bae shows nothing after; bae doesn't
 present coven's reset notice. When sync
@@ -4380,12 +4343,10 @@ open, to onboarding. A reset that fails returns to that screen saying
 warning the person already accepted.
 
 **A copy behind another installation resets at once.** When sync stops with
-coven's reason *Device ID in use* (`ResetReason::DeviceIdInUse`: this copy
-found another installation of its device, such as a restored backup or a
-cloned disk, using its device id, and this copy is the one behind), bae asks
-nothing. Core decides this reset: the open library's `copy_reset` call
-returns once when sync finds it, with the notice to show. The app then
-closes the open library, which stops
+coven's reason *Device ID in use* (this copy found another installation of
+its device, such as a restored backup or a cloned disk, using its device id,
+and this copy is the one behind), bae asks nothing. bae then closes the open
+library, which stops
 playback for the few seconds the reset takes, and calls coven's reset, showing
 the reset's steps on the screen a reset shows. The reset registers this copy as
 a new device of the same member and replaces nothing, so the other
@@ -4395,14 +4356,11 @@ so bae reset this device’s copy from the cloud.", then "bae did not keep N edi
 not synced." when N is above zero, then "bae did not keep M files that had not
 uploaded." when M is above zero, each with its own plural forms in every
 language. The counts are the edits and files coven's sync state says this
-copy had not sent. Core builds the notice (`CopyResetNotice`) from those
-counts, and with none unsent there is no notice and the app shows none. A reset
+copy had not sent, and with none unsent the app shows no notice. A reset
 that fails returns to the screen that offers Reset from cloud, saying why. When
-another installation replaced this device (`ResetReason::Replaced`), or the
-member's keys changed, bae still asks before it resets. `copy_reset` returns
-at most once for each open library, so the reset starts once for it. A
-library that closes first ends the call as cancelled, and the app shows
-nothing.
+another installation replaced this device, or the member's keys changed, bae
+still asks before it resets. The reset starts at most once for each open
+library, and a library that closes first resets nothing and shows nothing.
 
 **A reset or restore that stops partway.** A reset, or a restore with the
 person's current code, loads the new copy beside this device's copy, records
@@ -4415,9 +4373,8 @@ call that began it, and opening it fails with that call's own line:
 "Restoring this library on this device did not finish." or "Reset from cloud
 did not finish." Coven keeps what finishing needs on
 the device: a reset's device name, and a restore's code, its S3 key inside
-the code, and its provider sign-in. So `resume_replacement` finishes either
-without the code or a sign-in, and so does running the call that began it
-again. The other call is refused before anything changes: a reset would load
+the code, and its provider sign-in. So bae finishes either without the code
+or a sign-in, and so does running the call that began it again. The other call is refused before anything changes: a reset would load
 a restore's library under the keys the restore replaced, and a restore would
 delete the copy a reset keeps.
 
@@ -4449,7 +4406,7 @@ until an app dismisses it, so nothing is gone while bae doesn't show them.
 
 **The keyring.** The library's encryption key lives in the system keyring. A
 keyring that is locked right now, by a locked session or a sleeping display,
-is told apart from a broken one: the host asks again after unlock instead of
+is told apart from a broken one: bae asks again after unlock instead of
 reporting the library unusable. A device can forget the key, which locks the
 library until it is unlocked again.
 
@@ -4501,7 +4458,7 @@ fail, saying the laptop left the library and its files are still on it.
   uploads that may be stuck; the confirmation lets him decide.
 - **What the removal shows while it runs.** Leaving waits on storage, and
   deleting a large cache takes a while, so a removal reports each step as it
-  starts, through the same kind of stream a close reports in (§10.2): stopping
+  starts: stopping
   the desktop's servers, playback, and identification and import, ending the
   library's background work, leaving the library, then deleting this device's
   files. For the open library the apps show the step's name on the screen they wait on. For a
@@ -4545,20 +4502,15 @@ fail, saying the laptop left the library and its files are still on it.
   found from its record, never from bae files that coven's store list lacks:
   a library hidden from that list, by unreadable settings or a first restore
   or join cut off partway, still exists. At launch bae shows a recorded
-  removal whose store coven no longer lists, with *Retry* when core says asking
-  again can get past the failure (G.1), and opens no library while it shows.
+  removal whose store coven no longer lists, with *Retry* when asking again
+  can get past the failure (G.1), and opens no library while it shows.
   That library already left its store, so it offers no *Reset from cloud…*.
   *Retry* deletes only what is left on this device; it never tries to leave
-  again. While it runs, it reports finishing earlier removals through a setup
-  call's stream, counted by removal once their records are read, and the app
-  shows that step over its bar; before the first step, or once the stream
-  holds nothing, it names its work, removing the library, under a spinner.
-  A record whose store
-  coven still lists stopped before the delete: it
-  is cleared, and bae says the library is still on this device, with nothing
-  to retry. Removals, finishing them and looking for them each hold one
-  removal lock, an OS file lock that excludes other processes too, so a
-  lookup never sees a removal still waiting on coven.
+  again. While it runs, it shows finishing each earlier removal as a step over
+  a bar, counted by removal; until the first step, it names its work,
+  removing the library, under a spinner. A record whose store coven still
+  lists stopped before the delete: it is cleared, and bae says the library is
+  still on this device, with nothing to retry.
 - **The restore code stays.** The restore code and S3 key coven saved in iCloud
   Keychain are Dan's, not the laptop's, and every one of his Apple devices sees
   them. Removing Household from the laptop keeps them: his other devices still
