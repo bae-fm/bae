@@ -2,6 +2,9 @@ mac build ./bae-macos/run.sh --no-open
 mac app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
 mac bundle fm.bae.desktop
 shots-source bae-shots
+shots-declared mac bae-macos/bae/baeShots
+shots-declared android bae-android/app/src/test/java/fm/bae/app/shots
+shots-preview-calls N W
 here macos
 results mac shots/mac
 results android shots/android bae-android/app/build/test-results
