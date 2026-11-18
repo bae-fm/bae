@@ -36,7 +36,7 @@ pub use error_category::{
     bootstrap_category, cloud_unlock_category, creation_category, database_category,
     deletion_category, device_only_category, file_read_category, key_category,
     pending_reason_category, storage_category, storage_error_category, storage_setup_category,
-    store_list_category, sync_category,
+    store_list_category, sync_category, use_access_key_category,
 };
 pub use panic_reports::report_panics;
 pub use telemetry::*;

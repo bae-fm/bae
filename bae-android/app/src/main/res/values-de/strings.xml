@@ -519,4 +519,5 @@
     <string name="album_files">Dateien</string>
     <string name="file_kind_other">Datei</string>
     <string name="set_primary_release">Als primäre Veröffentlichung festlegen</string>
+    <string name="sync_cause_changes_stay">Deine Änderungen bleiben auf diesem Gerät.</string>
 </resources>

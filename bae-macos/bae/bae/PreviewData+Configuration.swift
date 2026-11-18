@@ -64,6 +64,7 @@
             importWhenIdentified: Bool = false,
             importDestination: BridgeImportDestination = .cloud,
             storage: BridgeStorageLocation? = nil,
+            storageAccess: BridgeMemberAccess? = nil,
             savePresets: [BridgeSavePreset] = PreviewData.savePresets,
             lastSavePreset: BridgeSavePreset? = nil,
             filenamePieces: [BridgeSaveFilenamePiece] = PreviewData
@@ -85,6 +86,7 @@
                         libraryId: "lib-preview",
                         libraryPath: "/preview",
                         storage: storage,
+                        storageAccess: storageAccess,
                         pauseBetweenSides: pauseBetweenSides,
                         sidePauseCountdown: .off,
                         maxConcurrentUploads: 3,

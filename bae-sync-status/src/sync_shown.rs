@@ -64,8 +64,9 @@ pub enum SyncCauseLine {
     CheckTheClock,
     OldCopy,
     FreeStorageSpace,
-    /// S3 refused the key: a new one for the same bucket.
-    EnterAccessKey,
+    /// The changes this device made stay on it: storage refuses the access
+    /// it signs in with until the person signs in again.
+    ChangesStayOnDevice,
     SignInToICloud,
     /// A file this device uploads is missing or changed since import; it
     /// stays in the way until it is back as it was. The file's name, when a
@@ -270,7 +271,7 @@ impl SyncStatusSnapshot {
         let amber = SyncShown::new(SignedOut(provider), SyncTone::Warning);
         match provider {
             CloudProvider::S3 => {
-                amber.because(SyncCauseLine::EnterAccessKey).fixed_by(SyncFix::EnterAccessKey)
+                amber.because(SyncCauseLine::ChangesStayOnDevice).fixed_by(SyncFix::EnterAccessKey)
             }
             CloudProvider::Dropbox | CloudProvider::OneDrive => {
                 amber.fixed_by(SyncFix::SignIn(provider))

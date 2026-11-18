@@ -538,6 +538,7 @@ impl AppServices {
     delegate_async!(manager, move_releases_to_this_device => move_releases_to_this_device(release_ids: Vec<String>, folder: &std::path::Path) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), bae_library::LibraryError>);
     delegate_async!(manager, delete_album => delete_album(album_id: &str) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, use_access_key => use_access_key(access_key_id: String, secret_access_key: coven::SecretText, cancel: &tokio::sync::watch::Receiver<bool>) -> bae_library::AccessKeyOutcome);
     delegate_async!(manager, save_s3_config => save_s3_config(data: bae_library::sync::S3ConfigData, steps: bae_library::StorageSetupSteps<'_>) -> Result<coven::StorageSetup, bae_library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<bae_library::sync::restore_code::RestoreCodeShare, bae_library::LibraryError>);
     delegate_lib!(membership, remove_member => remove_member(member: &coven::MemberId) -> ());

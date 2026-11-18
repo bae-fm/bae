@@ -10,9 +10,13 @@ pub const UPLOADS_PAUSED: &str = "SELECT paused FROM coven_upload_pause";
 pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
 
 /// The location recorded on this device with its account and folder labels,
-/// as coven's sync status row holds it; none while no storage is set up. It
-/// reads as `Option<coven::StorageConfig>`.
-pub const RECORDED_LOCATION: &str = "SELECT location FROM coven_sync_status";
+/// as coven's sync status row holds it, none while no storage is set up; then
+/// this person's access as the library records it, their member row's
+/// `account` and `access_key_id`. The location reads as
+/// `Option<coven::StorageConfig>`, and the two columns after it as
+/// `coven::MemberAccess::from_columns` reads them.
+pub const RECORDED_STORAGE: &str = "SELECT s.location, m.account, m.access_key_id \
+     FROM coven_sync_status AS s LEFT JOIN coven_members AS m ON m.is_self = 1";
 
 /// Where a storage setup reports each step coven runs, as coven reports it.
 pub type StorageSetupSteps<'a> =
@@ -131,6 +135,21 @@ impl Store {
     ) -> Result<coven::StorageSetup, coven::StorageSetupError> {
         self.reported(
             self.inner.handle.setup_s3_storage(storage, access_key, secret_key, steps).await,
+        )
+    }
+
+    /// Check the S3 key `access_key_id` with the library's S3 storage and,
+    /// once the check passes, use it in place of the one this person's
+    /// access records. `cancel` stops the check; once it passed, the call
+    /// finishes.
+    pub async fn use_access_key(
+        &self,
+        access_key_id: String,
+        secret_access_key: coven::SecretText,
+        cancel: &tokio::sync::watch::Receiver<bool>,
+    ) -> Result<coven::AccessKeyUsed, coven::UseAccessKeyError> {
+        self.reported(
+            self.inner.handle.use_access_key(access_key_id, secret_access_key, cancel).await,
         )
     }
 

@@ -535,4 +535,5 @@
     <string name="album_files">Súbory</string>
     <string name="file_kind_other">Súbor</string>
     <string name="set_primary_release">Nastaviť ako hlavné vydanie</string>
+    <string name="sync_cause_changes_stay">Tvoje zmeny zostanú na tomto zariadení.</string>
 </resources>

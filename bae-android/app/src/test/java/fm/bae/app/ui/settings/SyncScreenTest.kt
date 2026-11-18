@@ -216,8 +216,8 @@ class SyncScreenTest {
 
     private val keyNotAccepted =
         BridgeSyncShown(
-            status = BridgeSyncStatusWord.ACCESS_KEY_NOT_ACCEPTED,
-            statusKey = "core.sync.status.access_key_not_accepted",
+            status = BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
+            statusKey = "core.sync.status.signed_out_s3",
             tone = BridgeSyncTone.WARNING,
             cause = null,
             fix = BridgeSyncFix.EnterAccessKey,

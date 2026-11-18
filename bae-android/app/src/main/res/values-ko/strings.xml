@@ -510,4 +510,5 @@
     <string name="album_files">파일</string>
     <string name="file_kind_other">파일</string>
     <string name="set_primary_release">기본 릴리스로 설정</string>
+    <string name="sync_cause_changes_stay">변경 사항은 이 기기에 남아 있습니다.</string>
 </resources>

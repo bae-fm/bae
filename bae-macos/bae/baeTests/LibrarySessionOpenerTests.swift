@@ -201,6 +201,7 @@ extension LibrarySessionOpenerTests {
             libraryId: "lib-test",
             libraryPath: "/tmp/test",
             storage: nil,
+            storageAccess: nil,
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
             maxConcurrentUploads: 3,

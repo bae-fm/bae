@@ -87,6 +87,18 @@ pub fn storage_setup_category(error: &coven::StorageSetupError) -> C {
     }
 }
 
+/// Why using a new S3 key changed nothing, or failed once coven took it.
+pub fn use_access_key_category(error: &coven::UseAccessKeyError) -> C {
+    use coven::UseAccessKeyError as E;
+    match error {
+        // The cancel the person asked for reaches them as a cancel, never as
+        // an error with a line.
+        E::Cancelled => C::Internal,
+        E::Check(error) => storage_check_category(error),
+        E::Sync(error) => sync_category(error),
+    }
+}
+
 /// The check of a provider or of S3's settings that refused a location.
 fn storage_check_category(error: &coven::StorageCheckError) -> C {
     use coven::StorageCheckError as E;

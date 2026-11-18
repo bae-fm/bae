@@ -510,4 +510,5 @@
     <string name="album_files">ファイル</string>
     <string name="file_kind_other">ファイル</string>
     <string name="set_primary_release">主要リリースに設定</string>
+    <string name="sync_cause_changes_stay">変更内容はこのデバイスに残ります。</string>
 </resources>

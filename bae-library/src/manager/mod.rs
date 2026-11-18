@@ -87,7 +87,7 @@ use bae_diagnostics::{
     cloud_unlock_category, device_only_category, file_read_category, key_category,
     storage_error_category, storage_setup_category, sync_category,
 };
-pub use sync::{storage_setup_finishing, storage_setup_share};
+pub use sync::{storage_setup_finishing, storage_setup_share, AccessKeyOutcome};
 mod track;
 mod uploads;
 

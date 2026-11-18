@@ -73,6 +73,23 @@ forward! { async this => {
         ))
     }
 
+    /// Check a new S3 key with the library's S3 storage and, once it passes,
+    /// use it in place of the one the library records for this person.
+    /// `cancellation` stops the check; once the check passed, the call
+    /// finishes. It throws only when the library closed.
+    fn use_access_key(
+        access_key_id: String,
+        secret_access_key: String,
+        cancellation: std::sync::Arc<crate::BridgeCancellation>,
+    ) -> crate::types::BridgeAccessKeyOutcome {
+        let (cancel, _cancel_on_drop) = cancellation.watched();
+        Ok(crate::types::BridgeAccessKeyOutcome::from_core(
+            this.services
+                .use_access_key(access_key_id, coven::SecretText::new(secret_access_key), &cancel)
+                .await,
+        ))
+    }
+
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure
     /// reaches the caller and is recorded as the sync-status error the failure

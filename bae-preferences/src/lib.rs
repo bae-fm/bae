@@ -395,6 +395,10 @@ pub struct Config {
     /// labels, as coven's sync status row holds it: none while no storage is
     /// set up.
     pub storage: Option<coven::StorageConfig>,
+    /// This person's access as the library records it: their provider
+    /// account, or the id of their S3 key, which another of their devices
+    /// may have replaced. None until storage setup records the creator's.
+    pub storage_access: Option<coven::MemberAccess>,
 }
 
 impl Config {
@@ -405,7 +409,14 @@ impl Config {
         let prefs = Preferences::default();
         // The defaults' last-used format is their first, FLAC.
         let last_save_preset = prefs.save_presets[0].clone();
-        Self { store_id, library_path: library_path.into(), prefs, last_save_preset, storage: None }
+        Self {
+            store_id,
+            library_path: library_path.into(),
+            prefs,
+            last_save_preset,
+            storage: None,
+            storage_access: None,
+        }
     }
 }
 

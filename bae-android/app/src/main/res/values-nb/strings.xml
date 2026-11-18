@@ -517,4 +517,5 @@
     <string name="album_files">Filer</string>
     <string name="file_kind_other">Fil</string>
     <string name="set_primary_release">Angi som primær utgivelse</string>
+    <string name="sync_cause_changes_stay">Endringene dine blir på denne enheten.</string>
 </resources>

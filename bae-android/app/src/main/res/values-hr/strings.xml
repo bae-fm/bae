@@ -528,4 +528,5 @@
     <string name="album_files">Datoteke</string>
     <string name="file_kind_other">Datoteka</string>
     <string name="set_primary_release">Postavi kao primarno izdanje</string>
+    <string name="sync_cause_changes_stay">Vaše promjene ostaju na ovom uređaju.</string>
 </resources>

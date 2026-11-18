@@ -517,4 +517,5 @@
     <string name="album_files">Fájlok</string>
     <string name="file_kind_other">Fájl</string>
     <string name="set_primary_release">Beállítás elsődleges kiadásként</string>
+    <string name="sync_cause_changes_stay">A módosításaid ezen az eszközön maradnak.</string>
 </resources>

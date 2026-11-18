@@ -158,6 +158,34 @@ impl BridgeSyncRetryOutcome {
     }
 }
 
+/// What using a new S3 key came to. Mirrors `bae_library::AccessKeyOutcome`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeAccessKeyOutcome {
+    /// The library uses the new key. `replaced` names the key the library
+    /// recorded before, which the person deletes in the provider's console;
+    /// none when the library already recorded the new key.
+    Saved { replaced: Option<String> },
+    /// S3 storage refused the key. Nothing changed.
+    Refused,
+    /// The person cancelled while bae checked the key. Nothing changed.
+    Cancelled,
+    /// Anything else, in its own line.
+    Failed { error: super::BridgeError },
+}
+
+impl BridgeAccessKeyOutcome {
+    pub(crate) fn from_core(outcome: bae_library::AccessKeyOutcome) -> Self {
+        match outcome {
+            bae_library::AccessKeyOutcome::Saved { replaced } => Self::Saved { replaced },
+            bae_library::AccessKeyOutcome::Refused => Self::Refused,
+            bae_library::AccessKeyOutcome::Cancelled => Self::Cancelled,
+            bae_library::AccessKeyOutcome::Failed(error) => {
+                Self::Failed { error: super::BridgeError::from_core(error) }
+            }
+        }
+    }
+}
+
 /// The line for a retry that didn't sync and has no error of its own: the
 /// provider's cooldown, or sync not running. `None` for a synced retry, which
 /// shows nothing, and a failed one, whose error has its line.

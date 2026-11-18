@@ -49,6 +49,11 @@ fn config_on(
     store_id: coven::StoreId,
     library_path: PathBuf,
 ) -> rusqlite::Result<Config> {
+    let (storage, storage_access) = sql.query_row(bae_store::RECORDED_STORAGE, [], |row| {
+        let access = coven::MemberAccess::from_columns(row.get(1)?, row.get(2)?)
+            .map_err(|error| bae_store::read::column_conversion_error(row, 1, error))?;
+        Ok((row.get(0)?, access))
+    })?;
     Ok(Config {
         store_id,
         library_path,
@@ -59,7 +64,8 @@ fn config_on(
             [],
             save_preset_row,
         )?,
-        storage: sql.query_row(bae_store::RECORDED_LOCATION, [], |row| row.get(0))?,
+        storage,
+        storage_access,
     })
 }
 

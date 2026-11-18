@@ -519,4 +519,5 @@
     <string name="album_files">Файлове</string>
     <string name="file_kind_other">Файл</string>
     <string name="set_primary_release">Задаване като основно издание</string>
+    <string name="sync_cause_changes_stay">Промените ви остават на това устройство.</string>
 </resources>

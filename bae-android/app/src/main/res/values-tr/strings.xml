@@ -519,4 +519,5 @@
     <string name="album_files">Dosyalar</string>
     <string name="file_kind_other">Dosya</string>
     <string name="set_primary_release">Birincil yayın olarak ayarla</string>
+    <string name="sync_cause_changes_stay">Değişiklikleriniz bu cihazda kalır.</string>
 </resources>

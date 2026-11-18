@@ -526,4 +526,5 @@
     <string name="album_files">Arquivos</string>
     <string name="file_kind_other">Arquivo</string>
     <string name="set_primary_release">Definir como lançamento principal</string>
+    <string name="sync_cause_changes_stay">Suas alterações ficam neste dispositivo.</string>
 </resources>

@@ -526,4 +526,5 @@
     <string name="album_files">Fișiere</string>
     <string name="file_kind_other">Fișier</string>
     <string name="set_primary_release">Setează ca ediție principală</string>
+    <string name="sync_cause_changes_stay">Modificările tale rămân pe acest dispozitiv.</string>
 </resources>

@@ -517,4 +517,5 @@
     <string name="album_files">Αρχεία</string>
     <string name="file_kind_other">Αρχείο</string>
     <string name="set_primary_release">Ορισμός ως κύρια κυκλοφορία</string>
+    <string name="sync_cause_changes_stay">Οι αλλαγές σας παραμένουν σε αυτή τη συσκευή.</string>
 </resources>

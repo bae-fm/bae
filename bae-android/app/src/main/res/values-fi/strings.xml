@@ -517,4 +517,5 @@
     <string name="album_files">Tiedostot</string>
     <string name="file_kind_other">Tiedosto</string>
     <string name="set_primary_release">Aseta ensisijaiseksi julkaisuksi</string>
+    <string name="sync_cause_changes_stay">Muutoksesi pysyvät tällä laitteella.</string>
 </resources>

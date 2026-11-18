@@ -486,7 +486,7 @@ fn produced_keys() -> Vec<String> {
         BridgeSyncStatusWord::SignedOutOfDropbox,
         BridgeSyncStatusWord::SignedOutOfOneDrive,
         BridgeSyncStatusWord::SignedOutOfICloud,
-        BridgeSyncStatusWord::AccessKeyNotAccepted,
+        BridgeSyncStatusWord::SignedOutOfS3,
         BridgeSyncStatusWord::DeviceNeedsReset,
         BridgeSyncStatusWord::NewRestoreCode,
         BridgeSyncStatusWord::NoAccess,
@@ -795,7 +795,6 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         C::CheckTheClock,
         C::OldCopy,
         C::FreeStorageSpace,
-        C::EnterAccessKey,
         C::SignInToICloud,
         C::FileMissingOrChanged { file: Some("Cover.jpg".to_string()) },
         C::FileMissingOrChanged { file: None },
@@ -841,6 +840,10 @@ fn device_causes_are_the_platforms_to_word() {
     assert_eq!(
         BridgeSyncCause::from_core(C::EnterNewRestoreCode),
         BridgeSyncCause::EnterNewRestoreCode
+    );
+    assert_eq!(
+        BridgeSyncCause::from_core(C::ChangesStayOnDevice),
+        BridgeSyncCause::ChangesStayOnDevice
     );
 }
 

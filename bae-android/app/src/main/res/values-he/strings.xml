@@ -528,4 +528,5 @@
     <string name="album_files">קבצים</string>
     <string name="file_kind_other">קובץ</string>
     <string name="set_primary_release">הגדר כמהדורה ראשית</string>
+    <string name="sync_cause_changes_stay">השינויים שלך נשארים במכשיר הזה.</string>
 </resources>

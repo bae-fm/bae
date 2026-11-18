@@ -537,4 +537,5 @@
     <string name="album_files">Soubory</string>
     <string name="file_kind_other">Soubor</string>
     <string name="set_primary_release">Nastavit jako primární vydání</string>
+    <string name="sync_cause_changes_stay">Vaše změny zůstanou na tomto zařízení.</string>
 </resources>

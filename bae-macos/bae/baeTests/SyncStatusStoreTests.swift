@@ -155,6 +155,7 @@ struct SyncStatusStoreTests {
             libraryId: "test-library",
             libraryPath: "/test",
             storage: storage,
+            storageAccess: nil,
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
             maxConcurrentUploads: 1,

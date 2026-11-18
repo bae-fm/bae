@@ -26,6 +26,7 @@ import uniffi.bae_bridge.BridgeLibraryState
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
+import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistEntryRow
@@ -364,6 +365,7 @@ object BridgeFixtures {
             libraryId = libraryId,
             libraryPath = "/tmp/lib",
             storage = BridgeStorageLocation.S3("music", "us-east-1", null, null),
+            storageAccess = BridgeMemberAccess.S3AccessKey("AKIA4EXAMPLEOLD"),
             pauseBetweenSides = false,
             sidePauseCountdown = BridgeSidePauseCountdown.OFF,
             maxConcurrentUploads = 3u,

@@ -7,6 +7,10 @@ pub struct BridgeConfig {
     /// Where the library is stored, with its account and folder labels, as
     /// coven records it. None while no storage is set up.
     pub storage: Option<BridgeStorageLocation>,
+    /// This person's access as the library records it: their provider
+    /// account, or the id of their S3 key, which another of their devices
+    /// may have replaced. The Sync page of an S3 library shows the key's id.
+    pub storage_access: Option<BridgeMemberAccess>,
     pub pause_between_sides: bool,
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long. Settings show it only while `pause_between_sides` is on.

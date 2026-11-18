@@ -526,4 +526,5 @@
     <string name="album_files">File</string>
     <string name="file_kind_other">File</string>
     <string name="set_primary_release">Imposta come pubblicazione principale</string>
+    <string name="sync_cause_changes_stay">Le tue modifiche restano su questo dispositivo.</string>
 </resources>

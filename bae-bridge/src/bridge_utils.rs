@@ -2,10 +2,10 @@
 use crate::types::BridgeOutputKind;
 use crate::types::{
     BridgeCastTranscodeFormat, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportDestination,
-    BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeNamePatternError,
-    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveExtras, BridgeSaveFilenamePiece,
-    BridgeSaveFilenameValue, BridgeSaveFolderPiece, BridgeSaveFolderValue, BridgeSavePreset,
-    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeStorageLocation,
+    BridgeLookupCatalog, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeMemberAccess,
+    BridgeNamePatternError, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveExtras,
+    BridgeSaveFilenamePiece, BridgeSaveFilenameValue, BridgeSaveFolderPiece, BridgeSaveFolderValue,
+    BridgeSavePreset, BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeStorageLocation,
     BridgeSubsonicConfig, BridgeSubsonicNetwork,
 };
 
@@ -257,6 +257,7 @@ impl BridgeConfig {
             library_id: config.store_id.to_string(),
             library_path: config.library_path.to_string_lossy().to_string(),
             storage: config.storage.clone().map(BridgeStorageLocation::from_core),
+            storage_access: config.storage_access.clone().map(BridgeMemberAccess::from_core),
             pause_between_sides: *pause_between_sides,
             side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
             max_concurrent_uploads: max_concurrent_uploads.get(),

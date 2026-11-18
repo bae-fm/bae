@@ -60,6 +60,10 @@ internal fun syncCauseText(
         BridgeSyncCause.EnterNewRestoreCode -> {
             context.getString(R.string.sync_cause_enter_new_restore_code)
         }
+
+        BridgeSyncCause.ChangesStayOnDevice -> {
+            context.getString(R.string.sync_cause_changes_stay)
+        }
     }
 
 /** When sync last finished, as "2 hours ago". */

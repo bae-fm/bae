@@ -510,4 +510,5 @@
     <string name="album_files">文件</string>
     <string name="file_kind_other">文件</string>
     <string name="set_primary_release">设为主版本</string>
+    <string name="sync_cause_changes_stay">你的更改会保留在此设备上。</string>
 </resources>

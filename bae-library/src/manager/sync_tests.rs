@@ -7,6 +7,8 @@ use crate::test_libraries::TestLibrary;
 use coven::Storage;
 use tempfile::TempDir;
 
+#[path = "sync_tests/access_key.rs"]
+mod access_key;
 #[path = "sync_tests/copy_behind.rs"]
 mod copy_behind;
 #[path = "sync_tests/storage_setup.rs"]

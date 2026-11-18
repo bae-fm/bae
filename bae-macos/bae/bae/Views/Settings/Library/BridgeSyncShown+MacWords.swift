@@ -42,6 +42,12 @@ extension BridgeSyncCause {
                 comment:
                     "Sync status line after another of the person's devices made a new restore code: entering it restores the library on this Mac, and the restore loses what this Mac had not sent."
             )
+        case .changesStayOnDevice:
+            String(
+                localized: "Your changes stay on this Mac.",
+                comment:
+                    "Sync status line while S3 storage refuses this Mac's access key: what this Mac changed waits here until the person signs in again."
+            )
         }
     }
 }

@@ -10,6 +10,7 @@ import uniffi.bae_bridge.AlbumSectionsSubscription
 import uniffi.bae_bridge.AlbumSelectionSubscription
 import uniffi.bae_bridge.AppHandleInterface
 import uniffi.bae_bridge.ArtistDetailSubscription
+import uniffi.bae_bridge.BridgeAccessKeyOutcome
 import uniffi.bae_bridge.BridgeAddDevice
 import uniffi.bae_bridge.BridgeAddDeviceRequest
 import uniffi.bae_bridge.BridgeAdminChangePlace
@@ -20,6 +21,7 @@ import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeBrowseTrack
 import uniffi.bae_bridge.BridgeBrowsingFor
 import uniffi.bae_bridge.BridgeCacheLimitChoice
+import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeComposerDetailRow
@@ -858,6 +860,12 @@ internal open class FakeAppHandle(
     }
 
     override suspend fun retryNow(): BridgeSyncRetryOutcome = unfaked("retryNow")
+
+    override suspend fun useAccessKey(
+        accessKeyId: String,
+        secretAccessKey: String,
+        cancellation: BridgeCancellation,
+    ): BridgeAccessKeyOutcome = unfaked("useAccessKey")
 
     /**
      * A session waits for a copy reset from its start, and this copy is never behind: the wait ends only when the

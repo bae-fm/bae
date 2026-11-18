@@ -519,4 +519,5 @@
     <string name="album_files">Bestanden</string>
     <string name="file_kind_other">Bestand</string>
     <string name="set_primary_release">Instellen als primaire release</string>
+    <string name="sync_cause_changes_stay">Je wijzigingen blijven op dit apparaat.</string>
 </resources>

@@ -141,7 +141,7 @@ fn every_state_shows_its_words_color_cause_and_fix() {
         signed_out(P::S3),
         W::SignedOut(P::S3),
         T::Warning,
-        Some(C::EnterAccessKey),
+        Some(C::ChangesStayOnDevice),
         Some(F::EnterAccessKey),
     );
     check(

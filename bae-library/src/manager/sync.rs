@@ -26,6 +26,45 @@ pub fn storage_setup_share(progress: &coven::Progress<coven::StorageSetupStep>) 
     }
 }
 
+/// What using a new S3 key came to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AccessKeyOutcome {
+    /// The library uses the new key. `replaced` names the key the library
+    /// recorded before, which the person deletes in the provider's console;
+    /// none when the library already recorded the new key.
+    Saved { replaced: Option<String> },
+    /// S3 storage refused the key: it doesn't know the key, or the key
+    /// can't read and write the library's storage. Nothing changed.
+    Refused,
+    /// The person cancelled while bae checked the key. Nothing changed.
+    Cancelled,
+    /// Anything else. Nothing changed, unless the caught-up history refused
+    /// the key's record after the key was taken, as for a removed member.
+    Failed(bae_diagnostics::UiError),
+}
+
+impl AccessKeyOutcome {
+    fn of(result: Result<coven::AccessKeyUsed, coven::UseAccessKeyError>) -> Self {
+        use coven::{StorageCheckError as Check, StorageFailure as F, UseAccessKeyError as E};
+        let refused = |error: &coven::StorageError| {
+            matches!(error.failure(), F::Authentication | F::PermissionDenied)
+        };
+        match result {
+            Ok(used) => Self::Saved { replaced: used.replaced },
+            Err(E::Cancelled) => Self::Cancelled,
+            Err(E::Check(Check::Storage(error) | Check::ProviderCheck { source: error, .. }))
+                if refused(&error) =>
+            {
+                Self::Refused
+            }
+            Err(error) => Self::Failed(bae_diagnostics::UiError::diagnostic(
+                bae_diagnostics::use_access_key_category(&error),
+                error,
+            )),
+        }
+    }
+}
+
 impl LibraryManager {
     pub async fn is_sync_configured(&self) -> Result<bool, LibraryError> {
         Ok(self.store.storage_config().await?.is_some())
@@ -106,6 +145,21 @@ impl LibraryManager {
         self.diagnostics
             .event(TelemetryEvent::CloudProviderConnected { provider: coven::CloudProvider::S3 });
         Ok(setup)
+    }
+
+    /// Check the S3 key `access_key_id` with the library's S3 storage and,
+    /// once the check passes, use it in place of the one this person's
+    /// access records. `cancel` stops the check; once it passed, the call
+    /// finishes.
+    pub async fn use_access_key(
+        &self,
+        access_key_id: String,
+        secret_access_key: coven::SecretText,
+        cancel: &tokio::sync::watch::Receiver<bool>,
+    ) -> AccessKeyOutcome {
+        AccessKeyOutcome::of(
+            self.store.use_access_key(access_key_id, secret_access_key, cancel).await,
+        )
     }
 
     /// Sign in to an account provider before choosing a new location on it.

@@ -3700,7 +3700,8 @@ access key.", and a key the S3 storage doesn't allow reads "This key cannot use 
 S3 storage. Give it read and write access, or use another key."
 
 **Replacing the S3 key.** The Sync page of an S3 library, on the Mac and on
-Android, shows the id of the library's access key in its Cloud home rows (the
+Android, shows the id of the access key the library records for the person,
+which another of their devices may have replaced, in its Cloud home rows (the
 secret never shows), with **Replace key…** (on Android, **Replace key**).
 Replace key opens the S3 key sheet: *Enter a key that can use this library's S3
 storage.* over Access key ID and Secret access key, with **Cancel** and
@@ -3710,9 +3711,15 @@ key, which checks the key with S3 storage and replaces the one the library uses;
 while it checks, the sheet says *Checking the key…* in place of the fields, with
 only **Cancel**. A key S3 storage refuses keeps the typed text and says *Could
 not use this key* / *S3 storage does not accept this access key.* above the
-fields. After a save the sheet closes, the page shows the new key's id, and a
-line the person can dismiss says *Saved the new S3 key.* / *Delete the old key,
-AKIA4EXAMPLEOLD, in your S3 provider's console.*, naming the old key's id. bae
+fields. Any other failure keeps the typed text too, and says *Could not use
+this key* over why. **Cancel** while bae checks closes the sheet and stops the
+check, and nothing changes; when the check had already passed, bae finishes
+using the key and the page shows the line below. After a save the sheet
+closes, the page shows the new key's id, and a line the person can dismiss
+says *Saved the new S3 key.* / *Delete the old key, AKIA4EXAMPLEOLD, in your S3
+provider's console.*, naming the old key's id.
+When the library already records the typed key, because another of the
+person's devices replaced it, the line says only *Saved the new S3 key.* bae
 never deletes the old key and keeps no record of its id once the person
 dismisses the line or the page closes ([coven
 §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
@@ -3743,7 +3750,7 @@ and *Done*, which lands on the Sync page, whose Restore code section holds the
 same code, which Settings keeps there alone.
 
 **What setup shows while it runs.** Setting storage up, or reconnecting
-it after signing in again or with a new S3 key, waits on the provider, at
+it after signing in again, waits on the provider, at
 most a minute of rate limits, and on a reconnect loading what other devices
 published. So setup shows each step coven reports
 ([coven §20.8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#208-checking-a-provider-before-use)):

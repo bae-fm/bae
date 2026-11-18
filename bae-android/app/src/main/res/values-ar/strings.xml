@@ -555,4 +555,5 @@
     <string name="album_files">الملفات</string>
     <string name="file_kind_other">ملف</string>
     <string name="set_primary_release">تعيين كإصدار رئيسي</string>
+    <string name="sync_cause_changes_stay">تبقى تغييراتك على هذا الجهاز.</string>
 </resources>

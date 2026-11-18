@@ -579,4 +579,5 @@
     <string name="album_files">Files</string>
     <string name="file_kind_other">File</string>
     <string name="set_primary_release">Set as primary release</string>
+    <string name="sync_cause_changes_stay">Your changes stay on this device.</string>
 </resources>

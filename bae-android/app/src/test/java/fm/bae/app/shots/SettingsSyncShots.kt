@@ -8,7 +8,6 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
-import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
@@ -71,10 +70,10 @@ class SettingsSyncShots : BoardShot() {
             Sync(
                 SyncLine.Read(
                     syncShown(
-                        BridgeSyncStatusWord.ACCESS_KEY_NOT_ACCEPTED,
-                        "core.sync.status.access_key_not_accepted",
+                        BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
+                        "core.sync.status.signed_out_s3",
                         BridgeSyncTone.WARNING,
-                        cause = BridgeSyncCause.Message(BridgeMessage("core.sync.cause.enter_key", emptyList()), null),
+                        cause = BridgeSyncCause.ChangesStayOnDevice,
                         fix = BridgeSyncFix.EnterAccessKey,
                         lastSyncedAgo = threeDaysAgo,
                     ),

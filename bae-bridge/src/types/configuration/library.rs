@@ -525,8 +525,8 @@ pub enum BridgeSyncStatusWord {
     SignedOutOfDropbox,
     SignedOutOfOneDrive,
     SignedOutOfICloud,
-    /// An S3 library has no sign-in: its key was not accepted.
-    AccessKeyNotAccepted,
+    /// S3 storage refuses the access key this device signs in with.
+    SignedOutOfS3,
     DeviceNeedsReset,
     /// Another of the person's devices made a new restore code; sync stays
     /// stopped until the person scans it.
@@ -543,9 +543,9 @@ pub enum BridgeSyncStatusWord {
 /// arguments are the message's own; a cause that names when sync resumes also
 /// carries that moment: the UI formats it in the person's locale and passes
 /// it as the message's last argument. The causes that name the device (its
-/// disk, its saved keys, its library, its restore from a new restore code)
-/// are worded by each platform in its own terms ("this Mac" and the keychain,
-/// "this device").
+/// disk, its saved keys, its library, its restore from a new restore code,
+/// the changes it keeps) are worded by each platform in its own terms ("this
+/// Mac" and the keychain, "this device").
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeSyncCause {
     Message {
@@ -562,6 +562,8 @@ pub enum BridgeSyncCause {
     /// restores the library on this device, and the restore discards what
     /// this device has not sent.
     EnterNewRestoreCode,
+    /// The changes this device made stay on it until it signs in again.
+    ChangesStayOnDevice,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -637,7 +639,7 @@ impl BridgeSyncStatusWord {
             W::SignedOut(coven::CloudProvider::Dropbox) => Self::SignedOutOfDropbox,
             W::SignedOut(coven::CloudProvider::OneDrive) => Self::SignedOutOfOneDrive,
             W::SignedOut(coven::CloudProvider::CloudKit) => Self::SignedOutOfICloud,
-            W::SignedOut(coven::CloudProvider::S3) => Self::AccessKeyNotAccepted,
+            W::SignedOut(coven::CloudProvider::S3) => Self::SignedOutOfS3,
             W::DeviceNeedsReset => Self::DeviceNeedsReset,
             W::NewRestoreCode => Self::NewRestoreCode,
             W::NoAccess => Self::NoAccess,
@@ -679,7 +681,6 @@ impl BridgeSyncCause {
             C::CheckTheClock => plain("core.error.storage.clock_skew"),
             C::OldCopy => plain("core.sync.cause.old_copy"),
             C::FreeStorageSpace => plain("core.sync.cause.free_space"),
-            C::EnterAccessKey => plain("core.sync.cause.enter_key"),
             C::SignInToICloud => plain("core.sync.cause.sign_in_icloud"),
             C::FileMissingOrChanged { file: Some(file) } => BridgeMessage {
                 key: "core.sync.cause.file_changed".to_string(),
@@ -696,6 +697,7 @@ impl BridgeSyncCause {
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::LibraryUnreadable => return Self::LibraryUnreadable,
             C::EnterNewRestoreCode => return Self::EnterNewRestoreCode,
+            C::ChangesStayOnDevice => return Self::ChangesStayOnDevice,
             C::ProviderError { provider, detail } => BridgeMessage {
                 key: "core.sync.cause.provider_error".to_string(),
                 args: vec![
@@ -754,9 +756,7 @@ impl BridgeSyncStatusWord {
             BridgeSyncStatusWord::SignedOutOfDropbox => "core.sync.status.signed_out_dropbox",
             BridgeSyncStatusWord::SignedOutOfOneDrive => "core.sync.status.signed_out_onedrive",
             BridgeSyncStatusWord::SignedOutOfICloud => "core.sync.status.signed_out_icloud",
-            BridgeSyncStatusWord::AccessKeyNotAccepted => {
-                "core.sync.status.access_key_not_accepted"
-            }
+            BridgeSyncStatusWord::SignedOutOfS3 => "core.sync.status.signed_out_s3",
             BridgeSyncStatusWord::DeviceNeedsReset => "core.sync.status.device_needs_reset",
             BridgeSyncStatusWord::NewRestoreCode => "core.sync.status.new_restore_code",
             BridgeSyncStatusWord::NoAccess => "core.sync.status.no_access",
