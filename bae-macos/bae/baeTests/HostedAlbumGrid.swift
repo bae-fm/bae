@@ -7,7 +7,7 @@ import Testing
 
 /// An album grid over `albums`, hosted in a 1180 by 720 window with the stores
 /// it reads, where core places an album's card answered from the albums'
-/// order.
+/// order and the sections.
 @MainActor
 struct HostedAlbumGrid {
     let window: NSWindow
@@ -49,13 +49,14 @@ struct HostedAlbumGrid {
             list.preloadRows(rows: albums, extra: .none)
         }
         uiStore.selectAlbum(openAlbumId)
-        let place: @Sendable (String) -> BridgeAlbumPlace? = { albumId in
-            albums.firstIndex { $0.id == albumId }
-                .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
-        }
+        let place = Self.place(in: albums, sections: sections)
         let library = Library(
-            albumPlace: { _, albumId, _, _ in place(albumId) },
-            albumPlaceReads: { _, albumId, _, _ in .fixed(place(albumId)) }
+            albumPlace: { _, albumId, groupByArtist, _ in
+                place(albumId, groupByArtist)
+            },
+            albumPlaceReads: { _, albumId, groupByArtist, _ in
+                .fixed(place(albumId, groupByArtist))
+            }
         )
         let view = AnyView(
             grid(list)
@@ -150,5 +151,28 @@ struct HostedAlbumGrid {
             }
         }
         return nil
+    }
+}
+
+extension HostedAlbumGrid {
+    /// Where core places an album's card among `albums`: each album has one
+    /// card, in the section whose albums include its position when the grid
+    /// groups by artist.
+    fileprivate static func place(
+        in albums: [BridgeAlbum],
+        sections: [BridgeLibraryBrowseSection]
+    ) -> @Sendable (String, Bool) -> BridgeAlbumPlace? {
+        { albumId, groupByArtist in
+            guard let position = albums.firstIndex(where: { $0.id == albumId })
+            else { return nil }
+            let section = sections.first {
+                position >= Int($0.firstPosition)
+                    && position < Int($0.firstPosition + $0.albumCount)
+            }
+            return BridgeAlbumPlace(
+                position: UInt64(position),
+                sectionId: groupByArtist ? section?.id : nil
+            )
+        }
     }
 }
