@@ -12,4 +12,4 @@ TARGET=$(android_rust_target "${ANDROID_ABIS%%,*}")
 rustup target add "$TARGET"
 # Into target-android, the folder build-android.sh builds into.
 FFMPEG_DIR="$ANDROID_FFMPEG_DIR/${TARGET%%-*}" \
-    ./scripts/cargo.sh clippy --target "$TARGET" --target-dir target-android -p bae-bridge -- -D warnings
+    ./scripts/cargo.sh clippy "${ANDROID_CARGO_CONFIG[@]}" --target "$TARGET" --target-dir target-android -p bae-bridge -- -D warnings

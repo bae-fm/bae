@@ -73,7 +73,7 @@ for ABI in "${ABIS[@]}"; do
     FA="${TARGET%%-*}"
     ./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-android.sh "$ANDROID_FFMPEG_DIR/$FA"
     echo "Building bae-bridge for $ABI ($TARGET, $CARGO_PROFILE, features: ${BAE_BRIDGE_FEATURES:-(none)})..."
-    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS --target "$TARGET" --target-dir "$ANDROID_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
+    FFMPEG_DIR="$ANDROID_FFMPEG_DIR/$FA" ./scripts/cargo.sh build $CARGO_FLAGS "${ANDROID_CARGO_CONFIG[@]}" --target "$TARGET" --target-dir "$ANDROID_TARGET_DIR" -p bae-bridge --features "$BAE_BRIDGE_FEATURES"
 done
 
 # Bindings come from the built .a: the release .so is stripped of the uniffi

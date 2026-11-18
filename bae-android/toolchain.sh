@@ -74,7 +74,11 @@ android_host_abi() {
 # app's oldest Android lacks and load on every phone the app installs on.
 # ffmpeg-sys-next finds FFmpeg through FFMPEG_DIR and then does not pass the
 # target to bindgen, so the per-target clang args are what keep its struct
-# layouts from being the host's. Sets ANDROID_NDK_TOOLCHAIN.
+# layouts from being the host's. Sets ANDROID_NDK_TOOLCHAIN, and
+# ANDROID_CARGO_CONFIG: the --config arguments that name each ABI's linker,
+# which every cargo command that builds for Android passes. The linker is the
+# NDK's clang, whose path depends on the machine, so .cargo/config.toml can't
+# name it.
 android_rust_env() {
     local ndk="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" host_tag
     if [[ ! -d "$ndk" ]]; then
@@ -90,11 +94,12 @@ android_rust_env() {
     ANDROID_NDK_TOOLCHAIN="$ndk/toolchains/llvm/prebuilt/$host_tag"
 
     local abi triple var clang
+    ANDROID_CARGO_CONFIG=()
     for abi in ${ANDROID_ABIS//,/ }; do
         triple=$(android_rust_target "$abi") || return 1
         var="${triple//-/_}"
         clang="$ANDROID_NDK_TOOLCHAIN/bin/$triple$ANDROID_MIN_SDK-clang"
-        export "CARGO_TARGET_$(tr '[:lower:]' '[:upper:]' <<<"$var")_LINKER=$clang"
+        ANDROID_CARGO_CONFIG+=(--config "target.$triple.linker=\"$clang\"")
         export "CC_$var=$clang"
         export "AR_$var=$ANDROID_NDK_TOOLCHAIN/bin/llvm-ar"
         export "BINDGEN_EXTRA_CLANG_ARGS_$var=--target=$triple$ANDROID_MIN_SDK --sysroot=$ANDROID_NDK_TOOLCHAIN/sysroot -I$ANDROID_FFMPEG_DIR/${triple%%-*}/include"

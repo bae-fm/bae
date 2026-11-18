@@ -75,7 +75,6 @@ echo "Building bae-bridge for $BAE_BRIDGE_TARGET ($CARGO_PROFILE, features: ${BA
 # Fat LTO crashes rustc 1.95's codegen on the aarch64 Windows toolchain
 # (STATUS_STACK_BUFFER_OVERRUN linking the release cdylib). Thin LTO links the
 # same cdylib fine; the other platforms keep the workspace profile's fat LTO.
-export CARGO_PROFILE_RELEASE_LTO=thin
 # `cargo rustc --crate-type cdylib` builds only the DLL. The crate also lists
 # `staticlib` for Apple, whose builds link the .a into the framework — but on
 # Windows nothing consumes the .lib, and a debug archive carries embedded
@@ -88,6 +87,7 @@ export CARGO_PROFILE_RELEASE_LTO=thin
 # again (os error 206). A caller's own wrapper is kept (CI passes one that
 # leaves argfile compiles to rustc); with none, the build is uncached.
 RUSTC_WRAPPER="${RUSTC_WRAPPER-}" ./scripts/cargo.sh rustc $CARGO_FLAGS \
+    --config 'profile.release.lto="thin"' \
     --target "$BAE_BRIDGE_TARGET" \
     --target-dir "$WINDOWS_TARGET_DIR" \
     -p bae-bridge \
