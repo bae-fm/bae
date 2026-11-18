@@ -16,3 +16,108 @@ async fn a_library_with_nothing_recorded_reads_as_not_synced() {
     assert_eq!(status.retry_effect, coven::RetryEffect::NotSyncing);
     assert!(!status.failure_recorded);
 }
+
+/// A bare library whose storage is connected, so that the sync state follows
+/// its last pass and pending records.
+fn connected_library() -> rusqlite::Connection {
+    let connection = rusqlite::Connection::open_in_memory().unwrap();
+    crate::test_fixtures::TEST_SCHEMA.open_bare_library(&connection);
+    coven::record_connected_storage(
+        &connection,
+        coven::StorageConfig::S3 {
+            bucket: "library".into(),
+            region: "us-east-1".into(),
+            endpoint: None,
+            profile: None,
+        },
+    )
+    .unwrap();
+    connection
+}
+
+/// The status the statement gives `connection`.
+fn status_of(connection: &rusqlite::Connection) -> SyncStatusSnapshot {
+    let rows = connection
+        .prepare(&status_query())
+        .unwrap()
+        .query_map([], read_row)
+        .unwrap()
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .unwrap();
+    snapshot_of(rows).unwrap()
+}
+
+/// A failed operation shows in a pending record of its own kind and reason,
+/// and only that record shows it.
+#[test]
+fn a_record_of_the_failed_operation_shows_a_failed_pass() {
+    let connection = connected_library();
+    let invite = coven::record_invite(
+        &connection,
+        coven::RecordedInvite {
+            id: coven::InviteId(uuid::Uuid::from_bytes([1; 16])),
+            member: coven::MemberId(uuid::Uuid::from_bytes([101; 16])),
+            stage: coven::RecordedInviteStage::Granting,
+        },
+    )
+    .unwrap();
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Operation { id: invite, kind: coven::OperationKind::Invite },
+        coven::PendingReason::NoStorage,
+    );
+    coven::record_pending(&connection, &record).unwrap();
+    let failed = |record: &coven::PendingRecord| {
+        coven::LastPass::failed(coven::SyncFailure::Operation(Box::new(record.clone())))
+    };
+    coven::record_last_pass(&connection, &failed(&record)).unwrap();
+    let status = status_of(&connection);
+    assert!(matches!(status.coven.state, coven::SyncState::Failed(_)));
+    assert_eq!(status.attention_count, 1);
+    assert!(status.failure_recorded);
+
+    // The pass failed on another reason than the record holds.
+    let other = coven::PendingRecord::new(
+        record.subject.clone(),
+        coven::PendingReason::Removed(coven::Removal::Device),
+    );
+    coven::record_last_pass(&connection, &failed(&other)).unwrap();
+    assert!(!status_of(&connection).failure_recorded);
+}
+
+/// A removed device shows its failure from the record of its removal.
+#[test]
+fn a_record_of_a_removal_shows_a_removed_device() {
+    let connection = connected_library();
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Connection,
+        coven::PendingReason::Removed(coven::Removal::Device),
+    );
+    coven::record_pending(&connection, &record).unwrap();
+    coven::record_last_pass(
+        &connection,
+        &coven::LastPass::failed(coven::SyncFailure::Removed(coven::Removal::Device)),
+    )
+    .unwrap();
+    let status = status_of(&connection);
+    assert!(matches!(status.coven.state, coven::SyncState::Removed { .. }));
+    assert_eq!(status.attention_count, 1);
+    assert!(status.failure_recorded);
+}
+
+/// A member whose keys another installation replaced shows its failure from
+/// the record of that reason.
+#[test]
+fn a_record_of_replaced_member_keys_shows_the_reset_the_state_needs() {
+    let connection = connected_library();
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Slot(coven::Slot::new(3).unwrap()),
+        coven::PendingReason::MemberKeysReplaced {
+            member: coven::MemberId(uuid::Uuid::from_bytes([5; 16])),
+        },
+    );
+    coven::record_pending(&connection, &record).unwrap();
+    let status = status_of(&connection);
+    assert!(matches!(status.coven.state, coven::SyncState::NeedsReset { .. }));
+    assert_eq!(status.attention_count, 1);
+    assert!(status.failure_recorded);
+}
