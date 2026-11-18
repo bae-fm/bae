@@ -732,6 +732,32 @@ async fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
     assert!(sheet.disc_options.contains(&2));
 }
 
+/// Each resolved sheet's disc menu offers every disc from 1 up to the count of
+/// resolved sheets, and any disc a sheet is assigned beyond those.
+#[tokio::test]
+async fn a_sheet_disc_menu_counts_up_to_the_resolved_sheets() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    for stem in ["alpha", "beta", "gamma"] {
+        write_flac(&tmp.path().join(format!("{stem}.flac")));
+        fs::write(
+            tmp.path().join(format!("{stem}.cue")),
+            cue_sheet_text(&format!("{stem}.flac"), 2),
+        )
+        .unwrap();
+    }
+    let mut files = scan(tmp.path());
+    assign_discs(&mut files, &[("alpha.cue", 1), ("beta.cue", 2), ("gamma.cue", 5)]);
+    let table = blank_table(&files).await;
+    let menus: Vec<Vec<u32>> = runs(&table)
+        .into_iter()
+        .map(|run| match run {
+            MappingTrackRun::Sheet { sheet, .. } => sheet.disc_options.clone(),
+            MappingTrackRun::Tracks(_) => panic!("each CUE groups its tracks"),
+        })
+        .collect();
+    assert_eq!(menus, vec![vec![1, 2, 3, 5]; 3]);
+}
+
 #[tokio::test]
 async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
     let tmp = tempfile::TempDir::new().unwrap();

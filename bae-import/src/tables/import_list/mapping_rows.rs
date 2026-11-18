@@ -24,11 +24,14 @@ use crate::ImportError;
 /// content hash. Each row carries its draft track whole (`track_json_sql`)
 /// and how the track's own artists stand to the library
 /// (`artist_standing_clauses`), so the rows need no join to another read's
-/// draft. `key` is the key the statement binds.
+/// draft. `key` is the key the statement binds. The disc numbers a sheet can
+/// take, 1 up to the count of resolved sheets, number those sheets: a
+/// recursive CTE that counted up to them would make coven rerun the
+/// statement for a write to any row of the tables it reads.
 fn mapping_sql(key: &crate::CandidateKey) -> String {
     format!(
         "
-WITH RECURSIVE
+WITH
 {standing_clauses},
 candidate AS (
     SELECT watched_folder_path, path, content_hash FROM scan_candidate WHERE path = :key LIMIT 1
@@ -116,9 +119,9 @@ refs (sheet, file_reference, seq) AS (
 ),
 disc_numbers (number) AS (
     SELECT 1
-    UNION ALL
-    SELECT number + 1 FROM disc_numbers
-    WHERE number < (SELECT COUNT(*) FROM f WHERE role = 'track_sheet' AND sheet_binding = 'resolved')
+    UNION
+    SELECT ROW_NUMBER() OVER (ORDER BY position) FROM f
+    WHERE role = 'track_sheet' AND sheet_binding = 'resolved'
 ),
 disc_options AS (
     SELECT json_group_array(number ORDER BY number) AS json FROM (
