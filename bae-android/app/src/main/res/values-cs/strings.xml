@@ -226,7 +226,7 @@
     <string name="members_remove_confirm_body">%1$s ztratí přístup k této knihovně.</string>
     <string name="join_request_approve">Schválit</string>
     <string name="join_request_title">%1$s se chce připojit</string>
-    <string name="join_request_match">Ujistěte se, že se zobrazuje tento kód:</string>
+    <string name="join_request_match">Schvalte, pokud se na jeho obrazovce zobrazuje tento kód:</string>
     <string name="onboarding_add_device">Přidat zařízení</string>
     <string name="onboarding_tagline">Vaše hudba, všude</string>
     <string name="onboarding_camera_permission_required">Pro skenování QR kódů je vyžadováno oprávnění ke kameře</string>

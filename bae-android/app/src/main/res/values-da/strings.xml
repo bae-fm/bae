@@ -220,7 +220,7 @@
     <string name="members_remove_confirm_body">%1$s mister adgangen til dette bibliotek.</string>
     <string name="join_request_approve">Godkend</string>
     <string name="join_request_title">%1$s vil gerne være med</string>
-    <string name="join_request_match">Kontrollér, at denne kode vises:</string>
+    <string name="join_request_match">Godkend, hvis personens skærm viser denne kode:</string>
     <string name="onboarding_add_device">Tilføj enhed</string>
     <string name="onboarding_tagline">Din musik, overalt</string>
     <string name="onboarding_camera_permission_required">Der kræves kameratilladelse for at scanne QR-koder</string>

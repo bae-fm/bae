@@ -220,7 +220,7 @@
     <string name="members_remove_confirm_body">%1$s elveszíti a hozzáférést ehhez a könyvtárhoz.</string>
     <string name="join_request_approve">Jóváhagyás</string>
     <string name="join_request_title">%1$s csatlakozni szeretne</string>
-    <string name="join_request_match">Győződj meg róla, hogy ez a kód látható:</string>
+    <string name="join_request_match">Hagyd jóvá, ha a képernyőjén ez a kód látszik:</string>
     <string name="onboarding_add_device">Eszköz hozzáadása</string>
     <string name="onboarding_tagline">A zenéd mindenhol</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>

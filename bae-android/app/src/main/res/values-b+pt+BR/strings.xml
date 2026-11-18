@@ -221,7 +221,7 @@
     <string name="members_remove_confirm_body">%1$s perde o acesso a esta biblioteca.</string>
     <string name="join_request_approve">Aprovar</string>
     <string name="join_request_title">%1$s quer entrar</string>
-    <string name="join_request_match">Confirme que este código está aparecendo:</string>
+    <string name="join_request_match">Aprove se a tela da pessoa mostrar este código:</string>
     <string name="onboarding_add_device">Adicionar dispositivo</string>
     <string name="onboarding_tagline">Sua música, em qualquer lugar</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmera para escanear QR codes</string>

@@ -221,7 +221,7 @@
     <string name="members_remove_confirm_body">%1$s יאבד גישה לספרייה הזו.</string>
     <string name="join_request_approve">אשר</string>
     <string name="join_request_title">בקשת הצטרפות מ-%1$s</string>
-    <string name="join_request_match">ודא שהקוד הזה מוצג:</string>
+    <string name="join_request_match">אשר אם במסך שלו מוצג הקוד הזה:</string>
     <string name="onboarding_add_device">הוספת מכשיר</string>
     <string name="onboarding_tagline">המוזיקה שלך, בכל מקום</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>

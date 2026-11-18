@@ -220,7 +220,7 @@
     <string name="members_remove_confirm_body">Η συσκευή %1$s χάνει την πρόσβαση σε αυτή τη βιβλιοθήκη.</string>
     <string name="join_request_approve">Έγκριση</string>
     <string name="join_request_title">Ο χρήστης %1$s θέλει να συμμετάσχει</string>
-    <string name="join_request_match">Βεβαιωθείτε ότι εμφανίζεται αυτός ο κωδικός:</string>
+    <string name="join_request_match">Εγκρίνετε αν στην οθόνη του εμφανίζεται αυτός ο κωδικός:</string>
     <string name="onboarding_add_device">Προσθήκη συσκευής</string>
     <string name="onboarding_tagline">Η μουσική σας, παντού</string>
     <string name="onboarding_camera_permission_required">Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR</string>

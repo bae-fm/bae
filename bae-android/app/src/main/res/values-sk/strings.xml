@@ -232,7 +232,7 @@
     <string name="members_remove_confirm_body">%1$s stratí prístup k tejto knižnici.</string>
     <string name="join_request_approve">Schváliť</string>
     <string name="join_request_title">%1$s sa chce pripojiť</string>
-    <string name="join_request_match">Uistite sa, že sa zobrazuje tento kód:</string>
+    <string name="join_request_match">Schváľte, ak sa na jeho obrazovke zobrazuje tento kód:</string>
     <string name="onboarding_add_device">Pridať zariadenie</string>
     <string name="onboarding_tagline">Tvoja hudba, všade</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>

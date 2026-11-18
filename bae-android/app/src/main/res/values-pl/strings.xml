@@ -226,7 +226,7 @@
     <string name="members_remove_confirm_body">%1$s traci dostęp do tej biblioteki.</string>
     <string name="join_request_approve">Zatwierdź</string>
     <string name="join_request_title">%1$s chce dołączyć</string>
-    <string name="join_request_match">Upewnij się, że widać ten kod:</string>
+    <string name="join_request_match">Zatwierdź, jeśli na jego ekranie widać ten kod:</string>
     <string name="onboarding_add_device">Dodaj urządzenie</string>
     <string name="onboarding_tagline">Twoja muzyka, wszędzie</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>

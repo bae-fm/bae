@@ -236,7 +236,7 @@
     <string name="members_remove_confirm_body">سيفقد %1$s الوصول إلى هذه المكتبة.</string>
     <string name="join_request_approve">موافقة</string>
     <string name="join_request_title">%1$s يطلب الانضمام</string>
-    <string name="join_request_match">تأكد من ظهور هذا الرمز:</string>
+    <string name="join_request_match">وافق إذا كانت شاشته تعرض هذا الرمز:</string>
     <string name="onboarding_add_device">إضافة جهاز</string>
     <string name="onboarding_tagline">موسيقاك في كل مكان</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>

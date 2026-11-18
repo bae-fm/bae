@@ -211,7 +211,7 @@
     <string name="members_remove_confirm_body">%1$s 將無法存取此資料庫。</string>
     <string name="join_request_approve">核准</string>
     <string name="join_request_title">%1$s 想要加入</string>
-    <string name="join_request_match">請確認螢幕上顯示的是此代碼：</string>
+    <string name="join_request_match">如果對方螢幕上顯示此代碼，請核准：</string>
     <string name="onboarding_add_device">新增裝置</string>
     <string name="onboarding_tagline">你的音樂，隨處可聽</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>

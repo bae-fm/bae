@@ -226,7 +226,7 @@
     <string name="members_remove_confirm_body">%1$s pierde accesul la această bibliotecă.</string>
     <string name="join_request_approve">Aprobă</string>
     <string name="join_request_title">%1$s vrea să se alăture</string>
-    <string name="join_request_match">Asigură-te că este afișat acest cod:</string>
+    <string name="join_request_match">Aprobă dacă ecranul persoanei arată acest cod:</string>
     <string name="onboarding_add_device">Adaugă dispozitiv</string>
     <string name="onboarding_tagline">Muzica ta, oriunde</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>

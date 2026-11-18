@@ -860,175 +860,175 @@
         }
       }
     },
-    "Make sure this code is showing:" : {
-      "comment" : "Join request sheet: asks the admin to check the requester's screen shows the same code.",
+    "Approve them if their screen shows this code:" : {
+      "comment" : "Join request sheet: the line above the number the requester's screen should show; the admin approves when the numbers match.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تأكد من ظهور هذا الرمز:"
+            "value" : "وافق إذا كانت شاشته تعرض هذا الرمز:"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Уверете се, че този код се показва:"
+            "value" : "Одобрете, ако екранът му показва този код:"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ujistěte se, že se zobrazuje tento kód:"
+            "value" : "Schvalte, pokud se na jeho obrazovce zobrazuje tento kód:"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontrollér, at denne kode vises:"
+            "value" : "Godkend, hvis personens skærm viser denne kode:"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vergewissere dich, dass dieser Code angezeigt wird:"
+            "value" : "Genehmige, wenn der Bildschirm der Person diesen Code zeigt:"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Βεβαιωθείτε ότι εμφανίζεται αυτός ο κωδικός:"
+            "value" : "Εγκρίνετε αν στην οθόνη του εμφανίζεται αυτός ο κωδικός:"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Make sure this code is showing:"
+            "value" : "Approve them if their screen shows this code:"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asegúrate de que se muestre este código:"
+            "value" : "Aprueba si su pantalla muestra este código:"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varmista, että tämä koodi näkyy:"
+            "value" : "Hyväksy, jos hänen näytöllään on tämä koodi:"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Assurez-vous que ce code s’affiche :"
+            "value" : "Approuvez si son écran affiche ce code :"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ודא שהקוד הזה מוצג:"
+            "value" : "אשר אם במסך שלו מוצג הקוד הזה:"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Provjerite prikazuje li se ovaj kôd:"
+            "value" : "Odobrite ako njegov zaslon prikazuje ovaj kôd:"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Győződj meg róla, hogy ez a kód látható:"
+            "value" : "Hagyd jóvá, ha a képernyőjén ez a kód látszik:"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Assicurati che sia mostrato questo codice:"
+            "value" : "Approva se il suo schermo mostra questo codice:"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このコードが表示されていることを確認してください："
+            "value" : "相手の画面にこのコードが表示されている場合は承認してください："
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 코드가 표시되어 있는지 확인하세요:"
+            "value" : "상대방 화면에 이 코드가 표시되어 있다면 승인하세요:"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pass på at denne koden vises:"
+            "value" : "Godkjenn hvis personens skjerm viser denne koden:"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controleer of deze code wordt getoond:"
+            "value" : "Keur goed als het scherm van die persoon deze code toont:"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Upewnij się, że widać ten kod:"
+            "value" : "Zatwierdź, jeśli na jego ekranie widać ten kod:"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Confirme que este código está aparecendo:"
+            "value" : "Aprove se a tela da pessoa mostrar este código:"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Confirme que este código está a aparecer:"
+            "value" : "Aprove se o ecrã da pessoa mostrar este código:"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asigură-te că este afișat acest cod:"
+            "value" : "Aprobă dacă ecranul persoanei arată acest cod:"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uistite sa, že sa zobrazuje tento kód:"
+            "value" : "Schváľte, ak sa na jeho obrazovke zobrazuje tento kód:"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se till att den här koden visas:"
+            "value" : "Godkänn om personens skärm visar den här koden:"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kodun göründüğünden emin olun:"
+            "value" : "Ekranında bu kod görünüyorsa onaylayın:"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переконайтеся, що показано цей код:"
+            "value" : "Схваліть, якщо на його екрані показано цей код:"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请确认屏幕上显示的是此代码："
+            "value" : "如果对方屏幕上显示此代码，请批准："
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "請確認螢幕上顯示的是此代碼："
+            "value" : "如果對方螢幕上顯示此代碼，請核准："
           }
         }
       }

@@ -939,7 +939,7 @@ struct JoinRequestSheet: View {
     var body: some View {
         MacSheet(
             "\(name) wants to join",
-            message: "Make sure this code is showing:",
+            message: "Approve them if their screen shows this code:",
             width: 400
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
