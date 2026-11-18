@@ -2,6 +2,7 @@
 //! pipeline, and pause state.
 
 use super::*;
+use tracing::warn;
 
 /// Whether a storage setup running `step` is past its point of no return:
 /// creating the library in storage, or recording changed access. From there

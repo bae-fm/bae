@@ -15,7 +15,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use thiserror::Error;
-use tracing::{debug, warn};
 
 #[cfg(desktop)]
 use crate::save::SaveService;

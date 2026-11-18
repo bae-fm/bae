@@ -2,7 +2,7 @@
 
 use super::*;
 use bae_util::timestamp::StoredTimestamp as _;
-use tracing::info;
+use tracing::{debug, info, warn};
 
 /// A hidden file bae writes into every output folder — export or save — naming
 /// the release id. It is what lets a re-run safely replace a prior bae output of

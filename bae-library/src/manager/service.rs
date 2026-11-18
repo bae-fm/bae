@@ -1,4 +1,5 @@
 use super::*;
+use tracing::warn;
 
 /// The manager's background tasks, and the signal that ends them and the
 /// subscriptions [`LibraryManager::until_closed`] made.
