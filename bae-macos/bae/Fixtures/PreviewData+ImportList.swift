@@ -70,13 +70,15 @@ extension PreviewData {
         "group:\(hex(key.watchedFolderPath)):\(hex(key.relativeFolder))"
     }
 
-    /// The header of the group `key` names.
+    /// The header of the group `key` names. `showsNoMember` is what core
+    /// sends for a folded header or one that keeps no release.
     static func groupHeader(
         key: BridgeFolderReleaseDecisionKey,
         name: String,
         expanded: Bool = true,
         combinable: Bool = false,
-        entryCount: UInt32
+        entryCount: UInt32,
+        showsNoMember: Bool = false
     ) -> BridgeImportGroupHeader {
         BridgeImportGroupHeader(
             stableKey: groupHeaderStableKey(key),
@@ -87,7 +89,8 @@ extension PreviewData {
             ),
             watchedFolderPath: key.watchedFolderPath,
             expanded: expanded,
-            entryCount: entryCount
+            entryCount: entryCount,
+            showsNoMember: showsNoMember
         )
     }
 
@@ -97,7 +100,8 @@ extension PreviewData {
         name: String,
         expanded: Bool = true,
         combinable: Bool = false,
-        entryCount: UInt32
+        entryCount: UInt32,
+        showsNoMember: Bool = false
     ) -> BridgeImportListItem {
         .groupHeader(
             header: groupHeader(
@@ -105,7 +109,8 @@ extension PreviewData {
                 name: name,
                 expanded: expanded,
                 combinable: combinable,
-                entryCount: entryCount
+                entryCount: entryCount,
+                showsNoMember: showsNoMember
             )
         )
     }

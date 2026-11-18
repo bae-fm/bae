@@ -36,13 +36,14 @@ struct ImportListPinnedHeaderTests {
         )
     }
 
-    @Test("a folded header on top ends its group")
+    @Test("a header that shows no member on top ends its group")
     func foldedHeaderEndsItsGroup() {
         let folded = PreviewData.groupHeader(
             key: Self.header.group.key,
             name: "Group",
             expanded: false,
-            entryCount: 79
+            entryCount: 79,
+            showsNoMember: true
         )
         #expect(
             ImportListPinnedHeader.over(top: .groupHeader(header: folded))?.ends

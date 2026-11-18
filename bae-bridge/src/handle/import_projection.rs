@@ -445,6 +445,7 @@ mirror_struct! {
 impl crate::types::BridgeImportGroupHeader {
     pub(crate) fn from_core(header: bae_import::ImportGroupHeader) -> Self {
         let stable_key = header.stable_key();
+        let shows_no_member = header.shows_no_member();
         let bae_import::ImportGroupHeader { group, watched_folder_path, expanded, entry_count } =
             header;
         Self {
@@ -457,6 +458,7 @@ impl crate::types::BridgeImportGroupHeader {
             watched_folder_path: coven::path_bytes(&watched_folder_path),
             expanded,
             entry_count,
+            shows_no_member,
         }
     }
 }

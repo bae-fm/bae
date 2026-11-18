@@ -3,8 +3,9 @@ import BaeKit
 
 /// The group header pinned over the top of the import list: the header of
 /// the group the row on top is listed under. Each member carries its group's
-/// header and whether it is the last row the list shows of the group, so the
-/// header is known from the row on top alone, whichever rows the list holds.
+/// header and whether it is the last row the list shows of the group, and
+/// each header whether the list shows no member under it, so the header is
+/// known from the row on top alone, whichever rows the list holds.
 struct ImportListPinnedHeader: Equatable {
     let header: BridgeImportGroupHeader
     /// Whether the row on top is the last row the list shows of its group:
@@ -18,12 +19,7 @@ struct ImportListPinnedHeader: Equatable {
     {
         switch item {
         case .groupHeader(let header):
-            // An open header that counts any release has its releases
-            // listed under it.
-            ImportListPinnedHeader(
-                header: header,
-                ends: !header.expanded || header.entryCount == 0
-            )
+            ImportListPinnedHeader(header: header, ends: header.showsNoMember)
         case .candidate(_, _, let group?):
             ImportListPinnedHeader(header: group.header, ends: group.last)
         case .candidate, .invalid, nil:

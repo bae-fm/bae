@@ -123,6 +123,13 @@ impl ImportGroupHeader {
     pub fn stable_key(&self) -> String {
         group_stable_key(&self.group.key)
     }
+
+    /// Whether the list shows no member under the header, so the header's
+    /// row is the last row the list shows of its group: the list folds the
+    /// group shut, or keeps none of its releases.
+    pub fn shows_no_member(&self) -> bool {
+        !self.expanded || self.entry_count == 0
+    }
 }
 
 /// The stable key of a group's header item.

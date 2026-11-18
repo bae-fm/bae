@@ -1337,8 +1337,9 @@ search, however few rows the search finds, and its count is a live query of its
 own, so the screen draws a search's rows as its window arrives and its "N
 of M" and length when the count arrives, showing the placeholder in their place
 meanwhile. A member of a group carries its group's header and whether it is
-the group's last member the list shows, so the screen pins the header of the
-row on top, and lifts it with the group's last row, whatever rows it has
+the group's last member the list shows, and a header carries whether the list
+shows no member under it, which holds when the list folds the group shut or
+keeps none of its releases, so the screen pins the header of the row on top, and lifts it with the group's last row, whatever rows it has
 loaded, and no read counts the rows above the window to find it. Found reads its window
 past the members of the groups it folds shut, so with every group folded the
 window costs about the headers it shows; and whether a header offers to read its folder

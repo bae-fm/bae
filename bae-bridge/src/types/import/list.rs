@@ -64,6 +64,10 @@ pub struct BridgeImportGroupHeader {
     pub expanded: bool,
     /// How many entries the group holds in this tab, after the filter.
     pub entry_count: u32,
+    /// Whether the list shows no member under the header, so the header's
+    /// row is the last row the list shows of its group: the list folds the
+    /// group shut, or keeps none of its releases.
+    pub shows_no_member: bool,
 }
 
 /// A release's place in the group it is listed under: the group's header,

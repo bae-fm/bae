@@ -55,13 +55,12 @@ async fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
     let read = lib.read(list).await;
     assert_eq!(sequence(&read), ["group Group"]);
     assert_eq!(read.count.rows, 1);
-    let ImportListItem::GroupHeader(crate::ImportGroupHeader { expanded, entry_count, .. }) =
-        &read.windows[0].rows[0].0
-    else {
+    let ImportListItem::GroupHeader(header) = &read.windows[0].rows[0].0 else {
         panic!("the header is the one item");
     };
-    assert!(!expanded);
-    assert_eq!(*entry_count, 2, "the header still says how much is folded away");
+    assert!(!header.expanded);
+    assert_eq!(header.entry_count, 2, "the header still says how much is folded away");
+    assert!(header.shows_no_member(), "the folded header is its group's last row");
 
     tables
         .set_import_list_group_folded(list, lib.group_key("Group"), false, Vec::new())
