@@ -373,7 +373,7 @@ extension ImportCandidateTablePlaceTests {
             makeHandle: { _ in source.handle }
         )
         slot.startLoad()
-        try await Wait.until { slot.list?.idAt(30) != nil }
+        try await Wait.until { slot.list?.idAt(0) != nil }
         return slot
     }
 
