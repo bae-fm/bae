@@ -44,6 +44,10 @@ struct ImportSheetUnboundMenu: View {
                 .contentShape(Rectangle())
         }
         .onHover { hovering = $0 }
+        .accessibilityLabel(String(localized: "Audio file"))
+        .accessibilityValue(
+            Text(localizedCoreString("ui.import.sheet.choose_audio"))
+        )
     }
 }
 

@@ -32,6 +32,7 @@ struct ReleaseMetadataTrackRow: View {
             CommittedTextField(
                 placeholder: localizedCoreString("ui.import.slots.untitled"),
                 value: track.title,
+                name: localizedCoreString("ui.import.mapping.column.title"),
                 chrome: .inline,
                 fillsWidth: true,
                 editingCommands: editingCommands,
@@ -153,16 +154,10 @@ struct TrackLengthText: View {
     var body: some View {
         HStack(spacing: ThemeSpace.line) {
             Text(DurationClock.label(length))
-                .accessibilityLabel(
-                    localizedCoreString("ui.import.slots.column.length")
-                )
             if let listedLength {
                 Text(DurationClock.label(listedLength))
                     .foregroundStyle(Theme.warning)
                     .help(
-                        localizedCoreString("ui.import.mapping.listed_length")
-                    )
-                    .accessibilityLabel(
                         localizedCoreString("ui.import.mapping.listed_length")
                     )
             }

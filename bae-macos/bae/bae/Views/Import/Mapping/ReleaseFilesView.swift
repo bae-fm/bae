@@ -76,6 +76,8 @@ struct ReleaseFilesView: View {
         }
     }
 
+    /// A file that opens: a button named by the file, with its size beside
+    /// the name.
     private func openable(name: String, size: String, id: String) -> some View {
         Button {
             onOpenDocument(name, id)
@@ -83,6 +85,7 @@ struct ReleaseFilesView: View {
             content(name: name, size: size)
         }
         .buttonStyle(.accentPlain)
+        .accessibilityLabel(Text(verbatim: name))
     }
 
     private func content(name: String, size: String) -> some View {

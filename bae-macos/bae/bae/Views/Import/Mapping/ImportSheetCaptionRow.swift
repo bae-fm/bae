@@ -40,10 +40,13 @@ struct ImportSheetCaptionRow: View {
             }
             formatTag
             nameButton
+            // The arrow joins the sheet to its audio for the eye; the
+            // pop-up after it says what it is.
             Image(systemName: "arrow.forward")
                 .themeIcon(.small)
                 .foregroundStyle(.tertiary)
                 .fixedSize()
+                .accessibilityHidden(true)
             switch layout.summary {
             case .text:
                 if layout.unbound.isEmpty {
@@ -102,6 +105,8 @@ struct ImportSheetCaptionRow: View {
                 .contentShape(Rectangle())
         }
         .onHover { hoveringBound = $0 }
+        .accessibilityLabel(String(localized: "Audio file"))
+        .accessibilityValue(Text(verbatim: sheet.bound.descriptionText))
     }
 
     /// A bound reference as its submenu names it: what the sheet asked for,
@@ -215,6 +220,8 @@ struct ImportSheetDiscMenu: View {
         .fixedSize()
         .onHover { hovering = $0 }
         .help(localizedCoreString("ui.import.sheet.disc_help"))
+        .accessibilityLabel(String(localized: "Disc"))
+        .accessibilityValue(Text(verbatim: assignmentText))
     }
 
     private var assignmentText: String {
