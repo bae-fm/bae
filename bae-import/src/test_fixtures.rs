@@ -37,18 +37,16 @@ pub fn read_fixture_text(path: impl AsRef<Path>) -> String {
 }
 
 /// Copy the files of bae-audio's CUE/FLAC album, a FLAC image of a disc with
-/// its sheet and two tracks as FLAC files of their own, to the folder at
-/// `to` in `folder`.
+/// its sheet and two tracks as FLAC files of their own, to `folder`.
 #[cfg(test)]
-pub(crate) fn copy_cue_flac_album(folder: &TestFolder, to: impl AsRef<Path>) {
-    let to = folder.create_folder(to);
+pub(crate) fn copy_cue_flac_album(folder: &TestFolder) {
     for name in [
         "02 Test Artist - Track Two (White Noise).flac",
         "03 Test Artist - Track Three (Brown Noise).flac",
         "Test Album.cue",
         "Test Album.flac",
     ] {
-        folder.copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(name), to.join(name));
+        folder.copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(name), name);
     }
 }
 
@@ -92,15 +90,6 @@ pub fn tagged_flac_bytes(title: &str) -> Vec<u8> {
     tagged.insert_tag(tag);
     tagged.save_to(&mut flac, WriteOptions::default()).expect("write tags");
     flac.into_inner()
-}
-
-/// Write one tagged FLAC to `filename` in `folder` (copied from the test
-/// fixture) with the given `title`, so an Unknown-identity import can map it
-/// from file metadata. Returns the on-disk bytes after tagging.
-pub fn write_tagged_flac(folder: &TestFolder, filename: &str, title: &str) -> Vec<u8> {
-    let bytes = tagged_flac_bytes(title);
-    folder.write(filename, &bytes);
-    bytes
 }
 
 /// Copy the fixture `source` to `dest` in `folder`, stamp Vorbis-comment tags

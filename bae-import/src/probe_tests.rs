@@ -56,7 +56,7 @@ fn changed_file_bytes_do_not_replace_scanned_durations() {
 fn a_cue_carved_container_yields_a_row_per_slice() {
     let tmp = TestFolder::new();
     let dir = tmp.path();
-    crate::test_fixtures::copy_cue_flac_album(&tmp, ".");
+    crate::test_fixtures::copy_cue_flac_album(&tmp);
 
     let files = categorize(dir);
     let sheets = files.carving_sheets();
@@ -129,7 +129,7 @@ fn descending_cue_track_boundaries_are_rejected() {
 fn a_stored_zero_channel_count_refuses_the_sheet() {
     let tmp = TestFolder::new();
     let dir = tmp.path();
-    crate::test_fixtures::copy_cue_flac_album(&tmp, ".");
+    crate::test_fixtures::copy_cue_flac_album(&tmp);
     let mut files = categorize(dir);
     let sheet_id = files.bound_sheets()[0].file.relative_path.clone();
     let audio_id = files.bound_sheets()[0].audio_files[0].1.relative_path.clone();
