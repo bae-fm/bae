@@ -124,6 +124,11 @@ enum ShotRenderer {
     /// the screen capture takes only what is on a display, and would cut off
     /// or refuse a window past a display's edge, or a title bar under the
     /// menu bar.
+    ///
+    /// AppKit can shrink a titled window that is larger than its display
+    /// as it sizes it, so a window whose content is no longer the
+    /// scene's size did not fit either, and its capture would draw the scene
+    /// at a size its board never has.
     private static func place(_ window: NSWindow, scene: ShotScene) throws {
         guard
             let room = NSScreen.screens.map(\.visibleFrame)
@@ -132,9 +137,16 @@ enum ShotRenderer {
                 })
         else { throw ShotError.noScreen(scene.id) }
         guard
+            window.contentView?.frame.size == scene.size,
             window.frame.width <= room.width,
             window.frame.height <= room.height
-        else { throw ShotError.windowTooLarge(scene.id, window.frame.size) }
+        else {
+            throw ShotError.windowTooLarge(
+                scene.id,
+                content: scene.size,
+                room: room.size
+            )
+        }
         window.setFrameOrigin(
             NSPoint(x: room.minX, y: room.maxY - window.frame.height)
         )
@@ -340,7 +352,7 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotDrawn(String, CGRect)
     case windowNotKey(String)
     case noScreen(String)
-    case windowTooLarge(String, CGSize)
+    case windowTooLarge(String, content: CGSize, room: CGSize)
     case unknownSelection(String, String)
 
     var description: String {
@@ -361,8 +373,10 @@ enum ShotError: Error, CustomStringConvertible {
             "another app kept the focus, so scene \(id) would draw inactive"
         case .noScreen(let id):
             "no display to place scene \(id)'s window against"
-        case .windowTooLarge(let id, let size):
-            "scene \(id)'s window, \(size), is larger than any display's free area"
+        case .windowTooLarge(let id, let content, let room):
+            "scene \(id)'s window, with \(content) points of content and its "
+                + "title bar, fits no display's free area: the largest is "
+                + "\(room) points"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }
