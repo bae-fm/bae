@@ -537,8 +537,8 @@
 
     <!-- A byte count: %1$s is the number, already in the locale’s digits -->
     <plurals name="file_size_bytes">
-        <item quantity="one">%1$s byte</item>
-        <item quantity="other">%1$s bytes</item>
+        <item quantity="one">%1$s B</item>
+        <item quantity="other">%1$s B</item>
     </plurals>
     <string name="file_size_kilobytes">%1$s KB</string>
     <string name="file_size_megabytes">%1$s MB</string>

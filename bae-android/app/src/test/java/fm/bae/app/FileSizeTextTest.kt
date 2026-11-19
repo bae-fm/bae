@@ -32,9 +32,9 @@ class FileSizeTextTest {
 
     @Test
     fun smallCounts() {
-        assertEquals("0 bytes", size(0))
-        assertEquals("999 bytes", size(999))
-        assertEquals("1 byte", size(1))
+        assertEquals("0 B", size(0))
+        assertEquals("999 B", size(999))
+        assertEquals("1 B", size(1))
         assertEquals("1 KB", size(1_000))
     }
 
