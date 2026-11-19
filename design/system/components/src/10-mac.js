@@ -303,6 +303,11 @@
   var MacProgress = Progress('bae-m');
   var AndroidProgress = Progress('bae-a');
 
+  // A labelled control in a sheet's form: the label above the control and its note under it, all on the form's one left edge (`label`, `note`; the control is the child).
+  function MacFormField(props) {
+    return h('div', { className: 'bae-m-formfield' }, h('span', { className: 'bae-m-formfield-label' }, props.label), props.children, props.note ? h('div', { className: 'bae-m-formfield-note' }, props.note) : null);
+  }
+
   function MacNote(props) {
     return h('div', { className: 'bae-m-note' }, props.children);
   }

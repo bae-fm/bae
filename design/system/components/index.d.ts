@@ -61,6 +61,8 @@ export declare function MacButton(props: MacButtonProps): React.ReactElement;
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
 export interface MacTextFieldProps { label?: string; value?: string; placeholder?: string; code?: boolean; state?: 'normal' | 'focused' | 'off' | 'error'; secret?: boolean; note?: string; error?: string; labelHidden?: boolean; labelWidth?: number | 'auto'; children?: React.ReactNode }
 export declare function MacTextField(props: MacTextFieldProps): React.ReactElement;
+/** A labelled control in a sheet's form: label above the control (the child), note under it, all on one left edge. */
+export declare function MacFormField(props: { label: string; note?: string; children?: React.ReactNode }): React.ReactElement;
 
 /** One choice of several, as a row of a MacBox. */
 export interface MacRadioProps { label: string; note?: string; checked?: boolean; onClick?: () => void }

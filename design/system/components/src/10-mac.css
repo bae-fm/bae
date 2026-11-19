@@ -159,3 +159,8 @@
 .bae-plainbtn { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
 .bae-m-bareinput { flex: 1; min-width: 0; margin: 0; padding: 0; border: 0; background: none; outline: none; color: inherit; font: inherit; }
 .bae-m-bareinput::placeholder { color: var(--text-tertiary); }
+.bae-m-formfield { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-inline); }
+.bae-m-formfield > :not(.bae-m-formfield-label):not(.bae-m-formfield-note), .bae-m-formfield > .sc-host-x > * { align-self: flex-start; }
+.bae-m-formfield > .bae-m-field, .bae-m-formfield > .sc-host-x > .bae-m-field { align-self: stretch; }
+.bae-m-formfield-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-formfield-note { font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }

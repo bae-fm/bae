@@ -3076,7 +3076,8 @@ playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
 starting on *Only me*; a blank name cannot be made, by the rule that refuses a
-blank library or profile name. On macOS the side pane's Playlists tab lists
+blank library or profile name. On macOS the sheets that make and edit a
+playlist put each label above its control, on one left edge. On macOS the side pane's Playlists tab lists
 the playlists, each with its picture, name, track count and who sees it, and
 a + button at the start of the pane's top, *New playlist…* to screen readers,
 opens the sheet for a new one; clicking a playlist
