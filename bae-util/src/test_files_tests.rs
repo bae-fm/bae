@@ -34,6 +34,13 @@ fn a_full_path_through_the_resolved_folder_is_inside() {
 }
 
 #[test]
+fn the_folder_s_own_path_joins_to_the_folder_itself() {
+    let folder = TestFolder::new();
+    assert_eq!(folder.join(folder.path()), folder.path());
+    assert_eq!(folder.join(""), folder.path());
+}
+
+#[test]
 fn a_fixture_reads_from_the_repo() {
     let manifest = read_fixture(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
     assert!(String::from_utf8(manifest).unwrap().contains("name = \"bae-util\""));

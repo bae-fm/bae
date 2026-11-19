@@ -161,8 +161,10 @@ impl TestFolder {
         self.folder.path()
     }
 
-    /// The full path of `path` in the folder. Panics when `path` leaves the
-    /// folder.
+    /// The full path of `path` in the folder: the folder itself for the
+    /// folder's own path, with no separator after it, since Windows opens
+    /// `folder\` as a path not found and `folder` as a directory. Panics
+    /// when `path` leaves the folder.
     pub fn join(&self, path: impl AsRef<Path>) -> PathBuf {
         let path = path.as_ref();
         let relative = if path.is_absolute() {
@@ -185,6 +187,9 @@ impl TestFolder {
             "{} leaves the test folder",
             path.display()
         );
+        if relative.as_os_str().is_empty() {
+            return self.folder.path().to_path_buf();
+        }
         self.folder.path().join(relative)
     }
 
