@@ -1,9 +1,4 @@
 use super::*;
-use sha1::Sha1;
-
-fn sha1(data: &[u8]) -> Vec<u8> {
-    Sha1::digest(data).to_vec()
-}
 
 fn hex(s: &str) -> Vec<u8> {
     let s: String = s.split_whitespace().collect();
@@ -34,7 +29,8 @@ fn matches_rfc5054_appendix_b() {
          37089E6F 9C6059F3 88838E7A 00030B33 1EB76840 910440B1 B27AAEAE \
          EB4012B7 D7665238 A8E3FB00 4B117B58");
 
-    let mut client = SrpClient::new(group, sha1, b"alice", b"password123", a);
+    let suite = SrpSuite { group, hash: sha1, session_key: SessionKey::Hash };
+    let mut client = SrpClient::new(suite, b"alice", b"password123", a);
 
     // A matches the published value.
     assert_eq!(
@@ -66,7 +62,7 @@ fn matches_rfc5054_appendix_b() {
 #[test]
 fn homekit_group_produces_a_public_value() {
     let a = BigUint::from_bytes_be(&[0x42u8; 32]);
-    let client = SrpClient::new(SrpGroup::rfc5054_3072(), sha512, b"Pair-Setup", b"3939", a);
+    let client = SrpClient::new(SrpSuite::homekit(), b"Pair-Setup", b"3939", a);
     let a_pub = client.public_a();
     // A is a 3072-bit value: at most 384 bytes, and not zero.
     assert!(!a_pub.is_empty() && a_pub.len() <= 384);

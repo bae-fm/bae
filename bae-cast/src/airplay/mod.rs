@@ -10,7 +10,8 @@
 //!
 //! The sender speaks two dialects, chosen from a receiver's announced features,
 //! never probed:
-//! - **RAOP** (`_raop._tcp`): RTSP + ALAC/PCM over RTP, RSA-AES or unencrypted.
+//! - **RAOP** (`_raop._tcp`): RTSP + ALAC/PCM over RTP, RSA-AES or unencrypted,
+//!   with AirPlay 1 device verification where the receiver asks for a PIN.
 //! - **AirPlay 2** (`_airplay._tcp` with an AirPlay 2 feature bit): HomeKit
 //!   transient pairing and ChaCha20-Poly1305 packet encryption.
 //!
@@ -26,10 +27,13 @@ pub(crate) mod ap2_session;
 pub(crate) mod bplist;
 pub(crate) mod capabilities;
 pub(crate) mod crypto;
+pub(crate) mod device_verification;
 mod digest;
 pub(crate) mod discovery;
 #[cfg(test)]
 pub(crate) mod fake_receiver;
+#[cfg(test)]
+pub(crate) mod fake_verification_receiver;
 pub(crate) mod pair_verify;
 pub(crate) mod pairing;
 pub(crate) mod pairing_keys;

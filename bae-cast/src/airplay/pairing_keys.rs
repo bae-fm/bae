@@ -1,7 +1,7 @@
 //! The pairing a receiver that asked for a code and bae agreed on: the
 //! identities each later session's pair-verify proves, the password a
-//! receiver that has one asks for again on each session, and the text bae
-//! keeps them as.
+//! receiver that has one asks for again on each session, the key an AirPlay 1
+//! receiver verifies bae with, and the text bae keeps them as.
 //!
 //! bae-cast owns this text's format. Whoever keeps it stores the string by
 //! name and never reads inside it.
@@ -15,6 +15,14 @@ use super::pairing::{public_key, ED25519_PUBLIC_KEY_LEN};
 /// per receiver, so replacing one pairing touches no other.
 pub(crate) fn pairing_secret_name(receiver_id: &str) -> String {
     format!("airplay-pairing:{receiver_id}")
+}
+
+/// The name of the keychain entry in which this device keeps the key an
+/// AirPlay 1 receiver `receiver_id` verifies it with, one entry per receiver.
+/// AirPlay 1 device verification keeps another kind of pairing than AirPlay 2
+/// does, so the two never share an entry.
+pub(crate) fn verification_secret_name(receiver_id: &str) -> String {
+    format!("airplay1-verification:{receiver_id}")
 }
 
 /// Who bae is to one receiver: the pairing identifier it introduced itself
@@ -76,6 +84,45 @@ impl std::fmt::Debug for KeptPairing {
             .field("keys", &self.keys)
             .field("has_password", &self.password.is_some())
             .finish()
+    }
+}
+
+/// The Ed25519 key an AirPlay 1 receiver that verifies the device knows bae
+/// by: bae sent its public key when it paired with the PIN, and proves the
+/// key at every connection. The receiver gives back no key of its own to keep
+/// (pyatv keeps the seed alone, OwnTone the key pair). Each receiver gets a
+/// key of its own.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct VerificationKey {
+    /// The 32-byte seed of the Ed25519 key.
+    pub(crate) seed: [u8; 32],
+}
+
+impl VerificationKey {
+    /// A new key for one receiver, from a random seed.
+    pub(crate) fn new() -> Self {
+        let mut seed = [0u8; 32];
+        rand::rng().fill_bytes(&mut seed);
+        VerificationKey { seed }
+    }
+
+    /// The text bae keeps: the seed in lowercase hex.
+    pub(crate) fn encode(&self) -> String {
+        hex::encode(self.seed)
+    }
+
+    /// Read text [`Self::encode`] wrote. Any other text is malformed.
+    pub(crate) fn decode(text: &str) -> Result<Self, MalformedPairingKeys> {
+        Ok(VerificationKey { seed: fixed_field(text, "seed")? })
+    }
+}
+
+/// The seed is a secret: debug output names the public key only.
+impl std::fmt::Debug for VerificationKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VerificationKey")
+            .field("public_key", &hex::encode(public_key(&self.seed)))
+            .finish_non_exhaustive()
     }
 }
 

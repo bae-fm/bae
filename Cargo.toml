@@ -121,6 +121,7 @@ bae-views = { path = "bae-views" }
 
 # Every other external dependency.
 aes = "0.8"
+aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
 async-trait = "0.1.92"
 axum = { version = "0.8", default-features = false }
 base64 = "0.22"
@@ -132,6 +133,7 @@ chromiumoxide = "0.9"
 clap = { version = "4", features = ["derive"] }
 coreaudio-rs = { version = "0.14", default-features = false }
 cpal = "0.18.2"
+ctr = "0.9"
 ebur128 = "0.1.10"
 ed25519-dalek = { version = "3.0.0", default-features = false }
 encoding_rs = "0.8"

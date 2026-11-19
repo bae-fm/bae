@@ -20,18 +20,25 @@ use super::airplay2::TimingProtocol;
 use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
+use super::device_verification::{SessionVerification, VerificationError};
 use super::pairing::PairingError;
-use super::session::RaopSession;
+use super::session::{RaopError, RaopSession};
 use super::stream::{PcmFeed, SystemClock};
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
 pub(crate) struct RaopSink {
     receiver: IpAddr,
     rtsp_port: u16,
+    /// What each session proves bae with, for a receiver that verifies the
+    /// device.
+    verification: Option<SessionVerification>,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
     encryption: RaopEncryption,
     initial_volume: bae_playback::Volume,
+    /// The receiver as playback knows it, which a failure names when the
+    /// receiver no longer accepts this device.
+    device: CastReceiver,
     /// What the session's stream threads run under, so one that panics fails
     /// the stream.
     diagnostics: Diagnostics,
@@ -41,11 +48,13 @@ impl RaopSink {
     pub(crate) fn new(
         receiver: IpAddr,
         rtsp_port: u16,
+        verification: Option<SessionVerification>,
         encryption: RaopEncryption,
         initial_volume: bae_playback::Volume,
+        device: CastReceiver,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, rtsp_port, encryption, initial_volume, diagnostics }
+        Self { receiver, rtsp_port, verification, encryption, initial_volume, device, diagnostics }
     }
 }
 
@@ -65,13 +74,21 @@ impl AirPlaySink for RaopSink {
             &self.diagnostics,
             self.receiver,
             self.rtsp_port,
+            self.verification.as_ref(),
             PcmFeed::new(source, wake),
             failed,
             cipher,
             self.initial_volume,
             Arc::new(SystemClock::new()),
         )
-        .map_err(|e| AudioError::AirPlayRefused(e.to_string()))?;
+        .map_err(|error| match error {
+            // The receiver no longer accepts the key bae kept: casting to it
+            // again pairs anew.
+            RaopError::Verification(VerificationError::NoLongerKnown) => {
+                AudioError::AirPlayPairingLost(self.device.clone())
+            }
+            error => AudioError::AirPlayRefused(error.to_string()),
+        })?;
 
         Ok(Arc::new(session))
     }

@@ -2,9 +2,11 @@ use super::*;
 use crate::airplay::fake_receiver::{
     listen_for_code_pairing, CodeReceiver, CodeRefusal, ReceiverCode,
 };
+use crate::airplay::fake_verification_receiver::{listen_for_verification, VerificationReceiver};
+use crate::airplay::pairing::public_key;
 use crate::renderer::discovery::reported::ReportedRenderer;
 use crate::renderer::{RendererDiscovery, RendererServiceType};
-use crate::tests::{set_casting, start_discovery, test_controller};
+use crate::tests::{no_code, set_casting, start_discovery, test_controller};
 use bae_playback::{PlaybackProgress, RemotePlayback};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::VecDeque;
@@ -57,31 +59,63 @@ fn reported_receiver(port: u16, flags: &str) -> ReportedRenderer {
     }
 }
 
-/// A controller with casting on and the picker open, listing `receiver`
-/// served at its port with status `flags`.
-struct Casting {
+/// The AirPlay 1 receiver's id, from the MAC that begins its RAOP name.
+const RAOP_RECEIVER: &str = "001122334455";
+
+/// A RAOP service at `127.0.0.1:port` whose status flags are `flags`.
+fn reported_raop_receiver(port: u16, flags: &str) -> ReportedRenderer {
+    ReportedRenderer {
+        service_type: RendererServiceType::Raop,
+        instance_name: format!("{RAOP_RECEIVER}@Studio"),
+        addr: "127.0.0.1".to_string(),
+        port,
+        txt: [("et", "0"), ("sf", flags)]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+    }
+}
+
+/// A controller with casting on and the picker open, listing one receiver
+/// that `receiver` serves.
+struct Casting<R> {
     runtime: tokio::runtime::Runtime,
     controller: Arc<CastController>,
     services: bae_app::AppServices,
-    receiver: Arc<Mutex<CodeReceiver>>,
+    receiver: Arc<Mutex<R>>,
+    /// The receiver's id, which the cast names.
+    id: &'static str,
     _tmp: tempfile::TempDir,
 }
 
-impl Casting {
-    fn to(receiver: CodeReceiver, flags: &str) -> Self {
+impl<R> Casting<R> {
+    /// List the receiver `reported` gives for the port it is served at.
+    fn listing(
+        id: &'static str,
+        (port, receiver): (u16, Arc<Mutex<R>>),
+        reported: impl FnOnce(u16) -> ReportedRenderer,
+    ) -> Self {
         let (runtime, controller, services, tmp) = test_controller(RendererDiscovery::reported());
         set_casting(&runtime, &controller, &services, true);
         start_discovery(&runtime, &controller);
-        let (port, receiver) = listen_for_code_pairing(receiver);
-        controller.renderer_found(reported_receiver(port, flags));
-        Casting { runtime, controller, services, receiver, _tmp: tmp }
+        controller.renderer_found(reported(port));
+        Casting { runtime, controller, services, receiver, id, _tmp: tmp }
     }
 
     fn cast(&self, prompt: Arc<dyn CodePrompt>) -> Result<(), CastError> {
         self.runtime.block_on(async {
-            tokio::time::timeout(HANG_GUARD, self.controller.cast_to(RECEIVER, prompt))
+            tokio::time::timeout(HANG_GUARD, self.controller.cast_to(self.id, prompt))
                 .await
                 .expect("the cast ends")
+        })
+    }
+}
+
+impl Casting<CodeReceiver> {
+    /// An AirPlay 2 receiver with status `flags`.
+    fn to(receiver: CodeReceiver, flags: &str) -> Self {
+        Self::listing(RECEIVER, listen_for_code_pairing(receiver), |port| {
+            reported_receiver(port, flags)
         })
     }
 
@@ -329,4 +363,136 @@ fn a_cast_called_off_while_the_prompt_waits_drops_the_prompt() {
     assert!(matches!(cast, Err(CastError::CalledOff)), "{cast:?}");
     assert!(prompt.dropped.load(Ordering::Acquire), "the prompt's future was dropped");
     assert_eq!(casting.kept(), None);
+}
+
+impl Casting<VerificationReceiver> {
+    /// An AirPlay 1 receiver with status `flags`.
+    fn to_raop(receiver: VerificationReceiver, flags: &str) -> Self {
+        Self::listing(RAOP_RECEIVER, listen_for_verification(receiver), |port| {
+            reported_raop_receiver(port, flags)
+        })
+    }
+
+    /// The key this device kept for the receiver.
+    fn kept_key(&self) -> Option<VerificationKey> {
+        self.controller
+            .device_secrets
+            .device_secret(&verification_secret_name(RAOP_RECEIVER))
+            .unwrap()
+            .map(|text| VerificationKey::decode(&text).unwrap())
+    }
+
+    /// How many requests the receiver took to `uri`.
+    fn count(&self, uri: &str) -> usize {
+        self.receiver.lock().unwrap().count(uri)
+    }
+}
+
+/// An AirPlay 1 receiver that verifies the device and asks for its PIN once:
+/// the first cast asks for the PIN and keeps the key the receiver took; the
+/// next cast verifies that key and asks nothing.
+#[test]
+fn an_airplay1_receiver_asks_for_its_pin_on_the_first_cast_only() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&["0482"]), "0x200");
+    let prompt = ScriptedPrompt::answering(&["0482"]);
+    casting.cast(prompt.clone()).expect("the receiver took the PIN");
+    assert_eq!(prompt.asked(), [first_pin(CodeAsked::FirstPairing)]);
+    let kept = casting.kept_key().expect("the cast kept the key");
+    assert_eq!(casting.receiver.lock().unwrap().paired, [public_key(&kept.seed)]);
+    let this_device = casting.runtime.block_on(casting.services.this_device_name()).unwrap();
+    assert_eq!(
+        casting.receiver.lock().unwrap().shown_beside,
+        Some(this_device),
+        "the receiver shows this device's name beside the PIN"
+    );
+
+    let again = ScriptedPrompt::answering(&[]);
+    casting.cast(again.clone()).expect("the kept key verifies");
+    assert_eq!(again.asked(), []);
+    assert_eq!(casting.kept_key(), Some(kept));
+    assert_eq!(casting.count("/pair-verify"), 2, "the second cast verified the kept key");
+}
+
+/// An AirPlay 1 receiver that no longer knows the kept key asks for the PIN
+/// with why, and the new key replaces the kept one.
+#[test]
+fn an_airplay1_receiver_that_forgot_the_key_asks_again() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&["1111", "2222"]), "0x200");
+    casting.cast(ScriptedPrompt::answering(&["1111"])).expect("the first pairing");
+    let first = casting.kept_key().unwrap();
+    casting.receiver.lock().unwrap().forget_paired();
+
+    let prompt = ScriptedPrompt::answering(&["2222"]);
+    casting.cast(prompt.clone()).expect("the new pairing");
+    assert_eq!(prompt.asked(), [first_pin(CodeAsked::PairingLost)]);
+    assert_ne!(casting.kept_key().unwrap(), first, "the new key replaced the old");
+}
+
+/// An AirPlay 1 receiver that asks for a PIN on every cast asks on each, and
+/// bae keeps nothing of it on this device.
+#[test]
+fn an_airplay1_receiver_that_asks_every_cast_keeps_nothing() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&["1111", "2222"]), "0x8");
+    for pin in ["1111", "2222"] {
+        let prompt = ScriptedPrompt::answering(&[pin]);
+        casting.cast(prompt.clone()).expect("the receiver took the PIN");
+        assert_eq!(prompt.asked(), [first_pin(CodeAsked::EveryCast)]);
+    }
+    assert_eq!(casting.kept_key(), None);
+}
+
+/// A wrong PIN asks again with what was wrong, after a new PIN start, which
+/// shows a new PIN.
+#[test]
+fn a_wrong_airplay1_pin_asks_again_after_a_new_pin() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&["1111", "2222"]), "0x200");
+    let prompt = ScriptedPrompt::answering(&["9999", "2222"]);
+    casting.cast(prompt.clone()).expect("the second PIN pairs");
+    assert_eq!(
+        prompt.asked(),
+        [
+            first_pin(CodeAsked::FirstPairing),
+            CodeRequest {
+                code: AIRPLAY_PIN,
+                why: CodeAsked::FirstPairing,
+                last_try: Some(CodeRefused::WrongCode),
+            },
+        ]
+    );
+    assert_eq!(casting.count("/pair-pin-start"), 2);
+    assert!(casting.kept_key().is_some());
+}
+
+/// An AirPlay 1 receiver whose advertisement asks for nothing but that
+/// answers OPTIONS with 403 asks for device verification, as one whose
+/// flags ask for it once.
+#[test]
+fn a_403_to_options_asks_for_device_verification() {
+    let mut receiver = VerificationReceiver::new(&["4821"]);
+    receiver.forbids_unverified = true;
+    let casting = Casting::to_raop(receiver, "0x4");
+    let prompt = ScriptedPrompt::answering(&["4821"]);
+    casting.cast(prompt.clone()).expect("the receiver took the PIN");
+    assert_eq!(prompt.asked(), [first_pin(CodeAsked::FirstPairing)]);
+    assert!(casting.kept_key().is_some());
+}
+
+/// An AirPlay 1 receiver that asks for nothing takes OPTIONS, and the cast
+/// asks for nothing and keeps nothing.
+#[test]
+fn an_airplay1_receiver_that_asks_for_nothing_pairs_not_at_all() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&[]), "0x4");
+    casting.cast(no_code()).expect("the cast moves playback");
+    assert_eq!(casting.kept_key(), None);
+    assert_eq!(casting.count("/pair-pin-start") + casting.count("/pair-verify"), 0);
+}
+
+/// An AirPlay 1 receiver that asks for a password is refused before
+/// connecting, since bae sends none.
+#[test]
+fn an_airplay1_receiver_with_a_password_is_refused() {
+    let casting = Casting::to_raop(VerificationReceiver::new(&[]), "0x80");
+    let cast = casting.cast(no_code());
+    assert!(matches!(cast, Err(CastError::AirPlay1PasswordUnsupported)), "{cast:?}");
+    assert!(casting.receiver.lock().unwrap().requests.is_empty());
 }

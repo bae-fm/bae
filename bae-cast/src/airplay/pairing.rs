@@ -32,7 +32,7 @@ use rand::RngCore;
 
 use super::ap2_channel::{hkdf32, nonce_with_tail};
 use super::pairing_keys::{ControllerIdentity, PairingKeys};
-use super::srp::{sha512, SrpClient, SrpError, SrpGroup};
+use super::srp::{SrpClient, SrpError, SrpSuite};
 use super::tlv8::{state, tlv_type, Tlv8, Tlv8Error, FLAG_TRANSIENT};
 use super::{check_no_error, expect_state};
 
@@ -125,8 +125,7 @@ fn answer_m2(
     let mut a = [0u8; 32];
     rand::rng().fill_bytes(&mut a);
     let mut client = SrpClient::new(
-        SrpGroup::rfc5054_3072(),
-        sha512,
+        SrpSuite::homekit(),
         PAIR_SETUP_USERNAME,
         password,
         num_bigint::BigUint::from_bytes_be(&a),

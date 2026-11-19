@@ -40,6 +40,14 @@ impl Plist {
         }
     }
 
+    /// The bytes of a data value, if this is one.
+    pub(crate) fn as_data(&self) -> Option<&[u8]> {
+        match self {
+            Plist::Data(bytes) => Some(bytes),
+            _ => None,
+        }
+    }
+
     /// The string value, if this is one.
     #[cfg(test)]
     pub(crate) fn as_string(&self) -> Option<&str> {

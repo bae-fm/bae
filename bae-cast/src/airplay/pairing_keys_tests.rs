@@ -66,3 +66,17 @@ fn debug_output_leaves_out_the_seed_and_the_password() {
     assert!(!debug.contains("hunter2"), "{debug}");
     assert!(debug.contains("6F1C2A4E"), "{debug}");
 }
+
+#[test]
+fn a_kept_verification_key_reads_back_and_refuses_other_text() {
+    let key = VerificationKey { seed: [0x33; 32] };
+    assert_eq!(VerificationKey::decode(&key.encode()), Ok(key));
+    assert_eq!(
+        VerificationKey::decode("33"),
+        Err(MalformedPairingKeys::Length { field: "seed", len: 1 })
+    );
+    assert!(matches!(
+        VerificationKey::decode("not hex"),
+        Err(MalformedPairingKeys::Hex { field: "seed", .. })
+    ));
+}

@@ -22,7 +22,7 @@ fn features_str(bits: u64) -> String {
 }
 
 /// What a RAOP receiver with no pairing or password asks for.
-const NO_AUTH: RaopAuth = RaopAuth { device_verification: false, password: false };
+const NO_AUTH: RaopAuth = RaopAuth { device_verification: None, password: false };
 
 /// An AirPlay 2 receiver that asks for nothing pairs with the transient pairing.
 const TRANSIENT: Dialect = Dialect::AirPlay2 { pairing: Ap2Pairing::Transient };
@@ -145,18 +145,21 @@ fn an_airplay2_receivers_pairing_follows_its_status_flags() {
 }
 
 /// A RAOP receiver's device verification and password are two facts, each from
-/// its own flags, and a receiver can ask for both.
+/// its own flags, and a receiver can ask for both. The one-time pairing flag
+/// asks for the PIN once, and wins over the flag that asks on every
+/// connection.
 #[test]
 fn a_raop_receivers_auth_follows_its_status_flags() {
+    use DeviceVerification::{EveryCast, Once};
     for (extra, device_verification, password) in [
-        (vec![("sf", "0x1")], false, false),
-        (vec![("sf", "0x200")], true, false),
-        (vec![("sf", "0x8")], true, false),
-        (vec![("sf", "0x208")], true, false),
-        (vec![("sf", "0x80")], false, true),
-        (vec![("pw", "true")], false, true),
-        (vec![("sf", "0x280")], true, true),
-        (vec![("sf", "0x200"), ("pw", "true")], true, true),
+        (vec![("sf", "0x1")], None, false),
+        (vec![("sf", "0x200")], Some(Once), false),
+        (vec![("sf", "0x8")], Some(EveryCast), false),
+        (vec![("sf", "0x208")], Some(Once), false),
+        (vec![("sf", "0x80")], None, true),
+        (vec![("pw", "true")], None, true),
+        (vec![("sf", "0x280")], Some(Once), true),
+        (vec![("sf", "0x200"), ("pw", "true")], Some(Once), true),
     ] {
         let caps = raop_caps(&extra);
         let Dialect::Raop { auth, .. } = caps.dialect else {

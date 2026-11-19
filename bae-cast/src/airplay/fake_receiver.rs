@@ -1,6 +1,8 @@
 //! The receiver the pairing and session tests talk to: a HomeKit pair-setup
 //! server that runs real SRP, written apart from [`super::srp::SrpClient`],
-//! and a pair-verify server written apart from [`super::pair_verify`].
+//! and a pair-verify server written apart from [`super::pair_verify`]. Its
+//! SRP server also runs AirPlay 1 device verification's SRP, which
+//! [`super::fake_verification_receiver`] serves.
 //!
 //! It recomputes `u`, `S`, `K` and both proofs from the srptools reference
 //! formulas, so a completed handshake shows the sender agrees with the
@@ -32,9 +34,18 @@ const AUTHENTICATION: u8 = 0x02;
 /// HomeKit's BackOff error code.
 const BACK_OFF: u8 = 0x03;
 
-/// The SRP server half of a pair-setup.
+/// A hash over the concatenation of its parts.
+type PartsHash = fn(&[&[u8]]) -> Vec<u8>;
+
+/// The SRP server half of a pair-setup: HomeKit's, or AirPlay 1 device
+/// verification's.
 pub(crate) struct SrpServer {
     group: SrpGroup,
+    hash: PartsHash,
+    username: Vec<u8>,
+    /// Whether `K` is AirPlay 1's `H(S | 00000000) | H(S | 00000001)` rather
+    /// than `H(S)`.
+    two_hash_key: bool,
     salt: Vec<u8>,
     b: BigUint,
     b_pub: BigUint,
@@ -51,8 +62,12 @@ fn h(parts: &[&[u8]]) -> Vec<u8> {
     d.finalize().to_vec()
 }
 
-fn h_int(parts: &[&[u8]]) -> BigUint {
-    BigUint::from_bytes_be(&h(parts))
+fn h_sha1(parts: &[&[u8]]) -> Vec<u8> {
+    let mut d = sha1::Sha1::new();
+    for p in parts {
+        d.update(p);
+    }
+    d.finalize().to_vec()
 }
 
 fn pad(width: usize, v: &BigUint) -> Vec<u8> {
@@ -71,10 +86,27 @@ impl SrpServer {
     /// The server of a pair-setup over `password`, a PIN's digits or a
     /// password.
     pub(crate) fn with_password(password: &[u8]) -> Self {
-        let group = SrpGroup::rfc5054_3072();
+        Self::over(SrpGroup::rfc5054_3072(), h, USERNAME, false, password)
+    }
+
+    /// The server of AirPlay 1 device verification for the sender that names
+    /// itself `username`, over the PIN `pin`: the 2048-bit group, SHA-1 and
+    /// the two-hash `K` (OwnTone `pair_fruit.c`).
+    pub(crate) fn airplay1(username: &[u8], pin: &[u8]) -> Self {
+        Self::over(SrpGroup::rfc5054_2048(), h_sha1, username, true, pin)
+    }
+
+    fn over(
+        group: SrpGroup,
+        hash: PartsHash,
+        username: &[u8],
+        two_hash_key: bool,
+        password: &[u8],
+    ) -> Self {
         let salt = vec![0xA5u8; 16];
+        let h_int = |parts: &[&[u8]]| BigUint::from_bytes_be(&hash(parts));
         // x = H(s | H(I | ":" | P)); v = g^x.
-        let inner = h(&[USERNAME, b":", password]);
+        let inner = hash(&[username, b":", password]);
         let x = h_int(&[BigUint::from_bytes_be(&salt).to_bytes_be().as_slice(), inner.as_slice()]);
         let v = group.g.modpow(&x, &group.n);
         // k = H(N | PAD(g)); B = (k*v + g^b) mod N.
@@ -82,15 +114,31 @@ impl SrpServer {
         let k = h_int(&[group.n.to_bytes_be().as_slice(), pad(width, &group.g).as_slice()]);
         let b = BigUint::from_bytes_be(&[0x7Cu8; 32]);
         let b_pub = (&k * &v + group.g.modpow(&b, &group.n)) % &group.n;
-        SrpServer { group, salt, b, b_pub, v, session: None }
+        SrpServer {
+            group,
+            hash,
+            username: username.to_vec(),
+            two_hash_key,
+            salt,
+            b,
+            b_pub,
+            v,
+            session: None,
+        }
+    }
+
+    /// The salt and B the server answers the first step with.
+    pub(crate) fn salt_and_public(&self) -> (Vec<u8>, Vec<u8>) {
+        (self.salt.clone(), self.b_pub.to_bytes_be())
     }
 
     /// The M2 body: salt + B.
     pub(crate) fn m2(&self) -> Vec<u8> {
+        let (salt, b_pub) = self.salt_and_public();
         Tlv8::new()
             .push_u8(tlv_type::STATE, state::M2)
-            .push(tlv_type::SALT, self.salt.clone())
-            .push(tlv_type::PUBLIC_KEY, self.b_pub.to_bytes_be())
+            .push(tlv_type::SALT, salt)
+            .push(tlv_type::PUBLIC_KEY, b_pub)
             .encode()
     }
 
@@ -104,25 +152,38 @@ impl SrpServer {
     fn answer_m3(&mut self, m3_body: &[u8]) -> Option<Vec<u8>> {
         let tlv = Tlv8::decode(m3_body).unwrap();
         assert_eq!(tlv.get_u8(tlv_type::STATE), Some(state::M3));
-        let a_bytes = tlv.get(tlv_type::PUBLIC_KEY).unwrap().to_vec();
-        let client_m1 = tlv.get(tlv_type::PROOF).unwrap().to_vec();
-        let a_pub = BigUint::from_bytes_be(&a_bytes);
+        let a_bytes = tlv.get(tlv_type::PUBLIC_KEY).unwrap();
+        let client_m1 = tlv.get(tlv_type::PROOF).unwrap();
+        let m2 = self.prove(a_bytes, client_m1)?;
+        Some(Tlv8::new().push_u8(tlv_type::STATE, state::M4).push(tlv_type::PROOF, m2).encode())
+    }
 
+    /// The server proof `M2` that answers the sender's `A` and proof `M1`, or
+    /// `None` when `M1` isn't the one the server's password gives.
+    pub(crate) fn prove(&mut self, a_bytes: &[u8], client_m1: &[u8]) -> Option<Vec<u8>> {
+        let hash = self.hash;
+        let h_int = |parts: &[&[u8]]| BigUint::from_bytes_be(&hash(parts));
+        let a_pub = BigUint::from_bytes_be(a_bytes);
         let n = &self.group.n;
         let width = n.to_bytes_be().len();
-        // u = H(PAD(A) | PAD(B)); S = (A * v^u)^b mod N; K = H(S).
+        // u = H(PAD(A) | PAD(B)); S = (A * v^u)^b mod N.
         let u = h_int(&[pad(width, &a_pub).as_slice(), pad(width, &self.b_pub).as_slice()]);
         let s = (&a_pub * self.v.modpow(&u, n) % n).modpow(&self.b, n);
-        let key = h(&[s.to_bytes_be().as_slice()]);
+        let s_bytes = s.to_bytes_be();
+        let key = if self.two_hash_key {
+            [hash(&[&s_bytes, &[0, 0, 0, 0]]), hash(&[&s_bytes, &[0, 0, 0, 1]])].concat()
+        } else {
+            hash(&[&s_bytes])
+        };
 
         // M1 = H(H(N) XOR H(g) | H(I) | s | A | B | K); reject a mismatch.
         let h_n = h_int(&[n.to_bytes_be().as_slice()]);
         let h_g = h_int(&[self.group.g.to_bytes_be().as_slice()]);
-        let expected_m1 = h(&[
+        let expected_m1 = hash(&[
             (h_n ^ h_g).to_bytes_be().as_slice(),
-            h(&[USERNAME]).as_slice(),
+            hash(&[&self.username]).as_slice(),
             BigUint::from_bytes_be(&self.salt).to_bytes_be().as_slice(),
-            a_bytes.as_slice(),
+            a_bytes,
             self.b_pub.to_bytes_be().as_slice(),
             key.as_slice(),
         ]);
@@ -131,9 +192,9 @@ impl SrpServer {
         }
 
         // M2 = H(A | M1 | K).
-        let m2 = h(&[a_bytes.as_slice(), client_m1.as_slice(), key.as_slice()]);
-        self.session = Some((key, client_m1, a_pub));
-        Some(Tlv8::new().push_u8(tlv_type::STATE, state::M4).push(tlv_type::PROOF, m2).encode())
+        let m2 = hash(&[a_bytes, client_m1, key.as_slice()]);
+        self.session = Some((key, client_m1.to_vec(), a_pub));
+        Some(m2)
     }
 
     pub(crate) fn shared_key(&self) -> &[u8] {

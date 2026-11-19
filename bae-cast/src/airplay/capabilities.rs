@@ -76,11 +76,23 @@ pub enum Ap2Pairing {
 /// verifies the device, then sends the password on ANNOUNCE).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RaopAuth {
-    /// `0x8` or `0x200`: the device must be paired with a PIN and verified at
-    /// every connection (AirPlay 1 device verification).
-    pub device_verification: bool,
+    /// `0x200` or `0x8`: the device must be paired with a PIN and verified at
+    /// every connection (AirPlay 1 device verification), and how often the
+    /// receiver asks for the PIN.
+    pub device_verification: Option<DeviceVerification>,
     /// `pw=true` or `0x80`: ANNOUNCE needs the receiver's password.
     pub password: bool,
+}
+
+/// How often an AirPlay 1 receiver that verifies the device asks for its PIN:
+/// once, for the one-time pairing flag, which wins when both are set as in
+/// AirPlay 2's order, else on every connection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeviceVerification {
+    /// `0x200`: a PIN the first time, the pairing kept for the next casts.
+    Once,
+    /// `0x8`: a PIN on every connection.
+    EveryCast,
 }
 
 /// Who a receiver plays from, from the `acl` and `act` of its AirPlay
@@ -205,12 +217,14 @@ impl AirPlayCapabilities {
                 Some(raw) => parse_encryption(raw).ok_or_else(|| unreadable("et", raw))?,
                 None => vec![RaopEncryption::None],
             };
-            let auth = RaopAuth {
-                device_verification: flags
-                    & (status_flags::PIN_REQUIRED | status_flags::ONE_TIME_PAIRING)
-                    != 0,
-                password,
+            let device_verification = if flags & status_flags::ONE_TIME_PAIRING != 0 {
+                Some(DeviceVerification::Once)
+            } else if flags & status_flags::PIN_REQUIRED != 0 {
+                Some(DeviceVerification::EveryCast)
+            } else {
+                None
             };
+            let auth = RaopAuth { device_verification, password };
             AirPlayCapabilities { dialect: Dialect::Raop { encryption, auth }, features, access }
         })
     }

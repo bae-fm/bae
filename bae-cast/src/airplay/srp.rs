@@ -1,4 +1,5 @@
-//! SRP-6a, the password-authenticated key exchange HomeKit pairing runs on.
+//! SRP-6a, the password-authenticated key exchange HomeKit pairing and AirPlay
+//! 1 device verification run on.
 //!
 //! The math is written directly over bignums to the semantics a real receiver
 //! accepts, established by pyatv's (MIT, `master` @ 2024) use of the `srptools`
@@ -15,7 +16,8 @@
 //! - `A = g^a mod N`, `B = k·v + g^b mod N`, `v = g^x mod N`
 //! - `u = H(PAD(A) | PAD(B))`
 //! - client `S = (B − k·v)^(a + u·x) mod N`
-//! - `K = H(S)`
+//! - `K = H(S)`, or for AirPlay 1 device verification
+//!   `K = H(S | 00000000) | H(S | 00000001)` ([`SessionKey`])
 //! - `M1 = H(H(N) XOR H(g) | H(I) | s | A | B | K)`
 //! - `M2 = H(A | M1 | K)`
 //!
@@ -24,6 +26,7 @@
 //! `srptools`' `int_to_bytes`/`pad`.
 
 use num_bigint::BigUint;
+use sha1::Sha1;
 use sha2::{Digest, Sha512};
 
 /// The SRP group: modulus `N` and generator `g`.
@@ -41,6 +44,15 @@ impl SrpGroup {
             g: BigUint::from(5u8),
         }
     }
+
+    /// The 2048-bit group (RFC 5054 appendix A), which AirPlay 1 device
+    /// verification uses (OwnTone `pair_fruit.c`, srptools' `PRIME_2048`).
+    pub(crate) fn rfc5054_2048() -> Self {
+        SrpGroup {
+            n: BigUint::parse_bytes(RFC5054_N_2048, 16).expect("valid 2048-bit modulus"),
+            g: BigUint::from(2u8),
+        }
+    }
 }
 
 /// A hash of `data`. Boxed as a function so the tests can drive the SRP math with
@@ -52,10 +64,48 @@ pub(crate) fn sha512(data: &[u8]) -> Vec<u8> {
     Sha512::digest(data).to_vec()
 }
 
+/// SHA-1, the hash AirPlay 1 device verification's SRP uses.
+pub(crate) fn sha1(data: &[u8]) -> Vec<u8> {
+    Sha1::digest(data).to_vec()
+}
+
+/// How the session key `K` comes from the premaster secret `S`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SessionKey {
+    /// `K = H(S)`, as RFC 5054 and HomeKit pairing have it.
+    Hash,
+    /// `K = H(S | 00000000) | H(S | 00000001)`, twice the hash's length, as
+    /// AirPlay 1 device verification has it (pyatv `AtvSRPContext`, OwnTone
+    /// `hash_session_key`).
+    TwoHashes,
+}
+
+/// What one kind of pairing runs SRP over: the group, the hash, and how the
+/// session key is derived.
+pub(crate) struct SrpSuite {
+    pub group: SrpGroup,
+    pub hash: HashFn,
+    pub session_key: SessionKey,
+}
+
+impl SrpSuite {
+    /// HomeKit pair-setup's: the 3072-bit group, SHA-512, `K = H(S)`.
+    pub(crate) fn homekit() -> Self {
+        SrpSuite { group: SrpGroup::rfc5054_3072(), hash: sha512, session_key: SessionKey::Hash }
+    }
+
+    /// AirPlay 1 device verification's: the 2048-bit group, SHA-1, and the
+    /// two-hash session key.
+    pub(crate) fn airplay1() -> Self {
+        SrpSuite { group: SrpGroup::rfc5054_2048(), hash: sha1, session_key: SessionKey::TwoHashes }
+    }
+}
+
 /// A client-side SRP-6a exchange in progress.
 pub(crate) struct SrpClient {
     group: SrpGroup,
     hash: HashFn,
+    session_key: SessionKey,
     username: Vec<u8>,
     password: Vec<u8>,
     a: BigUint,
@@ -85,17 +135,13 @@ pub(crate) enum SrpError {
 impl SrpClient {
     /// Start an exchange with a chosen private `a` (production supplies random
     /// bytes; the vector test supplies the fixed `a`).
-    pub(crate) fn new(
-        group: SrpGroup,
-        hash: HashFn,
-        username: &[u8],
-        password: &[u8],
-        a: BigUint,
-    ) -> Self {
+    pub(crate) fn new(suite: SrpSuite, username: &[u8], password: &[u8], a: BigUint) -> Self {
+        let SrpSuite { group, hash, session_key } = suite;
         let a_pub = group.g.modpow(&a, &group.n);
         SrpClient {
             group,
             hash,
+            session_key,
             username: username.to_vec(),
             password: password.to_vec(),
             a,
@@ -146,8 +192,15 @@ impl SrpClient {
         let exp = &self.a + &u * &x;
         let s = base.modpow(&exp, n);
 
-        // K = H(S)
-        let session_key = (self.hash)(&s.to_bytes_be());
+        let s_bytes = s.to_bytes_be();
+        let session_key = match self.session_key {
+            SessionKey::Hash => (self.hash)(&s_bytes),
+            SessionKey::TwoHashes => [
+                (self.hash)(&[s_bytes.as_slice(), &[0, 0, 0, 0]].concat()),
+                (self.hash)(&[s_bytes.as_slice(), &[0, 0, 0, 1]].concat()),
+            ]
+            .concat(),
+        };
 
         // M1 = H(H(N) XOR H(g) | H(I) | s | A | B | K)
         let h_n = BigUint::from_bytes_be(&(self.hash)(&n.to_bytes_be()));
@@ -177,8 +230,8 @@ impl SrpClient {
         self.completed.as_ref().map(|c| c.m1.as_slice()).ok_or(SrpError::NotProcessed)
     }
 
-    /// The shared session key `K = H(S)` — the secret the audio-stream keys are
-    /// derived from.
+    /// The shared session key `K` — the secret the keys that follow the
+    /// exchange are derived from.
     pub(crate) fn shared_key(&self) -> Result<&[u8], SrpError> {
         self.completed.as_ref().map(|c| c.session_key.as_slice()).ok_or(SrpError::NotProcessed)
     }
@@ -212,6 +265,16 @@ fn pad(width: usize, val: &BigUint) -> Vec<u8> {
         out
     }
 }
+
+/// The RFC 5054 group-2048 modulus, hex.
+const RFC5054_N_2048: &[u8] =
+    b"AC6BDB41324A9A9BF166DE5E1389582FAF72B6651987EE07FC3192943DB56050A37329CBB4\
+A099ED8193E0757767A13DD52312AB4B03310DCD7F48A9DA04FD50E8083969EDB767B0CF60\
+95179A163AB3661A05FBD5FAAAE82918A9962F0B93B855F97993EC975EEAA80D740ADBF4FF\
+747359D041D5C33EA71D281E446B14773BCA97B43A23FB801676BD207A436C6481F1D2B907\
+8717461A5B9D32E688F87748544523B524B0D57D5EA77A2775D2ECFA032CFBDBF52FB37861\
+60279004E57AE6AF874E7303CE53299CCC041C7BC308D82A5698F3A8D0C38271AE35F8E9DB\
+FBB694B5C803D89F7AE435DE236D525F54759B65E372FCD68EF20FA7111F9E4AFF73";
 
 /// The RFC 5054 group-3072 modulus, hex.
 const RFC5054_N_3072: &[u8] = b"FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74\

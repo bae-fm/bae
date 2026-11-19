@@ -3,6 +3,7 @@
 //!
 //! A RAOP session drives one control connection through the fixed sequence
 //! OPTIONS → ANNOUNCE → SETUP → RECORD → SET_PARAMETER (openairplay spec §7.1),
+//! after the device verification a receiver that asks for it takes first,
 //! negotiating the receiver's audio/control/timing ports along the way, then
 //! spawns the [`RaopStream`] that pushes audio. Volume rides SET_PARAMETER as a
 //! dB level; FLUSH and TEARDOWN end or interrupt playback.
@@ -18,6 +19,7 @@ use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE}
 use tracing::warn;
 
 use super::crypto::RaopCipher;
+use super::device_verification::{self, SessionVerification, VerificationError};
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
 use super::stream::{
@@ -37,6 +39,25 @@ pub(crate) enum RaopError {
     /// A SETUP response was missing the ports the sender needs.
     #[error("SETUP response did not carry the receiver's ports")]
     MissingTransport,
+    /// The device verification that opens the connection failed.
+    #[error(transparent)]
+    Verification(#[from] VerificationError),
+}
+
+/// The `User-Agent` of every request bae sends a RAOP receiver.
+pub(crate) const RAOP_USER_AGENT: &str = "bae/1 (RAOP)";
+
+/// The status a RAOP receiver answers OPTIONS with when it asks for device
+/// verification it didn't advertise (OwnTone `raop_cb_startup_options`).
+const FORBIDDEN: u16 = 403;
+
+/// Whether the receiver asks for device verification its advertisement
+/// didn't state: it answers OPTIONS, on a connection of its own, with 403.
+/// Any other answer asks for nothing before the session's own handshake.
+pub(crate) fn asks_for_verification(receiver: IpAddr, rtsp_port: u16) -> std::io::Result<bool> {
+    let mut conn = RtspConnection::connect(receiver, rtsp_port, RAOP_USER_AGENT)?;
+    let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
+    Ok(options.status == FORBIDDEN)
 }
 
 /// The receiver's UDP ports, parsed from a SETUP response's `Transport` header.
@@ -222,19 +243,25 @@ pub(crate) struct RaopSession {
 }
 
 impl RaopSession {
-    /// Connect to `receiver`, run the handshake, and start streaming `feed`.
-    /// `cipher` is the negotiated encryption ([`RaopCipher::none`] for `et=0`).
+    /// Connect to `receiver`, prove bae with `verification` where the
+    /// receiver verifies the device, run the handshake, and start streaming
+    /// `feed`. `cipher` is the negotiated encryption ([`RaopCipher::none`]
+    /// for `et=0`).
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         rtsp_port: u16,
+        verification: Option<&SessionVerification>,
         feed: PcmFeed,
         failed: AirPlayFailed,
         cipher: RaopCipher,
         volume: bae_playback::Volume,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, RaopError> {
-        let mut conn = RtspConnection::connect(receiver, rtsp_port, "bae/1 (RAOP)")?;
+        let mut conn = RtspConnection::connect(receiver, rtsp_port, RAOP_USER_AGENT)?;
+        if let Some(SessionVerification { key, client_name }) = verification {
+            device_verification::verify(&mut conn, client_name, key)?;
+        }
         let local_ip = conn.local_addr();
 
         // Bind the timing and control sockets before SETUP so their ports can be

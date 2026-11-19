@@ -94,6 +94,12 @@ rand_core = { workspace = true }
 # the X25519 exchange each pair-verify keys a session from.
 ed25519-dalek = { workspace = true }
 x25519-dalek = { workspace = true }
+# AirPlay 1 device verification (src/airplay/device_verification.rs): bae's
+# Ed25519 key goes to the receiver sealed with AES-128-GCM under a 16-byte IV,
+# and each pair-verify encrypts bae's signature with AES-128-CTR (pyatv
+# `srp.py`, OwnTone `pair_fruit.c`), on the cipher-0.4 stack `aes` is on.
+aes-gcm = { workspace = true }
+ctr = { workspace = true }
 # The id source the AirPlay 2 SETUP's session and group ids and the pairing
 # identifiers come from, and this device's keychain entries that keep its
 # pairings with AirPlay receivers.

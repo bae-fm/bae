@@ -85,7 +85,7 @@ impl CodePrompt for NoCodeAsked {
     }
 }
 
-fn no_code() -> Arc<dyn CodePrompt> {
+pub(crate) fn no_code() -> Arc<dyn CodePrompt> {
     Arc::new(NoCodeAsked)
 }
 

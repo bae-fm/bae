@@ -1,5 +1,6 @@
 use super::*;
 use crate::airplay::crypto::apple_public_key;
+use crate::airplay::fake_verification_receiver::{listen_for_verification, VerificationReceiver};
 use crate::airplay::rtsp::read_request;
 use bae_playback::airplay_output::{AirPlayStreamControl, PcmSource};
 use std::io::{BufReader, Write};
@@ -171,6 +172,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         &bae_diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
+        None,
         crate::airplay::stream::PcmFeed::new(
             Box::new(SilentSource),
             bae_playback::airplay_output::PcmWake::unattached(),
@@ -193,5 +195,98 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         told,
         Duration::from_millis(250),
         "playback offsets by the latency the session paces by"
+    );
+}
+
+/// A receiver that knows `key`, answering OPTIONS with 403 on a connection
+/// that didn't verify, with its RTP ports bound so the stream's sends land.
+fn verifying_receiver(
+    key: &crate::airplay::pairing_keys::VerificationKey,
+) -> (u16, Arc<std::sync::Mutex<VerificationReceiver>>, [UdpSocket; 2]) {
+    let audio = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    let control = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    let mut receiver = VerificationReceiver::new(&[]);
+    receiver.paired = vec![crate::airplay::pairing::public_key(&key.seed)];
+    receiver.forbids_unverified = true;
+    receiver.ports = (audio.local_addr().unwrap().port(), control.local_addr().unwrap().port());
+    let (port, receiver) = listen_for_verification(receiver);
+    (port, receiver, [audio, control])
+}
+
+fn verification(
+    key: &crate::airplay::pairing_keys::VerificationKey,
+) -> crate::airplay::device_verification::SessionVerification {
+    crate::airplay::device_verification::SessionVerification {
+        key: key.clone(),
+        client_name: "Studio Mac".to_string(),
+    }
+}
+
+/// A session to a receiver that verifies the device proves bae's key on its
+/// connection before the handshake, which the receiver then takes.
+#[test]
+fn a_session_verifies_the_device_before_its_handshake() {
+    let key = crate::airplay::pairing_keys::VerificationKey::new();
+    let (port, receiver, _rtp) = verifying_receiver(&key);
+    let session = RaopSession::start(
+        &bae_diagnostics::Diagnostics::noop(),
+        [127, 0, 0, 1].into(),
+        port,
+        Some(&verification(&key)),
+        crate::airplay::stream::PcmFeed::new(
+            Box::new(SilentSource),
+            bae_playback::airplay_output::PcmWake::unattached(),
+        ),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+        RaopCipher::none(),
+        bae_playback::Volume::FULL,
+        Arc::new(crate::airplay::stream::SystemClock::new()),
+    )
+    .expect("the verified session starts");
+    drop(session);
+
+    let requests = receiver.lock().unwrap().requests.clone();
+    assert_eq!(
+        requests[..3],
+        ["POST /pair-verify", "POST /pair-verify", "OPTIONS *"],
+        "{requests:?}"
+    );
+}
+
+/// A session start on a receiver that no longer knows bae's key fails as a
+/// lost pairing, naming the receiver, so playback can say which one.
+#[test]
+fn a_session_start_on_a_receiver_that_forgot_the_key_names_it() {
+    use bae_playback::airplay_output::AirPlaySink;
+    let key = crate::airplay::pairing_keys::VerificationKey::new();
+    let (port, receiver, _rtp) = verifying_receiver(&key);
+    receiver.lock().unwrap().forget_paired();
+    let device = bae_playback::renderer::CastReceiver {
+        id: "001122334455".to_string(),
+        name: "Studio".to_string(),
+        kind: bae_playback::renderer::RendererKind::AirPlay,
+        model: None,
+        address: "127.0.0.1".to_string(),
+        takes_volume: true,
+    };
+    let sink = crate::airplay::sink::RaopSink::new(
+        [127, 0, 0, 1].into(),
+        port,
+        Some(verification(&key)),
+        crate::airplay::capabilities::RaopEncryption::None,
+        bae_playback::Volume::FULL,
+        device.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    let Err(error) = sink.start(
+        Box::new(SilentSource),
+        bae_playback::airplay_output::PcmWake::unattached(),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+    ) else {
+        panic!("a receiver that forgot the key starts no session");
+    };
+    assert!(
+        matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == device),
+        "{error}"
     );
 }

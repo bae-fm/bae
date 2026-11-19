@@ -5001,12 +5001,16 @@ device with the playback error "The AirPlay speaker no longer accepts this
 device.": on macOS in an alert titled "Could not cast", with Pair again… and
 Cancel, and on Android in a snackbar with Pair again…. Pair again… casts to the
 speaker again, which opens the pairing sheet. A receiver that answers the first pairing step
-with HTTP 470 asks for a PIN. A Mac whose AirPlay Receiver plays only for its
+with HTTP 470 asks for a PIN, and so does an AirPlay 1 receiver whose
+advertisement asks for nothing but that answers bae's first request
+(OPTIONS) with HTTP 403: bae asks for its PIN once and keeps the pairing.
+A Mac whose AirPlay Receiver plays only for its
 current user refuses to show a PIN, and bae says it plays only from the
 account that set it up.
 
-bae keeps its pairing with a receiver that asks for a PIN once, or for a
-password, in this device's keychain, one entry per receiver, for every
+bae keeps its pairing with a receiver that asks for a PIN once (AirPlay 1
+device verification included), or for a password, in this device's
+keychain, one entry per receiver, for every
 library on the device: later casts to the receiver pair with it and ask
 nothing. For a receiver with a password, bae keeps the password beside the
 pairing, since the receiver asks for it again on each connection. When the
