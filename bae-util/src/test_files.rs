@@ -62,7 +62,7 @@ fn committed_path(path: &Path) -> PathBuf {
 /// The names of the files and folders in the folder at `path`, sorted.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: the test folder is the one place a test touches files, all inside a temporary folder of its own that no library holds"
+    reason = "file system: lists a test's own temporary folder or a folder committed to the repo, which no library holds"
 )]
 fn sorted_entries(path: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(path)

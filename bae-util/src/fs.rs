@@ -15,7 +15,7 @@ pub fn hash_bytes(bytes: &[u8]) -> String {
     unix,
     expect(
         clippy::disallowed_methods,
-        reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+        reason = "file system: bae's own directory, which coven does not own"
     )
 )]
 pub fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {

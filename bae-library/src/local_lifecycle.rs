@@ -310,7 +310,7 @@ fn display_paths(paths: &[std::path::PathBuf]) -> String {
 /// where an open file does not stop a rename, and when the walk itself fails.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    reason = "file system: bae's own directory, which coven does not own"
 )]
 #[cfg(windows)]
 async fn files_held_open(
@@ -356,7 +356,7 @@ impl RemovalLock {
     /// until its holder lets it go.
     #[expect(
         clippy::disallowed_methods,
-        reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+        reason = "file system: bae's own directory, which coven does not own"
     )]
     async fn acquire(app_dir: &AppDir, diagnostics: &Diagnostics) -> Result<Self, LibraryError> {
         let path = app_dir.removal_lock();
@@ -432,7 +432,7 @@ async fn listed_stores(
 /// Write the record, synced along with the directories naming it.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    reason = "file system: bae's own directory, which coven does not own"
 )]
 async fn write_record(
     app_dir: &AppDir,
@@ -453,7 +453,7 @@ async fn write_record(
 
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    reason = "file system: bae's own directory, which coven does not own"
 )]
 async fn delete_record(
     app_dir: &AppDir,
@@ -473,7 +473,7 @@ async fn delete_record(
 /// (a temporary file an interrupted write left) is passed over.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    reason = "file system: bae's own directory, which coven does not own"
 )]
 async fn removal_records(
     app_dir: &AppDir,
@@ -515,7 +515,7 @@ fn parse_library_id(name: &str) -> Option<coven::StoreId> {
 /// directory.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    reason = "file system: bae's own directory, which coven does not own"
 )]
 async fn delete_library_files(
     app_dir: &AppDir,
