@@ -148,10 +148,11 @@ struct PlaybackProgressViewTests {
         }
     }
 
-    /// A seek the person drops on the bar changes nothing the bar draws: core
-    /// names the seek's target as the track's position when it accepts the
-    /// seek, and the bar draws each position the stream holds.
-    @Test("a seek leaves the bar drawing the stream's position")
+    /// A seek the person drops on the bar keeps the dropped position on the
+    /// bar until playback takes it: core names the seek's target as the
+    /// track's position and counts the seek, and the bar draws each position
+    /// the stream holds from then on.
+    @Test("a seek takes the bar to the stream's position once it is taken")
     func seekLeavesTheBarOnTheStream() async throws {
         let positions = LatestStream<BridgeTrackPosition>.written()
         positions.set(
@@ -181,10 +182,10 @@ struct PlaybackProgressViewTests {
             try clickMiddle(of: slider, in: window)
             #expect(seeks.count == 1)
             #expect(abs(try #require(seeks.first) - 0.5) < 0.01)
-            #expect(labels.map(\.stringValue) == ["0:45", "3:00"])
+            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
 
             positions.set(
-                position(92_000, of: 180_000, progress: 0.51),
+                position(92_000, of: 180_000, progress: 0.51, seeks: 1),
                 for: "track"
             )
             bar.tracks.frame()
