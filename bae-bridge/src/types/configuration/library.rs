@@ -482,7 +482,6 @@ impl BridgeSyncStatusSnapshot {
             retry_effect: _,
             storage_setup,
             location: _,
-            cause_file: _,
         } = snapshot;
         let setup_running = storage_setup == Some(bae_sync_status::StorageSetupState::Running);
         let undone_setup = match storage_setup {
@@ -682,17 +681,9 @@ impl BridgeSyncCause {
             C::OldCopy => plain("core.sync.cause.old_copy"),
             C::FreeStorageSpace => plain("core.sync.cause.free_space"),
             C::SignInToICloud => plain("core.sync.cause.sign_in_icloud"),
-            C::FileMissingOrChanged { file: Some(file) } => BridgeMessage {
-                key: "core.sync.cause.file_changed".to_string(),
-                args: vec![BridgeMessageArg::new("file", file)],
-            },
-            C::FileMissingOrChanged { file: None } => plain("core.sync.cause.file_changed_unnamed"),
+            C::FileMissingOrChanged => plain("core.sync.cause.file_changed"),
             C::DeviceDiskFull => return Self::DeviceDiskFull,
-            C::DeviceDiskDenied { file: Some(file) } => BridgeMessage {
-                key: "core.sync.cause.disk_denied".to_string(),
-                args: vec![BridgeMessageArg::new("file", file)],
-            },
-            C::DeviceDiskDenied { file: None } => plain("core.sync.cause.disk_denied_unnamed"),
+            C::DeviceDiskDenied => plain("core.sync.cause.disk_denied"),
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::LibraryUnreadable => return Self::LibraryUnreadable,

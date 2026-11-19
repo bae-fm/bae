@@ -29,7 +29,6 @@ fn status() -> SyncStatusSnapshot {
         storage_setup: None,
         error: None,
         location: None,
-        cause_file: None,
     }
 }
 

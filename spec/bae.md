@@ -4122,11 +4122,10 @@ new access key for its S3 storage, the provider's sign-in for Dropbox and
 OneDrive, iCloud's own setup for iCloud. On a Mac, a library with no recorded location
 is Not synced, and offers setting up sync instead.
 
-When a pending record names a failed state, the Sync page's cause names the
-release file on this device that the record is about, by its file name: the
-release file that references the record's file, or for a move's record, about
-an original its upload found missing or changed, the release file whose
-original coven records at that path on this device. While a library is
+The Sync page's cause names no file. A release's files upload as trailing
+files, which never reach coven's sync state, so no state a pending record
+names is about a release file: the line for a file that is missing, changed or
+refused to bae says so without a name. While a library is
 restored or joined, its waiting list names each record by what it is about,
 such as an operation or the connection, and a file as a file, since no library
 on this device names it yet. In the upload list a file's row already names it,

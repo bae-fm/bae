@@ -69,18 +69,12 @@ pub enum SyncCauseLine {
     ChangesStayOnDevice,
     SignInToICloud,
     /// A file this device uploads is missing or changed since import; it
-    /// stays in the way until it is back as it was. The file's name, when a
-    /// row on this device names it.
-    FileMissingOrChanged {
-        file: Option<String>,
-    },
+    /// stays in the way until it is back as it was.
+    FileMissingOrChanged,
     /// The disk on this device is full.
     DeviceDiskFull,
-    /// The operating system refused bae a file it needs. The file's name,
-    /// when a row on this device names it.
-    DeviceDiskDenied {
-        file: Option<String>,
-    },
+    /// The operating system refused bae a file it needs.
+    DeviceDiskDenied,
     /// The disk on this device failed for any other reason.
     DeviceDiskFailed,
     DeviceKeysUnreadable,
@@ -288,18 +282,14 @@ impl SyncStatusSnapshot {
         use coven::{LastPass, StatusFailure};
         let reason = match cause {
             SyncCause::Pending(record) => {
-                return self.reason_cause(
-                    &record.reason,
-                    self.cause_file.as_deref(),
-                    record.cause.as_deref(),
-                )
+                return self.reason_cause(&record.reason, record.cause.as_deref())
             }
             SyncCause::Pass(LastPass::Blocked { reason, error, .. }) => {
-                return self.reason_cause(reason, None, error.as_deref())
+                return self.reason_cause(reason, error.as_deref())
             }
             SyncCause::Pass(LastPass::Failed { failure, error }) => match failure {
                 StatusFailure::Operation(record) => {
-                    return self.reason_cause(&record.reason, None, Some(error))
+                    return self.reason_cause(&record.reason, Some(error))
                 }
                 StatusFailure::Storage(failure) => {
                     return self.storage_cause(*failure, error);
@@ -330,22 +320,15 @@ impl SyncStatusSnapshot {
     }
 
     /// The words for a pending condition that names a failure.
-    fn reason_cause(
-        &self,
-        reason: &PendingReason,
-        file: Option<&str>,
-        detail: Option<&str>,
-    ) -> SyncCauseLine {
+    fn reason_cause(&self, reason: &PendingReason, detail: Option<&str>) -> SyncCauseLine {
         use coven::FileMissingReason as M;
         match reason {
             PendingReason::FileUnavailable(M::Source(_)) | PendingReason::Original { .. } => {
-                SyncCauseLine::FileMissingOrChanged { file: file.map(str::to_string) }
+                SyncCauseLine::FileMissingOrChanged
             }
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
             PendingReason::Failed(LocalFailure::DiskFull) => SyncCauseLine::DeviceDiskFull,
-            PendingReason::Failed(LocalFailure::DiskDenied) => {
-                SyncCauseLine::DeviceDiskDenied { file: file.map(str::to_string) }
-            }
+            PendingReason::Failed(LocalFailure::DiskDenied) => SyncCauseLine::DeviceDiskDenied,
             PendingReason::Failed(LocalFailure::DiskOther) => SyncCauseLine::DeviceDiskFailed,
             PendingReason::Failed(LocalFailure::KeyCustody) => SyncCauseLine::DeviceKeysUnreadable,
             PendingReason::Failed(LocalFailure::Database) => SyncCauseLine::LibraryUnreadable,
@@ -361,7 +344,7 @@ impl SyncStatusSnapshot {
                     detail: detail.unwrap_or_default().to_string(),
                 }
             }
-            PendingReason::Cleanup { cleanup, .. } => self.reason_cause(cleanup, file, detail),
+            PendingReason::Cleanup { cleanup, .. } => self.reason_cause(cleanup, detail),
             other => SyncCauseLine::Pending(other.clone()),
         }
     }

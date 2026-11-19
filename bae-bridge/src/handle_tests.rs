@@ -598,7 +598,6 @@ fn a_failed_start_crosses_as_sync_failed_with_its_category_line() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        cause_file: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -628,7 +627,6 @@ fn a_healthy_sync_status_crosses_as_synced() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(dropbox_location()),
-        cause_file: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -650,7 +648,6 @@ fn a_storage_setup_crosses_undone_or_running() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: Some(storage_setup),
         location: None,
-        cause_file: None,
     };
     let undone = bae_sync_status::StorageSetupState::Undone {
         operation: coven::OperationId(7),
@@ -689,7 +686,6 @@ fn a_failed_start_crosses_offering_reconnect() {
         retry_effect: coven::RetryEffect::NotSyncing,
         storage_setup: None,
         location: Some(s3_location()),
-        cause_file: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
@@ -715,7 +711,6 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
         retry_effect: coven::RetryEffect::Pass,
         storage_setup: None,
         location: Some(s3_location()),
-        cause_file: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);

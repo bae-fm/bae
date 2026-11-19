@@ -1,5 +1,5 @@
 //! The sync status as the status line and the activity list show it:
-//! coven's sync state, the file its failure is about, what a retry would do
+//! coven's sync state, what a retry would do
 //! and why the last start failed, and the action each pending record offers
 //! where another surface shows the record.
 
@@ -8,7 +8,6 @@ use bae_store::{DbError, Store};
 use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 
-mod cause_file;
 mod copy_reset_notice;
 mod start_failure;
 mod status_query;
@@ -60,9 +59,6 @@ pub struct SyncStatusSnapshot {
     /// The location recorded on this device, with its account and folder
     /// labels, while one is.
     pub location: Option<coven::StorageConfig>,
-    /// The name of the release file on this device that the pending record
-    /// naming the failed state is about, when there is one.
-    pub cause_file: Option<String>,
 }
 
 /// Why this device isn't in the library, as the failure's detail says it.
@@ -182,8 +178,7 @@ fn waiting_failure(
 impl SyncStatusSnapshot {
     /// The status of a library that isn't open, from coven's read of its
     /// closed store: sync doesn't run, and what an open library reads from
-    /// its tables, the file a failure is about, a failed start and a storage
-    /// setup, is not read.
+    /// its tables, a failed start and a storage setup, is not read.
     pub fn closed(coven: coven::SyncStatus, location: Option<coven::StorageConfig>) -> Self {
         Self {
             coven,
@@ -191,7 +186,6 @@ impl SyncStatusSnapshot {
             retry_effect: coven::RetryEffect::NotSyncing,
             storage_setup: None,
             location,
-            cause_file: None,
         }
     }
 

@@ -3,18 +3,11 @@
 //!
 //! The joined columns are coven's sync state and when sync last finished,
 //! what a retry would do, the recorded location, why this device's last
-//! start failed, where its storage setup stands, and the name of the file
-//! the failure's pending record is about.
+//! start failed, and where its storage setup stands.
 
-use super::cause_file::{cause_file_column, CAUSE_FILE_JOINS};
 use super::start_failure::{StartFailureColumns, START_FAILURE_COLUMNS};
 use super::storage_setup::{storage_setup_columns, StorageSetupColumns, UNDONE_SETUP_JOIN};
 use super::*;
-
-/// The subject of the pending record the state names as its cause, when the
-/// state is a failure a pending record names.
-const CAUSE_SUBJECT: &str =
-    "CASE sync.state WHEN 'failed' THEN sync.detail->'$.Failed.Pending.record.subject' END";
 
 /// The statement, with its columns in the order [`StatusColumns::read`] reads
 /// them. `coven_sync_state` is a live query's own: coven runs a query that
@@ -23,18 +16,14 @@ pub(crate) fn status_query() -> String {
     let start_failure = START_FAILURE_COLUMNS;
     let setup = storage_setup_columns();
     let undone = UNDONE_SETUP_JOIN;
-    let cause_file = cause_file_column();
     format!(
         "SELECT shown.detail, shown.last_synced, retry.effect, retry.cooling_until, \
-             status.location, {start_failure}, {setup}, \
-             {cause_file} AS cause_file \
-         FROM (SELECT sync.*, {CAUSE_SUBJECT} AS cause_subject \
-             FROM coven_sync_state AS sync) AS shown \
+             status.location, {start_failure}, {setup} \
+         FROM coven_sync_state AS shown \
          JOIN coven_sync_status AS status \
          JOIN coven_retry_effect AS retry \
          LEFT JOIN sync_start_failure AS failure \
-         {undone} \
-         {CAUSE_FILE_JOINS}"
+         {undone}"
     )
 }
 
@@ -47,7 +36,6 @@ struct StatusColumns {
     location: Option<coven::StorageConfig>,
     start_failure: StartFailureColumns,
     storage_setup: StorageSetupColumns,
-    cause_file: Option<String>,
 }
 
 impl StatusColumns {
@@ -60,7 +48,6 @@ impl StatusColumns {
             location: row.get(4)?,
             start_failure: StartFailureColumns::read(row, 5)?,
             storage_setup: StorageSetupColumns::read(row, 11)?,
-            cause_file: row.get("cause_file")?,
         })
     }
 }
@@ -80,7 +67,6 @@ fn snapshot_of(columns: StatusColumns) -> Result<SyncStatusSnapshot, DbError> {
         location,
         start_failure,
         storage_setup,
-        cause_file,
     } = columns;
     Ok(SyncStatusSnapshot {
         coven: coven::SyncStatus {
@@ -91,7 +77,6 @@ fn snapshot_of(columns: StatusColumns) -> Result<SyncStatusSnapshot, DbError> {
         retry_effect: coven::RetryEffect::from_columns(&effect, cooling_until)?,
         storage_setup: storage_setup.state()?,
         location,
-        cause_file,
     })
 }
 

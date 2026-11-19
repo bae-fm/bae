@@ -13,9 +13,9 @@ path = "src/lib.rs"
 [dependencies]
 # The error categories a person is shown for a failed sync start.
 bae-diagnostics = { workspace = true }
-# The records' namespaces the pending rows name.
+# The records' schema, which the test fixtures build on.
 bae-records = { workspace = true }
-# The avatars namespace the pending rows name.
+# The people's schema, which the test fixtures build on.
 bae-people = { workspace = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }

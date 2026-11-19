@@ -827,10 +827,8 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         C::OldCopy,
         C::FreeStorageSpace,
         C::SignInToICloud,
-        C::FileMissingOrChanged { file: Some("Cover.jpg".to_string()) },
-        C::FileMissingOrChanged { file: None },
-        C::DeviceDiskDenied { file: Some("Cover.jpg".to_string()) },
-        C::DeviceDiskDenied { file: None },
+        C::FileMissingOrChanged,
+        C::DeviceDiskDenied,
         C::DeviceDiskFailed,
         C::ProviderError {
             provider: coven::CloudProvider::Dropbox,

@@ -13,7 +13,6 @@ pub(crate) fn read(
 ) -> SyncStatusSnapshot {
     SyncStatusSnapshot {
         coven: coven::SyncStatus { state, last_synced: None },
-        cause_file: None,
         error,
         retry_effect,
         storage_setup: None,
