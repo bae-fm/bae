@@ -6,7 +6,11 @@
 # workspace's rustc wrapper and the clippy arguments in CLIPPY_ARGS, which the
 # driver reads. A mark for a typed lint, such as
 # `#[expect(clippy::reqwest_error_display, reason = "...")]`, is a lint clippy's
-# own driver does not know, so every clippy run over bae goes through here.
+# own driver does not know and warns about. The hook's clippy
+# (scripts/clippy-crates.sh), `builds land`'s compile check (.land-compile) and
+# CI's clippy runs on Linux, macOS, iOS and Android go through here; CI's
+# Windows clippy runs clippy's own driver, so it fails on such a mark in code
+# it compiles.
 #
 # cargo may run on another build machine: the program BUILDS_CARGO_BEFORE
 # names runs first on whichever machine runs it, and must point

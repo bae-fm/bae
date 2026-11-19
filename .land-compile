@@ -1,7 +1,8 @@
 #!/bin/bash
 # `builds land` runs this compile check on a cherry-picked result before it
 # pushes the result (the `whole` lines of .checks are the static ones): it runs
-# clippy with --all-targets over the crates the landed commits touch and the
+# clippy, with the typed lints (tools/typed-lints/clippy.sh), with
+# --all-targets over the crates the landed commits touch and the
 # crates that depend on them, and clippy fails on any warning (-D warnings).
 # Then the same crates' libraries and binaries without test features, which
 # the apps and bridges build them with (a test-only `pub use` without its
@@ -22,7 +23,7 @@ while IFS= read -r crate; do
     [ -n "$crate" ] && DIRECT+=("$crate")
 done < <(changed_workspace_crates <<< "$CRATES")
 
-ARGS=(clippy --all-targets)
+ARGS=(--all-targets)
 LIBRARY_ARGS=()
 if [ "${#DIRECT[@]}" -gt 0 ]; then
     while read -r kind value; do
@@ -42,7 +43,7 @@ else
     echo "no Rust crate changed; nothing to compile"
     exit 0
 fi
-scripts/cargo.sh "${ARGS[@]}" -- -D warnings
-# clippy, not check: `cargo check` takes no `-- -D warnings`, and RUSTFLAGS would
-# change every crate's cache key.
-scripts/cargo.sh clippy "${LIBRARY_ARGS[@]:1}" -- -D warnings
+tools/typed-lints/clippy.sh "${ARGS[@]}" -- -D warnings
+# clippy, not check: clippy takes `-D warnings` in CLIPPY_ARGS, while RUSTFLAGS
+# would change every crate's cache key.
+tools/typed-lints/clippy.sh "${LIBRARY_ARGS[@]:1}" -- -D warnings

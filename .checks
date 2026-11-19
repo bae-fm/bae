@@ -26,9 +26,6 @@ check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 # clippy's lints and the typed lints, in one compile (scripts/clippy-crates.sh).
 check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml scripts/clippy-crates.sh {crates}
-# Every crate's lints change with the typed lints' coven revision and with the
-# toolchain, which the driver is built for.
-check clippy-all tools/typed-lints/tool.sh,rust-toolchain.toml scripts/clippy-crates.sh --workspace
 
 # The apps' sources and the bridge they call
 whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
