@@ -134,6 +134,17 @@ pub(super) struct PlanStep {
     pub own: bool,
 }
 
+/// The plan of `statement` under `params`, one step per line.
+pub(super) fn plan_steps(
+    sql: &SqlReadContext<'_>,
+    statement: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<PlanStep>, DbError> {
+    Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params, |row| {
+        Ok(PlanStep { detail: row.get(3)?, own: row.get::<_, i64>(1)? == 0 })
+    })?)
+}
+
 /// The plan of `statement` under `seek`'s parameters and `extra`, one step
 /// per line.
 pub(super) async fn plan(
@@ -146,9 +157,7 @@ pub(super) async fn plan(
         seek.bound(50, |params| {
             let mut params = params.to_vec();
             params.extend(extra.iter().map(|(name, value)| (*name, value as &dyn rusqlite::ToSql)));
-            Ok(sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), params.as_slice(), |row| {
-                Ok(PlanStep { detail: row.get(3)?, own: row.get::<_, i64>(1)? == 0 })
-            })?)
+            plan_steps(&sql, &statement, params.as_slice())
         })
     })
     .await
