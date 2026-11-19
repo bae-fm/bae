@@ -56,3 +56,40 @@ CREATE TABLE IF NOT EXISTS import_identification_batch (
     candidate_key BLOB PRIMARY KEY,
     ended         INTEGER NOT NULL CHECK (ended IN (0, 1))
 ) STRICT;
+
+-- The batch's rows counted: how many candidates it admitted and how many of
+-- those have ended, which is what the count reads, so a read or an ending
+-- reads one row however many folders the batch holds. One row while the batch
+-- has any; the triggers below keep it in the write that changes a batch row.
+CREATE TABLE IF NOT EXISTS import_identification_count (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    admitted  INTEGER NOT NULL CHECK (admitted > 0),
+    ended     INTEGER NOT NULL CHECK (ended BETWEEN 0 AND admitted)
+) STRICT;
+
+CREATE TRIGGER IF NOT EXISTS import_identification_counted_in
+AFTER INSERT ON import_identification_batch
+BEGIN
+    INSERT INTO import_identification_count (singleton, admitted, ended)
+    VALUES (1, 1, NEW.ended)
+    ON CONFLICT (singleton) DO UPDATE SET
+        admitted = admitted + 1,
+        ended = ended + excluded.ended;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_identification_counted_again
+AFTER UPDATE OF ended ON import_identification_batch
+WHEN OLD.ended IS NOT NEW.ended
+BEGIN
+    UPDATE import_identification_count SET ended = ended - OLD.ended + NEW.ended
+    WHERE singleton = 1;
+END;
+
+CREATE TRIGGER IF NOT EXISTS import_identification_counted_out
+AFTER DELETE ON import_identification_batch
+BEGIN
+    DELETE FROM import_identification_count WHERE singleton = 1 AND admitted = 1;
+    UPDATE import_identification_count
+    SET admitted = admitted - 1, ended = ended - OLD.ended
+    WHERE singleton = 1;
+END;

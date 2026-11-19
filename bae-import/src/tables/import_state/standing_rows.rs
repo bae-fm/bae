@@ -15,16 +15,18 @@
 //! removed and found again starts with neither. Its import outlives it: only
 //! that import's own ending ends a claim.
 //!
-//! The identification count is held beside it (`import_identification_batch`)
-//! and moved by each change to an identification in that change's own write.
-//! Its tables are `standing_rows.sql`.
+//! The identification batch is held beside it (`import_identification_batch`)
+//! and moved by each change to an identification in that change's own write;
+//! its triggers keep the batch's count (`import_identification_count`) in the
+//! same write, so the count reads one row however many folders the batch
+//! holds. Its tables are `standing_rows.sql`.
 
 pub(super) const SQL: &str = include_str!("standing_rows.sql");
 
 use super::*;
 use crate::candidate_runtime::{
-    IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
-    StoredIdentification, StoredImport, StoredStanding,
+    IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,
+    StoredImport, StoredStanding,
 };
 use crate::triage::TriageRuntimeFacts;
 use crate::IdentifyRunId;
@@ -244,14 +246,20 @@ pub(crate) fn load_standing_on(
     }
 }
 
+/// The batch's count: its ended and admitted identifications.
+const IDENTIFICATION_PROGRESS: &str =
+    "SELECT ended, admitted FROM import_identification_count WHERE singleton = 1";
+
 /// How far the batch of identifications in flight has got: ended of
 /// admitted. `(0, 0)` is no batch.
 fn load_identification_progress_on(sql: &SqlReadContext<'_>) -> Result<(u32, u32), DbError> {
-    Ok(sql.query_row(
-        "SELECT COALESCE(SUM(ended), 0), COUNT(*) FROM import_identification_batch",
-        [],
-        |row| Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?)),
-    )?)
+    let progress = sql
+        .query_row(IDENTIFICATION_PROGRESS, [], |row| {
+            Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?))
+        })
+        .optional()?;
+    // No row is the stored shape of no batch open.
+    Ok(progress.unwrap_or((0, 0)))
 }
 
 /// How many candidates an import holds, whatever step it has reached.
@@ -288,31 +296,48 @@ pub(crate) fn end_file_work_unless_of_on(
 }
 
 /// Move the identification count by what one change did to `candidate_key`:
-/// an admission joins the batch, an ending counts as ended, and the batch is
-/// over once every identification it admitted has ended.
+/// a candidate whose identification starts (an admission with none in
+/// flight) joins the batch, or rejoins it when its last one ended; an ending
+/// counts as ended; and the batch is over once every identification it
+/// admitted has ended. The batch's count follows its rows by their triggers.
 fn count_on(
     sql: &CovenWrite<'_>,
     candidate_key: &CandidateKey,
     moved: &IdentificationMove,
 ) -> Result<(), DbError> {
-    let was = Identifying::of(moved.before.as_ref());
-    let is = Identifying::of(moved.after.as_ref());
-    if !was.queued && is.queued {
-        sql.execute(
-            "INSERT INTO import_identification_batch (candidate_key, ended) VALUES (?, 0) \
-             ON CONFLICT (candidate_key) DO UPDATE SET ended = 0",
-            [candidate_key],
-        )?;
-    } else if was.in_flight && !is.in_flight {
-        sql.execute(
-            "UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = ?",
-            [candidate_key],
-        )?;
-        sql.execute(
-            "DELETE FROM import_identification_batch \
-             WHERE NOT EXISTS (SELECT 1 FROM import_identification_batch WHERE ended = 0)",
-            [],
-        )?;
+    let in_flight = |stored: Option<&StoredIdentification>| {
+        stored.is_some_and(|stored| stored.stage.in_flight())
+    };
+    match (in_flight(moved.before.as_ref()), in_flight(moved.after.as_ref())) {
+        (false, true) => {
+            sql.execute(
+                "INSERT INTO import_identification_batch (candidate_key, ended) VALUES (?, 0) \
+                 ON CONFLICT (candidate_key) DO UPDATE SET ended = 0",
+                [candidate_key],
+            )?;
+        }
+        (true, false) => {
+            let counted = sql.execute(
+                "UPDATE import_identification_batch SET ended = 1 WHERE candidate_key = ?",
+                [candidate_key],
+            )?;
+            // Every identification in flight joined the batch as it started.
+            if counted == 0 {
+                return Err(DbError::unreadable(
+                    format!("import_identification_batch as {candidate_key}'s identification ends"),
+                    "no row of it",
+                ));
+            }
+            let over = sql.query_row(
+                "SELECT ended = admitted FROM import_identification_count WHERE singleton = 1",
+                [],
+                |row| row.get::<_, bool>(0),
+            )?;
+            if over {
+                sql.execute("DELETE FROM import_identification_batch", [])?;
+            }
+        }
+        (false, false) | (true, true) => {}
     }
     Ok(())
 }

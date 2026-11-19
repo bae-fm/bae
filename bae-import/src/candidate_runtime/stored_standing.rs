@@ -89,6 +89,18 @@ impl IdentificationStage {
         }
     }
 
+    /// Whether the identification batch waits on this stage: waiting,
+    /// running, or having its answer written. A failed write is over.
+    pub(crate) fn in_flight(&self) -> bool {
+        match self {
+            Self::Queued { .. }
+            | Self::Running { .. }
+            | Self::Finalizing { .. }
+            | Self::ReadingPick { .. } => true,
+            Self::Failed { .. } => false,
+        }
+    }
+
     fn status(&self) -> IdentificationStatus {
         match self {
             Self::Queued { .. } => IdentificationStatus::Queued,
@@ -261,30 +273,6 @@ impl IdentificationChange {
                 Some(stored) if Some(&stored.files) == files.as_ref() => unchanged(),
                 _ => None,
             },
-        }
-    }
-}
-
-/// Where a candidate stands in identification, as the batch counts it.
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct Identifying {
-    /// Admitted and its run not started, which is what joins the batch.
-    pub(crate) queued: bool,
-    /// Waiting, running, or having its answer written; a failed write is
-    /// over.
-    pub(crate) in_flight: bool,
-}
-
-impl Identifying {
-    pub(crate) fn of(stored: Option<&StoredIdentification>) -> Self {
-        match stored.map(|stored| &stored.stage) {
-            Some(IdentificationStage::Queued { .. }) => Self { queued: true, in_flight: true },
-            Some(
-                IdentificationStage::Running { .. }
-                | IdentificationStage::Finalizing { .. }
-                | IdentificationStage::ReadingPick { .. },
-            ) => Self { queued: false, in_flight: true },
-            Some(IdentificationStage::Failed { .. }) | None => Self::default(),
         }
     }
 }

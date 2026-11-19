@@ -53,8 +53,8 @@ pub use snapshots::{
 pub(crate) use standing_writes::RunSubject;
 pub use stored_standing::{Admission, CandidateFiles, SaveFailure, StoredVerdict};
 pub(crate) use stored_standing::{
-    IdentificationChange, IdentificationMove, IdentificationStage, Identifying,
-    StoredIdentification, StoredImport, StoredRuntime, StoredStanding,
+    IdentificationChange, IdentificationMove, IdentificationStage, StoredIdentification,
+    StoredImport, StoredRuntime, StoredStanding,
 };
 pub(crate) use work::CandidateWork;
 

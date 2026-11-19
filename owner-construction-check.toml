@@ -1238,6 +1238,7 @@ tables = [
     "import_candidate_session",
     "import_candidate_standing",
     "import_identification_batch",
+    "import_identification_count",
     "import_identify_run",
     "import_candidate_search",
     "import_candidate_search_source",

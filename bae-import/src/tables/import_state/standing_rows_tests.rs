@@ -216,6 +216,195 @@ async fn clearing_removes_every_standing() {
     assert!(tables.load_candidate_standings().await.unwrap().is_empty());
 }
 
+// ── The identification batch's count ────────────────────────────────────────
+//
+// The count reads one row, which the batch's triggers keep in the write that
+// changes a batch row. After every kind of write that changes an
+// identification, the row is what a full count of the batch's rows says.
+
+/// The count reads `(ended, admitted)`, which is what a full count of the
+/// batch's rows says, and its admitted less its ended is every standing a
+/// full count finds waiting, running or having its answer written.
+async fn assert_batch(db: &Store, expected: (u32, u32), after: &str) {
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let (ended, admitted) = tables.load_identification_progress().await.unwrap();
+    assert_eq!((ended, admitted), expected, "the count after {after}");
+    let (full, in_flight) = db
+        .read(|sql| {
+            let full = sql.query_row(
+                "SELECT COALESCE(SUM(ended), 0), COUNT(*) FROM import_identification_batch",
+                [],
+                |row| Ok((row.get::<_, u32>(0)?, row.get::<_, u32>(1)?)),
+            )?;
+            let in_flight = sql.query_row(
+                "SELECT COUNT(*) FROM import_candidate_standing \
+                 WHERE identification IN ('queued', 'running', 'finalizing', 'reading_pick')",
+                [],
+                |row| row.get::<_, u32>(0),
+            )?;
+            Ok::<_, DbError>((full, in_flight))
+        })
+        .await
+        .unwrap();
+    assert_eq!(full, expected, "the batch's rows after {after}");
+    assert_eq!(admitted - ended, in_flight, "the identifications in flight after {after}");
+}
+
+/// Every kind of write that changes an identification moves the batch's count
+/// to what a full count of its rows says: a candidate admitted with none in
+/// flight joins, a second admission of one in flight changes nothing, one that
+/// ended and is admitted again takes back its ending, each ending counts once,
+/// and the row goes with the batch's last ending, a claim's or a clear's
+/// included.
+#[tokio::test]
+async fn the_batch_row_matches_a_full_count_after_every_write() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let one = &crate::CandidateKey::test_rooted("/music/One");
+    let two = &crate::CandidateKey::test_rooted("/music/Two");
+    let three = &crate::CandidateKey::test_rooted("/music/Three");
+    for key in [one, two, three] {
+        scanned(&db, key).await;
+    }
+    let admit = |key: &CandidateKey| IdentificationChange::Admit {
+        files: files_of(key),
+        admission: Admission::Automatic,
+    };
+    let start = |key: &CandidateKey, number| IdentificationChange::RunStarted {
+        files: files_of(key),
+        run: run(number),
+    };
+    let not_written = || SaveFailure::NotWritten { error: "the disk is full".to_string() };
+    assert_batch(&db, (0, 0), "nothing admitted").await;
+
+    tables
+        .change_candidate_identifications(vec![
+            (one.clone(), admit(one)),
+            (two.clone(), admit(two)),
+            (three.clone(), admit(three)),
+        ])
+        .await
+        .unwrap();
+    assert_batch(&db, (0, 3), "three admitted in one write").await;
+
+    let steps: Vec<(&CandidateKey, IdentificationChange, (u32, u32), &str)> = vec![
+        (one, admit(one), (0, 3), "an admission over one queued"),
+        (one, start(one, 1), (0, 3), "a run starting"),
+        (one, admit(one), (0, 3), "an admission over one running"),
+        (one, start(one, 2), (0, 3), "the second run starting"),
+        (
+            one,
+            IdentificationChange::RunAnswered { run: run(2), reads_pick: true },
+            (0, 3),
+            "an answer whose pick is read",
+        ),
+        (one, IdentificationChange::ImportAsked, (0, 3), "an import asked of the pick"),
+        (one, IdentificationChange::AnswerEnded { run: run(2) }, (1, 3), "the answer's end"),
+        (two, IdentificationChange::Withdraw, (2, 3), "a withdrawal"),
+        (two, admit(two), (1, 3), "an ended one admitted again"),
+        (
+            two,
+            IdentificationChange::StartFailed { files: files_of(two), failure: not_written() },
+            (2, 3),
+            "a start that failed",
+        ),
+        (two, admit(two), (1, 3), "a failed one admitted again"),
+        (two, start(two, 3), (1, 3), "its run starting"),
+        (
+            two,
+            IdentificationChange::AnswerFailed {
+                files: files_of(two),
+                run: run(3),
+                failure: not_written(),
+            },
+            (2, 3),
+            "an answer that failed",
+        ),
+        (
+            two,
+            IdentificationChange::AnswerFailed {
+                files: files_of(two),
+                run: run(3),
+                failure: not_written(),
+            },
+            (2, 3),
+            "a failure over a failure",
+        ),
+        (one, IdentificationChange::Withdraw, (2, 3), "a withdrawal of nothing queued"),
+        (three, start(three, 4), (2, 3), "the last one's run starting"),
+        (three, IdentificationChange::RunEnded { run: run(5) }, (2, 3), "another run's end"),
+        (
+            three,
+            IdentificationChange::RunAnswered { run: run(4), reads_pick: false },
+            (2, 3),
+            "an answer being written",
+        ),
+        (three, IdentificationChange::Cancelled, (0, 0), "the batch's last ending"),
+        (one, admit(one), (0, 1), "an admission after the batch ended"),
+        (one, start(one, 6), (0, 1), "its run starting"),
+        (one, IdentificationChange::RunEnded { run: run(6) }, (0, 0), "its run's end"),
+        (two, admit(two), (0, 1), "an admission"),
+        (
+            two,
+            IdentificationChange::ScanHolds { files: Some(files_of(two)) },
+            (0, 1),
+            "the scan holding the same files",
+        ),
+        (two, IdentificationChange::ScanHolds { files: None }, (0, 0), "the scan dropping it"),
+        (three, admit(three), (0, 1), "an admission"),
+        (three, IdentificationChange::Ended, (0, 0), "a person's decision"),
+    ];
+    for (key, change, expected, after) in steps {
+        tables.change_candidate_identifications(vec![(key.clone(), change)]).await.unwrap();
+        assert_batch(&db, expected, after).await;
+    }
+
+    tables
+        .change_candidate_identifications(vec![
+            (one.clone(), admit(one)),
+            (two.clone(), admit(two)),
+        ])
+        .await
+        .unwrap();
+    assert_batch(&db, (0, 2), "two admitted").await;
+    tables
+        .claim_candidate_import(one, "import-1", Some(IdentificationChange::Ended))
+        .await
+        .unwrap();
+    assert_batch(&db, (1, 2), "a claim that ends its identification").await;
+    tables.claim_candidate_import(three, "import-2", None).await.unwrap();
+    assert_batch(&db, (1, 2), "a claim that changes no identification").await;
+    tables.move_candidate_import(one, "import-1", None).await.unwrap();
+    assert_batch(&db, (1, 2), "an import's end").await;
+    tables.clear_candidate_standings().await.unwrap();
+    assert_batch(&db, (0, 0), "the clear as the library opens").await;
+
+    tables.change_candidate_identifications(vec![(two.clone(), admit(two))]).await.unwrap();
+    assert_batch(&db, (0, 1), "an admission after the clear").await;
+}
+
+/// The count reads the batch's one count row by its key, however many folders
+/// the batch holds.
+#[tokio::test]
+async fn the_count_reads_one_row_by_its_key() {
+    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", super::IDENTIFICATION_PROGRESS),
+                [],
+                |row| row.get::<_, String>(3),
+            )
+            .map_err(DbError::from)
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        plan,
+        vec!["SEARCH import_identification_count USING INTEGER PRIMARY KEY (rowid=?)".to_string()]
+    );
+}
+
 /// How many imports the import counts' live query counts in flight.
 async fn imports_in_flight(db: &Store) -> u32 {
     let tables = crate::tables::ImportTables::new(db.clone());
