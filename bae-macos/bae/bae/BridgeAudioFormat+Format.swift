@@ -3,8 +3,8 @@ import Foundation
 
 extension BridgeAudioFormat {
     /// One-line descriptor composed for the current locale, e.g.
-    /// "FLAC · 44.1 kHz · 16-bit · stereo" (lossless) or
-    /// "MP3 · 320 kbps · 44.1 kHz · stereo" (lossy). The codec is a proper noun;
+    /// "FLAC · 44.1 kHz · 16-bit · Stereo" (lossless) or
+    /// "MP3 · 320 kbps · 44.1 kHz · Stereo" (lossy). The codec is a proper noun;
     /// the channel word is localized; numbers use the locale's formatter. bae-library
     /// owns the parts and the lossy/lossless split (`bitsPerSample == nil`); this
     /// is the UI's locale rendering of them.
@@ -46,6 +46,13 @@ extension BridgeSourceAudioSummary {
                 )
         }
     }
+
+    /// `text` as assistive technology reads it: with plain spaces and
+    /// hyphens, since the no-break ones only keep each fact on one line.
+    var spokenText: String {
+        text.replacingOccurrences(of: "\u{00a0}", with: " ")
+            .replacingOccurrences(of: "\u{2011}", with: "-")
+    }
 }
 
 extension BridgeSourceAudioDifference {
@@ -78,7 +85,7 @@ extension BridgeSourceAudioDifference {
     }
 }
 
-/// A channel count's word ("stereo"), or its count where it has none.
+/// A channel count's word ("Stereo"), or its count where it has none.
 private func channelsText(_ channels: Int64) -> String {
     if let key = bridgeAudioChannelsKey(channels: channels) {
         return localizedCoreString(key)

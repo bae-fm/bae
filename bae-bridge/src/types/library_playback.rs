@@ -825,7 +825,7 @@ mirror_enum! {
 mod source_audio_bridge_tests;
 
 /// Mirror of bae-library's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·
-/// 16-bit · stereo" from these parts: the codec is a proper noun, the channel
+/// 16-bit · Stereo" from these parts: the codec is a proper noun, the channel
 /// count maps to a localized word (`bridge_audio_channels_key`), and numbers
 /// format per locale.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -845,7 +845,7 @@ mirror_struct! {
     fields: { codec, sample_rate_hz, bits_per_sample, bitrate_kbps, channels },
 }
 
-/// Localization key for a channel count's word ("mono"/"stereo"), or `None` for
+/// Localization key for a channel count's word ("Mono"/"Stereo"), or `None` for
 /// counts the UI renders as "{n}ch". One source of the keys for every platform.
 #[uniffi::export]
 pub fn bridge_audio_channels_key(channels: i64) -> Option<String> {

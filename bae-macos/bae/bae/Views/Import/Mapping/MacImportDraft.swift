@@ -150,7 +150,7 @@ struct MacImportDraft: View {
                     },
                     audioFacts: {
                         if let sourceAudio = releaseSummary.sourceAudio {
-                            ImportSourceAudioSummaryView(
+                            SourceAudioLine(
                                 sourceAudio: sourceAudio
                             )
                         }

@@ -36,7 +36,7 @@ class BridgeFormatTest {
             )
 
         assertEquals(
-            "CUE · FLAC · 44.1 kHz · 16-bit · stereo",
+            "CUE · FLAC · 44.1 kHz · 16-bit · Stereo",
             summary.text(context, stereoKey),
         )
     }
@@ -59,7 +59,7 @@ class BridgeFormatTest {
         }
 
         assertEquals(
-            "CUE and track files · 16-bit and 24-bit · stereo and mono",
+            "CUE and track files · 16-bit and 24-bit · Stereo and Mono",
             summary.text(context, channelsKey),
         )
     }

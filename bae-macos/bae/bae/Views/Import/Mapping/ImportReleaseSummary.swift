@@ -104,7 +104,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
                 .frame(height: style.factsHeight)
                 .opacity(style.showsFacts ? 1 : 0)
             if style.showsFacts, let sourceAudio = summary.sourceAudio {
-                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+                SourceAudioLine(sourceAudio: sourceAudio)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,8 +178,9 @@ extension ImportReleaseSummaryView.Style {
     }
 }
 
-/// The candidate's aggregate source-audio facts as non-interactive text.
-struct ImportSourceAudioSummaryView: View {
+/// The audio the scan read, as one line: the format, or the facts the files
+/// disagree on.
+struct SourceAudioLine: View {
     let sourceAudio: BridgeSourceAudioSummary
 
     var body: some View {
@@ -190,6 +191,6 @@ struct ImportSourceAudioSummaryView: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(localizedCoreString("core.audio.label"))
-            .accessibilityValue(sourceAudio.text)
+            .accessibilityValue(sourceAudio.spokenText)
     }
 }

@@ -96,7 +96,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     @ViewBuilder
     private var sourceAudio: some View {
         if let summary = draft.sourceAudio {
-            ReleaseSourceAudioSummaryView(sourceAudio: summary)
+            SourceAudioLine(sourceAudio: summary)
         }
     }
 
@@ -266,20 +266,5 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
 
     private func eyebrow(_ key: String) -> some View {
         Eyebrow(verbatim: localizedCoreString(key))
-    }
-}
-
-struct ReleaseSourceAudioSummaryView: View {
-    let sourceAudio: BridgeSourceAudioSummary
-
-    var body: some View {
-        Text(sourceAudio.text)
-            .themeText(.detail)
-            .foregroundStyle(.tertiary)
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityLabel(localizedCoreString("core.audio.label"))
-            .accessibilityValue(sourceAudio.text)
     }
 }

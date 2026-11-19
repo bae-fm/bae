@@ -17,8 +17,8 @@ private const val HZ_PER_KHZ = 1000.0
 
 /**
  * One-line audio descriptor for the current locale, e.g.
- * "FLAC · 44.1 kHz · 16-bit · stereo" (lossless) or
- * "MP3 · 320 kbps · 44.1 kHz · stereo" (lossy). The codec is a proper noun; the
+ * "FLAC · 44.1 kHz · 16-bit · Stereo" (lossless) or
+ * "MP3 · 320 kbps · 44.1 kHz · Stereo" (lossy). The codec is a proper noun; the
  * channel word is localized; numbers use the locale formatter. bae-library owns the
  * parts and the lossy/lossless split (`bitsPerSample == null`); this is the UI's
  * locale rendering. Mirrors macOS `BridgeAudioFormat.text`.

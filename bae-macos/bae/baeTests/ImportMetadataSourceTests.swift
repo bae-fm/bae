@@ -643,7 +643,7 @@ extension ImportMetadataCardLayoutTests {
         )
         let size = NSSize(width: 240, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+            SourceAudioLine(sourceAudio: sourceAudio)
                 .frame(width: size.width, height: size.height)
                 .importPreviewEnvironment(),
             size: size
@@ -750,7 +750,7 @@ extension ImportMetadataCardLayoutTests {
 
         XCTAssertEqual(
             summary.text,
-            "FLAC · 44.1\u{00a0}kHz · 16\u{2011}bit · stereo"
+            "FLAC · 44.1\u{00a0}kHz · 16\u{2011}bit · Stereo"
         )
     }
 }
