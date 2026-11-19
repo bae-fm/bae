@@ -54,6 +54,12 @@ struct ShownImportList {
     let request: BridgeImportListRequest
 }
 
+/// The slot was asked to reveal a candidate with no list to show it in: its
+/// first read had not started, or ended without a list.
+enum ImportListSlotError: Error {
+    case noList
+}
+
 @MainActor
 @Observable
 final class ImportListSlot {
@@ -228,10 +234,12 @@ final class ImportListSlot {
 extension ImportListSlot {
     /// Navigate to the first candidate the identification count is still
     /// waiting on, as core finds it when asked. `nil` when nothing is.
+    /// Asked while the slot reads its first list, it waits for that list.
     func revealFirstIdentifying() async throws
         -> (candidateKey: Data, position: Int)?
     {
-        guard let current,
+        let current = try await firstShown()
+        guard
             let candidateKey = try await current.handle
                 .firstIdentifyingCandidate(sortOrder),
             let position = try await revealCandidate(candidateKey)
@@ -239,20 +247,31 @@ extension ImportListSlot {
         return (candidateKey, position)
     }
 
+    /// The list on screen. A reveal asked for while the slot reads its first
+    /// list waits for that read, so the reveal lands once the list does.
+    /// Throws `ImportListSlotError.noList` when no read is running, or the
+    /// read showed no list.
+    private func firstShown() async throws -> ShownImportList {
+        if current == nil { await reloadTask?.value }
+        guard let current else { throw ImportListSlotError.noList }
+        return current
+    }
+
     /// Navigate to the candidate's current authoritative placement, even when
     /// that placement has moved it out of the list presently on screen, and
     /// select it alone. Core answers the request that reveals it from the
     /// list the person asked for, and where it sits there; the slot shows
     /// that request. Returns that position; `nil` when no tab lists the
-    /// candidate. Cancelling the caller cancels the reveal: until the new
-    /// list is on screen, the slot changes neither the view nor the
-    /// selection.
+    /// candidate. Asked while the slot reads its first list, the reveal
+    /// waits for that list; with no list to show it in, it throws
+    /// `ImportListSlotError.noList`. Cancelling the caller cancels the
+    /// reveal: until the new list is on screen, the slot changes neither the
+    /// view nor the selection.
     func revealCandidate(_ candidateKey: Data) async throws -> Int? {
-        guard current != nil else { return nil }
         let reveal = enqueue {
             [self] () async -> Result<Int?, any Error> in
-            guard let handle = current?.handle else { return .success(nil) }
             do {
+                let handle = try await firstShown().handle
                 guard
                     let reveal = try await handle.revealCandidate(
                         asked,

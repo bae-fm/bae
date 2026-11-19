@@ -636,6 +636,67 @@ extension CandidatePlacementNavigationTests {
         XCTAssertEqual(uiStore.importCandidateTab, .pending)
         XCTAssertTrue(selection.keys.isEmpty)
     }
+
+    /// A navigation can ask for a candidate before the slot has read its
+    /// first list: the reveal waits for that list, then lands.
+    @MainActor
+    func testARevealAskedBeforeTheFirstListLandsOnceTheListDoes() async throws {
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.pending)
+        let selection = ImportSelection()
+        let opened = AsyncStream<Void>.makeStream()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            selection: selection,
+            makeHandle: {
+                var waiting = opened.stream.makeAsyncIterator()
+                await waiting.next()
+                return .stub(
+                    items: (0..<80).map(candidateItem),
+                    revealCandidate: { request, _ in
+                        BridgeImportListReveal.fixed(
+                            from: request,
+                            on: .done,
+                            at: 61
+                        )
+                    }
+                )
+            }
+        )
+        slot.startLoad()
+        let reveal = Task { try await slot.revealCandidate(candidateKey(61)) }
+        await Task.yield()
+        XCTAssertNil(slot.list)
+
+        opened.continuation.yield(())
+        let position = try await reveal.value
+
+        XCTAssertEqual(position, 61)
+        XCTAssertEqual(slot.shown?.view.tab, .done)
+        XCTAssertEqual(selection.keys, [candidateKey(61)])
+    }
+
+    /// A reveal with no list to show it in, because the slot never started
+    /// reading one, fails rather than reading as a candidate no tab lists.
+    @MainActor
+    func testARevealWithNoListFails() async {
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeHandle: { .stub(items: []) }
+        )
+
+        do {
+            _ = try await slot.revealCandidate(candidateKey(61))
+            XCTFail("the reveal had no list to land in")
+        }
+        catch ImportListSlotError.noList {}
+        catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
 }
 
 @MainActor

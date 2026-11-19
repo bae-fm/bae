@@ -95,12 +95,8 @@ struct MacImportSidebarContainer: View {
 
     @Environment(UiStore.self)
     private var uiStore
-    /// The candidate a navigation asked the list to show before the list
-    /// existed, which the list shows once it does.
-    @State
-    private var requestedReveal: Data?
-    /// The reveal on its way: from a request, once the list exists, or from
-    /// the identification progress line.
+    /// The reveal on its way: from a navigation's request, or from the
+    /// identification progress line.
     @State
     private var revealOperation: ImportCandidateRevealOperation?
     /// The positions reveals land on, which the table scrolls to.
@@ -198,19 +194,8 @@ struct MacImportSidebarContainer: View {
             cancelReveal()
         }
         .onReceive(uiStore.importCandidateReveals.requests) { candidateKey in
-            // A reveal started before the list exists would be lost.
-            if listSlot.list != nil {
-                reveal(candidateKey)
-            }
-            else {
-                requestedReveal = candidateKey
-            }
-        }
-        .onChange(of: listSlot.list != nil) { _, listExists in
-            guard listExists, let candidateKey = requestedReveal else {
-                return
-            }
-            requestedReveal = nil
+            // The slot holds a reveal that comes before its first list until
+            // the list arrives.
             reveal(candidateKey)
         }
     }
