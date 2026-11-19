@@ -279,10 +279,10 @@ private struct SyncSettingsPage: View {
                 } header: {
                     Text("Cloud home")
                 } footer: {
-                    if let saved = keyReplacement.saved {
-                        S3KeySavedNotice(
-                            saved: saved,
-                            onDismiss: { keyReplacement.dismissSaved() }
+                    if let line = keyReplacement.line {
+                        S3KeyLineNotice(
+                            line: line,
+                            onDismiss: { keyReplacement.dismissLine() }
                         )
                     }
                 }
@@ -348,24 +348,35 @@ private struct LibraryRestoreCodeSection: View {
     }
 }
 
-/// The line after a saved S3 key: which old key to delete in the provider's
-/// console, when the library recorded one, until the person dismisses it.
-private struct S3KeySavedNotice: View {
-    let saved: S3KeyReplacement.Saved
+/// The page's line after an S3 key call, until the person dismisses it: a
+/// saved key, with the old key to delete in the provider's console when the
+/// library recorded one, or why using the key failed after its sheet closed.
+private struct S3KeyLineNotice: View {
+    let line: S3KeyReplacement.Line
     let onDismiss: () -> Void
 
     var body: some View {
-        Notice(
-            title: String(localized: "Saved the new S3 key."),
-            advice: saved.oldKey.map { oldKey in
-                String(
-                    localized:
-                        "Delete the old key, \(oldKey), in your S3 provider’s console."
-                )
-            },
-            error: nil,
-            tone: .info,
-            onDismiss: onDismiss
-        )
+        switch line {
+        case .saved(let oldKey):
+            Notice(
+                title: String(localized: "Saved the new S3 key."),
+                advice: oldKey.map { oldKey in
+                    String(
+                        localized:
+                            "Delete the old key, \(oldKey), in your S3 provider’s console."
+                    )
+                },
+                error: nil,
+                tone: .info,
+                onDismiss: onDismiss
+            )
+        case .failed(let error):
+            Notice(
+                title: String(localized: "Could not use this key"),
+                advice: error.line,
+                error: error,
+                onDismiss: onDismiss
+            )
+        }
     }
 }

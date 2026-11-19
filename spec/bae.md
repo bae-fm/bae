@@ -3723,6 +3723,10 @@ person's devices replaced it, the line says only *Saved the new S3 key.* bae
 never deletes the old key and keeps no record of its id once the person
 dismisses the line or the page closes ([coven
 §14.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#143-s3-access-keys)).
+When using the key fails after the sheet closed, because the person cancelled
+once the check had passed or saved another key meanwhile, the library may
+still record the key, so the page's line says *Could not use this key* over
+why, until the person dismisses it.
 The words for the place are always "S3 storage", never "bucket".
 
 **Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the

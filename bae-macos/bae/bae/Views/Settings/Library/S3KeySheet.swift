@@ -6,10 +6,11 @@ private let logger = Logger.bae("S3KeySheet")
 
 /// Replacing the S3 key of the library on the Sync page: whether the S3 key
 /// sheet is open and what it shows, the call that checks the key with S3
-/// storage and uses it, and the line after a save that names the old key to
-/// delete. The page owns it: Replace key… and Sign in to S3… both open the
-/// same sheet. Nothing stores the old key's id; it goes when the person
-/// dismisses the line or the page closes.
+/// storage and uses it, and the page's line after a call: a save that names
+/// the old key to delete, or a failure the sheet was no longer there to show.
+/// The page owns it: Replace key… and Sign in to S3… both open the same
+/// sheet. Nothing stores the line; it goes when the person dismisses it or
+/// the page closes.
 @MainActor
 @Observable
 final class S3KeyReplacement {
@@ -29,18 +30,22 @@ final class S3KeyReplacement {
         case failed(DisplayError)
     }
 
-    /// The line after a save.
-    struct Saved: Equatable {
-        /// The key the library recorded before, which the person deletes in
-        /// the provider's console; nil when the library already recorded
-        /// the new key.
-        let oldKey: String?
+    /// The page's line after a call.
+    enum Line: Equatable {
+        /// bae saved the key. `oldKey` is the key the library recorded
+        /// before, which the person deletes in the provider's console; nil
+        /// when the library already recorded the new key.
+        case saved(oldKey: String?)
+        /// Using the key failed once the sheet no longer waited on the call:
+        /// the person cancelled after the check had passed, or saved another
+        /// key meanwhile. The library may still have recorded the key.
+        case failed(DisplayError)
     }
 
     /// The open sheet's face; nil while the sheet is closed.
     private(set) var sheet: Sheet?
-    /// The line after the last save, until the person dismisses it.
-    private(set) var saved: Saved?
+    /// The page's line after the last call, until the person dismisses it.
+    private(set) var line: Line?
 
     /// The running call and its cancel. A call the person cancelled keeps
     /// running until its check stops, and its save still shows the line.
@@ -57,14 +62,14 @@ final class S3KeyReplacement {
     }
 
     #if DEBUG
-        /// A replacement showing `sheet` and the line after `saved`, with
-        /// no call behind it, for a shot.
-        init(sheet: Sheet? = nil, saved: Saved? = nil) {
+        /// A replacement showing `sheet` and `line`, with no call behind it,
+        /// for a shot.
+        init(sheet: Sheet? = nil, line: Line? = nil) {
             self.makeCancellation = {
                 preconditionFailure("a shot's key sheet makes no call")
             }
             self.sheet = sheet
-            self.saved = saved
+            self.line = line
         }
     #endif
 
@@ -99,7 +104,8 @@ final class S3KeyReplacement {
     }
 
     /// Close the sheet. A check that runs stops, and nothing changes, unless
-    /// it had already passed: then the save finishes and shows its line.
+    /// it had already passed: then the call finishes and the page shows how
+    /// it ended.
     func cancel() {
         if sheet == .checking {
             running?.cancellation.cancel()
@@ -107,8 +113,8 @@ final class S3KeyReplacement {
         sheet = nil
     }
 
-    func dismissSaved() {
-        saved = nil
+    func dismissLine() {
+        line = nil
     }
 
     /// How a call ended, as the sheet tells it.
@@ -135,16 +141,36 @@ final class S3KeyReplacement {
         if current {
             running = nil
         }
-        // Only the call the open sheet waits on changes the sheet.
+        // Only the call the open sheet waits on changes the sheet. A call the
+        // sheet no longer waits on tells the page how it ended instead.
         let shown = current && sheet == .checking
         switch ended {
         case .saved(let oldKey):
-            saved = Saved(oldKey: oldKey)
+            line = .saved(oldKey: oldKey)
             if shown { sheet = nil }
         case .refused:
-            if shown { sheet = .fields(.refused) }
+            if shown {
+                sheet = .fields(.refused)
+            }
+            else {
+                // A refused key changed nothing, so the page has nothing to
+                // tell.
+                logger.info(
+                    "S3 storage refused a key whose sheet had closed"
+                )
+            }
         case .failed(let error):
-            if shown { sheet = .fields(error.map(Failure.failed)) }
+            if shown {
+                sheet = .fields(error.map(Failure.failed))
+            }
+            else {
+                logger.error(
+                    "Using a new S3 key failed after its sheet closed: \(error?.line ?? "a cancellation"), \(error?.detail ?? "no detail")"
+                )
+                // A failure with no line is a cancellation, which core says
+                // has nothing to show.
+                if let error { line = .failed(error) }
+            }
         case .cancelled:
             break
         }

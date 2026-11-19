@@ -5,8 +5,8 @@ import Testing
 @testable import bae
 
 /// Replacing the S3 key from the Sync page: the sheet shows each way the
-/// call ends, Cancel stops the check, and a save the person cancelled too
-/// late still names the old key.
+/// call ends, Cancel stops the check, and a call the person cancelled too
+/// late still tells the page how it ended.
 @Suite("S3 key replacement")
 @MainActor
 struct S3KeyReplacementTests {
@@ -21,13 +21,13 @@ struct S3KeyReplacementTests {
         #expect(replacement.sheet == .checking)
 
         try await call.end(.saved(replaced: "OLD"))
-        try await Wait.until { replacement.saved != nil }
+        try await Wait.until { replacement.line != nil }
         #expect(replacement.sheet == nil)
-        #expect(replacement.saved == .init(oldKey: "OLD"))
+        #expect(replacement.line == .saved(oldKey: "OLD"))
         #expect(call.received == ["NEW"])
 
-        replacement.dismissSaved()
-        #expect(replacement.saved == nil)
+        replacement.dismissLine()
+        #expect(replacement.line == nil)
     }
 
     @Test("a key the library already records is saved with no old key")
@@ -39,8 +39,8 @@ struct S3KeyReplacementTests {
         replacement.open()
         replacement.save(accessKey: "NEW", secretKey: "secret", sync: call.sync)
         try await call.end(.saved(replaced: nil))
-        try await Wait.until { replacement.saved != nil }
-        #expect(replacement.saved == .init(oldKey: nil))
+        try await Wait.until { replacement.line != nil }
+        #expect(replacement.line == .saved(oldKey: nil))
     }
 
     @Test("a refused key shows the fields again with why")
@@ -54,7 +54,7 @@ struct S3KeyReplacementTests {
         try await call.end(.refused)
         try await Wait.until { replacement.sheet != .checking }
         #expect(replacement.sheet == .fields(.refused))
-        #expect(replacement.saved == nil)
+        #expect(replacement.line == nil)
     }
 
     @Test("a failed key shows the fields again with the failure's line")
@@ -95,7 +95,7 @@ struct S3KeyReplacementTests {
         try await call.end(.cancelled)
         try await Wait.until { call.ended }
         #expect(replacement.sheet == nil)
-        #expect(replacement.saved == nil)
+        #expect(replacement.line == nil)
     }
 
     @Test("a save whose check passed before the cancel still names the old key")
@@ -109,9 +109,68 @@ struct S3KeyReplacementTests {
         replacement.cancel()
 
         try await call.end(.saved(replaced: "OLD"))
-        try await Wait.until { replacement.saved != nil }
+        try await Wait.until { replacement.line != nil }
         #expect(replacement.sheet == nil)
-        #expect(replacement.saved == .init(oldKey: "OLD"))
+        #expect(replacement.line == .saved(oldKey: "OLD"))
+    }
+
+    @Test("a failure after the sheet closed shows on the page")
+    func failureAfterCancelShowsOnThePage() async throws {
+        let call = HeldKeyCall()
+        let replacement = S3KeyReplacement(
+            makeCancellation: RecordedCancellation.init
+        )
+        replacement.open()
+        replacement.save(accessKey: "NEW", secretKey: "secret", sync: call.sync)
+        replacement.cancel()
+
+        try await call.end(
+            .failed(error: .Diagnostic(category: .network, detail: "offline"))
+        )
+        try await Wait.until { replacement.line != nil }
+        #expect(replacement.sheet == nil)
+        guard case .failed(let error) = replacement.line else {
+            Issue.record(
+                "the page shows \(String(describing: replacement.line))"
+            )
+            return
+        }
+        #expect(error.detail == "offline")
+    }
+
+    @Test("a replaced call's failure shows on the page, not in the sheet")
+    func replacedCallFailureShowsOnThePage() async throws {
+        let first = HeldKeyCall()
+        let second = HeldKeyCall()
+        let replacement = S3KeyReplacement(
+            makeCancellation: RecordedCancellation.init
+        )
+        replacement.open()
+        replacement.save(
+            accessKey: "NEW",
+            secretKey: "secret",
+            sync: first.sync
+        )
+        replacement.cancel()
+        replacement.open()
+        replacement.save(
+            accessKey: "NEWER",
+            secretKey: "secret",
+            sync: second.sync
+        )
+
+        try await first.end(
+            .failed(error: .Diagnostic(category: .network, detail: "offline"))
+        )
+        try await Wait.until { replacement.line != nil }
+        #expect(replacement.sheet == .checking)
+        guard case .failed = replacement.line else {
+            Issue.record(
+                "the page shows \(String(describing: replacement.line))"
+            )
+            return
+        }
+        try await second.end(.cancelled)
     }
 }
 

@@ -52,7 +52,7 @@ class SettingsSyncShots : BoardShot() {
     @Test
     fun androidSettingsSyncS3KeyReplaced() =
         shot("android.settings.sync.s3-key-replaced") {
-            Sync(synced, s3, key = "AKIA4EXAMPLENEW", keySaved = S3KeyReplacement.Saved("AKIA4EXAMPLEOLD"))
+            Sync(synced, s3, key = "AKIA4EXAMPLENEW", keyLine = S3KeyReplacement.Line.Saved("AKIA4EXAMPLEOLD"))
         }
 
     /** Sync over a Dropbox folder after Dropbox signed this device out. */
@@ -165,26 +165,26 @@ private fun Sync(
     location: BridgeStorageLocation,
     restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
     key: String = "AKIA4EXAMPLEOLD",
-    keySaved: S3KeyReplacement.Saved? = null,
-) = ScreenScene { SyncPage(line, location, restoreCode, key, keySaved) }
+    keyLine: S3KeyReplacement.Line? = null,
+) = ScreenScene { SyncPage(line, location, restoreCode, key, keyLine) }
 
-/** The Sync page over [location], an S3 library recording [key] for the person, with [keySaved]'s line under it. */
+/** The Sync page over [location], an S3 library recording [key] for the person, with [keyLine] under its storage. */
 @Composable
 private fun SyncPage(
     line: SyncLine,
     location: BridgeStorageLocation,
     restoreCode: RestoreCodeState = RestoreCodeState.Masked(RESTORE_CODE),
     key: String = "AKIA4EXAMPLEOLD",
-    keySaved: S3KeyReplacement.Saved? = null,
+    keyLine: S3KeyReplacement.Line? = null,
 ) {
     AndroidSettingsSync(
         line = line,
         notices = {},
         location = location,
         access = BridgeMemberAccess.S3AccessKey(key),
-        keySaved = keySaved,
+        keyLine = keyLine,
         onReplaceKey = {},
-        onDismissKeySaved = {},
+        onDismissKeyLine = {},
         restoreCode = restoreCode,
         onBack = {},
         onFix = {},

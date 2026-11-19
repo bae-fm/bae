@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -31,11 +32,13 @@ import uniffi.bae_bridge.BridgeAccessKeyOutcome
 import uniffi.bae_bridge.BridgeCancellation
 import uniffi.bae_bridge.BridgeException
 
+private val logger = BaeLogger("bae.StorageSignIn")
+
 /**
  * Replacing the S3 key of the library on the Sync page: whether the S3 key dialog is open and what it shows, the call
- * that checks the key with S3 storage and uses it, and the line after a save that names the old key to delete. The
- * page owns it: Replace key and Sign in to S3 both open the same dialog. Nothing stores the old key's id; it goes when
- * the person dismisses the line or the page closes.
+ * that checks the key with S3 storage and uses it, and the page's line after a call: a save that names the old key to
+ * delete, or a failure the dialog was no longer there to show. The page owns it: Replace key and Sign in to S3 both
+ * open the same dialog. Nothing stores the line; it goes when the person dismisses it or the page closes.
  */
 internal class S3KeyReplacement(
     private val scope: CoroutineScope,
@@ -65,17 +68,31 @@ internal class S3KeyReplacement(
         ) : Failure
     }
 
-    /** The line after a save: the key the library recorded before, or null when it already recorded the new one. */
-    data class Saved(
-        val oldKey: String?,
-    )
+    /** The page's line after a call. */
+    sealed interface Line {
+        /**
+         * bae saved the key. [oldKey] is the key the library recorded before, which the person deletes in the
+         * provider's console; null when the library already recorded the new key.
+         */
+        data class Saved(
+            val oldKey: String?,
+        ) : Line
+
+        /**
+         * Using the key failed once the dialog no longer waited on the call: the person cancelled after the check had
+         * passed, or saved another key meanwhile. The library may still have recorded the key.
+         */
+        data class Failed(
+            val error: DisplayError,
+        ) : Line
+    }
 
     /** The open dialog's face; null while the dialog is closed. */
     var sheet by mutableStateOf<Sheet?>(null)
         private set
 
-    /** The line after the last save, until the person dismisses it. */
-    var saved by mutableStateOf<Saved?>(null)
+    /** The page's line after the last call, until the person dismisses it. */
+    var line by mutableStateOf<Line?>(null)
         private set
 
     /**
@@ -111,16 +128,16 @@ internal class S3KeyReplacement(
     }
 
     /**
-     * Close the dialog. A check that runs stops, and nothing changes, unless it had already passed: then the save
-     * finishes and shows its line.
+     * Close the dialog. A check that runs stops, and nothing changes, unless it had already passed: then the call
+     * finishes and the page shows how it ended.
      */
     fun cancel() {
         if (sheet == Sheet.Checking) running?.second?.cancel()
         sheet = null
     }
 
-    fun dismissSaved() {
-        saved = null
+    fun dismissLine() {
+        line = null
     }
 
     /** How a call ended, as the dialog tells it. */
@@ -158,20 +175,35 @@ internal class S3KeyReplacement(
     ) {
         val current = running?.first === call
         if (current) running = null
-        // Only the call the open dialog waits on changes the dialog.
+        // Only the call the open dialog waits on changes the dialog. A call the dialog no longer waits on tells the
+        // page how it ended instead.
         val shown = current && sheet == Sheet.Checking
         when (ended) {
             is Ended.Saved -> {
-                saved = Saved(ended.oldKey)
+                line = Line.Saved(ended.oldKey)
                 if (shown) sheet = null
             }
 
             Ended.Refused -> {
-                if (shown) sheet = Sheet.Fields(Failure.Refused)
+                if (shown) {
+                    sheet = Sheet.Fields(Failure.Refused)
+                } else {
+                    // A refused key changed nothing, so the page has nothing to tell.
+                    logger.info("S3 storage refused a key whose dialog had closed")
+                }
             }
 
             is Ended.Failed -> {
-                if (shown) sheet = Sheet.Fields(ended.error?.let { Failure.Failed(it) })
+                if (shown) {
+                    sheet = Sheet.Fields(ended.error?.let { Failure.Failed(it) })
+                } else {
+                    logger.error(
+                        "Using a new S3 key failed after its dialog closed: " +
+                            "${ended.error?.line ?: "nothing to show"}, ${ended.error?.detail ?: "no detail"}",
+                    )
+                    // A failure core says has nothing to show stays off the page.
+                    ended.error?.let { line = Line.Failed(it) }
+                }
             }
 
             Ended.Cancelled -> {

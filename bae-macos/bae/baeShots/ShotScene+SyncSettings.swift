@@ -99,7 +99,7 @@ extension ShotScene {
             s3Page(
                 key: "AKIA4EXAMPLENEW",
                 keyReplacement: S3KeyReplacement(
-                    saved: .init(oldKey: "AKIA4EXAMPLEOLD")
+                    line: .saved(oldKey: "AKIA4EXAMPLEOLD")
                 )
             )
         },

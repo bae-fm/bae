@@ -35,16 +35,16 @@ private val logger = BaeLogger("bae.SyncStorageRows")
  * The library's storage: its provider, then for S3 the endpoint, region and bucket it names, and for Dropbox and
  * OneDrive the signed-in account and the folder coven recorded, then Open in browser, which opens the folder's page
  * at the provider. A row shows a name or isn't there. On S3 the card ends with the id of the access key the library
- * records for the person, [access], and Replace key, which calls [onReplaceKey]; under the card, [saved] is the line
- * after a saved key, which [onDismissSaved] dismisses.
+ * records for the person, [access], and Replace key, which calls [onReplaceKey]; under the card, [keyLine] is the
+ * line after a key call, which [onDismissKeyLine] dismisses.
  */
 @Composable
 internal fun StorageSection(
     location: BridgeStorageLocation,
     access: BridgeMemberAccess?,
-    saved: S3KeyReplacement.Saved?,
+    keyLine: S3KeyReplacement.Line?,
     onReplaceKey: () -> Unit,
-    onDismissSaved: () -> Unit,
+    onDismissKeyLine: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_cloud_home))
@@ -56,14 +56,39 @@ internal fun StorageSection(
             }
             storageFolder(location)?.let { OpenFolderRow(it) }
         }
-        saved?.let { line ->
+        keyLine?.let { S3KeyLineNotice(it, onDismiss = onDismissKeyLine) }
+    }
+}
+
+/**
+ * The page's line after an S3 key call, until the person dismisses it: a saved key, with the old key to delete in the
+ * provider's console when the library recorded one, or why using the key failed after its dialog closed.
+ */
+@Composable
+private fun S3KeyLineNotice(
+    line: S3KeyReplacement.Line,
+    onDismiss: () -> Unit,
+) {
+    val modifier = Modifier.padding(horizontal = ThemeSpace.edge)
+    when (line) {
+        is S3KeyReplacement.Line.Saved -> {
             AndroidNotice(
                 title = stringResource(R.string.s3_key_saved),
                 advice = line.oldKey?.let { stringResource(R.string.s3_key_delete_old, it) },
                 error = null,
-                modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+                modifier = modifier,
                 tone = StatusTone.INFO,
-                onDismiss = onDismissSaved,
+                onDismiss = onDismiss,
+            )
+        }
+
+        is S3KeyReplacement.Line.Failed -> {
+            AndroidNotice(
+                title = stringResource(R.string.s3_key_refused_title),
+                advice = line.error.line,
+                error = line.error,
+                modifier = modifier,
+                onDismiss = onDismiss,
             )
         }
     }

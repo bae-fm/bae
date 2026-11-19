@@ -18,7 +18,7 @@ import uniffi.bae_bridge.NoHandle
 
 /**
  * Replacing the S3 key from the Sync page: the dialog shows each way the call ends, Cancel stops the check, and a
- * save the person cancelled too late still names the old key.
+ * call the person cancelled too late still tells the page how it ended.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class S3KeyReplacementTest {
@@ -34,11 +34,11 @@ class S3KeyReplacementTest {
             call.end(BridgeAccessKeyOutcome.Saved("OLD"))
             advanceUntilIdle()
             assertNull(replacement.sheet)
-            assertEquals(S3KeyReplacement.Saved("OLD"), replacement.saved)
+            assertEquals(S3KeyReplacement.Line.Saved("OLD"), replacement.line)
             assertEquals(listOf("NEW"), call.received)
 
-            replacement.dismissSaved()
-            assertNull(replacement.saved)
+            replacement.dismissLine()
+            assertNull(replacement.line)
         }
 
     @Test
@@ -50,7 +50,7 @@ class S3KeyReplacementTest {
             replacement.save("NEW", "secret")
             call.end(BridgeAccessKeyOutcome.Saved(null))
             advanceUntilIdle()
-            assertEquals(S3KeyReplacement.Saved(null), replacement.saved)
+            assertEquals(S3KeyReplacement.Line.Saved(null), replacement.line)
         }
 
     @Test
@@ -63,7 +63,7 @@ class S3KeyReplacementTest {
             call.end(BridgeAccessKeyOutcome.Refused)
             advanceUntilIdle()
             assertEquals(S3KeyReplacement.Sheet.Fields(S3KeyReplacement.Failure.Refused), replacement.sheet)
-            assertNull(replacement.saved)
+            assertNull(replacement.line)
         }
 
     @Test
@@ -97,7 +97,7 @@ class S3KeyReplacementTest {
             call.end(BridgeAccessKeyOutcome.Cancelled)
             advanceUntilIdle()
             assertNull(replacement.sheet)
-            assertNull(replacement.saved)
+            assertNull(replacement.line)
         }
 
     @Test
@@ -112,7 +112,51 @@ class S3KeyReplacementTest {
             call.end(BridgeAccessKeyOutcome.Saved("OLD"))
             advanceUntilIdle()
             assertNull(replacement.sheet)
-            assertEquals(S3KeyReplacement.Saved("OLD"), replacement.saved)
+            assertEquals(S3KeyReplacement.Line.Saved("OLD"), replacement.line)
+        }
+
+    @Test
+    fun aFailureAfterTheDialogClosedShowsOnThePage() =
+        runTest {
+            val call = HeldKeyCall()
+            val replacement = call.replacement(this)
+            replacement.open()
+            replacement.save("NEW", "secret")
+            replacement.cancel()
+
+            call.end(BridgeAccessKeyOutcome.Failed(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")))
+            advanceUntilIdle()
+            assertNull(replacement.sheet)
+            assertEquals(S3KeyReplacement.Line.Failed(DisplayError("Network", "offline")), replacement.line)
+        }
+
+    @Test
+    fun aReplacedCallsFailureShowsOnThePageNotInTheDialog() =
+        runTest {
+            val first = HeldKeyCall()
+            val second = HeldKeyCall()
+            val replacement =
+                S3KeyReplacement(
+                    scope = this,
+                    useAccessKey = { accessKeyId, _, _ ->
+                        if (accessKeyId == "NEW") first.use(accessKeyId) else second.use(accessKeyId)
+                    },
+                    display = { error -> DisplayError("Network", (error as? BridgeException.Diagnostic)?.detail) },
+                    makeCancellation = { RecordedCancellation() },
+                )
+            replacement.open()
+            replacement.save("NEW", "secret")
+            replacement.cancel()
+            replacement.open()
+            replacement.save("NEWER", "secret")
+
+            first.end(BridgeAccessKeyOutcome.Failed(BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")))
+            advanceUntilIdle()
+            assertEquals(S3KeyReplacement.Sheet.Checking, replacement.sheet)
+            assertEquals(S3KeyReplacement.Line.Failed(DisplayError("Network", "offline")), replacement.line)
+
+            second.end(BridgeAccessKeyOutcome.Cancelled)
+            advanceUntilIdle()
         }
 }
 
@@ -131,13 +175,16 @@ private class HeldKeyCall {
     val cancellation = RecordedCancellation()
     private val outcome = CompletableDeferred<BridgeAccessKeyOutcome>()
 
+    /** Take a call: record its key and wait for the test's outcome. */
+    suspend fun use(accessKeyId: String): BridgeAccessKeyOutcome {
+        received += accessKeyId
+        return outcome.await()
+    }
+
     fun replacement(scope: TestScope) =
         S3KeyReplacement(
             scope = scope,
-            useAccessKey = { accessKeyId, _, _ ->
-                received += accessKeyId
-                outcome.await()
-            },
+            useAccessKey = { accessKeyId, _, _ -> use(accessKeyId) },
             display = { error -> DisplayError("Network", (error as? BridgeException.Diagnostic)?.detail) },
             makeCancellation = { cancellation },
         )

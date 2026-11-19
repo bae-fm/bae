@@ -236,9 +236,9 @@ internal fun SyncScreen(
         },
         location = location,
         access = config.storageAccess,
-        keySaved = runner.keyReplacement.saved,
+        keyLine = runner.keyReplacement.line,
         onReplaceKey = runner.keyReplacement::open,
-        onDismissKeySaved = runner.keyReplacement::dismissSaved,
+        onDismissKeyLine = runner.keyReplacement::dismissLine,
         restoreCode = restoreCode.state,
         onBack = onBack,
         onFix = runner::runFix,
@@ -254,7 +254,7 @@ internal fun SyncScreen(
 /**
  * The Sync page over what it shows: the state of sync with its fix, [notices] of setups and failed actions, then the
  * library's [location] with the access key the library records for the person, [access], and its restore code.
- * [keySaved] is the line after a saved S3 key, which [onDismissKeySaved] dismisses; Replace key calls [onReplaceKey].
+ * [keyLine] is the line after an S3 key call, which [onDismissKeyLine] dismisses; Replace key calls [onReplaceKey].
  */
 @Composable
 internal fun AndroidSettingsSync(
@@ -262,9 +262,9 @@ internal fun AndroidSettingsSync(
     notices: @Composable ColumnScope.() -> Unit,
     location: BridgeStorageLocation?,
     access: BridgeMemberAccess?,
-    keySaved: S3KeyReplacement.Saved?,
+    keyLine: S3KeyReplacement.Line?,
     onReplaceKey: () -> Unit,
-    onDismissKeySaved: () -> Unit,
+    onDismissKeyLine: () -> Unit,
     restoreCode: RestoreCodeState,
     onBack: () -> Unit,
     onFix: (BridgeSyncFix) -> Unit,
@@ -285,9 +285,9 @@ internal fun AndroidSettingsSync(
                     StorageSection(
                         location = place,
                         access = access,
-                        saved = keySaved,
+                        keyLine = keyLine,
                         onReplaceKey = onReplaceKey,
-                        onDismissSaved = onDismissKeySaved,
+                        onDismissKeyLine = onDismissKeyLine,
                     )
                 }
                 item {
