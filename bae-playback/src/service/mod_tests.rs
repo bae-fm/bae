@@ -752,7 +752,7 @@ pub(super) struct FakeAirPlayControlState {
 
 pub(super) struct FakeAirPlayControl {
     pub(super) state: Arc<FakeAirPlayControlState>,
-    pub(super) latency: std::time::Duration,
+    pub(super) delay: crate::airplay_output::ReceiverDelay,
 }
 
 impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
@@ -770,7 +770,10 @@ impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
         self.state.failure.get().cloned()
     }
     fn latency(&self) -> std::time::Duration {
-        self.latency
+        self.delay.latency
+    }
+    fn unheard(&self) -> std::time::Duration {
+        self.delay.unheard
     }
 }
 
@@ -792,14 +795,27 @@ impl InstalledAirPlay {
 }
 
 /// Install an AirPlay renderer on `service` with a saved local output and a
-/// fake session at the receiver `latency` bound as the live one.
+/// fake session at the receiver `latency` bound as the live one, its receiver
+/// playing the latency behind what it was sent.
 pub(super) fn install_airplay(
     service: &mut PlaybackService,
     latency: std::time::Duration,
 ) -> InstalledAirPlay {
+    install_airplay_delayed(
+        service,
+        crate::airplay_output::ReceiverDelay { unheard: latency, latency },
+    )
+}
+
+/// [`install_airplay`], with the receiver playing `delay` behind what it was
+/// sent.
+pub(super) fn install_airplay_delayed(
+    service: &mut PlaybackService,
+    delay: crate::airplay_output::ReceiverDelay,
+) -> InstalledAirPlay {
     let state = Arc::new(FakeAirPlayControlState::default());
     let session: Arc<dyn crate::airplay_output::AirPlayStreamControl> =
-        Arc::new(FakeAirPlayControl { state: state.clone(), latency });
+        Arc::new(FakeAirPlayControl { state: state.clone(), delay });
     let command_tx = service.command_tx.clone();
     let failed = crate::airplay_output::AirPlayFailed::new(move || {
         dispatch_command(&command_tx, PlaybackCommand::AirPlayStreamFailed)

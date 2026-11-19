@@ -914,3 +914,38 @@ async fn a_recovered_panic_ships_one_panic_failure() {
     diagnostics.flush().await.expect("flush succeeds");
     assert_eq!(playback_failed_operations(&transport), ["panic"]);
 }
+
+/// Just after an AirPlay stream starts or resumes, the receiver has less
+/// than its latency of the audio sent and plays none of it yet: the position
+/// holds back by what it was sent, so the bar stays where the stream started
+/// until the receiver plays.
+/// Sabotage: hold the position back by the latency, and the bar shows audio
+/// before the resume, which the receiver never plays.
+#[tokio::test]
+async fn airplay_position_after_a_resume_holds_back_by_the_audio_sent() {
+    let (_home, mut service, mut progress_rx) = test_playback_service().await;
+    let buffer = create_sparse_buffer(1_024);
+    service.slot = active_slot(test_prepared_track("t", buffer), TrackPhase::Playing);
+    // The stream resumed at 5 s and has sent half a second of a 2 s latency.
+    let _airplay = install_airplay_delayed(
+        &mut service,
+        crate::airplay_output::ReceiverDelay {
+            unheard: std::time::Duration::from_millis(500),
+            latency: std::time::Duration::from_secs(2),
+        },
+    );
+
+    let mut fmt = TrackFmt::for_test("t");
+    fmt.timeline =
+        TrackTimeline::new(Some(std::time::Duration::from_secs(60)), std::time::Duration::ZERO);
+    service.handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_500)).await;
+
+    let position = loop {
+        match progress_rx.try_recv() {
+            Ok(PlaybackProgress::PositionUpdate { position_ms, .. }) => break position_ms,
+            Ok(_) => continue,
+            Err(_) => panic!("expected a PositionUpdate"),
+        }
+    };
+    assert_eq!(position, 5_000, "the receiver plays nothing sent since the resume yet");
+}

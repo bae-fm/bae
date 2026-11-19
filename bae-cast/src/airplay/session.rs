@@ -288,8 +288,8 @@ impl RaopControl {
         self.rtsp_request(Method::Flush, "FLUSH")
     }
 
-    /// Re-anchor the pacing (resume / post-seek): the audio thread restarts its
-    /// lead and re-marks the stream.
+    /// Re-anchor the pacing (resume / post-seek): the audio thread sends a new
+    /// burst and re-marks the stream.
     fn reanchor(&self) {
         self.stream.reanchor();
     }
@@ -390,6 +390,11 @@ impl RaopSession {
     /// The receiver latency the stream paces by, settled by the handshake.
     pub(crate) fn latency(&self) -> Duration {
         self.control.stream.latency()
+    }
+
+    /// The audio the stream has sent that the receiver has not played yet.
+    pub(crate) fn unheard(&self) -> Duration {
+        self.control.stream.unheard()
     }
 
     /// Why the audio flow to the receiver failed for good (a dead

@@ -520,11 +520,10 @@ impl PlaybackService {
         // Samples are flowing, so any starvation episode is over.
         self.reset_starvation_episode();
         // On AirPlay the drain has pulled (and the stream sent) audio the receiver
-        // has not yet played — the session's receiver latency ahead. Offset the
-        // position back by it so the bar matches what is audible, not what has
-        // been transmitted.
-        if let Some(latency) = self.renderer.airplay_latency() {
-            position = position.saturating_sub(latency);
+        // has not yet played. Offset the position back by it so the bar matches
+        // what is audible, not what has been transmitted.
+        if let Some(delay) = self.renderer.airplay_delay() {
+            position = position.saturating_sub(delay.unheard);
         }
         self.observe_listening_position(fmt.clone(), position);
         self.checkpoint_listening().await;

@@ -53,6 +53,9 @@ impl AirPlayStreamControl for FakeSession {
     fn latency(&self) -> Duration {
         Duration::from_millis(250)
     }
+    fn unheard(&self) -> Duration {
+        Duration::from_millis(100)
+    }
 }
 
 impl AirPlaySink for FakeSink {
@@ -104,7 +107,13 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     control.reanchor();
     assert!(state.flushed.load(Ordering::Acquire));
     assert!(state.reanchored.load(Ordering::Acquire));
-    assert_eq!(control.latency(), Some(Duration::from_millis(250)));
+    assert_eq!(
+        control.delay(),
+        Some(ReceiverDelay {
+            unheard: Duration::from_millis(100),
+            latency: Duration::from_millis(250)
+        })
+    );
 
     // A flush the receiver refuses fails the control for good: the failure is
     // kept and playback is told, once more than the session's own report.
@@ -117,7 +126,7 @@ fn create_stream_drives_the_sink_and_publishes_control() {
     // Dropping the stream tears the session down; no audio is in flight.
     drop(stream);
     assert!(state.torn_down.load(Ordering::Acquire));
-    assert_eq!(control.latency(), None);
+    assert_eq!(control.delay(), None);
 }
 
 /// A track the converter can't be set up for is refused before anything

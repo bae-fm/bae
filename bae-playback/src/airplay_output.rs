@@ -136,24 +136,41 @@ impl std::fmt::Display for AirPlayControlError {
 
 /// The transport controls the playback service drives a live AirPlay stream
 /// through: pause (FLUSH), resume/seek (re-anchor), whether the audio flow
-/// failed, and the receiver latency the stream runs at. Implemented by the RAOP
-/// and AirPlay 2 sessions in bae-cast, and by the test fake.
+/// failed, the receiver latency the stream runs at, and the audio the receiver
+/// has not played yet. Implemented by the RAOP and AirPlay 2 sessions in
+/// bae-cast, and by the test fake.
 pub trait AirPlayStreamControl: Send + Sync {
     /// Stop sending and drop the receiver's buffer (pause / pre-seek). An
     /// error means the receiver didn't take it, so it may play on.
     fn flush(&self) -> Result<(), AirPlayControlError>;
     /// Re-anchor the pacing after a FLUSH (resume / post-seek). The sender
-    /// restarts its lead, and its next sync packet anchors the receiver
+    /// sends a new burst, and its next sync packet anchors the receiver
     /// again: nothing asks the receiver, so nothing can be refused.
     fn reanchor(&self);
     /// Why the audio flow to the receiver failed for good (a dead receiver),
     /// when it has, so the service should end AirPlay.
     fn failure(&self) -> Option<String>;
-    /// How long audio sent now takes to be heard: the receiver latency the
-    /// session paces its sends ahead by, settled during its setup. Playback
-    /// holds the position, the play it records, and the track's completion
-    /// back by it.
+    /// How long audio sent now takes to be heard: the receiver latency,
+    /// settled during the session's setup. Playback holds the track's
+    /// completion back by it.
     fn latency(&self) -> Duration;
+    /// The audio the stream has sent that the receiver has not played yet:
+    /// the latency, except after the stream starts or resumes, when the
+    /// receiver plays nothing until it has the latency's worth, and this is
+    /// what the stream has sent since. Playback holds the position and the
+    /// play it records back by it.
+    fn unheard(&self) -> Duration;
+}
+
+/// Where a receiver's playing stands against the audio a stream has sent.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ReceiverDelay {
+    /// The audio sent that the receiver has not played yet
+    /// ([`AirPlayStreamControl::unheard`]).
+    pub(crate) unheard: Duration,
+    /// How long audio sent now takes to be heard
+    /// ([`AirPlayStreamControl::latency`]).
+    pub(crate) latency: Duration,
 }
 
 /// Starts pushing decoded PCM to an AirPlay receiver. bae-cast implements it
@@ -226,10 +243,14 @@ impl AirPlayControl {
             .or_else(|| self.flush_failure.lock().unwrap().clone())
     }
 
-    /// The live session's receiver latency. With no session live, no audio is
-    /// on its way to a receiver, so there is none.
-    pub(crate) fn latency(&self) -> Option<Duration> {
-        self.with_session(|session| session.latency())
+    /// How far the live session's receiver plays behind what it was sent.
+    /// With no session live, no audio is on its way to a receiver, so there
+    /// is none.
+    pub(crate) fn delay(&self) -> Option<ReceiverDelay> {
+        self.with_session(|session| ReceiverDelay {
+            unheard: session.unheard(),
+            latency: session.latency(),
+        })
     }
 }
 

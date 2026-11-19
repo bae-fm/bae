@@ -137,8 +137,8 @@ impl PlaybackService {
         }
         if let Some(output) = &self.output {
             let (fmt, mut position) = output.source.lock().unwrap().position_event();
-            if let Some(latency) = self.renderer.airplay_latency() {
-                position = position.saturating_sub(latency);
+            if let Some(delay) = self.renderer.airplay_delay() {
+                position = position.saturating_sub(delay.unheard);
             }
             listening.observe_local(fmt, position);
         }
@@ -172,12 +172,12 @@ impl PlaybackService {
         listening.play.finish_at(
             position.as_duration().saturating_sub(fmt.timeline.track_start().as_duration()),
         );
-        if let Some(latency) = self.renderer.airplay_latency() {
-            listening.observe_local(fmt.clone(), position.saturating_sub(latency));
+        if let Some(delay) = self.renderer.airplay_delay() {
+            listening.observe_local(fmt.clone(), position.saturating_sub(delay.unheard));
             let listening = self.listening.take().expect("the finishing play is present");
             let now = self.clock.now();
             let finishes_at = now
-                + time::Duration::try_from(latency)
+                + time::Duration::try_from(delay.latency)
                     .expect("receiver latency fits a clock deadline");
             // A tail that starts before the track body is heard slower at
             // first, so this can come early; the save is then due at the end.

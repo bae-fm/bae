@@ -1,4 +1,5 @@
 use super::*;
+use crate::airplay::fake_audio_intake::AudioIntake;
 
 /// The unencrypted packetizer emits the RTP header and raw little-endian PCM,
 /// advancing sequence and timestamp per packet — a golden fixture.
@@ -49,22 +50,56 @@ fn packetizer_encrypts_payload_only() {
     assert_ne!(e[12..], p[12..], "payload is encrypted");
 }
 
-/// The pacer runs ahead by the latency, then keeps pace with the clock, and
-/// never re-owes frames it already sent.
+/// The pacer sends its burst at the anchor, then keeps pace with the clock,
+/// and never re-owes frames it already sent.
 #[test]
-fn pacer_leads_by_latency_then_tracks_the_clock() {
-    // 44.1 kHz, ~2 s latency lead.
+fn pacer_sends_its_burst_then_tracks_the_clock() {
+    // 44.1 kHz, ~2 s latency: the burst is shorter than the latency.
     let mut pacer = Pacer::new(44_100, 88_200);
-    // At t=0, the whole latency lead is due: 88200 / 352 = 250 packets.
-    assert_eq!(pacer.packets_due(Duration::ZERO), 250);
-    for _ in 0..250 {
+    assert_eq!(pacer.packets_due(Duration::ZERO), BURST_PACKETS);
+    for _ in 0..BURST_PACKETS {
         pacer.record_packet();
     }
     // Nothing more is due until the playback clock advances.
     assert_eq!(pacer.packets_due(Duration::ZERO), 0);
     // After 1 s, 44100 more frames are due: 44100 / 352 = 125 packets.
     assert_eq!(pacer.packets_due(Duration::from_secs(1)), 125);
-    assert_eq!(pacer.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(pacer.frames_sent(), BURST_PACKETS * u64::from(FRAMES_PER_PACKET));
+}
+
+/// A receiver whose latency is shorter than the burst gets only its latency
+/// at the anchor. Sabotage: send the whole burst, and the sync packets start
+/// the receiver partway into it.
+#[test]
+fn pacer_sends_no_more_than_the_latency_at_the_anchor() {
+    let pacer = Pacer::new(44_100, 11_025);
+    // 11025 / 352 = 31 whole packets.
+    assert_eq!(pacer.packets_due(Duration::ZERO), 31);
+}
+
+/// A stream's start sends a Mac's AirPlay Receiver no more at once than it
+/// keeps, so the receiver drops none of it, and the sender keeps pace with
+/// the clock after. Sabotage: send the whole 2 s latency lead at the start,
+/// as bae did, and the receiver drops every packet past its 90th.
+#[test]
+fn a_stream_start_sends_no_more_than_a_mac_receiver_keeps() {
+    let mut intake = AudioIntake::mac();
+    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut sequence = 0u16;
+
+    // The audio sender wakes every 5 ms; 3 s of stream.
+    for wake in 0..=600 {
+        let at = Duration::from_millis(5 * wake);
+        for _ in 0..pacer.packets_due(at) {
+            intake.arrive(at, sequence);
+            sequence = sequence.wrapping_add(1);
+            pacer.record_packet();
+        }
+    }
+
+    assert_eq!(intake.dropped(), &[] as &[u16]);
+    // The burst, then 3 s of audio: 132300 / 352 = 375 whole packets.
+    assert_eq!(pacer.frames_sent(), (BURST_PACKETS + 375) * u64::from(FRAMES_PER_PACKET));
 }
 
 /// A source that yields the packets a test gives it, then reports nothing,
@@ -180,9 +215,9 @@ impl MonotonicClock for StartedBeforeSetupClock {
 }
 
 /// The sender paces from when the audio starts, so the seconds a receiver
-/// held SETUP are owed no audio: at the start it sends its latency lead and
-/// nothing more. Sabotage: drop the clock's reset at the thread's start, and
-/// the sender sends the setup's ten seconds of audio with the lead at once.
+/// held SETUP are owed no audio: at the start it sends its burst and nothing
+/// more. Sabotage: drop the clock's reset at the thread's start, and the
+/// sender sends the setup's ten seconds of audio with the burst at once.
 #[test]
 fn the_sender_owes_no_audio_for_the_time_setup_took() {
     let stop = Arc::new(AtomicBool::new(false));
@@ -210,8 +245,13 @@ fn the_sender_owes_no_audio_for_the_time_setup_took() {
     stop.store(true, Ordering::Release);
     wake.wake();
     handle.join();
-    // 88200 frames of latency lead is 250 whole packets.
-    assert_eq!(control.next_packet(), RtpPosition { sequence: 250, timestamp: 88_000 });
+    assert_eq!(
+        control.next_packet(),
+        RtpPosition {
+            sequence: BURST_PACKETS as u16,
+            timestamp: BURST_PACKETS as u32 * FRAMES_PER_PACKET
+        }
+    );
 }
 
 /// A sync packet tells the receiver which frame it should be playing now and
@@ -262,6 +302,110 @@ fn the_next_packet_follows_the_packet_made() {
     p.packet(&[0, 0, 0, 0]);
     assert_eq!(p.next(), RtpPosition { sequence: 0, timestamp: 1002 });
     assert_eq!(p.next().rtp_info(), "seq=0;rtptime=1002");
+}
+
+/// What the audio sender did to a [`StillClock`].
+#[derive(Debug, PartialEq)]
+enum ClockUse {
+    Read,
+    Reset,
+}
+
+/// A clock that stays at the anchor, so the sender owes only its burst, and
+/// tells the test each time the sender reads or resets it.
+struct StillClock {
+    uses: std::sync::mpsc::Sender<ClockUse>,
+}
+impl MonotonicClock for StillClock {
+    fn elapsed(&self) -> Duration {
+        self.uses.send(ClockUse::Read).ok();
+        Duration::ZERO
+    }
+    fn reset(&self) {
+        self.uses.send(ClockUse::Reset).ok();
+    }
+}
+
+/// Wait until the sender has read its clock twice from here. The sender
+/// sends every packet due at one read before it reads the clock again, so
+/// then the first read's packets are out.
+fn wait_for_two_reads(uses: &std::sync::mpsc::Receiver<ClockUse>) {
+    let mut reads = 0;
+    while reads < 2 {
+        let used = uses
+            .recv_timeout(bae_util::test_channels::HANG_GUARD)
+            .expect("the sender reads its clock");
+        if used == ClockUse::Read {
+            reads += 1;
+        }
+    }
+}
+
+/// A re-anchor restarts the pacing with a fresh burst, no longer than the
+/// stream's start sent, so a resume fits what the receiver keeps too. The
+/// receiver plays none of a burst until it has the latency's worth, so after
+/// each burst the audio it has not played is the burst, not what came before.
+/// Sabotage: re-anchor with the latency as the burst, and the resume sends
+/// 250 packets at once; drop the anchor the re-anchor records, and the audio
+/// not played counts the start's burst too.
+#[test]
+fn a_reanchor_sends_one_burst_again() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let wake = PcmWake::unattached();
+    let (source, _packets, _drained) = FixedSource::holding(2000);
+    let (uses_tx, uses) = std::sync::mpsc::channel();
+    let (handle, control) = audio_thread_pacing_by(
+        &Diagnostics::noop(),
+        Box::new(source),
+        stop.clone(),
+        wake.clone(),
+        AirPlayFailed::ignored(),
+        Arc::new(StillClock { uses: uses_tx }),
+    );
+    let burst = BURST_PACKETS as u16;
+    let burst_time =
+        bae_util::sample_time::frame_start(BURST_PACKETS * u64::from(FRAMES_PER_PACKET), 44_100);
+
+    wait_for_two_reads(&uses);
+    assert_eq!(control.next_packet().sequence, burst, "the start sends one burst");
+    assert_eq!(control.unheard(), burst_time, "the receiver has played none of it");
+
+    control.reanchor();
+    loop {
+        let used =
+            uses.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the sender re-anchors");
+        if used == ClockUse::Reset {
+            break;
+        }
+    }
+    wait_for_two_reads(&uses);
+    stop.store(true, Ordering::Release);
+    wake.wake();
+    handle.join();
+
+    assert_eq!(control.next_packet().sequence, 2 * burst, "the re-anchor sends one burst more");
+    assert_eq!(control.unheard(), burst_time, "the receiver plays nothing sent before the resume");
+}
+
+/// Once the sender has sent more than the latency since the stream started,
+/// the receiver has played all but the latency of it. Sabotage: count every
+/// frame sent as not played, and the position falls further behind with
+/// each packet.
+#[test]
+fn the_audio_not_played_stops_at_the_latency() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let wake = PcmWake::unattached();
+    // 300 packets, more than the 250 of the 2 s latency.
+    let (source, _packets, drained) = FixedSource::holding(300);
+    let (handle, control) =
+        audio_thread(&Diagnostics::noop(), Box::new(source), stop.clone(), wake.clone());
+
+    drained.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the sender sends them all");
+    stop.store(true, Ordering::Release);
+    wake.wake();
+    handle.join();
+
+    assert_eq!(control.unheard(), Duration::from_secs(2));
 }
 
 /// A source whose pull panics: a bug in the samples' way to the sender.

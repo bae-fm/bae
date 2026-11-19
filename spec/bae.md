@@ -5035,8 +5035,15 @@ keychain refuses fails the cast.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
-The position shown, the play recorded in history, and the end of each track
-follow what the receiver is playing: each is held back by that same delay.
+When the stream starts or resumes, bae sends at most 64 packets of audio
+(about half a second, and never more than the delay) at once, because a Mac's
+AirPlay Receiver drops the packets of a burst past about the 90th. From then
+on bae sends audio at the pace the receiver plays it, so the receiver starts
+playing that half second less than the delay after the start or resume. The
+position shown and the play recorded in history follow what the receiver is
+playing: until the receiver starts playing, the position stays where the
+stream started or resumed, and after that it is the delay behind the audio bae
+has sent. Each track ends the delay after bae sends the track's last audio.
 
 The stream bae opens to a receiver, AirPlay's realtime one, carries 44.1 kHz
 stereo, so bae converts every other track on the way out. (AirPlay's buffered

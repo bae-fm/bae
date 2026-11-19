@@ -789,7 +789,10 @@ impl crate::airplay_output::AirPlaySink for NoopAirPlaySink {
     ) -> Result<Arc<dyn crate::airplay_output::AirPlayStreamControl>, AudioError> {
         Ok(Arc::new(FakeAirPlayControl {
             state: Arc::new(FakeAirPlayControlState::default()),
-            latency: std::time::Duration::from_secs(2),
+            delay: crate::airplay_output::ReceiverDelay {
+                unheard: std::time::Duration::from_secs(2),
+                latency: std::time::Duration::from_secs(2),
+            },
         }))
     }
 }

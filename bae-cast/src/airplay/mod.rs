@@ -31,6 +31,8 @@ pub(crate) mod device_verification;
 pub(crate) mod digest;
 pub(crate) mod discovery;
 #[cfg(test)]
+pub(crate) mod fake_audio_intake;
+#[cfg(test)]
 pub(crate) mod fake_raop_receiver;
 #[cfg(test)]
 pub(crate) mod fake_receiver;

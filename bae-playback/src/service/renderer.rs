@@ -15,9 +15,9 @@
 //! unchanged while the cpal pipeline stays idle.
 
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
 
 use super::*;
+use crate::airplay_output::ReceiverDelay;
 use crate::renderer::{
     CastReceiver, ReceiverStatus, RendererLink, RendererMedia, RendererMediaSource,
     RendererPlayerState, RendererSession, RendererSessionEvent, SessionId,
@@ -115,12 +115,12 @@ impl Renderer {
         }
     }
 
-    /// How long the audio sent to an AirPlay receiver takes to be heard: the
-    /// live session's latency. None when no audio is on its way to a receiver
-    /// — playing here, on a fetching device, or with no AirPlay stream open.
-    pub(super) fn airplay_latency(&self) -> Option<Duration> {
+    /// How far an AirPlay receiver plays behind the audio sent to it. None
+    /// when no audio is on its way to a receiver — playing here, on a fetching
+    /// device, or with no AirPlay stream open.
+    pub(super) fn airplay_delay(&self) -> Option<ReceiverDelay> {
         match self {
-            Self::AirPlay(airplay) => airplay.control.latency(),
+            Self::AirPlay(airplay) => airplay.control.delay(),
             Self::Local | Self::Remote(_) => None,
         }
     }

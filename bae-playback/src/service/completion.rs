@@ -21,13 +21,13 @@ impl PlaybackService {
         }
         self.finish_listening_audio(fmt.clone(), samples_decoded);
         self.finish_listening().await;
-        if let Some(latency) = self.renderer.airplay_latency() {
+        if let Some(delay) = self.renderer.airplay_delay() {
             self.audible_completion = Some(AudibleCompletion {
                 fmt,
                 errors: error_count,
                 samples: samples_decoded,
                 audible_at: self.clock.now()
-                    + time::Duration::try_from(latency)
+                    + time::Duration::try_from(delay.latency)
                         .expect("receiver latency fits a clock deadline"),
             });
             if let PlaybackSlot::Active(cur) = &mut self.slot {

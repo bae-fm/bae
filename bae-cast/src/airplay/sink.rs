@@ -126,6 +126,10 @@ impl AirPlayStreamControl for RaopSession {
     fn latency(&self) -> Duration {
         self.latency()
     }
+
+    fn unheard(&self) -> Duration {
+        self.unheard()
+    }
 }
 
 /// The parameters an [`AirPlaySink`] needs to open an AirPlay 2 session: pair
@@ -209,5 +213,9 @@ impl AirPlayStreamControl for Ap2Session {
 
     fn latency(&self) -> Duration {
         self.latency()
+    }
+
+    fn unheard(&self) -> Duration {
+        self.unheard()
     }
 }

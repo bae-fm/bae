@@ -30,6 +30,12 @@ use super::rtp::{self, NtpTime};
 /// Frames of audio per RTP packet — the RAOP constant echoed in the SDP fmtp.
 pub(crate) const FRAMES_PER_PACKET: u32 = 352;
 
+/// The most packets the sender sends at once, when a stream starts or
+/// resumes. A Mac's AirPlay Receiver keeps about 90 packets of a burst and
+/// drops the rest, so the burst stays under that with room for a receiver
+/// that keeps fewer. After it the sender keeps pace with the clock.
+pub(crate) const BURST_PACKETS: u64 = 64;
+
 /// How a packet's PCM payload is encrypted — the one thing the two dialects
 /// differ on in the send path. RAOP encrypts the payload in place (AES-128-CBC or
 /// not at all); AirPlay 2 seals it with ChaCha20-Poly1305, the RTP header's
@@ -100,28 +106,35 @@ impl Packetizer {
     }
 }
 
-/// Decides how many packets are due by a moment in the stream, so the sender runs
-/// slightly ahead of real time to keep the receiver's buffer full. Timing only —
-/// no I/O — so a test drives it with virtual elapsed durations.
+/// Decides how many packets are due by a moment in the stream: at the anchor
+/// (the stream's start, or a resume) a burst the receiver keeps, then one
+/// packet for each packet of audio the clock plays. Timing only — no I/O — so
+/// a test drives it with virtual elapsed durations.
 pub(crate) struct Pacer {
     sample_rate: u32,
-    latency_frames: u32,
+    /// The frames sent at the anchor: what the receiver keeps of a burst, and
+    /// never more than its latency, which is all it buffers before it plays.
+    burst_frames: u64,
     frames_sent: u64,
 }
 
 impl Pacer {
-    /// `latency_frames` is how far ahead of the playback clock the sender stays
-    /// (the receiver's reported audio latency, ~2 s).
+    /// `latency_frames` is the receiver's audio latency (its reported value,
+    /// ~2 s by default): the sync packets tell the receiver to play the frame
+    /// a latency behind the next one sent, so a burst longer than the latency
+    /// would start the receiver partway into it.
     pub(crate) fn new(sample_rate: u32, latency_frames: u32) -> Self {
-        Pacer { sample_rate, latency_frames, frames_sent: 0 }
+        let burst_frames =
+            u64::from(latency_frames).min(BURST_PACKETS * u64::from(FRAMES_PER_PACKET));
+        Pacer { sample_rate, burst_frames, frames_sent: 0 }
     }
 
     /// Whole packets still owed at `elapsed` since the anchor: the target is the
-    /// latency lead plus the frames the playback clock has reached, minus what's
+    /// burst plus the frames the playback clock has reached, minus what's
     /// already been sent.
     pub(crate) fn packets_due(&self, elapsed: Duration) -> u64 {
         let played = bae_util::sample_time::frame_at(elapsed, self.sample_rate);
-        let target = u64::from(self.latency_frames) + played;
+        let target = self.burst_frames + played;
         target.saturating_sub(self.frames_sent) / u64::from(FRAMES_PER_PACKET)
     }
 
@@ -372,13 +385,21 @@ impl StreamFailure {
     }
 }
 
-/// The shared state a running stream is observed and steered through: the
-/// packet the sender sends next, the re-anchor request, why the audio flow died if it has, and
-/// the negotiated receiver latency the pacing lead and the audible position both
-/// use. A session keeps one and hands a clone to the threads.
+/// How far the sender has got: the packet it sends next, and the timestamp of
+/// the first packet it sent after the stream last started or resumed.
+#[derive(Debug, Clone, Copy)]
+struct Sent {
+    next: RtpPosition,
+    anchor: u32,
+}
+
+/// The shared state a running stream is observed and steered through: how far
+/// the sender has got, the re-anchor request, why the audio flow died if it
+/// has, and the negotiated receiver latency the pacing and the audible position
+/// both use. A session keeps one and hands a clone to the threads.
 #[derive(Clone)]
 pub(super) struct RaopStreamControl {
-    next_packet: Arc<Mutex<RtpPosition>>,
+    sent: Arc<Mutex<Sent>>,
     reanchor: Arc<AtomicU64>,
     failure: StreamFailure,
     latency_frames: u32,
@@ -390,7 +411,10 @@ impl RaopStreamControl {
     /// failed.
     pub(super) fn new(latency_frames: u32, failure: StreamFailure) -> Self {
         Self {
-            next_packet: Arc::new(Mutex::new(RtpPosition::START)),
+            sent: Arc::new(Mutex::new(Sent {
+                next: RtpPosition::START,
+                anchor: RtpPosition::START.timestamp,
+            })),
             reanchor: Arc::new(AtomicU64::new(0)),
             failure,
             latency_frames,
@@ -399,7 +423,7 @@ impl RaopStreamControl {
 
     /// The packet the sender sends next, as its packetizer numbers it.
     pub(super) fn next_packet(&self) -> RtpPosition {
-        *self.next_packet.lock().unwrap()
+        self.sent.lock().unwrap().next
     }
 
     pub(super) fn reanchor(&self) {
@@ -411,28 +435,49 @@ impl RaopStreamControl {
         self.failure.cause.get().cloned()
     }
 
-    /// The receiver's audio latency in frames — how far ahead of the playback
-    /// clock the sender paces, and the offset between frames sent and what is
-    /// audible.
+    /// The receiver's audio latency in frames: the sync packets tell the
+    /// receiver to play the frame this far behind the next one sent.
     pub(super) fn latency_frames(&self) -> u32 {
         self.latency_frames
     }
 
     /// [`latency_frames`](Self::latency_frames) as time, at the rate the
-    /// stream carries PCM: what playback holds its audible position back by.
+    /// stream carries PCM: how long the receiver takes to play a frame the
+    /// sender sends now.
     pub(super) fn latency(&self) -> Duration {
         bae_util::sample_time::frame_start(u64::from(self.latency_frames), PCM_SAMPLE_RATE)
     }
 
+    /// The audio the sender has sent that the receiver has not played yet,
+    /// as time at the rate the stream carries PCM. The sync packets tell the
+    /// receiver to play the frame a latency behind the next one sent, and it
+    /// plays nothing sent before the stream last started or resumed: so this
+    /// is what the sender has sent since then, up to the latency.
+    pub(super) fn unheard(&self) -> Duration {
+        let sent = *self.sent.lock().unwrap();
+        let since_anchor = sent.next.timestamp.wrapping_sub(sent.anchor);
+        bae_util::sample_time::frame_start(
+            u64::from(since_anchor.min(self.latency_frames)),
+            PCM_SAMPLE_RATE,
+        )
+    }
+
     /// The re-anchor counter the audio thread watches: a change means restart the
-    /// pacing lead and re-mark the stream.
+    /// pacing with a new burst and re-mark the stream.
     fn reanchor_epoch(&self) -> u64 {
         self.reanchor.load(Ordering::Acquire)
     }
 
     /// Account for a packet just handed to the receiver: `next` follows it.
     fn record_sent(&self, next: RtpPosition) {
-        *self.next_packet.lock().unwrap() = next;
+        self.sent.lock().unwrap().next = next;
+    }
+
+    /// The stream starts again from the packet the sender sends next: the
+    /// receiver plays nothing it was sent before.
+    fn record_anchor(&self) {
+        let mut sent = self.sent.lock().unwrap();
+        sent.anchor = sent.next.timestamp;
     }
 
     /// The audio flow has failed persistently; see [`StreamFailure`].
@@ -539,8 +584,8 @@ struct AudioThread {
 /// packet but the thread lives on, waiting on the feed's wake until the source
 /// may have frames again — only [`RaopStream`] being dropped (the stop flag)
 /// ends it, so pause and gapless track swaps don't tear the stream down. The
-/// pacing clock starts with the thread. A re-anchor resets the pacing lead
-/// and clock and re-marks the next packet.
+/// pacing clock starts with the thread. A re-anchor resets the pacing and its
+/// clock, so the sender sends a new burst, and re-marks the next packet.
 fn spawn_audio_thread(
     diagnostics: &Diagnostics,
     mut t: AudioThread,
@@ -573,6 +618,7 @@ fn spawn_audio_thread(
                     t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
                     t.clock.reset();
                     t.packetizer.reanchor();
+                    t.control.record_anchor();
                     seen_reanchor = epoch;
                 }
 

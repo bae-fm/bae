@@ -420,7 +420,7 @@ impl Ap2SessionControl {
     }
 
     /// Re-anchor the sender's pacing (resume / post-seek): the audio thread
-    /// restarts its lead and re-marks the stream, and the next sync packet
+    /// restarts its burst and re-marks the stream, and the next sync packet
     /// anchors the receiver again.
     fn reanchor(&self) {
         self.stream.reanchor();
@@ -531,6 +531,11 @@ impl Ap2Session {
     /// The receiver latency the stream paces by, settled by the SETUP sequence.
     pub(crate) fn latency(&self) -> Duration {
         self.control.stream.latency()
+    }
+
+    /// The audio the stream has sent that the receiver has not played yet.
+    pub(crate) fn unheard(&self) -> Duration {
+        self.control.stream.unheard()
     }
 
     /// Why the audio flow to the receiver failed for good (a dead
