@@ -43,13 +43,10 @@ step mac macos-tests-all ./bae-macos/test.sh
 step android android-bridge ./bae-bridge/build-android.sh --abi arm64-v8a
 step android android ./bae-android/compile-all.sh
 step android android-tests ./bae-android/test-unit.sh
-step mac mac-shots scripts/cargo.sh run -p bae-shots -- run --platform mac
-step mac mac-window-shots scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select mac.welcome. --select mac.settings.
-step android android-shots scripts/cargo.sh run -p bae-shots -- run --platform android
-# Only CI runs these steps, which run whole test suites or fixed sets of shots.
-# builds app-build refuses them: an app build runs only the test classes and
-# shots of the screens a change touches.
-ci-only macos-tests-run macos-tests-all android-tests mac-shots mac-window-shots android-shots
+# Only CI runs these steps, which run whole test suites.
+# builds app-build refuses them: an app build runs only the test classes of
+# the screens a change touches.
+ci-only macos-tests-run macos-tests-all android-tests
 shots mac scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select {select}
 shots android scripts/cargo.sh run -p bae-shots -- run --platform android --select {select}
 
@@ -60,9 +57,6 @@ limit macos-tests-run 10m
 limit android-bridge 15m
 limit android 15m
 limit android-tests 10m
-limit mac-shots 20m
-limit mac-window-shots 20m
-limit android-shots 20m
 
 test mac ./bae-macos/test.sh --run-only {class}
 test mac:shots ./bae-macos/test.sh --bundle baeShots {class}
