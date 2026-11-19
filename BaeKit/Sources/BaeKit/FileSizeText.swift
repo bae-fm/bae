@@ -29,7 +29,7 @@ extension BinaryInteger {
         if unit == 0 {
             return String(
                 localized: LocalizedStringResource(
-                    "\(Int(value)) bytes",
+                    "\(Int(value)) B",
                     locale: locale
                 )
             )

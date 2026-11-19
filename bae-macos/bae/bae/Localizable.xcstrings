@@ -156910,8 +156910,8 @@
         }
       }
     },
-    "%lld bytes" : {
-      "comment" : "A file size under 1 KB, as the boards print it; %lld is the number of bytes",
+    "%lld B" : {
+      "comment" : "A file size under 1 KB (B is bytes), as the boards print it; %lld is the number of bytes",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -157502,13 +157502,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bytes"
+                  "value" : "%lld B"
                 }
               }
             }
