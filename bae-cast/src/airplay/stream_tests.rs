@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 /// The unencrypted packetizer emits the RTP header and raw little-endian PCM,
@@ -265,7 +260,7 @@ fn dropping_the_stream_stops_every_thread() {
     .expect("the stream starts");
 
     let (dropped_tx, dropped) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         drop(stream);
         dropped_tx.send(()).unwrap();
     });

@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::musicbrainz::rate::RETRY;
 use std::collections::HashMap;
@@ -382,7 +377,7 @@ pub(super) async fn mb_raw_server(
     let counted_requests = request_count.clone();
     let paths = Arc::new(Mutex::new(Vec::new()));
     let captured = paths.clone();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         let mut remaining = responses.into_iter();
         loop {
             let Ok((mut stream, _)) = listener.accept().await else {

@@ -11,11 +11,6 @@
 //! receivers refuse: a transient `/pair-setup` without `X-Apple-HKP: 4`
 //! (pyatv's fake answers 501, shairport-sync cannot read the request).
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use std::io::Write;
 use std::net::TcpStream;
 
@@ -221,7 +216,7 @@ pub(crate) enum PairSetupScript {
 pub(crate) fn listen_for_pair_setup(script: PairSetupScript) -> u16 {
     let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
     let port = listener.local_addr().expect("read the bound port").port();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let (mut stream, _) = listener.accept().expect("the sender connects");
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         match script {
@@ -259,7 +254,7 @@ pub(crate) fn listen_for_code_pairing(
     let port = listener.local_addr().expect("read the bound port").port();
     let receiver = std::sync::Arc::new(std::sync::Mutex::new(receiver));
     let serving = receiver.clone();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         for stream in listener.incoming() {
             let mut stream = stream.expect("the sender connects");
             let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());

@@ -57,7 +57,7 @@ async fn the_library_opens_with_no_standing_a_crash_left() {
     let reopened = fixture.parts.start().await.unwrap();
 
     assert!(fixture.tables().load_candidate_standings().await.unwrap().is_empty());
-    bae_util::test_blocking::on_blocking_pool(move || reopened.stop_and_join()).await;
+    bae_util::test_spawn::on_blocking_pool(move || reopened.stop_and_join()).await;
 }
 
 /// A service a test starts with a tag reader of its own opens the library as
@@ -74,5 +74,5 @@ async fn a_start_reading_tags_its_own_way_opens_with_no_standing_a_crash_left() 
         .unwrap();
 
     assert!(fixture.tables().load_candidate_standings().await.unwrap().is_empty());
-    bae_util::test_blocking::on_blocking_pool(move || reopened.stop_and_join()).await;
+    bae_util::test_spawn::on_blocking_pool(move || reopened.stop_and_join()).await;
 }

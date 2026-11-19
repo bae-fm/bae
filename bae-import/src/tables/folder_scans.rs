@@ -909,7 +909,7 @@ impl ImportTables {
     /// the last scan saw fails.
     pub(crate) async fn lose_scan_directories_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_directory",
@@ -924,7 +924,7 @@ impl ImportTables {
     /// stored release fails.
     pub(crate) async fn lose_scan_candidate_parts_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "scan_candidate_part",
@@ -951,7 +951,7 @@ impl ImportTables {
              relative_path = REPLACE(relative_path, '{name}', '{as_name}') \
              WHERE relative_path LIKE '%{name}';"
         );
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "scan_sidecar_file",
@@ -966,7 +966,7 @@ impl ImportTables {
     /// statement nothing should refuse.
     pub(crate) async fn fail_first_scan_begins_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_roots",
@@ -982,7 +982,7 @@ impl ImportTables {
     /// refuse.
     pub(crate) async fn fail_failed_scan_writes_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "folder_scan_roots",

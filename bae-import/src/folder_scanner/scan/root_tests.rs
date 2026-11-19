@@ -2,11 +2,6 @@
 //! several at once, newest first, each saying what it says on its own; a
 //! folder that fails or a cancel stopping them all.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;
@@ -301,7 +296,7 @@ fn a_folder_that_fails_stops_the_others_and_fails_the_pass() {
     let (done_tx, done_rx) = std::sync::mpsc::channel();
     let pass_reader = reader.clone();
     let pass_root = root.clone();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let (result, said) = pass_over_root(&*pass_reader, &pass_root, &ScanCancellation::new());
         done_tx.send((result, said)).unwrap();
     });
@@ -379,7 +374,7 @@ fn cancelling_a_pass_stops_every_folder_it_is_reading() {
     let (done_tx, done_rx) = std::sync::mpsc::channel();
     let pass_reader = reader.clone();
     let pass_root = root.clone();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let (result, said) = pass_over_root(&*pass_reader, &pass_root, &cancellation);
         done_tx.send((result, said)).unwrap();
     });

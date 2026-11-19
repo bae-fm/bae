@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::{mpsc, Arc};
@@ -105,12 +100,12 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
 
     let (answered_tx, answered) = mpsc::channel();
     let waiting = members.clone();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let answer = tokio::runtime::Runtime::new().unwrap().block_on(waiting.next());
         answered_tx.send(answer.map(|_| ())).expect("the test waits for the answer");
     });
     let (closed_tx, closed) = mpsc::channel();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         closed_tx.send(app.close_library(None)).expect("the test waits for the close");
     });
     closed

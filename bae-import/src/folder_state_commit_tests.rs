@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 /// Everything logged at `level` and above by one hold of the lock that
@@ -44,7 +39,7 @@ fn a_short_hold_is_logged_at_debug_only() {
 async fn the_wait_is_how_long_the_lock_was_held_by_another() {
     let commit = FolderStateCommit::new();
     let first = commit.lock("hold for a test").await;
-    let waiter = tokio::spawn({
+    let waiter = bae_util::test_spawn::task({
         let commit = commit.clone();
         async move { commit.lock("wait for a test").await.waited }
     });

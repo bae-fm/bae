@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_audio::test_samples::filled_sparse_buffer;
 
@@ -115,8 +110,9 @@ fn multi_segment_track_finishes_only_after_last_segment() {
     // samples arrive.
     let (mut sink, mut stream, _ready) =
         create_track_stream_pair_with_capacity(sample_rate, 1, 4_096);
-    let decoder =
-        std::thread::spawn(move || decode.run_decoder(&mut sink, Arc::new(AtomicBool::new(false))));
+    let decoder = bae_util::test_spawn::thread(move || {
+        decode.run_decoder(&mut sink, Arc::new(AtomicBool::new(false)))
+    });
 
     let mut pulled = 0usize;
     let mut buf = [0.0f32; 1_024];

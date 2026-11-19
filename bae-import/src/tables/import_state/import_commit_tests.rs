@@ -2,11 +2,6 @@
 //! checks the candidate still is what the import was prepared from. The row
 //! reads as importing until that write.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::identification::tests::*;
 use bae_records::test_fixtures::{
@@ -464,7 +459,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     // it is passed over.
     let mut pane = fixture.import.subscribe_candidate(Some(key.clone()));
     pane.next_inline().await.expect("the query stays open").result.unwrap();
-    let pane_saw_both = tokio::spawn(async move {
+    let pane_saw_both = bae_util::test_spawn::task(async move {
         loop {
             let detail = pane
                 .next_inline()

@@ -1,11 +1,5 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::test_source::{io_kind, TestReadError};
-use std::thread;
 
 #[test]
 fn test_append_and_read_single_range() {
@@ -80,7 +74,7 @@ fn test_read_blocks_until_data_available() {
     let buffer = create_sparse_buffer(5);
     let buf_clone = buffer.clone();
 
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut reader = buf_clone.new_reader();
         let mut data = [0u8; 5];
         reader.seek(0);
@@ -131,7 +125,7 @@ fn test_cancel_unblocks_reader() {
     let buffer = create_sparse_buffer(100);
     let buf_clone = buffer.clone();
 
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut reader = buf_clone.new_reader();
         let mut data = [0u8; 5];
         reader.seek(50); // Position not buffered
@@ -228,7 +222,7 @@ fn token_cancel_only_affects_one_reader() {
 
     let reader_buffer = buffer.clone();
     let reader_cancel = cancel1.clone();
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut reader1 = reader_buffer.new_reader_with_cancel(reader_cancel);
         let mut buf = [0u8; 5];
         matches!(reader1.read(&mut buf), Err(BufferStop::Cancelled))
@@ -253,7 +247,7 @@ fn token_cancel_only_affects_one_reader() {
 fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
     let buffer = create_sparse_buffer(100);
     let buf_clone = buffer.clone();
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut reader = buf_clone.new_reader();
         let mut data = [0u8; 5];
         match reader.read(&mut data) {
@@ -311,7 +305,7 @@ fn test_seek_returns_false_after_cancel() {
 /// the hang guard (i.e. it's stuck) — lets a test fail instead of hanging.
 fn join_within<T: Send + 'static>(handle: std::thread::JoinHandle<T>) -> Option<T> {
     let (done, joined) = std::sync::mpsc::channel();
-    thread::spawn(move || done.send(handle.join().ok()).ok());
+    bae_util::test_spawn::thread(move || done.send(handle.join().ok()).ok());
     joined.recv_timeout(bae_util::test_channels::HANG_GUARD).ok().flatten()
 }
 
@@ -448,7 +442,7 @@ fn blocked_reader_publishes_demand_at_its_blocked_position() {
     buffer.append_at(0, b"front");
 
     let buf = buffer.clone();
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut reader = buf.new_reader();
         assert!(reader.seek(500));
         let mut out = [0u8; 4];
@@ -567,7 +561,7 @@ fn the_held_ranges_are_told_as_they_change() {
 /// Poison `buffer`'s state the way a panic partway through a change does.
 fn poison(buffer: &SharedSparseBuffer) {
     let poisoner = buffer.clone();
-    let panicked = std::thread::spawn(move || {
+    let panicked = bae_util::test_spawn::thread(move || {
         let _held = poisoner.inner.lock().unwrap();
         panic!("merge index out of range");
     })

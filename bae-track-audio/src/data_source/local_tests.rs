@@ -73,7 +73,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
 
     // Ground truth: the same window over a fully pre-filled buffer.
     let prefilled = filled_sparse_buffer(&wav);
-    let expected = bae_util::test_blocking::on_blocking_pool({
+    let expected = bae_util::test_spawn::on_blocking_pool({
         let cancel = never();
         move || {
             let mut sink = DigestSink::default();
@@ -96,7 +96,7 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     ))
     .start_reading(buffer.clone(), Box::new(|_| {}));
 
-    let streamed = bae_util::test_blocking::on_blocking_pool({
+    let streamed = bae_util::test_spawn::on_blocking_pool({
         let buffer = buffer.clone();
         let cancel = never();
         move || {
@@ -152,7 +152,7 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
     ))
     .start_reading(buffer.clone(), Box::new(|_| {}));
 
-    let result = bae_util::test_blocking::on_blocking_pool(move || {
+    let result = bae_util::test_spawn::on_blocking_pool(move || {
         decode_audio(buffer, None, None).map(|_| ())
     })
     .await;
@@ -210,7 +210,7 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
 
     let chunk_len = 4096usize;
-    let read = bae_util::test_blocking::on_blocking_pool(move || {
+    let read = bae_util::test_spawn::on_blocking_pool(move || {
         let mut out = vec![0u8; chunk_len];
         let n = seek_reader.read(&mut out).ok();
         drop(seek_reader);

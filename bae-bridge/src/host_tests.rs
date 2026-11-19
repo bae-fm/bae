@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 #[test]
 fn an_opened_store_keeps_its_original_custody() {
@@ -242,13 +237,14 @@ fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
     drop(opened);
     let closing = crate::BridgeLibraryClosing::new(host.clone());
     let (reached, release) = closing.hold_at(crate::types::BridgeClosingStep::StoppingPlayback);
-    let closer = std::thread::spawn({
+    let closer = bae_util::test_spawn::thread({
         let app = app.clone();
         move || app.close_library(Some(closing))
     });
     reached.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the close starts");
 
-    let standing = caller.spawn(host.clone().library_standing(id));
+    let standing =
+        bae_util::test_spawn::task_on(caller.handle(), host.clone().library_standing(id));
     host.library_sessions.wait_for_waiter(store);
     release.send(()).unwrap();
     closer.join().unwrap().unwrap();
@@ -279,16 +275,17 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
     let id = opened.library_id();
     drop(opened);
     let (reached, release) = host.library_sessions.hold_next_call();
-    let standing = caller.spawn(host.clone().library_standing(id));
+    let standing =
+        bae_util::test_spawn::task_on(caller.handle(), host.clone().library_standing(id));
     reached.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the call finds the library");
 
     let (telling, heard) = std::sync::mpsc::channel();
-    let closer = std::thread::spawn({
+    let closer = bae_util::test_spawn::thread({
         let app = app.clone();
         let telling = telling.clone();
         move || telling.send(Heard::CloseEnded(app.close_library(None))).unwrap()
     });
-    std::thread::spawn({
+    bae_util::test_spawn::thread({
         let host = host.clone();
         move || {
             host.library_sessions.wait_for_close_waiting_on_calls();

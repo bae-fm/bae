@@ -578,7 +578,7 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
         .expect("resolve track 2");
     let decode = library.manager().open_track_decode(&audio).await.unwrap();
 
-    let decoded = bae_util::test_blocking::on_blocking_pool(move || {
+    let decoded = bae_util::test_spawn::on_blocking_pool(move || {
         let mut sink = CollectedDecode::default();
         decode
             .run_to_sink(&mut sink, std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)))

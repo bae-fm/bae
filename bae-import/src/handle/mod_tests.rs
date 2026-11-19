@@ -607,7 +607,7 @@ pub(super) async fn stored_author(
 }
 
 pub(crate) async fn shut_down(handle: ImportServiceHandle) {
-    bae_util::test_blocking::on_blocking_pool(move || handle.stop_and_join()).await;
+    bae_util::test_spawn::on_blocking_pool(move || handle.stop_and_join()).await;
 }
 
 pub(super) struct CountingFileTagReader {

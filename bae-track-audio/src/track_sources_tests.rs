@@ -93,7 +93,7 @@ async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: 
                 if starts.fetch_add(1, Ordering::SeqCst) < parallelism {
                     first_batch.wait().await;
                 }
-                bae_util::test_blocking::on_blocking_pool(move || {
+                bae_util::test_spawn::on_blocking_pool(move || {
                     for path in &track.files {
                         let mut reader = streams[path].new_reader();
                         let mut bytes = vec![0u8; 1024];
@@ -341,7 +341,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
                 track_ends.lock().unwrap().take().expect("one track runs");
             async move {
                 let stream = streams.into_values().next().expect("the track reads its file");
-                bae_util::test_blocking::on_blocking_pool(move || {
+                bae_util::test_spawn::on_blocking_pool(move || {
                     let mut reader = stream.new_reader();
                     let mut bytes = vec![0u8; 1024];
                     reader.read(&mut bytes).expect("the stream serves its file");

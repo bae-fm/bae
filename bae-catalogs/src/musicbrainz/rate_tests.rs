@@ -1,11 +1,6 @@
 //! MusicBrainz's rate as the client reads it: refusals its rate limiter
 //! sends, failures that are not, and the window under sustained load.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::musicbrainz::tests::{mb_raw_server, mb_response_server, served_by};
 use crate::musicbrainz::*;
@@ -109,7 +104,7 @@ async fn a_rate_refusal_holds_every_musicbrainz_request_until_its_reset() {
         Http::for_test().serve("musicbrainz.org", &url).on_clock(clock),
     ));
     let asking = Arc::clone(&musicbrainz);
-    let asked = tokio::spawn(async move {
+    let asked = bae_util::test_spawn::task(async move {
         asking.fetch_release_group_json("rg-held", CallClass::REQUESTED).await
     });
 

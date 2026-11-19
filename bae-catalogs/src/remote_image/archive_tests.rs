@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 #[tokio::test]
@@ -22,8 +17,9 @@ async fn archive_gallery_requests_both_entities_and_deduplicates_images() {
         .route("/release/failed/", get(|| async { axum::http::StatusCode::BAD_REQUEST }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("listener binds");
     let base = format!("http://{}", listener.local_addr().expect("listener address"));
-    let server =
-        tokio::spawn(async move { axum::serve(listener, app).await.expect("server runs") });
+    let server = bae_util::test_spawn::task(async move {
+        axum::serve(listener, app).await.expect("server runs")
+    });
     let http = Http::for_test().serve("coverartarchive.org", &base);
     let covers = musicbrainz_gallery(&http, "release-1", Some("group-1"))
         .await

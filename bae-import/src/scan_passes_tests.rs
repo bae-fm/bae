@@ -2,11 +2,6 @@
 //! service's library, a folder read through them, a listing that records what
 //! it read, and the events a pass announces; and a pass's start.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::service::tests::{setup_import_service, TestService};
 use crate::watching::WatchReport;
@@ -156,7 +151,7 @@ impl DecisionFixture {
         let whole = bae_store::ListWindow::top(u64::MAX);
         let mut live = tables.subscribe_import_window(list, whole);
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
-        let watcher = tokio::spawn(async move {
+        let watcher = bae_util::test_spawn::task(async move {
             loop {
                 let window =
                     live.next_inline().await.expect("the query stays open").result.unwrap();

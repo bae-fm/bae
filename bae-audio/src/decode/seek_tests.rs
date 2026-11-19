@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use crate::test_samples::filled_sparse_buffer;
 use crate::{
     decode_audio, decode_audio_streaming, encode_i32, init, seek_landing_bytes, DecodeStart,
@@ -20,7 +15,6 @@ use std::sync::Arc;
 fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_per_sample: u32) {
     use crate::sparse_buffer::create_sparse_buffer;
     use crate::track_stream::create_track_stream_pair_with_capacity;
-    use std::thread;
 
     let duration_secs = 2;
     let frame_samples = sample_rate as usize * duration_secs;
@@ -48,7 +42,7 @@ fn check_seek_to_produces_correct_samples(sample_rate: u32, channels: u32, bits_
 
     let (mut sink, mut source, _ready) =
         create_track_stream_pair_with_capacity(sample_rate, channels, 500000);
-    let decoder_handle = thread::spawn(move || {
+    let decoder_handle = bae_util::test_spawn::thread(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let result = decode_audio_streaming(
             buffer,
@@ -199,7 +193,6 @@ fn test_seek_to_stereo_96000_16bit() {
 fn flac_seek_uses_seektable_not_binary_search() {
     use crate::sparse_buffer::create_sparse_buffer;
     use crate::track_stream::create_track_stream_pair_with_capacity;
-    use std::thread;
 
     init();
 
@@ -220,7 +213,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
     let stop_sample: u64 = 16 * 44100;
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 2, 500_000);
     let decode_buffer = buffer.clone();
-    let handle = thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let result = decode_audio_streaming(
             decode_buffer,
@@ -283,7 +276,6 @@ fn flac_seek_uses_seektable_not_binary_search() {
 fn byte_seek_to_landing_is_sample_exact() {
     use crate::sparse_buffer::create_sparse_buffer;
     use crate::track_stream::create_track_stream_pair_with_capacity;
-    use std::thread;
 
     init();
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
@@ -315,7 +307,7 @@ fn byte_seek_to_landing_is_sample_exact() {
         let (mut sink, mut source, _ready) =
             create_track_stream_pair_with_capacity(sample_rate as u32, channels, 500_000);
         let decode_buffer = buffer.clone();
-        let handle = thread::spawn(move || {
+        let handle = bae_util::test_spawn::thread(move || {
             let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
             let result = decode_audio_streaming(
                 decode_buffer,
@@ -455,7 +447,7 @@ fn stream_lossy(bytes: &[u8], sample_rate: u32, start: Option<u64>) -> Vec<f32> 
     let buffer = filled_sparse_buffer(bytes);
     let (mut sink, mut source, _ready) =
         create_track_stream_pair_with_capacity(sample_rate, 2, 4 * sample_rate as usize);
-    let decoder = std::thread::spawn(move || {
+    let decoder = bae_util::test_spawn::thread(move || {
         let result = decode_audio_streaming(
             buffer,
             &mut sink,
@@ -623,7 +615,7 @@ fn play_from_buffer(
     let (mut sink, mut source, _ready) =
         create_track_stream_pair_with_capacity(44100, 2, 4_410_000);
     let (done, result) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let result = decode_audio_streaming(
             buffer,
             &mut sink,
@@ -767,7 +759,7 @@ fn a_recorded_byte_beyond_the_fetched_part_is_not_past_the_files_end() {
     buffer.append_at(0, &bytes[..fetched]);
     let rest = buffer.clone();
     let tail = bytes[fetched..].to_vec();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         // The decode parks reading the bytes the first quarter lacks; only
         // then does the fill deliver them.
         rest.wait_until_parked(1);

@@ -189,7 +189,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // not with success.
     assert!(decision.unwrap().is_err());
     removal.unwrap();
-    bae_util::test_blocking::on_blocking_pool(move || handle.stop_and_join()).await;
+    bae_util::test_spawn::on_blocking_pool(move || handle.stop_and_join()).await;
 }
 
 /// An add that fails leaves nothing watched: the folders it announces are

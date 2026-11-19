@@ -6,11 +6,6 @@
 //! (8 kHz) files, in one shorter than the points' spacing, and in one larger
 //! than the window a scrub fetches.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_audio::{encode_i32, EncodeFormat};
 use bae_records::ScrubPoints;
@@ -391,7 +386,7 @@ async fn scrub_fetching(
     let fill = {
         let buffer = buffer.clone();
         let log = log.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             buffer
                 .fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
                     let bytes = bytes.clone();
@@ -413,7 +408,7 @@ async fn scrub_fetching(
         let points = points.to_vec();
         let mp3 =
             Mp3 { name: mp3.name, layout: mp3.layout, seconds: mp3.seconds, bytes: Vec::new() };
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             scrub_from(buffer, &mp3, &points, target, end)
         })
         .await

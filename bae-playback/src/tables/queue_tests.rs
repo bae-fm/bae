@@ -2,11 +2,6 @@
 //! deleted track takes with it, what opening keeps, and how the reads are
 //! planned.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::tables::tests::*;
 /// Play `RELEASE_A` from `start`, returning the entry playing.
@@ -773,8 +768,10 @@ mod playback_queue_bench {
         value.next_inline().await.unwrap().unwrap();
         upcoming.next_inline().await.unwrap();
         let screens = [
-            tokio::spawn(async move { while value.next_inline().await.is_some() {} }),
-            tokio::spawn(async move { while upcoming.next_inline().await.is_some() {} }),
+            bae_util::test_spawn::task(async move { while value.next_inline().await.is_some() {} }),
+            bae_util::test_spawn::task(
+                async move { while upcoming.next_inline().await.is_some() {} },
+            ),
         ];
         bae_writes(&db, "queue screens open").await;
         for screen in screens {

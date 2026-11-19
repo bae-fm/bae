@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::{LiveRead, LiveRequest};
 use crate::live_query::{CancellableLiveQuery, LiveQueryError};
 use crate::{Schema, Store};
@@ -55,7 +50,7 @@ async fn replaced_while_reading<Request: LiveRequest + std::fmt::Debug>(
     let read = Arc::new(LiveRead::new(query, |_, value| Some(value)));
     assert_eq!(read.next().await.unwrap(), initial);
     read.set(held).unwrap();
-    let waiting = tokio::spawn({
+    let waiting = bae_util::test_spawn::task({
         let read = read.clone();
         async move { read.next().await }
     });

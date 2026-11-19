@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
@@ -187,7 +182,7 @@ async fn exponential_repeats_wait_within_the_upper_half_of_each_span() {
 async fn each_repeat_waits_until_its_clock_reaches_the_wait() {
     let clock = Arc::new(FixedClock::new(UNIX_EPOCH));
     let (attempted, mut attempts) = tokio::sync::mpsc::unbounded_channel();
-    let retry = tokio::spawn({
+    let retry = crate::test_spawn::task({
         let clock = Arc::clone(&clock);
         async move {
             retry_classified(clock.as_ref(), THREE, "test", || {
@@ -229,7 +224,7 @@ async fn each_repeat_waits_until_its_clock_reaches_the_wait() {
 async fn a_retry_dropped_during_its_wait_makes_no_further_attempt() {
     let clock = Arc::new(FixedClock::new(UNIX_EPOCH));
     let attempts = Arc::new(AtomicUsize::new(0));
-    let retry = tokio::spawn({
+    let retry = crate::test_spawn::task({
         let clock = Arc::clone(&clock);
         let attempts = Arc::clone(&attempts);
         async move {

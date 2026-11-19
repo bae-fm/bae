@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::source_release::UnfetchedDocument;
 use crate::test_documents::{linked_discogs_master, linked_discogs_release, linked_release_group};
@@ -30,7 +25,7 @@ impl ProviderServer {
         let origin = format!("http://{}", listener.local_addr().unwrap());
         let requests = Arc::new(Mutex::new(HashMap::new()));
         let recorded = requests.clone();
-        let task = tokio::spawn(async move {
+        let task = bae_util::test_spawn::task(async move {
             loop {
                 let (mut stream, _) = listener.accept().await.unwrap();
                 let mut buffer = [0; 4096];

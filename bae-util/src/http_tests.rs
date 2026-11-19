@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::test_channels::HANG_GUARD;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -14,7 +9,7 @@ async fn response_from_raw(raw_response: Vec<u8>) -> reqwest::Response {
         tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
     let url =
         format!("http://{}", listener.local_addr().expect("test listener should have an address"));
-    tokio::spawn(async move {
+    crate::test_spawn::task(async move {
         let (mut stream, _) = listener.accept().await.expect("test request should connect");
         stream.write_all(&raw_response).await.expect("test response should write");
         // Half-close and then drain the client's side to EOF rather than
@@ -42,7 +37,7 @@ async fn client_builder_times_out_when_response_stalls() {
     let url =
         format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let (accepted_tx, accepted_rx) = oneshot::channel();
-    tokio::spawn(async move {
+    crate::test_spawn::task(async move {
         let (_stream, _) = listener.accept().await.expect("test request should connect");
         accepted_tx.send(()).expect("test should receive accepted signal");
         std::future::pending::<()>().await;
@@ -52,7 +47,7 @@ async fn client_builder_times_out_when_response_stalls() {
         .build()
         .expect("test HTTP client should build");
     let request_url = url.clone();
-    let request = tokio::spawn(async move { client.get(&request_url).send().await });
+    let request = crate::test_spawn::task(async move { client.get(&request_url).send().await });
 
     accepted_rx.await.expect("test listener should accept the request");
     let result = timeout(HANG_GUARD, request)

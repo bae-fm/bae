@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: a thread and a task no catch runs on, as a dependency's are"
-)]
-
 use std::sync::Arc;
 
 use bae_util::task_failure::{caught, Bug};
@@ -17,7 +12,7 @@ use crate::{Diagnostics, RecordingBugReporter};
 async fn a_panic_on_a_thread_bae_did_not_spawn_is_reported_once() {
     let hooked = reported_panics();
     let message = "a dependency's thread lost its socket";
-    let thread = std::thread::spawn(move || test_panic::panics(message));
+    let thread = bae_util::test_spawn::thread(move || test_panic::panics(message));
     assert!(thread.join().is_err(), "the thread panicked");
     let operation = "work outside every catch";
     assert_eq!(
@@ -43,7 +38,7 @@ async fn a_panic_tokio_catches_inside_a_catch_is_reported_once() {
                     .build()
                     .expect("build the thread's runtime");
                 let task = runtime.block_on(async {
-                    tokio::spawn(async move { test_panic::panics(message) }).await
+                    bae_util::test_spawn::task(async move { test_panic::panics(message) }).await
                 });
                 assert!(task.expect_err("the task panicked").is_panic());
             },

@@ -417,7 +417,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     // Start the pass and hold extraction inside OCR, so the candidate is
     // genuinely mid-flight when the folder goes.
     let pass = fixture.drain_automatic_task();
-    bae_util::test_blocking::on_blocking_pool(move || entered.recv_timeout(HANG_GUARD))
+    bae_util::test_spawn::on_blocking_pool(move || entered.recv_timeout(HANG_GUARD))
         .await
         .expect("extraction reaches the artwork");
     std::fs::remove_dir_all(&dir).unwrap();

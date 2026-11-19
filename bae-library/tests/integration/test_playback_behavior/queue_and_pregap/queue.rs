@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use crate::test_playback_behavior::fixtures::*;
 use crate::test_playback_behavior::support::*;
 
@@ -254,7 +249,7 @@ async fn test_reorder_entry_displaces_preloaded_track() {
                 // playing one: move the second to the lane's first place.
                 let moved =
                     h.reorder_entry(entries[1].id.clone(), bae_playback::QueueLane::Context, 0);
-                let _answered = tokio::spawn(async move {
+                let _answered = bae_util::test_spawn::task(async move {
                     moved.await.expect("the reorder moves the entry");
                 });
             },
@@ -300,7 +295,7 @@ async fn test_remove_entry_refreshes_preloaded_track() {
             &track2,
             |h, entries| {
                 let removed = h.remove_entry(entries[0].id.clone());
-                let _answered = tokio::spawn(async move {
+                let _answered = bae_util::test_spawn::task(async move {
                     removed.await.expect("the removal takes the entry out");
                 });
             },

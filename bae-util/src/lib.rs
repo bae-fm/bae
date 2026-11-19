@@ -25,8 +25,6 @@ pub mod stall;
 pub mod stored_image;
 pub mod task_failure;
 #[cfg(any(test, feature = "test-utils"))]
-pub mod test_blocking;
-#[cfg(any(test, feature = "test-utils"))]
 pub mod test_channels;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_cover_art;
@@ -38,6 +36,8 @@ pub mod test_host;
 pub mod test_ids;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_logs;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_spawn;
 #[cfg(desktop)]
 pub mod text_encoding;
 pub mod time_ordered_ids;

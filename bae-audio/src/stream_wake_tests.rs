@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_util::test_channels::HANG_GUARD;
 use std::sync::mpsc;
@@ -24,7 +19,7 @@ fn a_waiter_wakes_on_the_next_change() {
     let (woke_tx, woke_rx) = mpsc::channel();
     let waiter = {
         let wake = wake.clone();
-        std::thread::spawn(move || {
+        bae_util::test_spawn::thread(move || {
             wake.wait_past(seen);
             woke_tx.send(()).unwrap();
         })

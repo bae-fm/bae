@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::airplay::ap2_channel::control_keys;
 use std::io::{BufRead, Write};
@@ -72,7 +67,7 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
@@ -323,7 +318,7 @@ fn run_ap2_session(
     data_udp.set_read_timeout(Some(HANG_GUARD)).unwrap();
     let data_port = data_udp.local_addr().unwrap().port();
 
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (stream, _) = tcp.accept().unwrap();
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
@@ -505,7 +500,7 @@ fn a_session_start_on_a_receiver_that_forgot_this_device_names_it() {
     receiver.paired.clear();
     let tcp = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = tcp.local_addr().unwrap();
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (mut stream, _) = tcp.accept().unwrap();
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         receiver.serve(&mut reader, &mut stream)
@@ -565,7 +560,7 @@ fn serve_digest_receiver(
     shared: [u8; 32],
     requests: usize,
 ) -> std::thread::JoinHandle<Vec<(String, bool)>> {
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;

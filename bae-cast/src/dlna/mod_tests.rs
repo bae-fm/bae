@@ -3,11 +3,6 @@
 //! parser must survive: a missing `friendlyName`, a relative `controlURL`, and a
 //! control URL naming another host and port.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use std::time::Duration;
 
 use super::discovery::{parse_device_description, parse_ssdp_location};
@@ -556,7 +551,7 @@ async fn start_fake_renderer(state: Shared) -> String {
     let addr = listener.local_addr().unwrap();
     let router =
         Router::new().route("/avt", post(handle)).route("/rc", post(handle)).with_state(state);
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         axum::serve(listener, router).await.expect("the test server serves until the test ends");
     });
     format!("http://{addr}")

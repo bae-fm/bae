@@ -19,7 +19,8 @@ disallowed-methods = [
     # work runs under a reported spawner, which ends what the work served:
     # Diagnostics::spawn_reported, spawn_ending, spawn_thread_reported or
     # run_on_thread, WorkerThread::spawn, or below bae-diagnostics coven's
-    # task::spawn_owned with the owner's bug sink.
+    # task::spawn_owned with the owner's bug sink. A test starts its tasks and
+    # threads through bae_util::test_spawn.
     { path = "tokio::spawn", reason = "use Diagnostics::spawn_reported, which ends what a task that panics served" },
     { path = "tokio::task::spawn", reason = "use Diagnostics::spawn_reported, which ends what a task that panics served" },
     { path = "std::thread::spawn", reason = "use Diagnostics::spawn_thread_reported or WorkerThread::spawn, which end what a thread that panics served" },

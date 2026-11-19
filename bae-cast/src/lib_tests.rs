@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::airplay::UnreadableSetting;
 use crate::airplay_cast::airplay_pairing_failure;
@@ -296,7 +291,7 @@ impl SilentReceiver {
         let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).expect("bind a loopback port");
         let port = listener.local_addr().expect("read the bound port").port();
         let (took, taken) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
+        bae_util::test_spawn::thread(move || {
             let (connection, _) =
                 listener.accept().expect("the receiver takes the cast's connection");
             took.send(connection).expect("the test waits for the cast to connect");
@@ -329,7 +324,9 @@ fn cast_in_background(
     device_id: &'static str,
 ) -> tokio::task::JoinHandle<Result<(), CastError>> {
     let controller = controller.clone();
-    runtime.spawn(async move { controller.cast_to(device_id, no_code()).await })
+    bae_util::test_spawn::task_on(runtime.handle(), async move {
+        controller.cast_to(device_id, no_code()).await
+    })
 }
 
 /// What the cast `call` ended with, once the receiver it was connecting to

@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 #[tokio::test]
@@ -30,7 +25,7 @@ async fn a_running_import_cancelled_is_dropped_before_it_writes() {
     let (started_tx, started) = tokio::sync::oneshot::channel();
     let run = {
         let cancels = cancels.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             cancels
                 .run(&crate::CandidateKey::test("Album"), "import-1", async {
                     started_tx.send(()).unwrap();

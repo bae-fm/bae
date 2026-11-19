@@ -2,11 +2,6 @@
 //! the start makes of its files and tags, what the import commits from the
 //! draft, and the automatic starts refused with and without a failed import.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
@@ -283,7 +278,7 @@ async fn concurrent_imports_keep_one_owner_and_later_imports_of_its_files_are_re
     let presses = (0..5).map(|_| {
         let handle = handle.clone();
         let key = key.clone();
-        tokio::spawn(async move { handle.start_import(&key).await })
+        bae_util::test_spawn::task(async move { handle.start_import(&key).await })
     });
     let mut started = Vec::new();
     for press in presses.collect::<Vec<_>>() {

@@ -2,11 +2,6 @@
 //! must not wait on reading files, a write prepared before an import's claim
 //! cannot land after it, and a durable write that panics fails its caller.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::handle::tests::*;
 use crate::tests::import::TestImport;
@@ -35,7 +30,7 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
     let title_before =
         pane(&handle, &key).await.draft().unwrap().metadata_draft.clone().album_title;
     let commit = handle.services.folder_state_commit.lock("hold for a test").await;
-    let edit = tokio::spawn({
+    let edit = bae_util::test_spawn::task({
         let handle = handle.clone();
         let key = key.clone();
         async move {
@@ -239,7 +234,7 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
         two_candidates().await;
     let _opens = OpensOnDrop(reader.clone());
     reader.hold(&held_folder);
-    let pick = tokio::spawn({
+    let pick = bae_util::test_spawn::task({
         let handle = handle.clone();
         async move { handle.select_candidate_file_tags(held_key).await }
     });
@@ -266,7 +261,7 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
     let _opens = OpensOnDrop(reader.clone());
     handle.select_candidate_file_tags(held_key.clone()).await.unwrap();
     reader.hold(&held_folder);
-    let decision = tokio::spawn({
+    let decision = bae_util::test_spawn::task({
         let handle = handle.clone();
         async move {
             handle

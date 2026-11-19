@@ -2,11 +2,6 @@
 //! artwork host answered with is the host's failure, and what bae met on its
 //! own side is bae's.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 fn transport(error: reqwest::Error) -> RemoteImageError {
@@ -42,7 +37,7 @@ async fn a_request_that_reached_no_host_is_a_network_failure() {
 async fn a_request_that_ran_out_of_time_is_a_timeout() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener binds");
     let address = listener.local_addr().expect("test listener address");
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         let (_stream, _) = listener.accept().await.expect("test request connects");
         std::future::pending::<()>().await;
     });

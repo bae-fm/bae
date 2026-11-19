@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 #[test]
@@ -122,8 +117,6 @@ fn test_ready_signal_on_finish() {
 /// Every sample is delivered in order across the park boundary.
 #[test]
 fn push_samples_blocking_parks_until_consumer_drains() {
-    use std::thread;
-
     // Ring capacity (8) is far below the total pushed (40), so the producer
     // must park on full at least once.
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
@@ -131,7 +124,7 @@ fn push_samples_blocking_parks_until_consumer_drains() {
     let samples: Vec<f32> = (0..total).map(|i| i as f32).collect();
     let expected = samples.clone();
 
-    let consumer = thread::spawn(move || {
+    let consumer = bae_util::test_spawn::thread(move || {
         let mut got: Vec<f32> = Vec::new();
         while got.len() < total {
             let mut buf = [0.0f32; 4];
@@ -160,13 +153,11 @@ fn push_samples_blocking_parks_until_consumer_drains() {
 /// pushed fewer than all its samples.
 #[test]
 fn push_samples_blocking_returns_on_cancel_mid_push() {
-    use std::thread;
-
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
     let samples = vec![1.0f32; 100];
 
     // Nobody drains, so the producer fills the ring and parks; cancel wakes it.
-    let canceller = thread::spawn(move || {
+    let canceller = bae_util::test_spawn::thread(move || {
         source.wait_until_producer_parked();
         source.cancel();
     });
@@ -205,11 +196,10 @@ fn push_silence_frames_blocking_zero_channels_is_noop() {
 #[test]
 fn push_samples_blocking_returns_when_the_stream_is_dropped() {
     use std::sync::mpsc;
-    use std::thread;
 
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 8);
     let (pushed_tx, pushed_rx) = mpsc::channel();
-    let producer = thread::spawn(move || {
+    let producer = bae_util::test_spawn::thread(move || {
         pushed_tx.send(sink.push_samples_blocking(&[1.0f32; 100])).unwrap();
     });
 

@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 /// The line a site logs.
@@ -17,7 +12,7 @@ fn warn_from_the_site() {
 fn a_capture_keeps_lines_from_a_site_another_thread_reaches_first() {
     let (start, started) = std::sync::mpsc::channel();
     let (reached, reached_rx) = std::sync::mpsc::channel();
-    let other = std::thread::spawn(move || {
+    let other = crate::test_spawn::thread(move || {
         started.recv().unwrap();
         warn_from_the_site();
         reached.send(()).unwrap();

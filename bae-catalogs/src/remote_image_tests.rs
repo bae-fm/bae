@@ -1,11 +1,6 @@
 //! What the image tests share: a test image, a direct transport, and local
 //! hosts answering as an artwork host would.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use bae_util::http::Http;
 use std::sync::Arc;
 
@@ -60,7 +55,7 @@ pub(super) async fn start_mock(responses: Vec<(u16, Vec<u8>)>) -> String {
     let app = axum::Router::new().fallback(handler).with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         axum::serve(listener, app).await.expect("the test server serves until the test ends");
     });
     format!("http://{address}/cover.jpg")
@@ -93,7 +88,7 @@ pub(super) async fn start_counting_host(status: u16, body: Vec<u8>) -> (Counting
     let app = axum::Router::new().fallback(handler).with_state(host.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         axum::serve(listener, app).await.expect("the test server serves until the test ends");
     });
     (host, format!("http://{address}/cover.jpg"))
@@ -105,7 +100,7 @@ pub(super) async fn start_declared_length_response(content_length: usize) -> Str
     let listener =
         tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("test listener should bind");
     let address = listener.local_addr().expect("test listener should have an address");
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         let (mut stream, _) = listener.accept().await.expect("test request should connect");
         let response = format!("HTTP/1.1 200 OK\r\nContent-Length: {content_length}\r\n\r\n");
         stream.write_all(response.as_bytes()).await.expect("test response headers should write");
@@ -119,7 +114,7 @@ pub(super) async fn truncated_body_url() -> String {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
         let mut request = [0; 4096];
         let received = stream.read(&mut request).await.unwrap();

@@ -4,11 +4,6 @@
 //! the list and the event bus its tests share. Also one run end to end: a
 //! candidate nobody selected acquires a verdict.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::tables::{DbCandidateIdentifyResult, DbImportCandidateState};
@@ -423,7 +418,7 @@ impl Fixture {
     /// The same, as a task a test can watch while it acts on the queue.
     pub(crate) fn drain_automatic_task(&self) -> tokio::task::JoinHandle<()> {
         let identification = self.identification().clone();
-        tokio::spawn(async move { identification.automatic_drained_for_test().await })
+        bae_util::test_spawn::task(async move { identification.automatic_drained_for_test().await })
     }
 
     /// Where the queue has `key`, as the runtime publishes it.
@@ -773,7 +768,7 @@ pub(crate) async fn assert_no_import(
     after: &str,
 ) {
     let import = fixture.import.clone();
-    bae_util::test_blocking::on_blocking_pool(move || import.stop_and_join()).await;
+    bae_util::test_spawn::on_blocking_pool(move || import.stop_and_join()).await;
     for event in drain_events(events) {
         if let ImportEvent::ImportProgress { candidate_key, progress } = event {
             assert_ne!(

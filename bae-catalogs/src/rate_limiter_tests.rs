@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
@@ -23,7 +18,7 @@ async fn queued_reaches(limiter: &RateLimiter, priority: CallPriority, count: us
 
 fn spawn_wait(limiter: &Arc<RateLimiter>, class: CallClass) -> tokio::task::JoinHandle<()> {
     let limiter = Arc::clone(limiter);
-    tokio::spawn(async move { drop(limiter.wait(class).await) })
+    bae_util::test_spawn::task(async move { drop(limiter.wait(class).await) })
 }
 
 #[tokio::test(start_paused = true)]
@@ -74,7 +69,7 @@ async fn the_interval_bounds_both_classes_together() {
         let class = if i % 2 == 0 { CallClass::REQUESTED } else { CallClass::BACKGROUND };
         let limiter = Arc::clone(&limiter);
         let admissions = Arc::clone(&admissions);
-        handles.push(tokio::spawn(async move {
+        handles.push(bae_util::test_spawn::task(async move {
             drop(limiter.wait(class).await);
             admissions.lock().unwrap().push(Instant::now());
         }));
@@ -106,7 +101,7 @@ async fn background_drains_in_arrival_order_once_requested_is_idle() {
     for i in 0..5 {
         let limiter_task = Arc::clone(&limiter);
         let order = Arc::clone(&order);
-        handles.push(tokio::spawn(async move {
+        handles.push(bae_util::test_spawn::task(async move {
             drop(limiter_task.wait(CallClass::BACKGROUND).await);
             order.lock().unwrap().push(i);
         }));
@@ -306,7 +301,7 @@ fn spawn_stamped(
 ) -> tokio::task::JoinHandle<()> {
     let limiter = Arc::clone(limiter);
     let admissions = Arc::clone(admissions);
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         drop(limiter.wait(class).await);
         admissions.lock().unwrap().push(Instant::now());
     })

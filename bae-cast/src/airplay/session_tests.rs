@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::airplay::crypto::apple_public_key;
 use crate::airplay::rtsp::read_request;
@@ -64,7 +59,7 @@ fn handshake_drives_the_7_1_sequence_in_order() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut reader = BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;
@@ -148,7 +143,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
     let (audio_port, control_port) =
         (audio.local_addr().unwrap().port(), control.local_addr().unwrap().port());
 
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut reader = BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;

@@ -1,10 +1,5 @@
 //! A fake Dropbox sign-in the integration tests sign bae in through.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 /// Signs bae in to a fake Dropbox. The presenter answers every authorization
 /// with a code, and the token endpoint grants `access-N` for the Nth code. It
 /// refuses every refresh, so a token Dropbox rejects needs a new sign-in.
@@ -43,7 +38,8 @@ impl DropboxSignIn {
         );
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let server =
+            bae_util::test_spawn::task(async move { axum::serve(listener, router).await.unwrap() });
         Self { endpoint, presented: std::sync::Arc::default(), server }
     }
 

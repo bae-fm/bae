@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::audio_output::{
     audio_event_channel, AudioError, AudioEvent, AudioEventSender, AudioOutputControls, AudioStream,
@@ -198,7 +193,7 @@ async fn an_invalidated_stream_with_no_device_to_move_to_stops_playback() {
 fn spawn_ring_filling_decoder(
     mut sink: bae_audio::track_stream::TrackSink,
 ) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         let chunk = vec![0.0f32; 4096];
         while !sink.is_cancelled() {
             sink.push_samples_blocking(&chunk);
@@ -210,7 +205,7 @@ fn spawn_ring_filling_decoder(
 async fn await_decoder_exit(handle: std::thread::JoinHandle<()>, why: &str) {
     tokio::time::timeout(
         bae_util::test_channels::HANG_GUARD,
-        bae_util::test_blocking::on_blocking_pool(move || handle.join().unwrap()),
+        bae_util::test_spawn::on_blocking_pool(move || handle.join().unwrap()),
     )
     .await
     .unwrap_or_else(|_| panic!("{why}"));

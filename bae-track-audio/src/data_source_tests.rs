@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
 use bae_audio::sparse_buffer::BufferStop;
@@ -81,7 +76,7 @@ fn drain(buffer: &SharedSparseBuffer) -> Vec<u8> {
 }
 
 pub(super) async fn drain_async(buffer: SharedSparseBuffer) -> Vec<u8> {
-    bae_util::test_blocking::on_blocking_pool(move || drain(&buffer)).await
+    bae_util::test_spawn::on_blocking_pool(move || drain(&buffer)).await
 }
 
 /// A fill-error handler that forwards the error into a channel, plus the
@@ -139,7 +134,7 @@ async fn preload_fetch_yields_while_the_playing_track_is_fetching() {
 
     // A preload waiting for the foreground to idle must not proceed yet.
     let waiting = arbiter.clone();
-    let waiter = tokio::spawn(async move { waiting.await_foreground_idle().await });
+    let waiter = bae_util::test_spawn::task(async move { waiting.await_foreground_idle().await });
     tokio::task::yield_now().await;
     assert!(!waiter.is_finished(), "a preload must wait while the playing track is fetching");
 
@@ -168,7 +163,7 @@ fn start_recording_fill(
     let contents = Arc::new(contents);
     let fill_buffer = buffer.clone();
     let log = read_log.clone();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         // Normal teardown (the buffer cancelled or its weak ref dropped)
         // returns `Ok(())`; only a real fetch failure or short read returns
         // `Err`. So `expect` here fails the test on a genuine fill error
@@ -213,7 +208,7 @@ async fn seek_fetches_only_the_demanded_window_not_the_skipped_prefix() {
     let read_log = start_recording_fill(contents, None, &buffer);
 
     // Read one byte at the seek target from the real blocking unit.
-    let one = bae_util::test_blocking::on_blocking_pool(move || {
+    let one = bae_util::test_spawn::on_blocking_pool(move || {
         let mut b = [0u8; 1];
         let n = reader.read(&mut b).ok();
         // Hold the reader until after the read so its demand stays registered.
@@ -265,7 +260,7 @@ async fn read_at_the_ceiling_is_served_not_starved() {
 
     let read_result = timeout(
         HANG_GUARD,
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
             drop(reader);
@@ -301,7 +296,7 @@ async fn prefetched_start_window_removes_the_seek_target_fetch() {
         let mut reader = buffer.new_reader();
         assert!(reader.seek(start_byte));
         let read_log = start_recording_fill(contents, None, &buffer);
-        let served = bae_util::test_blocking::on_blocking_pool(move || {
+        let served = bae_util::test_spawn::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             let n = reader.read(&mut b).ok();
             drop(reader);
@@ -388,7 +383,7 @@ async fn a_jump_to_the_end_and_back_fetches_the_head_once() {
     let read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let reader_buffer = buffer.clone();
-    let (tail, back) = bae_util::test_blocking::on_blocking_pool(move || {
+    let (tail, back) = bae_util::test_spawn::on_blocking_pool(move || {
         let mut reader = reader_buffer.new_reader();
         let mut head = [0u8; 4096];
         assert_eq!(reader.read(&mut head).ok(), Some(head.len()));
@@ -474,7 +469,7 @@ async fn backward_seek_into_evicted_region_refetches_the_window() {
     let read_log = start_recording_fill(contents.clone(), None, &buffer);
 
     let reader_buffer = buffer.clone();
-    let (n, got) = bae_util::test_blocking::on_blocking_pool(move || {
+    let (n, got) = bae_util::test_spawn::on_blocking_pool(move || {
         let mut reader = reader_buffer.new_reader();
         // Play forward well past the third window so [2*WINDOW, 3*WINDOW) is
         // evicted (it is past the head and more than a window behind the
@@ -527,10 +522,13 @@ async fn fill_follows_the_buffer_and_exits_when_it_is_dropped() {
     let contents: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
     let buffer = create_sparse_buffer(source_size);
     let weak = Arc::downgrade(&buffer);
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
-        let bytes = contents[start as usize..(start + len) as usize].to_vec();
-        async move { Ok::<_, TrackReadError>(bytes) }
-    }));
+    let fill = bae_util::test_spawn::task(buffer.clone().fill_on_demand(
+        FILL_WINDOW_SIZE,
+        move |start, len| {
+            let bytes = contents[start as usize..(start + len) as usize].to_vec();
+            async move { Ok::<_, TrackReadError>(bytes) }
+        },
+    ));
 
     // Let the spawned fill run to its park. With no reader it fetches nothing
     // and holds only a weak ref, leaving the test as the buffer's sole owner.
@@ -572,7 +570,7 @@ async fn blocked_reader_unblocks_on_demanded_window_not_sequential_catch_up() {
     // Release ONLY the demanded window; everything else stays parked.
     gate.release(6 * WINDOW);
 
-    let read_handle = bae_util::test_blocking::on_blocking_pool(move || {
+    let read_handle = bae_util::test_spawn::on_blocking_pool(move || {
         let mut b = [0u8; 1];
         let n = reader.read(&mut b).ok();
         drop(reader);
@@ -616,21 +614,24 @@ async fn a_failed_fetch_fails_the_buffer_with_the_read_error() {
     // The reader waits on the second window, which the fetch can't read.
     let mut reader = buffer.new_reader();
     assert!(reader.seek(WINDOW));
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, len| {
-        let result = if start == 0 {
-            Ok(contents[..len as usize].to_vec())
-        } else {
-            Err(TrackReadError::io(
-                format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
-                std::io::Error::from(std::io::ErrorKind::StorageFull),
-            ))
-        };
-        async move { result }
-    }));
+    let fill = bae_util::test_spawn::task(buffer.clone().fill_on_demand(
+        FILL_WINDOW_SIZE,
+        move |start, len| {
+            let result = if start == 0 {
+                Ok(contents[..len as usize].to_vec())
+            } else {
+                Err(TrackReadError::io(
+                    format!("Failed to read {len} bytes at {start} from /volume/track.flac"),
+                    std::io::Error::from(std::io::ErrorKind::StorageFull),
+                ))
+            };
+            async move { result }
+        },
+    ));
 
     let stop = timeout(
         HANG_GUARD,
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             let mut b = [0u8; 1];
             reader.read(&mut b)
         }),
@@ -660,13 +661,16 @@ async fn a_fetch_failing_after_teardown_reports_nothing() {
     let mut reader = buffer.new_reader();
     assert!(reader.seek(0));
     let fetch_gate = gate.clone();
-    let fill = tokio::spawn(buffer.clone().fill_on_demand(FILL_WINDOW_SIZE, move |start, _len| {
-        let gate = fetch_gate.clone();
-        async move {
-            gate.wait_for(start).await;
-            Err::<Vec<u8>, _>(TrackReadError::internal("late read failure"))
-        }
-    }));
+    let fill = bae_util::test_spawn::task(buffer.clone().fill_on_demand(
+        FILL_WINDOW_SIZE,
+        move |start, _len| {
+            let gate = fetch_gate.clone();
+            async move {
+                gate.wait_for(start).await;
+                Err::<Vec<u8>, _>(TrackReadError::internal("late read failure"))
+            }
+        },
+    ));
     gate.entered(0).await;
 
     buffer.cancel();

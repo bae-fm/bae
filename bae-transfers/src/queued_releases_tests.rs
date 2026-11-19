@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::download_snapshot::DownloadRequest;
 use crate::release_queue::ReleaseQueueState;
@@ -106,7 +101,7 @@ where
     let done: Outcomes = Arc::default();
     let worker_queue = queue.clone();
     let recorded = done.clone();
-    let task = tokio::spawn(async move {
+    let task = bae_util::test_spawn::task(async move {
         let ending = worker_queue.clone();
         worker_queue
             .run_serial(
@@ -193,11 +188,9 @@ impl Ending {
 async fn a_finished_entry_leaves_and_the_next_starts() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A), entry(RELEASE_B)]).await.unwrap();
-    let (task, done) =
-        worker(
-            &queue,
-            |_entry, ending| async move { Ok((0, ending.spawned(tokio::spawn(async {})))) },
-        );
+    let (task, done) = worker(&queue, |_entry, ending| async move {
+        Ok((0, ending.spawned(bae_util::test_spawn::task(async {}))))
+    });
 
     let outcomes = reported(&done, 2).await;
     task.abort();
@@ -213,7 +206,7 @@ async fn a_panicking_operation_marks_the_release_failed_with_the_panic() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
     let (task, _done) = worker(&queue, |_entry, ending| async move {
-        Ok((0, ending.spawned(tokio::spawn(async { panic!("boom") }))))
+        Ok((0, ending.spawned(bae_util::test_spawn::task(async { panic!("boom") }))))
     });
 
     let rows =
@@ -235,14 +228,14 @@ async fn an_entry_that_panics_fails_and_the_next_one_runs() {
     let worker_queue = queue.clone();
     let ending_queue = queue.clone();
     let (recorded, reports) = (done.clone(), bugs.clone());
-    let task = tokio::spawn(async move {
+    let task = bae_util::test_spawn::task(async move {
         worker_queue
             .run_serial(
                 "Test",
                 move |entry: ReleaseQueueEntry<DownloadRequest>, active| {
                     let ending = Ending { queue: ending_queue.clone(), active };
                     async move {
-                        let abort = tokio::spawn(async {}).abort_handle();
+                        let abort = bae_util::test_spawn::task(async {}).abort_handle();
                         let panics = entry.release_id == RELEASE_A;
                         Ok((
                             0,
@@ -297,7 +290,7 @@ async fn a_cancel_before_the_start_aborts_the_work() {
         let spawned_work = spawned_work.clone();
         async move {
             canceller.cancel(&entry.release_id).await.unwrap();
-            let pending = tokio::spawn(std::future::pending::<()>());
+            let pending = bae_util::test_spawn::task(std::future::pending::<()>());
             let abort = pending.abort_handle();
             if let Some(work) = spawned_work.lock().unwrap().take() {
                 work.send(pending).expect("the test waits for the work");
@@ -331,7 +324,7 @@ async fn a_cancel_while_running_aborts_the_work_and_is_no_failure() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
     let (task, done) = worker(&queue, |_entry, ending| async move {
-        Ok((7, ending.spawned(tokio::spawn(std::future::pending::<()>()))))
+        Ok((7, ending.spawned(bae_util::test_spawn::task(std::future::pending::<()>()))))
     });
     let mut transfers = queue.watch_transfers();
     transfers.until(|transfers| transfers.get(RELEASE_A) == Some(&7)).await.unwrap();
@@ -357,7 +350,7 @@ async fn progress_is_the_running_entrys_alone() {
     let (queue, _tmp) = queue().await;
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
     let (task, _done) = worker(&queue, |_entry, ending| async move {
-        Ok((0, ending.spawned(tokio::spawn(std::future::pending::<()>()))))
+        Ok((0, ending.spawned(bae_util::test_spawn::task(std::future::pending::<()>()))))
     });
     let mut transfers = queue.watch_transfers();
     transfers.until(|transfers| transfers.contains_key(RELEASE_A)).await.unwrap();
@@ -378,11 +371,9 @@ async fn a_paused_queue_starts_nothing_until_it_resumes() {
     let (queue, _tmp) = queue().await;
     queue.set_paused(true).await.unwrap();
     queue.enqueue_all(vec![entry(RELEASE_A)]).await.unwrap();
-    let (task, done) =
-        worker(
-            &queue,
-            |_entry, ending| async move { Ok((0, ending.spawned(tokio::spawn(async {})))) },
-        );
+    let (task, done) = worker(&queue, |_entry, ending| async move {
+        Ok((0, ending.spawned(bae_util::test_spawn::task(async {}))))
+    });
     // The worker read the paused queue as holding nothing to start and parked.
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, queue.parked(1))
         .await
@@ -409,9 +400,9 @@ async fn a_pause_while_running_stops_the_work_and_a_resume_runs_it_again() {
         let first = counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0;
         async move {
             let work = if first {
-                tokio::spawn(std::future::pending::<()>())
+                bae_util::test_spawn::task(std::future::pending::<()>())
             } else {
-                tokio::spawn(async {})
+                bae_util::test_spawn::task(async {})
             };
             Ok((7, ending.spawned(work)))
         }

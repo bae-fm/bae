@@ -2,11 +2,6 @@
 //! whose passes and removals a test drives, and the commands and reports it
 //! takes.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::folder_scanner::ScanItem;
 use crate::service::tests::{setup_import_service, TestService};
@@ -343,7 +338,7 @@ impl CoordinatorHarness {
             folder_state_commit.clone(),
         );
         let coordinator_removals = removal_backend.clone();
-        let coordinator_thread = std::thread::spawn(move || {
+        let coordinator_thread = bae_util::test_spawn::thread(move || {
             coordinator::run_watcher_with_starter(
                 &mut command_rx,
                 fs_rx,
@@ -398,14 +393,14 @@ impl CoordinatorHarness {
     pub(crate) async fn shutdown(&self) {
         let (completion, done) = std::sync::mpsc::channel();
         self.commands.send(WatcherCommand::Shutdown { completion }).unwrap();
-        bae_util::test_blocking::on_blocking_pool(move || done.recv()).await.unwrap();
+        bae_util::test_spawn::on_blocking_pool(move || done.recv()).await.unwrap();
         let thread = self
             .coordinator_thread
             .lock()
             .unwrap()
             .take()
             .expect("coordinator has not already shut down");
-        bae_util::test_blocking::on_blocking_pool(move || thread.join()).await.unwrap();
+        bae_util::test_spawn::on_blocking_pool(move || thread.join()).await.unwrap();
     }
 }
 

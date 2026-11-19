@@ -316,7 +316,7 @@ impl ImportTables {
     /// watched folders refuses.
     pub(crate) async fn plant_uncanonical_spelling_in_every_add_for_test(directory: &Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             bae_store::test_fixtures::planted_damage::plant_in_library_file(
                 &directory,
                 "watched_import_folders",

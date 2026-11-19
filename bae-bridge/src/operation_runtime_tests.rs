@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use std::future::pending;
 use std::sync::{mpsc, Arc};
 
@@ -50,10 +45,11 @@ fn run_constructs_and_polls_on_the_owned_runtime() {
     let operations = OperationRuntime::new(owned.handle().clone(), Diagnostics::noop());
     let (result_tx, result_rx) = mpsc::sync_channel(1);
 
-    std::thread::Builder::new()
-        .name("foreign-operation-test".to_string())
-        .stack_size(544 * 1024)
-        .spawn(move || {
+    bae_util::test_spawn::thread_with(
+        std::thread::Builder::new()
+            .name("foreign-operation-test".to_string())
+            .stack_size(544 * 1024),
+        move || {
             let caller = std::thread::current().id();
             let result = owned.block_on(operations.run("test operation", move || {
                 let constructed = std::thread::current().id();
@@ -63,10 +59,11 @@ fn run_constructs_and_polls_on_the_owned_runtime() {
                 }
             }));
             result_tx.send(result).expect("return test result");
-        })
-        .expect("spawn foreign caller")
-        .join()
-        .expect("foreign caller does not panic");
+        },
+    )
+    .expect("spawn foreign caller")
+    .join()
+    .expect("foreign caller does not panic");
 
     let (caller, constructed, polled) =
         result_rx.recv().expect("receive test result").expect("owned operation succeeds");
@@ -81,7 +78,7 @@ async fn dropping_run_aborts_the_owned_task() {
     let (started_tx, started_rx) = oneshot::channel();
     let (dropped_tx, dropped_rx) = oneshot::channel();
 
-    let caller = tokio::spawn(operations.run("test operation", move || async move {
+    let caller = bae_util::test_spawn::task(operations.run("test operation", move || async move {
         let _drop_signal = DropSignal(Some(dropped_tx));
         started_tx.send(()).expect("test receives task start");
         pending::<Result<(), BridgeError>>().await
@@ -104,7 +101,7 @@ async fn dropping_run_to_completion_keeps_the_owned_task_alive() {
     let (continue_tx, continue_rx) = oneshot::channel();
     let (completed_tx, completed_rx) = oneshot::channel();
 
-    let caller = tokio::spawn(operations.run_to_completion(
+    let caller = bae_util::test_spawn::task(operations.run_to_completion(
         (),
         "test persistent operation",
         move || async move {
@@ -161,7 +158,7 @@ async fn an_operation_dropped_by_a_shutting_down_runtime_fails_as_shutting_down(
     let operations = OperationRuntime::new(owned.handle().clone(), Diagnostics::noop());
     let (started_tx, started_rx) = oneshot::channel();
 
-    let caller = tokio::spawn(operations.run("test operation", move || async move {
+    let caller = bae_util::test_spawn::task(operations.run("test operation", move || async move {
         started_tx.send(()).expect("test receives task start");
         pending::<Result<(), BridgeError>>().await
     }));
@@ -190,7 +187,7 @@ async fn a_persistent_operation_panicking_after_its_caller_left_is_reported() {
     let (started_tx, started_rx) = oneshot::channel();
     let (continue_tx, continue_rx) = oneshot::channel::<()>();
 
-    let caller = tokio::spawn(operations.run_to_completion(
+    let caller = bae_util::test_spawn::task(operations.run_to_completion(
         (),
         "test persistent operation",
         move || async move {

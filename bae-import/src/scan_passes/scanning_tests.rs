@@ -2,11 +2,6 @@
 //! them, the folders it read recorded, and a walk that panics or a root that
 //! cannot be read failing the pass and keeping what was stored.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
@@ -110,7 +105,7 @@ fn start_coordinator(
     let (_fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let services = scan.services.services.clone();
     let folder_watcher = scan.services.folder_watcher.clone();
-    std::thread::spawn(move || {
+    bae_util::test_spawn::thread(move || {
         crate::watching::run_watcher(&mut command_rx, fs_rx, services, folder_watcher)
     })
 }
@@ -134,7 +129,7 @@ async fn stop_coordinator(
 ) {
     let (completion, stopped) = std::sync::mpsc::channel();
     commands.send(crate::watching::WatcherCommand::Shutdown { completion }).unwrap();
-    bae_util::test_blocking::on_blocking_pool(move || {
+    bae_util::test_spawn::on_blocking_pool(move || {
         stopped.recv().unwrap();
         coordinator.join().unwrap();
     })

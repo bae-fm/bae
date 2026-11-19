@@ -216,7 +216,7 @@ async fn coordinator_shutdown_waits_for_active_scan() {
     harness.scans.wait_for_cancellation(0).await;
     assert!(matches!(shutdown_done.try_recv(), Err(std::sync::mpsc::TryRecvError::Empty)));
     harness.scans.complete(0);
-    bae_util::test_blocking::on_blocking_pool(move || shutdown_done.recv()).await.unwrap();
+    bae_util::test_spawn::on_blocking_pool(move || shutdown_done.recv()).await.unwrap();
 }
 
 /// A network folder whose check finds it as its last scan left it is checked

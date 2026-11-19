@@ -3,11 +3,6 @@
 //! list shows a release it holds, and the inspector's view of a pinning
 //! release.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::manager::tests::*;
 
@@ -320,7 +315,7 @@ async fn download_transfers_report_each_driven_file_progress() {
         }])
         .await
         .unwrap());
-    let pending = tokio::spawn(std::future::pending::<()>());
+    let pending = bae_util::test_spawn::task(std::future::pending::<()>());
     assert!(manager
         .downloads
         .activate_for_test(
@@ -349,7 +344,7 @@ async fn download_transfers_report_each_driven_file_progress() {
     let driver = {
         let manager = manager.clone();
         let release_id = release_id.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             manager
                 .drive_pin(
                     &release_id,
@@ -408,7 +403,7 @@ async fn download_bytes_send_no_new_sync_activity() {
         }])
         .await
         .unwrap());
-    let pending = tokio::spawn(std::future::pending::<()>());
+    let pending = bae_util::test_spawn::task(std::future::pending::<()>());
     assert!(manager
         .downloads
         .activate_for_test(&release_id, pending.abort_handle(), progress(0))
@@ -820,7 +815,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     let (observed, reading) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_read(stored, observed, resumed).await;
-    let pin = tokio::spawn({
+    let pin = bae_util::test_spawn::task({
         let manager = manager.clone();
         let release_id = release_id.clone();
         async move {
@@ -898,7 +893,7 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     let (observed, stalled) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel::<()>();
     home.hold_body_at(last_stored_path(&home, manager), 2 * 1024 * 1024, observed, resumed).await;
-    let pin = tokio::spawn({
+    let pin = bae_util::test_spawn::task({
         let manager = manager.clone();
         let release_id = release_id.clone();
         async move {

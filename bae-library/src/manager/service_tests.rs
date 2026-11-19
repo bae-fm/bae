@@ -3,11 +3,6 @@
 //! upload transfer watches, and the import list a surface opens over the
 //! library.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
@@ -263,7 +258,7 @@ async fn a_done_row_carries_its_release_upload() {
             resumed,
         )
         .await;
-    let drain = tokio::spawn({
+    let drain = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
@@ -344,7 +339,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
         bae_store::ListWindow::top(50),
     ));
     subscription.next().await.expect("the initial value");
-    let waiting = tokio::spawn({
+    let waiting = bae_util::test_spawn::task({
         let subscription = subscription.clone();
         async move { subscription.next().await.map(|_| ()) }
     });
@@ -372,7 +367,7 @@ async fn closing_the_library_cancels_a_waiting_live_read() {
         |_, window| Some(window),
     ));
     read.next().await.expect("the initial value");
-    let waiting = tokio::spawn({
+    let waiting = bae_util::test_spawn::task({
         let read = read.clone();
         async move { read.next().await }
     });
@@ -430,7 +425,7 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     let db = manager.store.clone();
     let (admitted, admission) = tokio::sync::oneshot::channel();
     let working = manager.clone();
-    let operation = tokio::spawn(async move {
+    let operation = bae_util::test_spawn::task(async move {
         working
             .run_file_operation("rollback test", move |closing| async move {
                 admitted.send(()).unwrap();
@@ -444,7 +439,7 @@ async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
     });
     admission.await.unwrap();
     let closing = manager.clone();
-    let close = tokio::spawn(async move { closing.close().await });
+    let close = bae_util::test_spawn::task(async move { closing.close().await });
     reached.await.unwrap();
     // Close waits for the rollback: the operation's read of the database
     // after the release fails if close had closed it first.
@@ -495,7 +490,7 @@ async fn the_transfers_name_only_the_files_being_sent() {
         resumed,
     )
     .await;
-    let drain = tokio::spawn({
+    let drain = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
@@ -559,7 +554,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
         resumed,
     )
     .await;
-    let drain = tokio::spawn({
+    let drain = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });

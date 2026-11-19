@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use std::io::Cursor;
 use std::net::TcpListener;
@@ -75,7 +70,7 @@ fn scripted_fake_receiver_drives_the_setup_sequence_in_order() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
 
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut reader = BufReader::new(stream.try_clone().unwrap());
         let mut writer = stream;

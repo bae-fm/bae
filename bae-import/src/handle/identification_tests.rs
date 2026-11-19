@@ -3,11 +3,6 @@
 //! candidate still being identified. A cancel whose end cannot be written
 //! fails and ends nothing.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::handle::tests::*;
 use crate::list::ImportListRead;
@@ -46,7 +41,7 @@ async fn decision_never_beside_identifying(
     tokio::time::timeout(HANG_GUARD, handle.next_list_read(&list, Vec::new()))
         .await
         .expect("the list delivers");
-    let decision = tokio::spawn(decide);
+    let decision = bae_util::test_spawn::task(decide);
     loop {
         let snapshot = tokio::time::timeout(HANG_GUARD, handle.next_list_read(&list, Vec::new()))
             .await

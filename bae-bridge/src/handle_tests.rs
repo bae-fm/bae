@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use bae_records::{DbArtist, DbWork};
 use bae_views::album_detail::{
     ComposerDetail, ComposerDetailItem, ComposerDetailRow, ComposerHeading, WorkDetail,
@@ -300,7 +295,7 @@ fn cancelling_an_album_view_finishes_pending_next() {
         .expect("initial album view value");
 
     let result = handle.handle().runtime.block_on(async {
-        let pending = tokio::spawn({
+        let pending = bae_util::test_spawn::task({
             let subscription = subscription.clone();
             async move { subscription.next().await }
         });
@@ -323,10 +318,9 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
         }));
         let handle = fresh_bridge_handle("save-sync-config-stack");
         let caller_runtime = tokio::runtime::Runtime::new().expect("create caller runtime");
-        std::thread::Builder::new()
-            .name("uniffi-worker".to_string())
-            .stack_size(544 * 1024)
-            .spawn(move || {
+        bae_util::test_spawn::thread_with(
+            std::thread::Builder::new().name("uniffi-worker".to_string()).stack_size(544 * 1024),
+            move || {
                 caller_runtime
                     .block_on(Arc::clone(handle.handle()).save_sync_config(
                         crate::types::BridgeSaveSyncConfig {
@@ -341,10 +335,11 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
                     ))
                     .err()
                     .expect("an unreachable endpoint must fail the probe");
-            })
-            .expect("start UniFFI-sized worker")
-            .join()
-            .expect("UniFFI-sized worker survives the sync configuration call");
+            },
+        )
+        .expect("start UniFFI-sized worker")
+        .join()
+        .expect("UniFFI-sized worker survives the sync configuration call");
         assert!(
             !runtime_drop_panicked.load(std::sync::atomic::Ordering::SeqCst),
             "releasing the last app handle on its runtime worker must not panic"
@@ -877,7 +872,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
 
     let runtime = app.runtime.clone();
     runtime
-        .block_on(async move { tokio::spawn(async move { drop(app) }).await })
+        .block_on(async move { bae_util::test_spawn::task(async move { drop(app) }).await })
         .expect("the handle is released on its runtime");
     let opening = crate::BridgeLibraryOpening::new(host.clone());
     let reopened = crate::init_app(id, false, host, opening).expect("the library opens again");

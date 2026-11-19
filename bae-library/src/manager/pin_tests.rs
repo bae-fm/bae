@@ -2,11 +2,6 @@
 //! pinned count each release's storage row keeps. What a pin's progress counts is in
 //! `pin_progress_tests.rs`.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::manager::tests::*;
 /// Each release whose storage row's pinned or file count differs from the
@@ -306,7 +301,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let (observed, reading) = tokio::sync::oneshot::channel();
     let (resume, resumed) = tokio::sync::oneshot::channel();
     home.hold_next_read(stored, observed, resumed).await;
-    let pin = tokio::spawn({
+    let pin = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         let release_id = release_id.clone();
         async move {

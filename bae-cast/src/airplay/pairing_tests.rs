@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::airplay::ap2_pairing::{run_transient_pair_setup, PAIR_SETUP_M1};
 use crate::airplay::ap2_session::{Ap2Error, AP2_USER_AGENT};
@@ -79,7 +74,7 @@ fn reference_receiver_rejects_a_wrong_proof() {
 fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<Vec<u8>, String>) {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let addr = listener.local_addr().unwrap();
-    let server = std::thread::spawn(move || {
+    let server = bae_util::test_spawn::thread(move || {
         let (mut stream, _) = listener.accept().unwrap();
         let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
         serve_transient_pair_setup(&mut reader, &mut stream)

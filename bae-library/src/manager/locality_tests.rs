@@ -2,11 +2,6 @@
 //! through the download queue, unpinning, cancelling a transition, and a
 //! release whose audio is on another device.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use crate::manager::tests::*;
 use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;
@@ -452,7 +447,7 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
         })?)
     });
     let seen = rows.clone();
-    let collector = tokio::spawn(async move {
+    let collector = bae_util::test_spawn::task(async move {
         while let Some(Ok(count)) = transitions.next_inline().await {
             seen.lock().unwrap().push(count);
         }

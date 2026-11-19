@@ -18,8 +18,6 @@ CHECK = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = CHECK
 SPEC.loader.exec_module(CHECK)
 
-FROZEN_FILE = sorted(CHECK.FROZEN)[0]
-SPAWN_MARK = '#![expect(clippy::disallowed_methods, reason = "spawns")]\n'
 
 
 class WholeFileMarkTests(unittest.TestCase):
@@ -60,24 +58,6 @@ class WholeFileMarkTests(unittest.TestCase):
     def test_comments_and_strings_are_not_marks(self) -> None:
         source = '// #![allow(unused)]\nconst S: &str = "#![allow(unused)]";\n'
         self.assertEqual(self.found(source), [])
-
-    def test_a_frozen_file_keeps_its_spawn_mark(self) -> None:
-        self.assertEqual(self.found(SPAWN_MARK, FROZEN_FILE), [])
-
-    def test_a_frozen_file_may_not_mark_another_lint(self) -> None:
-        source = '#![expect(clippy::disallowed_methods, dead_code, reason = "x")]\n'
-        found = self.found(source, FROZEN_FILE)
-        self.assertEqual(len(found), 1)
-        self.assertIn("dead_code", found[0])
-        self.assertNotIn("disallowed_methods", found[0])
-
-    def test_a_frozen_file_without_its_mark_leaves_the_list(self) -> None:
-        found = self.found("fn f() {}\n", FROZEN_FILE)
-        self.assertEqual(len(found), 1)
-        self.assertIn("remove it from FROZEN", found[0])
-
-    def test_the_spawn_mark_is_refused_outside_the_list(self) -> None:
-        self.assertEqual(len(self.found(SPAWN_MARK)), 1)
 
     def test_the_workspace_holds_to_it(self) -> None:
         self.assertEqual(CHECK.violations(ROOT), [])

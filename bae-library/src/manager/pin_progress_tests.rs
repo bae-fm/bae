@@ -2,11 +2,6 @@
 //! of each download in flight as coven's download watch tells it, and never
 //! a file whose download failed.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::manager::tests::*;
 use std::collections::BTreeMap;
@@ -189,7 +184,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     )
     .await;
     let (bytes_tx, mut bytes) = tokio::sync::mpsc::unbounded_channel();
-    let pin = tokio::spawn({
+    let pin = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         let release_id = release_id.clone();
         async move {
@@ -306,7 +301,7 @@ async fn a_failed_files_bytes_never_count() {
     home.hold_body_at(failing_object, at, reached, resumed).await;
     let mut downloads = manager.store.subscribe_download_file_transfers();
     let (bytes_tx, mut bytes) = tokio::sync::mpsc::unbounded_channel();
-    let pin = tokio::spawn({
+    let pin = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         let release_id = release.id.clone();
         async move {

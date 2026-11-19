@@ -30,87 +30,6 @@ from source_tokens import Token, bracket_pairs, tokenize
 
 MARK_LEVELS = {"allow", "expect"}
 
-# Test files that start tasks and threads with the spawns clippy.toml
-# disallows, under one whole-file mark of this lint each. The list only
-# shrinks: a file may keep its mark, for this lint alone, and a file whose
-# mark is gone leaves the list.
-FROZEN_LINT = "clippy::disallowed_methods"
-FROZEN = {
-    "bae-app/tests/integration/test_import_live_query_reruns.rs",
-    "bae-app/tests/integration/test_live_reads.rs",
-    "bae-app/tests/integration/test_scan_cost.rs",
-    "bae-app/tests/integration/test_startup_sync.rs",
-    "bae-audio/src/decode_tests.rs",
-    "bae-audio/src/decode/seek_tests.rs",
-    "bae-audio/src/sparse_buffer_tests.rs",
-    "bae-audio/src/stream_wake_tests.rs",
-    "bae-audio/src/track_stream_tests.rs",
-    "bae-bridge/src/handle_tests.rs",
-    "bae-bridge/src/handle/live_tests.rs",
-    "bae-bridge/src/host_tests.rs",
-    "bae-bridge/src/operation_runtime_tests.rs",
-    "bae-bridge/src/types/configuration/settings_tests.rs",
-    "bae-cast/src/airplay/ap2_session_tests.rs",
-    "bae-cast/src/airplay/fake_receiver.rs",
-    "bae-cast/src/airplay/pairing_tests.rs",
-    "bae-cast/src/airplay/rtsp_tests.rs",
-    "bae-cast/src/airplay/session_tests.rs",
-    "bae-cast/src/airplay/stream_tests.rs",
-    "bae-cast/src/dlna/mod_tests.rs",
-    "bae-cast/src/lib_tests.rs",
-    "bae-catalogs/src/discogs/client_tests.rs",
-    "bae-catalogs/src/musicbrainz/mod_tests.rs",
-    "bae-catalogs/src/musicbrainz/rate_tests.rs",
-    "bae-catalogs/src/payloads/traversal_tests.rs",
-    "bae-catalogs/src/rate_limiter_tests.rs",
-    "bae-catalogs/src/remote_image_tests.rs",
-    "bae-catalogs/src/remote_image/archive_tests.rs",
-    "bae-catalogs/src/search/failure_tests.rs",
-    "bae-catalogs/src/source_release_tests.rs",
-    "bae-diagnostics/src/lib_tests.rs",
-    "bae-diagnostics/src/panic_reports_tests.rs",
-    "bae-import/src/catalog_sessions_tests.rs",
-    "bae-import/src/folder_scanner/scan_tests.rs",
-    "bae-import/src/folder_scanner/scan/root_tests.rs",
-    "bae-import/src/folder_state_commit_tests.rs",
-    "bae-import/src/handle/commit_tests.rs",
-    "bae-import/src/handle/file_tags_tests.rs",
-    "bae-import/src/handle/identification_tests.rs",
-    "bae-import/src/handle/import_tests.rs",
-    "bae-import/src/handle/list_tests.rs",
-    "bae-import/src/identification_tests.rs",
-    "bae-import/src/identification/queue_tests.rs",
-    "bae-import/src/import_cancel_tests.rs",
-    "bae-import/src/scan_passes_tests.rs",
-    "bae-import/src/scan_passes/folder_reading_tests.rs",
-    "bae-import/src/scan_passes/scanning_tests.rs",
-    "bae-import/src/tables/import_state/import_commit_tests.rs",
-    "bae-import/src/watching_tests.rs",
-    "bae-library/src/local_lifecycle_tests.rs",
-    "bae-library/src/manager/downloads_tests.rs",
-    "bae-library/src/manager/locality_tests.rs",
-    "bae-library/src/manager/pin_progress_tests.rs",
-    "bae-library/src/manager/pin_tests.rs",
-    "bae-library/src/manager/service_tests.rs",
-    "bae-library/src/manager/uploads_tests.rs",
-    "bae-library/tests/integration/dropbox_sign_in.rs",
-    "bae-library/tests/integration/test_playback_behavior/local_sparse_buffer/queue_and_restore.rs",
-    "bae-library/tests/integration/test_playback_behavior/queue_and_pregap/queue.rs",
-    "bae-playback/src/device_writer_tests.rs",
-    "bae-playback/src/service/mod_tests.rs",
-    "bae-playback/src/service/output_tests.rs",
-    "bae-playback/src/service/segment_start_mp3_tests.rs",
-    "bae-playback/src/tables/queue_tests.rs",
-    "bae-store/src/live_query/read_tests.rs",
-    "bae-track-audio/src/data_source_tests.rs",
-    "bae-track-audio/src/decode_tests.rs",
-    "bae-transfers/src/queued_releases_tests.rs",
-    "bae-util/src/http_tests.rs",
-    "bae-util/src/retry_tests.rs",
-    "bae-util/src/test_logs_tests.rs",
-}
-
-
 @dataclass(frozen=True)
 class Mark:
     line: int
@@ -210,23 +129,12 @@ def whole_module_marks(source: str) -> list[Mark]:
 
 def file_violations(name: str, source: str) -> list[str]:
     """What is wrong with one file's whole-module marks."""
-    marks = whole_module_marks(source)
-    frozen = name in FROZEN
-    violations = []
-    for mark in marks:
-        lints = [lint for lint in mark.lints if not (frozen and lint == FROZEN_LINT)]
-        if lints:
-            violations.append(
-                f"{name}:{mark.line}: this mark switches off {', '.join(lints)} for a "
-                "whole module; put #[expect(<lint>, reason = \"...\")] on the one "
-                "function or item that does what the lint forbids"
-            )
-    if frozen and not any(FROZEN_LINT in mark.lints for mark in marks):
-        violations.append(
-            f"{name}: the file no longer marks itself whole for {FROZEN_LINT}; "
-            "remove it from FROZEN in scripts/check-whole-file-marks.py"
-        )
-    return violations
+    return [
+        f"{name}:{mark.line}: this mark switches off {', '.join(mark.lints)} for a "
+        "whole module; put #[expect(<lint>, reason = \"...\")] on the one "
+        "function or item that does what the lint forbids"
+        for mark in whole_module_marks(source)
+    ]
 
 
 def listed_rust_files(root: Path) -> list[str]:
@@ -241,8 +149,7 @@ def listed_rust_files(root: Path) -> list[str]:
 
 def violations(root: Path, names: list[str] | None = None) -> list[str]:
     """The violations in the named files, or in every Rust file git lists
-    when none are named, where each frozen file must also still exist."""
-    whole = names is None
+    when none are named."""
     if names is None:
         names = listed_rust_files(root)
     found = []
@@ -251,13 +158,6 @@ def violations(root: Path, names: list[str] | None = None) -> list[str]:
         if not name.endswith(".rs") or not path.is_file():
             continue
         found.extend(file_violations(Path(name).as_posix(), path.read_text()))
-    if whole:
-        for name in sorted(FROZEN):
-            if not (root / name).is_file():
-                found.append(
-                    f"{name}: the file is gone; remove it from FROZEN in "
-                    "scripts/check-whole-file-marks.py"
-                )
     return found
 
 

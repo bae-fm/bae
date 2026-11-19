@@ -3,11 +3,6 @@
 //! names that are not UTF-8, and a walk that is cancelled or cannot read a
 //! folder.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;
@@ -57,7 +52,7 @@ impl SuspendedScan {
         let (gate, held, entered) = crate::tests::gate::closed();
         let (item_tx, items) = std::sync::mpsc::channel();
         let reader = BlockingReader { blocked: PathBuf::from(blocked), held };
-        let thread = std::thread::spawn(move || {
+        let thread = bae_util::test_spawn::thread(move || {
             scan_with_reader(&reader, root, |item| item_tx.send(item).expect("receive scan item"))
         });
         Self { gate, entered, items, thread }
@@ -319,7 +314,7 @@ fn cancellation_reaches_an_in_progress_directory_read() {
     let (entered_tx, entered_rx) = std::sync::mpsc::channel();
     let cancellation = ScanCancellation::new();
     let thread_cancellation = cancellation.clone();
-    let scan = std::thread::spawn(move || {
+    let scan = bae_util::test_spawn::thread(move || {
         let ids = coven::SequentialIds::new();
         let new_key = || new_grouping_key(&ids);
         scan_for_candidates_with_reader_cancellable_and_directories(

@@ -430,7 +430,7 @@ pub(super) async fn playback_error_reason_for_file(
     );
     // Register demand so the fill fetches; the failed fetch fails the
     // buffer, which unblocks this read with the failure.
-    let demand = bae_util::test_blocking::on_blocking_pool(move || {
+    let demand = bae_util::test_spawn::on_blocking_pool(move || {
         let mut r = buffer.new_reader();
         let mut b = [0u8; 1];
         r.read(&mut b)

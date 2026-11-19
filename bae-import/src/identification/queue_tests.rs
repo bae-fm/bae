@@ -3,11 +3,6 @@
 //! of automatic runs, progress counts, what turning automatic
 //! identification off leaves going, and a person cancelling identification.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
@@ -234,7 +229,7 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
     let musicbrainz = &fixture.musicbrainz;
     for index in 0..4 {
         let session = fixture.parts.catalogs().musicbrainz();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             let params = bae_catalogs::musicbrainz::ReleaseSearchParams {
                 album: Some(format!("Asked {index}")),
                 ..Default::default()
@@ -405,7 +400,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
         .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key: key.clone() }))
         .unwrap();
     let mut later = fixture.import.every_event();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         while let Some(event) = later.recv().await {
             if events.send(event).is_err() {
                 return;
@@ -420,7 +415,7 @@ async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() 
     let context = fixture.context();
     let token = CancellationToken::new();
     let loop_token = token.clone();
-    let queue = tokio::spawn(async move {
+    let queue = bae_util::test_spawn::task(async move {
         super::run(&context, &loop_token, &mut bus, &mut asked).await;
     });
     tokio::time::timeout(HANG_GUARD, answered)

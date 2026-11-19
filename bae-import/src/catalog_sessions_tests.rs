@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use tempfile::TempDir;
 
@@ -194,7 +189,7 @@ async fn a_revalidation_answered_after_the_key_changed_leaves_the_new_key_alone(
 
     let revalidating = {
         let sessions = sessions.clone();
-        tokio::spawn(async move { sessions.revalidate_discogs_key().await })
+        bae_util::test_spawn::task(async move { sessions.revalidate_discogs_key().await })
     };
     host.wait_for_request("/database/search", 1).await;
     sessions.store_discogs_key("new-key", DiscogsValidation::Valid).await.unwrap();
@@ -278,7 +273,7 @@ async fn a_signal_that_cannot_be_recorded_is_reported() {
     let session = sessions.session().await.unwrap();
     host.route("/masters/", 401, REJECTED);
     let directory = temp_dir.path().to_path_buf();
-    bae_util::test_blocking::on_blocking_pool(move || {
+    bae_util::test_spawn::on_blocking_pool(move || {
         bae_preferences::fail_preferences_writes_for_test(&directory)
     })
     .await;
@@ -304,7 +299,7 @@ async fn waiting_for_writes_waits_for_a_write_in_flight() {
 
     let held = sessions.discogs.lock().await;
     session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
-    let waiting = tokio::spawn({
+    let waiting = bae_util::test_spawn::task({
         let sessions = sessions.clone();
         async move { sessions.wait_for_writes().await }
     });

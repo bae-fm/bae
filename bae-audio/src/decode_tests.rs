@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::test_samples::{filled_sparse_buffer, wav_with_fmt};
 use crate::{decode_audio_to_verifying_sink, encode_i32, init, DecodeStart, EncodeFormat};
@@ -422,7 +417,7 @@ fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
     buffer.append_at(0, &wav[..wav.len() / 2]);
 
     let decode_buffer = buffer.clone();
-    let handle = std::thread::spawn(move || {
+    let handle = bae_util::test_spawn::thread(move || {
         let mut sink = NullSink;
         decode_audio_to_sink(
             decode_buffer,
@@ -525,7 +520,6 @@ fn streaming_decode_continues_after_an_invalid_terminal_mp3_packet() {
 fn test_streaming_decode() {
     use crate::sparse_buffer::create_sparse_buffer;
     use crate::track_stream::create_track_stream_pair_with_capacity;
-    use std::thread;
 
     init();
 
@@ -538,7 +532,7 @@ fn test_streaming_decode() {
     let (mut sink, mut source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
 
     let decoder_buffer = buffer.clone();
-    let decoder_handle = thread::spawn(move || {
+    let decoder_handle = bae_util::test_spawn::thread(move || {
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let result = decode_audio_streaming(
             decoder_buffer,
@@ -673,7 +667,7 @@ fn spawn_fill_failing_from(
     bytes: Vec<u8>,
     fail_from: u64,
 ) {
-    tokio::spawn(buffer.clone().fill_on_demand(
+    bae_util::test_spawn::task(buffer.clone().fill_on_demand(
         crate::test_source::TEST_WINDOW,
         move |start, len| {
             let result = if start + len <= fail_from {
@@ -712,7 +706,7 @@ async fn i32_decode_names_the_read_error_when_a_later_read_fails() {
     // the first, well after the demuxer opened.
     spawn_fill_failing_from(&buffer, wav, 2 * TEST_WINDOW);
 
-    let result = bae_util::test_blocking::on_blocking_pool(move || {
+    let result = bae_util::test_spawn::on_blocking_pool(move || {
         decode_audio_to_sink(
             buffer,
             None,
@@ -741,7 +735,7 @@ async fn verifying_decode_reports_a_first_read_failure_as_a_read_failure() {
     let buffer = create_sparse_buffer(wav.len() as u64);
     spawn_fill_failing_from(&buffer, wav, 0);
 
-    let result = bae_util::test_blocking::on_blocking_pool(move || {
+    let result = bae_util::test_spawn::on_blocking_pool(move || {
         decode_audio_to_verifying_sink(
             buffer,
             DecodeStart::Sample(0),
@@ -776,7 +770,7 @@ async fn streaming_decode_stops_on_a_read_failure_as_a_read_failure() {
     // the first, well after the demuxer opened.
     spawn_fill_failing_from(&buffer, wav, 2 * TEST_WINDOW);
 
-    let result = bae_util::test_blocking::on_blocking_pool(move || {
+    let result = bae_util::test_spawn::on_blocking_pool(move || {
         let (mut sink, _source, _ready) =
             create_track_stream_pair_with_capacity(44_100, 2, 1 << 22);
         let token = Arc::new(std::sync::atomic::AtomicBool::new(false));

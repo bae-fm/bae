@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::audio_output::{audio_event_channel, AudioEvent, AudioEventReceiver};
 use crate::source::{PlaybackSource, TrackFmt};
@@ -294,7 +289,7 @@ impl RunningWriter {
         let stop = Arc::new(AtomicBool::new(false));
         let (ended_tx, ended) = std::sync::mpsc::channel();
         let running = stop.clone();
-        std::thread::spawn(move || {
+        bae_util::test_spawn::thread(move || {
             writer.run(&running);
             ended_tx.send(()).unwrap();
         });

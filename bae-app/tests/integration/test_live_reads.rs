@@ -2,11 +2,6 @@
 //! the library's state as writes, transfers and transitions change it, and
 //! moves to another id or view in place.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use bae_library::test_libraries::{
     insert_local_release_with_files, insert_release, insert_release_with_queued_uploads,
     storage_library, test_album, test_release, TestLibrary,
@@ -115,7 +110,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         let db = manager.store().clone();
         let records = bae_records::test_fixtures::test_records(&db);
         let album_id = album.id.clone();
-        load.push(tokio::spawn(async move {
+        load.push(bae_util::test_spawn::task(async move {
             loop {
                 #[expect(
                     clippy::let_underscore_must_use,
@@ -130,7 +125,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
     let queueing = manager.manager().clone();
     // The worker leaves the entry to this load.
     queueing.set_downloads_paused(true).await.unwrap();
-    load.push(tokio::spawn(async move {
+    load.push(bae_util::test_spawn::task(async move {
         loop {
             let release = format!("'{queued}'");
             db.call(move |sql| {

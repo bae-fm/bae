@@ -14,11 +14,6 @@
 //! It prints each query's runs over the writes: all of them, those a write
 //! caused, and of those, the ones whose result was unchanged.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use bae_import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedAudio, ScannedFile,
 };
@@ -140,7 +135,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         .expect("the seed is listed");
     let mut count = services.import_list_count_for_test(list.clone());
     let (count_tx, mut list_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
-    let count_reader = tokio::spawn(async move {
+    let count_reader = bae_util::test_spawn::task(async move {
         while let Some(read) = count.next_inline().await {
             let shown = read.expect("the count reads");
             count_tx.send_replace(Some((shown.rows, Counted::of(&count.runs()))));
@@ -155,7 +150,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         let (tx, seen) = tokio::sync::watch::channel(0_u64);
         let window = Arc::new(window);
         let reading = window.clone();
-        let reader = tokio::spawn(async move {
+        let reader = bae_util::test_spawn::task(async move {
             while let Ok(event) = reading.next().await {
                 let delivered = event.result.expect("the window reads").rows.len();
                 tx.send_replace(delivered as u64);
@@ -170,7 +165,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     tables.hold_root_running_for_test(&root).await.unwrap();
     let mut progress = tables.subscribe_scanning_folders();
     let (progress_tx, mut progress_seen) = tokio::sync::watch::channel(None::<(u64, Counted)>);
-    let progress_reader = tokio::spawn(async move {
+    let progress_reader = bae_util::test_spawn::task(async move {
         while let Some(read) = progress.next_inline().await {
             let folders = read.expect("the scanning folders read");
             let [bae_import::ScanningFolder { found, .. }] = folders[..] else {
@@ -185,7 +180,7 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     let mut pane = services.subscribe_import_candidate_query_for_test();
     pane.requests().set(Some(key.clone())).unwrap();
     let (pane_tx, mut pane_seen) = tokio::sync::watch::channel(None::<(bool, Counted)>);
-    let pane_reader = tokio::spawn(async move {
+    let pane_reader = bae_util::test_spawn::task(async move {
         while let Some(event) = pane.next_inline().await {
             if let Some(projection) = event.result.expect("the pane reads") {
                 let skipped = projection.resolve().skipped;

@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::catalog::Catalog;
 use crate::discogs::documents::parse_discogs_master_covers;
@@ -37,7 +32,7 @@ async fn discogs_response_server(responses: Vec<&'static str>) -> (String, Arc<A
         format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         for response in responses {
             let (mut stream, _) = listener.accept().await.expect("test request should connect");
             counted_requests.fetch_add(1, Ordering::SeqCst);
@@ -441,7 +436,7 @@ async fn validate_token_sends_token_in_authorization_header() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("test listener should bind");
     let url =
         format!("http://{}", listener.local_addr().expect("test listener should have an address"));
-    let request = std::thread::spawn(move || {
+    let request = bae_util::test_spawn::thread(move || {
         let (mut stream, _) = listener.accept().expect("test request should connect");
         let mut buffer = [0; 4096];
         let read = stream.read(&mut buffer).expect("test request should be readable");
@@ -498,7 +493,7 @@ async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
         Http::for_test().serve("api.discogs.com", &url).on_clock(clock),
     ));
     let client = DiscogsClient::new(discogs.clone(), "token".to_string());
-    let asked = tokio::spawn(async move {
+    let asked = bae_util::test_spawn::task(async move {
         client.search_with_params(&DiscogsSearchParams::default(), CallClass::REQUESTED).await
     });
 
@@ -621,7 +616,7 @@ async fn scripted_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUs
         format!("http://{}", listener.local_addr().expect("test listener should have an address"));
     let request_count = Arc::new(AtomicUsize::new(0));
     let counted_requests = request_count.clone();
-    tokio::spawn(async move {
+    bae_util::test_spawn::task(async move {
         let mut remaining = responses.into_iter();
         loop {
             let Ok((mut stream, _)) = listener.accept().await else {

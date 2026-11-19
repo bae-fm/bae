@@ -1,11 +1,6 @@
 //! Moving releases to the cloud: admission, the upload queue, what a failed or
 //! cancelled move leaves, retrying, and the storage list's view of an upload.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
@@ -304,7 +299,7 @@ async fn a_storage_row_counts_the_file_being_sent() {
         resumed,
     )
     .await;
-    let drain = tokio::spawn({
+    let drain = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
@@ -360,7 +355,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         resumed,
     )
     .await;
-    let drain = tokio::spawn({
+    let drain = bae_util::test_spawn::task({
         let manager = test.library.manager().clone();
         async move { manager.drain_uploads_for_test().await }
     });
@@ -740,7 +735,7 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
         })?)
     });
     let seen = rows.clone();
-    let collector = tokio::spawn(async move {
+    let collector = bae_util::test_spawn::task(async move {
         while let Some(Ok(count)) = transitions.next_inline().await {
             seen.lock().unwrap().push(count);
         }

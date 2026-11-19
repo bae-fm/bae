@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::CatalogError;
@@ -173,7 +168,7 @@ async fn actual_artwork_data_failure_reaches_the_bridge_with_its_detail() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let origin = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = bae_util::test_spawn::task(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
         let mut request = [0; 4096];
         let received = stream.read(&mut request).await.unwrap();

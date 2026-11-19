@@ -221,7 +221,7 @@ pub(super) fn start(
 
 /// Wait until the gated analyzer has entered an image.
 pub(super) async fn ocr_entered(entries: std::sync::mpsc::Receiver<()>) {
-    bae_util::test_blocking::on_blocking_pool(move || entries.recv_timeout(HANG_GUARD))
+    bae_util::test_spawn::on_blocking_pool(move || entries.recv_timeout(HANG_GUARD))
         .await
         .expect("the OCR pass reaches an image");
 }

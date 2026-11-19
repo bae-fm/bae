@@ -329,7 +329,7 @@ impl ImportTables {
     #[cfg(test)]
     pub(crate) async fn fail_held_root_scan_writes_for_test(directory: &std::path::Path) {
         let directory = directory.to_path_buf();
-        bae_util::test_blocking::on_blocking_pool(move || {
+        bae_util::test_spawn::on_blocking_pool(move || {
             for (name, event) in [
                 ("fail_held_inserts", "INSERT"),
                 ("fail_held_updates", "UPDATE"),

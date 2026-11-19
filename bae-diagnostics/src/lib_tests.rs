@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 
 fn config() -> DatadogDiagnosticsConfig {
@@ -381,7 +376,7 @@ async fn the_transport_sends_under_baes_http_policy() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("the intake binds");
     let address = listener.local_addr().expect("the intake has an address");
-    let intake = tokio::spawn(async move {
+    let intake = bae_util::test_spawn::task(async move {
         let (mut stream, _) = listener.accept().await.expect("the transport connects");
         let mut head = Vec::new();
         let mut chunk = [0u8; 1024];

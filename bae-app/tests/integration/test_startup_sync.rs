@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
@@ -104,7 +99,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let builder =
         bae_store::test_devices::test_builder(&installation).storage_connector(storage.clone());
     let (app_tx, app_rx) = mpsc::sync_channel(1);
-    let startup = std::thread::spawn(move || {
+    let startup = bae_util::test_spawn::thread(move || {
         app_tx
             .send(bootstrap(
                 app_dir,

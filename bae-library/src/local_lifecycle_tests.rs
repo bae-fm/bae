@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::{
     finish_deletion, finish_removals, remove_unopenable_library, LibraryRemovalError,
     UnfinishedRemoval,
@@ -506,7 +501,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     let deleting = Arc::new(tokio::sync::Notify::new());
     let delete_may_finish = Arc::new(tokio::sync::Notify::new());
 
-    let removal = tokio::spawn({
+    let removal = bae_util::test_spawn::task({
         let home = home.clone();
         let deleting = deleting.clone();
         let delete_may_finish = delete_may_finish.clone();
@@ -530,7 +525,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     assert!(home.record(id).exists());
 
     let waiting = super::removal_lock_waits::when_waiting(home.app_dir.removal_lock());
-    let lookup = tokio::spawn({
+    let lookup = bae_util::test_spawn::task({
         let home = home.clone();
         async move { home.unfinished().await }
     });

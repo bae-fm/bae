@@ -2,11 +2,6 @@
 //! output, the slot, track and decoder stand-ins its handlers are driven
 //! with, and the fakes remote and AirPlay playback run on.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::audio_output::{
     AudioError, AudioEventReceiver, AudioEventSender, AudioOutputControls, AudioState, AudioStream,
@@ -440,7 +435,7 @@ pub(super) fn play_decode(
             channels,
             4 * sample_rate as usize,
         );
-    let decoder = std::thread::spawn(move || {
+    let decoder = bae_util::test_spawn::thread(move || {
         decode.run_decoder(&mut sink, Arc::new(std::sync::atomic::AtomicBool::new(false)))
     });
     let mut played = Vec::new();

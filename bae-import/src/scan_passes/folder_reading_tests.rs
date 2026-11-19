@@ -2,11 +2,6 @@
 //! root that moved while it was read, changed folders read alone, and the
 //! releases and offers a reading of a folder's discs gives.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::scan_passes::tests::*;
 use crate::service::tests::*;
@@ -149,7 +144,7 @@ async fn a_folder_reading_refuses_a_root_that_moved_while_it_read() {
         let key = fixture.album_key();
         let services = fixture.scan.services.clone();
         let cancellation = fixture.scan.cancellation.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             change_folder_reading(
                 &root,
                 &(key, crate::FolderReleaseDecision::KeepAsSeparateReleases),

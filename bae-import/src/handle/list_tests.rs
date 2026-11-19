@@ -6,11 +6,6 @@
 //! answer and the identity it committed, leading with the picked release and
 //! stating what each claimed source says.
 
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
@@ -53,14 +48,14 @@ impl LiveList {
         let state = std::sync::Arc::new(state);
         let mut window = tables.subscribe_import_window(request, ListWindow::top(u64::MAX));
         let rows = state.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             while let Some(event) = window.next_inline().await {
                 let window = event.result.expect("the window reads");
                 rows.send_modify(|state| state.shown = Some(keys_of(&window.rows)));
             }
         });
         let mut entries = tables.subscribe_import_filter_entries();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             while let Some(entries_read) = entries.next_inline().await {
                 state.send_modify(|state| state.entries = entries_read.expect("the entries read"));
             }
@@ -477,7 +472,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     let picking = {
         let import = fixture.import.clone();
         let key = key.clone();
-        tokio::spawn(async move {
+        bae_util::test_spawn::task(async move {
             import
                 .select_candidate_release(
                     key,

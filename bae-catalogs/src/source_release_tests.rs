@@ -1,8 +1,3 @@
-#![expect(
-    clippy::disallowed_methods,
-    reason = "test code: what it spawns ends with the test, which has no crash reporter to report to"
-)]
-
 use super::*;
 use crate::payloads::ReleasePayloads;
 use crate::records::{PayloadSource, SourcePayload};
@@ -27,8 +22,9 @@ async fn archive() -> (Http, tokio::task::JoinHandle<()>) {
         .route("/release-group/mb-group/", get(move || async { Json(group) }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.expect("listener binds");
     let base = format!("http://{}", listener.local_addr().expect("listener address"));
-    let server =
-        tokio::spawn(async move { axum::serve(listener, app).await.expect("server runs") });
+    let server = bae_util::test_spawn::task(async move {
+        axum::serve(listener, app).await.expect("server runs")
+    });
     (Http::for_test().serve("coverartarchive.org", &base), server)
 }
 
