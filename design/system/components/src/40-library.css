@@ -82,7 +82,7 @@
 .bae-m-dethead { display: flex; align-items: center; gap: 16px; }
 .bae-m-dethead-name { font: 700 22px var(--font-sans); letter-spacing: -0.3px; }
 .bae-m-dethead-count { margin-top: 4px; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
-.bae-m-plpage { display: flex; flex-direction: column; gap: 24px; padding: 24px; }
+.bae-m-plpage { display: flex; flex-direction: column; gap: 24px; padding: 24px 30px; }
 .bae-m-plpage-head { display: flex; align-items: flex-start; gap: 16px; }
 .bae-m-plpage-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-plpage-name { margin: 0; font: 700 22px var(--font-sans); letter-spacing: -0.3px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
@@ -92,8 +92,8 @@
 .bae-m-plpage-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .bae-m-plpage-tracks { margin: 0; }
 /* The track numbers hang in the gutter, left of the picture's edge, so each cover lines up under the picture. */
-.bae-m-plpage-tracks .bae-m-lrow { margin-left: -26px; padding-left: 0; }
-.bae-m-plpage-tracks .bae-m-lrow-lead { width: 16px; text-align: right; }
+.bae-m-plpage-tracks .bae-m-lrow { margin-left: -30px; padding-left: 0; }
+.bae-m-plpage-tracks .bae-m-lrow-lead { width: 20px; text-align: right; }
 .bae-m-plpage-tracks .bae-m-lrow-sub { margin-top: 3px; }
 .bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
 .bae-m-qrow-hover { background: var(--hover); }

@@ -10,7 +10,7 @@
   }
   // A row of a history or playlist list: when or position, cover, title, artist · album, who, length.
   function MacListRow(props) {
-    // `wide`: more room at the end, for a row that ends in a person (History). `cover`: the cover's size, 32pt unless given (48 on a playlist's page in the side pane, as the queue's rows). While the owner drags a playlist's row, `lifted` is the row left in its place, faded, and `dragging` the copy under the pointer, raised over the rows.
+    // `wide`: more room at the end, for a row that ends in a person (History). `cover`: the cover's size, 32pt unless given (40 on a playlist's page in the side pane). While the owner drags a playlist's row, `lifted` is the row left in its place, faded, and `dragging` the copy under the pointer, raised over the rows.
     return h('div', { className: cx('bae-m-lrow', props.selected && 'bae-m-lrow-selected', props.wide && 'bae-m-lrow-wide', props.lifted && 'bae-m-lrow-lifted', props.dragging && 'bae-m-lrow-dragging') },
       props.lead ? h('span', { className: 'bae-muted bae-num bae-m-lrow-lead' }, props.lead) : null,
       h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 6 : 4 }),
