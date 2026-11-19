@@ -436,12 +436,12 @@ async fn the_session_up_next_list_is_planned_on_the_indexes() {
     .await;
     for walk in [
         "SCAN playback_manual USING INDEX sqlite_autoindex_playback_manual_1",
-        "SEARCH c USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
-        "SEARCH c USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
+        "SEARCH lane USING INDEX sqlite_autoindex_playback_context_1 (ordered>?)",
+        "SEARCH lane USING INDEX sqlite_autoindex_playback_context_2 (shuffled>?)",
     ] {
         assert!(rows.contains(walk), "{walk}: {rows}");
     }
-    assert!(!rows.contains("SCAN c"), "{rows}");
+    assert!(!rows.contains("SCAN lane"), "{rows}");
 }
 
 /// A context row is named by its entry, as an Up Next row is, and no entry
