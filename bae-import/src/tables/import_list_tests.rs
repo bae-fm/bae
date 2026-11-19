@@ -496,9 +496,12 @@ pub(crate) fn shown_folder(
     folder: &std::path::Path,
     watched_folder_path: &std::path::Path,
 ) -> String {
-    coven::path_text(folder.strip_prefix(watched_folder_path).unwrap_or_else(|_| {
+    let relative = folder.strip_prefix(watched_folder_path).unwrap_or_else(|_| {
         panic!("{} is below {}", folder.display(), watched_folder_path.display())
-    }))
+    });
+    crate::RelativeFolder::of(relative)
+        .unwrap_or_else(|error| panic!("{} is a folder of names: {error}", relative.display()))
+        .text()
 }
 
 /// The release row one read holds at `display_path`.
