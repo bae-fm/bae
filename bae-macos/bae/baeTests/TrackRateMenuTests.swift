@@ -32,7 +32,8 @@ struct TrackRateMenuTests {
         }
         #expect(
             rows.map(\.0) == [
-                "★★★★★", "★★★★", "★★★", "★★", "★", "Clear rating",
+                "5 of 5 stars", "4 of 5 stars", "3 of 5 stars", "2 of 5 stars",
+                "1 of 5 stars", "Clear rating",
             ]
         )
         #expect(rows.map(\.1) == [false, true, false, false, false, false])
