@@ -33,10 +33,10 @@
   // One candidate: cover, title over artist (or the folder's name), the state line, the trailing badge or wait mark. `error` is a skipped folder's reason, under the title and artist or the folder's name.
   function MacImportRow(props) {
     var trail = props.badge ? h(StatusChip, { tone: props.badgeTone || 'warning' }, props.badge)
-      : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', title: props.state === 'importQueued' ? 'Waiting to import' : 'Waiting to be identified' }, h(Sym, { name: 'clock', size: 12 }))
+      : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', role: 'img', 'aria-label': props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify', title: props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify' }, h(Sym, { name: 'clock', size: 12 }))
       : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
     var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis', style: { fontSize: 12 } }, props.folder))
-      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', { className: 'bae-linkout', style: { opacity: props.record ? 1 : 0 } }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
+      : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', props.record ? { className: 'bae-linkout', role: 'img', 'aria-label': 'Identified' } : { className: 'bae-linkout', style: { opacity: 0 }, 'aria-hidden': true }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
     var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: props.step || 'Reading files…', value: props.progress == null ? 0.4 : props.progress }))
       : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: 'Uploading', value: props.progress == null ? 0.4 : props.progress, activity: true }))
       : props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
@@ -95,7 +95,8 @@
           props.album ? h('div', { className: 'bae-m-idraft-album' }, h('span', { className: 'bae-muted' }, 'Album'), h(MacPopUpButton, { value: props.album, label: 'Album', open: props.albumOpen, items: props.albumItems })) : null)),
       h('div', { className: 'bae-m-formhead' }, 'Release'),
       h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; })),
-      props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('button', { type: 'button', className: 'bae-plainbtn bae-accent' }, 'Unlink')) : null);
+      // The editor shows a library release's records and offers no Unlink: nothing unlinks a library release (spec §3.8).
+      props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), props.editor ? null : h('button', { type: 'button', className: 'bae-plainbtn bae-accent' }, 'Unlink')) : null);
   }
   // The folder's images under the release: a ruled Images heading, then each image at 128pt, a button named by its file that opens the lightbox at it (`images`: "artwork title|file name", comma-separated).
   function MacImportImages(props) {
@@ -129,6 +130,8 @@
   }
   // A CUE sheet's caption: the pop-up of which disc the sheet is, CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
   function MacImportSheetCaption(props) {
+    // `file`: in a library release's editor, the image file the sheet's tracks play from, named once over them (spec §3.8); the editor binds no sheet and picks no disc.
+    if (props.file) return h('div', { className: 'bae-m-icue' }, h('span', { className: 'bae-mono bae-muted' }, props.file));
     return h('div', { className: 'bae-m-icue' },
       h('button', { type: 'button', role: 'combobox', 'aria-label': 'Disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 8 })),
       h(StatusChip, { tone: 'accent' }, 'CUE'),

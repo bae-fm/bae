@@ -5,7 +5,7 @@ The draft card: Identify with Automatic, Search and the ⋯ button that opens th
 - **Cover:** `cover`, or a plain tile when the draft has none. The tile says nothing and invites nothing.
 - **Identity:** the album title (`title`) and the album's year (`year`) are fields, drawn as their values until the pointer is over one. The album artist (`artist`) is a button, with its `artistChip` (Library or New) inside it. Under them the audio line (`audio`, as the scan read the folder: `FLAC · 44.1 kHz · 16-bit · Stereo`), then the album pop-up, named Album, showing the album the release files under (`album`). `albumOpen` with `albumItems` draws the album picker open: New album, the library album the records name, and Choose another album…, which searches the library's albums.
 - **Release grid:** fields for Year (`pressingYear`), Label (`labelName` and `catalog`, a field each), Barcode (`barcode`) and Details (`details`); pop-ups, each named for its row, for Media (`media`), Country (`country`), Status (`status`) and Packaging (`packaging`). An empty field or pop-up shows a dash.
-- **Records:** the record links, then Unlink, a button.
+- **Records:** the record links, then Unlink, a button. The editor (`editor`) shows the records with no Unlink: nothing unlinks a library release.
 
 A part with no value draws nothing: no audio line without `audio`, no album pop-up without `album`.
 

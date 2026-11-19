@@ -165,6 +165,7 @@ mac.album.change-cover.no-linked-release
 mac.album.delete-album
 mac.album.delete-release
 mac.album.edit
+mac.album.edit.cue-image
 mac.album.lightbox
 mac.album.lightbox.failed
 mac.album.save-as
