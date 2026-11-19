@@ -89,7 +89,7 @@ class AlbumBoardShots : BoardShot() {
 }
 
 /** A file of the release's folder, without audio or image content. */
-private fun boardFile(
+internal fun boardFile(
     name: String,
     kind: BridgeFileKind,
 ) = BridgeFile(

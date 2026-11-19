@@ -24,12 +24,9 @@ import uniffi.bae_bridge.BridgeFile
  * what kind of file it is at the end, under a hairline.
  */
 @Composable
-internal fun AndroidReleaseFiles(
-    files: List<BridgeFile>,
-    modifier: Modifier = Modifier,
-) {
+internal fun AndroidReleaseFiles(files: List<BridgeFile>) {
     val context = LocalContext.current
-    Column(modifier = modifier) {
+    Column {
         AndroidEyebrow(
             text = stringResource(R.string.album_files),
             modifier = Modifier.padding(bottom = ThemeSpace.inline),

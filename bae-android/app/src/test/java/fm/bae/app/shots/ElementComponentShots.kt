@@ -35,7 +35,6 @@ import fm.bae.app.ui.components.TrackOptionsMenu
 import fm.bae.app.ui.downloads.AndroidPinsAtOnce
 import fm.bae.app.ui.playback.AndroidPlaceholderLine
 import org.junit.Test
-import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
@@ -164,9 +163,9 @@ class ElementComponentShots : BoardShot() {
         component("android.component.release-files.three-files", wide = true) {
             AndroidReleaseFiles(
                 listOf(
-                    file("Low Tide Hours.cue", BridgeFileKind.CueSheet),
-                    file("Low Tide Hours.log", BridgeFileKind.RipLog),
-                    file("booklet.pdf", BridgeFileKind.Text),
+                    boardFile("Low Tide Hours.cue", BridgeFileKind.CueSheet),
+                    boardFile("Low Tide Hours.log", BridgeFileKind.RipLog),
+                    boardFile("booklet.pdf", BridgeFileKind.Text),
                 ),
             )
         }
@@ -174,14 +173,14 @@ class ElementComponentShots : BoardShot() {
     @Test
     fun androidComponentReleaseFilesOneFile() =
         component("android.component.release-files.one-file", wide = true) {
-            AndroidReleaseFiles(listOf(file("Low Tide Hours.log", BridgeFileKind.RipLog)))
+            AndroidReleaseFiles(listOf(boardFile("Low Tide Hours.log", BridgeFileKind.RipLog)))
         }
 
     @Test
     fun androidComponentReleaseFilesLongName() =
         component("android.component.release-files.long-name", wide = true) {
             AndroidReleaseFiles(
-                listOf(file("Songs for the Slow Orchards, Recorded Live at the Harbor Hall.cue", BridgeFileKind.CueSheet)),
+                listOf(boardFile("Songs for the Slow Orchards, Recorded Live at the Harbor Hall.cue", BridgeFileKind.CueSheet)),
             )
         }
 
@@ -238,18 +237,3 @@ private fun key(
     label: String,
     size: String,
 ) = StorageUsageSegment(kind, label, size, 0f)
-
-private fun file(
-    name: String,
-    kind: BridgeFileKind,
-) = BridgeFile(
-    id = name,
-    originalFilename = name,
-    name = name,
-    folder = null,
-    kind = kind,
-    fileSize = 1_000UL,
-    contentType = "application/octet-stream",
-    isImage = false,
-    audioFormat = null,
-)
