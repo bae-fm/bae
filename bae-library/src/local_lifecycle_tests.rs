@@ -101,6 +101,9 @@ impl Home {
         self.storages.lock().unwrap()[&id].clone()
     }
 
+    /// The directory bae made for the library `id`. Only the test of a
+    /// directory bae can't delete reads it, and that test runs only on Unix.
+    #[cfg(unix)]
     fn directory(&self, id: coven::StoreId) -> std::path::PathBuf {
         self.app_dir.registered_library(&id.to_string())
     }
