@@ -8,7 +8,7 @@
 
 use super::*;
 use crate::tables::draft_rows::{
-    assignment_json_rows, assignment_kind_column, assignment_rows_sql, assignments_json_sql,
+    assignment_kind_column, assignment_rows, assignment_rows_sql, assignments_json_sql,
     assignments_of, decoded, DraftAlbumRow,
 };
 use crate::{AlbumPick, DraftAlbum, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
@@ -77,8 +77,7 @@ fn json(value: &impl serde::Serialize, what: &str) -> Result<String, DbError> {
 impl FormParams {
     fn of(form: &ReleaseEditForm) -> Result<Self, DbError> {
         let edit = &form.edit;
-        let album_artists: Vec<_> =
-            assignment_json_rows(None, &edit.album_artist_assignments).collect();
+        let album_artists: Vec<_> = assignment_rows(None, &edit.album_artist_assignments).collect();
         let track_artists: Vec<_> = edit
             .tracks
             .iter()
@@ -88,7 +87,7 @@ impl FormParams {
                     TrackArtistAssignments::AlbumArtists => &[],
                     TrackArtistAssignments::Explicit(assignments) => assignments,
                 };
-                assignment_json_rows(Some((track.id.as_str(), place)), own)
+                assignment_rows(Some((track.id.as_str(), place)), own)
             })
             .collect();
         let form_tracks: Vec<_> = edit

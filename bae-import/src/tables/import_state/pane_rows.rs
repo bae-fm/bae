@@ -11,7 +11,7 @@
 //! the draft's values and provenance, which every device's library holds.
 //!
 //! The statements that write and read labels, barcodes, artist assignments,
-//! mediums, roles and works are in `draft_writes` and `tables::draft_rows`.
+//! mediums, roles and works are in `draft_values`.
 
 pub(super) const SQL: &str = include_str!("pane_rows.sql");
 pub(super) const VALUES_SQL: &str = values::SQL;
@@ -20,15 +20,15 @@ pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
 mod provenance;
 mod values;
 
-use super::draft_writes::{
-    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
-    insert_medium_rows, insert_track_artist_assignments, insert_track_values,
+use super::draft_values::{
+    barcodes_json_sql, form_row_values, insert_album_artist_assignments, insert_barcode_rows,
+    insert_draft_values, insert_label_rows, insert_medium_rows, insert_track_artist_assignments,
+    insert_track_values, labels_json_sql, mediums_json_sql, mediums_of, read_label_rows,
+    release_roles_json_sql, roles_of, track_roles_json_sql, track_works_json_sql,
+    work_parts_json_sql, works_json_sql, works_of, StoredRole, FORM_COLUMNS,
 };
 use crate::tables::draft_rows::{
-    assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    form_row_values, labels_json_sql, mediums_json_sql, mediums_of, read_label_rows,
-    release_roles_json_sql, roles_of, track_roles_json_sql, track_works_json_sql,
-    work_parts_json_sql, works_json_sql, works_of, StoredAssignment, StoredRole, FORM_COLUMNS,
+    assignment_kind_column, assignments_json_sql, assignments_of, decoded, StoredAssignment,
 };
 
 pub(crate) use provenance::{

@@ -75,7 +75,7 @@ mod claim_rows;
 mod column_list;
 mod cover_rows;
 mod draft_store;
-mod draft_writes;
+mod draft_values;
 pub(super) mod failure_rows;
 mod file_decision_rows;
 mod import_commit;

@@ -77,7 +77,7 @@ artist_field_standing AS MATERIALIZED (
 /// Whose artist fields the standing clauses read: a candidate's draft, or a
 /// release editor's form, whose album artists and explicit tracks' artists
 /// the statement binds as the JSON arrays that `draft_rows`'
-/// `assignment_json_rows` makes.
+/// `assignment_rows` makes.
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
     Candidate(crate::tables::import_state::OneCandidate<'a>),
