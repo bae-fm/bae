@@ -100,6 +100,9 @@ bae-identify = { workspace = true, features = ["test-utils"] }
 # setting sends events.
 bae-diagnostics = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
+# The bridge's tests can open the cast picker, which browses the network in a
+# build without this feature, and so could reach a real receiver.
+bae-cast = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
 # The diagnostics test reads the fields of an event it was handed.
 serde_json = { workspace = true }

@@ -42,6 +42,11 @@ pub(crate) fn instance_label<'a>(fullname: &'a str, service_markers: &[&str]) ->
         .map_or(fullname, |(instance, _)| instance)
 }
 
+/// Whether this build holds test code: bae-cast's own tests, or a crate whose
+/// tests turn on bae-cast's `test-utils`. Such a build never browses the
+/// network, because a browse can reach a real receiver.
+const TEST_BUILD: bool = cfg!(any(test, feature = "test-utils"));
+
 /// One protocol's live browse: everything it holds while it is reading the
 /// network. Started against the list it publishes into, and stopped as a whole.
 pub(crate) trait Browse: Sized {
@@ -83,10 +88,18 @@ impl<B: Browse> ProtocolDiscovery<B> {
     }
 
     /// Begin browsing. Idempotent: a second call while already browsing is a
-    /// no-op, and a transport that cannot start stays stopped.
+    /// no-op, and a transport that cannot start stays stopped. A test build
+    /// panics here, the one place every protocol's browse of the real network
+    /// starts from: tests list receivers through `RendererDiscovery::reported`.
     pub(crate) fn start(&mut self, diagnostics: &Diagnostics) {
         if self.running.is_some() {
             return;
+        }
+        if TEST_BUILD {
+            panic!(
+                "a test build browses the network for receivers, which can reach a real one; \
+                 list receivers through RendererDiscovery::reported"
+            );
         }
         self.running = B::start(&self.devices, diagnostics);
     }

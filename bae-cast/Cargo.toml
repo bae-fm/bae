@@ -133,5 +133,11 @@ bae-playback = { workspace = true, features = ["test-utils"] }
 tempfile = { workspace = true }
 reqwest = { workspace = true, features = ["rustls"] }
 
+[features]
+# Marks a build that holds test code: bae-cast's discovery refuses to browse the
+# network in it, so no test reaches a real receiver. A crate whose tests start
+# bae-cast's controller turns it on in its dev-dependencies.
+test-utils = []
+
 [lints]
 workspace = true

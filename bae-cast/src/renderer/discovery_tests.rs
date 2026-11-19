@@ -91,3 +91,31 @@ fn unusable_services_are_dropped() {
 
     assert!(discovery.devices().is_empty());
 }
+
+/// No route to the network starts in a test build: the combined browse the app
+/// uses and each protocol's own browse (mDNS for Cast and AirPlay, SSDP for
+/// UPnP) refuse, so a test that opens the picker over bae's own discovery fails
+/// instead of reaching a real receiver.
+#[test]
+#[should_panic(expected = "a test build browses the network")]
+fn the_builtin_discovery_refuses_to_browse_in_a_test_build() {
+    RendererDiscovery::builtin().start(&bae_diagnostics::Diagnostics::noop());
+}
+
+#[test]
+#[should_panic(expected = "a test build browses the network")]
+fn the_cast_browse_refuses_to_start_in_a_test_build() {
+    crate::cast::CastDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
+}
+
+#[test]
+#[should_panic(expected = "a test build browses the network")]
+fn the_airplay_browse_refuses_to_start_in_a_test_build() {
+    crate::airplay::AirPlayDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
+}
+
+#[test]
+#[should_panic(expected = "a test build browses the network")]
+fn the_upnp_search_refuses_to_start_in_a_test_build() {
+    crate::dlna::DlnaDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
+}
