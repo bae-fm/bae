@@ -154,22 +154,32 @@ mirror_struct! {
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
+mirror_struct! {
+    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
+    from_core: fn,
+    fields: { file_id, name, disc_number },
+}
+
 impl BridgeReleaseEditTrackContext {
     fn from_core(context: bae_import::ReleaseEditTrackContext) -> Self {
-        // The table's sides say which side a track is on.
+        // The table's sides say which side a track is on, and a sheet's run
+        // names the sheet that carves its tracks.
         let bae_import::ReleaseEditTrackContext {
             track_id,
             side: _,
             source,
             start_ms,
             duration_ms,
+            listed_length_ms,
             position_text,
+            sheet: _,
         } = context;
         Self {
             track_id,
             source: BridgeReleaseEditTrackSource::from_core(source),
             start_clock: crate::types::BridgeDurationClock::of_length(start_ms),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
+            listed_length: listed_length_ms.map(crate::types::BridgeDurationClock::of_length),
             position_text,
         }
     }
@@ -191,6 +201,7 @@ mirror_enum! {
     variants: {
         Track(row: (BridgeReleaseEditTrackRow)),
         Sheet {
+            sheet: (BridgeReleaseEditSheet),
             source: (BridgeReleaseEditTrackSource),
             rows: (each BridgeReleaseEditTrackRow),
         },

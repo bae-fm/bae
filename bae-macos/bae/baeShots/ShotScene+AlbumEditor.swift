@@ -45,10 +45,15 @@ extension ShotScene {
     }
 
     /// The same release as one image a CUE sheet carves the four tracks
-    /// from: one run under the image's name, each row giving where its track
-    /// starts in the image.
+    /// from: one run under the sheet and the image's name, each row giving
+    /// where its track starts in the image, and the third its listed length.
     private static var editedCueRelease: PreviewReleaseEdit {
         var release = editedRelease
+        let sheet = BridgeReleaseEditSheet(
+            fileId: "Northbound.cue",
+            name: "Northbound.cue",
+            discNumber: 1
+        )
         let image = BridgeReleaseEditTrackSource(
             fileId: "Northbound.flac",
             name: "Northbound.flac",
@@ -68,6 +73,8 @@ extension ShotScene {
                         durationClock: BridgeDurationClock.length(
                             ms: track.durationMs
                         ),
+                        listedLength: index == 2
+                            ? BridgeDurationClock.length(ms: 327_000) : nil,
                         positionText: "\(index + 1)"
                     ),
                     artistStanding: nil
@@ -77,7 +84,7 @@ extension ShotScene {
             BridgeReleaseEditTrackSide(
                 side: .flat,
                 headerKey: nil,
-                runs: [.sheet(source: image, rows: rows)]
+                runs: [.sheet(sheet: sheet, source: image, rows: rows)]
             )
         ]
         release.draft.files = [

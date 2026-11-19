@@ -581,7 +581,7 @@ impl ImportTables {
                         .collect();
                     crate::tables::release_sheet_decisions::store_on(tx, &decided, &file_ids)?;
                     // What the import worked out and showed about the sheets
-                    // that carve its tracks.
+                    // that carve its tracks, which the release editor reads.
                     carving.store_on(tx, &file_ids)?;
 
                     for af in &audio_formats {

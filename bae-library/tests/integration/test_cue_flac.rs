@@ -605,9 +605,22 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
     );
 }
 
+/// The listed length each row of the editor's draft shows, in table order.
+fn listed_lengths(draft: &bae_import::ReleaseEditDraft) -> Vec<Option<u64>> {
+    draft
+        .sides
+        .iter()
+        .flatten()
+        .flat_map(|side| side.rows())
+        .map(|row| row.context.listed_length_ms)
+        .collect()
+}
+
 /// A release imported from a CUE image keeps the sheet that carves its
-/// tracks, the disc the sheet is and each track's listed length. A catalog
-/// applied in the editor and saved writes its own listed lengths.
+/// tracks, the disc the sheet is and each track's listed length, and the
+/// release editor reads them from the library: a listed length shows where
+/// it is more than three seconds from the measured one. A catalog applied in
+/// the editor shows its own listed lengths, and saving it writes them.
 #[tokio::test]
 async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
     bae_util::test_logs::install();
@@ -634,14 +647,24 @@ async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
     };
     let tracks = library.records().get_tracks_for_release(&imported.release_id).await.unwrap();
     assert_eq!(stated(tracks), [Some(10_000), Some(20_000), Some(10_000)]);
-    let sheet = |title: &str| (title.to_string(), "Test Album.cue".to_string(), 1);
-    assert_eq!(
-        library.records().carved_tracks_for_test(&imported.release_id).await.unwrap(),
-        [sheet("Track One"), sheet("Track Two"), sheet("Track Three")]
-    );
 
     let manager = library.manager();
     let form = manager.open_release_edit(&imported.release_id).await.unwrap();
+    let drafts = manager.subscribe_release_edit_draft();
+    drafts.set(Some(form.clone())).expect("the draft takes the form");
+    let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
+    let sides = draft.sides.as_deref().expect("the release has tracks");
+    let [side] = sides else { panic!("the release has one side: {sides:?}") };
+    let [bae_import::ReleaseEditTrackRun::Sheet { sheet, source, rows }] = side.runs.as_slice()
+    else {
+        panic!("one sheet carves every track: {:?}", side.runs);
+    };
+    assert_eq!(
+        (sheet.name.as_str(), sheet.disc_number, source.name.as_str(), rows.len()),
+        ("Test Album.cue", 1, "Test Album.flac", 3)
+    );
+    assert_eq!(listed_lengths(&draft), [None, Some(20_000), None]);
+
     let (mb_release, mb_group) = ("listed-lengths-mb-release", "listed-lengths-mb-group");
     let track = |position, title, length| bae_catalogs::musicbrainz::MbTrack {
         length: Some(length),
@@ -674,6 +697,17 @@ async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
         )
         .await
         .expect("apply the catalog's release");
+    drafts.set(Some(applied.clone())).expect("the draft takes the applied form");
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        loop {
+            let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
+            if listed_lengths(&draft) == [None, None, Some(40_000)] {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the draft shows the applied release's listed lengths");
     manager.save_release_edit(applied, bae_library::GonePick::Refuse).await.expect("save the form");
 
     let tracks = library.records().get_tracks_for_release(&imported.release_id).await.unwrap();

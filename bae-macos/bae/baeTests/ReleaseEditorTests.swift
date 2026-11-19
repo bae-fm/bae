@@ -230,7 +230,17 @@ struct ReleaseEditorTests {
                 side: .flat,
                 headerKey: nil,
                 runs: shared
-                    ? [.sheet(source: rows[0].context.source, rows: rows)]
+                    ? [
+                        .sheet(
+                            sheet: BridgeReleaseEditSheet(
+                                fileId: "disc.cue",
+                                name: "Disc audio.cue",
+                                discNumber: 1
+                            ),
+                            source: rows[0].context.source,
+                            rows: rows
+                        )
+                    ]
                     : rows.map { .track(row: $0) }
             )
         ]

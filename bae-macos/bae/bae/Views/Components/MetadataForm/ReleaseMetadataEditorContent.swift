@@ -106,7 +106,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             case .track(let row):
                 trackRow(row, sourceIsInCaption: false)
                     .id(row.edit.id)
-            case .sheet(let source, let rows):
+            case .sheet(_, let source, let rows):
                 sharedSourceCaption(source)
                 ForEach(rows, id: \.edit.id) { row in
                     trackRow(row, sourceIsInCaption: true)

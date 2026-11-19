@@ -1,6 +1,6 @@
 //! The SQL functions that state facts of one stored value the import pane's
 //! track table shows: how a side is lettered, whether a stored carrier is
-//! played side by side, whether two lengths disagree, and a title's trim.
+//! played side by side, and a title's trim.
 //! Each wraps the Rust rule, so a statement and the code that writes the
 //! value share one definition.
 
@@ -47,23 +47,6 @@ pub(crate) static MEDIUM_IS_SIDED: SchemaFunction = SchemaFunction {
             .transpose()?
             .is_some_and(bae_types::pressing::Medium::is_sided);
         Ok(Value::Integer(sided.into()))
-    },
-};
-
-/// `bae_lengths_disagree(a_ms, b_ms)`: whether two lengths are further apart
-/// than the pane's tolerance (`medium_coverage::lengths_disagree`).
-pub(crate) static LENGTHS_DISAGREE: SchemaFunction = SchemaFunction {
-    name: "bae_lengths_disagree",
-    arguments: 2,
-    version: 1,
-    compute: |arguments| {
-        let length = |at| {
-            u64::try_from(integer(arguments, at)?)
-                .map_err(|error| rusqlite::Error::UserFunctionError(error.into()))
-        };
-        Ok(Value::Integer(
-            bae_catalogs::medium_coverage::lengths_disagree(length(0)?, length(1)?).into(),
-        ))
     },
 };
 

@@ -333,7 +333,8 @@ pub use types::{
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
     MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
+    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditSheet,
+    ReleaseEditTrackContext,
     ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
     ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };

@@ -38,8 +38,8 @@ pub enum MediumsSource<'a> {
     /// parentheses: `mediums` returns the columns `id`, `release_id`,
     /// `position`, `medium` and `side_count` of `release_mediums`, one row
     /// per medium, and `places` returns the columns `id` (the track's),
-    /// `medium_id` (a medium's `id`), `side` and `track_number` of `tracks`,
-    /// one row per track of the release.
+    /// `medium_id` (a medium's `id`), `side`, `track_number` and
+    /// `stated_length_ms` of `tracks`, one row per track of the release.
     Draft { mediums: &'a str, places: &'a str },
 }
 

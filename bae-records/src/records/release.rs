@@ -459,11 +459,13 @@ impl Records {
 
 /// Each track of the release `release` (an SQL expression naming its id) in
 /// release order, on the mediums `source` names for it: its side's kind and
-/// ordinal and its number there, how many audio formats it stores, how many
-/// main segments they hold, and the first main segment's file id and where it
-/// starts in that file, with the name and stored audio layout of the release
-/// file of that id when the release holds one. [`release_edit_track_of_row`]
-/// reads each row.
+/// ordinal and its number there, the length `source` lists for it where that
+/// length disagrees with the track's measured one (`bae_lengths_disagree`), how many
+/// audio formats it stores, how many main segments they hold, and the first
+/// main segment's file id and where it starts in that file, with the name
+/// and stored audio layout of the release file of that id when the release
+/// holds one, and the CUE sheet that carves it, with the sheet's name and
+/// disc. [`release_edit_track_of_row`] reads each row.
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
     format!(
@@ -477,16 +479,29 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
             JOIN tracks t ON t.id = af.track_id \
             WHERE t.release_id = {release} AND s.role = 'main') \
      SELECT t.*, p.side_kind, p.side_ordinal, p.number AS place_number, \
+        CASE WHEN p.place_stated_length_ms IS NOT NULL \
+                  AND bae_lengths_disagree(t.duration_ms, p.place_stated_length_ms) \
+             THEN p.place_stated_length_ms END AS listed_length_ms, \
         (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
         COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
         main.start_ms AS main_start_ms, \
         f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
-        f.source_audio_layout AS main_file_layout \
+        f.source_audio_layout AS main_file_layout, \
+        carved.sheet_file_id, sheet_file.original_filename AS sheet_name, \
+        sheet.disc_number AS sheet_disc_number \
      FROM tracks t JOIN placed p ON p.id = t.id \
      LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
      LEFT JOIN release_files f ON f.id = main.file_id \
+     LEFT JOIN (carved_tracks carved \
+        JOIN release_carving_sheets sheet ON sheet.file_id = carved.sheet_file_id \
+        JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
+        ON carved.track_id = t.id \
      WHERE t.release_id = {release} ORDER BY t.position",
-        placed = super::release_tracks::placed_tracks_ctes(release, source, ""),
+        placed = super::release_tracks::placed_tracks_ctes(
+            release,
+            source,
+            ", place.stated_length_ms AS place_stated_length_ms"
+        ),
     )
 }
 
@@ -534,6 +549,16 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
             Ok(DbReleaseEditSegment { file_id, start_ms: row.get("main_start_ms")?, file })
         })
         .transpose()?;
+    let sheet = row
+        .get::<_, Option<String>>("sheet_file_id")?
+        .map(|file_id| {
+            Ok::<_, rusqlite::Error>(DbReleaseEditSheet {
+                file_id,
+                name: row.get("sheet_name")?,
+                disc_number: row.get("sheet_disc_number")?,
+            })
+        })
+        .transpose()?;
     let position = super::release_tracks::track_position_of(
         &row.get::<_, String>("side_kind")?,
         row.get("side_ordinal")?,
@@ -543,9 +568,11 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
     Ok(DbReleaseEditTrack {
         track: row_to_track(row)?,
         position,
+        listed_length_ms: row.get("listed_length_ms")?,
         audio_format_count: row.get("audio_format_count")?,
         main_segment_count: row.get("main_count")?,
         main_segment,
+        sheet,
     })
 }
 

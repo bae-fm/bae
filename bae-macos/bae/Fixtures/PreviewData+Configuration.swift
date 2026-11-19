@@ -152,6 +152,7 @@ extension PreviewData {
             durationClock: BridgeDurationClock.length(
                 ms: UInt64(180_000 + index * 12_000)
             ),
+            listedLength: nil,
             positionText: String(index + 1)
         )
     }

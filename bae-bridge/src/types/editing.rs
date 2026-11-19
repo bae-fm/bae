@@ -685,6 +685,19 @@ pub struct BridgeReleaseEditTrackSource {
     pub layout: BridgeSourceAudioLayout,
 }
 
+/// The CUE sheet that carves a run of the release editor's tracks out of
+/// their file, as the run's caption names it. Mirrors
+/// `bae_import::ReleaseEditSheet`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditSheet {
+    pub file_id: String,
+    /// The sheet's file name, as the release's files name it.
+    pub name: String,
+    /// The disc of the release the import read the sheet as, counted from
+    /// one.
+    pub disc_number: u32,
+}
+
 /// Persisted, read-only context beside one editable track row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackContext {
@@ -695,6 +708,10 @@ pub struct BridgeReleaseEditTrackContext {
     pub start_clock: BridgeDurationClock,
     /// The track's stored length as a clock label's fields ("3:07").
     pub duration_clock: BridgeDurationClock,
+    /// The length the track's source lists, present only when more than
+    /// three seconds from the stored one, as the import's mapping table
+    /// marks a row.
+    pub listed_length: Option<BridgeDurationClock>,
     /// How the track's place reads ("A1", "3"), which the editor shows and
     /// never edits.
     pub position_text: String,
@@ -718,8 +735,12 @@ pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
     Track { row: BridgeReleaseEditTrackRow },
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
-    /// is named once above them.
-    Sheet { source: BridgeReleaseEditTrackSource, rows: Vec<BridgeReleaseEditTrackRow> },
+    /// is named once above them with the sheet.
+    Sheet {
+        sheet: BridgeReleaseEditSheet,
+        source: BridgeReleaseEditTrackSource,
+        rows: Vec<BridgeReleaseEditTrackRow>,
+    },
 }
 
 /// One side of the release in the editor's track table and the runs of

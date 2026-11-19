@@ -16,6 +16,16 @@ pub struct ReleaseEditTrackSource {
     pub layout: SourceAudioLayout,
 }
 
+/// The CUE sheet that carves a persisted track out of an image, as the editor
+/// names it above the tracks it carves: its file, its name, and the disc of
+/// the release the import read it as.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ReleaseEditSheet {
+    pub file_id: String,
+    pub name: String,
+    pub disc_number: u32,
+}
+
 /// Display-only facts that accompany one persisted metadata row in the shared
 /// editor. `track_id` is the database row identity, not a positional join.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -28,16 +38,24 @@ pub struct ReleaseEditTrackContext {
     /// for a track a CUE sheet carves from an image, its INDEX 01.
     pub start_ms: u64,
     pub duration_ms: u64,
+    /// The length the track's source lists, kept only when it is more than
+    /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from
+    /// `duration_ms`, as the import's mapping table keeps it.
+    pub listed_length_ms: Option<u64>,
     /// How the track's place reads ("A1", "3"), which the editor shows and
     /// never edits.
     pub position_text: String,
+    /// The CUE sheet that carves the track out of its source file; `None`
+    /// for a track that plays a whole file.
+    pub sheet: Option<ReleaseEditSheet>,
 }
 
 #[cfg(desktop)]
 impl ReleaseEditTrackContext {
-    /// The file a CUE sheet carves this track's body from.
-    fn sheet_source(&self) -> Option<&ReleaseEditTrackSource> {
-        (self.source.layout == SourceAudioLayout::Cue).then_some(&self.source)
+    /// The CUE sheet that carves this track's body, and the file it carves
+    /// the body from.
+    fn carved_from(&self) -> Option<(&ReleaseEditSheet, &ReleaseEditTrackSource)> {
+        self.sheet.as_ref().map(|sheet| (sheet, &self.source))
     }
 }
 
@@ -67,8 +85,12 @@ pub enum ReleaseEditTrackRun {
     /// A track whose row names its own source.
     Track(ReleaseEditTrackRow),
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
-    /// is named once above them.
-    Sheet { source: ReleaseEditTrackSource, rows: Vec<ReleaseEditTrackRow> },
+    /// is named once above them with the sheet.
+    Sheet {
+        sheet: ReleaseEditSheet,
+        source: ReleaseEditTrackSource,
+        rows: Vec<ReleaseEditTrackRow>,
+    },
 }
 
 impl ReleaseEditTrackRun {
@@ -99,27 +121,29 @@ impl ReleaseEditTrackSide {
         sides
     }
 
-    /// Add the next row: onto the last run when a sheet carves both tracks
+    /// Add the next row: onto the last run when one sheet carves both tracks
     /// from the same file, else as a run of its own.
     #[cfg(desktop)]
     fn append(&mut self, row: ReleaseEditTrackRow) {
-        let carved_with = |source: &ReleaseEditTrackSource| {
-            row.context.sheet_source().is_some_and(|next| next.file_id == source.file_id)
+        let carved_with = |(sheet, source): (&ReleaseEditSheet, &ReleaseEditTrackSource)| {
+            row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
+                next_sheet.file_id == sheet.file_id && next_source.file_id == source.file_id
+            })
         };
         match self.runs.pop() {
-            Some(ReleaseEditTrackRun::Sheet { source, mut rows }) if carved_with(&source) => {
+            Some(ReleaseEditTrackRun::Sheet { sheet, source, mut rows })
+                if carved_with((&sheet, &source)) =>
+            {
                 rows.push(row);
-                self.runs.push(ReleaseEditTrackRun::Sheet { source, rows });
+                self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows });
             }
             Some(ReleaseEditTrackRun::Track(last))
-                if last.context.sheet_source().is_some_and(carved_with) =>
+                if last.context.carved_from().is_some_and(carved_with) =>
             {
-                let source = last
-                    .context
-                    .sheet_source()
-                    .expect("the guard read the track's sheet source")
-                    .clone();
-                self.runs.push(ReleaseEditTrackRun::Sheet { source, rows: vec![last, row] });
+                let (sheet, source) =
+                    last.context.carved_from().expect("the guard read the track's sheet");
+                let (sheet, source) = (sheet.clone(), source.clone());
+                self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows: vec![last, row] });
             }
             last => {
                 self.runs.extend(last);
@@ -199,7 +223,13 @@ impl ReleaseEditTrackContext {
             source: ReleaseEditTrackSource { file_id: main.file_id, name: file.name, layout },
             start_ms: main.start_ms,
             duration_ms: entry.track.duration_ms,
+            listed_length_ms: entry.listed_length_ms,
             position_text: entry.position.text(),
+            sheet: entry.sheet.map(|sheet| ReleaseEditSheet {
+                file_id: sheet.file_id,
+                name: sheet.name,
+                disc_number: sheet.disc_number,
+            }),
         })
     }
 }
@@ -242,7 +272,6 @@ fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
         preview_target: None,
         role: match file.role {
             ReleaseFileRole::Audio => MappingRole::Audio,
-            // The library keeps no sheet's binding: a sheet is the text it is.
             ReleaseFileRole::TrackSheet | ReleaseFileRole::Document(_) => MappingRole::Document,
             ReleaseFileRole::Artwork => MappingRole::Image,
             ReleaseFileRole::DamagedImage => MappingRole::DamagedImage,

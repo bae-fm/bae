@@ -103,6 +103,7 @@ extension PreviewData {
                                             BridgeDurationClock.length(
                                                 ms: track.durationMs
                                             ),
+                                        listedLength: nil,
                                         positionText: "\(index + 1)"
                                     ),
                                     artistStanding: nil

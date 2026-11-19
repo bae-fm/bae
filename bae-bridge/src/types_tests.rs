@@ -534,7 +534,9 @@ mod conversion_roundtrip {
                                 },
                                 start_ms: 0,
                                 duration_ms: 123_000,
+                                listed_length_ms: Some(130_000),
                                 position_text: "3".to_string(),
+                                sheet: None,
                             },
                             artist_standing: None,
                         },
@@ -580,6 +582,8 @@ mod conversion_roundtrip {
             assert!(bridge.files.is_none());
             let clock = row.context.duration_clock;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
+            let listed = row.context.listed_length.expect("the track keeps its listed length");
+            assert_eq!((listed.minutes, listed.seconds), (2, 10));
         }
     }
 }

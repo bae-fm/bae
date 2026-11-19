@@ -1999,8 +1999,8 @@ Ana clicks Import. bae:
    left untitled takes its file's name. The same write stores what the draft
    worked out and the pane showed about the folder's CUE sheets: each sheet
    that carves tracks out of an image, with the disc the pane showed for it, and
-   the sheet that carves each such track. The `.cue` file stays among the
-   release's files and is never read again to show them. An existing album is checked in that
+   the sheet that carves each such track. The release editor (§3.8) reads
+   these rows and never reads a `.cue` file again to show them. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
    write took its last release (§2.1), fails the import, which writes nothing
    and tells the person to pick another album or New album.
@@ -2265,7 +2265,8 @@ file* pop-up of which of the release's audio files on this device the sheet
 carves (no *Choose audio…*, since the editor adds and removes no tracks). The
 rows show a new choice at once, from the editor's draft, before *Save* writes
 it; every other track names in its row the file its body, from its
-INDEX 01 on, plays from. A pregap stored at the tail of the file before
+INDEX 01 on, plays from. Each row's listed length is the one the library
+stores for the track, or the one the catalog applied in the session lists. A pregap stored at the tail of the file before
 (§2.2) is not named: a row names one file. An applied catalog lays them out
 again at the places it gives them.
 

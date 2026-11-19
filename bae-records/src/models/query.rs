@@ -44,15 +44,33 @@ pub struct DbReleaseDetail {
 }
 
 /// A track as the release editor reads its audio: the track, its place on the
-/// release, how many audio formats it stores, how many main segments they
-/// hold, and the first of those, the track's body, with the file it names.
+/// release, the length listed for it there, how many audio formats it
+/// stores, how many main segments they hold, the first of those, the track's
+/// body, with the file it names, and the CUE sheet that carves it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditTrack {
     pub track: DbTrack,
     pub position: bae_types::mediums::TrackPosition,
+    /// The length the source of the track's place lists for it (the catalog
+    /// the editor applied, else the one the library's values came from), when
+    /// it is further from the track's measured length than the import pane
+    /// tolerates; `None` where it lists none or the two agree.
+    pub listed_length_ms: Option<u64>,
     pub audio_format_count: i64,
     pub main_segment_count: i64,
     pub main_segment: Option<DbReleaseEditSegment>,
+    /// The CUE sheet that carves the track out of an image; `None` for a
+    /// track that plays a whole file.
+    pub sheet: Option<DbReleaseEditSheet>,
+}
+
+/// A CUE sheet that carves a track out of an image, as the release editor
+/// names it: its file's id and name, and the disc of the release it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbReleaseEditSheet {
+    pub file_id: String,
+    pub name: String,
+    pub disc_number: u32,
 }
 
 /// A track's main segment as the release editor reads it: the file it names,

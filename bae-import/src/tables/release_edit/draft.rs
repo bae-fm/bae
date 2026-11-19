@@ -60,13 +60,15 @@ struct MediumJson {
     sides: u8,
 }
 
-/// Where the applied catalog places a form track, as `:places` binds it.
+/// Where the applied catalog places a form track, and the length it lists
+/// for it, as `:places` binds it.
 #[derive(serde::Serialize)]
 struct PlaceJson<'a> {
     track_id: &'a str,
     medium: u16,
     side: u8,
     number: u32,
+    stated_length_ms: Option<u64>,
 }
 
 /// `value` as the JSON a statement binds.
@@ -115,6 +117,7 @@ impl FormParams {
                     medium: track.place.medium.get(),
                     side: track.place.side.get(),
                     number: track.place.number.get(),
+                    stated_length_ms: track.stated_length_ms,
                 });
             }
         }
@@ -299,8 +302,9 @@ pub(crate) fn release_edit_draft_rows_on(
     }))
 }
 
-/// The tracks of the form's release in release order, on the mediums the
-/// catalog the person applied gives them or else on the release's own, each
+/// The tracks of the form's release in release order, on the mediums and
+/// with the listed lengths the catalog the person applied gives them or else
+/// the release's own, each
 /// with the form row that edits it and how that row's own artists stand to
 /// the library.
 fn draft_tracks_on(
@@ -315,10 +319,11 @@ fn draft_tracks_on(
                     SELECT id, release_id, position, medium, side_count FROM release_mediums \
                     WHERE release_id = :release AND NOT :applied)";
     let places = "(SELECT j.value ->> 'track_id' AS id, j.value ->> 'medium' AS medium_id, \
-                          j.value ->> 'side' AS side, j.value ->> 'number' AS track_number \
+                          j.value ->> 'side' AS side, j.value ->> 'number' AS track_number, \
+                          j.value ->> 'stated_length_ms' AS stated_length_ms \
                    FROM json_each(:places) AS j \
                    UNION ALL \
-                   SELECT id, medium_id, side, track_number FROM tracks \
+                   SELECT id, medium_id, side, track_number, stated_length_ms FROM tracks \
                    WHERE release_id = :release AND NOT :applied)";
     let credits = form.credits();
     let mut params = credits.params();

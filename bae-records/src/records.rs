@@ -44,6 +44,7 @@ mod artist_sql;
 pub use artist_sql::credit_artist_clauses;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_IS_VARIOUS_ARTISTS, ARTIST_NAME_KEY};
 mod album_identity;
+mod lengths_disagree;
 pub(crate) use album_identity::ALBUM_IDENTITY;
 mod catalog_rank;
 pub(crate) use catalog_rank::CATALOG_RANK;
@@ -173,7 +174,9 @@ pub const SCHEMA: bae_store::SchemaPart =
 /// The SQL functions that `records.sql` names, the artist functions that
 /// other crates' queries call, `bae_album_id`, which computes the library
 /// album id that the query finding a release's album calls, and
-/// `bae_audio_codec`, which the audio summary statement calls.
+/// `bae_audio_codec`, which the audio summary statement calls, and
+/// `bae_lengths_disagree`, which the import pane's and the release editor's
+/// track statements mark a listed length by.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &ALBUM_IDENTITY,
     &CATALOG_RANK,
@@ -181,6 +184,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &ARTIST_IDENTITY,
     &ARTIST_IS_VARIOUS_ARTISTS,
     &crate::source_audio::AUDIO_CODEC,
+    &lengths_disagree::LENGTHS_DISAGREE,
 ];
 
 /// The collations `records.sql` names.

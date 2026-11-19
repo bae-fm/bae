@@ -80,7 +80,6 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &super::watched_path::FOLDER_RELATIVE,
     &super::layout_text::SIDE_LETTERS,
     &super::layout_text::MEDIUM_IS_SIDED,
-    &super::layout_text::LENGTHS_DISAGREE,
     &super::layout_text::TRIM,
     &pane_files::SUPPORTED_COVER,
 ];
