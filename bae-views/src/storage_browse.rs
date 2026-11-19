@@ -41,15 +41,10 @@ pub struct StorageQueues {
     pub outputs: Option<ReleaseQueueRun>,
 }
 
-/// The upload queue while it holds files, what holds it back, and whether
-/// the person paused it.
+/// The upload queue while it holds files, and what holds it back.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueRun {
     pub wait: Option<bae_records::UploadQueueWait>,
-    /// The person paused uploads: the queue's control offers Resume, not
-    /// Pause. `wait` reads Paused then too, and also while sync isn't
-    /// running, which Resume doesn't change.
-    pub paused: bool,
 }
 
 /// A queue that works through one release at a time, while it holds work:

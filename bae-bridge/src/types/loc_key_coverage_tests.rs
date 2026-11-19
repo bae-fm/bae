@@ -137,7 +137,8 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_queue_wait_key(wait));
     }
     for wait in [
-        BridgeUploadQueueWait::Paused,
+        BridgeUploadQueueWait::Paused { by: BridgePausedBy::Person },
+        BridgeUploadQueueWait::Paused { by: BridgePausedBy::SyncStopped },
         BridgeUploadQueueWait::Offline,
         BridgeUploadQueueWait::Metered,
         BridgeUploadQueueWait::Retrying { at_ms: 0 },

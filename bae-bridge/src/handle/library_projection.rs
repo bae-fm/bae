@@ -765,10 +765,19 @@ impl crate::types::BridgeReleaseUpload {
 }
 
 mirror_enum! {
+    crate::types::BridgePausedBy = bae_records::PausedBy,
+    from_core: pub(crate) fn,
+    variants: {
+        Person,
+        SyncStopped,
+    },
+}
+
+mirror_enum! {
     crate::types::BridgeUploadQueueWait = bae_records::UploadQueueWait,
     from_core: pub(crate) fn,
     variants: {
-        Paused,
+        Paused { by: (crate::types::BridgePausedBy) },
         Offline,
         Metered,
         Retrying { at_ms },

@@ -273,16 +273,13 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
     let uploads = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM coven_upload_queue), \
-                 hold.upload_wait, hold.upload_wait_at, hold.uploads_paused \
+                 hold.upload_wait, hold.upload_wait_at \
              FROM ({UPLOAD_QUEUE_HOLD}) AS hold"
         ),
         [],
         |row| {
             Ok(if row.get::<_, bool>(0)? {
-                Some(crate::UploadQueueRun {
-                    wait: upload_queue_wait_in_row(row)?,
-                    paused: row.get("uploads_paused")?,
-                })
+                Some(crate::UploadQueueRun { wait: upload_queue_wait_in_row(row)? })
             } else {
                 None
             })

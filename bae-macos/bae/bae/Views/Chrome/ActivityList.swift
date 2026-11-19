@@ -181,7 +181,10 @@ private struct TransferRows: View {
             TransferLine(
                 title: localizedCoreString("core.activity.uploading"),
                 count: uploads.wait?.text ?? uploads.batch.text,
-                queue: .init(.uploads, paused: uploads.paused),
+                queue: .init(
+                    .uploads,
+                    paused: uploads.wait == .paused(by: .person)
+                ),
                 bar: bar(.uploads)
             )
         }

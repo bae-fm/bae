@@ -35,7 +35,7 @@ fun Context.uploadQueueWaitText(wait: BridgeUploadQueueWait): String {
             coreString(key, mapOf("time" to retryTimeText(wait.atMs, currentLocale())))
         }
 
-        BridgeUploadQueueWait.Paused, BridgeUploadQueueWait.Offline, BridgeUploadQueueWait.Metered -> {
+        is BridgeUploadQueueWait.Paused, BridgeUploadQueueWait.Offline, BridgeUploadQueueWait.Metered -> {
             coreString(key)
         }
     }

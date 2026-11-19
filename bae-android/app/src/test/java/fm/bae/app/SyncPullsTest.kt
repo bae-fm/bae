@@ -67,7 +67,7 @@ class SyncPullsTest {
         session.wireUp(scope)
         assertEquals(null, store.activity.value)
 
-        val uploading = activity(BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 2u), wait = null, paused = false))
+        val uploading = activity(BridgeUploadQueueActivity(BridgeTransferBatch(done = 0u, total = 2u), wait = null))
         handle.syncActivity.deliver(uploading)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(uploading, store.activity.value)

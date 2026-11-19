@@ -342,8 +342,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         crate::followed::value_matching(&mut activity, |_| true).await.uploads,
         Some(bae_views::UploadQueueActivity {
             batch: bae_views::TransferBatch { done: 0, total: 1 },
-            wait: Some(bae_records::UploadQueueWait::Paused),
-            paused: true,
+            wait: Some(bae_records::UploadQueueWait::Paused { by: bae_records::PausedBy::Person }),
         }),
         "the helper queues the file with uploads paused"
     );
@@ -365,8 +364,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         sending.uploads,
         Some(bae_views::UploadQueueActivity {
             batch: bae_views::TransferBatch { done: 0, total: 1 },
-            wait: None,
-            paused: false,
+            wait: None
         })
     );
     created.await.unwrap();

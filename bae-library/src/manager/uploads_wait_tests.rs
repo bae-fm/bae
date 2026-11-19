@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
-use bae_records::UploadQueueWait;
+use bae_records::{PausedBy, UploadQueueWait};
 use bae_views::UploadQueueRun;
 
 /// The name of the file whose missing original the move of `release_id`
@@ -46,20 +46,19 @@ async fn the_upload_queue_says_it_is_paused() {
     .await;
     let upload_wait =
         || async { listed_queues(manager).await.uploads.expect("a file is queued").wait };
-    assert_eq!(upload_wait().await, Some(UploadQueueWait::Paused));
+    assert_eq!(upload_wait().await, Some(UploadQueueWait::Paused { by: PausedBy::Person }));
     assert_eq!(row_missing(manager, &release.id).await, None);
 
     test.installation.lose_network();
     assert_eq!(
         upload_wait().await,
-        Some(UploadQueueWait::Paused),
+        Some(UploadQueueWait::Paused { by: PausedBy::Person }),
         "the pause outranks the network"
     );
 }
 
 /// The first upload queue the Storage Manager's list gives that `accept`
-/// takes, once the Activity panel's Uploading line says the same wait and
-/// pause.
+/// takes, once the Activity panel's Uploading line says the same wait.
 async fn upload_queue_until(
     manager: &LibraryManager,
     accept: impl Fn(&UploadQueueRun) -> bool,
@@ -72,10 +71,7 @@ async fn upload_queue_until(
     .uploads
     .expect("a file is queued");
     crate::followed::value_matching(&mut views(manager).subscribe_sync_activity(), |activity| {
-        activity
-            .uploads
-            .as_ref()
-            .is_some_and(|uploads| uploads.wait == run.wait && uploads.paused == run.paused)
+        activity.uploads.as_ref().is_some_and(|uploads| uploads.wait == run.wait)
     })
     .await;
     run
@@ -95,12 +91,12 @@ async fn earliest_retry_ms(manager: &LibraryManager) -> i64 {
 
 /// The upload queue names the first of coven's waits that holds: the pause,
 /// then the network, then a metered network, then a file's retry at the
-/// earliest time coven gives. Sync that isn't running reads as paused, and
-/// the queue's control still offers Pause, since the person didn't pause it.
+/// earliest time coven gives. Sync that isn't running reads as paused by
+/// sync, not by the person, so the queue's control still offers Pause.
 #[tokio::test]
 async fn the_upload_queue_names_the_first_wait_that_holds() {
     use UploadQueueWait::*;
-    let held = |wait| UploadQueueRun { wait: Some(wait), paused: false };
+    let held = |wait| UploadQueueRun { wait: Some(wait) };
     let (test, temp_dir, _clock) = library_on_a_stopped_clock().await;
     let manager = test.library.manager();
     manager.store.set_uploads_paused(true).await.unwrap();
@@ -145,7 +141,7 @@ async fn the_upload_queue_names_the_first_wait_that_holds() {
     manager.store.set_uploads_paused(true).await.unwrap();
     assert_eq!(
         upload_queue_until(manager, |_| true).await,
-        UploadQueueRun { wait: Some(Paused), paused: true },
+        held(Paused { by: PausedBy::Person }),
         "the pause outranks the retry"
     );
 
@@ -153,8 +149,8 @@ async fn the_upload_queue_names_the_first_wait_that_holds() {
     manager.stop_sync().await.unwrap();
     assert_eq!(
         upload_queue_until(manager, |_| true).await,
-        held(Paused),
-        "the queue reads as paused while sync isn't running, which the person didn't pause"
+        held(Paused { by: PausedBy::SyncStopped }),
+        "the queue reads as paused by sync while sync isn't running"
     );
     manager.close().await.unwrap();
 }

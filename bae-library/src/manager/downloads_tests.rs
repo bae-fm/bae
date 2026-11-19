@@ -694,8 +694,9 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     .await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
-    let uploads =
-        Some(UploadQueueRun { wait: Some(bae_records::UploadQueueWait::Paused), paused: true });
+    let uploads = Some(UploadQueueRun {
+        wait: Some(bae_records::UploadQueueWait::Paused { by: bae_records::PausedBy::Person }),
+    });
     assert_eq!(
         listed_queues(manager).await,
         StorageQueues {

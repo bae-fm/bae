@@ -245,7 +245,6 @@ object PreviewData {
                 BridgeUploadQueueActivity(
                     batch = BridgeTransferBatch(done = 1u, total = 2u),
                     wait = null,
-                    paused = false,
                 ),
             pins =
                 BridgeDownloadQueueActivity(

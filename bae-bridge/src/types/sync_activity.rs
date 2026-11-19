@@ -89,17 +89,15 @@ mirror_struct! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadQueueActivity {
     pub batch: BridgeTransferBatch,
-    /// What holds the upload queue back, shown in place of the count.
+    /// What holds the upload queue back, shown in place of the count. The
+    /// line ends in Resume, not Pause, while the person paused the queue.
     pub wait: Option<super::BridgeUploadQueueWait>,
-    /// The person paused the upload queue: the line ends in Resume, not Pause.
-    pub paused: bool,
 }
 
 impl BridgeUploadQueueActivity {
     fn from_core(uploads: bae_views::UploadQueueActivity) -> Self {
         Self {
             batch: BridgeTransferBatch::from_core(uploads.batch),
-            paused: uploads.paused,
             wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
         }
     }

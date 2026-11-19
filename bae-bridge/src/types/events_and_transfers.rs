@@ -357,8 +357,10 @@ pub fn bridge_queue_wait_key(wait: BridgeQueueWait) -> String {
 /// `UploadQueueWait`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadQueueWait {
-    /// The person paused uploads.
-    Paused,
+    /// Nothing sends the queue's files: the person paused uploads, or sync
+    /// isn't running. The queue offers Resume only while the person paused
+    /// it.
+    Paused { by: BridgePausedBy },
     /// The device has no usable network.
     Offline,
     /// Files move only on unmetered networks, and this one is metered.
@@ -368,13 +370,20 @@ pub enum BridgeUploadQueueWait {
     Retrying { at_ms: i64 },
 }
 
+/// Who holds a paused upload queue. Mirrors `PausedBy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePausedBy {
+    Person,
+    SyncStopped,
+}
+
 /// Localization key for what holds the upload queue back ("Paused", "Retrying
 /// at {time}"). The UI resolves it against the `Core` table; `Retrying`
 /// takes the clock time as its `time` argument.
 #[uniffi::export]
 pub fn bridge_upload_queue_wait_key(wait: BridgeUploadQueueWait) -> String {
     match wait {
-        BridgeUploadQueueWait::Paused => "core.queue.wait.paused",
+        BridgeUploadQueueWait::Paused { .. } => "core.queue.wait.paused",
         BridgeUploadQueueWait::Offline => "core.queue.wait.offline",
         BridgeUploadQueueWait::Metered => "core.queue.wait.metered",
         BridgeUploadQueueWait::Retrying { .. } => "core.queue.wait.retrying",

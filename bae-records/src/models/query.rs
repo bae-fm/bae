@@ -249,8 +249,9 @@ pub struct DbReleaseUpload {
 /// it of each file's upload and of the network.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UploadQueueWait {
-    /// The person paused uploads, or sync isn't running.
-    Paused,
+    /// Nothing sends the queue's files: the person paused uploads, or sync
+    /// isn't running.
+    Paused { by: PausedBy },
     /// The device has no usable network.
     Offline,
     /// Files move only on unmetered networks, and this one is metered.
@@ -258,4 +259,12 @@ pub enum UploadQueueWait {
     /// A file waits for its retry after a failed attempt, or for a
     /// provider's cooldown, until `at_ms`, in milliseconds since the epoch.
     Retrying { at_ms: i64 },
+}
+
+/// Who holds a paused upload queue: the person, whose Resume lets it go on,
+/// or sync that isn't running, which Resume doesn't change.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PausedBy {
+    Person,
+    SyncStopped,
 }

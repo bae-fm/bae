@@ -58,22 +58,23 @@ pub const RELEASE_UPLOAD_COLUMNS: &str =
     concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
 /// What holds the upload queue back, as one row: `upload_wait` names the
-/// line ([`upload_queue_wait_in_row`] maps it), `upload_wait_at` is the
-/// earliest time coven gives a file's wait to end, and `uploads_paused` is
-/// whether the person paused uploads. Each file's wait is
+/// wait ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the
+/// earliest time coven gives a file's wait to end. Each file's wait is
 /// coven's, as `coven_upload_phases` gives it, read once. The first that
-/// holds names the line: `paused` while the person paused uploads or sync
-/// isn't running; nothing while a file is being sent; `offline` while coven
+/// holds names the wait: `paused` while the person paused uploads;
+/// `sync_stopped` while sync isn't running; nothing while a file is being
+/// sent; `offline` while coven
 /// says the device has no usable network; `metered` while a file waits for
 /// an unmetered network; `retrying` while a file waits for its retry or a
 /// provider's cooldown to end. NULL when nothing holds the queue.
 pub const UPLOAD_QUEUE_HOLD: &str = "SELECT CASE \
-         WHEN pause.paused OR phases.not_syncing THEN 'paused' \
+         WHEN pause.paused THEN 'paused' \
+         WHEN phases.not_syncing THEN 'sync_stopped' \
          WHEN phases.sending THEN NULL \
          WHEN (SELECT usable FROM coven_network) IS 0 THEN 'offline' \
          WHEN phases.metered THEN 'metered' \
          WHEN phases.wait_at IS NOT NULL THEN 'retrying' \
-     END AS upload_wait, phases.wait_at AS upload_wait_at, pause.paused AS uploads_paused \
+     END AS upload_wait, phases.wait_at AS upload_wait_at \
      FROM coven_upload_pause AS pause, (SELECT MAX(wait = 'not_syncing') AS not_syncing, \
              MAX(phase = 'uploading') AS sending, \
              MAX(wait = 'metered') AS metered, \
@@ -86,7 +87,8 @@ pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<Upload
         return Ok(None);
     };
     Ok(Some(match wait.as_str() {
-        "paused" => UploadQueueWait::Paused,
+        "paused" => UploadQueueWait::Paused { by: PausedBy::Person },
+        "sync_stopped" => UploadQueueWait::Paused { by: PausedBy::SyncStopped },
         "offline" => UploadQueueWait::Offline,
         "metered" => UploadQueueWait::Metered,
         "retrying" => UploadQueueWait::Retrying { at_ms: row.get("upload_wait_at")? },

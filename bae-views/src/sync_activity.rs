@@ -58,12 +58,9 @@ impl TransferBatch {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueActivity {
     pub batch: TransferBatch,
-    /// What holds the upload queue back, shown in place of the count.
+    /// What holds the upload queue back, shown in place of the count. The
+    /// line ends in Resume, not Pause, while the person paused the queue.
     pub wait: Option<bae_records::UploadQueueWait>,
-    /// The person paused the upload queue: its line ends in Resume, not
-    /// Pause. `wait` reads Paused then too, and also while sync isn't
-    /// running, which Resume doesn't change.
-    pub paused: bool,
 }
 
 /// The Pinning or the Moving to this device line: the releases queued as that kind
@@ -88,14 +85,13 @@ impl DownloadQueueActivity {
 }
 
 /// What the activity reads of the upload queue in one query: the Uploading
-/// line's batch, how many files this process is sending now, what holds the
-/// queue back, and whether the person paused it.
+/// line's batch, how many files this process is sending now, and what holds
+/// the queue back.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueCounts {
     pub batch: TransferBatch,
     pub sending: u32,
     pub wait: Option<bae_records::UploadQueueWait>,
-    pub paused: bool,
 }
 
 /// What the activity reads of the download queue: the Pinning and Making
@@ -122,11 +118,10 @@ impl SyncActivity {
             failure: status.failure(),
             syncing: status.syncing(),
             moving: uploads.sending > 0 || downloads.queue.total.active > 0,
-            uploads: uploads.batch.holding().map(|batch| UploadQueueActivity {
-                batch,
-                wait: uploads.wait.clone(),
-                paused: uploads.paused,
-            }),
+            uploads: uploads
+                .batch
+                .holding()
+                .map(|batch| UploadQueueActivity { batch, wait: uploads.wait.clone() }),
             pins: download_line(downloads.pins),
             moving_to_this_device: download_line(downloads.moving_to_this_device),
         }
@@ -165,7 +160,7 @@ fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae
 pub(super) const SQL: &str = include_str!("sync_activity.sql");
 
 /// The Uploading line's batch, how many files this process is sending now,
-/// what holds the queue back, and whether the person paused it. The bytes the files move are not read, so
+/// and what holds the queue back. The bytes the files move are not read, so
 /// a confirmed part reruns nothing.
 fn upload_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
@@ -177,7 +172,7 @@ fn upload_queue_counts_on(
                   JOIN release_storage AS storage ON storage.release_id = batch.release_id \
                   WHERE storage.stored = 1 AND storage.queued_count = 0) AS batch_done, \
                  (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
-                 hold.upload_wait, hold.upload_wait_at, hold.uploads_paused \
+                 hold.upload_wait, hold.upload_wait_at \
              FROM ({UPLOAD_QUEUE_HOLD}) AS hold"
         ),
         [],
@@ -186,7 +181,6 @@ fn upload_queue_counts_on(
                 batch: transfer_batch_in_row(row)?,
                 sending: bae_store::read::count_column(row, "uploads_sending")?,
                 wait: upload_queue_wait_in_row(row)?,
-                paused: row.get("uploads_paused")?,
             })
         },
     )?)
