@@ -78273,175 +78273,175 @@
         }
       }
     },
-    "Storage…" : {
+    "Manage storage…" : {
       "comment" : "Album detail menu: open the storage management sheet",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التخزين…"
+            "value" : "إدارة التخزين…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Хранилище…"
+            "value" : "Управление на хранилището…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Úložiště…"
+            "value" : "Spravovat úložiště…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring…"
+            "value" : "Administrer lagring…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Storage…"
+            "value" : "Manage storage…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Speicher …"
+            "value" : "Speicher verwalten …"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αποθηκευτικός χώρος…"
+            "value" : "Διαχείριση αποθηκευτικού χώρου…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Almacenamiento…"
+            "value" : "Administrar almacenamiento…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tallennustila…"
+            "value" : "Hallitse tallennustilaa…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stockage…"
+            "value" : "Gérer le stockage…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אחסון…"
+            "value" : "ניהול אחסון…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pohrana…"
+            "value" : "Upravljaj pohranom…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tárhely…"
+            "value" : "Tárhely kezelése…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archiviazione…"
+            "value" : "Gestisci archiviazione…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ストレージ…"
+            "value" : "ストレージを管理…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "저장소…"
+            "value" : "저장소 관리…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring…"
+            "value" : "Administrer lagring…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opslag…"
+            "value" : "Opslag beheren…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pamięć masowa…"
+            "value" : "Zarządzaj pamięcią masową…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Armazenamento…"
+            "value" : "Gerenciar armazenamento…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Armazenamento…"
+            "value" : "Gerir armazenamento…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stocare…"
+            "value" : "Gestionează stocarea…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Úložisko…"
+            "value" : "Spravovať úložisko…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lagring…"
+            "value" : "Hantera lagring…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Depolama…"
+            "value" : "Depolamayı yönet…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сховище…"
+            "value" : "Керувати сховищем…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "存储…"
+            "value" : "管理存储…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "儲存空間…"
+            "value" : "管理儲存空間…"
           }
         }
       }

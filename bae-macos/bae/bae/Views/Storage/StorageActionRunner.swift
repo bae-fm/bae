@@ -9,7 +9,7 @@ import SwiftUI
 /// computed per release (plus the cancel a transitioning release offers);
 /// this type performs the chosen transition for every targeted release,
 /// reusing the same `ReleaseEditor` / `Sync` service calls the album-detail
-/// "Storage…" sheet uses. Errors surface through `UiStore` (shown by the
+/// "Manage storage…" sheet uses. Errors surface through `UiStore` (shown by the
 /// Storage Manager window's alert); subscribed rows and outbox values carry
 /// transition results.
 ///

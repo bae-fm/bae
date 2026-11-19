@@ -3,7 +3,7 @@ import Foundation
 
 extension BridgeReleaseStorageAction {
     /// User-facing label for the action. Shared by the album-detail
-    /// "Storage…" sheet and the Storage Manager row context menu so both
+    /// "Manage storage…" sheet and the Storage Manager row context menu so both
     /// sites read the same wording.
     var label: String {
         switch self {

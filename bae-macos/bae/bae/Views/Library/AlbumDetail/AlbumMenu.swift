@@ -29,7 +29,7 @@ struct AlbumMenu: MacMenuPart {
         MacMenuItem("Add to queue", action: onAddToQueue)
         MacMenuDivider()
         MacMenuItem("Edit…", action: onEdit)
-        MacMenuItem("Storage…", action: onOpenStorage)
+        MacMenuItem("Manage storage…", action: onOpenStorage)
         MacMenuItem("Export…", action: onExport)
         MacMenuItem("Save as…", action: onSaveAs)
         if offersSetAsPrimary {

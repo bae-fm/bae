@@ -27,7 +27,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     public let storageState: BridgeReleaseStorageState
     /// Storage transitions the user can take right now, pre-computed by core
     /// from the release's state and whether the library syncs. The album-detail
-    /// "Storage…" sheet and the Storage Manager row context menu render these;
+    /// "Manage storage…" sheet and the Storage Manager row context menu render these;
     /// neither re-derives availability.
     public let storageActions: [BridgeReleaseStorageAction]
     public let fileCount: Int64
