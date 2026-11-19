@@ -32,8 +32,10 @@ struct AlbumGridHoldScrollTests {
             .detail,
             as: detail,
             columnCount: columnCount,
-            frame: CGRect(x: 0, y: minY, width: 200, height: 500),
-            contentTop: 6000 + minY
+            placed: AlbumGridPlacedCell(
+                frame: CGRect(x: 0, y: minY, width: 200, height: 500),
+                contentTop: 6000 + minY
+            )
         )
     }
 
@@ -149,8 +151,10 @@ struct AlbumGridHoldScrollTests {
             .detail,
             as: detail,
             columnCount: 3,
-            frame: CGRect(x: 0, y: 0, width: 200, height: 500),
-            contentTop: 6120
+            placed: AlbumGridPlacedCell(
+                frame: CGRect(x: 0, y: 0, width: 200, height: 500),
+                contentTop: 6120
+            )
         )
         #expect(viewport.scrollBackingHeldSlot(columnCount: 3) == nil)
         place(120, in: viewport)

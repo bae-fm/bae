@@ -302,13 +302,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
 /// measures.
 private let albumGridContentSpace = "albumGridContent"
 
-/// Where a cell is laid out: its frame in the visible area, and its top in
-/// the grid's content, where a scroll to an offset measures.
-private struct PlacedCell: Equatable {
-    let frame: CGRect
-    let contentTop: CGFloat
-}
-
 /// The grid's height, its row height and its columns, which size the list's
 /// window.
 private struct GridScreen: Equatable {
@@ -505,8 +498,8 @@ extension AlbumGridView {
         columnCount: Int
     ) -> some View {
         view
-            .onGeometryChange(for: PlacedCell.self) { geometry in
-                PlacedCell(
+            .onGeometryChange(for: AlbumGridPlacedCell.self) { geometry in
+                AlbumGridPlacedCell(
                     frame: geometry.frame(in: .scrollView),
                     contentTop:
                         geometry.frame(
@@ -519,8 +512,7 @@ extension AlbumGridView {
                     cell,
                     as: slot,
                     columnCount: columnCount,
-                    frame: placed.frame,
-                    contentTop: placed.contentTop
+                    placed: placed
                 )
                 if viewport.held == slot {
                     keepHeldSlotOnTop(columnCount: columnCount)

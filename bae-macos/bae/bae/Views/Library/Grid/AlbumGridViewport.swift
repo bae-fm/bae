@@ -36,6 +36,14 @@ struct AlbumGridHold: Equatable {
     let reason: Reason
 }
 
+/// Where a cell is laid out: its frame in the visible area, and its top in
+/// the grid's content, where a scroll to an offset measures. One layout gives
+/// both.
+struct AlbumGridPlacedCell: Equatable {
+    let frame: CGRect
+    let contentTop: CGFloat
+}
+
 /// The held slot to scroll back on top: what holds it, and its top in the
 /// content as its latest layout gave it, nil while it is not laid out.
 struct AlbumGridHeldSlot: Equatable {
@@ -92,12 +100,10 @@ final class AlbumGridViewport {
         let columnCount: Int
     }
 
-    /// Where a shown cell is laid out: the slot it shows, its frame in the
-    /// visible area and its top in the content.
+    /// A shown cell: the slot it shows, and where it is laid out.
     private struct Shown {
         let slot: AlbumGridSlot
-        let frame: CGRect
-        let contentTop: CGFloat
+        let placed: AlbumGridPlacedCell
     }
 
     /// Each shown cell, by the column count it was laid out at, so a layout
@@ -166,13 +172,11 @@ final class AlbumGridViewport {
         _ cell: AlbumGridCell.Identity,
         as slot: AlbumGridSlot,
         columnCount: Int,
-        frame: CGRect,
-        contentTop: CGFloat
+        placed: AlbumGridPlacedCell
     ) {
         frames[Placement(cell: cell, columnCount: columnCount)] = Shown(
             slot: slot,
-            frame: frame,
-            contentTop: contentTop
+            placed: placed
         )
     }
 
@@ -289,7 +293,7 @@ final class AlbumGridViewport {
         let placed = frames.first {
             $0.key.columnCount == columnCount && $0.value.slot == slot
         }?
-        .value
+        .value.placed
         let standing: HoldStanding =
             if hold.reason == .reveal, let contentTop = placed?.contentTop {
                 .contentTop(contentTop)
@@ -323,7 +327,7 @@ final class AlbumGridViewport {
     func isOnTop(_ slot: AlbumGridSlot, columnCount: Int) -> Bool {
         frames.contains { placement, shown in
             placement.columnCount == columnCount && shown.slot == slot
-                && abs(shown.frame.minY) < 0.5
+                && abs(shown.placed.frame.minY) < 0.5
         }
     }
 
@@ -332,7 +336,7 @@ final class AlbumGridViewport {
     private func sitsOnTop(_ cell: AlbumGridCell.Identity) -> Bool {
         guard
             let frame = frames.first(where: { $0.key.cell == cell })?.value
-                .frame
+                .placed.frame
         else { return false }
         let target = (scroll.offset + frame.minY).clamped(to: scroll.offsets)
         return abs(target - scroll.offset) < 0.5
@@ -341,13 +345,14 @@ final class AlbumGridViewport {
     private func topSlot(columnCount: Int) -> AlbumGridSlot? {
         frames
             .filter { placement, shown in
-                placement.columnCount == columnCount && shown.frame.midY > 0
-                    && shown.frame.minY < scroll.visibleHeight
+                placement.columnCount == columnCount
+                    && shown.placed.frame.midY > 0
+                    && shown.placed.frame.minY < scroll.visibleHeight
             }
             .map(\.value)
             .min { lhs, rhs in
-                (lhs.frame.minY, lhs.frame.minX)
-                    < (rhs.frame.minY, rhs.frame.minX)
+                (lhs.placed.frame.minY, lhs.placed.frame.minX)
+                    < (rhs.placed.frame.minY, rhs.placed.frame.minX)
             }?
             .slot
     }
