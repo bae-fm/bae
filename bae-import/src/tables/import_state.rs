@@ -75,6 +75,7 @@ mod claim_rows;
 mod column_list;
 mod cover_rows;
 mod draft_store;
+mod draft_writes;
 pub(super) mod failure_rows;
 mod file_decision_rows;
 mod import_commit;
@@ -115,7 +116,6 @@ pub(crate) use import_commit::{
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
 use pane_failure_rows::load_pane_failure_on;
 pub use pane_rows::DbCandidatePaneRows;
-pub(super) use pane_rows::CANDIDATE_DRAFT;
 pub(super) use pane_rows::{load_pane_rows_on, track_json_sql, StoredTrack};
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;

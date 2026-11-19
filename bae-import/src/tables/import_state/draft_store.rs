@@ -5,13 +5,10 @@
 //! never reads the candidate as having no draft, no title or no artist on its
 //! way from one draft to the next.
 
-use super::pane_rows::{
-    edit_row_values, insert_draft_body, insert_track_rows, store_track_row, CANDIDATE_DRAFT,
-};
+use super::draft_writes::{insert_barcode_rows, insert_label_rows, store_album_artist_assignments};
+use super::pane_rows::{edit_row_values, insert_draft_body, insert_track_rows, store_track_row};
 use super::*;
-use crate::tables::draft_rows::{
-    insert_barcode_rows, insert_label_rows, store_album_artist_assignments, FORM_COLUMNS,
-};
+use crate::tables::draft_rows::FORM_COLUMNS;
 use crate::{AudioFile, CandidateDraft, CandidateTrack, MetadataAuthor, TrackArtistAssignments};
 
 /// Write `draft`, authored by `author`, over `stored`, which `stored_author`
@@ -41,18 +38,17 @@ pub(super) fn store_draft(
             "DELETE FROM import_candidate_edit_label WHERE content_hash = ?",
             params![content_hash],
         )?;
-        insert_label_rows(sql, &CANDIDATE_DRAFT, &content_hash, &draft.pressing.labels)?;
+        insert_label_rows(sql, &content_hash, &draft.pressing.labels)?;
     }
     if stored.pressing.barcodes != draft.pressing.barcodes {
         sql.execute(
             "DELETE FROM import_candidate_edit_barcode WHERE content_hash = ?",
             params![content_hash],
         )?;
-        insert_barcode_rows(sql, &CANDIDATE_DRAFT, &content_hash, &draft.pressing.barcodes)?;
+        insert_barcode_rows(sql, &content_hash, &draft.pressing.barcodes)?;
     }
     store_album_artist_assignments(
         sql,
-        &CANDIDATE_DRAFT,
         &content_hash,
         &stored.album_artist_assignments,
         &draft.album_artist_assignments,

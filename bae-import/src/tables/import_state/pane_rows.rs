@@ -11,8 +11,7 @@
 //! the draft's values and provenance, which every device's library holds.
 //!
 //! The statements that write and read labels, barcodes, artist assignments,
-//! mediums, roles and works are in `tables::draft_rows`, and
-//! [`CANDIDATE_DRAFT`] names the candidate's tables for them.
+//! mediums, roles and works are in `draft_writes` and `tables::draft_rows`.
 
 pub(super) const SQL: &str = include_str!("pane_rows.sql");
 pub(super) const VALUES_SQL: &str = values::SQL;
@@ -21,13 +20,15 @@ pub(super) const PROVENANCE_SQL: &str = provenance::SQL;
 mod provenance;
 mod values;
 
+use super::draft_writes::{
+    insert_album_artist_assignments, insert_barcode_rows, insert_draft_values, insert_label_rows,
+    insert_medium_rows, insert_track_artist_assignments, insert_track_values,
+};
 use crate::tables::draft_rows::{
     assignment_kind_column, assignments_json_sql, assignments_of, barcodes_json_sql, decoded,
-    form_row_values, insert_album_artist_assignments, insert_barcode_rows, insert_draft_values,
-    insert_label_rows, insert_medium_rows, insert_track_artist_assignments, insert_track_values,
-    labels_json_sql, mediums_json_sql, mediums_of, read_label_rows, release_roles_json_sql,
-    roles_of, track_roles_json_sql, track_works_json_sql, work_parts_json_sql, works_json_sql,
-    works_of, DraftTables, StoredAssignment, StoredRole, FORM_COLUMNS,
+    form_row_values, labels_json_sql, mediums_json_sql, mediums_of, read_label_rows,
+    release_roles_json_sql, roles_of, track_roles_json_sql, track_works_json_sql,
+    work_parts_json_sql, works_json_sql, works_of, StoredAssignment, StoredRole, FORM_COLUMNS,
 };
 
 pub(crate) use provenance::{
@@ -40,22 +41,6 @@ use crate::{
     RawPressingEdit, RawTrackEdit, TrackArtistAssignments,
 };
 use rusqlite::ToSql;
-
-/// The tables of a candidate's draft.
-pub(crate) const CANDIDATE_DRAFT: DraftTables = DraftTables {
-    key: "content_hash",
-    label: "import_candidate_edit_label",
-    barcode: "import_candidate_edit_barcode",
-    album_artist: "import_candidate_album_artist_assignment",
-    track_artist: "import_candidate_track_artist_assignment",
-    medium: "import_candidate_medium",
-    track_role: "import_candidate_track_role",
-    release_role: "import_candidate_release_role",
-    work: "import_candidate_work",
-    work_credit: "import_candidate_work_credit",
-    work_part: "import_candidate_work_part",
-    track_work: "import_candidate_track_work",
-};
 
 const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, medium, side, track_number, stated_length_ms, \
@@ -105,9 +90,9 @@ pub(super) fn insert_draft(
         rusqlite::params_from_iter(edit_row_values(content_hash, draft, author)),
     )?;
     let key: &dyn ToSql = &content_hash;
-    insert_label_rows(sql, &CANDIDATE_DRAFT, key, &draft.pressing.labels)?;
-    insert_barcode_rows(sql, &CANDIDATE_DRAFT, key, &draft.pressing.barcodes)?;
-    insert_album_artist_assignments(sql, &CANDIDATE_DRAFT, key, &draft.album_artist_assignments)?;
+    insert_label_rows(sql, key, &draft.pressing.labels)?;
+    insert_barcode_rows(sql, key, &draft.pressing.barcodes)?;
+    insert_album_artist_assignments(sql, key, &draft.album_artist_assignments)?;
     insert_draft_body(sql, content_hash, draft)
 }
 
@@ -138,9 +123,9 @@ pub(super) fn insert_draft_body(
     draft: &CandidateDraft,
 ) -> Result<(), DbError> {
     let key: &dyn ToSql = &content_hash;
-    insert_medium_rows(sql, &CANDIDATE_DRAFT, key, &draft.mediums)?;
+    insert_medium_rows(sql, key, &draft.mediums)?;
     // The works first: a track names the works it performs.
-    insert_draft_values(sql, &CANDIDATE_DRAFT, key, &draft.works, &draft.release_roles)?;
+    insert_draft_values(sql, key, &draft.works, &draft.release_roles)?;
     for (position, track) in draft.tracks.iter().enumerate() {
         insert_track(sql, content_hash, position, track)?;
     }
@@ -211,9 +196,9 @@ pub(super) fn insert_track_rows(
 ) -> Result<(), DbError> {
     let key: &dyn ToSql = &content_hash;
     if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
-        insert_track_artist_assignments(sql, &CANDIDATE_DRAFT, key, &track.edit.id, assignments)?;
+        insert_track_artist_assignments(sql, key, &track.edit.id, assignments)?;
     }
-    insert_track_values(sql, &CANDIDATE_DRAFT, key, &track.edit.id, &track.roles, &track.works)
+    insert_track_values(sql, key, &track.edit.id, &track.roles, &track.works)
 }
 
 fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i64>) {
@@ -317,7 +302,7 @@ pub(crate) fn load_drafts_on(
     let filter = only.filter("edit.content_hash");
     let clause = &filter.clause;
     let album_assignments = assignments_json_sql(
-        CANDIDATE_DRAFT.album_artist,
+        "import_candidate_album_artist_assignment",
         "assignment.content_hash = edit.content_hash",
     );
     let rows = sql.query(
@@ -329,13 +314,13 @@ pub(crate) fn load_drafts_on(
                      WHERE track.content_hash = edit.content_hash) AS tracks, \
                     {release_roles} AS release_roles, {works} AS works, {parts} AS parts \
              FROM import_candidate_edit AS edit {clause}",
-            labels = labels_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
-            barcodes = barcodes_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
-            mediums = mediums_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            labels = labels_json_sql("edit.content_hash"),
+            barcodes = barcodes_json_sql("edit.content_hash"),
+            mediums = mediums_json_sql("edit.content_hash"),
             track = track_json_sql(),
-            release_roles = release_roles_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
-            works = works_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
-            parts = work_parts_json_sql(&CANDIDATE_DRAFT, "edit.content_hash"),
+            release_roles = release_roles_json_sql("edit.content_hash"),
+            works = works_json_sql("edit.content_hash"),
+            parts = work_parts_json_sql("edit.content_hash"),
         ),
         filter.params().as_slice(),
         |row| {
@@ -379,11 +364,11 @@ pub(crate) fn track_json_sql() -> String {
              'assignments', json({assignments}), \
              'roles', json({roles}), 'works', json({works}))",
         assignments = assignments_json_sql(
-            CANDIDATE_DRAFT.track_artist,
+            "import_candidate_track_artist_assignment",
             "assignment.content_hash = track.content_hash AND assignment.track_id = track.track_id",
         ),
-        roles = track_roles_json_sql(&CANDIDATE_DRAFT, "track.content_hash", "track.track_id"),
-        works = track_works_json_sql(&CANDIDATE_DRAFT, "track.content_hash", "track.track_id"),
+        roles = track_roles_json_sql("track.content_hash", "track.track_id"),
+        works = track_works_json_sql("track.content_hash", "track.track_id"),
     )
 }
 

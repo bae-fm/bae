@@ -1,15 +1,13 @@
 //! The form's values a draft holds beside its own row (its label and
 //! barcode rows, its album and track artist assignments) and its mediums, as
-//! the statements that write and read them in the [`DraftTables`] of the
-//! owner that holds them.
+//! the statements that read them from a candidate's tables, the columns a
+//! candidate's writes (`import_state::draft_writes`) store an assignment in,
+//! and the JSON a release editor's form binds its artists as.
 
-use super::DraftTables;
 use crate::{ArtistAssignment, Credited, RawLabelEdit, RawReleaseEdit, TrackArtistAssignments};
 use bae_catalogs::credits::ArtistCredit;
 use bae_records::ExistingArtist;
 use bae_store::DbError;
-use coven::CovenWrite;
-use rusqlite::{params, ToSql};
 
 /// The columns an owner's row holds the form's album-level fields in.
 pub(crate) const FORM_COLUMNS: &str =
@@ -35,82 +33,6 @@ pub(crate) fn form_row_values(form: &RawReleaseEdit) -> Vec<rusqlite::types::Val
     ]
 }
 
-/// Insert the draft's label rows, as the form holds them, where the draft
-/// holds none.
-pub(crate) fn insert_label_rows(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    labels: &[RawLabelEdit],
-) -> Result<(), DbError> {
-    for (position, label) in labels.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} \
-                     ({key}, position, name, catalog_number, \
-                      musicbrainz_label_id, discogs_label_id) VALUES (?, ?, ?, ?, ?, ?)",
-                table = tables.label,
-                key = tables.key,
-            ),
-            params![
-                key,
-                position as i64,
-                label.name,
-                label.catalog_number,
-                label.musicbrainz_label_id,
-                label.discogs_label_id
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-/// Insert the draft's barcode rows, as the form holds them, where the draft
-/// holds none.
-pub(crate) fn insert_barcode_rows(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    barcodes: &[String],
-) -> Result<(), DbError> {
-    for (position, barcode) in barcodes.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} ({key}, position, barcode) VALUES (?, ?, ?)",
-                table = tables.barcode,
-                key = tables.key,
-            ),
-            params![key, position as i64, barcode],
-        )?;
-    }
-    Ok(())
-}
-
-/// Insert the draft's mediums, in order, where the draft holds none.
-pub(crate) fn insert_medium_rows(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    mediums: &[bae_types::mediums::ReleaseMedium],
-) -> Result<(), DbError> {
-    for (index, medium) in mediums.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} ({key}, position, medium, side_count) VALUES (?, ?, ?, ?)",
-                table = tables.medium,
-                key = tables.key,
-            ),
-            params![
-                key,
-                bae_types::mediums::medium_position(index),
-                medium.carrier.map(bae_types::pressing::Medium::key),
-                medium.sides,
-            ],
-        )?;
-    }
-    Ok(())
-}
-
 pub(crate) fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
     match assignments {
         TrackArtistAssignments::AlbumArtists => "album_artists",
@@ -120,38 +42,32 @@ pub(crate) fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'
 
 /// The label rows of the owner `owner` (an SQL expression for its key), as
 /// a JSON array in their order, which [`read_label_rows`] reads.
-pub(crate) fn labels_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn labels_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'name', label.name, 'catalog_number', label.catalog_number, \
              'musicbrainz_label_id', label.musicbrainz_label_id, \
              'discogs_label_id', label.discogs_label_id) \
              ORDER BY label.position) \
-         FROM {table} AS label WHERE label.{key} = {owner})",
-        table = tables.label,
-        key = tables.key,
+         FROM import_candidate_edit_label AS label WHERE label.content_hash = {owner})",
     )
 }
 
 /// The barcode rows of the owner `owner`, as a JSON array in their order.
-pub(crate) fn barcodes_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn barcodes_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array(barcode.barcode ORDER BY barcode.position) \
-         FROM {table} AS barcode WHERE barcode.{key} = {owner})",
-        table = tables.barcode,
-        key = tables.key,
+         FROM import_candidate_edit_barcode AS barcode WHERE barcode.content_hash = {owner})",
     )
 }
 
 /// The mediums of the owner `owner`, as a JSON array in their order, which
 /// [`mediums_of`] reads.
-pub(crate) fn mediums_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn mediums_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'carrier', medium.medium, 'sides', medium.side_count) ORDER BY medium.position) \
-         FROM {table} AS medium WHERE medium.{key} = {owner})",
-        table = tables.medium,
-        key = tables.key,
+         FROM import_candidate_medium AS medium WHERE medium.content_hash = {owner})",
     )
 }
 
@@ -202,19 +118,19 @@ pub(crate) fn mediums_of(json: &str) -> Result<Vec<bae_types::mediums::ReleaseMe
         .collect()
 }
 
-struct AssignmentColumns<'a> {
-    kind: &'static str,
-    artist_id: Option<&'a str>,
-    name: Option<&'a str>,
-    sort_name: Option<&'a str>,
-    musicbrainz_id: Option<&'a str>,
-    discogs_id: Option<&'a str>,
-    credit_key: Option<&'a str>,
-    credited_as: Option<&'a str>,
-    join_phrase: Option<&'a str>,
+pub(crate) struct AssignmentColumns<'a> {
+    pub(crate) kind: &'static str,
+    pub(crate) artist_id: Option<&'a str>,
+    pub(crate) name: Option<&'a str>,
+    pub(crate) sort_name: Option<&'a str>,
+    pub(crate) musicbrainz_id: Option<&'a str>,
+    pub(crate) discogs_id: Option<&'a str>,
+    pub(crate) credit_key: Option<&'a str>,
+    pub(crate) credited_as: Option<&'a str>,
+    pub(crate) join_phrase: Option<&'a str>,
 }
 
-fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
+pub(crate) fn assignment_columns(credited: &Credited) -> AssignmentColumns<'_> {
     let join_phrase = credited.join.as_deref();
     match &credited.artist {
         ArtistAssignment::Picked { artist, credit_name } => AssignmentColumns {
@@ -342,126 +258,6 @@ impl StoredAssignment {
         };
         Ok(Credited { artist, join: self.join_phrase })
     }
-}
-
-pub(crate) fn insert_album_artist_assignments(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        store_album_artist_assignment(sql, tables, key, position, assignment)?;
-    }
-    Ok(())
-}
-
-/// Rewrite in place each album artist that differs from the one stored at
-/// its position, and delete the stored ones past the last.
-pub(crate) fn store_album_artist_assignments(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    stored: &[Credited],
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        if stored.get(position) != Some(assignment) {
-            store_album_artist_assignment(sql, tables, key, position, assignment)?;
-        }
-    }
-    if stored.len() > assignments.len() {
-        sql.execute(
-            &format!(
-                "DELETE FROM {table} WHERE {key} = ? AND position >= ?",
-                table = tables.album_artist,
-                key = tables.key,
-            ),
-            params![key, assignments.len() as i64],
-        )?;
-    }
-    Ok(())
-}
-
-/// Make the album artist at `position` `assignment`, in place when one is
-/// there.
-fn store_album_artist_assignment(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    position: usize,
-    assignment: &Credited,
-) -> Result<(), DbError> {
-    let columns = assignment_columns(assignment);
-    sql.execute(
-        &format!(
-            "INSERT INTO {table} \
-             ({key}, position, assignment_kind, artist_id, name, sort_name, \
-              musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, join_phrase) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             ON CONFLICT ({key}, position) DO UPDATE SET \
-                 assignment_kind = excluded.assignment_kind, artist_id = excluded.artist_id, \
-                 name = excluded.name, sort_name = excluded.sort_name, \
-                 musicbrainz_artist_id = excluded.musicbrainz_artist_id, \
-                 discogs_artist_id = excluded.discogs_artist_id, \
-                 credit_key = excluded.credit_key, credited_as = excluded.credited_as, \
-                 join_phrase = excluded.join_phrase",
-            table = tables.album_artist,
-            key = tables.key,
-        ),
-        params![
-            key,
-            position as i64,
-            columns.kind,
-            columns.artist_id,
-            columns.name,
-            columns.sort_name,
-            columns.musicbrainz_id,
-            columns.discogs_id,
-            columns.credit_key,
-            columns.credited_as,
-            columns.join_phrase
-        ],
-    )?;
-    Ok(())
-}
-
-pub(crate) fn insert_track_artist_assignments(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    track_id: &str,
-    assignments: &[Credited],
-) -> Result<(), DbError> {
-    for (position, assignment) in assignments.iter().enumerate() {
-        let columns = assignment_columns(assignment);
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} \
-                 ({key}, track_id, position, assignment_kind, artist_id, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id, credit_key, credited_as, \
-                  join_phrase) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                table = tables.track_artist,
-                key = tables.key,
-            ),
-            params![
-                key,
-                track_id,
-                position as i64,
-                columns.kind,
-                columns.artist_id,
-                columns.name,
-                columns.sort_name,
-                columns.musicbrainz_id,
-                columns.discogs_id,
-                columns.credit_key,
-                columns.credited_as,
-                columns.join_phrase
-            ],
-        )?;
-    }
-    Ok(())
 }
 
 /// One artist assignment of a form that no table holds, as a statement

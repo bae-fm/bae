@@ -1,167 +1,20 @@
 //! The draft's values besides its editable fields, as the statements that
-//! write and read them in the [`DraftTables`] of the owner that holds them:
-//! the roles the source credits on each track and on the release, and the
-//! works the tracks perform with the works they nest among.
+//! read them from a candidate's tables: the roles the source credits on each
+//! track and on the release, and the works the tracks perform with the works
+//! they nest among. `import_state::draft_writes` writes them.
 
-use super::DraftTables;
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::ArtistCredit;
 use bae_catalogs::credits::CreditedRole;
 use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
 use bae_store::DbError;
 use bae_types::credit_role::CreditedAs;
-use coven::CovenWrite;
-use rusqlite::params;
-use rusqlite::ToSql;
 use std::str::FromStr;
-
-/// Write a draft's works and the roles on its release, in `tables` under
-/// `key`. The caller has already written the owner's row.
-pub(crate) fn insert_draft_values(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    works: &WorkGraph,
-    release_roles: &[CreditedRole],
-) -> Result<(), DbError> {
-    let k = tables.key;
-    for (position, work) in works.works.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} \
-                 ({k}, musicbrainz_work_id, position, title, disambiguation, work_type) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                table = tables.work,
-            ),
-            params![
-                key,
-                work.musicbrainz_work_id,
-                position as i64,
-                work.title,
-                work.disambiguation,
-                work.work_type,
-            ],
-        )?;
-        for (position, credit) in work.credits.iter().enumerate() {
-            let role = credit.role.columns();
-            sql.execute(
-                &format!(
-                    "INSERT INTO {table} \
-                     ({k}, musicbrainz_work_id, position, name, sort_name, \
-                      musicbrainz_artist_id, discogs_artist_id, credited_as, role, role_words, \
-                      qualifiers) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    table = tables.work_credit,
-                ),
-                params![
-                    key,
-                    work.musicbrainz_work_id,
-                    position as i64,
-                    credit.artist.name,
-                    credit.artist.sort_name,
-                    credit.artist.musicbrainz_artist_id,
-                    credit.artist.discogs_artist_id,
-                    credit.artist.credited_as,
-                    role.role,
-                    role.role_words,
-                    role.qualifiers,
-                ],
-            )?;
-        }
-    }
-    for (position, part) in works.parts.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} ({k}, position, parent_work_id, child_work_id) \
-                 VALUES (?, ?, ?, ?)",
-                table = tables.work_part,
-            ),
-            params![key, position as i64, part.parent, part.child],
-        )?;
-    }
-    for (position, role) in release_roles.iter().enumerate() {
-        let columns = role.role.columns();
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} \
-                 ({k}, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                table = tables.release_role,
-            ),
-            params![
-                key,
-                position as i64,
-                role.artist.name,
-                role.artist.sort_name,
-                role.artist.musicbrainz_artist_id,
-                role.artist.discogs_artist_id,
-                role.artist.credited_as,
-                role.source.as_str(),
-                columns.role,
-                columns.role_words,
-                columns.qualifiers,
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-/// Write the rows keyed by the draft track `track_id`: the roles the source
-/// credits on it and the works it performs, in `tables` under `key`. The
-/// caller has already written the track row and the works.
-pub(crate) fn insert_track_values(
-    sql: &CovenWrite<'_>,
-    tables: &DraftTables,
-    key: &dyn ToSql,
-    track_id: &str,
-    roles: &[CreditedRole],
-    works: &[String],
-) -> Result<(), DbError> {
-    let k = tables.key;
-    for (position, role) in roles.iter().enumerate() {
-        let columns = role.role.columns();
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} \
-                 ({k}, track_id, position, name, sort_name, musicbrainz_artist_id, \
-                  discogs_artist_id, credited_as, source, role, role_words, qualifiers) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                table = tables.track_role,
-            ),
-            params![
-                key,
-                track_id,
-                position as i64,
-                role.artist.name,
-                role.artist.sort_name,
-                role.artist.musicbrainz_artist_id,
-                role.artist.discogs_artist_id,
-                role.artist.credited_as,
-                role.source.as_str(),
-                columns.role,
-                columns.role_words,
-                columns.qualifiers,
-            ],
-        )?;
-    }
-    for (position, work) in works.iter().enumerate() {
-        sql.execute(
-            &format!(
-                "INSERT INTO {table} ({k}, track_id, position, musicbrainz_work_id) \
-                 VALUES (?, ?, ?, ?)",
-                table = tables.track_work,
-            ),
-            params![key, track_id, position as i64, work],
-        )?;
-    }
-    Ok(())
-}
 
 /// The works of the owner `owner` (an SQL expression for its key), each with
 /// its credits, as a JSON array in the draft's order, which [`works_of`]
 /// decodes.
-pub(crate) fn works_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn works_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
@@ -173,26 +26,21 @@ pub(crate) fn works_json_sql(tables: &DraftTables, owner: &str) -> String {
                      'credited_as', credit.credited_as, 'role', credit.role, \
                      'role_words', credit.role_words, 'qualifiers', credit.qualifiers) \
                      ORDER BY credit.position) \
-                 FROM {credit_table} AS credit \
-                 WHERE credit.{key} = work.{key} \
+                 FROM import_candidate_work_credit AS credit \
+                 WHERE credit.content_hash = work.content_hash \
                    AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
              ORDER BY work.position) \
-         FROM {work_table} AS work WHERE work.{key} = {owner})",
-        credit_table = tables.work_credit,
-        work_table = tables.work,
-        key = tables.key,
+         FROM import_candidate_work AS work WHERE work.content_hash = {owner})",
     )
 }
 
 /// Which of the owner `owner`'s works is part of which, as a JSON array in
 /// the order the source relates them.
-pub(crate) fn work_parts_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn work_parts_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
-         FROM {table} AS part WHERE part.{key} = {owner})",
-        table = tables.work_part,
-        key = tables.key,
+         FROM import_candidate_work_part AS part WHERE part.content_hash = {owner})",
     )
 }
 
@@ -207,36 +55,30 @@ const ROLE_JSON: &str = "json_object( \
 
 /// The roles the source credits on the owner `owner`'s release, as a JSON
 /// array in its order, which [`roles_of`] decodes.
-pub(crate) fn release_roles_json_sql(tables: &DraftTables, owner: &str) -> String {
+pub(crate) fn release_roles_json_sql(owner: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM {table} AS role WHERE role.{key} = {owner})",
-        table = tables.release_role,
-        key = tables.key,
+         FROM import_candidate_release_role AS role WHERE role.content_hash = {owner})",
     )
 }
 
 /// The roles the source credits on the owner `owner`'s track `track` (SQL
 /// expressions for their keys), as a JSON array in its order, which
 /// [`roles_of`] decodes.
-pub(crate) fn track_roles_json_sql(tables: &DraftTables, owner: &str, track: &str) -> String {
+pub(crate) fn track_roles_json_sql(owner: &str, track: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM {table} AS role WHERE role.{key} = {owner} AND role.track_id = {track})",
-        table = tables.track_role,
-        key = tables.key,
+         FROM import_candidate_track_role AS role WHERE role.content_hash = {owner} AND role.track_id = {track})",
     )
 }
 
 /// The works the owner `owner`'s track `track` performs, as a JSON array of
 /// their ids in its order.
-pub(crate) fn track_works_json_sql(tables: &DraftTables, owner: &str, track: &str) -> String {
+pub(crate) fn track_works_json_sql(owner: &str, track: &str) -> String {
     format!(
         "(SELECT json_group_array(performed.musicbrainz_work_id ORDER BY performed.position) \
-         FROM {table} AS performed \
-         WHERE performed.{key} = {owner} AND performed.track_id = {track})",
-        table = tables.track_work,
-        key = tables.key,
+         FROM import_candidate_track_work AS performed \
+         WHERE performed.content_hash = {owner} AND performed.track_id = {track})",
     )
 }
 

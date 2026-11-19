@@ -92,24 +92,20 @@ impl CreditSource<'_> {
     fn raw(self) -> String {
         match self {
             Self::Candidate(candidate) => {
-                let tables = &crate::tables::import_state::CANDIDATE_DRAFT;
                 format!(
                     "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, \
                             a.position AS position, a.assignment_kind, a.credited_as, a.name, \
                             a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
-                     FROM {album_artist} AS a \
-                     WHERE a.{key} = {owner} \
+                     FROM import_candidate_album_artist_assignment AS a \
+                     WHERE a.content_hash = {owner} \
                      UNION ALL \
                      SELECT 1, t.track_id, t.position, a.position, a.assignment_kind, \
                             a.credited_as, a.name, a.sort_name, a.musicbrainz_artist_id, \
                             a.discogs_artist_id \
-                     FROM {track_artist} AS a \
+                     FROM import_candidate_track_artist_assignment AS a \
                      JOIN import_candidate_track AS t \
-                         ON t.{key} = a.{key} AND t.track_id = a.track_id \
-                     WHERE a.{key} = {owner} AND t.artist_assignment_kind = 'explicit'",
-                    album_artist = tables.album_artist,
-                    track_artist = tables.track_artist,
-                    key = tables.key,
+                         ON t.content_hash = a.content_hash AND t.track_id = a.track_id \
+                     WHERE a.content_hash = {owner} AND t.artist_assignment_kind = 'explicit'",
                     owner = candidate.hash_sql(),
                 )
             }
