@@ -78,16 +78,15 @@ struct ImportMappingSourceCell: View {
         return { actions.openDocument(file.name, file.fileId) }
     }
 
-    /// One track sheet entry's title and play button; its number is in the
-    /// `#` column.
+    /// One track sheet entry's play button and where it starts in the image
+    /// its sheet's caption names; its number is in the `#` column and its
+    /// title in the title column.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
         HStack(spacing: ThemeSpace.compact) {
             if let previewTarget = source.previewTarget {
                 auditionButton(target: previewTarget)
             }
-            Text(entry.title ?? "")
-                .themeText(.body)
-                .cutLine(.prose)
+            TrackStartText(start: entry.start)
             Spacer(minLength: 0)
         }
     }

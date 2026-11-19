@@ -137,6 +137,7 @@ extension PreviewData {
         BridgeReleaseEditTrackContext(
             trackId: trackId,
             source: source,
+            startClock: BridgeDurationClock.length(ms: 0),
             durationClock: BridgeDurationClock.length(
                 ms: UInt64(180_000 + index * 12_000)
             ),

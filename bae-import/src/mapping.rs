@@ -211,7 +211,9 @@ pub struct MappingEntry {
     pub index: u32,
     /// The number the sheet prints for this entry.
     pub number: u32,
-    pub title: Option<String>,
+    /// Where the entry starts in its container, in milliseconds: its INDEX
+    /// 01, as the sheet states it.
+    pub start_ms: u64,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
     /// The exact window of the container that auditioning this entry plays.

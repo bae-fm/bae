@@ -95,6 +95,9 @@ extension PreviewData {
                                             name: track.file,
                                             layout: .file
                                         ),
+                                        startClock: BridgeDurationClock.length(
+                                            ms: 0
+                                        ),
                                         durationClock:
                                             BridgeDurationClock.length(
                                                 ms: track.durationMs
@@ -349,7 +352,9 @@ extension PreviewData {
                             sheetId: sheet.sheetId,
                             index: UInt32(index),
                             number: UInt32(index + 1),
-                            title: entry.title,
+                            start: BridgeDurationClock.length(
+                                ms: from * 1_000 / 44_100
+                            ),
                             containerId: container.fileId,
                             previewTarget: BridgePreviewTarget(
                                 path: fakePath(container.name),

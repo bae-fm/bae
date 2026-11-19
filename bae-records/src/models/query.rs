@@ -56,11 +56,14 @@ pub struct DbReleaseEditTrack {
 }
 
 /// A track's main segment as the release editor reads it: the file it names,
-/// and that file's name and stored audio layout; `file` is `None` when no
-/// release file has that id.
+/// where in that file it starts, and that file's name and stored audio
+/// layout; `file` is `None` when no release file has that id.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditSegment {
     pub file_id: String,
+    /// Where the segment starts in its file, in milliseconds: its first
+    /// sample at the track's sample rate.
+    pub start_ms: u64,
     pub file: Option<DbReleaseEditSourceFile>,
 }
 

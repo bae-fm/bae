@@ -353,11 +353,12 @@ async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
 
-/// A bound sheet is one group row over its entries: the entries carry the
-/// sheet's own titles and timings on the left, and on the right each is the
-/// draft's track on that slice.
+/// A bound sheet is one group row over its entries: the entries carry where
+/// the sheet starts each in its image on the left, and on the right each is
+/// the draft's track on that slice, whose title is the only title the row
+/// carries.
 #[tokio::test]
-async fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
+async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("CDImage.flac"));
     fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
@@ -398,7 +399,9 @@ async fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         };
         assert_eq!(source.index, index as u32);
         assert_eq!(source.number, index as u32 + 1);
-        assert_eq!(source.title.as_deref(), Some(&*format!("Sheet Track {}", index + 1)));
+        // The sheet's INDEX 01 lines are 00:00:00, 00:00:15 and 00:00:30, in
+        // CUE frames of 1/75 second.
+        assert_eq!(source.start_ms, index as u64 * 200);
         assert_eq!(source.container_id, "CDImage.flac");
         // The first entries end at the next sheet boundary; the final entry
         // ends at the container duration already stored by the scan.

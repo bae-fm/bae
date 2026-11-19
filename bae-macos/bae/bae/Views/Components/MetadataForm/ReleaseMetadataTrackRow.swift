@@ -145,6 +145,19 @@ struct ReleaseMetadataTrackColumns {
     }
 }
 
+/// Where a track a CUE sheet carves starts in its image ("10:22"), in the
+/// source cell under the caption that names the image.
+struct TrackStartText: View {
+    let start: BridgeDurationClock
+
+    var body: some View {
+        Text(DurationClock.label(start))
+            .themeText(.body)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+    }
+}
+
 /// A track's length: the one its audio measures, then the one its source lists
 /// in the warning colour when core found them more than three seconds apart.
 struct TrackLengthText: View {

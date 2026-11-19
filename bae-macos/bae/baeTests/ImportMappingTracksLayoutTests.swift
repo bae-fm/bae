@@ -304,10 +304,7 @@ extension ImportMappingTracksLayoutTests {
                         .sheet(
                             sheet: sheet(associated: true),
                             entries: [
-                                sheetEntryMapping(
-                                    number: 1,
-                                    title: "Source Title"
-                                )
+                                sheetEntryMapping(number: 1)
                             ]
                         )
                     ]
@@ -328,20 +325,25 @@ extension ImportMappingTracksLayoutTests {
     }
 
     @MainActor
-    @Test("sheet-entry Source omits the duplicate track number")
-    func sheetEntrySourceOmitsDuplicateTrackNumber() {
-        let host = NSHostingView(
-            rootView: ImportMappingSourceCell(
-                source: sheetEntryMapping(number: 42, title: nil).source,
-                previewingTarget: nil,
-                showsFileSize: true,
-                actions: actions(recording: MappingTrackActionRecorder())
+    @Test("sheet-entry Source shows its start, not its track number")
+    func sheetEntrySourceShowsItsStartNotItsTrackNumber() {
+        func width(number: UInt32) -> CGFloat {
+            let host = NSHostingView(
+                rootView: ImportMappingSourceCell(
+                    source: sheetEntryMapping(number: number).source,
+                    previewingTarget: nil,
+                    showsFileSize: true,
+                    actions: actions(recording: MappingTrackActionRecorder())
+                )
+                .fixedSize()
             )
-            .fixedSize()
-        )
-        host.layoutSubtreeIfNeeded()
+            host.layoutSubtreeIfNeeded()
+            return host.fittingSize.width
+        }
 
-        #expect(host.fittingSize.width < 46)
+        // Entry 1 starts at 0:00 and entry 42 at 0:41: the same width in
+        // monospaced digits, which a drawn track number would change.
+        #expect(width(number: 42) == width(number: 1))
     }
 
     fileprivate var audioPath: Data { Data("/tmp/source/track.flac".utf8) }
@@ -417,15 +419,14 @@ extension ImportMappingTracksLayoutTests {
         )
     }
 
-    private func sheetEntryMapping(
-        number: UInt32,
-        title: String?
-    ) -> BridgeTrackMapping {
+    /// The sheet's entry `number`, which starts `number - 1` seconds into
+    /// its audio.
+    private func sheetEntryMapping(number: UInt32) -> BridgeTrackMapping {
         let entry = BridgeMappingEntry(
             sheetId: "descriptor.cue",
             index: number - 1,
             number: number,
-            title: title,
+            start: BridgeDurationClock.length(ms: UInt64(number - 1) * 1_000),
             containerId: longAudioName,
             previewTarget: BridgePreviewTarget(
                 path: audioPath,

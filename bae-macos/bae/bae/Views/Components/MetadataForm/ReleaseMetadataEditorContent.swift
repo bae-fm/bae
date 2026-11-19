@@ -236,7 +236,10 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             .foregroundStyle(.secondary)
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
-            if !sourceIsInCaption {
+            if sourceIsInCaption {
+                TrackStartText(start: context.startClock)
+            }
+            else {
                 let name = context.source.name
                 Text(verbatim: name)
                     .themeText(.mono)

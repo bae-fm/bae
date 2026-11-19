@@ -152,12 +152,14 @@ impl BridgeReleaseEditTrackContext {
             track_id,
             side: _,
             source,
+            start_ms,
             duration_ms,
             position_text,
         } = context;
         Self {
             track_id,
             source: BridgeReleaseEditTrackSource::from_core(source),
+            start_clock: crate::types::BridgeDurationClock::of_length(start_ms),
             duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
             position_text,
         }

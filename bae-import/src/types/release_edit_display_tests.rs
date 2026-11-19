@@ -15,6 +15,7 @@ fn context(
             name: format!("{file}.flac"),
             layout,
         },
+        start_ms: 0,
         duration_ms: 1_000,
         position_text: String::new(),
     }
@@ -134,6 +135,7 @@ fn one_track(
 fn segment(file_id: &str) -> bae_records::DbReleaseEditSegment {
     bae_records::DbReleaseEditSegment {
         file_id: file_id.to_string(),
+        start_ms: 0,
         file: Some(bae_records::DbReleaseEditSourceFile {
             name: format!("{file_id}.flac"),
             layout: Some(SourceAudioLayout::Cue),
@@ -155,8 +157,11 @@ fn a_track_without_one_body_is_an_editor_load_error() {
 
 #[test]
 fn missing_segment_file_is_an_editor_load_error() {
-    let missing =
-        bae_records::DbReleaseEditSegment { file_id: "missing-file-id".to_string(), file: None };
+    let missing = bae_records::DbReleaseEditSegment {
+        file_id: "missing-file-id".to_string(),
+        start_ms: 0,
+        file: None,
+    };
 
     assert!(matches!(
         ReleaseEditDisplayContext::from_raw(&no_files(), one_track(1, Some(missing))),

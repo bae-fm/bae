@@ -458,15 +458,16 @@ impl Records {
 /// Each track of the release `release` (an SQL expression naming its id) in
 /// release order, on the mediums `source` names for it: its side's kind and
 /// ordinal and its number there, how many audio formats it stores, how many
-/// main segments they hold, and the first main segment's file id, with the
-/// name and stored audio layout of the release file of that id when the
-/// release holds one. [`release_edit_track_of_row`] reads each row.
+/// main segments they hold, and the first main segment's file id and where it
+/// starts in that file, with the name and stored audio layout of the release
+/// file of that id when the release holds one. [`release_edit_track_of_row`]
+/// reads each row.
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
     format!(
         "WITH {placed}, \
          main AS ( \
-            SELECT af.track_id, s.file_id, \
+            SELECT af.track_id, s.file_id, s.start_sample * 1000 / af.sample_rate AS start_ms, \
                    ROW_NUMBER() OVER (PARTITION BY af.track_id ORDER BY s.segment_index) AS n, \
                    COUNT(*) OVER (PARTITION BY af.track_id) AS main_count \
             FROM audio_formats af \
@@ -476,6 +477,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
      SELECT t.*, p.side_kind, p.side_ordinal, p.number AS place_number, \
         (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
         COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
+        main.start_ms AS main_start_ms, \
         f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
         f.source_audio_layout AS main_file_layout \
      FROM tracks t JOIN placed p ON p.id = t.id \
@@ -527,7 +529,7 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                     ))
                 }
             };
-            Ok(DbReleaseEditSegment { file_id, file })
+            Ok(DbReleaseEditSegment { file_id, start_ms: row.get("main_start_ms")?, file })
         })
         .transpose()?;
     let position = super::release_tracks::track_position_of(

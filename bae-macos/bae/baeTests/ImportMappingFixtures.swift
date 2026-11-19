@@ -246,7 +246,9 @@ extension MappingFixtures {
                     sheetId: sheetId,
                     index: UInt32(index),
                     number: UInt32(index + 1),
-                    title: "Sheet Track \(index + 1)",
+                    start: BridgeDurationClock.length(
+                        ms: UInt64(index) * 200_000
+                    ),
                     containerId: containerId,
                     previewTarget: previewTarget
                 )

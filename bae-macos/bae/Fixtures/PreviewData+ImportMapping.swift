@@ -221,7 +221,7 @@ extension PreviewData {
             sheetId: boundTrackSheet.file.name,
             index: UInt32(index),
             number: UInt32(index + 1),
-            title: "Track Title \(index + 1)",
+            start: BridgeDurationClock.length(ms: UInt64(index) * 1_000),
             containerId: mappedAudioContainer.file.name,
             previewTarget: BridgePreviewTarget(
                 path: fakePath(mappedAudioContainer.file.name),

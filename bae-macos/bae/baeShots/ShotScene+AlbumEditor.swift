@@ -5,14 +5,19 @@ import SwiftUI
 
 extension ShotScene {
     /// The library's release editor over the album page, as the boards draw
-    /// it: on its own, with Change cover over it, and with its album pop-up
-    /// open over its row.
+    /// it: on its own, with Change cover over it, with its album pop-up open
+    /// over its row, and over a release a CUE sheet carves from one image.
     static let albumEditorScenes: [ShotScene] = [
         albumEditorScene(id: "mac.album.edit", stage: .editor),
         albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
         albumEditorScene(
             id: "mac.album.edit.album-picker",
             stage: .albumMenu
+        ),
+        albumEditorScene(
+            id: "mac.album.edit.cue-image",
+            stage: .editor,
+            release: editedCueRelease
         ),
     ]
 
@@ -39,9 +44,60 @@ extension ShotScene {
         return draft
     }
 
+    /// The same release as one image a CUE sheet carves the four tracks
+    /// from: one run under the image's name, each row giving where its track
+    /// starts in the image.
+    private static var editedCueRelease: BridgeReleaseEditDraft {
+        var draft = editedRelease
+        let image = BridgeReleaseEditTrackSource(
+            fileId: "Northbound.flac",
+            name: "Northbound.flac",
+            layout: .cue
+        )
+        var startMs: UInt64 = 0
+        let rows = PreviewData.northboundTracks.enumerated()
+            .map { index, track in
+                let start = startMs
+                startMs += track.durationMs
+                return BridgeReleaseEditTrackRow(
+                    edit: draft.edit.tracks[index],
+                    context: BridgeReleaseEditTrackContext(
+                        trackId: draft.edit.tracks[index].id,
+                        source: image,
+                        startClock: BridgeDurationClock.length(ms: start),
+                        durationClock: BridgeDurationClock.length(
+                            ms: track.durationMs
+                        ),
+                        positionText: "\(index + 1)"
+                    ),
+                    artistStanding: nil
+                )
+            }
+        draft.sides = [
+            BridgeReleaseEditTrackSide(
+                side: .flat,
+                headerKey: nil,
+                runs: [.sheet(source: image, rows: rows)]
+            )
+        ]
+        draft.files = [
+            PreviewData.mappingFile(
+                PreviewData.previewFile(
+                    name: "Northbound.log",
+                    size: 4_000,
+                    role: .document
+                ),
+                role: .document
+            ),
+            PreviewData.carriedBoardFiles[1],
+        ]
+        return draft
+    }
+
     private static func albumEditorScene(
         id: String,
-        stage: AlbumEditorStage
+        stage: AlbumEditorStage,
+        release: BridgeReleaseEditDraft = editedRelease
     ) -> ShotScene {
         let size = CGSize(width: 1_200, height: 1_120)
         return ShotScene(id: id, size: size) {
@@ -59,7 +115,7 @@ extension ShotScene {
                     PreviewData.previewArtData(image.url)
                 }
             )
-            presentEditor(on: uiStore, images: images)
+            presentEditor(on: uiStore, images: images, release: release)
             if stage == .coverSheet {
                 presentCoverSheet(on: uiStore, images: images)
             }
@@ -83,8 +139,12 @@ extension ShotScene {
     }
 
     @MainActor
-    private static func presentEditor(on uiStore: UiStore, images: ImageStore) {
-        let library = PreviewReleaseLibrary(draft: editedRelease)
+    private static func presentEditor(
+        on uiStore: UiStore,
+        images: ImageStore,
+        release: BridgeReleaseEditDraft
+    ) {
+        let library = PreviewReleaseLibrary(draft: release)
         uiStore.presentModal {
             ReleaseEditorSheet(
                 releaseId: editedReleaseId,

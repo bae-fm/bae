@@ -24,6 +24,9 @@ pub struct ReleaseEditTrackContext {
     /// The side of the release the track is on.
     pub side: TrackSide,
     pub source: ReleaseEditTrackSource,
+    /// Where the track's body starts in its source file, in milliseconds:
+    /// for a track a CUE sheet carves from an image, its INDEX 01.
+    pub start_ms: u64,
     pub duration_ms: u64,
     /// How the track's place reads ("A1", "3"), which the editor shows and
     /// never edits.
@@ -194,6 +197,7 @@ impl ReleaseEditTrackContext {
             track_id,
             side: entry.position.side(),
             source: ReleaseEditTrackSource { file_id: main.file_id, name: file.name, layout },
+            start_ms: main.start_ms,
             duration_ms: entry.track.duration_ms,
             position_text: entry.position.text(),
         })

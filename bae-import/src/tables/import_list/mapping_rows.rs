@@ -70,7 +70,7 @@ rows AS (
                AND u.sheet_id IS t.sheet_id AND u.slice_index IS t.slice_index AS unit_matches,
            u.file_kind, u.sheet_id, u.slice_index, u.duration_ms AS unit_ms,
            u.start_sample, u.end_sample, a.json AS audio,
-           ct.number AS cue_number, ct.title AS cue_title,
+           ct.number AS cue_number, ct.start_cue_frames * 1000 / 75 AS cue_start_ms,
            CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS NOT NULL
                      AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms)
                 THEN t.stated_length_ms END AS listed_ms
@@ -197,7 +197,7 @@ runs AS (
                        'source', CASE file_kind
                            WHEN 'sheet_slice' THEN json_object(
                                'kind', file_kind, 'sheet_id', sheet_id, 'index', slice_index,
-                               'number', cue_number, 'title', cue_title,
+                               'number', cue_number, 'start_ms', cue_start_ms,
                                'start', start_sample, 'end', end_sample)
                            ELSE json_object('kind', file_kind) END) END)
                    ORDER BY position)) AS json
@@ -294,7 +294,10 @@ enum UnitSourceJson {
         sheet_id: String,
         index: u32,
         number: u32,
-        title: Option<String>,
+        /// Where the entry starts in its audio, in milliseconds, from the
+        /// sheet's INDEX 01.
+        start_ms: u64,
+        /// The sample the entry starts at in its audio.
         start: u64,
         end: Option<u64>,
     },
@@ -603,12 +606,12 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path)),
             role: MappingRole::Audio,
         }),
-        UnitSourceJson::SheetSlice { sheet_id, index, number, title, start, end } => {
+        UnitSourceJson::SheetSlice { sheet_id, index, number, start_ms, start, end } => {
             MappingSource::SheetEntry(MappingEntry {
                 sheet_id,
                 index,
                 number,
-                title,
+                start_ms,
                 container_id: audio.file_id,
                 preview_target: bae_track_audio::PreviewTarget::sample_range(
                     audio.path, start, end,

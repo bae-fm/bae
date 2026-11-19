@@ -272,7 +272,9 @@ pub struct BridgeMappingEntry {
     pub index: u32,
     /// The number the sheet prints for this entry.
     pub number: u32,
-    pub title: Option<String>,
+    /// Where the entry starts in its container, as a clock label's fields
+    /// ("10:22"): what the row's source cell shows.
+    pub start: BridgeDurationClock,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
     /// The exact window of the container that auditioning this entry plays.
@@ -644,6 +646,9 @@ pub struct BridgeReleaseEditTrackSource {
 pub struct BridgeReleaseEditTrackContext {
     pub track_id: String,
     pub source: BridgeReleaseEditTrackSource,
+    /// Where the track's body starts in its source file, as a clock label's
+    /// fields ("10:22"): what a row under a CUE image's heading shows.
+    pub start_clock: BridgeDurationClock,
     /// The track's stored length as a clock label's fields ("3:07").
     pub duration_clock: BridgeDurationClock,
     /// How the track's place reads ("A1", "3"), which the editor shows and

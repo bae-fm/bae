@@ -334,12 +334,12 @@ async fn a_label_save_replaces_the_list() {
     }
 }
 
-/// The release editor reads the file a track's body plays from: for a track
-/// whose pregap sits at the end of the previous file, the editor reads its
-/// body's file, not its pregap's.
+/// The release editor reads the file a track's body plays from, and where in
+/// that file the body starts: for a track whose pregap sits at the end of the
+/// previous file, the editor reads its body's file, not its pregap's.
 #[cfg(desktop)]
 #[tokio::test]
-async fn the_editor_reads_which_file_holds_a_track_s_body() {
+async fn the_editor_reads_which_file_holds_a_track_s_body_and_where_it_starts() {
     use crate::{DbAudioSegmentRole, NewReleaseFile};
     const TRACK_A: &str = "0482872e-d4bf-4080-8426-441a0a3e71fc";
     let (db, tmp) = aggregate_ordering::release_detail_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -379,25 +379,28 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
         bae_util::test_ids::test_uuid("format"),
         time::UtcDateTime::now(),
     );
-    let segment =
-        |index: i64, role: DbAudioSegmentRole, file: &NewReleaseFile| crate::DbAudioSegment {
-            id: bae_util::test_ids::test_uuid(&format!("segment-{index}")),
-            audio_format_id: format.id.clone(),
-            segment_index: index,
-            role,
-            file_id: file.id.clone(),
-            start_sample: 0,
-            end_sample: None,
-            start_byte: None,
-            end_byte: None,
-            created_at: time::UtcDateTime::now(),
-        };
+    let segment = |index: i64,
+                   role: DbAudioSegmentRole,
+                   file: &NewReleaseFile,
+                   start_sample: u64| crate::DbAudioSegment {
+        id: bae_util::test_ids::test_uuid(&format!("segment-{index}")),
+        audio_format_id: format.id.clone(),
+        segment_index: index,
+        role,
+        file_id: file.id.clone(),
+        start_sample,
+        end_sample: None,
+        start_byte: None,
+        end_byte: None,
+        created_at: time::UtcDateTime::now(),
+    };
     records
         .insert_audio_format_with_segments_for_test(
             &format,
             &[
-                segment(0, DbAudioSegmentRole::AudioPregap, &files[0]),
-                segment(1, DbAudioSegmentRole::Main, &files[1]),
+                segment(0, DbAudioSegmentRole::AudioPregap, &files[0], 0),
+                // 10:22 into the file, at 44.1 kHz.
+                segment(1, DbAudioSegmentRole::Main, &files[1], 622 * 44_100),
             ],
         )
         .await
@@ -419,4 +422,5 @@ async fn the_editor_reads_which_file_holds_a_track_s_body() {
     assert_eq!(track.main_segment_count, 1);
     let body = track.main_segment.as_ref().expect("the track's body");
     assert_eq!(body.file.as_ref().map(|file| file.name.as_str()), Some("02 Track Title B.flac"));
+    assert_eq!(body.start_ms, 622_000);
 }

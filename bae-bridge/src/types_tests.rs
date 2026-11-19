@@ -530,6 +530,7 @@ mod conversion_roundtrip {
                                     name: "source.flac".to_string(),
                                     layout: bae_records::source_audio::SourceAudioLayout::File,
                                 },
+                                start_ms: 0,
                                 duration_ms: 123_000,
                                 position_text: "3".to_string(),
                             },

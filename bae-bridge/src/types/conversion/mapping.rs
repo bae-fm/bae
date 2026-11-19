@@ -125,7 +125,7 @@ impl BridgeMappingEntry {
             sheet_id,
             index,
             number,
-            title,
+            start_ms,
             container_id,
             preview_target,
         } = entry;
@@ -133,7 +133,7 @@ impl BridgeMappingEntry {
             sheet_id,
             index,
             number,
-            title,
+            start: BridgeDurationClock::of_length(start_ms),
             container_id,
             preview_target: BridgePreviewTarget::from_core(preview_target),
         }
