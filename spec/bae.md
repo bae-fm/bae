@@ -3188,8 +3188,9 @@ or the initials of their name on a tint while they have none. On a Mac,
 *Choose…* opens the system's panel for picking an image, and *Remove*, shown
 while they have a picture, clears it; on Android, tapping the Picture row opens
 the system's photo picker, and a *Remove picture* row in red, shown while they
-have a picture, clears it. Then the person's name, with *Change…*, which
-renames their profile in a sheet that says everyone in the library sees the name
+have a picture, clears it. A picked image that the phone cannot read shows the
+snackbar "Could not read that picture." Then the person's name, with *Change…*,
+which renames their profile in a sheet that says everyone in the library sees the name
 and keeps the name as typed when the rename fails, with a danger notice,
 "Could not save the name.", and *Details* for the cause, but no retry button,
 since *Save* is the retry; their role, which only an

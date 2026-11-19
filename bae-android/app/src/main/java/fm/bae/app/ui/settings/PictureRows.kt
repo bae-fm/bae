@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidRow
@@ -23,6 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgePersonProfile
 import java.io.IOException
+
+private val logger = BaeLogger("bae.PictureRows")
 
 /**
  * The Picture row, which opens the system's photo picker, and, while the person has a picture, the Remove picture row
@@ -47,6 +50,7 @@ internal fun PictureRows(
                     try {
                         read()
                     } catch (e: IOException) {
+                        logger.error("could not read the picked picture", e)
                         you.show(DisplayError(line = unreadable, detail = e.message))
                         return@launch
                     }
