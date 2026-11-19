@@ -15,7 +15,7 @@ struct SettingsPane<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SettingsPaneHeading { Text(tab.title) }
+            MacPageHeading(title: Text(tab.title))
             content
                 .frame(
                     maxWidth: .infinity,
@@ -31,22 +31,4 @@ struct SettingsPane<Content: View>: View {
 enum SettingsPaneMetrics {
     static let sideInset: CGFloat = 20
     static let topInset: CGFloat = 18
-}
-
-/// The pane's heading: bold, at the top left, with the room under it the first
-/// box starts after.
-struct SettingsPaneHeading<Content: View>: View {
-    @ViewBuilder
-    let content: Content
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.related) {
-            content
-                .themeText(.heading)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, SettingsPaneMetrics.sideInset)
-        .padding(.top, SettingsPaneMetrics.topInset)
-        .padding(.bottom, ThemeSpace.group)
-    }
 }

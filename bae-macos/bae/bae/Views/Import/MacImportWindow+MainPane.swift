@@ -229,7 +229,7 @@ extension MacImportWindow {
         // updates.
         let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
-            CoverPickerFrame {
+            CoverGalleryFrame {
                 CoverSheetView(
                     owner: .candidate(candidateKey: key),
                     selectedCover: candidate.cover?.selection,

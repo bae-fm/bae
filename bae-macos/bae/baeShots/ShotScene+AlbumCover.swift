@@ -18,7 +18,7 @@ extension ShotScene {
     /// `mac.album.change-cover.no-linked-release` draws the release with no
     /// catalog release linked: no remote section and no Refresh. The sheet
     /// is the one the album page presents: `CoverSheetView` in its
-    /// `CoverPickerFrame`, raised over the window as a modal.
+    /// `CoverGalleryFrame`, raised over the window as a modal.
     private static func albumCoverScene(id: String, linked: Bool) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 1_200, height: 1_000)) {
             let size = CGSize(width: 1_200, height: 1_000)
@@ -42,7 +42,7 @@ extension ShotScene {
             )
             let lightboxLoad = LightboxImageLoad()
             uiStore.presentModal {
-                CoverPickerFrame {
+                CoverGalleryFrame {
                     CoverSheetView(
                         owner: .release(releaseId: "rel-board-0"),
                         lightboxLoad: lightboxLoad,

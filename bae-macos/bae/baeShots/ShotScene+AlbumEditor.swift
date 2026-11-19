@@ -173,7 +173,7 @@ extension ShotScene {
             )
         )
         uiStore.presentModal {
-            CoverPickerFrame {
+            CoverGalleryFrame {
                 MacCoverGallery(
                     content: content,
                     remoteItems: .linked(content.remote?.items ?? []),

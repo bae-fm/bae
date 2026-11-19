@@ -86,8 +86,7 @@ struct LibrarySettingsTab: View {
             // The pane's title over the first page; the pages inside it have
             // their own.
             .safeAreaInset(edge: .top, spacing: 0) {
-                SettingsPaneHeading { Text(SettingsTab.library.title) }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                MacPageHeading(title: Text(SettingsTab.library.title))
                     .windowBackground()
             }
             .navigationDestination(for: Page.self) { page in
@@ -225,10 +224,12 @@ private struct SyncSettingsPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingsPageHeader(
-                title: String(localized: "Sync"),
-                backTitle: String(localized: "Library"),
-                onBack: { dismiss() }
+            MacPageHeading(
+                title: Text(verbatim: String(localized: "Sync")),
+                back: .init(
+                    title: String(localized: "Library"),
+                    action: { dismiss() }
+                )
             )
             form
         }

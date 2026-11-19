@@ -289,7 +289,7 @@ extension AlbumDetailView {
         // again with each update of the window.
         let lightboxLoad = LightboxImageLoad()
         uiStore.presentModal {
-            CoverPickerFrame {
+            CoverGalleryFrame {
                 CoverSheetView(
                     owner: .release(releaseId: selectedReleaseId),
                     lightboxLoad: lightboxLoad,

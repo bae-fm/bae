@@ -163,10 +163,9 @@ struct PeopleAndDevicesPage: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            SettingsPageHeader(
-                title: title,
-                backTitle: backTitle,
-                onBack: back
+            MacPageHeading(
+                title: Text(verbatim: title),
+                back: .init(title: backTitle, action: back)
             )
             Form {
                 if let error = store.error {

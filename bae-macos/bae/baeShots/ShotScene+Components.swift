@@ -158,14 +158,14 @@ extension ShotScene {
 }
 
 /// A `MacBox`: the box of rows the settings panes draw, as the design's
-/// preview shows a row among others. A box outside a form is a `SettingsBox`,
+/// preview shows a row among others. A box outside a form is a `MacBox`,
 /// the form style's own rows and surface without its page margin.
 struct ShotBox<Content: View>: View {
     @ViewBuilder
     let content: Content
 
     var body: some View {
-        SettingsBox { content }
+        MacBox { content }
     }
 }
 

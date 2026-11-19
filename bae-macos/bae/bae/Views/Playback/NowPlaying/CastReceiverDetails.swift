@@ -13,7 +13,7 @@ struct CastReceiverDetails: View {
             Text(verbatim: receiver.name)
                 .padding(.horizontal, ThemeSpace.inline)
                 .themeText(.strong)
-            SettingsBox {
+            MacBox {
                 LabeledContent(
                     "Type",
                     value: receiver.kind.productName

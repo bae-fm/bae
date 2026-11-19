@@ -37,7 +37,7 @@ struct SavePresetEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            SettingsBox {
+            MacBox {
                 nameRow
                 formatRow
                 qualityRow

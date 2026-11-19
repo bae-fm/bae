@@ -253,43 +253,16 @@ struct MacWelcomeHome: View {
                 )
             }
             if showsFirstRunActions {
-                firstRunActions
+                MacWelcomeActions(
+                    disabled: isBusy,
+                    onCreate: onCreate,
+                    onScanCode: onScanCode,
+                    onEnterCode: onEnterCode
+                )
             }
             Spacer()
         }
         .padding()
-    }
-
-    /// The Create button's label.
-    private var createButtonLabel: some View {
-        Text("Create new library…")
-            .frame(maxWidth: .infinity)
-    }
-
-    /// The width the first-run buttons share.
-    private static let firstRunButtonWidth: CGFloat = 240
-
-    /// First run: Create as the default action, then Scan code and Enter
-    /// code side by side.
-    private var firstRunActions: some View {
-        VStack(spacing: ThemeSpace.related + ThemeSpace.line) {
-            Button(action: onCreate) { createButtonLabel }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(isBusy)
-                .keyboardShortcut(.defaultAction)
-            HStack(spacing: ThemeSpace.related) {
-                Button(action: onScanCode) {
-                    Text("Scan code").frame(maxWidth: .infinity)
-                }
-                Button(action: onEnterCode) {
-                    Text("Enter code").frame(maxWidth: .infinity)
-                }
-            }
-            .buttonStyle(SecondaryButtonStyle().accentFocus())
-            .disabled(isBusy)
-        }
-        .controlSize(.large)
-        .frame(width: Self.firstRunButtonWidth)
     }
 }
 
