@@ -43,6 +43,29 @@ pub async fn insert_file(
         .unwrap();
 }
 
+/// Import one file named `name` of `content_type` into `release` on `store`'s
+/// device, from an original holding its name that the function writes under
+/// `dir`.
+pub async fn import_file(
+    store: &bae_store::Store,
+    dir: &std::path::Path,
+    release: &str,
+    name: &str,
+    content_type: bae_util::content_type::ContentType,
+) {
+    let original = dir.join(name);
+    std::fs::write(&original, name).unwrap();
+    let file = NewReleaseFile::new(
+        release,
+        name,
+        content_type,
+        crate::ReleaseFileRole::Other,
+        bae_util::test_ids::test_uuid(name),
+        time::UtcDateTime::now(),
+    );
+    super::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
+}
+
 /// The plan SQLite chooses for `statement`, one detail line per step.
 pub async fn plan(db: &bae_store::Store, statement: String) -> Vec<String> {
     db.read(move |sql| {

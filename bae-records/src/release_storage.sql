@@ -7,12 +7,17 @@
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
 -- lists and the place of the first (NULL with none); `failed_move_file`,
 -- the name of the file whose original changed, so that a move of the release
--- failed; and `missing_original_file`, the name of the file whose original
--- is missing, so that a move of the release waits for it. The move's pending
--- record in `coven_pending` names that original by its path; each column is
--- NULL while `coven_pending` has no such record. One row per release, written
--- by the triggers below in the write that changes its files, their coven
--- records, pins, queue, moves or pending records: bae's own or coven's.
+-- failed; `missing_original_file`, the name of the file whose original is
+-- missing, so that a move of the release waits for it; and
+-- `audio_elsewhere_device`, the device that alone holds the release's audio
+-- file with the lowest id among those another device alone holds, as
+-- `coven_file_device` gives it, NULL when no other device alone holds one:
+-- the release cannot play here until that device moves the file to the
+-- cloud. The move's pending record in `coven_pending` names the original of
+-- `failed_move_file` and `missing_original_file` by its path; each of the two
+-- is NULL while `coven_pending` has no such record. One row per release,
+-- written by the triggers below in the write that changes its files, their
+-- coven records, pins, queue, moves or pending records: bae's own or coven's.
 CREATE TABLE IF NOT EXISTS release_storage (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     file_count INTEGER NOT NULL,
@@ -23,6 +28,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     first_queued_position INTEGER,
     failed_move_file TEXT,
     missing_original_file TEXT,
+    audio_elsewhere_device BLOB,
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
@@ -41,7 +47,7 @@ BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
         queued_count, first_queued_position, failed_move_file,
-        missing_original_file)
+        missing_original_file, audio_elsewhere_device)
     SELECT r.id,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
@@ -76,6 +82,12 @@ BEGIN
             WHERE f.release_id = r.id AND pending.reason_kind = 'original'
               AND json_extract(CAST(pending.record AS TEXT),
                                '$.reason.Original.failure') = 'Missing'
+            ORDER BY f.id LIMIT 1),
+           (SELECT coven_file_device(coven.coordinates) FROM release_files f
+            JOIN coven_file_reads reads ON reads.file = f.file
+            JOIN coven_files coven ON coven.id = f.file
+            WHERE f.release_id = r.id AND f.content_type GLOB 'audio/*'
+              AND reads.source IS NULL
             ORDER BY f.id LIMIT 1)
     FROM releases r
     WHERE r.id = NEW.release_id
@@ -87,7 +99,8 @@ BEGIN
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
         failed_move_file = excluded.failed_move_file,
-        missing_original_file = excluded.missing_original_file;
+        missing_original_file = excluded.missing_original_file,
+        audio_elsewhere_device = excluded.audio_elsewhere_device;
 END;
 
 -- A release arrives with no files: its files name it, so none is written or
@@ -97,8 +110,8 @@ BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
         queued_count, first_queued_position, failed_move_file,
-        missing_original_file)
-    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL, NULL);
+        missing_original_file, audio_elsewhere_device)
+    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
@@ -116,10 +129,11 @@ BEGIN
     INSERT INTO release_storage_refresh (release_id) VALUES (OLD.release_id);
 END;
 
--- A release file's coven file being recorded, switched to its stored bytes
--- or deleted refreshes its release: whether the release is stored follows
--- its files' records, which coven changes with no change to a row of bae's,
--- in the write completing an upload. A record no release file names moves nothing.
+-- A release file's coven file being recorded, switched between its stored
+-- bytes and one device or deleted refreshes its release: whether the release
+-- is stored, and which other device alone holds its audio, follow its files'
+-- records, which coven changes with no change to a row of bae's, in the write
+-- completing an upload. A record no release file names moves nothing.
 CREATE TRIGGER IF NOT EXISTS release_storage_coven_file_added AFTER INSERT ON coven_files
 BEGIN
     INSERT INTO release_storage_refresh (release_id)

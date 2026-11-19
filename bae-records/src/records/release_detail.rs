@@ -294,14 +294,14 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     })
 }
 
-/// A JSON array of the name and state of the device that alone holds the
-/// audio file of the release `rel` with the lowest file id among the files
-/// another device alone holds, and whether a member removed that device's
+/// A JSON array of the name and state of the device that the release's
+/// storage row `storage` names as alone holding one of its audio files, as
+/// coven registers that device, and whether a member removed that device's
 /// person from the library. The column holds the JSON text `null` when no
 /// other device alone holds an audio file of the release.
-const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(e.device_name, e.device_state, \
-     e.member_removed) FROM release_audio_elsewhere e WHERE e.release_id = rel.id \
-     ORDER BY e.file_id LIMIT 1), 'null')";
+const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(d.name, d.state, m.removed) \
+     FROM coven_devices d JOIN coven_members m ON m.member = d.member \
+     WHERE d.device = storage.audio_elsewhere_device), 'null')";
 
 /// The other device a release's audio is on, from `column` of a row that
 /// holds [`ELSEWHERE_OF_RELEASE`]. `elsewhere_in_row` returns `None` when no

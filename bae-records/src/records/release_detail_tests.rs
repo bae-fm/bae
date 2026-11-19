@@ -210,28 +210,6 @@ async fn elsewhere_of(store: &bae_store::Store, release: &'static str) -> Option
         .unwrap()
 }
 
-/// Imports one file named `name` of `content_type` into `release` on
-/// `store`'s device, from an original that the function writes under `dir`.
-async fn import_file(
-    store: &bae_store::Store,
-    dir: &std::path::Path,
-    release: &str,
-    name: &str,
-    content_type: bae_util::content_type::ContentType,
-) {
-    let original = dir.join(name);
-    std::fs::write(&original, name).unwrap();
-    let file = NewReleaseFile::new(
-        release,
-        name,
-        content_type,
-        crate::ReleaseFileRole::Other,
-        bae_util::test_ids::test_uuid(name),
-        time::UtcDateTime::now(),
-    );
-    crate::test_fixtures::test_records(store).insert_file_for_test(&file, &original).await.unwrap();
-}
-
 /// A release is on another device when that device alone holds one of its
 /// audio files, and then the release detail names that device. The detail
 /// names no other device for audio whose original this device holds, or for
@@ -257,12 +235,12 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
             .await;
         devices.converge("SELECT id FROM releases").await;
 
-        import_file(b, dir.path(), PLAYS_HERE, "here.flac", Flac).await;
-        import_file(a, dir.path(), ONE_ELSEWHERE, "one.flac", Flac).await;
-        import_file(a, dir.path(), ONE_ELSEWHERE, "cover.jpg", Jpeg).await;
-        import_file(a, dir.path(), ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
-        import_file(a, dir.path(), TWO_ELSEWHERE, "b-second.flac", Flac).await;
-        import_file(a, dir.path(), TWO_ELSEWHERE, "a-first.flac", Flac).await;
+        storage_listing::import_file(b, dir.path(), PLAYS_HERE, "here.flac", Flac).await;
+        storage_listing::import_file(a, dir.path(), ONE_ELSEWHERE, "one.flac", Flac).await;
+        storage_listing::import_file(a, dir.path(), ONE_ELSEWHERE, "cover.jpg", Jpeg).await;
+        storage_listing::import_file(a, dir.path(), ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
+        storage_listing::import_file(a, dir.path(), TWO_ELSEWHERE, "b-second.flac", Flac).await;
+        storage_listing::import_file(a, dir.path(), TWO_ELSEWHERE, "a-first.flac", Flac).await;
         devices.converge("SELECT id, release_id, file FROM release_files").await;
         devices.converge("SELECT id, coordinates FROM coven_files").await;
 

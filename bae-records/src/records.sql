@@ -548,24 +548,6 @@ CREATE INDEX IF NOT EXISTS idx_release_files_file ON release_files (file);
 CREATE INDEX IF NOT EXISTS idx_release_files_release_kind
     ON release_files (release_id, content_type, original_filename COLLATE natural_order, id);
 
--- One row for each audio file that this device cannot read, with the name
--- and state of the device that alone holds it in coven's `coven_devices` and
--- whether a member removed the device's person from the library. coven's
--- `coven_file_reads` says which files a read on this device has no source
--- for: those another device alone holds. A release with such a file cannot
--- play here until that device moves the file to the cloud, and bae names the
--- device of the file with the lowest `file_id`. The view reads only coven's
--- records and does not check the files on disk.
-CREATE VIEW IF NOT EXISTS release_audio_elsewhere AS
-SELECT f.release_id, f.id AS file_id,
-       d.name AS device_name, d.state AS device_state, m.removed AS member_removed
-FROM release_files f
-JOIN coven_file_reads r ON r.file = f.file
-JOIN coven_files coven ON coven.id = f.file
-JOIN coven_devices d ON d.device = coven_file_device(coven.coordinates)
-JOIN coven_members m ON m.member = d.member
-WHERE f.content_type GLOB 'audio/*' AND r.source IS NULL;
-
 -- Who is credited on a release, and in what role.
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,

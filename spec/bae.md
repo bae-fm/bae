@@ -5760,7 +5760,7 @@ Beside them, device-local tables:
 |---|---|
 | `artist_shown_as` | artist, keyed by the artist: the artist it shows as (§2.3) |
 | `label_shown_as` | label, keyed by the label: the label it shows as (§2.3) |
-| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, the name of the file whose original failed a move of it and the name of the file whose missing original a move of it waits for, each from the move's pending record, with an index of the releases uploading in queue order (§3.2) |
+| `release_storage` | release, keyed by the release: its files' count and size, whether they are uploaded, how many of them this device keeps pinned and whole, how many wait in this device's upload queue and the place of the first, the name of the file whose original failed a move of it and the name of the file whose missing original a move of it waits for, each from the move's pending record, and the other device that the album and release views name as holding its audio (§4.2), with an index of the releases uploading in queue order (§3.2) |
 | `name_sort` | one row: the language this device orders names in (`und`, the root order, until the app sets one) and the version of the collation data every stored name key was written with (§2.1) |
 
 What the library lists, bae-views' part, kept by its triggers:
