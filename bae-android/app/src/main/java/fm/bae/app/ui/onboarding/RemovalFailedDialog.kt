@@ -1,15 +1,12 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.title
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -44,30 +41,14 @@ internal fun removalFailedParts(
         DialogParts(
             title = title,
             message = error.line,
-            confirmButton = {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    onClick = onRetry,
-                ) { Text(stringResource(R.string.retry)) }
-            },
-            dismissButton = {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    tone = ButtonTone.NEUTRAL,
-                    onClick = onCancel,
-                ) { Text(stringResource(R.string.cancel)) }
-            },
+            action = DialogAction(stringResource(R.string.retry), onRetry),
+            dismiss = DialogAction(stringResource(R.string.cancel), onCancel),
         )
     } else {
         DialogParts(
             title = title,
             message = error.line,
-            confirmButton = {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    onClick = onCancel,
-                ) { Text(stringResource(android.R.string.ok)) }
-            },
+            action = DialogAction(stringResource(android.R.string.ok), onCancel),
         )
     }
 }

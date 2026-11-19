@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -21,7 +20,6 @@ import fm.bae.app.R
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRadio
@@ -30,8 +28,7 @@ import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidStorageUsage
 import fm.bae.app.ui.components.AndroidSwitch
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.storageUsageSegments
 import uniffi.bae_bridge.BridgeCacheLimit
@@ -183,12 +180,7 @@ internal fun keepUpToParts(
                 }
             }
         },
-        confirmButton = {},
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }
 
@@ -202,14 +194,7 @@ internal fun deleteBeforeResetParts(
     DialogParts(
         title = stringResource(R.string.storage_delete_before_reset_title),
         message = stringResource(R.string.storage_delete_before_reset_body, rememberByteFormat()(bytes)),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.storage_delete))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.storage_delete), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )

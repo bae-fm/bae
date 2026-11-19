@@ -23,7 +23,6 @@ import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.data.LiveValue
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNote
@@ -31,7 +30,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
-import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.downloads.setDownloadConcurrency
 
@@ -140,13 +139,7 @@ private fun ConcurrencyRow(
                     }
                 }
             },
-            confirmButton = {},
-            dismissButton = {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    onClick = { open = false },
-                ) { Text(stringResource(R.string.cancel)) }
-            },
+            dismiss = DialogAction(stringResource(R.string.cancel), { open = false }),
         )
     }
 }

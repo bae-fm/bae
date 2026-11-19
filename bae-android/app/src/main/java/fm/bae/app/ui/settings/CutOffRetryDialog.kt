@@ -1,13 +1,10 @@
 package fm.bae.app.ui.settings
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeDeviceCutOff
 
@@ -40,16 +37,7 @@ internal fun cutOffRetryParts(
             stringResource(
                 if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
             ),
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = onTryAgain,
-            ) { Text(stringResource(R.string.retry)) }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(if (notGone) R.string.device_cut_off_not_yet else R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.retry), onTryAgain),
+        dismiss = DialogAction(stringResource(if (notGone) R.string.device_cut_off_not_yet else R.string.cancel), onDismiss),
     )
 }

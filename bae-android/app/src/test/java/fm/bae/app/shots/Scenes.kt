@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +24,7 @@ import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidDialogActions
 import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
@@ -157,12 +157,11 @@ internal fun InPlaceDialogScene(
                     Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
                         if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
                         parts.content?.invoke()
-                        Row(
+                        Box(
                             modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
-                            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End),
+                            contentAlignment = Alignment.CenterEnd,
                         ) {
-                            parts.dismissButton?.invoke()
-                            parts.confirmButton()
+                            AndroidDialogActions(parts.action, parts.dismiss, parts.destructive, parts.filled)
                         }
                     }
                 }

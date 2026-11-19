@@ -12,12 +12,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 
 /** The playlist's own actions, at the end of the page's bar: Edit playlist… and Delete playlist…. */
@@ -71,14 +69,7 @@ internal fun deletePlaylistParts(
     DialogParts(
         title = stringResource(R.string.playlist_delete_title, name),
         message = stringResource(R.string.playlist_delete_message),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.playlist_delete_confirm))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.playlist_delete_confirm), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )

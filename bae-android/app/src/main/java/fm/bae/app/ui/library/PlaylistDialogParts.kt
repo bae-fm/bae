@@ -11,12 +11,10 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.AndroidTextField
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.focusOnShow
@@ -67,14 +65,6 @@ internal fun playlistDialogParts(
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm, enabled = canConfirm) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(confirmLabel, onConfirm, enabled = canConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )

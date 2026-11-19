@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
@@ -56,11 +55,6 @@ fun ErrorDetailsDialog(
         title = details.title,
         message = details.message,
         content = { AndroidErrorDetails(text = details.causes, copyText = details.copyText) },
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = onDismiss,
-            ) { Text(stringResource(android.R.string.ok)) }
-        },
+        action = DialogAction(stringResource(android.R.string.ok), onDismiss),
     )
 }

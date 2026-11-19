@@ -27,11 +27,10 @@ import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCheckbox
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidSheet
-import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.rememberCountdownLine
@@ -191,16 +190,9 @@ fun AndroidSidePause(
                     )
                 }
             },
-            confirmButton = {
-                AndroidButton(onClick = { answer(true) }) {
-                    Text(stringResource(R.string.play))
-                }
-            },
-            dismissButton = {
-                AndroidButton(kind = ButtonKind.TEXT, onClick = { answer(false) }) {
-                    Text(stringResource(R.string.close))
-                }
-            },
+            action = DialogAction(stringResource(R.string.play), { answer(true) }),
+            dismiss = DialogAction(stringResource(R.string.close), { answer(false) }),
+            filled = true,
         )
     }
 }

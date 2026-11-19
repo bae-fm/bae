@@ -52,20 +52,9 @@ internal fun removeLibraryParts(
         title = words.title,
         message = words.lead,
         content = words.rest,
-        confirmButton = {
-            // Removing loses nothing, so it is the accent action.
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = onConfirm,
-            ) { Text(stringResource(R.string.settings_remove)) }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        // Removing loses nothing, so it is the accent action.
+        action = DialogAction(stringResource(R.string.settings_remove), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }
 

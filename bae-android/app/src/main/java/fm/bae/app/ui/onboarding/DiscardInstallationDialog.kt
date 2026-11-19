@@ -1,13 +1,10 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -33,16 +30,9 @@ private fun discardInstallationParts(
     DialogParts(
         title = stringResource(R.string.onboarding_discard_join_title),
         message = stringResource(R.string.onboarding_discard_join_message),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.onboarding_discard_join_confirm))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.onboarding_discard_join_confirm), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )
 
 /**

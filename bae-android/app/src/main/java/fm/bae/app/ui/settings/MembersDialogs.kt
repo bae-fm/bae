@@ -20,12 +20,10 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidRow
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
@@ -265,20 +263,9 @@ private fun RemovalConfirmDialog(
             forgottenKey?.let { key ->
                 { Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))) }
             },
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.DESTRUCTIVE,
-                onClick = onConfirm,
-            ) { Text(stringResource(R.string.members_remove)) }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        action = DialogAction(stringResource(R.string.members_remove), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )
 }
 
@@ -305,26 +292,13 @@ private fun SignOutDialog(
                 Text(context.coreString(bridgeProviderSignOutKey(instruction)))
             }
         },
-        confirmButton = {
+        action =
             if (step.offersCutOff) {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    onClick = onConfirm,
-                ) { Text(stringResource(R.string.device_cut_off_confirm)) }
+                DialogAction(stringResource(R.string.device_cut_off_confirm), onConfirm)
             } else {
-                AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.close)) }
-            }
-        },
-        dismissButton =
-            if (step.offersCutOff) {
-                {
-                    AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                        Text(stringResource(R.string.device_cut_off_not_yet))
-                    }
-                }
-            } else {
-                null
+                DialogAction(stringResource(R.string.close), onDismiss)
             },
+        dismiss = if (step.offersCutOff) DialogAction(stringResource(R.string.device_cut_off_not_yet), onDismiss) else null,
     )
 }
 
@@ -383,15 +357,6 @@ internal fun joinRequestParts(
         title = stringResource(R.string.join_request_title, name),
         message = stringResource(R.string.join_request_match),
         content = { AndroidMatchCode(confirmation, dialog = true) },
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = onApprove,
-            ) { Text(stringResource(R.string.join_request_approve)) }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDecline) {
-                Text(stringResource(R.string.join_request_decline))
-            }
-        },
+        action = DialogAction(stringResource(R.string.join_request_approve), onApprove),
+        dismiss = DialogAction(stringResource(R.string.join_request_decline), onDecline),
     )

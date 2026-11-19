@@ -35,7 +35,7 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.downloads.DownloadProgress
@@ -252,16 +252,8 @@ internal fun UnpinDialog(
                 onCheckedChange = { dontShowAgain = it },
             )
         },
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = { onConfirm(dontShowAgain) }) {
-                Text(stringResource(R.string.unpin))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.unpin), { onConfirm(dontShowAgain) }),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }
 

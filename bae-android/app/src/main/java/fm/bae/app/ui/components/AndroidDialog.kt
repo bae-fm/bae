@@ -3,12 +3,14 @@ package fm.bae.app.ui.components
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
@@ -41,10 +43,54 @@ fun DialogHead(
     }
 }
 
-/** What a dialog says and offers: its [title], [message] and [content], its buttons and the [width] it holds. */
+/** One button of a dialog's last row: its [label], what a tap does, and whether it takes a tap now. */
+internal class DialogAction(
+    val label: String,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true,
+)
+
+/**
+ * A dialog's last row, at its right: [dismiss] (Cancel) first, in the text colour, then the [action], in
+ * the accent, or in the danger colour when [destructive]. A [filled] action is the accent's filled button,
+ * for a dialog whose action is what it is for, such as Play after a side ends.
+ */
+@Composable
+internal fun AndroidDialogActions(
+    action: DialogAction?,
+    dismiss: DialogAction?,
+    destructive: Boolean = false,
+    filled: Boolean = false,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End)) {
+        dismiss?.let {
+            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = it.onClick, enabled = it.enabled) {
+                Text(it.label)
+            }
+        }
+        action?.let {
+            AndroidButton(
+                kind = if (filled) ButtonKind.FILLED else ButtonKind.TEXT,
+                tone = if (destructive) ButtonTone.DESTRUCTIVE else ButtonTone.DEFAULT,
+                onClick = it.onClick,
+                enabled = it.enabled,
+            ) {
+                Text(it.label)
+            }
+        }
+    }
+}
+
+/**
+ * What a dialog says and offers: its [title], [message] and [content], its [action] and [dismiss] buttons
+ * ([destructive] when the action loses something, [filled] when it is what the dialog is for), and the
+ * [width] it holds.
+ */
 internal class DialogParts(
-    val confirmButton: @Composable () -> Unit,
-    val dismissButton: @Composable (() -> Unit)? = null,
+    val action: DialogAction? = null,
+    val dismiss: DialogAction? = null,
+    val destructive: Boolean = false,
+    val filled: Boolean = false,
     val title: String? = null,
     val message: String? = null,
     val content: @Composable (() -> Unit)? = null,
@@ -53,20 +99,22 @@ internal class DialogParts(
 
 /**
  * Material's [AlertDialog] with the line under the title set as the dialog's
- * [message] (see [DialogHead]); [content] is whatever follows it. A dialog is [width] wide when one
- * is given, else as wide as Material makes it for what it holds.
+ * [message] (see [DialogHead]); [content] is whatever follows it, and [AndroidDialogActions] ends it. A
+ * dialog is [width] wide when one is given, else as wide as Material makes it for what it holds.
  */
 @Composable
-fun AndroidDialog(
+internal fun AndroidDialog(
     onDismissRequest: () -> Unit,
-    confirmButton: @Composable () -> Unit,
-    dismissButton: @Composable (() -> Unit)? = null,
+    action: DialogAction? = null,
+    dismiss: DialogAction? = null,
+    destructive: Boolean = false,
+    filled: Boolean = false,
     title: String? = null,
     message: String? = null,
     content: @Composable (() -> Unit)? = null,
     width: Dp? = null,
 ) {
-    AndroidDialog(onDismissRequest, DialogParts(confirmButton, dismissButton, title, message, content, width))
+    AndroidDialog(onDismissRequest, DialogParts(action, dismiss, destructive, filled, title, message, content, width))
 }
 
 /** The dialog [parts] in a window of their own. */
@@ -83,9 +131,8 @@ internal fun AndroidDialog(
         text = parts.content,
         confirmButton = {
             DialogScrim(BaeTheme.colors.scrim)
-            parts.confirmButton()
+            AndroidDialogActions(parts.action, parts.dismiss, parts.destructive, parts.filled)
         },
-        dismissButton = parts.dismissButton,
     )
 }
 

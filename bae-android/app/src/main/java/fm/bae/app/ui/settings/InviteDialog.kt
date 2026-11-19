@@ -34,7 +34,7 @@ import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.closerToAbove
@@ -177,28 +177,20 @@ internal fun inviteFormParts(
     onCreate: (BridgeMemberRole, BridgeInviteAccess, BridgeInviteLifetime) -> Unit,
     onDismiss: () -> Unit,
     input: InviteAccessInput = remember { InviteAccessInput() },
-): DialogParts =
-    DialogParts(
+): DialogParts {
+    val access = storage?.let(input::access)
+    return DialogParts(
         title = stringResource(R.string.invite_person_title),
         content = { AndroidInviteFields(storage = storage, input = input, error = error) },
-        confirmButton = {
-            val access = storage?.let(input::access)
-            AndroidButton(
-                kind = ButtonKind.TEXT,
+        action =
+            DialogAction(
+                stringResource(R.string.invite_create),
+                { access?.let { onCreate(input.role, it, input.lifetime) } },
                 enabled = access != null && !busy,
-                onClick = { access?.let { onCreate(input.role, it, input.lifetime) } },
-            ) {
-                Text(stringResource(R.string.invite_create))
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+            ),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
+}
 
 /** The role the invited person joins in, and how long the invite stays open. */
 @Composable

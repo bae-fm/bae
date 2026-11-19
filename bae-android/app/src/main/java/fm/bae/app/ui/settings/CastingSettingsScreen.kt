@@ -23,7 +23,6 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMenu
@@ -31,8 +30,7 @@ import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
@@ -236,15 +234,7 @@ private fun CastDisconnectDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.cast_turn_off_title),
         message = stringResource(R.string.cast_turn_off_message, device),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm) {
-                Text(stringResource(R.string.cast_turn_off_confirm))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.cast_turn_off_confirm), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }

@@ -2,7 +2,6 @@ package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,13 +15,11 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.CastStart
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidPinField
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.AndroidTextField
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.TextFieldKind
 import fm.bae.app.ui.components.focusOnShow
@@ -138,15 +135,7 @@ internal fun castCodeDialogParts(
                 }
             }
         },
-        confirmButton = {
-            AndroidButton(onClick = onPair, kind = ButtonKind.TEXT, enabled = canPair) {
-                Text(stringResource(R.string.cast_pair))
-            }
-        },
-        dismissButton = {
-            AndroidButton(onClick = onCancel, kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL) {
-                Text(stringResource(R.string.cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.cast_pair), onPair, enabled = canPair),
+        dismiss = DialogAction(stringResource(R.string.cancel), onCancel),
     )
 }

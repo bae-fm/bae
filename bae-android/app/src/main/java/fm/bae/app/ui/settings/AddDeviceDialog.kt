@@ -23,14 +23,12 @@ import fm.bae.app.R
 import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
@@ -244,9 +242,7 @@ internal fun addDeviceParts(
         DialogParts(
             title = stringResource(R.string.add_device_title),
             content = { AddDeviceBody(adding = adding, face = face, error = error) },
-            confirmButton = {
-                AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
-            },
+            action = DialogAction(stringResource(R.string.done), onDismiss),
         )
     }
 
@@ -270,16 +266,8 @@ private fun addDeviceRequestParts(
                 }
             }
         },
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onApprove) {
-                Text(stringResource(R.string.onboarding_add_action))
-            }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDecline) {
-                Text(stringResource(R.string.join_request_decline))
-            }
-        },
+        action = DialogAction(stringResource(R.string.onboarding_add_action), onApprove),
+        dismiss = DialogAction(stringResource(R.string.join_request_decline), onDecline),
     )
 
 /** The sheet's body when no request is showing: the code, a line saying where the pairing ended, or a spinner. */

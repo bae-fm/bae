@@ -35,7 +35,7 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenFailureNotice
@@ -62,18 +62,9 @@ internal fun DeviceResetDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.reset_device_confirm_title),
         message = LocalContext.current.coreString(prepared.warningKey),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.reset_device_confirm))
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        action = DialogAction(stringResource(R.string.reset_device_confirm), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )
 }
 

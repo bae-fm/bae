@@ -28,13 +28,11 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidScanCode
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
@@ -132,14 +130,8 @@ internal fun cancelInviteParts(
     return DialogParts(
         title = context.coreString("core.invite.cancel_confirm.title"),
         message = if (forgetLine == null) wontUse else "$wontUse\n\n$forgetLine",
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onConfirm) { Text(stringResource(R.string.invite_cancel)) }
-        },
-        dismissButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = onDismiss) {
-                Text(context.coreString("core.invite.cancel_confirm.keep"))
-            }
-        },
+        action = DialogAction(stringResource(R.string.invite_cancel), onConfirm),
+        dismiss = DialogAction(context.coreString("core.invite.cancel_confirm.keep"), onDismiss),
     )
 }
 
@@ -224,19 +216,8 @@ internal fun inviteCodeParts(
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, onClick = onDismiss) { Text(stringResource(R.string.done)) }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onCancelInvite,
-                enabled = !busy,
-            ) {
-                Text(stringResource(R.string.invite_cancel))
-            }
-        },
+        action = DialogAction(stringResource(R.string.done), onDismiss),
+        dismiss = DialogAction(stringResource(R.string.invite_cancel), onCancelInvite, enabled = !busy),
     )
 }
 

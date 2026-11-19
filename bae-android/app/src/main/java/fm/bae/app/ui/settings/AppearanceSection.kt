@@ -13,7 +13,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -41,13 +40,12 @@ import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
-import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.joinsTileAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -190,13 +188,7 @@ private fun <T> AppearancePicker(
                     }
                 }
             },
-            confirmButton = {},
-            dismissButton = {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
-                    onClick = { open = false },
-                ) { Text(stringResource(R.string.cancel)) }
-            },
+            dismiss = DialogAction(stringResource(R.string.cancel), { open = false }),
         )
     }
 }

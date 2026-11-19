@@ -31,7 +31,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.NoticeLook
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeS3Credentials
@@ -133,22 +133,14 @@ internal fun S3KeyDialog(
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = { onRestore(BridgeS3Credentials(keys.accessKeyId, keys.secretAccessKey)) },
-                enabled = keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
-            ) {
-                Text(stringResource(text.action))
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onBack,
-            ) { Text(stringResource(R.string.back)) }
-        },
+        action =
+            DialogAction(
+                stringResource(text.action),
+                { onRestore(BridgeS3Credentials(keys.accessKeyId, keys.secretAccessKey)) },
+                enabled =
+                    keys.accessKeyId.isNotEmpty() && keys.secretAccessKey.isNotEmpty(),
+            ),
+        dismiss = DialogAction(stringResource(R.string.back), onBack),
     )
 }
 

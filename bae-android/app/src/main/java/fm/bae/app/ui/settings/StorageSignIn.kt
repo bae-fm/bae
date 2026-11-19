@@ -2,7 +2,6 @@ package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,13 +14,11 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidS3KeyFields
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.focusOnShow
@@ -280,22 +277,17 @@ internal fun s3KeyDialogParts(
                 }
             }
         },
-        confirmButton = {
-            if (!checking) {
-                AndroidButton(
-                    kind = ButtonKind.TEXT,
+        action =
+            if (checking) {
+                null
+            } else {
+                DialogAction(
+                    stringResource(R.string.save),
+                    onSave,
                     enabled = accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty(),
-                    onClick = onSave,
-                ) { Text(stringResource(R.string.save)) }
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onCancel,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+                )
+            },
+        dismiss = DialogAction(stringResource(R.string.cancel), onCancel),
     )
 }
 

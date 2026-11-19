@@ -1,14 +1,11 @@
 package fm.bae.app.ui.onboarding
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidTextField
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.TextFieldKind
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
@@ -39,21 +36,7 @@ fun PasteCodeDialog(
                 kind = TextFieldKind.CODE,
             )
         },
-        confirmButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                onClick = { onConfirm(pasteInput.trim()) },
-                enabled = pasteInput.trim().isNotEmpty(),
-            ) {
-                Text(text.confirmLabel)
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        action = DialogAction(text.confirmLabel, { onConfirm(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }

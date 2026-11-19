@@ -14,12 +14,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 
 /**
  * The album's own actions, at the end of the page's bar: [onSetPrimaryRelease] makes the release in view
@@ -65,17 +63,8 @@ internal fun DeleteAlbumDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.delete_album_confirm_title),
         message = stringResource(R.string.delete_album_confirm_body),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.delete_album_confirm))
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        action = DialogAction(stringResource(R.string.delete_album_confirm), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )
 }

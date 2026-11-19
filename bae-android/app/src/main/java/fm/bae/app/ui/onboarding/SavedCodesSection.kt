@@ -19,7 +19,6 @@ import fm.bae.app.R
 import fm.bae.app.factSeparator
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMoreMenu
@@ -27,8 +26,7 @@ import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeDropboxAccess
@@ -195,18 +193,9 @@ internal fun deleteSavedCodeParts(
     DialogParts(
         title = stringResource(R.string.onboarding_saved_code_delete_title),
         message = deleteSavedCodeMessage(entry),
-        confirmButton = {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.DESTRUCTIVE, onClick = onConfirm) {
-                Text(stringResource(R.string.onboarding_saved_code_delete))
-            }
-        },
-        dismissButton = {
-            AndroidButton(
-                kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
-                onClick = onDismiss,
-            ) { Text(stringResource(R.string.cancel)) }
-        },
+        action = DialogAction(stringResource(R.string.onboarding_saved_code_delete), onConfirm),
+        dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
+        destructive = true,
     )
 
 /** The confirmation's message: it names the library a readable code is for. */
