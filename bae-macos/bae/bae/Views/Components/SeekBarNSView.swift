@@ -22,12 +22,12 @@ private struct SeekPosition: Equatable {
     let seeks: UInt64?
 }
 
-/// What a drop named, which the bar keeps drawing until playback takes the
-/// seek: the position, the fill and how many seeks playback had taken then.
-private struct DroppedSeek {
-    let positionMs: Int64
-    let progress: Double
-    let seeks: UInt64
+/// The track source a bar follows and the position a drop named on it, which
+/// the bar keeps drawing until playback takes the seek: the drop's position,
+/// fill and the count of seeks playback had taken then.
+private struct FollowedTrack {
+    let source: LatestSource<BridgeTrackPosition>
+    var dropped: SeekPosition?
 }
 
 /// A seek slider between its time labels, set straight from its position
@@ -110,12 +110,11 @@ final class SeekBarNSView: NSView {
     /// Set while the user drags the slider: the dragged position, shown until
     /// the drag ends. Nil means the leading label follows playback.
     private var draggingPositionMs: Int64?
-    /// Set from the drop until playback takes the seek, which the stream says
-    /// by counting it: the time and the fill stay at the dropped position
-    /// while the stream still sends the playing one. Screen state only.
-    private var dropped: DroppedSeek?
-    /// The track source the bar follows, so a drop never outlives its track.
-    private var followedTrack: LatestSource<BridgeTrackPosition>?
+    /// The track the bar follows, with the drop that waits for playback to
+    /// take its seek, which the stream says by counting it: the time and the
+    /// fill stay at the dropped position while the stream still sends the
+    /// playing one. A drop never outlives its track. Screen state only.
+    private var followed: FollowedTrack?
 
     init(showsRemainingTimeToggle: Bool) {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
@@ -187,20 +186,20 @@ final class SeekBarNSView: NSView {
     func follow(_ source: SeekBarSource?) {
         switch source {
         case .track(let source, let held):
-            if source != followedTrack { dropped = nil }
-            followedTrack = source
+            if source != followed?.source {
+                followed = FollowedTrack(source: source, dropped: nil)
+            }
             previews.stop()
             tracks.follow(source)
             buffered.follow(held)
         case .preview(let source):
-            dropped = nil
-            followedTrack = nil
+            followed = nil
             tracks.stop()
             buffered.stop()
             slider.held = []
             previews.follow(source)
         case nil:
-            followedTrack = nil
+            followed = nil
             tracks.stop()
             buffered.stop()
             previews.stop()
@@ -224,16 +223,18 @@ final class SeekBarNSView: NSView {
             slider.isEnabled = false
             slider.doubleValue = 0
             draggingPositionMs = nil
-            dropped = nil
+            followed?.dropped = nil
             updateLabels()
             return
         }
-        if let held = dropped, let seeks = shown.seeks, seeks > held.seeks {
-            dropped = nil
+        if let held = followed?.dropped?.seeks, let seeks = shown.seeks,
+            seeks > held
+        {
+            followed?.dropped = nil
         }
         slider.isEnabled = shown.durationMs != nil
-        if !slider.isDragging && dropped == nil {
-            slider.doubleValue = shown.progress
+        if !slider.isDragging {
+            slider.doubleValue = (followed?.dropped ?? shown).progress
         }
         updateLabels()
     }
@@ -262,7 +263,7 @@ final class SeekBarNSView: NSView {
         elapsedField.alphaValue = 1
         durationField.alphaValue = 1
         let labels = DurationClock.seekBar(
-            positionMs: draggingPositionMs ?? dropped?.positionMs
+            positionMs: draggingPositionMs ?? followed?.dropped?.positionMs
                 ?? shown.positionMs,
             durationMs: shown.durationMs,
             showRemaining: showsRemainingTimeToggle && showRemainingTime
@@ -287,14 +288,15 @@ final class SeekBarNSView: NSView {
     /// the seek's target as the position when it takes the seek, and every
     /// view drawing the track shows it from the next frame.
     private func seekCompleted(_ value: Double) {
-        if let shown = position, let seeks = shown.seeks,
+        if followed != nil, let shown = position, shown.seeks != nil,
             let durationMs = shown.durationMs
         {
-            dropped = DroppedSeek(
+            followed?.dropped = SeekPosition(
+                progress: value,
                 positionMs: draggingPositionMs
                     ?? Int64(slider.positionMs(forDuration: durationMs)),
-                progress: value,
-                seeks: seeks
+                durationMs: durationMs,
+                seeks: shown.seeks
             )
         }
         draggingPositionMs = nil
