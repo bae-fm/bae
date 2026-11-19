@@ -7,6 +7,7 @@ use bae_people::people::HistorySharing;
 mod avatars;
 mod name_order;
 mod ratings;
+mod removed_person;
 
 /// The diagnostics these tests' bootstrap calls report to: none.
 static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =

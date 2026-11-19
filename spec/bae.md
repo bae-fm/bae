@@ -3025,7 +3025,10 @@ moment the device registers (§5.4), and before that the device holds none of
 the library's rows, so it has nothing to play. A device removed from the
 library keeps its copy and keeps writing to it, plays included: each play is a
 `history` row under its person's profile, as on any device. The row stays on
-that device, which no longer syncs.
+that device, which no longer syncs. When an admin removes the person, each of
+their own devices keeps their circle and every row in it, and keeps recording
+their plays the same way, the private ones under *Only me* included
+([coven §14.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#141-the-cut-off)).
 
 **Playlists.** A playlist belongs to the person who made it, and is private or
 household, each playlist on its own. Its entries are rows keyed by the playlist
@@ -3185,7 +3188,7 @@ editable by every member.
 | Add a person | an admin, by invite ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | the new person's device writes their `people` row as it joins |
 | Add a device | the person, by pairing: one of their devices shows a pairing code, the new device sends a request with it, and the person approves it after checking a number both show ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | nothing beyond coven |
 | Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven; the person tells this device when they have cut a lost device off at the provider (below) |
-| Remove a person | an admin | their circle goes, with its rows |
+| Remove a person | an admin | their circle goes, with its rows, on every device but their own (below) |
 | Rename the library | an admin | every device shows the new name (§5.1) |
 | Rename yourself | the person | every device shows the new name on their profile (§5.4) |
 
@@ -3536,8 +3539,10 @@ or the device that made it is no longer in the library. Each ends his request
 the same way, so his phone can't tell which, and a join that was under way at
 launch ends on the same screen.
 
-Removing a person deletes their circle and its rows: their private history and
-private playlists. Their household ratings, history and playlists stay,
+Removing a person deletes their circle and its rows, their private history and
+private playlists, on every other device. Their own devices keep the circle
+and its rows, and keep recording their private plays into it, which never leave
+those devices (§5.3). Their household ratings, history and playlists stay,
 credited to them.
 
 On S3 each person's page in People and devices shows the id of their access key. Removing
