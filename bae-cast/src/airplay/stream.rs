@@ -127,7 +127,6 @@ impl Packetizer {
 /// test drives it with virtual elapsed durations. Frames count from the
 /// anchor.
 pub(crate) struct Pacer {
-    sample_rate: u32,
     /// The receiver's audio latency: it plays the frame this far behind the
     /// frame due.
     latency_frames: u64,
@@ -147,10 +146,9 @@ impl Pacer {
     /// ~2 s by default): the sync packets tell the receiver to play the frame
     /// a latency behind the one due, so a burst longer than the latency
     /// would start the receiver partway into it.
-    pub(crate) fn new(sample_rate: u32, latency_frames: u32) -> Self {
+    pub(crate) fn new(latency_frames: u32) -> Self {
         let latency_frames = u64::from(latency_frames);
         Pacer {
-            sample_rate,
             latency_frames,
             burst_frames: latency_frames.min(BURST_PACKETS * u64::from(FRAMES_PER_PACKET)),
             passed: 0,
@@ -159,9 +157,23 @@ impl Pacer {
     }
 
     /// The frames of the timeline due by `elapsed` since the anchor: the
-    /// burst, then what the clock has played.
+    /// burst, then what the clock has played, at the rate the stream carries
+    /// PCM.
     pub(crate) fn due(&self, elapsed: Duration) -> u64 {
-        self.burst_frames + bae_util::sample_time::frame_at(elapsed, self.sample_rate)
+        self.burst_frames + bae_util::sample_time::frame_at(elapsed, PCM_SAMPLE_RATE)
+    }
+
+    /// The frame the receiver plays at `elapsed` since the anchor, a latency
+    /// behind the frame due: negative while the receiver plays what came
+    /// before the anchor.
+    pub(crate) fn playing(&self, elapsed: Duration) -> i64 {
+        // Both are frame counts of a stream, far under 2^63.
+        self.due(elapsed) as i64 - self.latency_frames as i64
+    }
+
+    /// The receiver's audio latency in frames.
+    pub(crate) fn latency_frames(&self) -> u64 {
+        self.latency_frames
     }
 
     /// What the sender does at `elapsed` since the anchor. It never owes more
@@ -176,7 +188,7 @@ impl Pacer {
             self.silences.push_back(self.passed..self.passed + silent_frames);
             self.passed += silent_frames;
         }
-        let playing = due.saturating_sub(self.latency_frames);
+        let playing = self.playing(elapsed).max(0) as u64;
         while self.silences.front().is_some_and(|silence| silence.end <= playing) {
             self.silences.pop_front();
         }
@@ -193,7 +205,7 @@ impl Pacer {
     /// due, to the frame the sender is at, less the stretches left silent.
     /// The receiver plays nothing sent before the anchor.
     pub(crate) fn unplayed(&self, elapsed: Duration) -> u64 {
-        let playing = self.due(elapsed).saturating_sub(self.latency_frames);
+        let playing = self.playing(elapsed).max(0) as u64;
         let ahead = self.passed.saturating_sub(playing);
         let silent: u64 = self
             .silences
@@ -486,7 +498,6 @@ pub(super) struct RaopStreamControl {
     clock: Arc<dyn MonotonicClock>,
     reanchor: Arc<AtomicU64>,
     failure: StreamFailure,
-    latency_frames: u32,
 }
 
 impl RaopStreamControl {
@@ -502,12 +513,11 @@ impl RaopStreamControl {
             timeline: Arc::new(Mutex::new(Timeline {
                 next: RtpPosition::START,
                 anchor: RtpPosition::START.timestamp,
-                pacer: Pacer::new(PCM_SAMPLE_RATE, latency_frames),
+                pacer: Pacer::new(latency_frames),
             })),
             clock,
             reanchor: Arc::new(AtomicU64::new(0)),
             failure,
-            latency_frames,
         }
     }
 
@@ -530,14 +540,15 @@ impl RaopStreamControl {
     /// far behind the one due.
     #[cfg(test)]
     pub(super) fn latency_frames(&self) -> u64 {
-        self.timeline.lock().unwrap().pacer.latency_frames
+        self.timeline.lock().unwrap().pacer.latency_frames()
     }
 
-    /// [`latency_frames`](Self::latency_frames) as time, at the rate the
+    /// The latency the pacer runs the timeline by, as time at the rate the
     /// stream carries PCM: how long the receiver takes to play a frame the
     /// sender sends now.
     pub(super) fn latency(&self) -> Duration {
-        bae_util::sample_time::frame_start(u64::from(self.latency_frames), PCM_SAMPLE_RATE)
+        let frames = self.timeline.lock().unwrap().pacer.latency_frames();
+        bae_util::sample_time::frame_start(frames, PCM_SAMPLE_RATE)
     }
 
     /// The audio the sender has sent that the receiver has not played yet,
@@ -553,10 +564,14 @@ impl RaopStreamControl {
     /// waiting on the frames sent.
     pub(crate) fn sync_point(&self) -> SyncPoint {
         let timeline = self.timeline.lock().unwrap();
-        // RTP timestamps wrap at 2^32.
-        let due = timeline.pacer.due(self.clock.elapsed()) as u32;
-        let next = timeline.anchor.wrapping_add(due);
-        SyncPoint { playing: next.wrapping_sub(self.latency_frames), next }
+        let elapsed = self.clock.elapsed();
+        // RTP timestamps wrap at 2^32, so only the low 32 bits of each
+        // offset from the anchor count.
+        let at = |offset: i64| timeline.anchor.wrapping_add(offset as u32);
+        SyncPoint {
+            playing: at(timeline.pacer.playing(elapsed)),
+            next: at(timeline.pacer.due(elapsed) as i64),
+        }
     }
 
     /// The re-anchor counter the audio thread watches: a change means restart the

@@ -55,7 +55,7 @@ fn packetizer_encrypts_payload_only() {
 #[test]
 fn pacer_sends_its_burst_then_tracks_the_clock() {
     // 44.1 kHz, ~2 s latency: the burst is shorter than the latency.
-    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut pacer = Pacer::new(88_200);
     assert_eq!(pacer.step(Duration::ZERO), Step { silent_frames: 0, packets: BURST_PACKETS });
     for _ in 0..BURST_PACKETS {
         pacer.record_packet();
@@ -72,7 +72,7 @@ fn pacer_sends_its_burst_then_tracks_the_clock() {
 /// the receiver partway into it.
 #[test]
 fn pacer_sends_no_more_than_the_latency_at_the_anchor() {
-    let mut pacer = Pacer::new(44_100, 11_025);
+    let mut pacer = Pacer::new(11_025);
     // 11025 / 352 = 31 whole packets.
     assert_eq!(pacer.step(Duration::ZERO).packets, 31);
 }
@@ -111,7 +111,7 @@ fn pace_through(
                     waiting = true;
                     break;
                 }
-                let playing = pacer.due(at).saturating_sub(88_200);
+                let playing = pacer.playing(at).max(0) as u64;
                 assert!(
                     pacer.passed() >= playing,
                     "a packet sent at {at:?} lands {} frames behind the frame playing",
@@ -134,7 +134,7 @@ fn pace_through(
 #[test]
 fn a_stream_start_sends_no_more_than_a_mac_receiver_keeps() {
     let mut intake = AudioIntake::mac();
-    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut pacer = Pacer::new(88_200);
     let never_dry = DrySpell { dry: Duration::ZERO..Duration::ZERO };
 
     // 3 s of stream.
@@ -154,7 +154,7 @@ fn a_stream_start_sends_no_more_than_a_mac_receiver_keeps() {
 #[test]
 fn a_source_that_runs_dry_and_returns_sends_no_more_than_a_mac_receiver_keeps() {
     let mut intake = AudioIntake::mac();
-    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut pacer = Pacer::new(88_200);
     let spell = DrySpell { dry: Duration::from_secs(1)..Duration::from_secs(4) };
 
     let sent = pace_through(&mut pacer, &mut intake, &spell, Duration::from_secs(6));
@@ -176,7 +176,7 @@ fn a_source_that_runs_dry_and_returns_sends_no_more_than_a_mac_receiver_keeps() 
 #[test]
 fn the_audio_not_played_stops_at_the_latency() {
     let mut intake = AudioIntake::mac();
-    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut pacer = Pacer::new(88_200);
     let never_dry = DrySpell { dry: Duration::ZERO..Duration::ZERO };
     // A moment the clock reaches a whole packet: 375 packets in.
     let whole = bae_util::sample_time::frame_start(375 * u64::from(FRAMES_PER_PACKET), 44_100);
@@ -197,7 +197,7 @@ fn the_audio_not_played_stops_at_the_latency() {
 #[test]
 fn the_audio_not_played_leaves_out_the_silence_while_the_source_was_dry() {
     let mut intake = AudioIntake::mac();
-    let mut pacer = Pacer::new(44_100, 88_200);
+    let mut pacer = Pacer::new(88_200);
     let back = Duration::from_millis(3800);
     let spell = DrySpell { dry: Duration::from_secs(3)..back };
 
@@ -209,7 +209,7 @@ fn the_audio_not_played_leaves_out_the_silence_while_the_source_was_dry() {
         pacer.record_packet();
     }
 
-    let playing = pacer.due(back) - 88_200;
+    let playing = pacer.playing(back) as u64;
     let burst = BURST_PACKETS * u64::from(FRAMES_PER_PACKET);
     assert_eq!(step.packets, BURST_PACKETS, "the sender sends one burst");
     assert_eq!(pacer.unplayed(back), sent_before - playing + burst);
