@@ -58,6 +58,7 @@ struct AlbumTrackListLayoutTests {
                 onAddNext: { _ in },
                 onAddToQueue: { _ in },
                 onExportTrack: { _ in },
+                onRateTrack: { _, _ in },
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.background)
