@@ -90,8 +90,8 @@ final class ImportListFixtureTests: XCTestCase {
 
     /// The list shows the folder of each state in `shown`, and of no other.
     /// One wait covers every folder: each wait for one element takes a second
-    /// even when the element is already there, and a wait per folder per
-    /// entry kept the test past its time allowance.
+    /// even when the element is already there, so a wait per folder per entry
+    /// would run the test past its time allowance.
     @MainActor
     private func assertListsExactly(
         _ shown: Set<LibraryFixture.CandidateState>,
