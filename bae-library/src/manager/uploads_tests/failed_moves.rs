@@ -52,32 +52,19 @@ async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
 
 /// bae reads the failed move and the changed file's name from the move's
 /// pending record in one query. The storage row names the file while the
-/// record exists, and names no file after Cancel deletes the record.
+/// record exists, and names no file after Cancel deletes the record. A
+/// changed original fails the move, so the row names no missing original.
 #[tokio::test]
 async fn a_failed_moves_storage_row_names_the_file_its_pending_record_names() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("failed-file").await;
-    let failed_file = || async {
-        let release_id = release.id.clone();
-        manager
-            .library
-            .manager()
-            .store
-            .read(move |sql| {
-                Ok(sql.query_row(
-                    "SELECT failed_move_file FROM release_storage WHERE release_id = ?1",
-                    [release_id],
-                    |row| row.get::<_, Option<String>>(0),
-                )?)
-            })
-            .await
-            .unwrap()
-    };
-    assert_eq!(failed_file().await, None);
+    let library = manager.library.manager();
+    let stored = || stored_move_files(library, &release.id);
+    assert_eq!(stored().await, (None, None));
     std::fs::write(temp.path().join("failed-file/a.flac"), b"changed after the move").unwrap();
-    manager.library.manager().drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(failed_file().await.as_deref(), Some("a.flac"));
-    manager.library.manager().cancel_release_transition(&release.id).await.unwrap();
-    assert_eq!(failed_file().await, None);
+    library.drain_uploads_expecting_work().await.unwrap();
+    assert_eq!(stored().await, (Some("a.flac".to_string()), None));
+    library.cancel_release_transition(&release.id).await.unwrap();
+    assert_eq!(stored().await, (None, None));
 }
 
 /// Moving a selection moves each release in a write of its own. A release

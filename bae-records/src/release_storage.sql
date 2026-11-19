@@ -5,13 +5,14 @@
 -- `coven_files` records as stored; `pinned_count`, how many of them coven's
 -- `coven_pins` lists as kept whole on this device; `queued_count` and
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
--- lists and the place of the first (NULL with none); and `failed_move_file`,
+-- lists and the place of the first (NULL with none); `failed_move_file`,
 -- the name of the file whose original changed, so that a move of the release
--- failed. The move's pending record in `coven_pending` names that original by
--- its path; the column is NULL while `coven_pending` has no such record. One row per
--- release, written by the triggers below in the write that changes its
--- files, their coven records, pins, queue, moves or pending records: bae's
--- own or coven's.
+-- failed; and `missing_original_file`, the name of the file whose original
+-- is missing, so that a move of the release waits for it. The move's pending
+-- record in `coven_pending` names that original by its path; each column is
+-- NULL while `coven_pending` has no such record. One row per release, written
+-- by the triggers below in the write that changes its files, their coven
+-- records, pins, queue, moves or pending records: bae's own or coven's.
 CREATE TABLE IF NOT EXISTS release_storage (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     file_count INTEGER NOT NULL,
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
     failed_move_file TEXT,
+    missing_original_file TEXT,
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
 ) STRICT;
 
@@ -38,7 +40,8 @@ CREATE TRIGGER IF NOT EXISTS release_storage_refresh INSTEAD OF INSERT ON releas
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, failed_move_file)
+        queued_count, first_queued_position, failed_move_file,
+        missing_original_file)
     SELECT r.id,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
            (SELECT COALESCE(SUM(coven.size), 0) FROM release_files f
@@ -64,6 +67,15 @@ BEGIN
                 ON original.file = f.file AND original.path = pending.original_path
             WHERE f.release_id = r.id AND moves.state = 'failed'
               AND pending.reason_kind = 'original'
+            ORDER BY f.id LIMIT 1),
+           (SELECT f.original_filename FROM release_files f
+            JOIN coven_moves moves ON moves.file = f.file
+            JOIN coven_pending pending ON pending.move = moves.move
+            JOIN coven_user_files original
+                ON original.file = f.file AND original.path = pending.original_path
+            WHERE f.release_id = r.id AND pending.reason_kind = 'original'
+              AND json_extract(CAST(pending.record AS TEXT),
+                               '$.reason.Original.failure') = 'Missing'
             ORDER BY f.id LIMIT 1)
     FROM releases r
     WHERE r.id = NEW.release_id
@@ -74,7 +86,8 @@ BEGIN
         pinned_count = excluded.pinned_count,
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
-        failed_move_file = excluded.failed_move_file;
+        failed_move_file = excluded.failed_move_file,
+        missing_original_file = excluded.missing_original_file;
 END;
 
 -- A release arrives with no files: its files name it, so none is written or
@@ -83,8 +96,9 @@ CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON relea
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, failed_move_file)
-    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL);
+        queued_count, first_queued_position, failed_move_file,
+        missing_original_file)
+    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL, NULL);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files
@@ -165,9 +179,10 @@ BEGIN
 END;
 
 -- A pending record whose reason is an original refreshes `failed_move_file`
--- of the releases whose files have that original, in the transaction that
--- records the move's failure, changes the record or deletes it: coven keeps
--- a failed move's record until the app cancels the move. The record names
+-- and `missing_original_file` of the releases whose files have that
+-- original, in the transaction that records the move's failure or its wait
+-- for a missing original, changes the record or deletes it: coven keeps a
+-- failed move's record until the app cancels the move. The record names
 -- the original by its path, and the refresh reads which of the files the
 -- record's move lists. When no release file's original matches the record,
 -- the trigger changes no row.
@@ -199,8 +214,9 @@ BEGIN
 END;
 
 -- A release file joining or leaving a move refreshes its release's
--- `failed_move_file`, in the transaction that changes the move's list:
--- the refresh reads a pending record only for a move that lists the file.
+-- `failed_move_file` and `missing_original_file`, in the transaction that
+-- changes the move's list: the refresh reads a pending record only for a
+-- move that lists the file.
 -- When no release file names the file, the trigger changes no row.
 CREATE TRIGGER IF NOT EXISTS release_storage_file_moved AFTER INSERT ON coven_moves
 BEGIN

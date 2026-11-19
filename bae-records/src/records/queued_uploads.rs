@@ -50,24 +50,12 @@ pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 /// The columns a release's upload reads beside `release_storage storage`
 /// joined to [`RELEASES_SENDING`] as `sending`, which
 /// [`release_upload_in_row`] maps: its counts
-/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and while its files wait, the name of the
-/// release file whose original a move of the release waits for, as the
-/// move's pending record names the original by its path. How far the files
-/// being sent have got is the release's transfer.
-pub const RELEASE_UPLOAD_COLUMNS: &str = concat!(
-    release_upload_count_columns!(),
-    ", CASE WHEN storage.queued_count > 0 THEN \
-         (SELECT f.original_filename FROM release_files AS f \
-          JOIN coven_user_files AS original ON original.file = f.file \
-          WHERE f.release_id = storage.release_id AND original.path IN ( \
-              SELECT pending.original_path FROM coven_pending AS pending \
-              WHERE pending.reason_kind = 'original' \
-                AND json_extract(CAST(pending.record AS TEXT), \
-                                 '$.reason.Original.failure') = 'Missing' \
-                AND pending.move IN (",
-    release_moves!("storage.release_id"),
-    ")) ORDER BY f.id LIMIT 1) END AS upload_missing_original"
-);
+/// ([`RELEASE_UPLOAD_COUNT_COLUMNS`]), and the name of the release file whose
+/// missing original a move of the release waits for, which the release's
+/// storage row stores. How far the files being sent have got is the
+/// release's transfer.
+pub const RELEASE_UPLOAD_COLUMNS: &str =
+    concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
 /// The columns the upload queue's hold reads: whether uploads are paused, how
 /// many files are being sent, whether coven says the network is usable (NULL
@@ -126,7 +114,7 @@ pub fn release_upload_in_row(row: &Row<'_>) -> rusqlite::Result<Option<DbRelease
     let Some((waiting, sending, stored)) = upload_counts_in_row(row)? else {
         return Ok(None);
     };
-    let missing = if sending > 0 { None } else { row.get("upload_missing_original")? };
+    let missing = if sending > 0 { None } else { row.get("missing_original_file")? };
     Ok(Some(DbReleaseUpload { waiting, sending, stored, missing }))
 }
 

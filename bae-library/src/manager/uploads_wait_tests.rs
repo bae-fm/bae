@@ -81,3 +81,26 @@ async fn an_uploads_row_names_only_a_missing_original() {
         "the pause does not hide it"
     );
 }
+
+/// The release's storage row stores the name of the file whose missing
+/// original its move waits for, from the move's pending record, in the
+/// write that records it, and stores none once Cancel ends the move and its
+/// record.
+#[tokio::test]
+async fn a_waiting_moves_storage_row_stores_the_file_its_pending_record_names() {
+    let (manager, temp, release, _file_id) = queued_upload_fixture("stored").await;
+    let library = manager.library.manager();
+    let stored = || super::tests::stored_move_files(library, &release.id);
+    assert_eq!(stored().await, (None, None));
+    std::fs::remove_file(temp.path().join("stored/a.flac")).unwrap();
+    assert_eq!(library.drain_uploads_expecting_work().await.unwrap(), 0);
+    library.start().unwrap();
+    pending_records_until(library, |records| !records.is_empty()).await;
+    assert_eq!(
+        stored().await,
+        (None, Some("a.flac".to_string())),
+        "a missing original holds the move up without failing it"
+    );
+    library.cancel_release_transition(&release.id).await.unwrap();
+    assert_eq!(stored().await, (None, None));
+}

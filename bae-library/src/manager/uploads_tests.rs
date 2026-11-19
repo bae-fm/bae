@@ -15,6 +15,28 @@ use time::UtcDateTime;
 #[path = "uploads_tests/failed_moves.rs"]
 mod failed_moves;
 
+/// What the storage row of the release `release_id` stores from its move's
+/// pending record: the name of the file whose changed original failed the
+/// move, and the name of the file whose missing original the move waits for.
+pub(super) async fn stored_move_files(
+    manager: &LibraryManager,
+    release_id: &str,
+) -> (Option<String>, Option<String>) {
+    let release_id = release_id.to_string();
+    manager
+        .store
+        .read(move |sql| {
+            Ok(sql.query_row(
+                "SELECT failed_move_file, missing_original_file FROM release_storage \
+                 WHERE release_id = ?1",
+                [release_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?)
+        })
+        .await
+        .unwrap()
+}
+
 /// Cancelling every move needs no original: nothing was switched, so every
 /// release stays on this device only, and one whose original went shows it
 /// missing.
