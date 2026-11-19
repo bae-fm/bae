@@ -414,7 +414,7 @@ async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
     use crate::{ImportListOrder, ImportListView, PendingFilter};
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    grow_grouped_import_list(&db, tmp.path(), 0, 300).await;
+    grow_grouped_import_list(&db, &tmp, 0, 300).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
         search: None,
@@ -427,7 +427,7 @@ async fn a_chain_of_windows_holds_every_item_once_across_a_scan() {
     for page in [7, 10, 64] {
         assert_eq!(chain(&tables, &list, page).await, everything, "pages of {page}");
     }
-    grow_grouped_import_list(&db, tmp.path(), 300, 305).await;
+    grow_grouped_import_list(&db, &tmp, 300, 305).await;
     let grown = whole(&tables, &list).await;
     assert!(grown.len() > everything.len());
     assert_eq!(chain(&tables, &list, 10).await, grown, "after the scan");
@@ -441,7 +441,7 @@ async fn a_chain_over_a_filtered_list_holds_what_a_jump_reads() {
     use crate::{ImportListOrder, ImportListView, PendingFilter};
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    grow_import_list(&db, tmp.path(), 0, 2_000).await;
+    grow_import_list(&db, &tmp, 0, 2_000).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
         search: crate::SearchText::of("Album 1"),
@@ -480,7 +480,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
     use crate::{ImportListOrder, ImportListView, PendingFilter};
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    grow_grouped_import_list(&db, tmp.path(), 0, 100).await;
+    grow_grouped_import_list(&db, &tmp, 0, 100).await;
     let list = ImportListRequest::of(ImportListView {
         tab: crate::TriageTab::Pending,
         search: crate::SearchText::of("Album 1"),
@@ -497,7 +497,7 @@ async fn a_filtered_import_lists_counts_follow_the_scan_and_the_folds() {
         "folded groups hide their members: {hidden:?} of {before:?}"
     );
     assert_eq!(hidden.rows, whole(&tables, &folded).await.len() as u64);
-    grow_grouped_import_list(&db, tmp.path(), 100, 200).await;
+    grow_grouped_import_list(&db, &tmp, 100, 200).await;
     let fresh = tables.read_import_list_for_test(list.clone(), Vec::new()).await.unwrap().count;
     let grown = count_until(&mut query, "the scan's folders", |count| *count == fresh).await;
     assert!(grown.rows > before.rows, "the scan's folders count: {grown:?} of {before:?}");
@@ -528,7 +528,7 @@ async fn the_selection_summary_follows_its_keys_and_their_rows() {
 /// folder under one of 100 artist folders, in a watched folder of their own.
 pub(crate) async fn grow_import_list(
     db: &Store,
-    tmp: &std::path::Path,
+    tmp: &bae_util::test_files::TestFolder,
     start: u64,
     end: u64,
 ) -> Duration {
@@ -542,7 +542,7 @@ pub(crate) async fn grow_import_list(
 /// a group, so every five albums have a header, all of them open.
 async fn grow_grouped_import_list(
     db: &Store,
-    tmp: &std::path::Path,
+    tmp: &bae_util::test_files::TestFolder,
     start: u64,
     end: u64,
 ) -> Duration {
@@ -553,7 +553,7 @@ async fn grow_grouped_import_list(
 /// so the list holds no group.
 async fn grow_flat_import_list(
     db: &Store,
-    tmp: &std::path::Path,
+    tmp: &bae_util::test_files::TestFolder,
     start: u64,
     end: u64,
 ) -> Duration {
@@ -563,15 +563,14 @@ async fn grow_flat_import_list(
 /// Scan the folders `name(start)..name(end)` into a watched folder of their own.
 async fn scan_folders(
     db: &Store,
-    tmp: &std::path::Path,
+    tmp: &bae_util::test_files::TestFolder,
     start: u64,
     end: u64,
     name: impl Fn(u64) -> String,
 ) -> Duration {
     let tables = crate::tables::ImportTables::new(db.clone());
-    let root = tmp.join(format!("watched-{start}"));
-    std::fs::create_dir_all(&root).unwrap();
-    let root = std::fs::canonicalize(&root).unwrap().to_str().unwrap().to_string();
+    let root = tmp.create_folder(format!("watched-{start}"));
+    let root = tmp.canonicalize(&root).to_str().unwrap().to_string();
     let started = Instant::now();
     tables.add_watched_import_folder(std::path::Path::new(&root)).await.unwrap();
     let generation = tables

@@ -1,7 +1,8 @@
 use super::*;
 use crate::cue_sheet::tests::*;
 use crate::tests::fixture;
-use std::path::Path;
+use bae_util::test_files::TestFolder;
+use std::path::{Path, PathBuf};
 
 /// The disc ID one log file hashes to, decoded the way the extraction pass
 /// decodes it.
@@ -17,8 +18,7 @@ fn assert_invalid_data(result: Result<String, std::io::Error>) {
     assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
 }
 
-fn write_log_with_toc(end_sector: i32) -> tempfile::NamedTempFile {
-    let file = tempfile::NamedTempFile::new().expect("test LOG file should be created");
+fn write_log_with_toc(folder: &TestFolder, end_sector: i32) -> PathBuf {
     let content = format!(
         "TOC of the extracted CD\n\
          \n\
@@ -28,8 +28,7 @@ fn write_log_with_toc(end_sector: i32) -> tempfile::NamedTempFile {
          \n\
          Range status and errors\n"
     );
-    std::fs::write(file.path(), content).expect("test LOG file should be written");
-    file
+    folder.write("test.log", content)
 }
 
 #[test]
@@ -44,9 +43,10 @@ fn discid_rejects_leadout_sector_that_overflows_pregap_offset() {
 
 #[test]
 fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
-    let log_file = write_log_with_toc(i32::MAX);
+    let folder = TestFolder::new();
+    let log_file = write_log_with_toc(&folder, i32::MAX);
 
-    assert_invalid_data(discid_from_log_file(log_file.path()));
+    assert_invalid_data(discid_from_log_file(&log_file));
 }
 
 #[test]

@@ -1,9 +1,9 @@
 use super::*;
-use crate::test_fixtures::{flac_dir, read_fixture};
+use crate::test_fixtures::flac_dir;
 use bae_identify::signals::TextOrigin;
-use std::fs;
+use bae_util::test_files::read_fixture;
+use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
 
 #[test]
 fn enumerate_filename_inputs_skips_all_audio_and_cue() {
@@ -68,19 +68,17 @@ fn enumerate_filename_inputs_skips_all_audio_and_cue() {
 /// count — the pair the folder fast pass reads.
 #[test]
 fn test_categorized_yields_discid_and_track_count() {
-    use tempfile::TempDir;
+    use bae_util::test_files::TestFolder;
 
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
 
     let fixture_log = std::path::Path::new("tests/fixtures/logs/test_album.log");
-    std::fs::copy(fixture_log, dir.join("test_album.log")).unwrap();
+    tmp.copy_fixture(fixture_log, dir.join("test_album.log"));
 
     let fixture_dir = std::path::Path::new("tests/fixtures/flac");
-    std::fs::copy(fixture_dir.join("01 Test Track 1.flac"), dir.join("01 Test Track 1.flac"))
-        .unwrap();
-    std::fs::copy(fixture_dir.join("02 Test Track 2.flac"), dir.join("02 Test Track 2.flac"))
-        .unwrap();
+    tmp.copy_fixture(fixture_dir.join("01 Test Track 1.flac"), dir.join("01 Test Track 1.flac"));
+    tmp.copy_fixture(fixture_dir.join("02 Test Track 2.flac"), dir.join("02 Test Track 2.flac"));
 
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
         dir,
@@ -102,10 +100,10 @@ fn test_categorized_yields_discid_and_track_count() {
 #[test]
 fn non_utf8_cue_is_decoded_not_dropped() {
     // A Windows-1252 CUE's curly apostrophe (0x92) is decoded, not the sheet dropped.
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
 
     let mut cue: Vec<u8> = Vec::new();
     cue.extend_from_slice(b"PERFORMER \"Artist Alpha\"\n");
@@ -116,7 +114,7 @@ fn non_utf8_cue_is_decoded_not_dropped() {
     cue.push(0x92); // Windows-1252 right single quotation mark
     cue.extend_from_slice(b"t Got No Heart\"\n");
     cue.extend_from_slice(b"    INDEX 01 00:00:00\n");
-    fs::write(folder.join("Album.cue"), &cue).unwrap();
+    tmp.write(folder.join("Album.cue"), &cue);
 
     let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
@@ -143,10 +141,10 @@ fn non_utf8_cue_is_decoded_not_dropped() {
 fn a_folder_whose_name_is_not_utf8_gives_its_name_and_bracketed_catalog() {
     use std::os::unix::ffi::OsStrExt;
 
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let scanned = tmp.path().join("Some Folder");
-    fs::create_dir_all(&scanned).unwrap();
-    fs::write(scanned.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&scanned);
+    tmp.write(scanned.join("audio.flac"), fixture_flac());
     let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &scanned,
         crate::ReleaseFileScope::Recursive,
@@ -163,25 +161,24 @@ fn a_folder_whose_name_is_not_utf8_gives_its_name_and_bracketed_catalog() {
     assert_eq!(pass.bracket_catalogs, ["LABELA071"]);
 }
 
-/// A FLAC carrying these Vorbis comments.
-fn tagged_flac(path: &Path, comments: &[(&str, &str)]) {
-    use lofty::config::WriteOptions;
-    use lofty::tag::TagExt;
-    fs::write(path, fixture_flac()).unwrap();
+/// A FLAC carrying these Vorbis comments, written to `path` in `folder`.
+fn tagged_flac(folder: &TestFolder, path: &Path, comments: &[(&str, &str)]) {
+    folder.write(path, fixture_flac());
     let mut tag = lofty::ogg::tag::VorbisComments::default();
     for (key, value) in comments {
         tag.push((*key).to_string(), (*value).to_string());
     }
-    tag.save_to_path(path, WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tag(folder, path, &tag);
 }
 
 #[test]
 fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
+    tmp.create_folder(&folder);
     for (name, isrc) in [("01.flac", "it-000-00-00001"), ("02.flac", "IT0000000002")] {
         tagged_flac(
+            &tmp,
             &folder.join(name),
             &[
                 ("ALBUM", "Album Title"),
@@ -213,14 +210,14 @@ fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
 /// Read a folder of two FLACs carrying these comments, with `extra` files
 /// beside them.
 fn origin_of(comments: &[(&str, &str)], extra: &[(&str, &[u8])]) -> bae_catalogs::AudioOrigin {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
+    tmp.create_folder(&folder);
     for name in ["01.flac", "02.flac"] {
-        tagged_flac(&folder.join(name), comments);
+        tagged_flac(&tmp, &folder.join(name), comments);
     }
     for (name, bytes) in extra {
-        fs::write(folder.join(name), bytes).unwrap();
+        tmp.write(folder.join(name), bytes);
     }
     let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
@@ -301,8 +298,10 @@ fn a_store_s_marker_proves_a_download() {
 /// reading a disc, and a tag can be copied, so the rip is what it proves.
 #[test]
 fn a_rip_log_outweighs_a_store_s_marker() {
-    let log = fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/logs/test_album.log"))
-        .unwrap();
+    let log = bae_util::test_files::read_fixture(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/logs/test_album.log"
+    ));
     assert!(matches!(
         origin_of(&[("COMMENT", "Visit https://artistname.bandcamp.com")], &[("Album.log", &log)])
             .source,
@@ -314,11 +313,11 @@ fn a_rip_log_outweighs_a_store_s_marker() {
 /// name without the track number.
 #[test]
 fn each_track_is_titled_by_its_tag_or_its_file_name() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    tagged_flac(&folder.join("01 - First File.flac"), &[("TITLE", "Song One")]);
-    tagged_flac(&folder.join("02 - Song Two.flac"), &[]);
+    tmp.create_folder(&folder);
+    tagged_flac(&tmp, &folder.join("01 - First File.flac"), &[("TITLE", "Song One")]);
+    tagged_flac(&tmp, &folder.join("02 - Song Two.flac"), &[]);
     let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &folder,
         crate::ReleaseFileScope::Recursive,
@@ -338,11 +337,11 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
 #[test]
 fn unnumbered_files_give_no_titles() {
     let titles_of = |files: &[(&str, &[(&str, &str)])]| {
-        let tmp = TempDir::new().unwrap();
+        let tmp = TestFolder::new();
         let folder = tmp.path().join("Some Folder");
-        fs::create_dir_all(&folder).unwrap();
+        tmp.create_folder(&folder);
         for (name, comments) in files {
-            tagged_flac(&folder.join(name), comments);
+            tagged_flac(&tmp, &folder.join(name), comments);
         }
         let files = crate::folder_scanner::collect_release_candidate_files_with_scope(
             &folder,
@@ -378,19 +377,19 @@ fn unnumbered_files_give_no_titles() {
 
 /// The first FLAC test track's bytes.
 fn fixture_flac() -> Vec<u8> {
-    read_fixture(&flac_dir().join("01 Test Track 1.flac"))
+    read_fixture(flac_dir().join("01 Test Track 1.flac"))
 }
 
 /// A text file that cannot be read fails the pass: its lines would be clues
 /// the pass never saw.
 #[test]
 fn a_text_file_that_cannot_be_read_fails_the_pass() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-        fs::copy(Path::new("tests/fixtures/flac").join(name), dir.join(name)).unwrap();
+        tmp.copy_fixture(Path::new("tests/fixtures/flac").join(name), dir.join(name));
     }
-    fs::write(dir.join("notes.txt"), "Catalog LBL-1001\n").unwrap();
+    tmp.write(dir.join("notes.txt"), "Catalog LBL-1001\n");
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
         dir,
         crate::ReleaseFileScope::Recursive,
@@ -401,7 +400,7 @@ fn a_text_file_that_cannot_be_read_fails_the_pass() {
     gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
         .expect("the notes read while they are there");
 
-    fs::remove_file(dir.join("notes.txt")).unwrap();
+    tmp.remove(dir.join("notes.txt"));
     let error = gather_non_ocr_sources(&folders, &categorized, &bae_util::test_files::lease())
         .err()
         .expect("a text file that left the folder fails the pass");

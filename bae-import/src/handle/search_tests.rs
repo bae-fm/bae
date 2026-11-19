@@ -20,7 +20,7 @@ async fn an_answer_that_cannot_be_saved_fails_its_source() {
         mb_release_json("mb-typed", "rg-typed", &[probed, 0]),
     );
     fixture.scan(1).await;
-    crate::tables::ImportTables::fail_search_match_writes_for_test(fixture._temp.path()).await;
+    crate::tables::ImportTables::fail_search_match_writes_for_test(fixture.temp.path()).await;
 
     fixture
         .import

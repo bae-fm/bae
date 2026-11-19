@@ -8,8 +8,8 @@ use crate::service::tests::{setup_import_service, TestService};
 use crate::tables::watched_path::host_root;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::sync::Mutex;
-use tempfile::TempDir;
 
 /// A `/`-spelled watched root in the host's spelling, since a watched root must
 /// be absolute by the OS's own rule.
@@ -275,7 +275,7 @@ pub(crate) struct CoordinatorHarness {
     pub(crate) events: tokio::sync::Mutex<crate::ImportEvents>,
     pub(crate) coordinator_thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// The directory the coordinator's library is stored under.
-    pub(crate) library: TempDir,
+    pub(crate) library: TestFolder,
 }
 
 impl CoordinatorHarness {

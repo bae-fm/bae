@@ -5,6 +5,7 @@
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 /// Everything a pass over `root` said, in the order it said it.
@@ -152,12 +153,12 @@ impl DirectoryReader for ListsOneFolderAfterAnother {
 
 #[test]
 fn a_pass_reads_folders_at_once_and_says_what_each_says_on_its_own() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Library");
     let write = |relative: &str, bytes: &[u8]| {
         let path = root.join(relative);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, bytes).unwrap();
+        temp_dir.create_folder(path.parent().unwrap());
+        temp_dir.write(path, bytes);
     };
     write("loose.flac", &fake_flac());
     // No audio: its files are the root's own release's.
@@ -283,10 +284,10 @@ impl DirectoryReader for FailsInOneFolder {
 
 #[test]
 fn a_folder_that_fails_stops_the_others_and_fails_the_pass() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Library");
     for folder in 1..=20 {
-        std::fs::create_dir_all(root.join(format!("Folder {folder:02}"))).unwrap();
+        temp_dir.create_folder(root.join(format!("Folder {folder:02}")));
     }
     let reader = Arc::new(FailsInOneFolder {
         failing: PathBuf::from("Folder 05"),
@@ -357,12 +358,12 @@ impl DirectoryReader for CancelsInOneFolder {
 
 #[test]
 fn cancelling_a_pass_stops_every_folder_it_is_reading() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Library");
     for folder in 1..=20 {
         let folder = root.join(format!("Release {folder:02}"));
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(folder.join("01 Track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&folder);
+        temp_dir.write(folder.join("01 Track.flac"), fake_flac());
     }
     let cancellation = ScanCancellation::new();
     let reader = Arc::new(CancelsInOneFolder {
@@ -457,12 +458,12 @@ impl DirectoryReader for DatedFolders {
 
 #[test]
 fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_says() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Library");
     let write = |relative: &str, bytes: &[u8]| {
         let path = root.join(relative);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, bytes).unwrap();
+        temp_dir.create_folder(path.parent().unwrap());
+        temp_dir.write(path, bytes);
     };
     write("loose.flac", &fake_flac());
     for folder in 1..=12 {
@@ -543,10 +544,10 @@ fn a_pass_begins_the_newest_folders_first_and_says_what_a_pass_in_name_order_say
 
 #[test]
 fn a_pass_over_folders_with_no_dates_begins_them_in_name_order() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Library");
     for folder in 1..=12 {
-        std::fs::create_dir_all(root.join(format!("Folder {folder:02}"))).unwrap();
+        temp_dir.create_folder(root.join(format!("Folder {folder:02}")));
     }
     let reader = DatedFolders::new(HashMap::new());
     let (result, _) = pass_over_root(&reader, &root, &ScanCancellation::new());

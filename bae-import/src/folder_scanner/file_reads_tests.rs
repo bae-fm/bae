@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 /// One valid release at `/music/Album` holding the track `01.flac`, measured
@@ -129,11 +130,11 @@ fn audio_of(release: &FolderCandidate) -> Vec<ScannedFile> {
 /// tracks reads that one's tags again, while the release's own reads none.
 #[test]
 fn a_pass_holds_only_the_picture_a_release_takes() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("02.flac"), fake_flac()).unwrap();
+    tmp.create_folder(&album);
+    tmp.write(album.join("01.flac"), fake_flac());
+    tmp.write(album.join("02.flac"), fake_flac());
     let reader = PictureReader::new(16);
     let reads = FileReads::new(reader.clone(), coven::FileBudget::for_test());
     let [release] = scan_reading(tmp.path(), &reads).try_into().unwrap();
@@ -155,12 +156,12 @@ fn a_pass_holds_only_the_picture_a_release_takes() {
 /// track's tags again.
 #[test]
 fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     // Both under one folder of the root, which one walk reads in order, so
     // `First`'s picture is the older.
     for folder in ["Releases/First", "Releases/Second"] {
-        std::fs::create_dir_all(tmp.path().join(folder)).unwrap();
-        std::fs::write(tmp.path().join(folder).join("01.flac"), fake_flac()).unwrap();
+        tmp.create_folder(folder);
+        tmp.write(tmp.path().join(folder).join("01.flac"), fake_flac());
     }
     let reader = PictureReader::new(file_reads::HELD_COVER_BYTES / 2 + 1);
     let reads = FileReads::new(reader.clone(), coven::FileBudget::for_test());
@@ -179,12 +180,11 @@ fn a_pass_lets_the_oldest_picture_go_past_what_it_holds() {
 fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
     let result = run_scenario(vec![file("Album/01.flac", FileKind::Flac)]);
     let path = result.root.join("Album/01.flac");
-    let original_metadata = std::fs::metadata(&path).unwrap();
-    std::fs::write(&path, vec![0; original_metadata.len() as usize]).unwrap();
-    std::fs::OpenOptions::new()
-        .write(true)
-        .open(&path)
-        .unwrap()
+    let original_metadata = result.tmp.metadata(&path);
+    result.tmp.write(&path, vec![0; original_metadata.len() as usize]);
+    result
+        .tmp
+        .open_with(&path, std::fs::OpenOptions::new().write(true))
         .set_times(std::fs::FileTimes::new().set_modified(original_metadata.modified().unwrap()))
         .unwrap();
 
@@ -206,12 +206,12 @@ fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
 fn an_unreadable_track_fails_the_scan_instead_of_reading_as_damaged_audio() {
     use std::os::unix::fs::PermissionsExt;
 
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    tmp.create_folder(&album);
     let track = album.join("01.flac");
-    std::fs::write(&track, fake_flac()).unwrap();
-    std::fs::set_permissions(&track, std::fs::Permissions::from_mode(0o000)).unwrap();
+    tmp.write(&track, fake_flac());
+    tmp.set_permissions(&track, std::fs::Permissions::from_mode(0o000));
 
     let result = scan_for_candidates_with_decisions(
         tmp.path().to_path_buf(),
@@ -221,7 +221,7 @@ fn an_unreadable_track_fails_the_scan_instead_of_reading_as_damaged_audio() {
         |_| {},
     );
 
-    std::fs::set_permissions(&track, std::fs::Permissions::from_mode(0o600)).unwrap();
+    tmp.set_permissions(&track, std::fs::Permissions::from_mode(0o600));
     match result {
         Err(FolderScanError::Io { path, source }) => {
             assert_eq!(path, track);
@@ -260,11 +260,11 @@ async fn read_after_waiting_for_the_only_place<T: Send + 'static>(
 }
 
 /// One track of a scanned folder.
-fn one_scanned_track() -> (tempfile::TempDir, ScannedFile) {
-    let tmp = tempfile::tempdir().unwrap();
+fn one_scanned_track() -> (TestFolder, ScannedFile) {
+    let tmp = TestFolder::new();
     let album = tmp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    tmp.create_folder(&album);
+    tmp.write(album.join("01.flac"), fake_flac());
     let reads = FileReads::new(
         Arc::new(crate::file_tag_reader::LoftyFileTagReader),
         coven::FileBudget::for_test(),
@@ -275,8 +275,8 @@ fn one_scanned_track() -> (tempfile::TempDir, ScannedFile) {
 }
 
 /// `path` as a scan lists it.
-fn scanned(path: &Path) -> ScannedFile {
-    let metadata = std::fs::metadata(path).unwrap();
+fn scanned(tmp: &TestFolder, path: &Path) -> ScannedFile {
+    let metadata = tmp.metadata(path);
     ScannedFile::new(
         path.to_path_buf(),
         path.file_name().unwrap().to_string_lossy().into_owned(),
@@ -307,10 +307,9 @@ async fn a_tag_read_waits_for_a_place() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_image_check_waits_for_a_place() {
-    let tmp = tempfile::tempdir().unwrap();
-    let cover = tmp.path().join("cover.png");
-    std::fs::write(&cover, b"\x89PNG\r\n\x1a\n and a few more bytes of a picture").unwrap();
-    let version = scanned(&cover).version;
+    let tmp = TestFolder::new();
+    let cover = tmp.write("cover.png", b"\x89PNG\r\n\x1a\n and a few more bytes of a picture");
+    let version = scanned(&tmp, &cover).version;
 
     let decodes =
         read_after_waiting_for_the_only_place(move |reads| reads.image_decodes(version).unwrap())
@@ -321,14 +320,13 @@ async fn an_image_check_waits_for_a_place() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cue_sheet_read_waits_for_a_place() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let sheet = tmp.path().join("Album.cue");
-    std::fs::write(
+    tmp.write(
         &sheet,
         "FILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"One\"\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
-    let file = scanned(&sheet);
+    );
+    let file = scanned(&tmp, &sheet);
 
     let parsed =
         read_after_waiting_for_the_only_place(move |reads| reads.sheet(&file).unwrap()).await;
@@ -338,9 +336,9 @@ async fn a_cue_sheet_read_waits_for_a_place() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_folder_listing_waits_for_a_place() {
-    let tmp = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(tmp.path().join("Album")).unwrap();
-    std::fs::write(tmp.path().join("Album/01.flac"), fake_flac()).unwrap();
+    let tmp = TestFolder::new();
+    tmp.create_folder("Album");
+    tmp.write("Album/01.flac", fake_flac());
     let root = tmp.path().to_path_buf();
 
     let releases =

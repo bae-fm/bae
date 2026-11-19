@@ -4,22 +4,22 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 
 /// A per-track sheet whose references name nothing here — the tracks were
 /// renamed after the rip — takes the audio files beside it in name order when
 /// there are exactly as many of them as it has references.
 #[test]
 fn a_sheet_naming_nothing_takes_the_audio_beside_it_in_name_order() {
-    let (_tmp, album) = album_dir();
+    let (tmp, album) = album_dir();
     for name in ["01. Track One.flac", "02. Track Two.flac"] {
-        copy_cue_flac(&album, name);
+        copy_cue_flac(&tmp, &album, name);
     }
-    std::fs::write(
+    tmp.write(
         album.join("album.cue"),
         "FILE \"01 -First.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
          FILE \"02 -Second.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -45,15 +45,14 @@ fn a_sheet_naming_nothing_takes_the_audio_beside_it_in_name_order() {
 /// files is not a pairing anyone asked for.
 #[test]
 fn a_sheet_naming_nothing_beside_a_different_count_stays_unbound() {
-    let (_tmp, album) = album_dir();
+    let (tmp, album) = album_dir();
     for name in ["01. Track One.flac", "02. Track Two.flac"] {
-        copy_cue_flac(&album, name);
+        copy_cue_flac(&tmp, &album, name);
     }
-    std::fs::write(
+    tmp.write(
         album.join("album.cue"),
         "FILE \"Range.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -67,12 +66,11 @@ fn a_sheet_naming_nothing_beside_a_different_count_stays_unbound() {
 /// and not an empty picker.
 #[test]
 fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
-    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
-    std::fs::copy(
+    let (tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
+    tmp.copy_fixture(
         bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
         album.join("cd.mp3"),
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
     let options = files.sheet_binding_options("cd.cue");
@@ -130,12 +128,11 @@ fn clearing_a_binding_leaves_it_unbound_rather_than_re_guessed() {
 /// actually there. The behaviour is what matters; the hash is only how.
 #[test]
 fn a_binding_whose_audio_disappears_is_not_kept() {
-    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
-    std::fs::copy(
+    let (tmp, album) = cue_flac_album("cd.flac", "cd.wav", 12);
+    tmp.copy_fixture(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
         album.join("bonus.flac"),
-    )
-    .unwrap();
+    );
 
     let scanned = scan_files(&album);
     let stored = stored_binding(&scanned, "cd.cue", Some("cd.flac"));
@@ -151,7 +148,7 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
         "the binding contributes twelve tracks alongside the loose bonus track",
     );
 
-    std::fs::remove_file(album.join("cd.flac")).unwrap();
+    tmp.remove(album.join("cd.flac"));
 
     let after = collect_release_candidate_files_with_scope(
         &album,
@@ -219,12 +216,11 @@ fn scan_with_binding(
 /// order carves it and the other is ignored rather than both being set aside.
 #[test]
 fn the_first_of_competing_cues_carves_the_audio() {
-    let (_tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
-    std::fs::write(
+    let (tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
+    tmp.write(
         album.join("alternative.cue"),
         make_cue_content_n_tracks("cd.flac", "Album Title", 2),
-    )
-    .unwrap();
+    );
     let files = scan_files(&album);
     assert_eq!(files.track_count(), 2, "alternative.cue sorts first and carves");
     assert_eq!(files.carving_sheets().len(), 1);
@@ -233,11 +229,10 @@ fn the_first_of_competing_cues_carves_the_audio() {
 
 #[test]
 fn multi_file_cue_offers_bindings_for_each_reference() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "first.flac");
-    copy_cue_flac(&album, "second.flac");
-    std::fs::write(album.join("disc.cue"),
-        "FILE \"first.flac\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"missing.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n").unwrap();
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "first.flac");
+    copy_cue_flac(&tmp, &album, "second.flac");
+    tmp.write(album.join("disc.cue"), "FILE \"first.flac\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"missing.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n");
     let files = scan_files(&album);
     assert_eq!(files.track_count(), 2);
     assert!(!files.sheet_binding_options("disc.cue").is_empty());
@@ -248,21 +243,16 @@ fn multi_file_cue_offers_bindings_for_each_reference() {
 /// takes no place in that count — it carves nothing either way.
 #[test]
 fn bound_sheets_take_their_positions_as_discs_by_default() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
-    std::fs::write(root.join("alpha.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        root.join("alpha.cue"),
-        make_cue_content_n_tracks("alpha.flac", "Album Title", 2),
-    )
-    .unwrap();
-    std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3))
-        .unwrap();
+    temp_dir.write(root.join("alpha.flac"), fake_flac());
+    temp_dir
+        .write(root.join("alpha.cue"), make_cue_content_n_tracks("alpha.flac", "Album Title", 2));
+    temp_dir.write(root.join("beta.flac"), fake_flac());
+    temp_dir.write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3));
     // Names audio the folder does not hold, so it never binds.
-    std::fs::write(root.join("zeta.cue"), make_cue_content_n_tracks("zeta.flac", "Album Title", 4))
-        .unwrap();
+    temp_dir.write(root.join("zeta.cue"), make_cue_content_n_tracks("zeta.flac", "Album Title", 4));
 
     let files = scan_files(root);
 
@@ -283,18 +273,14 @@ fn bound_sheets_take_their_positions_as_discs_by_default() {
 /// survives being read back off disk by a later scan.
 #[test]
 fn a_stored_disc_assignment_overrules_the_default_position() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
-    std::fs::write(root.join("alpha.flac"), fake_flac()).unwrap();
-    std::fs::write(
-        root.join("alpha.cue"),
-        make_cue_content_n_tracks("alpha.flac", "Album Title", 2),
-    )
-    .unwrap();
-    std::fs::write(root.join("beta.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3))
-        .unwrap();
+    temp_dir.write(root.join("alpha.flac"), fake_flac());
+    temp_dir
+        .write(root.join("alpha.cue"), make_cue_content_n_tracks("alpha.flac", "Album Title", 2));
+    temp_dir.write(root.join("beta.flac"), fake_flac());
+    temp_dir.write(root.join("beta.cue"), make_cue_content_n_tracks("beta.flac", "Album Title", 3));
 
     let scanned = scan_files(root);
 
@@ -333,14 +319,13 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
         ("MP3 Album", "album.mp3", "placeholder-mp3.mp3", "MP3", "MP3"),
         ("Ogg Album", "album.ogg", "placeholder-vorbis.ogg", "Vorbis", "Vorbis"),
     ] {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = TestFolder::new();
         let root = temp_dir.path();
 
         let album = root.join(folder);
-        std::fs::create_dir(&album).unwrap();
-        std::fs::write(album.join("album.cue"), make_cue_content(audio_name, "Test Album"))
-            .unwrap();
-        std::fs::write(album.join(audio_name), audio_format_fixture(fixture)).unwrap();
+        temp_dir.create_folder(&album);
+        temp_dir.write(album.join("album.cue"), make_cue_content(audio_name, "Test Album"));
+        temp_dir.write(album.join(audio_name), audio_format_fixture(fixture));
 
         let candidates = scan_valid(root.to_path_buf());
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
@@ -378,17 +363,13 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
         ("WavPack Album", "album.wv", "placeholder-wavpack.wv", "WavPack"),
         ("DSD Album", "album.dsf", "placeholder-dsd.dsf", "DSD"),
     ] {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = TestFolder::new();
         let root = temp_dir.path().join(folder);
-        std::fs::create_dir(&root).unwrap();
-        std::fs::write(
-            root.join("album.cue"),
-            format!(
+        temp_dir.create_folder(&root);
+        temp_dir.write(root.join("album.cue"), format!(
                 "PERFORMER \"Test Artist\"\nTITLE \"Test Album\"\nFILE \"{audio_name}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n"
-            ),
-        )
-        .unwrap();
-        std::fs::write(root.join(audio_name), audio_format_fixture(fixture)).unwrap();
+            ));
+        temp_dir.write(root.join(audio_name), audio_format_fixture(fixture));
 
         let candidates = scan_valid(root);
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
@@ -407,17 +388,17 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
 /// sibling FLAC release under the same root still scans.
 #[test]
 fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
     let bad = root.join("Truncated Album");
-    std::fs::create_dir(&bad).unwrap();
-    std::fs::write(bad.join("album.cue"), make_cue_content("album.flac", "Test Album")).unwrap();
-    std::fs::write(bad.join("album.flac"), header_only_flac_unprobeable()).unwrap();
+    temp_dir.create_folder(&bad);
+    temp_dir.write(bad.join("album.cue"), make_cue_content("album.flac", "Test Album"));
+    temp_dir.write(bad.join("album.flac"), header_only_flac_unprobeable());
 
     let good = root.join("FLAC Album");
-    std::fs::create_dir(&good).unwrap();
-    std::fs::write(good.join("01 Track.flac"), fake_flac()).unwrap();
+    temp_dir.create_folder(&good);
+    temp_dir.write(good.join("01 Track.flac"), fake_flac());
 
     let items = scan_items(root.to_path_buf());
     assert_eq!(items.len(), 2, "both leaves surface");
@@ -482,11 +463,11 @@ fn cue_flac_pair_binds_and_reports_source_audio() {
 /// standalone files leaves all three files on the candidate, hashed and listed.
 #[test]
 fn audio_no_sheet_references_survives() {
-    let (_tmp, album) = album_dir();
-    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("Album.cue"), make_cue_content("Album.flac", "Album Title")).unwrap();
-    std::fs::write(album.join("bonus 1.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("bonus 2.flac"), fake_flac()).unwrap();
+    let (tmp, album) = album_dir();
+    tmp.write(album.join("Album.flac"), fake_flac());
+    tmp.write(album.join("Album.cue"), make_cue_content("Album.flac", "Album Title"));
+    tmp.write(album.join("bonus 1.flac"), fake_flac());
+    tmp.write(album.join("bonus 2.flac"), fake_flac());
 
     let files = scan_files(&album);
     assert_eq!(
@@ -510,12 +491,16 @@ fn audio_no_sheet_references_survives() {
 fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
     let (tmp, album) = album_dir();
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-    std::fs::copy(fixtures.join("logs/test_album.log"), album.join("rip.log")).unwrap();
-    std::fs::copy(fixtures.join("flac/01 Test Track 1.flac"), album.join("01 Test Track 1.flac"))
-        .unwrap();
-    std::fs::copy(fixtures.join("flac/02 Test Track 2.flac"), album.join("02 Test Track 2.flac"))
-        .unwrap();
-    std::fs::write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title")).unwrap();
+    tmp.copy_fixture(fixtures.join("logs/test_album.log"), album.join("rip.log"));
+    tmp.copy_fixture(
+        fixtures.join("flac/01 Test Track 1.flac"),
+        album.join("01 Test Track 1.flac"),
+    );
+    tmp.copy_fixture(
+        fixtures.join("flac/02 Test Track 2.flac"),
+        album.join("02 Test Track 2.flac"),
+    );
+    tmp.write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title"));
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
@@ -541,13 +526,12 @@ fn folder_identifies_from_its_rip_log_with_the_sheet_unbound() {
 /// even when their names have nothing in common.
 #[test]
 fn a_binding_survives_a_rename_of_the_sheet() {
-    let (_tmp, album) = album_dir();
-    std::fs::write(album.join("Audio.flac"), fake_flac()).unwrap();
-    std::fs::write(
+    let (tmp, album) = album_dir();
+    tmp.write(album.join("Audio.flac"), fake_flac());
+    tmp.write(
         album.join("Completely Unrelated.cue"),
         make_cue_content("Audio.flac", "Album Title"),
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
     let bound = files.bound_sheets();

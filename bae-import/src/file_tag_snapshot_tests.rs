@@ -1,5 +1,6 @@
 use super::*;
 use crate::file_tag_reader::FileTagRead;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 
 #[derive(Default)]
@@ -30,10 +31,10 @@ impl FileTagReader for CountingReader {
 
 #[test]
 fn extraction_reads_every_file_before_returning_one_snapshot() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let paths = [dir.path().join("01.flac"), dir.path().join("02.flac")];
     for path in &paths {
-        std::fs::write(path, b"audio").unwrap();
+        dir.write(path, b"audio");
     }
     let files = paths
         .iter()
@@ -55,9 +56,8 @@ fn extraction_reads_every_file_before_returning_one_snapshot() {
 
 #[test]
 fn extraction_refuses_a_file_whose_scanned_size_changed() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.flac");
-    std::fs::write(&path, b"changed").unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.flac", b"changed");
     let file = ScannedFile::new(path, "01.flac".to_string(), 5, 1);
     let reader = CountingReader::default();
 

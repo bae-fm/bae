@@ -122,7 +122,7 @@ pub(super) fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     for fixture_name in fixture_files {
         let fixture_path = fixture_dir.join(fixture_name);
         let test_path = dir.join(fixture_name);
-        let data = bae_import::test_fixtures::read_fixture(&fixture_path);
+        let data = bae_util::test_files::read_fixture(&fixture_path);
         fs::write(&test_path, &data).expect("Failed to copy FLAC fixture");
         file_data.push(data);
     }
@@ -135,12 +135,12 @@ pub(super) fn generate_cue_flac_files(dir: &std::path::Path) {
 
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");
-    let flac_data = bae_import::test_fixtures::read_fixture(&flac_src);
+    let flac_data = bae_util::test_files::read_fixture(&flac_src);
     fs::write(&flac_dst, &flac_data).expect("Failed to copy FLAC fixture");
 
     let cue_src = fixture_dir.join("Test Album.cue");
     let cue_dst = dir.join("Test Album.cue");
-    let cue_data = bae_import::test_fixtures::read_fixture(&cue_src);
+    let cue_data = bae_util::test_files::read_fixture(&cue_src);
     fs::write(&cue_dst, &cue_data).expect("Failed to copy CUE fixture");
 }
 

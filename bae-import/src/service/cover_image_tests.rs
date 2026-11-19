@@ -8,6 +8,7 @@ use crate::import_cancel::ImportStop;
 use crate::service::tests::*;
 use crate::ImportDestination;
 use crate::ImportProgress;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -16,8 +17,8 @@ async fn explicit_bmp_cover_is_rejected() {
     let test = setup_import_service().await;
     let bmp = test.temp.path().join("cover.bmp");
     let jpg = test.temp.path().join("front.jpg");
-    std::fs::write(&bmp, b"bmp bytes").unwrap();
-    std::fs::write(&jpg, b"jpg bytes").unwrap();
+    test.temp.write(&bmp, b"bmp bytes");
+    test.temp.write(&jpg, b"jpg bytes");
     let discovered = vec![
         artwork(ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9, 1)),
         artwork(ScannedFile::new(jpg.clone(), "front.jpg".to_string(), 9, 1)),
@@ -44,7 +45,7 @@ fn artwork(file: ScannedFile) -> crate::folder_scanner::CandidateFile {
 async fn a_damaged_image_is_never_picked_as_the_cover() {
     let test = setup_import_service().await;
     let front = test.temp.path().join("front.png");
-    std::fs::write(&front, [0u8; 64]).unwrap();
+    test.temp.write(&front, [0u8; 64]);
     let discovered = vec![crate::folder_scanner::CandidateFile {
         file: ScannedFile::new(front, "front.png".to_string(), 64, 1),
         role: crate::folder_scanner::FileRole::DamagedImage,
@@ -83,9 +84,9 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         let tables = test.service.tables.clone();
         let root = test.temp.path().join("watched");
         let folder = root.join("Album");
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(folder.join("01.flac"), flac()).unwrap();
-        write_test_jpeg(&folder.join("front.jpg"));
+        test.temp.create_folder(&folder);
+        test.temp.write(folder.join("01.flac"), flac());
+        write_test_jpeg(&test.temp, &folder.join("front.jpg"));
         let root_text = root.to_string_lossy().into_owned();
         let key = crate::CandidateKey::folder(&folder);
         tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
@@ -185,7 +186,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
 async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let test = setup_import_service().await;
     let fallback = test.temp.path().join("front.jpg");
-    std::fs::write(&fallback, b"jpg bytes").unwrap();
+    test.temp.write(&fallback, b"jpg bytes");
     let discovered =
         vec![artwork(ScannedFile::new(fallback.clone(), "front.jpg".to_string(), 9, 1))];
 
@@ -228,8 +229,8 @@ async fn unreadable_selected_cover_is_an_error() {
 
     let test = setup_import_service().await;
     let cover = test.temp.path().join("cover.jpg");
-    std::fs::write(&cover, b"jpg bytes").unwrap();
-    std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
+    test.temp.write(&cover, b"jpg bytes");
+    test.temp.set_permissions(&cover, std::fs::Permissions::from_mode(0o000));
     let discovered = vec![artwork(ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9, 1))];
 
     let result = folder_cover(
@@ -240,7 +241,7 @@ async fn unreadable_selected_cover_is_an_error() {
     )
     .await;
 
-    std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o600)).unwrap();
+    test.temp.set_permissions(&cover, std::fs::Permissions::from_mode(0o600));
     let err = result.unwrap_err();
     assert!(
         matches!(&err, crate::ImportError::LocalCover { detail } if detail.contains("Failed to read cover art")),
@@ -287,11 +288,10 @@ fn an_embedded_cover_is_the_snapshot_artwork_of_the_audio_it_names() {
 /// to read the cover, and stores it once the test drops its lease.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_import_cover_read_waits_for_a_place() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = TestFolder::new();
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
     let watch = budget.watch();
-    let cover = temp.path().join("front.gif");
-    std::fs::write(&cover, bae_util::test_cover_art::SOLID_GIF).unwrap();
+    let cover = temp.write("front.gif", bae_util::test_cover_art::SOLID_GIF);
     let discovered = vec![artwork(ScannedFile::new(
         cover,
         "front.gif".to_string(),

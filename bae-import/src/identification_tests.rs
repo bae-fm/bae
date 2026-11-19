@@ -13,11 +13,11 @@ use bae_identify::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use bae_identify::FolderCheck;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
-use tempfile::TempDir;
 
 /// The disc ID `store_settled_verdict` seeds, and the file it names.
 pub(crate) const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
@@ -35,12 +35,10 @@ pub(crate) fn fixture_modified_at() -> std::time::SystemTime {
 
 /// Copy a fixture file into a candidate folder, stamped with
 /// [`fixture_modified_at`].
-pub(crate) fn copy_fixture(source: &Path, target: &Path) {
-    std::fs::copy(source, target).unwrap();
-    std::fs::File::options()
-        .write(true)
-        .open(target)
-        .unwrap()
+pub(crate) fn copy_fixture(folder: &TestFolder, source: &Path, target: &Path) {
+    folder.copy_fixture(source, target);
+    folder
+        .open_with(target, std::fs::OpenOptions::new().write(true))
         .set_modified(fixture_modified_at())
         .unwrap();
 }
@@ -118,7 +116,7 @@ pub(crate) struct Fixture {
     /// Every bug the import service reported.
     pub(crate) bugs: Arc<bae_diagnostics::RecordingBugReporter>,
     pub(crate) root: PathBuf,
-    pub(crate) _temp: TempDir,
+    pub(crate) temp: TestFolder,
 }
 
 /// The fixed instant every stored row is stamped with.
@@ -157,7 +155,7 @@ impl Fixture {
 
     pub(crate) async fn with_ids(_name: &str, ids: coven::IdSourceRef) -> Self {
         bae_util::test_logs::install();
-        let temp = TempDir::new().unwrap();
+        let temp = TestFolder::new();
         let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
         let db = Store::new_test(crate::TEST_SCHEMA, temp.path(), clock.clone()).await.unwrap();
 
@@ -194,7 +192,7 @@ impl Fixture {
         let import = parts.start().await.unwrap();
 
         let root = temp.path().join("watched");
-        std::fs::create_dir_all(&root).unwrap();
+        temp.create_folder(&root);
 
         let context = Context {
             import: import.clone(),
@@ -215,7 +213,7 @@ impl Fixture {
             identification: OnceLock::new(),
             bugs,
             root,
-            _temp: temp,
+            temp,
         }
     }
 
@@ -263,7 +261,11 @@ impl Fixture {
     /// A candidate folder with two FLACs and a rip log, so the disc ID computes.
     pub(crate) fn disc_id_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
-        copy_fixture(Path::new("tests/fixtures/logs/test_album.log"), &dir.join("test_album.log"));
+        copy_fixture(
+            &self.temp,
+            Path::new("tests/fixtures/logs/test_album.log"),
+            &dir.join("test_album.log"),
+        );
         dir
     }
 
@@ -271,7 +273,7 @@ impl Fixture {
     /// identification runs through the artwork barcode.
     pub(crate) fn barcode_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
-        std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+        self.temp.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
         dir
     }
 
@@ -279,9 +281,9 @@ impl Fixture {
         // Part by part, so a nested folder is spelled as the scan spells its
         // key on every host.
         let dir = folder.split('/').fold(self.root.clone(), |dir, part| dir.join(part));
-        std::fs::create_dir_all(&dir).unwrap();
+        self.temp.create_folder(&dir);
         for name in FLAC_FIXTURES {
-            copy_fixture(&Path::new("tests/fixtures/flac").join(name), &dir.join(name));
+            copy_fixture(&self.temp, &Path::new("tests/fixtures/flac").join(name), &dir.join(name));
         }
         dir
     }

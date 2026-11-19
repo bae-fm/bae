@@ -1,8 +1,8 @@
 use super::*;
 use crate::folder_scanner::{collect_release_candidate_files_with_scope, StoredCandidateEdits};
 use crate::ReleaseFileScope;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 
 fn categorize(dir: &Path) -> CategorizedFiles {
     collect_release_candidate_files_with_scope(
@@ -16,11 +16,11 @@ fn categorize(dir: &Path) -> CategorizedFiles {
 /// A folder of loose tracks yields one file row per track.
 #[test]
 fn loose_tracks_yield_one_file_row_each() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
     let fixtures = Path::new("tests/fixtures/flac");
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-        std::fs::copy(fixtures.join(name), dir.join(name)).unwrap();
+        tmp.copy_fixture(fixtures.join(name), dir.join(name));
     }
 
     let probed = source_durations(&categorize(dir)).expect("valid scanned audio has durations");
@@ -33,14 +33,14 @@ fn loose_tracks_yield_one_file_row_each() {
 /// before consuming them.
 #[test]
 fn changed_file_bytes_do_not_replace_scanned_durations() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
     let fixtures = Path::new("tests/fixtures/flac");
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-        std::fs::copy(fixtures.join(name), dir.join(name)).unwrap();
+        tmp.copy_fixture(fixtures.join(name), dir.join(name));
     }
     let files = categorize(dir);
-    std::fs::write(dir.join("02 Test Track 2.flac"), b"not audio at all").unwrap();
+    tmp.write(dir.join("02 Test Track 2.flac"), b"not audio at all");
 
     let probed = source_durations(&files).expect("valid scanned audio has durations");
     let scanned = probed
@@ -54,13 +54,9 @@ fn changed_file_bytes_do_not_replace_scanned_durations() {
 /// own total.
 #[test]
 fn a_cue_carved_container_yields_a_row_per_slice() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
-    let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    for entry in std::fs::read_dir(fixture).unwrap() {
-        let entry = entry.unwrap();
-        std::fs::copy(entry.path(), dir.join(entry.file_name())).unwrap();
-    }
+    crate::test_fixtures::copy_cue_flac_album(&tmp, ".");
 
     let files = categorize(dir);
     let sheets = files.carving_sheets();
@@ -93,15 +89,10 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
 
 #[test]
 fn a_cue_track_starting_after_its_audio_is_rejected() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
-    std::fs::copy(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"))
-        .unwrap();
-    std::fs::write(
-        dir.join("Audio.cue"),
-        "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track Title\"\n    INDEX 01 99:00:00\n",
-    )
-    .unwrap();
+    tmp.copy_fixture(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"));
+    tmp.write(dir.join("Audio.cue"), "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track Title\"\n    INDEX 01 99:00:00\n");
 
     let files = categorize(dir);
     assert!(matches!(
@@ -116,15 +107,10 @@ fn a_cue_track_starting_after_its_audio_is_rejected() {
 
 #[test]
 fn descending_cue_track_boundaries_are_rejected() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
-    std::fs::copy(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"))
-        .unwrap();
-    std::fs::write(
-        dir.join("Audio.cue"),
-        "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 01:00:00\n  TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:30:00\n",
-    )
-    .unwrap();
+    tmp.copy_fixture(Path::new("tests/fixtures/flac/01 Test Track 1.flac"), dir.join("Audio.flac"));
+    tmp.write(dir.join("Audio.cue"), "FILE \"Audio.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 01:00:00\n  TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:30:00\n");
 
     let files = categorize(dir);
     assert!(matches!(
@@ -141,13 +127,9 @@ fn descending_cue_track_boundaries_are_rejected() {
 /// refused, naming the file, instead of analysed with a zero-channel probe.
 #[test]
 fn a_stored_zero_channel_count_refuses_the_sheet() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let dir = tmp.path();
-    let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    for entry in std::fs::read_dir(fixture).unwrap() {
-        let entry = entry.unwrap();
-        std::fs::copy(entry.path(), dir.join(entry.file_name())).unwrap();
-    }
+    crate::test_fixtures::copy_cue_flac_album(&tmp, ".");
     let mut files = categorize(dir);
     let sheet_id = files.bound_sheets()[0].file.relative_path.clone();
     let audio_id = files.bound_sheets()[0].audio_files[0].1.relative_path.clone();

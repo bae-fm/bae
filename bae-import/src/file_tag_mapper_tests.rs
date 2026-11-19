@@ -5,12 +5,10 @@
 use super::*;
 use crate::cue_sheet::tests::{cue_sheet, titled_cue_track};
 use crate::cue_sheet::CueSheet;
-use lofty::config::WriteOptions;
+use bae_util::test_files::{read_fixture, TestFolder};
 use lofty::prelude::*;
 use lofty::tag::items::Timestamp;
 use lofty::tag::{Tag, TagType};
-use std::fs;
-use tempfile::TempDir;
 
 #[test]
 fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
@@ -89,15 +87,16 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
 
 /// Run the mapper with deterministic fakes. Exercises the real
 /// `read_file_tags`.
-fn map_tags(audio_files: &[PathBuf]) -> Result<ReleaseValues, ImportError> {
-    map_tags_with_folder(audio_files, None)
+fn map_tags(folder: &TestFolder, audio_files: &[PathBuf]) -> Result<ReleaseValues, ImportError> {
+    map_tags_with_folder(folder, audio_files, None)
 }
 
 fn map_tags_with_folder(
+    folder: &TestFolder,
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
 ) -> Result<ReleaseValues, ImportError> {
-    read_file_tags(audio_files, folder_name)
+    read_file_tags(folder, audio_files, folder_name)
 }
 
 /// Each track's number in the draft the reading makes: the number the tags
@@ -252,11 +251,11 @@ fn cue_multi_sheet_assigns_side_per_disc() {
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
 }
 
-/// Copy a fixture into `dest_dir/{name}` and stamp it with the given
-/// tag values. Returns the destination path.
+/// Write the audio file `source` to `folder/{name}` and stamp it with the
+/// given tag values. Returns the destination path.
 fn copy_and_tag(
-    source: &Path,
-    dest_dir: &Path,
+    source: &[u8],
+    folder: &TestFolder,
     name: &str,
     tag_type: TagType,
     title: Option<&str>,
@@ -267,10 +266,9 @@ fn copy_and_tag(
     track: Option<u32>,
     disk: Option<u32>,
 ) -> PathBuf {
-    let dest = dest_dir.join(name);
-    fs::copy(source, &dest).expect("copy fixture");
+    let dest = folder.write(name, source);
 
-    let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+    let mut tagged = crate::test_fixtures::read_tagged(folder, &dest);
     let mut tag = Tag::new(tag_type);
     if let Some(t) = title {
         tag.set_title(t.to_string());
@@ -301,7 +299,7 @@ fn copy_and_tag(
         tag.set_disk(d);
     }
     tagged.insert_tag(tag);
-    tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
+    crate::test_fixtures::save_tagged(folder, &dest, &tagged);
     dest
 }
 
@@ -309,13 +307,13 @@ fn copy_and_tag(
 /// land on the tracks. The source codec is not release media. No identity rows.
 #[test]
 fn flac_with_vorbis_comments_basic() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "01.flac",
         TagType::VorbisComments,
         Some("Track One"),
@@ -327,8 +325,8 @@ fn flac_with_vorbis_comments_basic() {
         None,
     );
     let f2 = copy_and_tag(
-        &src2,
-        temp.path(),
+        &read_fixture(&src2),
+        &temp,
         "02.flac",
         TagType::VorbisComments,
         Some("Track Two"),
@@ -340,7 +338,7 @@ fn flac_with_vorbis_comments_basic() {
         None,
     );
 
-    let parsed = map_tags(&[f1, f2]).unwrap();
+    let parsed = map_tags(&temp, &[f1, f2]).unwrap();
 
     assert_eq!(parsed.album_title, "Album Title");
     // One year is the album's; it names no pressing.
@@ -365,7 +363,7 @@ fn flac_with_vorbis_comments_basic() {
 /// Multi-disc rip: DISCNUMBER + TRACKNUMBER produce side groupings.
 #[test]
 fn flac_multi_disc_groups_by_discnumber() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
 
     let mut files = Vec::new();
@@ -373,8 +371,8 @@ fn flac_multi_disc_groups_by_discnumber() {
         [(1u32, 1u32, "d1t1.flac"), (1, 2, "d1t2.flac"), (2, 1, "d2t1.flac"), (2, 2, "d2t2.flac")]
     {
         files.push(copy_and_tag(
-            &src,
-            temp.path(),
+            &read_fixture(&src),
+            &temp,
             name,
             TagType::VorbisComments,
             Some(&format!("Track {}-{}", disc, track)),
@@ -387,7 +385,7 @@ fn flac_multi_disc_groups_by_discnumber() {
         ));
     }
 
-    let parsed = map_tags(&files).unwrap();
+    let parsed = map_tags(&temp, &files).unwrap();
 
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
     assert!(parsed.mediums.iter().all(|medium| medium.carrier.is_none()), "tags state no carrier");
@@ -396,12 +394,12 @@ fn flac_multi_disc_groups_by_discnumber() {
 /// The largest number a tag can state is a track's number as stated.
 #[test]
 fn the_largest_tag_number_is_kept_as_stated() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
 
     let file = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "wrapped-tag-numbers.flac",
         TagType::VorbisComments,
         Some("Track Title"),
@@ -413,7 +411,7 @@ fn the_largest_tag_number_is_kept_as_stated() {
         Some(u32::MAX),
     );
 
-    let parsed = map_tags(&[file]).unwrap();
+    let parsed = map_tags(&temp, &[file]).unwrap();
 
     assert_eq!(draft_numbers(parsed), [u32::MAX]);
 }
@@ -423,13 +421,13 @@ fn the_largest_tag_number_is_kept_as_stated() {
 /// its own artist.
 #[test]
 fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "01.flac",
         TagType::VorbisComments,
         Some("Track One"),
@@ -441,8 +439,8 @@ fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
         None,
     );
     let f2 = copy_and_tag(
-        &src2,
-        temp.path(),
+        &read_fixture(&src2),
+        &temp,
         "02.flac",
         TagType::VorbisComments,
         Some("Track Two"),
@@ -454,7 +452,7 @@ fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
         None,
     );
 
-    let parsed = map_tags(&[f1, f2]).unwrap();
+    let parsed = map_tags(&temp, &[f1, f2]).unwrap();
 
     let track_artist = |index: usize| match &parsed.tracks[index].credits {
         TrackCredits::Own(credits) => {
@@ -474,13 +472,13 @@ fn a_track_artist_unlike_the_album_s_is_the_track_s_own_credit() {
 /// all tracks land on side 1, track numbers fall back to file order.
 #[test]
 fn missing_optional_tags_yields_none_and_defaults() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "01.flac",
         TagType::VorbisComments,
         Some("Track One"),
@@ -492,8 +490,8 @@ fn missing_optional_tags_yields_none_and_defaults() {
         None,
     );
     let f2 = copy_and_tag(
-        &src2,
-        temp.path(),
+        &read_fixture(&src2),
+        &temp,
         "02.flac",
         TagType::VorbisComments,
         Some("Track Two"),
@@ -505,7 +503,7 @@ fn missing_optional_tags_yields_none_and_defaults() {
         None,
     );
 
-    let parsed = map_tags(&[f1, f2]).unwrap();
+    let parsed = map_tags(&temp, &[f1, f2]).unwrap();
     assert_eq!(parsed.album_year, None);
     assert_eq!(parsed.pressing.year, None);
     assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1", "2"]);
@@ -514,14 +512,14 @@ fn missing_optional_tags_yields_none_and_defaults() {
 /// Supplied numbers remain unchanged; absent numbers use ordered position.
 #[test]
 fn partial_track_numbers_default_to_order() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
     // Duplicate displayed numbers do not determine track identity or order.
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "a.flac",
         TagType::VorbisComments,
         Some("Track A"),
@@ -533,8 +531,8 @@ fn partial_track_numbers_default_to_order() {
         None,
     );
     let f2 = copy_and_tag(
-        &src2,
-        temp.path(),
+        &read_fixture(&src2),
+        &temp,
         "b.flac",
         TagType::VorbisComments,
         Some("Track B"),
@@ -546,7 +544,7 @@ fn partial_track_numbers_default_to_order() {
         None,
     );
 
-    let parsed = map_tags(&[f1, f2]).unwrap();
+    let parsed = map_tags(&temp, &[f1, f2]).unwrap();
     assert_eq!(draft_numbers(parsed), [1, 1], "an untagged file uses its ordered position");
 }
 
@@ -644,12 +642,12 @@ fn album_and_artist_fallback_ladder() {
         },
     ];
 
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     for row in rows {
         let f = copy_and_tag(
-            &src,
-            temp.path(),
+            &read_fixture(&src),
+            &temp,
             &format!("{}.flac", row.name),
             TagType::VorbisComments,
             Some("Track Title"),
@@ -660,7 +658,7 @@ fn album_and_artist_fallback_ladder() {
             None,
             None,
         );
-        let parsed = map_tags_with_folder(&[f], row.folder).unwrap();
+        let parsed = map_tags_with_folder(&temp, &[f], row.folder).unwrap();
         assert_eq!(parsed.album_title, row.expect_title, "title for {}", row.name);
         assert_eq!(
             parsed
@@ -679,13 +677,13 @@ fn album_and_artist_fallback_ladder() {
 /// A file stating no number takes its place on its own disc.
 #[test]
 fn absent_numbers_take_their_place_on_their_own_disc() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac/01 Test Track 1.flac");
     let files = (1..=2)
         .map(|disc| {
             copy_and_tag(
-                &src,
-                temp.path(),
+                &read_fixture(&src),
+                &temp,
                 &format!("disc{disc}.flac"),
                 TagType::VorbisComments,
                 Some("Track"),
@@ -698,7 +696,7 @@ fn absent_numbers_take_their_place_on_their_own_disc() {
             )
         })
         .collect::<Vec<_>>();
-    let parsed = map_tags(&files).unwrap();
+    let parsed = map_tags(&temp, &files).unwrap();
     assert_eq!(draft_numbers(parsed), [1, 1], "each disc's first track is its number one");
 }
 
@@ -715,14 +713,13 @@ fn cue_numbers_are_preserved_instead_of_recreated() {
 /// via the editable form.
 #[test]
 fn all_files_untagged_seeds_from_folder_and_filenames() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
-    let dest = temp.path().join("untitled-track.flac");
-    fs::copy(&src, &dest).unwrap();
+    let dest = temp.copy_fixture(&src, "untitled-track.flac");
     // Don't write any tags — the source FLAC fixture only carries an
     // "encoder=Lavf..." comment which is not ALBUM/ARTIST/TITLE.
 
-    let parsed = map_tags_with_folder(&[dest], Some("Mystery Rip")).unwrap();
+    let parsed = map_tags_with_folder(&temp, &[dest], Some("Mystery Rip")).unwrap();
     assert_eq!(parsed.album_title, "Mystery Rip");
     assert!(parsed.album_credits.is_empty());
     assert_eq!(parsed.tracks[0].title, "untitled-track");
@@ -731,7 +728,7 @@ fn all_files_untagged_seeds_from_folder_and_filenames() {
 /// Empty input → error.
 #[test]
 fn empty_input_returns_error() {
-    let err = map_tags(&[]).unwrap_err();
+    let err = map_tags(&TestFolder::new(), &[]).unwrap_err();
     assert!(
         matches!(&err, ImportError::FileTags { detail } if detail.contains("at least one")),
         "got: {err}"
@@ -743,13 +740,13 @@ fn empty_input_returns_error() {
 /// same rip can still satisfy the presence check.
 #[test]
 fn missing_title_falls_back_to_filename_stem() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = fixtures_dir().join("flac").join("01 Test Track 1.flac");
     let src2 = fixtures_dir().join("flac").join("02 Test Track 2.flac");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "no-title.flac",
         TagType::VorbisComments,
         None,
@@ -761,8 +758,8 @@ fn missing_title_falls_back_to_filename_stem() {
         None,
     );
     let f2 = copy_and_tag(
-        &src2,
-        temp.path(),
+        &read_fixture(&src2),
+        &temp,
         "02.flac",
         TagType::VorbisComments,
         Some("Has Title"),
@@ -774,7 +771,7 @@ fn missing_title_falls_back_to_filename_stem() {
         None,
     );
 
-    let parsed = map_tags(&[f1, f2]).unwrap();
+    let parsed = map_tags(&temp, &[f1, f2]).unwrap();
     assert_eq!(parsed.tracks[0].title, "no-title");
     assert_eq!(parsed.tracks[1].title, "Has Title");
 }
@@ -797,13 +794,10 @@ fn mp3_with_id3v2_tags() {
     )
     .expect("encode mp3");
 
-    let temp = TempDir::new().unwrap();
-    let mp3_path = temp.path().join("01.mp3");
-    fs::write(&mp3_path, &mp3_bytes).unwrap();
-
+    let temp = TestFolder::new();
     let f1 = copy_and_tag(
-        &mp3_path,
-        temp.path(),
+        &mp3_bytes,
+        &temp,
         "tagged.mp3",
         TagType::Id3v2,
         Some("MP3 Track"),
@@ -815,7 +809,7 @@ fn mp3_with_id3v2_tags() {
         None,
     );
 
-    let parsed = map_tags(&[f1]).unwrap();
+    let parsed = map_tags(&temp, &[f1]).unwrap();
     assert_eq!(parsed.album_title, "MP3 Album");
     assert_eq!(parsed.album_year, Some(2010));
     assert!(parsed.pressing.facts.media.is_empty());
@@ -827,15 +821,15 @@ fn mp3_with_id3v2_tags() {
 /// M4A with MP4 ilst tags leaves release media blank.
 #[test]
 fn m4a_with_mp4_ilst_tags() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("test-fixtures")
         .join("alac")
         .join("silence-alac.m4a");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "01.m4a",
         TagType::Mp4Ilst,
         Some("Track One"),
@@ -847,7 +841,7 @@ fn m4a_with_mp4_ilst_tags() {
         None,
     );
 
-    let parsed = map_tags(&[f1]).unwrap();
+    let parsed = map_tags(&temp, &[f1]).unwrap();
 
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(parsed.album_year, Some(2020));
@@ -858,15 +852,15 @@ fn m4a_with_mp4_ilst_tags() {
 
 #[test]
 fn aac_m4a_with_mp4_ilst_tags_leaves_release_media_blank() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("test-fixtures")
         .join("alac")
         .join("silence-aac.m4a");
 
     let f1 = copy_and_tag(
-        &src,
-        temp.path(),
+        &read_fixture(&src),
+        &temp,
         "01.m4a",
         TagType::Mp4Ilst,
         Some("Track One"),
@@ -878,7 +872,7 @@ fn aac_m4a_with_mp4_ilst_tags_leaves_release_media_blank() {
         None,
     );
 
-    let parsed = map_tags(&[f1]).unwrap();
+    let parsed = map_tags(&temp, &[f1]).unwrap();
 
     assert!(parsed.pressing.facts.media.is_empty());
 }
@@ -893,7 +887,9 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
         "placeholder-vorbis.ogg",
         "placeholder-wavpack.wv",
     ] {
-        let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
+        let temp = TestFolder::new();
+        let file = temp.copy_fixture(fixture_dir.join(name), name);
+        let parsed = map_tags_with_folder(&temp, &[file], Some("Album Title"))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert!(parsed.pressing.facts.media.is_empty(), "{name}");
     }
@@ -903,8 +899,12 @@ fn file_tag_import_leaves_media_blank_for_every_source_codec() {
 /// titles its track and the folder's names the album.
 #[test]
 fn a_dsf_files_tags_state_nothing() {
-    let path = bae_audio::test_fixtures::audio_format_dir().join("placeholder-dsd.dsf");
-    let parsed = map_tags_with_folder(&[path], Some("Album Title")).unwrap();
+    let temp = TestFolder::new();
+    let path = temp.copy_fixture(
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-dsd.dsf"),
+        "placeholder-dsd.dsf",
+    );
+    let parsed = map_tags_with_folder(&temp, &[path], Some("Album Title")).unwrap();
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(
         parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(),

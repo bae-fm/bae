@@ -1,11 +1,11 @@
 use super::*;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// Sessions over a fresh library whose keyring is in memory, asking
 /// providers that reach nothing.
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
-pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TestFolder) {
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();
@@ -154,8 +154,8 @@ async fn discogs_validation_signals_confirm_and_reject() {
 async fn sessions_over(
     host: &bae_util::test_host::FakeHost,
     bugs: Arc<bae_diagnostics::RecordingBugReporter>,
-) -> (CatalogSessions, Store, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+) -> (CatalogSessions, Store, TestFolder) {
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();

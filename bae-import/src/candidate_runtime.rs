@@ -193,7 +193,7 @@ pub struct CandidateRuntime {
     /// The directory a test runtime's database is in, kept as long as the
     /// runtime is.
     #[cfg(any(test, feature = "test-utils"))]
-    _test_directory: Option<Arc<tempfile::TempDir>>,
+    _test_directory: Option<Arc<bae_util::test_files::TestFolder>>,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -235,7 +235,7 @@ impl CandidateRuntime {
     /// writes.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn for_test() -> Self {
-        let directory = tempfile::TempDir::new().expect("a test runtime has a directory");
+        let directory = bae_util::test_files::TestFolder::new();
         let database = bae_store::Store::new_test(
             crate::TEST_SCHEMA,
             directory.path(),

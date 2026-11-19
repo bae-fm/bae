@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 #[test]
@@ -43,9 +44,9 @@ fn test_is_cue_file() {
 
 #[test]
 fn test_cue_with_corrupt_ape_surfaces_as_invalid_candidate() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("APE Album");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
     let cue_content = r#"PERFORMER "Test Artist"
 TITLE "Test Album"
@@ -54,10 +55,10 @@ FILE "album.ape" WAVE
     TITLE "Track One"
     INDEX 01 00:00:00
 "#;
-    std::fs::write(root.join("album.cue"), cue_content).unwrap();
+    temp_dir.write(root.join("album.cue"), cue_content);
     // APE file with invalid magic bytes (not "MAC ")
-    std::fs::write(root.join("album.ape"), b"fake ape data").unwrap();
-    std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.write(root.join("album.ape"), b"fake ape data");
+    temp_dir.write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     // A folder whose only audio is corrupt is not dropped and not a valid
     // candidate — it surfaces as an invalid candidate carrying the reason.
@@ -82,9 +83,9 @@ FILE "album.ape" WAVE
 
 #[test]
 fn test_empty_folder_not_detected() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Empty Album");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
     let candidates = scan_valid(root);
 
@@ -93,13 +94,12 @@ fn test_empty_folder_not_detected() {
 
 #[test]
 fn test_folder_with_only_images_not_detected() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Just Images");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
-    std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(root.join("back.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-        .unwrap();
+    temp_dir.write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(root.join("back.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 
     let candidates = scan_valid(root);
 
@@ -108,14 +108,14 @@ fn test_folder_with_only_images_not_detected() {
 
 #[test]
 fn test_video_ts_folder_not_detected() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Concert DVD");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
     let video_ts = root.join("VIDEO_TS");
-    std::fs::create_dir(&video_ts).unwrap();
-    std::fs::write(video_ts.join("VIDEO_TS.VOB"), b"fake video").unwrap();
-    std::fs::write(video_ts.join("VTS_01_1.VOB"), b"fake video").unwrap();
+    temp_dir.create_folder(&video_ts);
+    temp_dir.write(video_ts.join("VIDEO_TS.VOB"), b"fake video");
+    temp_dir.write(video_ts.join("VTS_01_1.VOB"), b"fake video");
 
     let candidates = scan_valid(root);
 
@@ -124,13 +124,13 @@ fn test_video_ts_folder_not_detected() {
 
 #[test]
 fn test_zero_byte_files_ignored() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Incomplete Download");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
-    std::fs::write(root.join("01 - Track One.flac"), b"").unwrap();
-    std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
-    std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.write(root.join("01 - Track One.flac"), b"");
+    temp_dir.write(root.join("02 - Track Two.flac"), b"");
+    temp_dir.write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let candidates = scan_valid(root);
 
@@ -139,13 +139,13 @@ fn test_zero_byte_files_ignored() {
 
 #[test]
 fn test_mix_of_real_and_zero_byte_files_skips_candidate() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Partial Download");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
-    std::fs::write(root.join("01 - Track One.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("02 - Track Two.flac"), b"").unwrap();
-    std::fs::write(root.join("03 - Track Three.flac"), b"").unwrap();
+    temp_dir.write(root.join("01 - Track One.flac"), fake_flac());
+    temp_dir.write(root.join("02 - Track Two.flac"), b"");
+    temp_dir.write(root.join("03 - Track Three.flac"), b"");
 
     let candidates = scan_valid(root.clone());
 
@@ -157,14 +157,14 @@ fn test_mix_of_real_and_zero_byte_files_skips_candidate() {
 /// so never its cover — while the image that decodes is.
 #[test]
 fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Bad Front");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
-    std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
+    temp_dir.write(root.join("track.flac"), fake_flac());
     // Zero-filled, the way an interrupted copy leaves it.
-    std::fs::write(root.join("front.png"), [0u8; 512]).unwrap();
-    std::fs::write(root.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.write(root.join("front.png"), [0u8; 512]);
+    temp_dir.write(root.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let items = scan_items(root);
     let [ScanItem::Valid(candidate)] = items.as_slice() else {
@@ -201,36 +201,34 @@ fn a_damaged_image_leaves_the_release_found_without_it_as_cover() {
 /// not the layout, so it stays unbound and the twelve tracks import.
 #[test]
 fn per_track_flacs_with_missing_cue_audio_still_import() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let album =
         tmp.path().join("Collection").join("Artist - Album Title - (1991) {Label CAT-12345}");
-    std::fs::create_dir_all(&album).unwrap();
+    tmp.create_folder(&album);
 
     // 12 per-track FLACs
     for i in 1..=12 {
-        std::fs::write(album.join(format!("{:02} - Track {i}.flac", i)), fake_flac()).unwrap();
+        tmp.write(album.join(format!("{:02} - Track {i}.flac", i)), fake_flac());
     }
 
     // CUE sheet with missing referenced audio.
-    std::fs::write(
+    tmp.write(
         album.join("Album Title.cue"),
         "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     // LOG file
-    std::fs::write(album.join("Artist - Album Title.log"), "EAC log\n").unwrap();
+    tmp.write(album.join("Artist - Album Title.log"), "EAC log\n");
 
     // Artwork subfolder with images
     let artwork = album.join("Artwork");
-    std::fs::create_dir_all(&artwork).unwrap();
-    std::fs::write(artwork.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(artwork.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(artwork.join("disc.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
-        .unwrap();
+    tmp.create_folder(&artwork);
+    tmp.write(artwork.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    tmp.write(artwork.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    tmp.write(artwork.join("disc.png"), [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 
     // folder.jpg at album root
-    std::fs::write(album.join("folder.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    tmp.write(album.join("folder.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let items = scan_items(tmp.path().join("Collection"));
 
@@ -262,16 +260,15 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
 /// because the scan probes the actual codec instead of trusting the extension.
 #[test]
 fn test_collect_release_candidate_files_cue_alac_source_audio() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
     let stem = "Artist Name - Album Title";
     let m4a_name = format!("{stem}.m4a");
     let cue_name = format!("{stem}.cue");
 
-    std::fs::write(root.join(&m4a_name), fake_m4a()).unwrap();
-    std::fs::write(root.join(&cue_name), make_cue_content_n_tracks(&m4a_name, "Album Title", 8))
-        .unwrap();
+    temp_dir.write(root.join(&m4a_name), fake_m4a());
+    temp_dir.write(root.join(&cue_name), make_cue_content_n_tracks(&m4a_name, "Album Title", 8));
 
     let files = scan_files(root);
 
@@ -290,11 +287,11 @@ fn test_collect_release_candidate_files_cue_alac_source_audio() {
 /// live on the parsed sheet attached to the pair.
 #[test]
 fn test_collect_release_candidate_files_resolves_multifile_cue_sheet() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
-    std::fs::write(root.join("01 - Track One.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("02 - Track Two.flac"), fake_flac()).unwrap();
+    temp_dir.write(root.join("01 - Track One.flac"), fake_flac());
+    temp_dir.write(root.join("02 - Track Two.flac"), fake_flac());
     let cue = r#"CATALOG 0123456789012
 PERFORMER "Artist Name"
 TITLE "Album Title"
@@ -307,7 +304,7 @@ FILE "02 - Track Two.flac" WAVE
     TITLE "Track Two"
     INDEX 01 00:00:00
 "#;
-    std::fs::write(root.join("Album.cue"), cue).unwrap();
+    temp_dir.write(root.join("Album.cue"), cue);
 
     let files = scan_files(root);
 
@@ -330,16 +327,15 @@ FILE "02 - Track Two.flac" WAVE
 /// release is 1).
 #[test]
 fn test_collect_release_candidate_files_cue_ape_track_count() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
     let stem = "Test Artist - Test Album";
     let ape_name = format!("{stem}.ape");
     let cue_name = format!("{stem}.cue");
 
-    std::fs::write(root.join(&ape_name), fake_ape()).unwrap();
-    std::fs::write(root.join(&cue_name), make_cue_content_n_tracks(&ape_name, "Test Album", 15))
-        .unwrap();
+    temp_dir.write(root.join(&ape_name), fake_ape());
+    temp_dir.write(root.join(&cue_name), make_cue_content_n_tracks(&ape_name, "Test Album", 15));
 
     let files = scan_files(root);
 
@@ -368,25 +364,24 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
 /// shows of it.
 #[test]
 fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
-    use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Half Copied");
-    std::fs::create_dir(&root).unwrap();
-    std::fs::write(root.join("01.flac"), fake_flac()).unwrap();
-    let mut tagged = lofty::read_from_path(root.join("01.flac")).unwrap();
+    temp_dir.create_folder(&root);
+    temp_dir.write(root.join("01.flac"), fake_flac());
+    let mut tagged = crate::test_fixtures::read_tagged(&temp_dir, root.join("01.flac"));
     let mut tag = Tag::new(TagType::VorbisComments);
     tag.set_album("Album Title".to_string());
     tag.set_artist("Track Artist".to_string());
     tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
     tagged.insert_tag(tag);
-    tagged.save_to_path(root.join("01.flac"), WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tagged(&temp_dir, root.join("01.flac"), &tagged);
     // Zero-filled, the way an interrupted copy leaves it.
-    std::fs::write(root.join("02.flac"), vec![0u8; 4096]).unwrap();
-    std::fs::write(root.join("03.flac"), b"").unwrap();
-    std::fs::write(root.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.write(root.join("02.flac"), vec![0u8; 4096]);
+    temp_dir.write(root.join("03.flac"), b"");
+    temp_dir.write(root.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let items = scan_items(root);
     let [ScanItem::Invalid(invalid)] = items.as_slice() else {
@@ -421,24 +416,23 @@ fn a_skipped_folder_lists_every_damaged_track_and_what_its_tags_say() {
 /// where they title it differently.
 #[test]
 fn a_skipped_folder_names_the_album_its_tracks_agree_on() {
-    use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
     let skipped_tags = |albums: [&str; 2]| {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = TestFolder::new();
         let root = temp_dir.path().join("Half Copied");
-        std::fs::create_dir(&root).unwrap();
+        temp_dir.create_folder(&root);
         for (name, album) in ["01.flac", "02.flac"].into_iter().zip(albums) {
-            std::fs::write(root.join(name), fake_flac()).unwrap();
-            let mut tagged = lofty::read_from_path(root.join(name)).unwrap();
+            temp_dir.write(root.join(name), fake_flac());
+            let mut tagged = crate::test_fixtures::read_tagged(&temp_dir, root.join(name));
             let mut tag = Tag::new(TagType::VorbisComments);
             tag.set_album(album.to_string());
             tag.insert_text(ItemKey::AlbumArtist, "Artist Name".to_string());
             tagged.insert_tag(tag);
-            tagged.save_to_path(root.join(name), WriteOptions::default()).unwrap();
+            crate::test_fixtures::save_tagged(&temp_dir, root.join(name), &tagged);
         }
-        std::fs::write(root.join("03.flac"), b"").unwrap();
+        temp_dir.write(root.join("03.flac"), b"");
         let items = scan_items(&root);
         let [ScanItem::Invalid(invalid)] = items.as_slice() else {
             panic!("the folder is skipped: {items:?}");
@@ -525,7 +519,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
     }]);
     // fs_root is an empty dir, so Album/01.flac does not exist on disk: the
     // audio probe's open fails with a genuine I/O error.
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let result = categorize_files_from_tree(
         &tree,
         &PathBuf::from("Album"),
@@ -631,16 +625,15 @@ fn m4a_release_surfaces_as_trackfiles() {
 fn multi_file_cue_surfaces_as_cue_backed_release() {
     let (tmp, album) = album_dir();
     for i in 1..=3 {
-        std::fs::write(album.join(format!("0{i}.m4a")), bytes_for(FileKind::M4a)).unwrap();
+        tmp.write(album.join(format!("0{i}.m4a")), bytes_for(FileKind::M4a));
     }
-    std::fs::write(
+    tmp.write(
         album.join("Album.cue"),
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
              FILE \"01.m4a\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
              FILE \"02.m4a\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n\
              FILE \"03.m4a\" WAVE\n  TRACK 03 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
@@ -697,18 +690,17 @@ fn log_m3u_attach_as_documents() {
 /// imports, and so does its sibling.
 #[test]
 fn unparseable_cue_lands_as_a_document_and_siblings_still_scan() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let bad = tmp.path().join("Bad Album");
     let good = tmp.path().join("Good Album");
-    std::fs::create_dir_all(&bad).unwrap();
-    std::fs::create_dir_all(&good).unwrap();
-    std::fs::write(bad.join("Album.flac"), bytes_for(FileKind::Flac)).unwrap();
-    std::fs::write(
+    tmp.create_folder(&bad);
+    tmp.create_folder(&good);
+    tmp.write(bad.join("Album.flac"), bytes_for(FileKind::Flac));
+    tmp.write(
         bad.join("Album.cue"),
         "FILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Missing Index\"\n",
-    )
-    .unwrap();
-    std::fs::write(good.join("01.flac"), bytes_for(FileKind::Flac)).unwrap();
+    );
+    tmp.write(good.join("01.flac"), bytes_for(FileKind::Flac));
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 2);
@@ -806,13 +798,12 @@ fn zero_byte_cover_art_is_carried_as_a_damaged_image() {
 #[test]
 fn unparseable_sheet_lands_as_a_document() {
     let (tmp, album) = album_dir();
-    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
+    tmp.write(album.join("Album.flac"), fake_flac());
     // No INDEX: the sheet does not parse.
-    std::fs::write(
+    tmp.write(
         album.join("Album.cue"),
         "FILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Missing Index\"\n",
-    )
-    .unwrap();
+    );
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
@@ -838,12 +829,12 @@ fn unparseable_sheet_lands_as_a_document() {
 /// and a folder with no audio at all still invalidate.
 #[test]
 fn corrupt_audio_and_empty_folders_still_invalidate() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let corrupt = tmp.path().join("Corrupt");
-    std::fs::create_dir_all(&corrupt).unwrap();
+    tmp.create_folder(&corrupt);
     // Non-empty so the folder is still detected as a leaf, but the bytes are
     // not FLAC — the file will not decode.
-    std::fs::write(corrupt.join("01.flac"), b"not a flac at all").unwrap();
+    tmp.write(corrupt.join("01.flac"), b"not a flac at all");
     let items = scan_items(corrupt);
     assert_eq!(items.len(), 1);
     assert!(
@@ -856,8 +847,8 @@ fn corrupt_audio_and_empty_folders_still_invalidate() {
     );
 
     let empty = tmp.path().join("Empty");
-    std::fs::create_dir_all(&empty).unwrap();
-    std::fs::write(empty.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    tmp.create_folder(&empty);
+    tmp.write(empty.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     assert!(scan_items(empty.clone()).is_empty(), "a folder with no audio has nothing to import",);
     assert!(
         matches!(

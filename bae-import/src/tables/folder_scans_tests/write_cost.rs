@@ -27,8 +27,8 @@ async fn scan_write_cost() {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = ImportTables::new(db.clone());
     let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    let root = std::fs::canonicalize(&root).unwrap();
+    tmp.create_folder(&root);
+    let root = tmp.canonicalize(&root);
     tables.add_watched_import_folder(&root).await.unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     let started = Instant::now();

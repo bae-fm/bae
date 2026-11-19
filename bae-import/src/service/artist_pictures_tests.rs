@@ -11,7 +11,7 @@ use crate::handle::tests::{
 use crate::{ImportEvent, ImportServiceHandle};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_util::test_channels::HANG_GUARD;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 fn artist(id: &str, discogs_artist_id: Option<&str>) -> bae_records::DbArtist {
     bae_records::DbArtist {
@@ -61,7 +61,7 @@ pub(crate) struct DiscogsPick {
     pub(crate) db: bae_store::Store,
     /// The catalog fakes the library asks, which the test seeds.
     fakes: FakeCatalogs,
-    pub(crate) tmp: TempDir,
+    pub(crate) tmp: TestFolder,
     pub(crate) key: crate::CandidateKey,
     pub(crate) images: bae_catalogs::test_image_host::RemoteImageHost,
     album_artist_id: String,

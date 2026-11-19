@@ -1,6 +1,7 @@
 //! A scan's track sheets as stored and read back from a cold database.
 
 use bae_store::test_fixtures::empty_db;
+use bae_util::test_files::TestFolder;
 
 /// The CD ripper a sheet names is kept with the scan, so a folder read back
 /// from a cold database still proves the CD rip its sheet does.
@@ -12,18 +13,16 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
 
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let folder = tempfile::TempDir::new().unwrap();
-    std::fs::copy(
+    let folder = TestFolder::new();
+    folder.copy_fixture(
         bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         folder.path().join("cd.flac"),
-    )
-    .unwrap();
-    std::fs::write(
+    );
+    folder.write(
         folder.path().join("cd.cue"),
         "REM COMMENT \"ExactAudioCopy v1.1\"\nPERFORMER \"Artist One\"\nTITLE \"Album One\"\n\
          FILE \"cd.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
     let scanned = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::ReleaseFileScope::Recursive,
@@ -76,17 +75,15 @@ async fn a_timing_refusal_survives_a_relaunch() {
 
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
-    let folder = tempfile::TempDir::new().unwrap();
-    std::fs::copy(
+    let folder = TestFolder::new();
+    folder.copy_fixture(
         bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         folder.path().join("cd.flac"),
-    )
-    .unwrap();
-    std::fs::write(
+    );
+    folder.write(
         folder.path().join("cd.cue"),
         "FILE \"cd.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 99:00:00\n",
-    )
-    .unwrap();
+    );
     let scanned = collect_release_candidate_files_with_scope(
         folder.path(),
         crate::ReleaseFileScope::Recursive,

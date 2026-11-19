@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 
 /// One entry as `getattrlistbulk` packs it: returned set, then the
 /// attributes it names in order, the name's bytes at the end.
@@ -95,19 +96,19 @@ fn a_folders_own_answer_is_a_date_only_where_the_returned_set_says_so() {
 
 #[test]
 fn reads_a_folders_date_added_and_fails_for_a_missing_one() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = TestFolder::new();
     assert!(added(directory.path()).unwrap().is_some());
     assert!(added(&directory.path().join("missing")).is_err());
 }
 
 #[test]
 fn reads_the_names_and_dates_the_listing_holds() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = TestFolder::new();
     let mut names: Vec<String> = (0..300).map(|index| format!("Folder {index:03}")).collect();
     for name in &names {
-        std::fs::create_dir(directory.path().join(name)).unwrap();
+        directory.create_folder(directory.path().join(name));
     }
-    std::fs::write(directory.path().join("file.txt"), b"x").unwrap();
+    directory.write("file.txt", b"x");
     names.push("file.txt".to_string());
     let entries = read_directory(directory.path()).unwrap();
     let mut read_names: Vec<String> =
@@ -115,7 +116,7 @@ fn reads_the_names_and_dates_the_listing_holds() {
     read_names.sort();
     names.sort();
     assert_eq!(read_names, names);
-    let metadata = std::fs::metadata(directory.path().join("Folder 000")).unwrap();
+    let metadata = directory.metadata(directory.path().join("Folder 000"));
     let times = entries[std::ffi::OsStr::new("Folder 000")];
     assert_eq!(times.created, metadata.created().ok());
     assert_eq!(times.modified, metadata.modified().ok());
@@ -124,6 +125,6 @@ fn reads_the_names_and_dates_the_listing_holds() {
 
 #[test]
 fn a_missing_directory_fails() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = TestFolder::new();
     assert!(read_directory(&directory.path().join("missing")).is_err());
 }

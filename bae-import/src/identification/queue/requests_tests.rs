@@ -286,7 +286,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let mut dirs = Vec::new();
     for index in 0..MAX_IN_FLIGHT + 1 {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+        fixture.temp.write(dir.join(format!("playlist-{index}.m3u")), format!("{index}"));
         dirs.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");

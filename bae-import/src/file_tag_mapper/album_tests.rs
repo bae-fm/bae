@@ -6,36 +6,29 @@ use crate::cue_sheet::tests::{cue_sheet, titled_cue_track};
 use crate::file_tag_mapper::read_file_tags;
 use crate::file_tag_mapper::tests::*;
 use bae_catalogs::release_values::{ReleaseValues, TrackCredits};
-use lofty::prelude::*;
-use std::fs;
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
+use std::path::PathBuf;
 
-/// A FLAC named `name` in `dir` carrying exactly these Vorbis comments.
-fn flac_commented(dir: &Path, name: &str, comments: &[(&str, &str)]) -> PathBuf {
-    use lofty::config::WriteOptions;
-    let path = dir.join(name);
-    fs::copy(fixtures_dir().join("flac").join("01 Test Track 1.flac"), &path)
-        .expect("copy fixture");
+/// A FLAC named `name` in `folder` carrying exactly these Vorbis comments.
+fn flac_commented(folder: &TestFolder, name: &str, comments: &[(&str, &str)]) -> PathBuf {
+    let path = folder.copy_fixture(fixtures_dir().join("flac").join("01 Test Track 1.flac"), name);
     let mut tag = lofty::ogg::tag::VorbisComments::default();
     for (key, value) in comments {
         tag.push((*key).to_string(), (*value).to_string());
     }
-    tag.save_to_path(&path, WriteOptions::default()).expect("save comments");
+    crate::test_fixtures::save_tag(folder, &path, &tag);
     path
 }
 
 /// The values the files commented with `files` read as, one file each.
 fn read_commented(files: &[&[(&str, &str)]]) -> ReleaseValues {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let paths: Vec<PathBuf> = files
         .iter()
         .enumerate()
-        .map(|(index, comments)| {
-            flac_commented(temp.path(), &format!("{:02}.flac", index + 1), comments)
-        })
+        .map(|(index, comments)| flac_commented(&temp, &format!("{:02}.flac", index + 1), comments))
         .collect();
-    read_file_tags(&paths, Some("Folder Name")).unwrap()
+    read_file_tags(&temp, &paths, Some("Folder Name")).unwrap()
 }
 
 fn album_artist_names(values: &ReleaseValues) -> Vec<&str> {

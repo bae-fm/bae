@@ -31,10 +31,9 @@ async fn a_file_changed_after_its_scan_fails_the_import_before_any_row() {
         .await
         .expect("the import asks for the track artist's picture");
     let changed = pick.tmp.path().join("watched/Album/02 Track.flac");
-    std::fs::File::options()
-        .write(true)
-        .open(&changed)
-        .and_then(|file| file.set_modified(std::time::SystemTime::now()))
+    pick.tmp
+        .open_with(&changed, std::fs::OpenOptions::new().write(true))
+        .set_modified(std::time::SystemTime::now())
         .expect("set the file's modification time");
     hold.release();
 
@@ -320,7 +319,7 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
     let (parts, db, tmp) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
     let (original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
-    let copy = twin_of(&original, "Copy");
+    let copy = twin_of(&tmp, &original, "Copy");
     let copy_key = crate::CandidateKey::folder(&copy.path);
     rescan_all_into(&tables, &[original, copy]).await;
     let handle = parts.start().await.unwrap();
@@ -387,7 +386,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         .expect("the pane read stored a complete snapshot");
 
     let changed_audio = tmp.path().join("watched/Album/01 Track.flac");
-    let audio = std::fs::OpenOptions::new().write(true).open(&changed_audio).unwrap();
+    let audio = tmp.open_with(&changed_audio, std::fs::OpenOptions::new().write(true));
     audio
         .set_times(
             std::fs::FileTimes::new()

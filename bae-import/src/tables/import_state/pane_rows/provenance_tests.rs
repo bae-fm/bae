@@ -5,12 +5,13 @@ use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
 use crate::tables::ImportTables;
 use bae_store::test_fixtures::fixed_now;
+use bae_util::test_files::TestFolder;
 use coven::FixedClock;
 use std::sync::Arc;
 
 #[tokio::test]
 async fn every_metadata_provenance_variant_survives_a_database_reopen() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = Arc::new(FixedClock::new(fixed_now().into()));

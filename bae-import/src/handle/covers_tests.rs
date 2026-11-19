@@ -8,14 +8,14 @@ use crate::handle::tests::*;
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_mb_release_with_front;
 use bae_catalogs::test_releases::seed_two_track_discogs_release;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// The fixture candidate, picked as `release_id`, whose release the Cover
 /// Art Archive states a front image for. The archive holds no image there,
 /// so the pick fetches none and the folder's own cover stands.
 async fn picked_with_front(
     release_id: &str,
-) -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
+) -> (ImportServiceHandle, TestFolder, crate::CandidateKey, String) {
     let archive = bae_util::http::serve_not_found().await;
     let http = bae_util::http::Http::for_test().serve("coverartarchive.org", &archive);
     let fakes = FakeCatalogs::over(http.clone());

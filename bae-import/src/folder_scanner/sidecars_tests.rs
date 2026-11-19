@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 
 // ── A folder's sidecar files ────────────────────────────────────────────────
 
@@ -20,17 +21,17 @@ fn sidecars(root: &Path, decisions: FolderReleaseDecisions) -> Vec<FolderSidecar
 
 /// `Artist/Album` holding `discs`, each a folder of one track, beside a
 /// cover and a folder of scans.
-fn album_of_discs(discs: &[&str]) -> (tempfile::TempDir, PathBuf, PathBuf) {
-    let temp_dir = tempfile::tempdir().unwrap();
+fn album_of_discs(discs: &[&str]) -> (TestFolder, PathBuf, PathBuf) {
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let album = root.join("Artist").join("Album");
     for disc in discs {
-        std::fs::create_dir_all(album.join(disc)).unwrap();
-        std::fs::write(album.join(disc).join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(album.join(disc));
+        temp_dir.write(album.join(disc).join("track.flac"), fake_flac());
     }
-    std::fs::create_dir_all(album.join("Scans")).unwrap();
-    std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(album.join("Scans").join("booklet.txt"), "notes").unwrap();
+    temp_dir.create_folder(album.join("Scans"));
+    temp_dir.write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(album.join("Scans").join("booklet.txt"), "notes");
     (temp_dir, root, album)
 }
 
@@ -74,8 +75,8 @@ fn a_folder_whose_files_a_release_owns_has_no_sidecar() {
     let (_temp, root, _album) = album_of_discs(&["Disc 1", "Disc 2"]);
     assert!(sidecars(&root, FolderReleaseDecisions::default()).is_empty());
 
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join("track.flac"), fake_flac()).unwrap();
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    temp.write(album.join("track.flac"), fake_flac());
     assert!(sidecars(&root, FolderReleaseDecisions::default()).is_empty());
 
     let (_temp, root, _album) = album_of_discs(&["Disc 1"]);
@@ -89,7 +90,7 @@ fn a_folder_whose_files_a_release_owns_has_no_sidecar() {
 /// files nor the album folder's, which stay those folders' sidecars.
 #[test]
 fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
     let combined_album =
         scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
     let album_release = combined_album
@@ -107,9 +108,9 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
 
     let artist = root.join("Artist");
     let other = artist.join("Other");
-    std::fs::create_dir_all(&other).unwrap();
-    std::fs::write(other.join("track.flac"), fake_flac()).unwrap();
-    std::fs::write(artist.join("artist.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp.create_folder(&other);
+    temp.write(other.join("track.flac"), fake_flac());
+    temp.write(artist.join("artist.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     let items = scan_for_candidates_with_decisions_collect(
         root,
         readings(&[
@@ -160,8 +161,8 @@ fn a_folder_read_as_one_release_reads_files_by_the_grouping_rule() {
 /// with no files of its own.
 #[test]
 fn a_folder_still_downloading_says_so() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join("booklet.pdf.part"), b"partial").unwrap();
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    temp.write(album.join("booklet.pdf.part"), b"partial");
     let found = sidecars(
         &root,
         readings(&[(
@@ -180,8 +181,8 @@ fn a_folder_still_downloading_says_so() {
 /// artwork: the release that takes the files in is still its audio.
 #[test]
 fn a_damaged_image_is_carried_in_the_sidecar_as_one() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join("cover.jpg"), b"not an image").unwrap();
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    temp.write(album.join("cover.jpg"), b"not an image");
     let found = sidecars(
         &root,
         readings(&[(
@@ -212,8 +213,8 @@ fn a_damaged_image_is_carried_in_the_sidecar_as_one() {
 /// way a release holding it would be.
 #[test]
 fn a_zero_byte_track_makes_the_sidecar_invalid() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join("bonus.flac"), b"").unwrap();
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    temp.write(album.join("bonus.flac"), b"");
     let found = sidecars(
         &root,
         readings(&[(
@@ -276,15 +277,15 @@ fn subfolder_sidecars_attach_by_category() {
 fn an_unrecognized_sidecar_is_carried_and_hashed() {
     const SIDECARS: [&str; 5] = ["rip.ffp", "rip.md5", "rip.nfo", "rip.par2", "rip.sfv"];
 
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let bare = tmp.path().join("Bare");
     let with_sidecars = tmp.path().join("Sidecars");
     for dir in [&bare, &with_sidecars] {
-        std::fs::create_dir_all(dir).unwrap();
-        std::fs::write(dir.join("01.flac"), fake_flac()).unwrap();
+        tmp.create_folder(dir);
+        tmp.write(dir.join("01.flac"), fake_flac());
     }
     for sidecar in SIDECARS {
-        std::fs::write(with_sidecars.join(sidecar), b"scene notes").unwrap();
+        tmp.write(with_sidecars.join(sidecar), b"scene notes");
     }
 
     let bare_files = scan_files(&bare);
@@ -322,9 +323,9 @@ fn an_unrecognized_sidecar_is_carried_and_hashed() {
 #[cfg(target_os = "linux")]
 #[test]
 fn two_files_showing_one_name_make_the_sidecar_invalid() {
-    let (_temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
-    std::fs::write(album.join(r"Caf\xE9.txt"), "one").unwrap();
-    std::fs::write(album.join(latin1_name(".txt")), "two").unwrap();
+    let (temp, root, album) = album_of_discs(&["Disc 1", "Disc 2"]);
+    temp.write(album.join(r"Caf\xE9.txt"), "one");
+    temp.write(album.join(latin1_name(".txt")), "two");
 
     let found = sidecars(
         &root,

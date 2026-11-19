@@ -292,8 +292,8 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
 fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
     use std::fs;
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let flac_data = bae_import::test_fixtures::read_fixture(&fixture_dir.join("Test Album.flac"));
-    let cue_data = bae_import::test_fixtures::read_fixture(&fixture_dir.join("Test Album.cue"));
+    let flac_data = bae_util::test_files::read_fixture(fixture_dir.join("Test Album.flac"));
+    let cue_data = bae_util::test_files::read_fixture(fixture_dir.join("Test Album.cue"));
     fs::write(dir.join("Test Album.flac"), &flac_data).expect("write flac");
     fs::write(dir.join("Test Album.cue"), &cue_data).expect("write cue");
     info!("Copied CUE/FLAC fixture with seektable: {} bytes FLAC", flac_data.len());

@@ -5,6 +5,7 @@
 use crate::folder_scanner::tests::*;
 #[cfg(target_os = "linux")]
 use crate::folder_scanner::{FileRole, InvalidReason, ProposedRole, ScanItem};
+use bae_util::test_files::TestFolder;
 #[cfg(target_os = "linux")]
 use std::path::PathBuf;
 
@@ -19,7 +20,7 @@ use std::path::PathBuf;
 fn a_file_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
     let (tmp, album) = album_dir();
     let track = album.join(latin1_name(".flac"));
-    std::fs::write(&track, fake_flac()).unwrap();
+    tmp.write(&track, fake_flac());
 
     let candidates = scan_valid(tmp.path());
 
@@ -42,8 +43,8 @@ fn a_file_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
 #[test]
 fn two_files_showing_one_name_skip_their_folder() {
     let (tmp, album) = album_dir();
-    std::fs::write(album.join(r"Caf\xE9.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join(latin1_name(".flac")), fake_flac()).unwrap();
+    tmp.write(album.join(r"Caf\xE9.flac"), fake_flac());
+    tmp.write(album.join(latin1_name(".flac")), fake_flac());
 
     let items = scan_items(tmp.path());
 
@@ -68,10 +69,10 @@ fn two_files_showing_one_name_skip_their_folder() {
 #[cfg(target_os = "linux")]
 #[test]
 fn a_folder_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let album = tmp.path().join("Artist").join(latin1_name(""));
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    tmp.create_folder(&album);
+    tmp.write(album.join("01.flac"), fake_flac());
 
     let candidates = scan_valid(tmp.path());
 
@@ -92,22 +93,22 @@ fn a_folder_whose_name_is_not_utf8_is_listed_under_its_escaped_name() {
 
 #[test]
 fn test_collect_release_candidate_files_skips_hidden_and_bae() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
 
     // Create visible files
-    std::fs::write(root.join("track.flac"), fake_flac()).unwrap();
-    std::fs::write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(root.join("back.bmp"), b"BMvalid bmp marker").unwrap();
+    temp_dir.write(root.join("track.flac"), fake_flac());
+    temp_dir.write(root.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(root.join("back.bmp"), b"BMvalid bmp marker");
 
     // Create hidden file that should be ignored
-    std::fs::write(root.join(".DS_Store"), b"mac junk").unwrap();
+    temp_dir.write(root.join(".DS_Store"), b"mac junk");
 
     // Create .bae directory -- entirely ignored by the scanner
     let bae_dir = root.join(".bae");
-    std::fs::create_dir(&bae_dir).unwrap();
-    std::fs::write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.create_folder(&bae_dir);
+    temp_dir.write(bae_dir.join("cover-mb.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(bae_dir.join("cover-discogs.jpeg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let files = scan_files(root);
 
@@ -140,7 +141,7 @@ fn bae_sidecar_hidden_from_scanner() {
 /// for spaces fall in byte order, as the library lists them.
 #[test]
 fn files_list_in_case_insensitive_natural_order() {
-    let (_tmp, album) = album_dir();
+    let (tmp, album) = album_dir();
     for name in [
         "Track 10.flac",
         "cover.jpg",
@@ -157,7 +158,7 @@ fn files_list_in_case_insensitive_natural_order() {
         } else {
             b"%PDF-1.4".to_vec()
         };
-        std::fs::write(album.join(name), bytes).unwrap();
+        tmp.write(album.join(name), bytes);
     }
 
     let files = scan_files(&album);

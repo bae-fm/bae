@@ -406,7 +406,7 @@ async fn a_file_with_a_seektable_stores_no_points() {
             for name in ["Test Album.flac", "Test Album.cue"] {
                 std::fs::write(
                     dir.join(name),
-                    bae_import::test_fixtures::read_fixture(&fixture_dir.join(name)),
+                    bae_util::test_files::read_fixture(fixture_dir.join(name)),
                 )
                 .unwrap();
             }

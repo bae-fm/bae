@@ -25,7 +25,7 @@ async fn flooded_queue(fixture: &Fixture) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     for index in 0..MAX_IN_FLIGHT + 1 {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+        fixture.temp.write(dir.join(format!("playlist-{index}.m3u")), format!("{index}"));
         dirs.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
@@ -120,7 +120,7 @@ async fn a_typed_search_is_not_delayed_by_automatic_identification() {
     let mut dirs = Vec::new();
     for i in 0..8 {
         let dir = fixture.barcode_candidate(&format!("Album {i}"));
-        std::fs::write(dir.join(format!("playlist-{i}.m3u")), format!("candidate {i}")).unwrap();
+        fixture.temp.write(dir.join(format!("playlist-{i}.m3u")), format!("candidate {i}"));
         dirs.push(dir);
     }
     let probed = fixture.probed_total_ms(&dirs[0]);
@@ -207,7 +207,7 @@ async fn an_open_candidate_runs_first_and_its_lookups_go_ahead() {
     let keys: Vec<crate::CandidateKey> = (0..MAX_IN_FLIGHT + 2)
         .map(|index| {
             let dir = fixture.barcode_candidate(&format!("Album {index}"));
-            std::fs::write(dir.join(format!("notes-{index}.txt")), format!("{index}")).unwrap();
+            fixture.temp.write(dir.join(format!("notes-{index}.txt")), format!("{index}"));
             crate::CandidateKey::folder(&dir)
         })
         .collect();
@@ -299,7 +299,7 @@ async fn progress_carries_both_counts() {
     let first = fixture.disc_id_candidate("Album One");
     // A differing file gives the second folder its own content hash and row.
     let second = fixture.disc_id_candidate("Album Two");
-    std::fs::write(second.join("notes.txt"), "different bytes").unwrap();
+    fixture.temp.write(second.join("notes.txt"), "different bytes");
     let probed = fixture.probed_total_ms(&first);
     fixture.provider.route("/discid/", 200, discid_json("mb-prog-1", "rg-prog-1", &[probed, 0]));
     fixture.provider.route(
@@ -549,7 +549,7 @@ async fn automatic_off_leaves_the_queue_to_finish() {
     let fixture = Fixture::new("automatic-off-keeps-queue").await;
     let requested = fixture.disc_id_candidate("Requested");
     let automatic = fixture.disc_id_candidate("Automatic");
-    std::fs::write(automatic.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.temp.write(automatic.join("notes.txt"), "distinct candidate");
     let requested_key = crate::CandidateKey::folder(&requested);
     let automatic_key = crate::CandidateKey::folder(&automatic);
     fixture.provider.route("/discid/", 200, "{}");
@@ -666,7 +666,7 @@ async fn a_settle_reading_its_pick_holds_no_slot() {
     let mut running = Vec::new();
     for index in 1..=MAX_IN_FLIGHT {
         let dir = fixture.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+        fixture.temp.write(dir.join(format!("playlist-{index}.m3u")), format!("{index}"));
         running.push(dir);
     }
     fixture.provider.route("/release?", 200, "{}");
@@ -722,7 +722,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     let dirs: Vec<PathBuf> = (0..MAX_IN_FLIGHT + 1)
         .map(|index| {
             let dir = fixture.barcode_candidate(&format!("Album {index}"));
-            std::fs::write(dir.join(format!("notes-{index}.txt")), format!("{index}")).unwrap();
+            fixture.temp.write(dir.join(format!("notes-{index}.txt")), format!("{index}"));
             dir
         })
         .collect();

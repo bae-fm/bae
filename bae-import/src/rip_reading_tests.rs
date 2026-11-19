@@ -4,6 +4,7 @@
 use super::*;
 use crate::cue_sheet::{CdRipper, CueIndex, CueTrack, CueTrackMode};
 use crate::tests::fixture;
+use bae_util::test_files::TestFolder;
 
 /// `artifacts` read, every document readable.
 fn read_ok(artifacts: RipArtifacts<'_>) -> RipReading {
@@ -111,17 +112,16 @@ fn a_sheet_a_cd_ripper_wrote_proves_a_cd() {
 /// not find it proves nothing.
 #[test]
 fn an_accuraterip_report_that_found_the_disc_proves_a_cd() {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = TestFolder::new();
     let found = folder.path().join("found.accurip");
-    std::fs::write(
+    folder.write(
         &found,
         "[CUETools log; Date: 01.01.2000 00:00:00; Version: 2.1.5]\n\
          [AccurateRip ID: 00000001-00000002-00000003] found.\n\
          Track   [  CRC   |   V2   ] Status\n",
-    )
-    .unwrap();
-    let absent = folder.path().join("absent.accurip");
-    std::fs::write(&absent, "[CUETools log; Date: 01.01.2000 00:00:00; Version: 2.1.5]\n").unwrap();
+    );
+    let absent = folder
+        .write("absent.accurip", "[CUETools log; Date: 01.01.2000 00:00:00; Version: 2.1.5]\n");
 
     let reading = read_folder(&sheet(None), &lossless(44_100, 16, 2), &[(&found, "found.accurip")]);
     assert_eq!(
@@ -200,13 +200,13 @@ fn log_text(track_sectors: &[i32]) -> String {
 /// directory — computes one disc ID per disc, each from its own log.
 #[test]
 fn a_folder_with_a_log_per_disc_computes_every_disc_id() {
-    let folder = tempfile::tempdir().unwrap();
+    let folder = TestFolder::new();
     let mut logs = Vec::new();
     for (disc, sectors) in [("Disc 1", [18_000, 13_500]), ("Disc 2", [21_000, 9_000])] {
         let directory = folder.path().join(disc);
-        std::fs::create_dir(&directory).unwrap();
+        folder.create_folder(&directory);
         let log = directory.join("Album.log");
-        std::fs::write(&log, log_text(&sectors)).unwrap();
+        folder.write(&log, log_text(&sectors));
         logs.push((log, format!("{disc}/Album.log")));
     }
     let sheet = sheet(None);
@@ -292,13 +292,13 @@ fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
 /// row can name the file it was read off.
 #[test]
 fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
-    use tempfile::TempDir;
-    let tmp = TempDir::new().unwrap();
+    use bae_util::test_files::TestFolder;
+    let tmp = TestFolder::new();
     let folder = tmp.path();
-    std::fs::copy(fixture("logs/test_album.log"), folder.join("Album.log")).unwrap();
+    tmp.copy_fixture(fixture("logs/test_album.log"), folder.join("Album.log"));
     let flac = fixture("flac");
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-        std::fs::copy(flac.join(name), folder.join(name)).unwrap();
+        tmp.copy_fixture(flac.join(name), folder.join(name));
     }
 
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
@@ -322,12 +322,12 @@ fn a_log_carves_its_disc_and_names_the_file_it_was_read_off() {
 /// dispatcher routes APE through the FFmpeg-probe path.
 #[test]
 fn test_compute_discid_routes_cue_ape() {
-    use tempfile::TempDir;
+    use bae_util::test_files::TestFolder;
     let fixture_dir = fixture("cue_ape");
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path();
-    std::fs::copy(fixture_dir.join("Test Album.ape"), folder.join("Test Album.ape")).unwrap();
-    std::fs::copy(fixture_dir.join("Test Album.cue"), folder.join("Test Album.cue")).unwrap();
+    tmp.copy_fixture(fixture_dir.join("Test Album.ape"), folder.join("Test Album.ape"));
+    tmp.copy_fixture(fixture_dir.join("Test Album.cue"), folder.join("Test Album.cue"));
 
     let categorized = crate::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -361,7 +361,7 @@ fn test_compute_discid_routes_cue_ape() {
 /// states no disc: the reading fails, as one that cannot be hashed does not.
 #[test]
 fn a_rip_log_that_cannot_be_read_fails_the_reading() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let missing = tmp.path().join("Album.log");
     let artifacts = |path| RipArtifacts {
         documents: vec![RipDocument { path, file: Some("Album.log"), kind: DocumentKind::RipLog }],
@@ -376,7 +376,7 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
         "{error:?}"
     );
 
-    std::fs::write(&missing, "not a rip log at all\n").unwrap();
+    tmp.write(&missing, "not a rip log at all\n");
     let reading = read(artifacts(&missing), &bae_util::test_files::lease())
         .expect("bytes that read but state nothing do not fail");
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
@@ -388,11 +388,11 @@ fn a_rip_log_that_cannot_be_read_fails_the_reading() {
 /// disc and is passed over.
 #[test]
 fn a_rip_log_whose_table_of_contents_does_not_hash_fails_the_reading() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let path = tmp.path().join("Album.log");
     let mut text = log_text(&[1000, 2000]);
     text = text.replace("|    1000    |", "|    1O00    |");
-    std::fs::write(&path, text).unwrap();
+    tmp.write(&path, text);
 
     let error = read(
         RipArtifacts {

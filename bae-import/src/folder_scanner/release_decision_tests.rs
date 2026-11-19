@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 
 /// Parts named `names`, each holding one folder's audio.
 fn discs(names: &[&str]) -> Vec<FolderPart> {
@@ -135,12 +136,12 @@ fn a_single_child_is_not_a_set() {
 
 /// Write one playable track into each folder of `folders` under `root`, with
 /// a cover in a `Covers` folder beside it.
-fn write_albums(root: &Path, folders: &[&str]) {
+fn write_albums(tmp: &TestFolder, root: &Path, folders: &[&str]) {
     for folder in folders {
         let folder = root.join(folder);
-        std::fs::create_dir_all(folder.join("Covers")).unwrap();
-        std::fs::write(folder.join("track.flac"), fake_flac()).unwrap();
-        std::fs::write(folder.join("Covers/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        tmp.create_folder(folder.join("Covers"));
+        tmp.write(folder.join("track.flac"), fake_flac());
+        tmp.write(folder.join("Covers/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     }
 }
 
@@ -176,10 +177,11 @@ fn valid_paths(items: &[WalkItem]) -> Vec<String> {
 /// part holding several folders of audio is no disc.
 #[test]
 fn numbered_folders_of_albums_are_separate_releases() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let collection = "Artist (Originals & Remasters)";
     write_albums(
+        &temp_dir,
         &root.join(collection),
         &[
             "01_Artist_Originals/Artist -1984- Album One (Press 11-2X-1001)",
@@ -216,10 +218,10 @@ fn numbered_folders_of_albums_are_separate_releases() {
 /// `disc 01` to `disc 12`, each one folder of tracks, are one release.
 #[test]
 fn twelve_numbered_discs_are_one_release() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let discs: Vec<String> = (1..=12).map(|disc| format!("Box Set/disc {disc:02}")).collect();
-    write_albums(&root, &discs.iter().map(String::as_str).collect::<Vec<_>>());
+    write_albums(&temp_dir, &root, &discs.iter().map(String::as_str).collect::<Vec<_>>());
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
 
@@ -242,9 +244,9 @@ fn twelve_numbered_discs_are_one_release() {
 /// its own, still holds one folder's audio.
 #[test]
 fn discs_whose_tracks_sit_one_folder_down_are_one_release() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
-    write_albums(&root, &["Box Set/CD1/FLAC", "Box Set/CD2/FLAC"]);
+    write_albums(&temp_dir, &root, &["Box Set/CD1/FLAC", "Box Set/CD2/FLAC"]);
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
 
@@ -271,15 +273,15 @@ fn discs_whose_tracks_sit_one_folder_down_are_one_release() {
 /// decide, and a box of artwork alone yields nothing and decides nothing.
 #[test]
 fn numbered_folders_without_audio_are_not_parts() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let album = root.join("Artist - Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::write(album.join("track.flac"), fake_flac()).unwrap();
+    temp_dir.create_folder(&album);
+    temp_dir.write(album.join("track.flac"), fake_flac());
     for folder in ["Artist - Album/Disc 1", "Artist - Album/Disc 2", "Box/Disc 1", "Box/Disc 2"] {
         let folder = root.join(folder);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(folder.join("scan.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        temp_dir.create_folder(&folder);
+        temp_dir.write(folder.join("scan.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     }
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
@@ -318,9 +320,10 @@ fn reading_a_folder_lists_nothing_twice() {
         }
     }
 
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     write_albums(
+        &temp_dir,
         &root,
         &[
             "Collection/01 Originals/Album One",
@@ -332,22 +335,21 @@ fn reading_a_folder_lists_nothing_twice() {
             "Wrapper/Live Two",
         ],
     );
-    std::fs::create_dir_all(root.join("Box Set/Scans/Booklet")).unwrap();
+    temp_dir.create_folder(root.join("Box Set/Scans/Booklet"));
     let reader = RecordingReader::default();
 
     scan_with_reader(&reader, root.clone(), |_| {}).unwrap();
 
-    fn folders_below(root: &Path, relative: PathBuf, into: &mut Vec<PathBuf>) {
-        for entry in std::fs::read_dir(root.join(&relative)).unwrap() {
-            let entry = entry.unwrap();
-            if entry.file_type().unwrap().is_dir() {
-                folders_below(root, relative.join(entry.file_name()), into);
+    fn folders_below(tmp: &TestFolder, root: &Path, relative: PathBuf, into: &mut Vec<PathBuf>) {
+        for name in tmp.entries(root.join(&relative)) {
+            if tmp.metadata(root.join(&relative).join(&name)).is_dir() {
+                folders_below(tmp, root, relative.join(name), into);
             }
         }
         into.push(relative);
     }
     let mut every_folder = Vec::new();
-    folders_below(&root, PathBuf::new(), &mut every_folder);
+    folders_below(&temp_dir, &root, PathBuf::new(), &mut every_folder);
     every_folder.sort();
     let mut reads = reader.reads.into_inner().unwrap();
     reads.sort();
@@ -376,13 +378,13 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
         ][..],
         &["Box Set/disc 1", "Box Set/disc 02"][..],
     ] {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = TestFolder::new();
         let root = temp_dir.path().join("Queue");
         for disc in discs {
             let disc = root.join(disc);
-            std::fs::create_dir_all(&disc).unwrap();
+            temp_dir.create_folder(&disc);
             for track in ["01.flac", "02.flac"] {
-                std::fs::write(disc.join(track), fake_flac()).unwrap();
+                temp_dir.write(disc.join(track), fake_flac());
             }
         }
 
@@ -425,15 +427,15 @@ fn a_set_s_discs_play_in_the_order_they_number_themselves() {
 
 #[test]
 fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
     for child in ["Part 01", "Part 02"] {
         let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), fake_flac());
     }
-    std::fs::write(wrapper.join("booklet.txt"), "notes").unwrap();
+    temp_dir.write(wrapper.join("booklet.txt"), "notes");
 
     let scan = |decisions: FolderReleaseDecisions| {
         scan_projected_items_with_decisions(root.clone(), decisions)
@@ -489,7 +491,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
 
 #[test]
 fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
     for child in [
@@ -500,8 +502,8 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
         "Archive 1940 - CD 5 - 1941 - Location D",
     ] {
         let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), fake_flac());
     }
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
@@ -530,13 +532,13 @@ fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
 /// the folder holds several releases, not one release's parts.
 #[test]
 fn a_part_with_no_number_makes_it_several_releases() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
     for child in ["Release 01", "Release 02", "Bonus"] {
         let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), fake_flac());
     }
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
@@ -566,14 +568,14 @@ fn a_part_with_no_number_makes_it_several_releases() {
 /// not one release just because it holds both.
 #[test]
 fn a_numbered_box_inside_a_collection_is_one_release() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     for release in
         ["Collection/Box/Release 01", "Collection/Box/Release 02", "Collection/Release 03"]
     {
         let release = root.join(release);
-        std::fs::create_dir_all(&release).unwrap();
-        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&release);
+        temp_dir.write(release.join("track.flac"), fake_flac());
     }
 
     let items = scan_items(&root);

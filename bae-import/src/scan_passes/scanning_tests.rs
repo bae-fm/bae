@@ -149,8 +149,8 @@ async fn a_pass_that_panics_fails_the_scan_and_frees_the_root() {
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(folder.join("track.flac"), flac()).unwrap();
+        test.temp.create_folder(&folder);
+        test.temp.write(folder.join("track.flac"), flac());
     }
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan_with(
@@ -277,8 +277,8 @@ async fn a_candidate_is_announced_while_the_walk_still_reads_the_next_folder() {
     let root = test.temp.path().join("watched");
     for name in ["Release A", "Release B"] {
         let folder = root.join(name);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::write(folder.join("track.flac"), flac()).unwrap();
+        test.temp.create_folder(&folder);
+        test.temp.write(folder.join("track.flac"), flac());
     }
     tables.add_watched_import_folder(&root).await.unwrap();
     let (reader, mut entered) = HeldListing::new();
@@ -447,7 +447,7 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
     };
     assert!(error.contains(&root.to_string_lossy().into_owned()), "{error}");
 
-    std::fs::create_dir(&root).unwrap();
+    test.temp.create_folder(&root);
     assert_eq!(refresh(&commands, &root).await, Ok(()));
     assert!(matches!(progress().await, crate::FolderScanStatus::Complete { .. }));
 
@@ -463,7 +463,7 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     test.report_bugs_to(bugs.clone());
     let root = test.temp.path().join("watched");
-    std::fs::create_dir(&root).unwrap();
+    test.temp.create_folder(&root);
     test.tables().add_watched_import_folder(&root).await.unwrap();
     crate::tables::ImportTables::fail_first_scan_begins_for_test(test.temp.path()).await;
     let (scan, _events) = test.scan();
@@ -492,7 +492,7 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
 async fn rescan_non_directory_root_keeps_previous_candidates() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("not-a-directory");
-    std::fs::write(&root, b"not a directory").unwrap();
+    test.temp.write(&root, b"not a directory");
     let (mut events, result) = rescan_seeded_root(&test, &root).await;
     assert_eq!(result, Err(ScanEnded::Failed), "a non-directory root must fail its scan");
 
@@ -517,8 +517,8 @@ async fn a_pass_records_the_directories_it_read() {
     let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Artist - Album");
-    std::fs::create_dir_all(album.join("Artwork")).unwrap();
-    std::fs::write(album.join("01.flac"), flac()).unwrap();
+    test.temp.create_folder(album.join("Artwork"));
+    test.temp.write(album.join("01.flac"), flac());
     tables.add_watched_import_folder(&root).await.unwrap();
 
     let (scan, _events) = test.scan();
@@ -539,7 +539,7 @@ async fn a_pass_records_the_directories_it_read() {
 
     // And a file written into one of them is a change the check reports, in
     // that directory and nowhere else.
-    std::fs::write(album.join("02.flac"), flac()).unwrap();
+    test.temp.write(album.join("02.flac"), flac());
     assert_eq!(crate::volume::changed_directories(&recorded), Some(vec![album.clone()]));
 }
 
@@ -592,7 +592,7 @@ fn a_refused_scan_write_is_a_bug_unless_the_disk_or_the_store_failed() {
 async fn a_folder_that_could_not_be_watched_is_stored_as_read_and_reads_as_not_watched() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
-    write_disc(&root.join("Album"), 2);
+    write_disc(&test.temp, &root.join("Album"), 2);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
     let services = test_scan_services(
@@ -628,7 +628,7 @@ async fn a_folder_that_could_not_be_watched_is_stored_as_read_and_reads_as_not_w
 async fn a_changed_folder_that_could_not_be_watched_reads_as_not_watched() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
-    write_disc(&root.join("Album"), 2);
+    write_disc(&test.temp, &root.join("Album"), 2);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();

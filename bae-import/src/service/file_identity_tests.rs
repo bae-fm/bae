@@ -1,14 +1,15 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 
 #[test]
 fn validation_returns_the_audio_observations_it_already_read() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let audio_path = dir.path().join("01.flac");
     let image_path = dir.path().join("cover.jpg");
-    std::fs::write(&audio_path, b"audio").unwrap();
-    std::fs::write(&image_path, b"image").unwrap();
+    dir.write(&audio_path, b"audio");
+    dir.write(&image_path, b"image");
     let scanned = |path: &std::path::Path, relative_path: &str| {
-        let metadata = std::fs::metadata(path).unwrap();
+        let metadata = dir.metadata(path);
         ScannedFile::new(
             path.to_path_buf(),
             relative_path.to_string(),

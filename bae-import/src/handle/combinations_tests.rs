@@ -8,9 +8,9 @@ use super::*;
 use crate::handle::tests::*;
 use crate::identification::tests::*;
 use crate::tests::import::TestImport;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 /// The folder names of the pending rows the queue holds, in path order.
 async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
@@ -36,8 +36,8 @@ async fn pending(handle: &ImportServiceHandle) -> Vec<String> {
 async fn separating_picked_folders_returns_them_as_they_were() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let first_root = TempDir::new().unwrap();
-    let second_root = TempDir::new().unwrap();
+    let first_root = TestFolder::new();
+    let second_root = TestFolder::new();
     let (first, first_key, _) = picked_candidate(&tables, &first_root, "Volume A").await;
     let (_, second_key, _) = picked_candidate(&tables, &second_root, "Volume B").await;
     let handle = parts.start().await.unwrap();
@@ -74,14 +74,14 @@ async fn separating_picked_folders_returns_them_as_they_were() {
 async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let root = tmp.path().join("music");
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for live in ["Live A", "Live B"] {
         let folder = root.join("Artist").join(live);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
+        tmp.create_folder(&folder);
+        tmp.copy_fixture(&fixture, folder.join("01.flac"));
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -130,14 +130,14 @@ async fn combining_every_release_under_a_folder_reads_that_folder_as_one() {
 async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let root = tmp.path().join("music");
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for live in ["Live 2", "Live 3", "Live 10"] {
         let folder = root.join("Artist").join(live);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::copy(&fixture, folder.join("01.flac")).unwrap();
+        tmp.create_folder(&folder);
+        tmp.copy_fixture(&fixture, folder.join("01.flac"));
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -165,7 +165,7 @@ async fn separating_picked_releases_answers_with_their_keys_in_path_order() {
 async fn album_of_discs(
     parts: &TestImport,
     tables: &crate::tables::ImportTables,
-    tmp: &TempDir,
+    tmp: &TestFolder,
     discs: &[&str],
     album_track: bool,
 ) -> (ImportServiceHandle, PathBuf) {
@@ -174,13 +174,13 @@ async fn album_of_discs(
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for disc in discs {
-        std::fs::create_dir_all(album.join(disc)).unwrap();
-        std::fs::copy(&fixture, album.join(disc).join("01.flac")).unwrap();
+        tmp.create_folder(album.join(disc));
+        tmp.copy_fixture(&fixture, album.join(disc).join("01.flac"));
     }
     if album_track {
-        std::fs::copy(&fixture, album.join("00.flac")).unwrap();
+        tmp.copy_fixture(&fixture, album.join("00.flac"));
     }
-    std::fs::write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    tmp.write(album.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
@@ -223,7 +223,7 @@ async fn files_of(handle: &ImportServiceHandle, key: &crate::CandidateKey) -> Ve
 async fn two_discs_of_three_take_the_album_folders_cover() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (handle, album) =
         album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2", "Disc 3"], false).await;
     assert_eq!(files_of(&handle, &key_of(&album.join("Disc 3"))).await, ["01.flac"]);
@@ -251,7 +251,7 @@ async fn two_discs_of_three_take_the_album_folders_cover() {
 async fn a_folder_that_is_a_release_keeps_its_cover() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (handle, album) = album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
     assert_eq!(files_of(&handle, &key_of(&album)).await, ["00.flac", "cover.jpg"]);
 
@@ -276,7 +276,7 @@ async fn a_folder_that_is_a_release_keeps_its_cover() {
 async fn fewer_than_two_picked_folders_come_back_as_the_refusal() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (handle, album) = album_of_discs(&parts, &tables, &tmp, &["Disc 1", "Disc 2"], true).await;
 
     for keys in [vec![], vec![key_of(&album.join("Disc 1"))], vec![key_of(&album); 2]] {
@@ -298,7 +298,7 @@ async fn combined_parts(fixture: &Fixture, folder: &str) -> (Vec<PathBuf>, crate
         .iter()
         .map(|side| {
             let dir = fixture.disc_id_candidate(&format!("{folder}/{side}"));
-            std::fs::write(dir.join("notes.txt"), side).unwrap();
+            fixture.temp.write(dir.join("notes.txt"), side);
             dir
         })
         .collect();
@@ -354,12 +354,12 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
         // A third release beside them keeps the two from being every release
         // in one folder, so they are picked rather than a folder read as one.
         let other = fixture.disc_id_candidate("Other");
-        std::fs::write(other.join("notes.txt"), "other").unwrap();
+        fixture.temp.write(other.join("notes.txt"), "other");
         let picked: Vec<PathBuf> = ["Album A", "Album B"]
             .iter()
             .map(|name| {
                 let dir = fixture.disc_id_candidate(name);
-                std::fs::write(dir.join("notes.txt"), name).unwrap();
+                fixture.temp.write(dir.join("notes.txt"), name);
                 dir
             })
             .collect();

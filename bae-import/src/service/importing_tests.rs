@@ -40,9 +40,9 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for disc in 1..=2 {
         let disc_dir = folder.join(format!("CD{disc}"));
-        std::fs::create_dir_all(&disc_dir).unwrap();
+        test.temp.create_folder(&disc_dir);
         for track in 1..=3 {
-            std::fs::copy(&fixture, disc_dir.join(format!("0{track} Track {track}.flac"))).unwrap();
+            test.temp.copy_fixture(&fixture, disc_dir.join(format!("0{track} Track {track}.flac")));
         }
     }
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Box Set").await;
@@ -53,7 +53,8 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     // modification time are unchanged, so the import's identity check passes
     // and the failure is the open itself.
     let blocked_name = Path::new("CD2").join("02 Track 2.flac");
-    let blocked = crate::tests::files::UnopenableFile::block(&folder.join(&blocked_name));
+    let blocked =
+        crate::tests::files::UnopenableFile::block(&test.temp, &folder.join(&blocked_name));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
         .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation())
@@ -143,11 +144,11 @@ async fn an_import_that_panics_is_recorded_as_failed_and_the_next_import_runs() 
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     test.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let folder = test.temp.path().join("album");
-    std::fs::create_dir_all(&folder).unwrap();
+    test.temp.create_folder(&folder);
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for track in 1..=2 {
-        std::fs::copy(&fixture, folder.join(format!("0{track} Track {track}.flac"))).unwrap();
+        test.temp.copy_fixture(&fixture, folder.join(format!("0{track} Track {track}.flac")));
     }
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
     test.service.ids =
@@ -189,10 +190,10 @@ async fn a_failed_import_whose_candidate_changed_meanwhile_files_no_bug_report()
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     test.service.diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());
     let folder = test.temp.path().join("album");
-    std::fs::create_dir_all(&folder).unwrap();
+    test.temp.create_folder(&folder);
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
-    std::fs::copy(&fixture, folder.join("01 Track 1.flac")).unwrap();
+    test.temp.copy_fixture(&fixture, folder.join("01 Track 1.flac"));
     let (candidate_key, mut stored) = store_scanned_candidate(&test, &folder, "Album").await;
     // The revision the import was queued against; the stored state has moved on.
     stored.candidate.file_edit_revision += 1;
@@ -328,13 +329,13 @@ async fn spent_rows_candidate(
     test: &TestService,
 ) -> (PathBuf, crate::CandidateKey, crate::service::ImportExpectation) {
     let folder = test.temp.path().join("box-set");
-    std::fs::create_dir_all(&folder).unwrap();
+    test.temp.create_folder(&folder);
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for track in 1..=3 {
-        std::fs::copy(&fixture, folder.join(format!("0{track} Track {track}.flac"))).unwrap();
+        test.temp.copy_fixture(&fixture, folder.join(format!("0{track} Track {track}.flac")));
     }
-    write_test_jpeg(&folder.join("front.jpg"));
+    write_test_jpeg(&test.temp, &folder.join("front.jpg"));
     let (candidate_key, expectation) = store_scanned_candidate(test, &folder, "Box Set").await;
     (folder, candidate_key, expectation)
 }
@@ -406,7 +407,8 @@ async fn a_failed_import_keeps_what_a_retry_reads() {
     seed_spent_rows(&test, &candidate_key, &content_hash).await;
     let before = spent_row_counts(&test, &content_hash).await;
 
-    let blocked = crate::tests::files::UnopenableFile::block(&folder.join("02 Track 2.flac"));
+    let blocked =
+        crate::tests::files::UnopenableFile::block(&test.temp, &folder.join("02 Track 2.flac"));
     test.service.queue_import_for_test(&candidate_key, "import-blocked").await;
     test.service
         .do_import(local_import_command("import-blocked", &candidate_key, &folder), expectation)
@@ -572,14 +574,13 @@ async fn local_reading_progress_advances_while_coven_reads_a_dominant_file() {
 async fn assert_reading_progress(destination: ImportDestination) {
     let test = setup_import_service().await;
     let folder = test.temp.path().join("reading-progress-candidate");
-    std::fs::create_dir(&folder).unwrap();
-    std::fs::write(folder.join("01-payload.bin"), vec![0x5a; 1024 * 1024]).unwrap();
-    std::fs::copy(
+    test.temp.create_folder(&folder);
+    test.temp.write(folder.join("01-payload.bin"), vec![0x5a; 1024 * 1024]);
+    test.temp.copy_fixture(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
         folder.join("00-track.flac"),
-    )
-    .unwrap();
-    let track_bytes = std::fs::metadata(folder.join("00-track.flac")).unwrap().len();
+    );
+    let track_bytes = test.temp.metadata(folder.join("00-track.flac")).len();
     // The percent once the track, read first, is read: what counting whole
     // files alone would report until the payload is read too.
     let after_track = (track_bytes * 100 / (track_bytes + 1024 * 1024)) as u8;
@@ -643,8 +644,8 @@ async fn an_import_commits_after_a_pass_finds_its_folder_unchanged() {
     let tables = test.service.tables.clone();
     let root = test.temp.path().join("watched");
     let folder = root.join("Album");
-    std::fs::create_dir_all(&folder).unwrap();
-    std::fs::write(folder.join("01.flac"), flac()).unwrap();
+    test.temp.create_folder(&folder);
+    test.temp.write(folder.join("01.flac"), flac());
     let root_text = root.to_string_lossy().into_owned();
     let key = crate::CandidateKey::folder(&folder);
     tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
@@ -702,13 +703,13 @@ async fn an_imported_release_keeps_each_documents_kind() {
     use bae_util::content_type::ContentType;
     let test = setup_import_service().await;
     let folder = test.temp.path().join("Album");
-    std::fs::create_dir_all(&folder).unwrap();
-    std::fs::write(folder.join("01.flac"), flac()).unwrap();
-    std::fs::write(folder.join("Album.log"), b"Exact Audio Copy V1.0\n").unwrap();
-    std::fs::write(folder.join("Album.accurip"), b"[AccurateRip ID: 0001] found.\n").unwrap();
-    std::fs::write(folder.join("Album.m3u"), b"01.flac\n").unwrap();
-    std::fs::write(folder.join("notes.txt"), b"Recorded live.\n").unwrap();
-    std::fs::write(folder.join("booklet.pdf"), b"%PDF-1.4\n").unwrap();
+    test.temp.create_folder(&folder);
+    test.temp.write(folder.join("01.flac"), flac());
+    test.temp.write(folder.join("Album.log"), b"Exact Audio Copy V1.0\n");
+    test.temp.write(folder.join("Album.accurip"), b"[AccurateRip ID: 0001] found.\n");
+    test.temp.write(folder.join("Album.m3u"), b"01.flac\n");
+    test.temp.write(folder.join("notes.txt"), b"Recorded live.\n");
+    test.temp.write(folder.join("booklet.pdf"), b"%PDF-1.4\n");
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
     let content_hash = stored.candidate.content_hash.clone();
 
@@ -772,10 +773,10 @@ async fn an_imported_release_keeps_each_documents_kind() {
 async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
     let test = setup_import_service().await;
     let folder = test.temp.path().join("Album");
-    std::fs::create_dir_all(&folder).unwrap();
+    test.temp.create_folder(&folder);
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.join("Test Album.flac")).unwrap();
-    std::fs::copy(fixture.join("Test Album.cue"), folder.join("Test Album.cue")).unwrap();
+    test.temp.copy_fixture(fixture.join("Test Album.flac"), folder.join("Test Album.flac"));
+    test.temp.copy_fixture(fixture.join("Test Album.cue"), folder.join("Test Album.cue"));
     let (candidate_key, stored) = store_scanned_candidate(&test, &folder, "Album").await;
     let content_hash = stored.candidate.content_hash.clone();
     let mut decided = crate::folder_scanner::CandidateFileEdits::default();

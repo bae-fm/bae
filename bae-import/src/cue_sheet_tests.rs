@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 
 #[test]
 fn test_parse_time() {
@@ -704,10 +705,10 @@ fn a_sheet_names_the_cd_ripper_that_wrote_it() {
 
 #[test]
 fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let cue = tmp.path().join("album.cue");
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n  TRACK 03 AUDIO\n    INDEX 01 10:00:00\n";
-    std::fs::write(&cue, content).unwrap();
+    tmp.write(&cue, content);
 
     let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert_eq!(sheet.audio_file_references(), ["album.flac"]);
@@ -718,10 +719,10 @@ fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
 fn test_cue_parser_tolerates_missing_performer_title() {
     // Minimal CUE with no PERFORMER/TITLE — still a valid rip artifact,
     // must parse so the scanner and importer see the same facts.
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let cue = tmp.path().join("album.cue");
     let content = "FILE \"dummy.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n";
-    std::fs::write(&cue, content).unwrap();
+    tmp.write(&cue, content);
 
     let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert!(sheet.title.is_none());
@@ -732,10 +733,10 @@ fn test_cue_parser_tolerates_missing_performer_title() {
 
 #[test]
 fn test_cue_parser_stops_at_data_track() {
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let cue = tmp.path().join("album.cue");
     let content = "FILE \"album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 MODE1/2048\n    INDEX 01 05:00:00\n";
-    std::fs::write(&cue, content).unwrap();
+    tmp.write(&cue, content);
 
     let sheet = parse_cue_sheet(&cue, bae_util::test_files::place()).unwrap();
     assert_eq!(sheet.tracks.len(), 2);

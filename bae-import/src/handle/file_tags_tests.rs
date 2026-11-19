@@ -105,7 +105,7 @@ async fn changed_file_observations_read_the_tags_again() {
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
     let first_audio = tmp.path().join("watched/Album/01 Track.flac");
-    let audio = std::fs::OpenOptions::new().write(true).open(&first_audio).unwrap();
+    let audio = tmp.open_with(&first_audio, std::fs::OpenOptions::new().write(true));
     audio
         .set_times(
             std::fs::FileTimes::new()
@@ -119,7 +119,7 @@ async fn changed_file_observations_read_the_tags_again() {
     assert_eq!(titles(&after_modified_time), vec![Some("Track Title 3"), Some("Track Title 4")]);
 
     let second_audio = tmp.path().join("watched/Album/02 Track.flac");
-    let mut audio = std::fs::OpenOptions::new().append(true).open(&second_audio).unwrap();
+    let mut audio = tmp.open_with(&second_audio, std::fs::OpenOptions::new().append(true));
     std::io::Write::write_all(&mut audio, &[0]).unwrap();
     candidate
         .files
@@ -129,7 +129,7 @@ async fn changed_file_observations_read_the_tags_again() {
         .unwrap()
         .file
         .version
-        .size = std::fs::metadata(&second_audio).unwrap().len();
+        .size = tmp.metadata(&second_audio).len();
     rescan_unread_into(&handle.services.tables, candidate).await;
 
     let after_size = handle.read_file_tag_snapshot(&key, reader.clone()).await.unwrap().snapshot;

@@ -9,7 +9,7 @@ use crate::types::{AudioFile, CandidateDraft};
 use crate::ImportError;
 use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use bae_types::pressing::{made_of, Medium};
-use std::fs;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 
 /// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring one second of audio —
@@ -38,8 +38,8 @@ pub(crate) fn synthetic_flac_bytes() -> Vec<u8> {
     buf
 }
 
-pub(crate) fn write_flac(path: &Path) {
-    fs::write(path, synthetic_flac_bytes()).expect("write flac");
+pub(crate) fn write_flac(folder: &TestFolder, path: impl AsRef<Path>) {
+    folder.write(path, synthetic_flac_bytes());
 }
 
 /// A sheet naming one container for the whole disc, its entries a fifth of
@@ -172,11 +172,11 @@ fn positions(side: &MappingTrackSide) -> Vec<&str> {
 /// are carried beside them, because a role is a fact about the folder.
 #[tokio::test]
 async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
-    fs::write(tmp.path().join("rip.log"), b"log").expect("write log");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
+    write_flac(&tmp, "02.flac");
+    tmp.write("cover.jpg", fake_jpeg());
+    tmp.write("rip.log", b"log");
 
     let files = scan(tmp.path());
     let table = blank_table(&files).await;
@@ -218,9 +218,9 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
 /// of only spaces, which committing replaces with the file's name.
 #[tokio::test]
 async fn mapping_statement_counts_untitled_tracks_as_str_trim_does() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for name in ["01.flac", "02.flac", "03.flac"] {
-        write_flac(&tmp.path().join(name));
+        write_flac(&tmp, name);
     }
     let files = scan(tmp.path());
     assert_eq!(blank_table(&files).await.untitled_track_count, 3);
@@ -245,9 +245,9 @@ async fn mapping_statement_counts_untitled_tracks_as_str_trim_does() {
 /// away.
 #[tokio::test]
 async fn a_row_shows_the_length_its_audio_measures() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     for number in 1..=2 {
-        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+        write_flac(&tmp, format!("{number:02}.flac"));
     }
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
@@ -262,8 +262,8 @@ async fn a_row_shows_the_length_its_audio_measures() {
 /// A row with no listed length shows its audio's own and nothing beside it.
 #[tokio::test]
 async fn a_track_with_no_listed_length_shows_only_its_audio_s() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
     let files = scan(tmp.path());
 
     let table = blank_table(&files).await;
@@ -275,9 +275,9 @@ async fn a_track_with_no_listed_length_shows_only_its_audio_s() {
 /// Exactly the limit is not a difference; a millisecond past it is.
 #[tokio::test]
 async fn a_listed_length_shows_only_past_three_seconds() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     for number in 1..=2 {
-        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+        write_flac(&tmp, format!("{number:02}.flac"));
     }
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
@@ -292,9 +292,9 @@ async fn a_listed_length_shows_only_past_three_seconds() {
 /// The table letters the sides after Z AA, AB, …, as `side_letters` does.
 #[tokio::test]
 async fn mapping_statement_letters_sides_past_z() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for number in 1..=28 {
-        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+        write_flac(&tmp, format!("{number:02}.flac"));
     }
     let files = scan(tmp.path());
     let places: Vec<(u16, u8, u32)> = (1..=28).map(|side| (1, side, 1)).collect();
@@ -326,13 +326,13 @@ async fn mapping_statement_letters_sides_past_z() {
 /// The folder's images are one gallery beside the table rows.
 #[tokio::test]
 async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
-    fs::write(tmp.path().join("back.jpg"), fake_jpeg()).expect("write back");
-    fs::create_dir(tmp.path().join("scans")).expect("scans dir");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
+    tmp.write("cover.jpg", fake_jpeg());
+    tmp.write("back.jpg", fake_jpeg());
+    tmp.create_folder(tmp.path().join("scans"));
     for name in ["scan1.jpg", "scan2.jpg", "scan3.jpg"] {
-        fs::write(tmp.path().join("scans").join(name), fake_jpeg()).expect("write scan");
+        tmp.write(tmp.path().join("scans").join(name), fake_jpeg());
     }
 
     let table = blank_table(&scan(tmp.path())).await;
@@ -348,7 +348,7 @@ async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     assert!(table
         .images
         .iter()
-        .any(|image| image.file_id == "scans/scan1.jpg" && image.file.path.exists()));
+        .any(|image| image.file_id == "scans/scan1.jpg" && tmp.exists(&image.file.path)));
     assert_eq!(table.track_sides.len(), 1);
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
@@ -359,10 +359,9 @@ async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
 /// carries.
 #[tokio::test]
 async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
-        .expect("write cue");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "CDImage.flac");
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 3));
 
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
@@ -421,9 +420,9 @@ async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
 
 #[tokio::test]
 async fn standalone_tracks_are_sectioned_by_release_side() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for number in 1..=4 {
-        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+        write_flac(&tmp, format!("{number:02}.flac"));
     }
 
     let files = scan(tmp.path());
@@ -445,14 +444,13 @@ async fn standalone_tracks_are_sectioned_by_release_side() {
 
 #[tokio::test]
 async fn each_cue_is_one_section_on_its_assigned_disc() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for stem in ["alpha", "beta"] {
-        write_flac(&tmp.path().join(format!("{stem}.flac")));
-        fs::write(
+        write_flac(&tmp, format!("{stem}.flac"));
+        tmp.write(
             tmp.path().join(format!("{stem}.cue")),
             cue_sheet_text(&format!("{stem}.flac"), 2),
-        )
-        .expect("write cue");
+        );
     }
 
     let mut files = scan(tmp.path());
@@ -485,9 +483,9 @@ async fn each_cue_is_one_section_on_its_assigned_disc() {
 /// each side's run of them with the sheet.
 #[tokio::test]
 async fn mapping_statement_names_a_split_sheet_again_on_the_next_side() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("LP.flac"));
-    fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 4)).expect("write cue");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "LP.flac");
+    tmp.write("LP.cue", cue_sheet_text("LP.flac", 4));
 
     let files = scan(tmp.path());
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
@@ -513,11 +511,11 @@ async fn mapping_statement_names_a_split_sheet_again_on_the_next_side() {
 /// again.
 #[tokio::test]
 async fn mapping_statement_heads_each_side_once_however_many_runs() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for name in ["01.flac", "02.flac", "LP.flac"] {
-        write_flac(&tmp.path().join(name));
+        write_flac(&tmp, name);
     }
-    fs::write(tmp.path().join("LP.cue"), cue_sheet_text("LP.flac", 2)).expect("write cue");
+    tmp.write("LP.cue", cue_sheet_text("LP.flac", 2));
 
     let files = scan(tmp.path());
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)]);
@@ -551,12 +549,11 @@ async fn mapping_statement_heads_each_side_once_however_many_runs() {
 /// table lays them out, each addressable on its own.
 #[tokio::test]
 async fn the_commit_tracks_are_the_table_s_rows_in_order() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
-        .expect("write cue");
-    write_flac(&tmp.path().join("bonus.flac"));
-    fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "CDImage.flac");
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 2));
+    write_flac(&tmp, "bonus.flac");
+    tmp.write("cover.jpg", fake_jpeg());
 
     let files = scan(tmp.path());
     let table = blank_table(&files).await;
@@ -592,9 +589,9 @@ async fn the_commit_tracks_are_the_table_s_rows_in_order() {
 /// pairing rows with the wrong audio.
 #[tokio::test]
 async fn mapping_statement_refuses_a_draft_track_whose_unit_differs() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for number in 1..=2 {
-        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+        write_flac(&tmp, format!("{number:02}.flac"));
     }
     let files = scan(tmp.path());
 
@@ -617,12 +614,12 @@ async fn mapping_statement_refuses_a_draft_track_whose_unit_differs() {
 /// its own path, which is what opens it in the document viewer.
 #[tokio::test]
 async fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     // Two audio files beside a one-file sheet: nothing for it to take as a
     // last resort, so it describes nothing.
-    write_flac(&tmp.path().join("01.flac"));
-    write_flac(&tmp.path().join("02.flac"));
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.wav", 3)).expect("write cue");
+    write_flac(&tmp, "01.flac");
+    write_flac(&tmp, "02.flac");
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.wav", 3));
 
     let table = blank_table(&scan(tmp.path())).await;
     // The sheet is named where it sits on disk, after the loose audio that
@@ -640,12 +637,10 @@ async fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
 /// the user can resolve from the files section.
 #[tokio::test]
 async fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("disc.flac"));
-    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2))
-        .expect("write associated cue");
-    fs::write(tmp.path().join("unresolved.cue"), cue_sheet_text("absent.wav", 2))
-        .expect("write unassociated cue");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "disc.flac");
+    tmp.write("disc.cue", cue_sheet_text("disc.flac", 2));
+    tmp.write("unresolved.cue", cue_sheet_text("absent.wav", 2));
 
     let table = blank_table(&scan(tmp.path())).await;
 
@@ -666,11 +661,10 @@ async fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
 /// draw itself from a query.
 #[tokio::test]
 async fn projecting_the_table_opens_no_audio() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
-        .expect("write cue");
-    write_flac(&tmp.path().join("bonus.flac"));
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "CDImage.flac");
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 2));
+    write_flac(&tmp, "bonus.flac");
 
     let files = scan(tmp.path());
     let stored = StoredFolder::of(&files).await;
@@ -700,9 +694,9 @@ fn fake_jpeg() -> Vec<u8> {
 
 #[tokio::test]
 async fn invalid_cue_times_are_not_reported_as_missing_audio() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    write_flac(&tmp.path().join("disc.flac"));
-    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 7)).unwrap();
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "disc.flac");
+    tmp.write("disc.cue", cue_sheet_text("disc.flac", 7));
     let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("the refused CUE remains listed");
@@ -723,9 +717,9 @@ async fn invalid_cue_times_are_not_reported_as_missing_audio() {
 
 #[tokio::test]
 async fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    write_flac(&tmp.path().join("disc.flac"));
-    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2)).unwrap();
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "disc.flac");
+    tmp.write("disc.cue", cue_sheet_text("disc.flac", 2));
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("disc.cue", 2)]);
     let table = blank_table(&files).await;
@@ -739,14 +733,13 @@ async fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
 /// resolved sheets, and any disc a sheet is assigned beyond those.
 #[tokio::test]
 async fn a_sheet_disc_menu_counts_up_to_the_resolved_sheets() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     for stem in ["alpha", "beta", "gamma"] {
-        write_flac(&tmp.path().join(format!("{stem}.flac")));
-        fs::write(
+        write_flac(&tmp, format!("{stem}.flac"));
+        tmp.write(
             tmp.path().join(format!("{stem}.cue")),
             cue_sheet_text(&format!("{stem}.flac"), 2),
-        )
-        .unwrap();
+        );
     }
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("alpha.cue", 1), ("beta.cue", 2), ("gamma.cue", 5)]);
@@ -763,11 +756,9 @@ async fn a_sheet_disc_menu_counts_up_to_the_resolved_sheets() {
 
 #[tokio::test]
 async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    write_flac(&tmp.path().join("first.flac"));
-    fs::write(tmp.path().join("album.cue"),
-        "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"absent.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n"
-    ).unwrap();
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "first.flac");
+    tmp.write("album.cue", "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"absent.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n");
     let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("partial CUE remains listed");
@@ -795,13 +786,12 @@ async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choice
 
 #[tokio::test]
 async fn codec_refusal_does_not_invent_a_current_assignment() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    fs::copy(
+    let tmp = TestFolder::new();
+    tmp.copy_fixture(
         bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
         tmp.path().join("disc.mp3"),
-    )
-    .unwrap();
-    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.mp3", 1)).unwrap();
+    );
+    tmp.write("disc.cue", cue_sheet_text("disc.mp3", 1));
     let table = blank_table(&scan(tmp.path())).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("refused CUE remains listed");
@@ -822,10 +812,10 @@ async fn codec_refusal_does_not_invent_a_current_assignment() {
 
 #[tokio::test]
 async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    write_flac(&tmp.path().join("disc.flac"));
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "disc.flac");
     for name in ["first.cue", "second.cue"] {
-        fs::write(tmp.path().join(name), cue_sheet_text("disc.flac", 2)).unwrap();
+        tmp.write(name, cue_sheet_text("disc.flac", 2));
     }
     let table = blank_table(&scan(tmp.path())).await;
     assert!(matches!(
@@ -852,9 +842,9 @@ async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
 /// where the pressing says it is a record.
 #[tokio::test]
 async fn source_disc_assignments_do_not_invent_sides() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    write_flac(&tmp.path().join("disc.flac"));
-    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 3)).unwrap();
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "disc.flac");
+    tmp.write("disc.cue", cue_sheet_text("disc.flac", 3));
     let files = scan(tmp.path());
     let mut draft = blank_candidate_draft(&files);
     draft.pressing.facts = made_of(Medium::Vinyl, 1);
@@ -875,13 +865,11 @@ async fn source_disc_assignments_do_not_invent_sides() {
 /// either file again.
 #[tokio::test]
 async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     for name in ["first.flac", "second.flac"] {
-        write_flac(&tmp.path().join(name));
+        write_flac(&tmp, name);
     }
-    fs::write(tmp.path().join("album.cue"),
-        "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\n TRACK 02 AUDIO\n INDEX 01 00:00:15\nFILE \"second.wav\" WAVE\n TRACK 03 AUDIO\n INDEX 01 00:00:00\n"
-    ).unwrap();
+    tmp.write("album.cue", "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\n TRACK 02 AUDIO\n INDEX 01 00:00:15\nFILE \"second.wav\" WAVE\n TRACK 03 AUDIO\n INDEX 01 00:00:00\n");
     let mut files = scan(tmp.path());
     let opens = ["first.flac", "second.flac"]
         .map(|name| bae_audio::test_reads::probes(&tmp.path().join(name)));

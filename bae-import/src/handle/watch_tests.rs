@@ -30,11 +30,10 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
     // One FLAC, and more JPEGs than the OCR pass reads at once.
     fn fixture_flac() -> Vec<u8> {
-        std::fs::read(concat!(
+        bae_util::test_files::read_fixture(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tests/fixtures/flac/01 Test Track 1.flac"
         ))
-        .expect("read FLAC fixture")
     }
     fn minimal_jpeg() -> Vec<u8> {
         vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
@@ -42,12 +41,12 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 
     let (parts, _, tmp) = setup_test_import().await;
     let root = tmp.path().join("watch-root");
-    std::fs::create_dir_all(&root).unwrap();
+    tmp.create_folder(&root);
     let release_folder = root.join("Artist Name - Album Title");
-    std::fs::create_dir_all(&release_folder).unwrap();
-    std::fs::write(release_folder.join("01 - Track.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&release_folder);
+    tmp.write(release_folder.join("01 - Track.flac"), fixture_flac());
     for n in 1..=crate::extraction::service::IMAGES_IN_FLIGHT + 2 {
-        std::fs::write(release_folder.join(format!("p{n}.jpg")), minimal_jpeg()).unwrap();
+        tmp.write(release_folder.join(format!("p{n}.jpg")), minimal_jpeg());
     }
 
     let import_handle = parts.start().await.unwrap();
@@ -135,12 +134,11 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     // list offers: the release the scan reads from a real album folder.
     let root = temp.path().join("music");
     let folder = root.join("Collection").join("Album");
-    std::fs::create_dir_all(&folder).unwrap();
-    std::fs::copy(
+    temp.create_folder(&folder);
+    temp.copy_fixture(
         concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"),
         folder.join("01.flac"),
-    )
-    .unwrap();
+    );
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let handle = parts.start().await.unwrap();
@@ -199,7 +197,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
 async fn an_add_that_fails_leaves_nothing_watched() {
     let (parts, _, tmp) = setup_test_import().await;
     let root = tmp.path().join("watch-root");
-    std::fs::create_dir_all(&root).unwrap();
+    tmp.create_folder(&root);
     // A second spelling of each added folder, which every read of the
     // watched folders refuses as not canonical.
     crate::tables::ImportTables::plant_uncanonical_spelling_in_every_add_for_test(tmp.path()).await;

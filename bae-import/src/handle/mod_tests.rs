@@ -16,13 +16,13 @@ use bae_identify::LookupChoiceEdit;
 use bae_records::{DbAlbum, DbArtist, DbRelease};
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 use time::UtcDateTime;
 
 /// What an import service is started from over a fresh store asking no
 /// catalog, the store, and the directory holding it.
-pub(super) async fn setup_test_import() -> (TestImport, Store, TempDir) {
+pub(super) async fn setup_test_import() -> (TestImport, Store, TestFolder) {
     setup_test_import_with(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -34,7 +34,7 @@ pub(super) async fn setup_test_import() -> (TestImport, Store, TempDir) {
 pub(super) async fn setup_test_import_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (TestImport, Store, TempDir) {
+) -> (TestImport, Store, TestFolder) {
     setup_test_import_over(providers, http, bae_diagnostics::Diagnostics::noop()).await
 }
 
@@ -42,8 +42,8 @@ pub(super) async fn setup_test_import_over(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestImport, Store, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+) -> (TestImport, Store, TestFolder) {
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(
         crate::TEST_SCHEMA,
         temp_dir.path(),
@@ -206,7 +206,13 @@ pub(super) async fn three_track_draft() -> (StoredCandidate, String) {
     let fakes = FakeCatalogs::offline();
     let mut fixture =
         stored_candidate_with(fakes.providers(), bae_util::http::Http::for_test()).await;
-    add_sheet(&fixture.handle.services.tables, &mut fixture.candidate, SECOND_FILE_IN_TWO).await;
+    add_sheet(
+        &fixture.handle.services.tables,
+        &fixture.tmp,
+        &mut fixture.candidate,
+        SECOND_FILE_IN_TWO,
+    )
+    .await;
     fixture
         .handle
         .set_sheet_disc(
@@ -231,15 +237,14 @@ pub(super) async fn three_track_draft() -> (StoredCandidate, String) {
 /// A copy of `original` in a sibling folder named `name`, its files copied
 /// with their sizes and modification times, so the two folders' files hash
 /// alike.
-pub(super) fn twin_of(original: &FolderCandidate, name: &str) -> FolderCandidate {
-    let folder = original.path.with_file_name(name);
-    std::fs::create_dir_all(&folder).unwrap();
+pub(super) fn twin_of(tmp: &TestFolder, original: &FolderCandidate, name: &str) -> FolderCandidate {
+    let folder = tmp.create_folder(original.path.with_file_name(name));
     let mut twin = original.clone();
     for candidate_file in &mut twin.files.files {
         let source = candidate_file.file.version.path.clone();
         let target = folder.join(&candidate_file.file.relative_path);
-        std::fs::copy(&source, &target).unwrap();
-        set_modified(&target, std::fs::metadata(&source).unwrap().modified().unwrap());
+        tmp.copy(&source, &target);
+        set_modified(tmp, &target, tmp.metadata(&source).modified().unwrap());
         candidate_file.file.version.path = target;
     }
     twin.path = folder.clone();
@@ -321,7 +326,7 @@ pub(super) fn cover_jpeg() -> Vec<u8> {
 /// under test, and a real scan would only make when they run less certain.
 pub(super) async fn picked_candidate(
     tables: &crate::tables::ImportTables,
-    tmp: &TempDir,
+    tmp: &TestFolder,
     folder_name: &str,
 ) -> (FolderCandidate, crate::CandidateKey, String) {
     let (candidate, key, hash) = unscanned_candidate(tables, tmp, folder_name).await;
@@ -333,7 +338,7 @@ pub(super) async fn picked_candidate(
 /// read: a blank draft and no reading, so the first pick is what reads them.
 pub(super) async fn unread_candidate(
     tables: &crate::tables::ImportTables,
-    tmp: &TempDir,
+    tmp: &TestFolder,
     folder_name: &str,
 ) -> (FolderCandidate, crate::CandidateKey, String) {
     let (candidate, key, hash) = unscanned_candidate(tables, tmp, folder_name).await;
@@ -341,11 +346,9 @@ pub(super) async fn unread_candidate(
     (candidate, key, hash)
 }
 
-pub(super) fn set_modified(path: &Path, modified: std::time::SystemTime) {
-    std::fs::File::options()
-        .write(true)
-        .open(path)
-        .and_then(|file| file.set_modified(modified))
+pub(super) fn set_modified(tmp: &TestFolder, path: &Path, modified: std::time::SystemTime) {
+    tmp.open_with(path, std::fs::OpenOptions::new().write(true))
+        .set_modified(modified)
         .expect("set the file's modification time");
 }
 
@@ -375,7 +378,7 @@ pub(super) async fn rescan_unread_into(
 /// both.
 pub(super) async fn unscanned_candidate(
     tables: &crate::tables::ImportTables,
-    tmp: &TempDir,
+    tmp: &TestFolder,
     folder_name: &str,
 ) -> (FolderCandidate, crate::CandidateKey, String) {
     use crate::folder_scanner::{
@@ -389,15 +392,15 @@ pub(super) async fn unscanned_candidate(
         );
     let root = tmp.path().join("watched");
     let folder = root.join(folder_name);
-    std::fs::create_dir_all(&folder).unwrap();
+    tmp.create_folder(&folder);
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
     let mut files = Vec::new();
     for (index, name) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].into_iter().enumerate() {
         let relative_path = format!("{:02} Track.flac", index + 1);
         let path = folder.join(&relative_path);
-        std::fs::copy(fixtures.join(name), &path).unwrap();
-        set_modified(&path, modified);
-        let metadata = std::fs::metadata(&path).unwrap();
+        tmp.copy_fixture(fixtures.join(name), &path);
+        set_modified(tmp, &path, modified);
+        let metadata = tmp.metadata(&path);
         let size = metadata.len();
         let modified_at_ns = crate::folder_scanner::file_modified_at_ns(&path, &metadata).unwrap();
         files.push(CandidateFile {
@@ -407,9 +410,9 @@ pub(super) async fn unscanned_candidate(
         });
     }
     let cover_path = folder.join("cover.jpg");
-    std::fs::write(&cover_path, cover_jpeg()).unwrap();
-    set_modified(&cover_path, modified);
-    let cover_metadata = std::fs::metadata(&cover_path).unwrap();
+    tmp.write(&cover_path, cover_jpeg());
+    set_modified(tmp, &cover_path, modified);
+    let cover_metadata = tmp.metadata(&cover_path);
     let cover_modified_at_ns =
         crate::folder_scanner::file_modified_at_ns(&cover_path, &cover_metadata).unwrap();
     files.push(CandidateFile {
@@ -474,7 +477,7 @@ pub(crate) struct StoredCandidate {
     /// The key the pane's controls address the candidate by.
     pub(crate) key: crate::CandidateKey,
     /// Held for its `Drop`: the watched root lives inside it.
-    pub(crate) tmp: TempDir,
+    pub(crate) tmp: TestFolder,
 }
 
 pub(super) async fn stored_candidate() -> StoredCandidate {
@@ -497,10 +500,11 @@ pub(super) const SECOND_FILE_IN_TWO: &str = concat!(
 /// as a scan reads it now, so its sheet decisions have a sheet to act on.
 pub(super) async fn add_sheet(
     tables: &crate::tables::ImportTables,
+    tmp: &TestFolder,
     candidate: &mut FolderCandidate,
     cue: &str,
 ) {
-    std::fs::write(candidate.path.join("Disc.cue"), cue).unwrap();
+    tmp.write(candidate.path.join("Disc.cue"), cue);
     candidate.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &candidate.path,
         candidate.scope,
@@ -513,7 +517,7 @@ pub(super) async fn add_sheet(
 /// [`stored_candidate`] holding a `Disc.cue` of `cue`.
 pub(super) async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
     let mut fixture = stored_candidate().await;
-    add_sheet(&fixture.handle.services.tables, &mut fixture.candidate, cue).await;
+    add_sheet(&fixture.handle.services.tables, &fixture.tmp, &mut fixture.candidate, cue).await;
     fixture
 }
 
@@ -542,7 +546,7 @@ pub(super) async fn started(
     db: Store,
     candidate: FolderCandidate,
     key: crate::CandidateKey,
-    tmp: TempDir,
+    tmp: TestFolder,
 ) -> StoredCandidate {
     let handle = parts.start().await.unwrap();
     StoredCandidate { handle, parts, db, candidate, key, tmp }
@@ -551,7 +555,8 @@ pub(super) async fn started(
 /// The handle, the key its controls address, and the hash its rows are stored
 /// under — with the folder's own tags already picked, which is what draws the
 /// edit form and the mapping table.
-pub(super) async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
+pub(super) async fn pane_fixture() -> (ImportServiceHandle, TestFolder, crate::CandidateKey, String)
+{
     pane_fixture_with(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -563,7 +568,7 @@ pub(super) async fn pane_fixture() -> (ImportServiceHandle, TempDir, crate::Cand
 pub(super) async fn pane_fixture_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (ImportServiceHandle, TempDir, crate::CandidateKey, String) {
+) -> (ImportServiceHandle, TestFolder, crate::CandidateKey, String) {
     let fixture = picked_stored_candidate_with(providers, http).await;
     let hash = fixture.candidate.files.content_hash();
     (fixture.handle, fixture.tmp, fixture.key, hash)
@@ -779,7 +784,7 @@ pub(super) async fn standing(
 /// The fixture candidate, picked as `release_id`.
 pub(super) async fn picked_fixture(
     release_id: &str,
-) -> (ImportServiceHandle, TempDir, crate::CandidateKey) {
+) -> (ImportServiceHandle, TestFolder, crate::CandidateKey) {
     let fakes = FakeCatalogs::offline();
     let (handle, tmp, key, _hash) =
         pane_fixture_with(fakes.providers(), bae_util::http::Http::for_test()).await;

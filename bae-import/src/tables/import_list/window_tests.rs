@@ -590,10 +590,10 @@ async fn a_stored_cover_naming_a_file_the_scan_did_not_store_fails_both_reads() 
 async fn a_linked_row_is_read_without_opening_its_folders_files() {
     use std::os::unix::fs::OpenOptionsExt;
 
-    let (db, _tmp, root) = watched_root().await;
+    let (db, tmp, root) = watched_root().await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let folder = folder_below(&root, "Album");
-    std::fs::create_dir_all(&folder).unwrap();
+    tmp.create_folder(&folder);
     let log = folder.join("rip.log");
     let path = std::ffi::CString::new(log.to_str().unwrap()).unwrap();
     // SAFETY: `path` is a NUL-terminated string that outlives the call.
@@ -657,7 +657,10 @@ async fn a_linked_row_is_read_without_opening_its_folders_files() {
     if read.is_err() {
         // Let the read held on the pipe go: a writer opening and closing it
         // ends it.
-        drop(std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open(&log));
+        drop(tmp.open_with(
+            &log,
+            std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK),
+        ));
     }
     let projection = read.expect("the list read waited on the folder's rip log").unwrap();
     assert_eq!(

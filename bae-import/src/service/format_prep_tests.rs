@@ -2,6 +2,7 @@ use super::*;
 use crate::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
 use bae_audio::ProbeResult;
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 
 pub(super) fn scanned_flac() -> crate::folder_scanner::ScannedAudio {
     crate::folder_scanner::ScannedAudio {
@@ -85,10 +86,10 @@ pub(super) fn probe_result(sample_rate: u32, channels: u32) -> ProbeResult {
 /// refused by name at import rather than stored.
 #[test]
 fn cue_backed_audio_format_refuses_a_depth_over_32_bits() {
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("Album.cue");
     let audio_path = temp.path().join("test.wav");
-    std::fs::write(
+    temp.write(
         &cue_path,
         r#"PERFORMER "Artist Name"
 TITLE "Album Title"
@@ -97,8 +98,7 @@ FILE "test.wav" WAVE
 TITLE "Track One"
 INDEX 01 00:00:00
 "#,
-    )
-    .expect("write cue");
+    );
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
     let cue_pair = CueFlacAnalysis {

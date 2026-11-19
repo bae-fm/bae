@@ -58,7 +58,7 @@ fn write_first_test_track(album_dir: &std::path::Path, name: &[u8]) {
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     std::fs::write(
         album_dir.join(std::ffi::OsStr::from_bytes(name)),
-        bae_import::test_fixtures::read_fixture(&fixture),
+        bae_util::test_files::read_fixture(&fixture),
     )
     .unwrap();
 }

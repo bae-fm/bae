@@ -216,8 +216,8 @@ impl Library {
         let (album, release) = self.imported_rows(display_path, created_at, album_title);
         let file_id = bae_util::test_ids::test_uuid(&format!("file {display_path}"));
         Write::step(async move {
-            let original = tempfile::NamedTempFile::new().unwrap();
-            std::fs::write(original.path(), b"liner notes").unwrap();
+            let originals = bae_util::test_files::TestFolder::new();
+            let original = originals.write("notes.bin", b"liner notes");
             let file = crate::service::PreparedImportFile {
                 row: bae_records::NewReleaseFile::new(
                     &release.id,
@@ -228,7 +228,7 @@ impl Library {
                     release.created_at,
                 ),
                 original: coven::prepare_user_file(
-                    original.path(),
+                    &original,
                     &bae_util::test_files::lease(),
                     |_| (),
                 )

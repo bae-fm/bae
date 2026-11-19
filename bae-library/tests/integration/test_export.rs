@@ -110,8 +110,8 @@ async fn export_track_from_cloud_only_release() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    let original_bytes =
-        bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    let original_bytes = bae_import::test_fixtures::tagged_flac_bytes("Track One");
+    std::fs::write(album_dir.join("01.flac"), &original_bytes).unwrap();
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
@@ -161,7 +161,11 @@ async fn a_lossless_format_writes_the_depth_of_the_track_it_saves() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let silence_24_bit = vec![0u8; 44_100 * 2 * 3];
     fs::write(
         album_dir.join("02.wav"),
@@ -211,8 +215,13 @@ async fn a_release_save_writes_the_cover_file_only_when_asked() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
+    std::fs::write(album_dir.join("cover.png"), bae_import::test_fixtures::cover_png_bytes())
+        .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let flac = f.library.manager().save_presets().await.unwrap().remove(0);
 
@@ -257,7 +266,11 @@ async fn a_saved_track_carries_replaygain_tags_only_when_asked() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     let manager = f.library.manager();
@@ -291,7 +304,11 @@ async fn a_track_save_records_its_format_as_last_used() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(f.library.manager().preferences().await.unwrap().last_save_preset, "flac");
@@ -311,9 +328,14 @@ async fn save_cover_image_skips_the_read_when_not_embedding() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     // A folder cover so the imported release actually has art to embed.
-    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
+    std::fs::write(album_dir.join("cover.png"), bae_import::test_fixtures::cover_png_bytes())
+        .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
 
     let with_cover = f
@@ -341,7 +363,11 @@ async fn export_release_from_cloud_only_release() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let (release_id, original_bytes) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     let target = f.temp_path().join("export-target");
@@ -375,8 +401,16 @@ async fn two_names_written_as_one_fail_the_export() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "Track?.flac", "Track One");
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "Track？.flac", "Track Two");
+    std::fs::write(
+        album_dir.join("Track?.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
+    std::fs::write(
+        album_dir.join("Track？.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track Two"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let mut names: Vec<String> = f
         .library
@@ -475,7 +509,8 @@ async fn a_release_save_copies_a_track_already_in_the_format_and_converts_the_re
         bae_audio::test_samples::wav_with_fmt(1, 24, 2, 44_100, &silence_24_bit),
     )
     .unwrap();
-    bae_import::test_fixtures::write_cover_png(&album_dir.join("cover.png"));
+    std::fs::write(album_dir.join("cover.png"), bae_import::test_fixtures::cover_png_bytes())
+        .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let flac = f
         .library
@@ -559,7 +594,11 @@ async fn a_wav_track_saves_as_wav_at_its_own_depth_or_16_bits() {
         .collect();
     let source = bae_audio::test_samples::wav_with_fmt(1, 24, 2, 44_100, &tone);
     // The release's artist comes from a tagged file beside the untagged WAV.
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     fs::write(album_dir.join("02.wav"), &source).unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
@@ -680,8 +719,16 @@ async fn a_release_save_of_two_names_one_drive_holds_as_one_fails() {
     }
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track Title");
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "track title");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track Title"),
+    )
+    .unwrap();
+    std::fs::write(
+        album_dir.join("02.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("track title"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let preset = flac_save_preset("titles");
     f.library.manager().add_save_preset(preset.clone()).await.unwrap();
@@ -724,7 +771,11 @@ async fn export_release_missing_file_is_hard_error() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let (release_id, _) = import_then_strand_in_cloud(&f, &album_dir).await;
 
     // Blow away the seeded file.
@@ -800,11 +851,11 @@ async fn a_release_save_opens_a_bounded_number_of_track_files() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     for n in 1..=24 {
-        bae_import::test_fixtures::write_tagged_flac(
-            &album_dir,
-            &format!("{n:02}.flac"),
-            &format!("Track {n}"),
-        );
+        std::fs::write(
+            album_dir.join(format!("{n:02}.flac")),
+            bae_import::test_fixtures::tagged_flac_bytes(&format!("Track {n}")),
+        )
+        .unwrap();
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 24);
@@ -890,11 +941,11 @@ async fn a_release_save_with_a_budget_of_one_place_saves_every_track() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     for n in 1..=6 {
-        bae_import::test_fixtures::write_tagged_flac(
-            &album_dir,
-            &format!("{n:02}.flac"),
-            &format!("Track {n}"),
-        );
+        std::fs::write(
+            album_dir.join(format!("{n:02}.flac")),
+            bae_import::test_fixtures::tagged_flac_bytes(&format!("Track {n}")),
+        )
+        .unwrap();
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
     assert_eq!(f.library.records().get_tracks_for_release(&release_id).await.unwrap().len(), 6);
@@ -918,11 +969,11 @@ async fn an_export_with_a_budget_of_one_place_copies_every_file() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     for n in 1..=6 {
-        bae_import::test_fixtures::write_tagged_flac(
-            &album_dir,
-            &format!("{n:02}.flac"),
-            &format!("Track {n}"),
-        );
+        std::fs::write(
+            album_dir.join(format!("{n:02}.flac")),
+            bae_import::test_fixtures::tagged_flac_bytes(&format!("Track {n}")),
+        )
+        .unwrap();
     }
     let release_id = import_unknown_local(&f, &album_dir).await;
     let target = f.temp_path().join("export-target");

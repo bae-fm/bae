@@ -48,7 +48,7 @@ async fn a_batch_of_scan_items_reads_the_store_as_often_as_one_item() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
     for albums in 1..=8 {
-        write_disc(&root.join(format!("Album {albums}")), albums);
+        write_disc(&test.temp, &root.join(format!("Album {albums}")), albums);
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
@@ -127,7 +127,7 @@ async fn unchanged_rescan_cost() {
 async fn scanned_pictured_root(test: &TestService, releases: usize) -> (PathBuf, TestScan) {
     let root = test.temp.path().join("watched");
     for release in 0..releases {
-        write_disc(&root.join(format!("Album {release:04}")), 2);
+        write_disc(&test.temp, &root.join(format!("Album {release:04}")), 2);
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
@@ -235,7 +235,9 @@ async fn a_changed_cover_source_track_does_not_load_the_stored_picture() {
         "the picture of a source that did not change is loaded"
     );
 
-    let source = std::fs::File::options().write(true).open(candidate.path.join("01.flac")).unwrap();
+    let source = test
+        .temp
+        .open_with(candidate.path.join("01.flac"), std::fs::OpenOptions::new().write(true));
     source.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(60)).unwrap();
     drop(source);
     let (scan, _events) = test.scan_with(
@@ -332,8 +334,8 @@ async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() 
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
     // The candidates' one bound file each, which seeding reads.
-    write_disc(&root.join("Album"), 1);
-    write_disc(&root.join("Album").join("CD1"), 1);
+    write_disc(&test.temp, &root.join("Album"), 1);
+    write_disc(&test.temp, &root.join("Album").join("CD1"), 1);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     let tables = test.tables().clone();
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -342,7 +344,7 @@ async fn an_entry_an_earlier_write_of_its_batch_replaces_is_seeded_and_stored() 
     let on_disk = |name: &str| {
         let mut candidate = crate::tables::tests::candidate(&root, name);
         for file in &mut candidate.files.files {
-            let metadata = std::fs::metadata(&file.file.version.path).unwrap();
+            let metadata = test.temp.metadata(&file.file.version.path);
             file.file.version.size = metadata.len();
             file.file.version.modified_at_ns =
                 crate::folder_scanner::file_modified_at_ns(&file.file.version.path, &metadata)
@@ -405,7 +407,7 @@ impl crate::file_tag_reader::FileTagReader for VanishedShareTagReader {
 async fn a_folder_whose_tags_cannot_be_read_for_its_draft_fails_its_seed() {
     let test = setup_import_service().await;
     let root = test.temp.path().join("watched");
-    write_disc(&root.join("Album"), 1);
+    write_disc(&test.temp, &root.join("Album"), 1);
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
     let mut found = Vec::new();

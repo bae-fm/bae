@@ -5,6 +5,7 @@ use super::*;
 use crate::service::tests::*;
 use crate::watching::tests::*;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 
 /// A read is not a change: Linux reports the scan's own reads as events, and
 /// scanning on them would make every scan schedule the next.
@@ -228,7 +229,7 @@ async fn a_network_folder_found_unchanged_is_checked_again() {
     let test = setup_import_service().await;
     let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
-    std::fs::create_dir(&root).unwrap();
+    test.temp.create_folder(&root);
     let modified_at =
         crate::volume::directory_modified_at(&root).expect("the folder's mtime reads");
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -292,10 +293,10 @@ async fn a_network_folder_is_checked_once_the_check_period_passes() {
         .expect("the coordinator arms its first check");
     assert_eq!(armed, crate::volume::CHECK_PERIOD);
 
-    let folders = tempfile::TempDir::new().unwrap();
+    let folders = TestFolder::new();
     let root = folders.path().join("watched");
     let album = root.join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    folders.create_folder(&album);
     let root_modified_at =
         crate::volume::directory_modified_at(&root).expect("the folder's mtime reads");
     let tables = crate::tables::ImportTables::new(harness.db.clone());

@@ -124,7 +124,7 @@ pub(crate) async fn watched_root() -> (Store, bae_util::test_files::TestFolder, 
 {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
+    tmp.create_folder(&root);
     (db, tmp, root)
 }
 

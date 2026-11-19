@@ -5,19 +5,20 @@ use crate::mapping::tests::{cue_sheet_text, write_flac};
 use crate::tables::folder_scans::tests::stored_folder;
 use crate::tables::tests::*;
 use crate::tables::ImportTables;
+use bae_util::test_files::TestFolder;
 
 /// A loose bonus track, and a disc image that its CUE sheet splits into three
 /// tracks.
-fn bonus_and_disc(folder: &std::path::Path) {
-    write_flac(&folder.join("a bonus.flac"));
-    write_flac(&folder.join("disc.flac"));
-    std::fs::write(folder.join("disc.cue"), cue_sheet_text("disc.flac", 3)).unwrap();
+fn bonus_and_disc(tmp: &TestFolder, folder: &std::path::Path) {
+    write_flac(tmp, folder.join("a bonus.flac"));
+    write_flac(tmp, folder.join("disc.flac"));
+    tmp.write(folder.join("disc.cue"), cue_sheet_text("disc.flac", 3));
 }
 
 #[tokio::test]
 async fn scan_writes_one_unit_per_track_in_layout_order() {
-    let (db, _tmp, root) = watched_root().await;
-    let hash = stored_folder(&db, &root, "Album", bonus_and_disc).await;
+    let (db, tmp, root) = watched_root().await;
+    let hash = stored_folder(&db, &tmp, &root, "Album", bonus_and_disc).await;
     let units = ImportTables::new(db.clone()).load_units_for_test(&hash).await;
     assert_eq!(
         units
@@ -38,8 +39,8 @@ async fn scan_writes_one_unit_per_track_in_layout_order() {
 /// the container's end.
 #[tokio::test]
 async fn units_time_each_cue_slice_to_the_next_boundary_or_the_container_end() {
-    let (db, _tmp, root) = watched_root().await;
-    let hash = stored_folder(&db, &root, "Album", bonus_and_disc).await;
+    let (db, tmp, root) = watched_root().await;
+    let hash = stored_folder(&db, &tmp, &root, "Album", bonus_and_disc).await;
     let units = ImportTables::new(db.clone()).load_units_for_test(&hash).await;
     let slices: Vec<&StoredUnit> = units.iter().filter(|unit| unit.sheet_id.is_some()).collect();
     assert_eq!(slices.iter().map(|unit| unit.duration_ms).collect::<Vec<_>>(), [200, 200, 600]);
@@ -55,19 +56,21 @@ async fn units_time_each_cue_slice_to_the_next_boundary_or_the_container_end() {
 /// image has none.
 #[tokio::test]
 async fn scan_stores_the_front_cover_named_file_as_the_blank_cover() {
-    let with_art = |folder: &std::path::Path| {
-        write_flac(&folder.join("01.flac"));
-        std::fs::write(folder.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-        std::fs::write(folder.join("Front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    let with_art = |tmp: &TestFolder, folder: &std::path::Path| {
+        write_flac(tmp, folder.join("01.flac"));
+        tmp.write(folder.join("back.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+        tmp.write(folder.join("Front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     };
-    let without_art = |folder: &std::path::Path| write_flac(&folder.join("01.flac"));
-    let (db, _tmp, root) = watched_root().await;
-    let covered = stored_folder(&db, &root, "Covered", with_art).await;
+    let without_art = |tmp: &TestFolder, folder: &std::path::Path| {
+        write_flac(tmp, folder.join("01.flac"));
+    };
+    let (db, tmp, root) = watched_root().await;
+    let covered = stored_folder(&db, &tmp, &root, "Covered", with_art).await;
     assert_eq!(
         ImportTables::new(db).blank_cover_file_for_test(&covered).await,
         Some("Front.jpg".to_string())
     );
-    let (db, _tmp, root) = watched_root().await;
-    let bare = stored_folder(&db, &root, "Bare", without_art).await;
+    let (db, tmp, root) = watched_root().await;
+    let bare = stored_folder(&db, &tmp, &root, "Bare", without_art).await;
     assert_eq!(ImportTables::new(db).blank_cover_file_for_test(&bare).await, None);
 }

@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::scan_passes::tests::*;
+use bae_util::test_files::TestFolder;
 
 #[test]
 fn affected_roots_maps_changed_paths_to_their_watched_roots() {
@@ -41,10 +42,10 @@ fn watcher_error_without_a_mapped_path_rescans_every_root() {
 /// root is read whole only where the change reaches the root's own release.
 #[test]
 fn a_change_reads_the_folder_it_is_in_and_the_root_only_where_it_must() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = TestFolder::new();
     let root = temp.path();
-    write_disc(&root.join("Artist").join("Album"), 1);
-    std::fs::write(root.join("notes.txt"), b"notes").unwrap();
+    write_disc(&temp, &root.join("Artist").join("Album"), 1);
+    temp.write(root.join("notes.txt"), b"notes");
     let folders =
         |names: &[&str]| RootChange::Folders(names.iter().map(std::ffi::OsString::from).collect());
     let change = |paths: &[PathBuf], holds: bool| {
@@ -99,8 +100,8 @@ async fn the_network_check_names_the_folders_that_moved() {
     let recorded = tables.load_folder_scan_directories(root).await.unwrap();
     assert_eq!(network_changes(root, &recorded, &bae_util::test_files::lease()), Some(Vec::new()));
 
-    write_disc(&root.join("Artist/Album/Disc 1"), 2);
-    write_disc(&root.join("New/Record"), 1);
+    write_disc(&fixture.test.temp, &root.join("Artist/Album/Disc 1"), 2);
+    write_disc(&fixture.test.temp, &root.join("New/Record"), 1);
     let mut changes = network_changes(root, &recorded, &bae_util::test_files::lease())
         .expect("the record answers");
     changes.sort();

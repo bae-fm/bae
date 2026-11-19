@@ -95,13 +95,13 @@ async fn a_named_copy_read_as_other_files_names_the_copy_that_stays() {
 
 /// Writes a loose bonus track, a disc file that its cue sheet splits into two
 /// tracks, and a disc file split into three.
-fn bonus_and_two_discs(folder: &std::path::Path) {
+fn bonus_and_two_discs(tmp: &bae_util::test_files::TestFolder, folder: &std::path::Path) {
     use crate::mapping::tests::{cue_sheet_text, write_flac};
-    write_flac(&folder.join("a bonus.flac"));
-    write_flac(&folder.join("disc 1.flac"));
-    std::fs::write(folder.join("disc 1.cue"), cue_sheet_text("disc 1.flac", 2)).unwrap();
-    write_flac(&folder.join("disc 2.flac"));
-    std::fs::write(folder.join("disc 2.cue"), cue_sheet_text("disc 2.flac", 3)).unwrap();
+    write_flac(tmp, folder.join("a bonus.flac"));
+    write_flac(tmp, folder.join("disc 1.flac"));
+    tmp.write(folder.join("disc 1.cue"), cue_sheet_text("disc 1.flac", 2));
+    write_flac(tmp, folder.join("disc 2.flac"));
+    tmp.write(folder.join("disc 2.cue"), cue_sheet_text("disc 2.flac", 3));
 }
 
 /// The scan stores a folder's draft from its stored audio units: one medium
@@ -112,8 +112,8 @@ fn bonus_and_two_discs(folder: &std::path::Path) {
 async fn blank_draft_statement_puts_each_disc_on_its_own_medium_loose_audio_first() {
     use crate::tables::folder_scans::tests::stored_folder;
     use crate::AudioFile;
-    let (db, _tmp, root) = watched_root().await;
-    let hash = stored_folder(&db, &root, "Album", bonus_and_two_discs).await;
+    let (db, tmp, root) = watched_root().await;
+    let hash = stored_folder(&db, &tmp, &root, "Album", bonus_and_two_discs).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let slice = |file: &str, sheet: &str, index| AudioFile::SheetSlice {
         file_id: file.to_string(),

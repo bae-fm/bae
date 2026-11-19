@@ -379,7 +379,11 @@ async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
     for (root, album) in [(&first, "Album One"), (&second, "Album Two")] {
         let album = root.join(album);
         std::fs::create_dir_all(&album).unwrap();
-        bae_import::test_fixtures::write_tagged_flac(&album, "01 Track.flac", "Track");
+        std::fs::write(
+            album.join("01 Track.flac"),
+            bae_import::test_fixtures::tagged_flac_bytes("Track"),
+        )
+        .unwrap();
         fixture
             .automation
             .add_watched_folder(root.to_string_lossy().into_owned())
@@ -488,7 +492,11 @@ mod release_album {
 
     /// Write one tagged fixture track into `dir`.
     fn one_track(dir: &std::path::Path) {
-        bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+        std::fs::write(
+            dir.join("01 Track One.flac"),
+            bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+        )
+        .unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -596,7 +604,11 @@ mod disagreeing_source_ids {
             "conflicting",
             "conflicting-ids-import".to_string(),
             |dir| {
-                bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
+                std::fs::write(
+                    dir.join("01 Track One.flac"),
+                    bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+                )
+                .unwrap();
             },
         )
         .await

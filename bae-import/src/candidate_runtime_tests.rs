@@ -375,14 +375,14 @@ async fn a_folder_removed_and_found_again_starts_with_no_standing() {
     );
 
     let away = fixture.root.with_file_name("away-from-the-watched-folder");
-    std::fs::rename(&dir, &away).unwrap();
+    fixture.temp.rename(&dir, &away);
     fixture.rescan(&fixture.import, 0).await;
     assert_eq!(
         fixture.identification_status(&key).await,
         None,
         "the scan that dropped the folder ended its standing"
     );
-    std::fs::rename(&away, &dir).unwrap();
+    fixture.temp.rename(&away, &dir);
     fixture.rescan(&fixture.import, 1).await;
     assert_eq!(fixture.content_hash(&dir), files.content_hash, "the same files");
 

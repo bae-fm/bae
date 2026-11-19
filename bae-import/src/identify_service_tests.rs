@@ -14,8 +14,9 @@ use bae_identify::IdentifyState;
 use bae_identify::TerminalVerdict;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 
-async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
+async fn setup_inner() -> (Arc<IdentifyServiceInner>, TestFolder) {
     setup_inner_reporting_to(bae_diagnostics::Diagnostics::noop()).await
 }
 
@@ -23,8 +24,8 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(super) async fn setup_inner_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
-    let temp_dir = tempfile::TempDir::new().unwrap();
+) -> (Arc<IdentifyServiceInner>, TestFolder) {
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();

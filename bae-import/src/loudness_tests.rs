@@ -1,5 +1,6 @@
 use super::*;
 use bae_audio::sparse_buffer::create_sparse_buffer;
+use bae_util::test_files::TestFolder;
 
 fn progress(event_tx: &crate::ImportEventBus, total: Option<u64>) -> LoudnessProgress {
     LoudnessProgress::new(
@@ -117,7 +118,7 @@ async fn broken_reason_flags_shortfall_and_errors_not_clean() {
 async fn truncated_flac_decode_is_flagged_broken_intact_is_not() {
     bae_audio::init();
     let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
-    let clean = std::fs::read(path).expect("read fixture");
+    let clean = bae_util::test_files::read_fixture(path);
     let sr = 44100u64;
     // A one-second window deep in the file (25s, brown noise near the end).
     let start = 25 * sr;
@@ -336,13 +337,13 @@ async fn measure_loudness_fails_on_a_source_that_cannot_be_opened() {
 #[tokio::test]
 async fn measure_loudness_fails_on_a_source_whose_read_fails() {
     bae_audio::init();
-    let fixture =
-        std::fs::read(cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac"))
-            .expect("fixture");
-    let temp = tempfile::Builder::new().suffix(".flac").tempfile().expect("temp file");
-    std::fs::write(temp.path(), &fixture[..fixture.len() / 2]).expect("short copy");
+    let fixture = bae_util::test_files::read_fixture(cue_flac_fixture(
+        "03 Test Artist - Track Three (Brown Noise).flac",
+    ));
+    let temp = TestFolder::new();
+    let truncated = temp.write("truncated.flac", &fixture[..fixture.len() / 2]);
 
-    let error = measure_failure(temp.path(), fixture.len() as u64).await;
+    let error = measure_failure(&truncated, fixture.len() as u64).await;
 
     assert_eq!(source_read_kind(&error), Some(std::io::ErrorKind::UnexpectedEof), "{error}");
     assert!(!error.to_string().contains("Invalid data found"), "{error}");
@@ -357,8 +358,9 @@ async fn measure_loudness_fails_on_a_source_whose_read_fails() {
 #[tokio::test]
 async fn a_read_that_panics_measures_nothing() {
     bae_audio::init();
-    let bytes = std::fs::read(cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac"))
-        .expect("fixture");
+    let bytes = bae_util::test_files::read_fixture(cue_flac_fixture(
+        "03 Test Artist - Track Three (Brown Noise).flac",
+    ));
     let buffer = create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();
@@ -421,7 +423,7 @@ async fn measure_loudness_computes_track_and_album_values() {
     let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
     let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
     let source_file_sizes =
-        HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
+        HashMap::from([(path.clone(), bae_util::test_files::read_fixture(&path).len() as u64)]);
     // The whole-file track's stored length is the probe's, as an import
     // measures it: the decode is checked against it.
     let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
@@ -463,7 +465,7 @@ async fn measure_loudness_progress_weights_tracks_by_frames() {
     let audio_segments = vec![short, long];
     let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
     let source_file_sizes =
-        HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
+        HashMap::from([(path.clone(), bae_util::test_files::read_fixture(&path).len() as u64)]);
     let tracks = vec![standalone_track("track-0", &path), standalone_track("track-1", &path)];
 
     measure(&event_tx, &mut audio_formats, &audio_segments, &file_ids, &source_file_sizes, &tracks)
@@ -497,7 +499,7 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
     let audio_segments = vec![segment];
     let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
     let source_file_sizes =
-        HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
+        HashMap::from([(path.clone(), bae_util::test_files::read_fixture(&path).len() as u64)]);
     let tracks = vec![standalone_track("track-0", &path)];
 
     let result = measure(
@@ -521,7 +523,7 @@ async fn measure_loudness_leaves_ungated_track_unmeasured() {
 /// `dir`, returning the most places the budget saw holding an open file at
 /// once. The pass closes every source before it returns.
 async fn peak_open_sources(
-    dir: &std::path::Path,
+    dir: &TestFolder,
     budget: coven::FileBudget,
     parallelism: usize,
     audio_formats: &mut [bae_records::DbAudioFormat],
@@ -530,10 +532,8 @@ async fn peak_open_sources(
     tracks: &[TrackFile],
 ) -> usize {
     let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
-    let source_file_sizes: HashMap<PathBuf, u64> = file_ids
-        .keys()
-        .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
-        .collect();
+    let source_file_sizes: HashMap<PathBuf, u64> =
+        file_ids.keys().map(|path| (path.clone(), dir.metadata(path).len())).collect();
     let watch = budget.watch();
     measure_loudness(
         &event_tx,
@@ -553,7 +553,7 @@ async fn peak_open_sources(
     .expect("the pass measures every track");
     assert_eq!(watch.holding(), 0, "every place is back when the pass returns");
     assert_eq!(watch.leased(), 0);
-    coven::assert_no_open_files_under(dir);
+    coven::assert_no_open_files_under(dir.path());
     watch.most_holding()
 }
 
@@ -565,7 +565,7 @@ fn track_loudness(audio_formats: &[bae_records::DbAudioFormat]) -> Vec<Option<f6
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_opens_at_most_parallelism_track_files() {
     bae_audio::init();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = TestFolder::new();
     let fixture = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let count = 24;
     let mut audio_formats = Vec::new();
@@ -574,8 +574,8 @@ async fn measure_loudness_opens_at_most_parallelism_track_files() {
     let mut tracks = Vec::new();
     for n in 0..count {
         let path = dir.path().join(format!("{n:02} Track.flac"));
-        std::fs::copy(&fixture, &path).unwrap();
-        let path = path.canonicalize().unwrap();
+        dir.copy_fixture(&fixture, &path);
+        let path = dir.canonicalize(&path);
         audio_formats.push(audio_format(&format!("track-{n}"), &format!("af-{n}")));
         let mut segment = whole_file_main_segment(&format!("af-{n}"), &format!("file-{n}"));
         segment.end_sample = Some(44_100);
@@ -588,7 +588,7 @@ async fn measure_loudness_opens_at_most_parallelism_track_files() {
     for parallelism in [1, 4] {
         let mut formats = audio_formats.clone();
         let peak = peak_open_sources(
-            dir.path(),
+            &dir,
             coven::FileBudget::for_test(),
             parallelism,
             &mut formats,
@@ -612,10 +612,10 @@ async fn measure_loudness_opens_at_most_parallelism_track_files() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
     bae_audio::init();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = TestFolder::new();
     let image = dir.path().join("Test Album.flac");
-    std::fs::copy(cue_flac_fixture("Test Album.flac"), &image).unwrap();
-    let image = image.canonicalize().unwrap();
+    dir.copy_fixture(cue_flac_fixture("Test Album.flac"), &image);
+    let image = dir.canonicalize(&image);
     let count = 12u64;
     let mut audio_formats = Vec::new();
     let mut audio_segments = Vec::new();
@@ -634,7 +634,7 @@ async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
     for parallelism in [1, 4] {
         let mut formats = audio_formats.clone();
         let peak = peak_open_sources(
-            dir.path(),
+            &dir,
             coven::FileBudget::for_test(),
             parallelism,
             &mut formats,
@@ -658,7 +658,7 @@ async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
     bae_audio::init();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = TestFolder::new();
     let fixture = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = Vec::new();
     let mut audio_segments = Vec::new();
@@ -666,8 +666,8 @@ async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
     let mut tracks = Vec::new();
     for n in 0..8 {
         let path = dir.path().join(format!("{n:02} Track.flac"));
-        std::fs::copy(&fixture, &path).unwrap();
-        let path = path.canonicalize().unwrap();
+        dir.copy_fixture(&fixture, &path);
+        let path = dir.canonicalize(&path);
         audio_formats.push(audio_format(&format!("track-{n}"), &format!("af-{n}")));
         let mut segment = whole_file_main_segment(&format!("af-{n}"), &format!("file-{n}"));
         segment.end_sample = Some(44_100);
@@ -677,7 +677,7 @@ async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
     }
 
     let peak = peak_open_sources(
-        dir.path(),
+        &dir,
         coven::FileBudget::new(NonZeroUsize::MIN),
         4,
         &mut audio_formats,
@@ -700,14 +700,14 @@ async fn measure_loudness_with_a_budget_of_one_measures_every_track() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     bae_audio::init();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = TestFolder::new();
     let fixture = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let before = dir.path().join("before.flac");
     let main = dir.path().join("main.flac");
-    std::fs::copy(&fixture, &before).unwrap();
-    std::fs::copy(&fixture, &main).unwrap();
-    let before = before.canonicalize().unwrap();
-    let main = main.canonicalize().unwrap();
+    dir.copy_fixture(&fixture, &before);
+    dir.copy_fixture(&fixture, &main);
+    let before = dir.canonicalize(&before);
+    let main = dir.canonicalize(&main);
     let file_ids =
         HashMap::from([(before.clone(), "before".to_string()), (main.clone(), "main".to_string())]);
     let mut pregap = whole_file_main_segment("af-0", "before");
@@ -723,7 +723,7 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
 
     let mut formats = vec![audio_format("track-0", "af-0")];
     let peak = peak_open_sources(
-        dir.path(),
+        &dir,
         coven::FileBudget::new(NonZeroUsize::new(2).unwrap()),
         1,
         &mut formats,
@@ -736,10 +736,8 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
     assert!(formats[0].track_loudness_lufs.is_some(), "the pass measures the track");
 
     let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
-    let source_file_sizes: HashMap<PathBuf, u64> = file_ids
-        .keys()
-        .map(|path| (path.clone(), std::fs::metadata(path).unwrap().len()))
-        .collect();
+    let source_file_sizes: HashMap<PathBuf, u64> =
+        file_ids.keys().map(|path| (path.clone(), dir.metadata(path).len())).collect();
     let budget = coven::FileBudget::new(NonZeroUsize::MIN);
     let watch = budget.watch();
     let mut formats = vec![audio_format("track-0", "af-0")];
@@ -771,9 +769,9 @@ async fn measure_loudness_of_a_track_reading_two_files_needs_two_places() {
 #[tokio::test]
 async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet() {
     bae_audio::init();
-    let clean =
-        std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"))
-            .expect("MP3 fixture");
+    let clean = bae_util::test_files::read_fixture(
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-mp3.mp3"),
+    );
     let frame_start = clean
         .windows(2)
         .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)
@@ -782,9 +780,9 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     damaged.extend_from_slice(&clean[frame_start..frame_start + 16]);
     damaged.extend_from_slice(b"LYRICSBEGININD0000000LYRICS200TAG");
 
-    let temp = tempfile::Builder::new().suffix(".mp3").tempfile().expect("temp file");
-    std::fs::write(temp.path(), damaged).expect("damaged MP3 fixture");
-    let probe = bae_audio::probe_audio_from_path(temp.path(), bae_util::test_files::place())
+    let temp = TestFolder::new();
+    let damaged_path = temp.write("damaged.mp3", damaged);
+    let probe = bae_audio::probe_audio_from_path(&damaged_path, bae_util::test_files::place())
         .expect("damaged MP3 probe");
     let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
     // The track's stored length is the probe's, as an import measures it.
@@ -794,7 +792,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
     let track = TrackFile {
         db_track,
         audio: crate::TrackAudio::Standalone {
-            file_path: temp.path().to_path_buf(),
+            file_path: damaged_path.clone(),
             source_audio: crate::folder_scanner::ScannedAudio {
                 content_type: probe.content_type.clone(),
                 container: probe.container.clone(),
@@ -830,9 +828,9 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         end_byte: None,
         created_at: now,
     }];
-    let file_ids = HashMap::from([(temp.path().to_path_buf(), "file-id".to_string())]);
+    let file_ids = HashMap::from([(damaged_path.clone(), "file-id".to_string())]);
     let source_file_sizes =
-        HashMap::from([(temp.path().to_path_buf(), std::fs::metadata(temp.path()).unwrap().len())]);
+        HashMap::from([(damaged_path.clone(), temp.metadata(&damaged_path).len())]);
     let event_tx = crate::ImportEventBus::new(crate::CandidateRuntime::for_test().await);
 
     measure_loudness(
@@ -880,16 +878,15 @@ async fn a_seektable_less_cue_image_gets_scrub_points_for_every_track() {
         2,
     )
     .expect("encode the image");
-    let dir = tempfile::tempdir().unwrap();
-    let image = dir.path().canonicalize().unwrap().join("image.flac");
-    std::fs::write(&image, &bytes).unwrap();
+    let dir = TestFolder::new();
+    let image = dir.canonicalize(dir.path()).join("image.flac");
+    dir.write(&image, &bytes);
     let cue_path = dir.path().join("image.cue");
-    std::fs::write(
+    dir.write(
         &cue_path,
         "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
          TRACK 02 AUDIO\n    INDEX 01 00:15:00\n  TRACK 03 AUDIO\n    INDEX 01 00:30:00\n",
-    )
-    .unwrap();
+    );
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
             .expect("parse the sheet"),

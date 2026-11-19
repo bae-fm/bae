@@ -114,6 +114,8 @@ struct Library {
     per_track_source: std::path::PathBuf,
     cue_release: String,
     _temps: Vec<TempDir>,
+    /// The folder the per-track release was imported from.
+    _per_track_folder: bae_util::test_files::TestFolder,
 }
 
 /// Import a two-track file-per-track release (with a folder cover) and a
@@ -127,13 +129,12 @@ async fn seed_library() -> Library {
     .await;
 
     // Per-track release, imported from file metadata (no network).
-    let pt_temp = TempDir::new().unwrap();
-    let pt_dir = pt_temp.path().join("solo album");
-    std::fs::create_dir_all(&pt_dir).unwrap();
+    let pt_temp = bae_util::test_files::TestFolder::new();
+    let pt_dir = pt_temp.create_folder("solo album");
     bae_import::test_fixtures::copy_and_tag(
         &flac_fixture("01 Test Track 1.flac"),
-        &pt_dir,
-        "01.flac",
+        &pt_temp,
+        "solo album/01.flac",
         "First Track",
         "Solo Artist",
         "Solo Album",
@@ -143,8 +144,8 @@ async fn seed_library() -> Library {
     );
     bae_import::test_fixtures::copy_and_tag(
         &flac_fixture("02 Test Track 2.flac"),
-        &pt_dir,
-        "02.flac",
+        &pt_temp,
+        "solo album/02.flac",
         "Second Track",
         "Solo Artist",
         "Solo Album",
@@ -152,7 +153,7 @@ async fn seed_library() -> Library {
         2001,
         2,
     );
-    bae_import::test_fixtures::write_cover_png(&pt_dir.join("cover.png"));
+    bae_import::test_fixtures::write_cover_png(&pt_temp, "solo album/cover.png");
 
     let import = library.start_discogs_import().await;
     let import_id = "pt".to_string();
@@ -223,7 +224,8 @@ async fn seed_library() -> Library {
         per_track_release,
         per_track_source: pt_dir,
         cue_release,
-        _temps: vec![db_temp, pt_temp, cue_temp],
+        _temps: vec![db_temp, cue_temp],
+        _per_track_folder: pt_temp,
     }
 }
 

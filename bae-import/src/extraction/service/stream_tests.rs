@@ -8,25 +8,24 @@ use crate::extraction::service::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_identify::signals::{ArtworkScan, TextOrigin};
 use bae_util::test_channels::HANG_GUARD;
-use std::fs;
+use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex as StdMutex;
-use tempfile::TempDir;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emits_fast_pass_then_ocr_then_settled() {
     // The folder name carries a catalog bracket, the parent an artist name.
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let parent = tmp.path().join("Artist Name");
-    fs::create_dir_all(&parent).unwrap();
+    tmp.create_folder(&parent);
     let folder = parent.join("1989 - Album Title [XX34b]");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("01 - Track.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Cover.jpg"), minimal_jpeg()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("01 - Track.flac"), fixture_flac());
+    tmp.write(folder.join("Cover.jpg"), minimal_jpeg());
+    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
@@ -87,16 +86,16 @@ async fn emits_fast_pass_then_ocr_then_settled() {
 /// the text pool.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_barcode_printed_as_text_on_the_artwork_is_a_barcode_sighting() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
+    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
     let cue = "CATALOG 0012345678905\n\
 FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new().with(
         "Back.jpg",
@@ -140,11 +139,11 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
         }
     }
 
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
+    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
 
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
 
@@ -159,7 +158,7 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
 /// the surface it came from, and nothing stripped.
 #[tokio::test(flavor = "multi_thread")]
 async fn every_surface_lands_in_the_text_pool_as_it_was_read() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(
         &tmp,
         "Artist Alpha - Album Title [16033-2]",
@@ -171,7 +170,7 @@ FILE "01 - Track.flac" WAVE
   TRACK 01 AUDIO
     INDEX 01 00:00:00
 "#;
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
@@ -207,7 +206,7 @@ FILE "01 - Track.flac" WAVE
 /// One line read twice off one surface is pooled once.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_line_read_twice_off_one_surface_is_pooled_once() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["front.jpg"], &[]);
     let analyzer: Arc<dyn ArtworkAnalyzer> =
         Arc::new(StubAnalyzer::new().with(
@@ -227,7 +226,7 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
@@ -268,7 +267,7 @@ async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
         }
     }
 
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(Arc::new(Unreadable));
@@ -294,7 +293,7 @@ async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
 /// A run cancelled mid-OCR never reaches its `Settled` snapshot.
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelled_ocr_run_does_not_settle() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
     let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
@@ -327,7 +326,7 @@ async fn cancelled_ocr_run_does_not_settle() {
 /// once when it next runs; each attempt is that moment again.
 #[tokio::test]
 async fn a_cancelled_pass_waiting_for_a_read_starts_none() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
     let analyzer = Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Line".to_string()]));
     let (handle, _tx, _rx, _lib_tmp) = make_service().await;
@@ -425,7 +424,7 @@ fn image_names(count: usize) -> Vec<String> {
     (1..=count).map(|n| format!("p{n}.jpg")).collect()
 }
 
-fn folder_with(tmp: &TempDir, images: &[String]) -> PathBuf {
+fn folder_with(tmp: &TestFolder, images: &[String]) -> PathBuf {
     let names: Vec<&str> = images.iter().map(String::as_str).collect();
     build_release(tmp, "Album Title [XX34b]", &names, &[])
 }
@@ -447,7 +446,7 @@ async fn pass_snapshots(
 /// settled signals that reads finishing in the images' order send.
 #[tokio::test(flavor = "multi_thread")]
 async fn reads_finishing_out_of_order_send_what_reads_in_order_send() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let images = image_names(IMAGES_IN_FLIGHT);
     let folder = folder_with(&tmp, &images);
     // The fast pass, one per image but the last, then the settled snapshot.
@@ -546,7 +545,7 @@ fn concurrency_analyzer(gate: crate::tests::gate::Held) -> Arc<ConcurrencyAnalyz
 /// all held no other image starts.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_more_than_the_bound_are_read_at_once() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let images = image_names(IMAGES_IN_FLIGHT * 3);
     let folder = folder_with(&tmp, &images);
     let (gate, held, entries) = crate::tests::gate::closed();
@@ -571,7 +570,7 @@ async fn no_more_than_the_bound_are_read_at_once() {
 /// `IMAGES_IN_FLIGHT` images are read at once, and both settle.
 #[tokio::test(flavor = "multi_thread")]
 async fn passes_running_at_once_share_the_bound() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let images = image_names(IMAGES_IN_FLIGHT * 2);
     let names: Vec<&str> = images.iter().map(String::as_str).collect();
     let first = build_release(&tmp, "Album Title A", &names, &[]);
@@ -613,7 +612,7 @@ async fn passes_running_at_once_share_the_bound() {
 /// nothing follows the failed snapshot.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_failed_read_fails_the_pass_with_the_images_before_it() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let images = image_names(IMAGES_IN_FLIGHT);
     let folder = folder_with(&tmp, &images);
     // p1 finishes, then the images after p2, then p2 panics.

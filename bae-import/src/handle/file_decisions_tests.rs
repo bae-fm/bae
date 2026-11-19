@@ -124,18 +124,18 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     let (parts, db, tmp) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
     let (mut original, original_key, _) = picked_candidate(&tables, &tmp, "Album").await;
-    std::fs::write(original.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
+    tmp.write(original.path.join("Disc.cue"), SECOND_FILE_IN_TWO);
     original.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &original.path,
         original.scope,
         &crate::folder_scanner::StoredCandidateEdits::none(),
     )
     .unwrap();
-    let copy = twin_of(&original, "Copy");
+    let copy = twin_of(&tmp, &original, "Copy");
     let copy_key = crate::CandidateKey::folder(&copy.path);
-    let mut other = twin_of(&original, "Other");
+    let mut other = twin_of(&tmp, &original, "Other");
     let other_key = crate::CandidateKey::folder(&other.path);
-    std::fs::write(other.path.join("Notes.txt"), "a file the others lack").unwrap();
+    tmp.write(other.path.join("Notes.txt"), "a file the others lack");
     other.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &other.path,
         other.scope,
@@ -571,14 +571,18 @@ impl Fixture {
     /// Copy the whole cue_flac fixture into `<root>/<name>` and return it.
     fn seed_cue_album(&self, name: &str) -> PathBuf {
         let dir = self.root.join(name);
-        std::fs::create_dir_all(&dir).unwrap();
+        self.temp.create_folder(&dir);
         for file in [
             "Test Album.cue",
             "Test Album.flac",
             "02 Test Artist - Track Two (White Noise).flac",
             "03 Test Artist - Track Three (Brown Noise).flac",
         ] {
-            copy_fixture(&bae_audio::test_fixtures::cue_flac_dir().join(file), &dir.join(file));
+            copy_fixture(
+                &self.temp,
+                &bae_audio::test_fixtures::cue_flac_dir().join(file),
+                &dir.join(file),
+            );
         }
         dir
     }

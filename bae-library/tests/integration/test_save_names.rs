@@ -18,7 +18,11 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("source folder");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let manager = f.library.manager();
     let release = manager.get_release_by_id(&release_id).await.unwrap().unwrap();
@@ -99,8 +103,16 @@ async fn one_filename_pattern_names_every_format() {
     let f = ExportFixture::new().await;
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "01.flac", "Track One");
-    bae_import::test_fixtures::write_tagged_flac(&album_dir, "02.flac", "Track Two");
+    std::fs::write(
+        album_dir.join("01.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+    )
+    .unwrap();
+    std::fs::write(
+        album_dir.join("02.flac"),
+        bae_import::test_fixtures::tagged_flac_bytes("Track Two"),
+    )
+    .unwrap();
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     let manager = f.library.manager();

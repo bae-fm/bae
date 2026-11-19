@@ -1,12 +1,12 @@
 use super::*;
 use bae_store::Store;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
-/// A test library under `root` holding one release of one album and artist,
+/// A test library in `root` holding one release of one album and artist,
 /// with no files or tracks yet.
-async fn library_with_release(root: &std::path::Path) -> (Store, String) {
-    let library_root = root.join("library");
-    std::fs::create_dir_all(&library_root).unwrap();
+async fn library_with_release(root: &TestFolder) -> (Store, String) {
+    let library_root = root.create_folder("library");
     let db = Store::new_test(crate::TEST_SCHEMA, &library_root, Arc::new(coven::SystemClock))
         .await
         .unwrap();
@@ -84,11 +84,13 @@ fn rip_log(release_id: &str) -> bae_records::NewReleaseFile {
     )
 }
 
-/// Write a copy of the fixture rip log into `dir`, returning its path.
-fn write_rip_log(dir: &std::path::Path) -> std::path::PathBuf {
-    let path = dir.join("test_album.log");
-    std::fs::copy(std::path::Path::new("tests/fixtures/logs/test_album.log"), &path).unwrap();
-    path
+/// Write a copy of the fixture rip log into `dir` in `folder`, returning its
+/// path.
+fn write_rip_log(folder: &TestFolder, dir: &std::path::Path) -> std::path::PathBuf {
+    folder.copy_fixture(
+        std::path::Path::new("tests/fixtures/logs/test_album.log"),
+        dir.join("test_album.log"),
+    )
 }
 
 /// Give the release two track rows, so a reading's track count and lengths
@@ -144,8 +146,8 @@ fn file_read_failure(
 async fn a_missing_image_original_fails_the_artwork_gathering() {
     use bae_util::content_type::ContentType;
 
-    let temp = tempfile::TempDir::new().unwrap();
-    let (db, release_id) = library_with_release(temp.path()).await;
+    let temp = TestFolder::new();
+    let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
     let file = release_file(
         &release_id,
@@ -153,10 +155,9 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
         ContentType::Jpeg,
         bae_records::ReleaseFileRole::Artwork,
     );
-    let original = temp.path().join("cover.jpg");
-    std::fs::write(&original, b"cover").unwrap();
+    let original = temp.write("cover.jpg", b"cover");
     records.insert_file_for_test(&file, &original).await.unwrap();
-    std::fs::remove_file(&original).unwrap();
+    temp.remove(&original);
 
     let result = resolve_release_artwork_paths(
         &db,
@@ -189,11 +190,10 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
 async fn the_artwork_gathering_stages_each_image_coven_reads() {
     use bae_util::content_type::ContentType;
 
-    let temp = tempfile::TempDir::new().unwrap();
-    let (db, release_id) = library_with_release(temp.path()).await;
+    let temp = TestFolder::new();
+    let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let original = temp.path().join("back.jpg");
-    std::fs::write(&original, b"the back cover").unwrap();
+    let original = temp.write("back.jpg", b"the back cover");
     records
         .insert_file_for_test(
             &release_file(
@@ -230,17 +230,21 @@ async fn the_artwork_gathering_stages_each_image_coven_reads() {
 async fn test_resolve_release_identity_local() {
     use bae_util::content_type::ContentType;
 
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let local_dir = temp.path().join("rip");
-    std::fs::create_dir_all(&local_dir).unwrap();
-    write_rip_log(&local_dir);
+    temp.create_folder(&local_dir);
+    write_rip_log(&temp, &local_dir);
     let fixture_dir = std::path::Path::new("tests/fixtures/flac");
-    std::fs::copy(fixture_dir.join("01 Test Track 1.flac"), local_dir.join("01 Test Track 1.flac"))
-        .unwrap();
-    std::fs::copy(fixture_dir.join("02 Test Track 2.flac"), local_dir.join("02 Test Track 2.flac"))
-        .unwrap();
+    temp.copy_fixture(
+        fixture_dir.join("01 Test Track 1.flac"),
+        local_dir.join("01 Test Track 1.flac"),
+    );
+    temp.copy_fixture(
+        fixture_dir.join("02 Test Track 2.flac"),
+        local_dir.join("02 Test Track 2.flac"),
+    );
 
-    let (db, release_id) = library_with_release(temp.path()).await;
+    let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
 
     records
@@ -277,13 +281,13 @@ async fn test_resolve_release_identity_local() {
 /// coven's reason, rather than reading the changed bytes.
 #[tokio::test]
 async fn a_changed_rip_log_original_fails_the_reading() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let (db, release_id) = library_with_release(temp.path()).await;
+    let temp = TestFolder::new();
+    let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let log = write_rip_log(temp.path());
+    let log = write_rip_log(&temp, temp.path());
     records.insert_file_for_test(&rip_log(&release_id), &log).await.unwrap();
     insert_two_tracks(&records, &release_id).await;
-    std::fs::write(&log, "a log someone rewrote").unwrap();
+    temp.write(&log, "a log someone rewrote");
 
     let failure = file_read_failure(identity_of(&db, &release_id).await);
 
@@ -297,13 +301,13 @@ async fn a_changed_rip_log_original_fails_the_reading() {
 /// rather than being skipped.
 #[tokio::test]
 async fn a_missing_rip_log_original_fails_the_reading() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let (db, release_id) = library_with_release(temp.path()).await;
+    let temp = TestFolder::new();
+    let (db, release_id) = library_with_release(&temp).await;
     let records = bae_records::test_fixtures::test_records(&db);
-    let log = write_rip_log(temp.path());
+    let log = write_rip_log(&temp, temp.path());
     records.insert_file_for_test(&rip_log(&release_id), &log).await.unwrap();
     insert_two_tracks(&records, &release_id).await;
-    std::fs::remove_file(&log).unwrap();
+    temp.remove(&log);
 
     let failure = file_read_failure(identity_of(&db, &release_id).await);
 
@@ -319,8 +323,8 @@ async fn a_missing_rip_log_original_fails_the_reading() {
 #[test]
 fn a_cloud_release_from_another_device_reads_its_rip_log() {
     bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
-        let rip = tempfile::TempDir::new().unwrap();
-        let log = write_rip_log(rip.path());
+        let rip = TestFolder::new();
+        let log = write_rip_log(&rip, rip.path());
         let release_id = insert_release(devices.a()).await;
         let records = bae_records::test_fixtures::test_records(devices.a());
         records
@@ -383,8 +387,8 @@ async fn folder_and_library_disc_ids_with_decisions(
             .unwrap(),
     );
 
-    let library = tempfile::TempDir::new().unwrap();
-    let (db, release_id) = library_with_release(library.path()).await;
+    let library = TestFolder::new();
+    let (db, release_id) = library_with_release(&library).await;
     let records = bae_records::test_fixtures::test_records(&db);
     let mut file_ids = std::collections::HashMap::new();
     for entry in &categorized.files {
@@ -445,13 +449,12 @@ async fn folder_and_library_disc_ids_with_decisions(
 /// and re-identify hashes the same disc from the library's copy of it.
 #[tokio::test]
 async fn a_library_sheet_naming_renamed_audio_hashes_the_disc_its_scan_did() {
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("rip.flac")).unwrap();
-    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue"))
-        .unwrap()
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("rip.flac"));
+    let sheet = crate::test_fixtures::read_fixture_text(fixture.join("Test Album.cue"))
         .replace("Test Album.flac", "CDImage.wav");
-    std::fs::write(folder.path().join("Album.cue"), sheet).unwrap();
+    folder.write("Album.cue", sheet);
 
     let (scanned, library) = folder_and_library_disc_ids(folder.path()).await;
 
@@ -463,16 +466,15 @@ async fn a_library_sheet_naming_renamed_audio_hashes_the_disc_its_scan_did() {
 /// and the other is ignored, so the folder is one disc, in the library too.
 #[tokio::test]
 async fn a_library_image_two_sheets_describe_hashes_one_disc_as_its_scan_did() {
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac")).unwrap();
-    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue")).unwrap();
-    std::fs::write(folder.path().join("Test Album.cue"), &sheet).unwrap();
-    std::fs::write(
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac"));
+    let sheet = crate::test_fixtures::read_fixture_text(fixture.join("Test Album.cue"));
+    folder.write("Test Album.cue", &sheet);
+    folder.write(
         folder.path().join("Test Album.flac.cue"),
         sheet.replace("INDEX 01 00:20:00", "INDEX 01 00:15:00"),
-    )
-    .unwrap();
+    );
 
     let (scanned, library) = folder_and_library_disc_ids(folder.path()).await;
 
@@ -486,7 +488,7 @@ async fn a_library_image_two_sheets_describe_hashes_one_disc_as_its_scan_did() {
 #[tokio::test]
 async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
     bae_audio::init();
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     // 9s silent stereo MP3, long enough to span the sheet's three 3-second
     // tracks.
     let samples = vec![0i32; 44_100 * 9 * 2];
@@ -497,8 +499,8 @@ async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
         2,
     )
     .expect("encode mp3");
-    std::fs::write(folder.path().join("Test Album.mp3"), mp3).unwrap();
-    std::fs::write(
+    folder.write("Test Album.mp3", mp3);
+    folder.write(
         folder.path().join("Test Album.cue"),
         "PERFORMER \"Artist Name\"\n\
          TITLE \"Album Title\"\n\
@@ -506,8 +508,7 @@ async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
          TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
          TRACK 02 AUDIO\n    INDEX 01 00:03:00\n  \
          TRACK 03 AUDIO\n    INDEX 01 00:06:00\n",
-    )
-    .unwrap();
+    );
 
     let (scanned, library) = folder_and_library_disc_ids(folder.path()).await;
 
@@ -521,11 +522,11 @@ async fn a_library_sheet_over_an_mp3_hashes_no_disc_as_its_scan_did() {
 /// disc, and the stored cleared binding leaves the library's sheet with none.
 #[tokio::test]
 async fn a_library_sheet_the_person_unbound_hashes_no_disc() {
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac")).unwrap();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Copy.flac")).unwrap();
-    std::fs::copy(fixture.join("Test Album.cue"), folder.path().join("Test Album.cue")).unwrap();
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac"));
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("Copy.flac"));
+    folder.copy_fixture(fixture.join("Test Album.cue"), folder.path().join("Test Album.cue"));
 
     let (scanned, bound_by_scan) = folder_and_library_disc_ids(folder.path()).await;
     assert_eq!(scanned.len(), 1, "the scan binds the sheet to the image it names");
@@ -547,14 +548,13 @@ async fn a_library_sheet_the_person_unbound_hashes_no_disc() {
 /// stored binding picks one.
 #[tokio::test]
 async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("a.flac")).unwrap();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("b.flac")).unwrap();
-    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue"))
-        .unwrap()
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("a.flac"));
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("b.flac"));
+    let sheet = crate::test_fixtures::read_fixture_text(fixture.join("Test Album.cue"))
         .replace("Test Album.flac", "CDImage.wav");
-    std::fs::write(folder.path().join("Album.cue"), sheet).unwrap();
+    folder.write("Album.cue", sheet);
 
     let (scanned, unbound_by_scan) = folder_and_library_disc_ids(folder.path()).await;
     assert!(scanned.is_empty(), "two images and a sheet naming neither: the scan binds none");
@@ -575,19 +575,18 @@ async fn a_library_sheet_the_person_bound_hashes_the_disc_of_that_audio() {
 /// scan hashes two discs, and the stored decision leaves the library one.
 #[tokio::test]
 async fn a_library_sheet_the_person_ignored_hashes_no_disc() {
-    let folder = tempfile::TempDir::new().unwrap();
+    let folder = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac")).unwrap();
-    std::fs::copy(fixture.join("Test Album.flac"), folder.path().join("Second.flac")).unwrap();
-    let sheet = std::fs::read_to_string(fixture.join("Test Album.cue")).unwrap();
-    std::fs::write(folder.path().join("Test Album.cue"), &sheet).unwrap();
-    std::fs::write(
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("Test Album.flac"));
+    folder.copy_fixture(fixture.join("Test Album.flac"), folder.path().join("Second.flac"));
+    let sheet = crate::test_fixtures::read_fixture_text(fixture.join("Test Album.cue"));
+    folder.write("Test Album.cue", &sheet);
+    folder.write(
         folder.path().join("Second.cue"),
         sheet
             .replace("Test Album.flac", "Second.flac")
             .replace("INDEX 01 00:20:00", "INDEX 01 00:15:00"),
-    )
-    .unwrap();
+    );
 
     let (scanned, both) = folder_and_library_disc_ids(folder.path()).await;
     assert_eq!(scanned.len(), 2, "each sheet lays out a disc");

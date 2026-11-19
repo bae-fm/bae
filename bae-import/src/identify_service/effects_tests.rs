@@ -189,6 +189,7 @@ async fn a_combined_folder_settles_on_the_release_that_holds_all_its_tracks() {
     let dir = fixture.barcode_candidate("Artist - Album One [CAT-100]");
     for at in 3..=20 {
         copy_fixture(
+            &fixture.temp,
             &Path::new("tests/fixtures/flac").join(FLAC_FIXTURES[at % 2]),
             &dir.join(format!("{at:02} Test Track {at}.flac")),
         );

@@ -10,7 +10,7 @@ use crate::{ImportListView, PendingFilter, TriageRow, TriageTab};
 use bae_catalogs::fake_catalogs::FakeCatalogs;
 use bae_catalogs::test_releases::seed_discogs_pressing;
 use bae_util::test_channels::HANG_GUARD;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// Every candidate row a snapshot holds, with whether it reads as being
 /// identified.
@@ -221,8 +221,8 @@ async fn a_skip_ends_identification_in_its_write() {
 async fn combining_ends_its_folders_identification_in_its_write() {
     let (parts, db, _library) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let first_root = TempDir::new().unwrap();
-    let second_root = TempDir::new().unwrap();
+    let first_root = TestFolder::new();
+    let second_root = TestFolder::new();
     let (_, first, _) = picked_candidate(&tables, &first_root, "Volume B").await;
     let (_, second, _) = picked_candidate(&tables, &second_root, "Volume A").await;
     let handle = parts.start().await.unwrap();

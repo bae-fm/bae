@@ -4,18 +4,19 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 
 /// A single-file sheet written against a WAV automatically describes the FLAC
 /// it was encoded to when it is the only same-stem audio beside the sheet.
 #[test]
 fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "cd.flac");
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", "cd.wav");
-    std::fs::write(album.join("cd.cue"), cue).unwrap();
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "cd.flac");
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", "cd.wav");
+    tmp.write(album.join("cd.cue"), cue);
 
     let files = scan_files(&album);
 
@@ -52,13 +53,13 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
 /// the bare file name, and the same-stem audio beside the sheet answers.
 #[test]
 fn a_reference_with_foreign_folders_resolves_by_its_file_name() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "cd.flac");
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", "Artist\\Album\\cd.wav");
-    std::fs::write(album.join("cd.cue"), cue).unwrap();
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "cd.flac");
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", "Artist\\Album\\cd.wav");
+    tmp.write(album.join("cd.cue"), cue);
 
     let files = scan_files(&album);
 
@@ -79,14 +80,14 @@ fn a_reference_with_foreign_folders_resolves_by_its_file_name() {
 /// it, so the audio at the release root answers.
 #[test]
 fn a_sheet_in_a_subfolder_resolves_audio_above_it() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "cd.flac");
-    std::fs::create_dir(album.join("extras")).unwrap();
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", "cd.wav");
-    std::fs::write(album.join("extras").join("cd.cue"), cue).unwrap();
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "cd.flac");
+    tmp.create_folder(album.join("extras"));
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", "cd.wav");
+    tmp.write(album.join("extras").join("cd.cue"), cue);
 
     let files = scan_files(&album);
 
@@ -104,12 +105,11 @@ fn a_sheet_in_a_subfolder_resolves_audio_above_it() {
 
 #[test]
 fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
-    let (_tmp, album) = cue_flac_album("cd.flac", "cd.wav", 3);
-    std::fs::copy(
+    let (tmp, album) = cue_flac_album("cd.flac", "cd.wav", 3);
+    tmp.copy_fixture(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
         album.join("cd.ape"),
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -122,15 +122,14 @@ fn same_stem_audio_is_not_guessed_when_more_than_one_file_matches() {
 
 #[test]
 fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "track-01.flac");
-    std::fs::write(
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "track-01.flac");
+    tmp.write(
         album.join("disc.cue"),
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
          FILE \"track-01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
          FILE \"track-02.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -148,12 +147,11 @@ fn multi_file_cue_with_a_missing_reference_stays_unresolved() {
 
 #[test]
 fn exact_file_reference_wins_over_other_same_stem_audio() {
-    let (_tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
-    std::fs::copy(
+    let (tmp, album) = cue_flac_album("cd.flac", "cd.flac", 3);
+    tmp.copy_fixture(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_ape/Test Album.ape"),
         album.join("cd.ape"),
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -173,14 +171,14 @@ fn exact_file_reference_wins_over_other_same_stem_audio() {
 /// name-order fallback from answering, so only the reference itself can.
 #[test]
 fn a_reference_in_another_case_resolves_to_its_audio() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "CDImage.flac");
-    copy_cue_flac(&album, "bonus.flac");
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", "cdimage.WAV");
-    std::fs::write(album.join("CDImage.cue"), cue).unwrap();
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "CDImage.flac");
+    copy_cue_flac(&tmp, &album, "bonus.flac");
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", "cdimage.WAV");
+    tmp.write(album.join("CDImage.cue"), cue);
 
     let files = scan_files(&album);
 
@@ -201,16 +199,16 @@ fn a_reference_in_another_case_resolves_to_its_audio() {
 #[test]
 fn a_reference_in_another_unicode_normalization_resolves_to_its_audio() {
     use unicode_normalization::UnicodeNormalization;
-    let (_tmp, album) = album_dir();
+    let (tmp, album) = album_dir();
     let decomposed: String = "Café Image.flac".nfd().collect();
-    copy_cue_flac(&album, &decomposed);
-    copy_cue_flac(&album, "bonus.flac");
+    copy_cue_flac(&tmp, &album, &decomposed);
+    copy_cue_flac(&tmp, &album, "bonus.flac");
     let composed: String = "Café Image.flac".nfc().collect();
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", &composed);
-    std::fs::write(album.join("disc.cue"), cue).unwrap();
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", &composed);
+    tmp.write(album.join("disc.cue"), cue);
 
     let files = scan_files(&album);
 
@@ -230,17 +228,16 @@ fn a_reference_in_another_unicode_normalization_resolves_to_its_audio() {
 /// resolves every reference, even with an extra file beside them.
 #[test]
 fn a_multi_file_sheet_in_another_case_resolves_every_reference() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "01 Track.flac");
-    copy_cue_flac(&album, "02 Track.flac");
-    copy_cue_flac(&album, "03 Hidden.flac");
-    std::fs::write(
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "01 Track.flac");
+    copy_cue_flac(&tmp, &album, "02 Track.flac");
+    copy_cue_flac(&tmp, &album, "03 Hidden.flac");
+    tmp.write(
         album.join("disc.cue"),
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
          FILE \"01 TRACK.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
          FILE \"02 track.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     let files = scan_files(&album);
 
@@ -265,16 +262,16 @@ fn a_multi_file_sheet_in_another_case_resolves_every_reference() {
 /// audio: the sheet's text is decoded before its `FILE` reference is read.
 #[test]
 fn a_sheet_in_a_windows_code_page_names_its_audio() {
-    let (_tmp, album) = album_dir();
-    copy_cue_flac(&album, "Café Image.flac");
-    copy_cue_flac(&album, "bonus.flac");
-    let cue =
-        std::fs::read_to_string(bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"))
-            .unwrap()
-            .replace("Test Album.flac", "Café Image.wav");
+    let (tmp, album) = album_dir();
+    copy_cue_flac(&tmp, &album, "Café Image.flac");
+    copy_cue_flac(&tmp, &album, "bonus.flac");
+    let cue = crate::test_fixtures::read_fixture_text(
+        bae_audio::test_fixtures::cue_flac_dir().join("Test Album.cue"),
+    )
+    .replace("Test Album.flac", "Café Image.wav");
     let (windows_1252, _, unmappable) = encoding_rs::WINDOWS_1252.encode(&cue);
     assert!(!unmappable);
-    std::fs::write(album.join("disc.cue"), windows_1252).unwrap();
+    tmp.write(album.join("disc.cue"), windows_1252);
 
     let files = scan_files(&album);
 
@@ -298,8 +295,8 @@ fn a_sheet_in_a_windows_code_page_names_its_audio() {
 #[test]
 fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
     let (tmp, album) = album_dir();
-    std::fs::write(album.join("Album.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title")).unwrap();
+    tmp.write(album.join("Album.flac"), fake_flac());
+    tmp.write(album.join("Album.cue"), make_cue_content("Album.wav", "Album Title"));
 
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
@@ -343,16 +340,15 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
 async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     let (tmp, album) = album_dir();
     for name in ["01 First.flac", "02 Second.flac", "03 Third.flac"] {
-        std::fs::write(album.join(name), bytes_for(FileKind::Flac)).unwrap();
+        tmp.write(album.join(name), bytes_for(FileKind::Flac));
     }
-    std::fs::write(
+    tmp.write(
         album.join("Album.cue"),
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
              FILE \"01 First.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
              FILE \"02 Second.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n\
              FILE \"03 Third.wav\" WAVE\n  TRACK 03 AUDIO\n    INDEX 01 00:00:00\n",
-    )
-    .unwrap();
+    );
 
     let candidates = scan_valid_on_this_runtime(tmp.path().to_path_buf()).await;
     assert_eq!(candidates.len(), 1);
@@ -426,14 +422,13 @@ async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
 #[test]
 fn single_file_cue_pairs_by_file_directive_not_stem() {
     let (tmp, album) = album_dir();
-    std::fs::write(album.join("Audio.flac"), bytes_for(FileKind::Flac)).unwrap();
-    std::fs::write(
+    tmp.write(album.join("Audio.flac"), bytes_for(FileKind::Flac));
+    tmp.write(
         album.join("Sheet.cue"),
         "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Audio.flac\" WAVE\n  \
              TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
              TRACK 02 AUDIO\n    INDEX 01 00:01:00\n",
-    )
-    .unwrap();
+    );
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let bound = candidates[0].files.bound_sheets();
@@ -452,9 +447,9 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
         "Album/Album.cue",
         FileKind::NonPairingCue { n_tracks: 5, file_reference: "Album.flac" },
     ));
-    let tmp = tempfile::tempdir().unwrap();
+    let tmp = TestFolder::new();
     let root = tmp.path().to_path_buf();
-    build_fixture(&root, &entries);
+    build_fixture(&tmp, &root, &entries);
     let items = scan_items(root);
     assert_eq!(items.len(), 1);
     match &items[0] {
@@ -478,13 +473,9 @@ fn cue_referencing_missing_audio_leaves_the_sheet_unbound() {
 #[test]
 fn multi_file_cue_with_missing_secondary_file_stays_unbound() {
     let (tmp, album) = album_dir();
-    std::fs::write(album.join("Album.flac"), bytes_for(FileKind::Flac)).unwrap();
+    tmp.write(album.join("Album.flac"), bytes_for(FileKind::Flac));
     // Hand-write the CUE because the DSL doesn't model two-FILE sheets.
-    std::fs::write(
-            album.join("Album.cue"),
-            "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\nFILE \"Missing.flac\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n",
-        )
-        .unwrap();
+    tmp.write(album.join("Album.cue"), "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Album.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\nFILE \"Missing.flac\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 05:00:00\n");
     let items = scan_items(tmp.path().to_path_buf());
     assert_eq!(items.len(), 1);
     match &items[0] {

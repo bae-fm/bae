@@ -32,7 +32,7 @@ impl HighSampleRateTestFixture {
 
         let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
-        std::fs::write(&test_path, bae_import::test_fixtures::read_fixture(&fixture_path))
+        std::fs::write(&test_path, bae_util::test_files::read_fixture(&fixture_path))
             .expect("copy the 96 kHz FLAC fixture");
 
         // Create release with one track

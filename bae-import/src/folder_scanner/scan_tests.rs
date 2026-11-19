@@ -6,6 +6,7 @@
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 /// Reads directories normally, except inside `blocked`, where it is held.
@@ -80,12 +81,12 @@ impl SuspendedScan {
 
 #[test]
 fn names_do_not_combine_audio_bearing_children() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Wrapped Release");
     for child in ["CD1", "CD2"] {
         let child = root.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), fake_flac());
     }
 
     let candidates = scan_valid(&root);
@@ -96,12 +97,12 @@ fn names_do_not_combine_audio_bearing_children() {
 
 #[test]
 fn direct_audio_and_audio_bearing_child_are_distinct_approximations() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Collection");
     let child = root.join("Nested Release");
-    std::fs::create_dir_all(&child).unwrap();
-    std::fs::write(root.join("loose.flac"), fake_flac()).unwrap();
-    std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    temp_dir.create_folder(&child);
+    temp_dir.write(root.join("loose.flac"), fake_flac());
+    temp_dir.write(child.join("track.flac"), fake_flac());
 
     let candidates = scan_valid(&root);
 
@@ -127,7 +128,7 @@ fn direct_audio_and_audio_bearing_child_are_distinct_approximations() {
 
 #[test]
 fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Collection");
     let first = group.join("Release 01");
@@ -137,8 +138,8 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
     let second = group.join("Release 03");
     let later = group.join("Release 99");
     for release in [&first, &second, &later] {
-        std::fs::create_dir_all(release).unwrap();
-        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(release);
+        temp_dir.write(release.join("track.flac"), fake_flac());
     }
 
     let scan = SuspendedScan::spawn(root.clone(), "Collection/Release 99");
@@ -166,15 +167,15 @@ fn file_free_group_emits_an_actionable_release_before_later_child_finishes() {
 
 #[test]
 fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Group");
-    std::fs::create_dir_all(&group).unwrap();
-    std::fs::write(group.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.create_folder(&group);
+    temp_dir.write(group.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
     for release in ["Release 01", "Release 03", "Release 99"] {
         let release = group.join(release);
-        std::fs::create_dir_all(&release).unwrap();
-        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&release);
+        temp_dir.write(release.join("track.flac"), fake_flac());
     }
 
     let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
@@ -204,17 +205,17 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
 
 #[test]
 fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let group = root.join("Group");
-    std::fs::create_dir_all(group.join("Release 01")).unwrap();
-    std::fs::create_dir_all(group.join("Release 99")).unwrap();
+    temp_dir.create_folder(group.join("Release 01"));
+    temp_dir.create_folder(group.join("Release 99"));
     for path in [
         group.join("loose.flac"),
         group.join("Release 01/track.flac"),
         group.join("Release 99/track.flac"),
     ] {
-        std::fs::write(path, fake_flac()).unwrap();
+        temp_dir.write(path, fake_flac());
     }
 
     let scan = SuspendedScan::spawn(root.clone(), "Group/Release 99");
@@ -234,7 +235,7 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
 
 #[test]
 fn discography_and_multidisc_shapes_follow_folder_structure_only() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Media");
     for release in [
         "Collective/Studio Albums/1990 - First",
@@ -244,8 +245,8 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
         "Solo Artist/1973 - Box/CD2",
     ] {
         let release = root.join(release);
-        std::fs::create_dir_all(&release).unwrap();
-        std::fs::write(release.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&release);
+        temp_dir.write(release.join("track.flac"), fake_flac());
     }
 
     let items = scan_items(&root);
@@ -343,13 +344,13 @@ fn cancellation_reaches_an_in_progress_directory_read() {
 /// releases, and the scan says it read the folder that way.
 #[test]
 fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let parent = root.join("Group").join("Artist");
     let child = parent.join("Album");
-    std::fs::create_dir_all(&child).unwrap();
-    std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
-    std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
+    temp_dir.create_folder(&child);
+    temp_dir.write(parent.join("parent.flac"), fake_flac());
+    temp_dir.write(child.join("child.flac"), fake_flac());
 
     let items = scan_items(&root);
     let candidates: Vec<_> = items
@@ -377,14 +378,14 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
 /// invalid folder is one of the releases the folder was read as.
 #[test]
 fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let parent = root.join("Group").join("Artist");
     let child = parent.join("Album");
-    std::fs::create_dir_all(&child).unwrap();
-    std::fs::write(parent.join("parent.flac"), fake_flac()).unwrap();
-    std::fs::write(parent.join("broken.flac"), b"").unwrap();
-    std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
+    temp_dir.create_folder(&child);
+    temp_dir.write(parent.join("parent.flac"), fake_flac());
+    temp_dir.write(parent.join("broken.flac"), b"");
+    temp_dir.write(child.join("child.flac"), fake_flac());
 
     let items = scan_items(&root);
     let invalid = items
@@ -400,12 +401,12 @@ fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
 
 #[test]
 fn keep_separate_context_survives_when_every_descendant_is_invalid() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     for child in ["Group/Release 1", "Group/Release 2"] {
         let child = root.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), b"not a flac").unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), b"not a flac");
     }
     let mut items = Vec::new();
     scan_for_candidates_with_decisions(
@@ -447,18 +448,18 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
 /// themselves 1..=N.
 #[test]
 fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
     for child in ["Release 01", "Release 02"] {
         let child = wrapper.join(child);
-        std::fs::create_dir_all(&child).unwrap();
-        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&child);
+        temp_dir.write(child.join("track.flac"), fake_flac());
     }
     let scans = wrapper.join("Scans");
-    std::fs::create_dir_all(scans.join("Booklet")).unwrap();
-    std::fs::write(scans.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(scans.join("Booklet").join("notes.txt"), "notes").unwrap();
+    temp_dir.create_folder(scans.join("Booklet"));
+    temp_dir.write(scans.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(scans.join("Booklet").join("notes.txt"), "notes");
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(items.iter().any(|item| matches!(
@@ -486,12 +487,12 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
 /// used to offer the album a choice between itself and its own artwork.
 #[test]
 fn a_folder_that_yields_one_release_decides_nothing() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let album = root.join("Artist - Album");
-    std::fs::create_dir_all(album.join("Artwork")).unwrap();
-    std::fs::write(album.join("track.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("Artwork").join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.create_folder(album.join("Artwork"));
+    temp_dir.write(album.join("track.flac"), fake_flac());
+    temp_dir.write(album.join("Artwork").join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(
@@ -524,7 +525,7 @@ fn a_folder_that_yields_one_release_decides_nothing() {
 /// would read as a change forever and rewrite the row on every pass.
 #[test]
 fn two_walks_of_one_tree_produce_the_same_items() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     for release in [
         "Artist - Album",
@@ -534,15 +535,15 @@ fn two_walks_of_one_tree_produce_the_same_items() {
         "Wrapper/Live in Osaka",
     ] {
         let release = root.join(release);
-        std::fs::create_dir_all(&release).unwrap();
+        temp_dir.create_folder(&release);
         for track in ["01.flac", "02.flac", "03.flac"] {
-            std::fs::write(release.join(track), fake_flac()).unwrap();
+            temp_dir.write(release.join(track), fake_flac());
         }
-        std::fs::write(release.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-        std::fs::write(release.join("rip.log"), "log").unwrap();
+        temp_dir.write(release.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+        temp_dir.write(release.join("rip.log"), "log");
     }
-    std::fs::create_dir_all(root.join("Box/Scans")).unwrap();
-    std::fs::write(root.join("Box/Scans/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    temp_dir.create_folder(root.join("Box/Scans"));
+    temp_dir.write(root.join("Box/Scans/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
 
     // The first walk decides how each folder reads, and stores it; every walk
     // after reads under what was stored, which is what a pass compares with.
@@ -577,20 +578,20 @@ fn two_walks_of_one_tree_produce_the_same_items() {
 /// reading them as one is offered.
 #[test]
 fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Freddie Roach");
     let inner = wrapper.join("Sound");
     for album in ["Brown Sugar", "Mocha Motion", "Good Move"] {
         let album = inner.join(album);
-        std::fs::create_dir_all(&album).unwrap();
-        std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&album);
+        temp_dir.write(album.join("01.flac"), fake_flac());
     }
     // The loose files beside the child folder, which is what used to make this
     // shape a card rather than a reading.
-    std::fs::create_dir_all(&wrapper).unwrap();
-    std::fs::write(wrapper.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
-    std::fs::write(wrapper.join("notes.txt"), "notes").unwrap();
+    temp_dir.create_folder(&wrapper);
+    temp_dir.write(wrapper.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]);
+    temp_dir.write(wrapper.join("notes.txt"), "notes");
 
     let items = scan_items(&root);
 
@@ -625,10 +626,10 @@ fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
 /// unimportable folder from an I/O fault.
 #[test]
 fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
     // Zero-byte audio is corruption, not an I/O fault.
-    std::fs::write(root.join("track.flac"), []).unwrap();
+    temp_dir.write(root.join("track.flac"), []);
 
     let err = collect_release_candidate_files_with_scope(
         root,
@@ -647,11 +648,11 @@ fn collect_release_candidate_files_on_invalid_folder_yields_invalid_folder() {
 fn unreadable_child_directory_fails_scan() {
     use std::os::unix::fs::PermissionsExt;
 
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path();
     let blocked = root.join("blocked");
-    std::fs::create_dir(&blocked).unwrap();
-    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o000)).unwrap();
+    temp_dir.create_folder(&blocked);
+    temp_dir.set_permissions(&blocked, std::fs::Permissions::from_mode(0o000));
 
     let err = scan_for_candidates_with_decisions(
         root.to_path_buf(),
@@ -662,7 +663,7 @@ fn unreadable_child_directory_fails_scan() {
     )
     .expect_err("unreadable directory should fail the scan");
 
-    std::fs::set_permissions(&blocked, std::fs::Permissions::from_mode(0o700)).unwrap();
+    temp_dir.set_permissions(&blocked, std::fs::Permissions::from_mode(0o700));
 
     match err {
         FolderScanError::Io { path, source } => {
@@ -680,16 +681,16 @@ fn unreadable_child_directory_fails_scan() {
 
 #[test]
 fn test_volume_folders_with_long_names_are_separate() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let root = temp_dir.path().join("Compilation Series");
-    std::fs::create_dir(&root).unwrap();
+    temp_dir.create_folder(&root);
 
     let volumes = ["Vol. 01 (R2 70921 - 1990)", "Vol. 02 (R2 70922 - 1991)"];
 
     for vol_name in &volumes {
         let vol_dir = root.join(vol_name);
-        std::fs::create_dir(&vol_dir).unwrap();
-        std::fs::write(vol_dir.join("track.flac"), fake_flac()).unwrap();
+        temp_dir.create_folder(&vol_dir);
+        temp_dir.write(vol_dir.join("track.flac"), fake_flac());
     }
 
     let candidates = scan_valid(root);

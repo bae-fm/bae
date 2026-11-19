@@ -4,7 +4,7 @@ use crate::folder_scanner::{
     SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::probe::source_durations;
-use std::fs;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 
 /// Synthetic FLAC bytes valid enough to round-trip through the scan's
@@ -66,16 +66,16 @@ pub(crate) fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
     )
 }
 
-pub(crate) fn write_flac(path: &Path) {
-    fs::write(path, synthetic_flac_bytes(1_000)).expect("write flac");
+pub(crate) fn write_flac(folder: &TestFolder, path: impl AsRef<Path>) {
+    folder.write(path, synthetic_flac_bytes(1_000));
 }
 
-pub(crate) fn write_sheet_audio(path: &Path, track_count: usize) {
+pub(crate) fn write_sheet_audio(folder: &TestFolder, path: impl AsRef<Path>, track_count: usize) {
     let duration_ms = u64::try_from(track_count)
         .expect("fixture track count fits u64")
         .checked_mul(180_000)
         .expect("fixture duration fits u64");
-    fs::write(path, synthetic_flac_bytes(duration_ms)).expect("write sheet audio");
+    folder.write(path, synthetic_flac_bytes(duration_ms));
 }
 
 pub(crate) fn scan(root: &Path) -> CategorizedFiles {
@@ -121,9 +121,9 @@ pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_records::TrackRow, Aud
 /// Loose audio is one unit per file, in the folder's own order.
 #[test]
 fn loose_audio_is_one_unit_per_file_in_disk_order() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for index in 1..=13 {
-        write_flac(&tmp.path().join(format!("{index:02}.flac")));
+        write_flac(&tmp, format!("{index:02}.flac"));
     }
 
     let units = audio_units(&scan(tmp.path()));
@@ -140,12 +140,11 @@ fn loose_audio_is_one_unit_per_file_in_disk_order() {
 /// other, which is the additive property.
 #[test]
 fn a_disc_image_and_loose_audio_both_become_units() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 11);
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 11))
-        .expect("write cue");
-    write_flac(&tmp.path().join("bonus-1.flac"));
-    write_flac(&tmp.path().join("bonus-2.flac"));
+    let tmp = TestFolder::new();
+    write_sheet_audio(&tmp, "CDImage.flac", 11);
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 11));
+    write_flac(&tmp, "bonus-1.flac");
+    write_flac(&tmp, "bonus-2.flac");
 
     let units = audio_units(&scan(tmp.path()));
 
@@ -170,13 +169,11 @@ fn a_disc_image_and_loose_audio_both_become_units() {
 /// `CD10` after `CD9`, not after `CD1`.
 #[test]
 fn discs_are_laid_down_in_natural_order() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let tmp = TestFolder::new();
     for disc in 1..=10 {
-        let dir = tmp.path().join(format!("CD{disc}"));
-        fs::create_dir_all(&dir).expect("mkdir");
-        write_sheet_audio(&dir.join("CDImage.flac"), disc);
-        fs::write(dir.join("CDImage.cue"), cue_sheet_text("CDImage.flac", disc))
-            .expect("write cue");
+        let dir = tmp.create_folder(format!("CD{disc}"));
+        write_sheet_audio(&tmp, dir.join("CDImage.flac"), disc);
+        tmp.write(dir.join("CDImage.cue"), cue_sheet_text("CDImage.flac", disc));
     }
 
     let units = audio_units(&scan(tmp.path()));
@@ -206,11 +203,11 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)])
 /// lay disc one's tracks down first.
 #[test]
 fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("alpha.flac"), 2);
-    fs::write(tmp.path().join("alpha.cue"), cue_sheet_text("alpha.flac", 2)).expect("write cue");
-    write_sheet_audio(&tmp.path().join("beta.flac"), 3);
-    fs::write(tmp.path().join("beta.cue"), cue_sheet_text("beta.flac", 3)).expect("write cue");
+    let tmp = TestFolder::new();
+    write_sheet_audio(&tmp, "alpha.flac", 2);
+    tmp.write("alpha.cue", cue_sheet_text("alpha.flac", 2));
+    write_sheet_audio(&tmp, "beta.flac", 3);
+    tmp.write("beta.cue", cue_sheet_text("beta.flac", 3));
 
     let mut files = scan(tmp.path());
     assign_discs(
@@ -243,11 +240,10 @@ fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
 /// where it was.
 #[test]
 fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 3);
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 3))
-        .expect("write cue");
-    write_flac(&tmp.path().join("bonus.flac"));
+    let tmp = TestFolder::new();
+    write_sheet_audio(&tmp, "CDImage.flac", 3);
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 3));
+    write_flac(&tmp, "bonus.flac");
 
     let mut files = scan(tmp.path());
     assert_eq!(audio_units(&files).len(), 4, "three slices and the bonus");
@@ -268,16 +264,15 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
 /// total minus its start. The same reading the commit writes.
 #[test]
 fn a_sheet_s_slices_each_carry_their_own_length() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(
-        tmp.path().join("CDImage.cue"),
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "CDImage.flac");
+    tmp.write(
+        "CDImage.cue",
         // Two tracks, the second starting half a second in, out of one
         // second of audio.
         "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\nFILE \"CDImage.flac\" WAVE\n  \
          TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 01 00:00:38\n",
-    )
-    .expect("write cue");
+    );
 
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
@@ -292,10 +287,9 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
 
 #[test]
 fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 2))
-        .expect("write cue");
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "CDImage.flac");
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 2));
 
     let files = scan(tmp.path());
 

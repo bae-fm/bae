@@ -7,7 +7,7 @@ use crate::folder_scanner::ScanItem;
 use crate::scan_passes::tests::{test_scan_services, TestScan};
 use crate::watching::FolderWatcher;
 use bae_store::Store;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// A worker for a test, with the candidate-preparations writer over the same
 /// records.
@@ -17,7 +17,7 @@ pub(crate) struct TestService {
     /// The library the service imports into, for a test that reads or seeds
     /// rows no call reads or writes on its own.
     pub(crate) db: Store,
-    pub(crate) temp: TempDir,
+    pub(crate) temp: TestFolder,
 }
 
 impl TestService {
@@ -108,7 +108,7 @@ impl TestService {
 
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(crate) async fn setup_import_service() -> TestService {
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();
@@ -270,13 +270,14 @@ pub(crate) async fn store_scanned_candidate(
 }
 
 pub(crate) fn flac() -> Vec<u8> {
-    std::fs::read(
+    bae_util::test_files::read_fixture(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
     )
-    .unwrap()
 }
 
-pub(crate) fn write_test_jpeg(path: &Path) {
+pub(crate) fn write_test_jpeg(folder: &TestFolder, path: &Path) {
     let image = ::image::RgbImage::from_pixel(1, 1, ::image::Rgb([0, 0, 0]));
-    image.save(path).unwrap();
+    let mut jpeg = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut jpeg, ::image::ImageFormat::Jpeg).unwrap();
+    folder.write(path, jpeg.into_inner());
 }

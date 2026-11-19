@@ -462,7 +462,7 @@ async fn an_unreadable_import_setting_is_the_candidates_failed_import() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
-    bae_preferences::plant_unknown_replay_gain_mode_for_test(fixture._temp.path());
+    bae_preferences::plant_unknown_replay_gain_mode_for_test(fixture.temp.path());
 
     import_when_identified(&fixture.context, &key, false).await;
 

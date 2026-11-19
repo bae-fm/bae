@@ -98,7 +98,7 @@ async fn import_list_window_cost() {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let mut held = 0;
     for n in SIZES {
-        let took = grow_import_list(&db, tmp.path(), held, n).await;
+        let took = grow_import_list(&db, &tmp, held, n).await;
         eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());
         held = n;
         measure_import_list(&db, n).await;
@@ -106,7 +106,7 @@ async fn import_list_window_cost() {
         measure_import_list_typed(&db).await;
         measure_import_list_first_selected(&db).await;
     }
-    measure_import_list_headers(tmp.path()).await;
+    measure_import_list_headers(&tmp).await;
 }
 
 /// [`import_list_window_cost`]'s reads of a text-filtered list alone, and
@@ -127,7 +127,7 @@ async fn import_list_search_window_cost() {
         // hours to fill.
         let mut took = Duration::ZERO;
         for start in (0..n).step_by(20_000) {
-            took += grow_import_list(&db, tmp.path(), start, (start + 20_000).min(n)).await;
+            took += grow_import_list(&db, &tmp, start, (start + 20_000).min(n)).await;
         }
         eprintln!("WINDOW_COST scanned n={n} in {:.1} s", took.as_secs_f64());
         let text = "Album 1";
@@ -308,7 +308,7 @@ async fn measure_import_list_first_selected(db: &Store) {
 /// at three header counts, reported under `import_list_headers`, and the
 /// same reads of lists with no group holding as many rows, named
 /// `+flat` after the order.
-async fn measure_import_list_headers(tmp: &std::path::Path) {
+async fn measure_import_list_headers(tmp: &bae_util::test_files::TestFolder) {
     let mut held = 0;
     let (grouped, _grouped_dir) = empty_db(crate::TEST_SCHEMA).await;
     for headers in [100, 1_000, 5_000] {
@@ -331,7 +331,7 @@ async fn measure_import_list_headers(tmp: &std::path::Path) {
         )
         .await;
         let (flat, flat_dir) = empty_db(crate::TEST_SCHEMA).await;
-        grow_flat_import_list(&flat, flat_dir.path(), 0, rows).await;
+        grow_flat_import_list(&flat, &flat_dir, 0, rows).await;
         eprintln!(
             "WINDOW_COST flat rows_shown={}",
             rows_shown(

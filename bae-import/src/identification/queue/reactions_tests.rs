@@ -358,7 +358,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     let fixture = Fixture::new("import-mid-pass").await;
     let remaining = fixture.disc_id_candidate("Remaining");
     let importing = fixture.disc_id_candidate("Importing");
-    std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.temp.write(importing.join("notes.txt"), "distinct candidate");
     let importing_hash = fixture.content_hash(&importing);
     let probed = fixture.probed_total_ms(&remaining);
     fixture.provider.route(
@@ -420,7 +420,7 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_queue() {
     bae_util::test_spawn::on_blocking_pool(move || entered.recv_timeout(HANG_GUARD))
         .await
         .expect("extraction reaches the artwork");
-    std::fs::remove_dir_all(&dir).unwrap();
+    fixture.temp.remove(&dir);
     // What the folder watcher does when a candidate's directory goes: read
     // the root again, which removes the candidate that is no longer there.
     fixture.rescan(&fixture.import, 0).await;

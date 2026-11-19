@@ -849,8 +849,16 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
             "cast-queue",
             "cast-queue-import".to_string(),
             |dir| {
-                bae_import::test_fixtures::write_tagged_flac(dir, "01 Track One.flac", "Track One");
-                bae_import::test_fixtures::write_tagged_flac(dir, "02 Track Two.flac", "Track Two");
+                std::fs::write(
+                    dir.join("01 Track One.flac"),
+                    bae_import::test_fixtures::tagged_flac_bytes("Track One"),
+                )
+                .unwrap();
+                std::fs::write(
+                    dir.join("02 Track Two.flac"),
+                    bae_import::test_fixtures::tagged_flac_bytes("Track Two"),
+                )
+                .unwrap();
             },
         ))
         .expect("import the release that is cast");

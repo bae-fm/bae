@@ -16,8 +16,8 @@ async fn a_track_sheet_reads_as_its_text() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_document_written_in_latin1_reads_decoded() {
-    let StoredCandidate { handle, mut candidate, key, tmp: _tmp, .. } = stored_candidate().await;
-    std::fs::write(candidate.path.join("notes.txt"), b"Caf\xE9").unwrap();
+    let StoredCandidate { handle, mut candidate, key, tmp, .. } = stored_candidate().await;
+    tmp.write(candidate.path.join("notes.txt"), b"Caf\xE9");
     candidate.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &candidate.path,
         candidate.scope,

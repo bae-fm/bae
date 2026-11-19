@@ -197,8 +197,8 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
         .await
         .unwrap();
 
-    write_disc(&root.join("Other").join("Record"), 2);
-    write_disc(&root.join("New").join("Record"), 1);
+    write_disc(&fixture.test.temp, &root.join("Other").join("Record"), 2);
+    write_disc(&fixture.test.temp, &root.join("New").join("Record"), 1);
     let folders = ["New", "Other"].into_iter().map(std::ffi::OsString::from).collect();
     read_changed_folders(root, &folders, &fixture.scan.services, &fixture.scan.cancellation).await;
 
@@ -234,7 +234,7 @@ async fn changed_folders_are_read_again_and_nothing_beside_them() {
         "the folder beside them is untouched"
     );
 
-    std::fs::remove_dir_all(root.join("New")).unwrap();
+    fixture.test.temp.remove(root.join("New"));
     read_changed_folders(
         root,
         &[std::ffi::OsString::from("New")].into_iter().collect(),
@@ -286,7 +286,7 @@ async fn scanned_root(releases: &[&str]) -> (TestService, TestScan, PathBuf) {
     let tables = test.tables().clone();
     let root = test.temp.path().join("music");
     for release in releases {
-        write_disc(&root.join(release), 1);
+        write_disc(&test.temp, &root.join(release), 1);
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -404,9 +404,9 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
     let tables = test.tables().clone();
     let root = test.temp.path().join("music");
     for disc in ["Album/Disc 1", "Album/Disc 2"] {
-        write_disc(&root.join(disc), 2);
+        write_disc(&test.temp, &root.join(disc), 2);
     }
-    std::fs::write(root.join("Album/notes.txt"), "notes").unwrap();
+    test.temp.write(root.join("Album/notes.txt"), "notes");
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     let (scan, _events) = test.scan();

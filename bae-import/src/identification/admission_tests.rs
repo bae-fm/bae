@@ -36,7 +36,7 @@ async fn a_stored_verdict_is_not_re_fetched() {
     let answered = fixture.content_hash(&dir);
 
     let renamed = fixture.root.join("Album Renamed");
-    std::fs::rename(&dir, &renamed).unwrap();
+    fixture.temp.rename(&dir, &renamed);
     assert_eq!(
         fixture.content_hash(&renamed),
         answered,
@@ -174,7 +174,7 @@ async fn a_run_leaves_out_the_signals_the_candidate_says_to_leave_out() {
     // A rip log for the disc ID and an image for the barcode, so both signals
     // are there and only the choice decides which is asked about.
     let dir = fixture.disc_id_candidate("Album");
-    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    fixture.temp.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
     let probed = fixture.probed_total_ms(&dir);
     fixture.provider.route(
         "/discid/",
@@ -349,7 +349,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     let fixture = Fixture::new("import-rescan").await;
     let remaining = fixture.disc_id_candidate("Remaining");
     let importing = fixture.disc_id_candidate("Importing");
-    std::fs::write(importing.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.temp.write(importing.join("notes.txt"), "distinct candidate");
     let probed = fixture.probed_total_ms(&remaining);
     fixture.provider.route(
         "/discid/",
@@ -455,7 +455,7 @@ async fn a_candidate_that_cannot_be_read_is_an_error_not_unanswerable() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
-    crate::tables::ImportTables::lose_scan_candidate_parts_for_test(fixture._temp.path()).await;
+    crate::tables::ImportTables::lose_scan_candidate_parts_for_test(fixture.temp.path()).await;
 
     answerable_candidate(&fixture.context, &key)
         .await

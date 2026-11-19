@@ -3,15 +3,15 @@
 use super::*;
 use crate::audio_layout::audio_units;
 use crate::audio_layout::tests::{cue_sheet_text, rows_for, scan, write_flac, write_sheet_audio};
-use std::fs;
+use bae_util::test_files::TestFolder;
 
 /// A slot nobody named commits under its file's own name. An empty title is
 /// a track that cannot be found again, and the file name is what the slot
 /// table showed on that row.
 #[test]
 fn an_unnamed_slot_is_titled_after_its_file() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("hidden track.flac"));
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "hidden track.flac");
     let files = scan(tmp.path());
 
     let track_files = resolve_track_files(
@@ -38,10 +38,9 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 /// index into the sheet, and shares one parsed analysis.
 #[test]
 fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 4);
-    fs::write(tmp.path().join("CDImage.cue"), cue_sheet_text("CDImage.flac", 4))
-        .expect("write cue");
+    let tmp = TestFolder::new();
+    write_sheet_audio(&tmp, "CDImage.flac", 4);
+    tmp.write("CDImage.cue", cue_sheet_text("CDImage.flac", 4));
     let files = scan(tmp.path());
     let rows = rows_for(audio_units(&files));
 
@@ -70,8 +69,8 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
 /// that still refuses: there are no samples to write.
 #[test]
 fn audio_that_left_the_folder_refuses() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("01.flac"));
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
     let files = scan(tmp.path());
 
     let err = resolve_track_files(

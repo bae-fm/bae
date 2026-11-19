@@ -40,9 +40,9 @@ use album::{same_names, TaggedAlbum, UnitAlbum};
 
 /// Read the embedded tags of a rip's audio files.
 ///
-/// `audio_files` is the rip's audio files in the order its tracks play; each
-/// track is numbered by its file's DISCNUMBER/TRACKNUMBER tags, else by the
-/// numbers its name starts with, else by its position.
+/// `audio_files` is the rip's audio files, in `folder`, in the order its
+/// tracks play; each track is numbered by its file's DISCNUMBER/TRACKNUMBER
+/// tags, else by the numbers its name starts with, else by its position.
 /// `folder_name` is the rip's containing folder — the album-title fallback when
 /// no file carries an ALBUM tag.
 ///
@@ -61,6 +61,7 @@ use album::{same_names, TaggedAlbum, UnitAlbum};
 /// reads a candidate's stored tag reading ([`file_metadata_values`]).
 #[cfg(test)]
 pub(crate) fn read_file_tags(
+    folder: &bae_util::test_files::TestFolder,
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
 ) -> Result<ReleaseValues, ImportError> {
@@ -73,9 +74,7 @@ pub(crate) fn read_file_tags(
     let scanned = audio_files
         .iter()
         .map(|path| -> Result<ScannedFile, ImportError> {
-            let metadata = std::fs::metadata(path).map_err(|error| ImportError::FileTags {
-                detail: format!("failed to stat {}: {error}", path.display()),
-            })?;
+            let metadata = folder.metadata(path);
             let relative_path = path
                 .file_name()
                 .map(|name| coven::path_text(Path::new(name)))

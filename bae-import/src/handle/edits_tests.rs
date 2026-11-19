@@ -620,8 +620,8 @@ async fn a_folder_image_in_a_format_no_cover_can_be_is_refused() {
     let tables = crate::tables::ImportTables::new(db.clone());
     let (mut candidate, key, _hash) = unscanned_candidate(&tables, &tmp, "Album").await;
     let scan_path = candidate.path.join("scan.bmp");
-    std::fs::write(&scan_path, b"BM").unwrap();
-    let metadata = std::fs::metadata(&scan_path).unwrap();
+    tmp.write(&scan_path, b"BM");
+    let metadata = tmp.metadata(&scan_path);
     let modified_at_ns = crate::folder_scanner::file_modified_at_ns(&scan_path, &metadata).unwrap();
     candidate.files.files.push(CandidateFile {
         file: ScannedFile::new(

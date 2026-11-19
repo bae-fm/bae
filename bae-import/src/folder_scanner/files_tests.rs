@@ -4,6 +4,7 @@
 use super::*;
 use crate::folder_scanner::tests::*;
 use bae_records::DocumentKind;
+use bae_util::test_files::TestFolder;
 
 fn mp3_with_id3_padding(padding: usize) -> Vec<u8> {
     let mut bytes = fake_mp3();
@@ -23,11 +24,11 @@ fn mp3_with_id3_padding(padding: usize) -> Vec<u8> {
 
 #[test]
 fn mp3_tag_sizes_do_not_make_uniform_audio_mixed() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let album = temp_dir.path().join("Album");
-    std::fs::create_dir(&album).unwrap();
-    std::fs::write(album.join("01.mp3"), mp3_with_id3_padding(16 * 1024)).unwrap();
-    std::fs::write(album.join("02.mp3"), mp3_with_id3_padding(64 * 1024)).unwrap();
+    temp_dir.create_folder(&album);
+    temp_dir.write(album.join("01.mp3"), mp3_with_id3_padding(16 * 1024));
+    temp_dir.write(album.join("02.mp3"), mp3_with_id3_padding(64 * 1024));
 
     let candidates = scan_valid(temp_dir.path().to_path_buf());
     let candidate = candidates.first().expect("scanner returns the album");
@@ -42,14 +43,13 @@ fn mp3_tag_sizes_do_not_make_uniform_audio_mixed() {
 
 #[test]
 fn opus_bitrate_comes_from_audio_packets_when_the_stream_has_no_declared_rate() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = TestFolder::new();
     let album = temp_dir.path().join("Album");
-    std::fs::create_dir(&album).unwrap();
-    std::fs::copy(
+    temp_dir.create_folder(&album);
+    temp_dir.copy_fixture(
         bae_audio::test_fixtures::audio_format_dir().join("placeholder-opus.opus"),
         album.join("01.opus"),
-    )
-    .unwrap();
+    );
 
     let candidates = scan_valid(temp_dir.path().to_path_buf());
     let candidate = candidates.first().expect("scanner returns the album");
@@ -129,17 +129,16 @@ fn content_hash_is_independent_of_discovery_order() {
 /// test that fails if that omission is ever reintroduced.
 #[test]
 fn content_hash_covers_audio_no_sheet_references() {
+    let tmp = TestFolder::new();
     let build = |dir: &Path, with_bonus: bool| {
-        std::fs::create_dir_all(dir).unwrap();
-        std::fs::write(dir.join("Album.flac"), fake_flac()).unwrap();
-        std::fs::write(dir.join("Album.cue"), make_cue_content("Album.flac", "Album Title"))
-            .unwrap();
+        tmp.create_folder(dir);
+        tmp.write(dir.join("Album.flac"), fake_flac());
+        tmp.write(dir.join("Album.cue"), make_cue_content("Album.flac", "Album Title"));
         if with_bonus {
-            std::fs::write(dir.join("bonus.flac"), fake_flac()).unwrap();
+            tmp.write(dir.join("bonus.flac"), fake_flac());
         }
         scan_files(dir).content_hash()
     };
-    let tmp = tempfile::tempdir().unwrap();
     let plain = build(&tmp.path().join("Plain"), false);
     let with_bonus = build(&tmp.path().join("Bonus"), true);
     assert_ne!(plain, with_bonus, "audio no sheet references must count toward the hash",);

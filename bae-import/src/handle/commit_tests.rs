@@ -8,14 +8,14 @@ use crate::tests::import::TestImport;
 use crate::ImportError;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex};
-use tempfile::TempDir;
 
 /// [`setup_test_import`] reporting its bugs to `diagnostics`.
 async fn setup_test_import_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestImport, Store, TempDir) {
+) -> (TestImport, Store, TestFolder) {
     setup_test_import_over(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -124,15 +124,16 @@ impl Drop for OpensOnDrop {
     }
 }
 
-/// A folder of two real audio files under `root`.
-fn audio_folder(root: &Path, name: &str) {
-    let folder = root.join(name);
-    std::fs::create_dir_all(&folder).unwrap();
+/// A folder of two real audio files under `root`, in `tmp`.
+fn audio_folder(tmp: &TestFolder, root: &Path, name: &str) {
+    let folder = tmp.create_folder(root.join(name));
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac");
     for (index, fixture) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].into_iter().enumerate()
     {
-        std::fs::copy(fixtures.join(fixture), folder.join(format!("{:02} Track.flac", index + 1)))
-            .unwrap();
+        tmp.copy_fixture(
+            fixtures.join(fixture),
+            folder.join(format!("{:02} Track.flac", index + 1)),
+        );
     }
 }
 
@@ -175,7 +176,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let tables = crate::tables::ImportTables::new(db);
     let (_candidate, key, _hash) = picked_candidate(&tables, &tmp, "Album").await;
     let slow_root = tmp.path().join("slow share");
-    audio_folder(&slow_root, "Other Album");
+    audio_folder(&tmp, &slow_root, "Other Album");
     let (reader, mut entered) = HeldTagReader::new();
     reader.hold(&slow_root);
     let _opens = OpensOnDrop(reader.clone());
@@ -204,13 +205,13 @@ async fn two_candidates() -> (
     tokio::sync::mpsc::UnboundedReceiver<PathBuf>,
     (crate::CandidateKey, PathBuf),
     crate::CandidateKey,
-    [TempDir; 2],
+    [TestFolder; 2],
 ) {
     let (parts, db, tmp) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let other = TempDir::new().unwrap();
+    let other = TestFolder::new();
     let (mut held_candidate, held_key, _) = unscanned_candidate(&tables, &tmp, "Held Album").await;
-    std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
+    tmp.write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO);
     held_candidate.files = crate::folder_scanner::collect_release_candidate_files_with_scope(
         &held_candidate.path,
         held_candidate.scope,

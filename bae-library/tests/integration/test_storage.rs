@@ -362,7 +362,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 
 fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     let fixture_path = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let flac_template = bae_import::test_fixtures::read_fixture(&fixture_path);
+    let flac_template = bae_util::test_files::read_fixture(&fixture_path);
     let files = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"];
     let bae_dir = dir.join(".bae");
     fs::create_dir_all(&bae_dir).expect("Failed to create .bae directory");

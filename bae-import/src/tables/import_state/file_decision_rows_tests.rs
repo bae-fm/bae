@@ -2,6 +2,7 @@
 
 use crate::tables::import_state::tests::*;
 use bae_store::test_fixtures::empty_db;
+use bae_util::test_files::TestFolder;
 
 /// A binding the user cleared survives a relaunch: it is stored under the
 /// candidate's content hash, read back from a cold database, and the scan
@@ -205,23 +206,21 @@ async fn a_disc_assignment_survives_a_relaunch() {
 }
 
 /// Two bound single-track sheets, each naming the audio beside it.
-fn two_sheet_folder() -> tempfile::TempDir {
-    let tmp = tempfile::TempDir::new().unwrap();
+fn two_sheet_folder() -> TestFolder {
+    let tmp = TestFolder::new();
     for stem in ["alpha", "beta"] {
-        std::fs::copy(
+        tmp.copy_fixture(
             bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
             tmp.path().join(format!("{stem}.flac")),
-        )
-        .unwrap();
-        std::fs::write(
+        );
+        tmp.write(
             tmp.path().join(format!("{stem}.cue")),
             format!(
                 "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
                  FILE \"{stem}.flac\" WAVE\n  TRACK 01 AUDIO\n    \
                  TITLE \"Track Title\"\n    INDEX 01 00:00:00\n",
             ),
-        )
-        .unwrap();
+        );
     }
     tmp
 }

@@ -6,6 +6,7 @@ use super::*;
 use crate::service::tests::{setup_import_service, TestService};
 use crate::watching::WatchReport;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 
 /// Scan dependencies over the test service's library, with a folder-state
 /// commit lock of their own.
@@ -77,12 +78,12 @@ impl crate::folder_scanner::DirectoryReader for RecordingListing {
 }
 
 /// `count` playable FLAC files in `folder`, named `01.flac` onwards.
-pub(crate) fn write_disc(folder: &Path, count: usize) {
-    std::fs::create_dir_all(folder).unwrap();
+pub(crate) fn write_disc(tmp: &TestFolder, folder: &Path, count: usize) {
+    tmp.create_folder(folder);
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
     for track in 1..=count {
-        std::fs::copy(&fixture, folder.join(format!("{track:02}.flac"))).unwrap();
+        tmp.copy_fixture(&fixture, folder.join(format!("{track:02}.flac")));
     }
 }
 
@@ -101,9 +102,9 @@ impl DecisionFixture {
         let test = setup_import_service().await;
         let root = test.temp.path().join("music");
         for disc in discs {
-            write_disc(&root.join("Artist").join("Album").join(disc), tracks);
+            write_disc(&test.temp, &root.join("Artist").join("Album").join(disc), tracks);
         }
-        write_disc(&root.join("Other").join("Record"), 1);
+        write_disc(&test.temp, &root.join("Other").join("Record"), 1);
         let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
         test.tables().add_watched_import_folder(&root).await.unwrap();
         let listing = Arc::new(RecordingListing::default());
@@ -209,7 +210,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let test = setup_import_service().await;
     let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
-    std::fs::create_dir(&root).unwrap();
+    test.temp.create_folder(&root);
     tables.add_watched_import_folder(&root).await.unwrap();
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx, bae_diagnostics::Diagnostics::noop()));

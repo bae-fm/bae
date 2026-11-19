@@ -814,13 +814,13 @@ mod write_cost;
 /// store it as a valid candidate, and return its content hash.
 pub(crate) async fn stored_folder(
     db: &bae_store::Store,
+    tmp: &bae_util::test_files::TestFolder,
     root: &std::path::Path,
     name: &str,
-    setup: impl FnOnce(&std::path::Path),
+    setup: impl FnOnce(&bae_util::test_files::TestFolder, &std::path::Path),
 ) -> String {
-    let folder = root.join(name);
-    std::fs::create_dir_all(&folder).unwrap();
-    setup(&folder);
+    let folder = tmp.create_folder(root.join(name));
+    setup(tmp, &folder);
     let files = crate::mapping::tests::scan(&folder);
     let candidate = crate::folder_scanner::FolderCandidate {
         path: folder.clone(),

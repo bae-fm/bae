@@ -61,7 +61,7 @@ async fn a_transport_failure_is_stored() {
 async fn a_settled_run_with_no_artwork_keeps_the_folders_own_cover() {
     let fixture = Fixture::new("keeps-folder-cover").await;
     let dir = fixture.disc_id_candidate("Album");
-    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    fixture.temp.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
     let probed = fixture.probed_total_ms(&dir);
     let lengths = [probed / 2, probed - probed / 2];
     fixture.provider.route("/discid/", 200, discid_json("mb-bare-1", "rg-bare-1", &lengths));
@@ -303,7 +303,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         barcode: PAIRED_BARCODE.to_string(),
     }));
     let dir = fixture.disc_id_candidate("From Disc Id And Barcode");
-    std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    fixture.temp.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
     let probed = fixture.probed_total_ms(&dir);
 
     fixture.provider.route(

@@ -28,10 +28,10 @@ async fn regrouping_disc_folders_probes_each_audio_file_once() {
     let album = root.join("Album");
     let mut tracks = Vec::new();
     for disc in ["CD1", "CD2"] {
-        std::fs::create_dir_all(album.join(disc)).unwrap();
+        test.temp.create_folder(album.join(disc));
         for n in 1..=2 {
             let path = album.join(disc).join(format!("0{n}.flac"));
-            std::fs::write(&path, flac()).unwrap();
+            test.temp.write(&path, flac());
             tracks.push(path);
         }
     }
@@ -95,7 +95,7 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
     let broken = root.join("Broken");
     let set = root.join("Set");
     for folder in [&album, &broken, &set.join("Live One"), &set.join("Live Two")] {
-        std::fs::create_dir_all(folder).unwrap();
+        test.temp.create_folder(folder);
     }
     let mut tracks = Vec::new();
     for track in [
@@ -105,18 +105,17 @@ async fn readable_root(test: &TestService) -> ReadableFiles {
         set.join("Live One").join("01.flac"),
         set.join("Live Two").join("01.flac"),
     ] {
-        std::fs::write(&track, flac()).unwrap();
+        test.temp.write(&track, flac());
         tracks.push(track);
     }
-    std::fs::write(broken.join("02.flac"), b"").unwrap();
-    std::fs::write(broken.join("03.flac"), vec![7u8; 4096]).unwrap();
+    test.temp.write(broken.join("02.flac"), b"");
+    test.temp.write(broken.join("03.flac"), vec![7u8; 4096]);
     tracks.push(broken.join("03.flac"));
-    write_test_jpeg(&album.join("cover.jpg"));
-    std::fs::write(album.join("back.png"), vec![0u8; 64]).unwrap();
-    write_test_jpeg(&set.join("booklet.jpg"));
+    write_test_jpeg(&test.temp, &album.join("cover.jpg"));
+    test.temp.write(album.join("back.png"), vec![0u8; 64]);
+    write_test_jpeg(&test.temp, &set.join("booklet.jpg"));
     let sheet = album.join("album.cue");
-    std::fs::write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n")
-        .unwrap();
+    test.temp.write(&sheet, "FILE \"01.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n");
     let root = crate::tables::watched_path::canonical_absolute_root(&root).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
     ReadableFiles {
@@ -196,9 +195,9 @@ async fn a_rescan_of_an_unchanged_multi_disc_album_reads_none_of_its_files() {
     let watched = test.temp.path().join("watched");
     for disc in ["Disc 1", "Disc 2"] {
         let folder = watched.join("Album").join(disc);
-        std::fs::create_dir_all(&folder).unwrap();
+        test.temp.create_folder(&folder);
         for n in 1..=2 {
-            std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
+            test.temp.write(folder.join(format!("0{n}.flac")), flac());
         }
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
@@ -251,10 +250,8 @@ async fn a_rescan_reads_again_only_the_file_that_changed() {
         test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
     scan.rescan(&files.root).await.unwrap();
     let changed = files.album.join("02.flac");
-    std::fs::File::options()
-        .write(true)
-        .open(&changed)
-        .unwrap()
+    test.temp
+        .open_with(&changed, std::fs::OpenOptions::new().write(true))
         .set_times(
             std::fs::FileTimes::new()
                 .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)),
@@ -303,9 +300,9 @@ async fn a_rescan_reads_no_track_whose_tags_do_not_parse() {
     let test = setup_import_service().await;
     let watched = test.temp.path().join("watched");
     let album = watched.join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    test.temp.create_folder(&album);
     for name in ["01.flac", "02.flac"] {
-        std::fs::write(album.join(name), flac()).unwrap();
+        test.temp.write(album.join(name), flac());
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
@@ -336,10 +333,10 @@ async fn a_track_whose_tags_do_not_parse_leaves_the_others_to_seed_the_draft() {
     let tables = test.tables().clone();
     let watched = test.temp.path().join("watched");
     let album = watched.join("Candidate");
-    std::fs::create_dir_all(&album).unwrap();
+    test.temp.create_folder(&album);
     for name in TAGGED_FLAC_FIXTURES {
-        std::fs::copy(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name))
-            .unwrap();
+        test.temp
+            .copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name));
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     tables.add_watched_import_folder(&root).await.unwrap();
@@ -408,9 +405,9 @@ async fn a_track_that_cannot_be_read_fails_the_pass_and_is_read_again() {
     let test = setup_import_service().await;
     let watched = test.temp.path().join("watched");
     let album = watched.join("Album");
-    std::fs::create_dir_all(&album).unwrap();
+    test.temp.create_folder(&album);
     for name in ["01.flac", "02.flac"] {
-        std::fs::write(album.join(name), flac()).unwrap();
+        test.temp.write(album.join(name), flac());
     }
     let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     test.tables().add_watched_import_folder(&root).await.unwrap();
@@ -463,7 +460,7 @@ async fn a_release_whose_tracks_did_not_change_keeps_their_stored_tags() {
     let album_key = crate::CandidateKey::folder(&files.album);
     scan.rescan(&files.root).await.unwrap();
     let reading = tables.load_candidate_file_tag_snapshot(&album_key).await.unwrap().unwrap();
-    std::fs::write(files.album.join("notes.txt"), "Rip notes").unwrap();
+    test.temp.write(files.album.join("notes.txt"), "Rip notes");
     let before = files.reads(&tags);
 
     scan.rescan(&files.root).await.unwrap();
@@ -497,13 +494,11 @@ async fn folders_whose_files_hash_alike_each_keep_their_tags() {
     let modified =
         std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
     for folder in ["First", "Second"] {
-        std::fs::create_dir_all(watched.join(folder)).unwrap();
+        test.temp.create_folder(watched.join(folder));
         let track = watched.join(folder).join("01.flac");
-        std::fs::write(&track, flac()).unwrap();
-        std::fs::File::options()
-            .write(true)
-            .open(&track)
-            .unwrap()
+        test.temp.write(&track, flac());
+        test.temp
+            .open_with(&track, std::fs::OpenOptions::new().write(true))
             .set_times(std::fs::FileTimes::new().set_modified(modified))
             .unwrap();
     }
@@ -566,20 +561,20 @@ async fn a_first_scan_reads_each_tracks_tags_once() {
     let mut tracks = Vec::new();
     for disc in ["CD1", "CD2"] {
         let folder = watched.join("Album").join(disc);
-        std::fs::create_dir_all(&folder).unwrap();
+        test.temp.create_folder(&folder);
         for n in 1..=2 {
-            std::fs::write(folder.join(format!("0{n}.flac")), flac()).unwrap();
+            test.temp.write(folder.join(format!("0{n}.flac")), flac());
             tracks.push(format!("Album/{disc}/0{n}.flac"));
         }
     }
     let picture_path = test.temp.path().join("picture.jpg");
-    write_test_jpeg(&picture_path);
+    write_test_jpeg(&test.temp, &picture_path);
     let root = crate::tables::watched_path::canonical_absolute_root(&watched).unwrap();
     let root_key = root.to_path_buf();
     tables.add_watched_import_folder(std::path::Path::new(&root_key)).await.unwrap();
     let tags = Arc::new(EmbeddingTagReader {
         counted: CountingTagReader::default(),
-        picture: std::fs::read(&picture_path).unwrap(),
+        picture: test.temp.read(&picture_path),
     });
     let (scan, _) =
         test.scan_with(tags.clone(), Arc::new(crate::folder_scanner::OsDirectoryReader));
@@ -627,9 +622,9 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     let root = test.temp.path().join("watched");
     for album in ["Artist - One", "Artist - Two"] {
         let album = root.join(album);
-        std::fs::create_dir_all(&album).unwrap();
-        std::fs::write(album.join("01.flac"), flac()).unwrap();
-        std::fs::write(album.join("02.flac"), flac()).unwrap();
+        test.temp.create_folder(&album);
+        test.temp.write(album.join("01.flac"), flac());
+        test.temp.write(album.join("02.flac"), flac());
     }
     tables.add_watched_import_folder(&root).await.unwrap();
 
@@ -642,7 +637,7 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     assert_eq!(announced_candidates(&mut events), Vec::<String>::new());
 
     // And a folder that did change still announces — once, and only itself.
-    std::fs::write(root.join("Artist - Two").join("03.flac"), flac()).unwrap();
+    test.temp.write(root.join("Artist - Two").join("03.flac"), flac());
     pass().await;
 
     assert_eq!(announced_candidates(&mut events), vec!["Artist - Two"]);
@@ -687,10 +682,10 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
     let tables = test.tables().clone();
     let root = test.temp.path().join("watched");
     let album = root.join("Candidate");
-    std::fs::create_dir_all(&album).unwrap();
+    test.temp.create_folder(&album);
     for name in TAGGED_FLAC_FIXTURES {
-        std::fs::copy(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name))
-            .unwrap();
+        test.temp
+            .copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(name), album.join(name));
     }
     let root_text = root.to_string_lossy().into_owned();
     tables.add_watched_import_folder(std::path::Path::new(&root_text)).await.unwrap();
@@ -769,7 +764,7 @@ async fn only_a_release_found_while_automatic_is_on_is_identified_on_its_own() {
 
     fixture.set_identify_automatically(false).await;
     let off = fixture.disc_id_candidate("Found While Off");
-    std::fs::write(off.join("notes.txt"), "a candidate of its own").unwrap();
+    fixture.temp.write(off.join("notes.txt"), "a candidate of its own");
     fixture.rescan(&fixture.import, 2).await;
     fixture.drain_automatic().await;
 
@@ -833,7 +828,7 @@ async fn a_rescan_queues_no_candidate_it_had_found() {
     fixture.drain_automatic().await;
 
     fixture.rescan(&fixture.import, 1).await;
-    std::fs::write(dir.join("notes.txt"), "a file added under the same folder").unwrap();
+    fixture.temp.write(dir.join("notes.txt"), "a file added under the same folder");
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
 
@@ -904,7 +899,7 @@ async fn a_takeover_queues_only_a_release_new_to_the_parent() {
     fixture.set_identify_automatically(true).await;
 
     let new = fixture.disc_id_candidate("New Album");
-    std::fs::write(new.join("notes.txt"), "a candidate of its own").unwrap();
+    fixture.temp.write(new.join("notes.txt"), "a candidate of its own");
     fixture.import.add_watched_folder(fixture.root.clone()).await.unwrap();
     // Answered once the parent's read, which follows the takeover, is over.
     fixture.read_root(&fixture.import, &fixture.root).await;
@@ -965,7 +960,7 @@ async fn changed_files_retire_the_result_and_wait_for_a_person() {
 
     let asked = fixture.provider.count_containing("/discid/");
 
-    std::fs::write(dir.join("notes.txt"), "the folder changed").unwrap();
+    fixture.temp.write(dir.join("notes.txt"), "the folder changed");
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
 

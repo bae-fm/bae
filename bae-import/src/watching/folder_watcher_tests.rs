@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 
 /// Which watch a call reached — the root it was started for, and the
 /// how-manyth watch it was — and the call.
@@ -294,16 +295,16 @@ fn reinstall_puts_back_what_uninstall_stopped() {
 /// takes the folder's events along.
 #[tokio::test]
 async fn a_written_file_arrives_as_its_folders_batch() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = TestFolder::new();
     let root = temp.path().to_path_buf();
     let album = root.join("Album");
-    std::fs::create_dir(&album).unwrap();
+    temp.create_folder(&album);
     let (fs_tx, mut fs_rx) = mpsc::unbounded_channel();
     let watcher = FolderWatcher::new(fs_tx, bae_diagnostics::Diagnostics::noop());
     watcher.install_directory(&root, &root).unwrap();
     watcher.install_directory(&root, &album).unwrap();
 
-    std::fs::write(album.join("01.flac"), b"audio").unwrap();
+    temp.write(album.join("01.flac"), b"audio");
 
     let deadline = tokio::time::Instant::now() + bae_util::test_channels::HANG_GUARD;
     loop {

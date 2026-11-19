@@ -15,7 +15,7 @@ use bae_catalogs::test_releases::seed_mb_release_with_catalog;
 use bae_catalogs::test_releases::{discogs_release_json, mb_release_json, mb_titled_release_json};
 use bae_store::{DbError, ListWindow};
 use bae_util::test_channels::HANG_GUARD;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// What the list under one filter entry shows, as its window and its filter
 /// entries last delivered them: the keys of its rows, and each entry's count.
@@ -222,7 +222,7 @@ struct OnePage {
 async fn one_row_on_the_page(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (ImportServiceHandle, TempDir, OnePage, crate::CandidateKey, crate::CandidateKey) {
+) -> (ImportServiceHandle, TestFolder, OnePage, crate::CandidateKey, crate::CandidateKey) {
     let (parts, db, tmp) = setup_test_import_with(providers, http).await;
     let tables = crate::tables::ImportTables::new(db);
     let (first, first_key, _) = unscanned_candidate(&tables, &tmp, "Album").await;
@@ -811,7 +811,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let fixture = Fixture::new("live-state-off-the-page").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
-    std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.temp.write(second.join("notes.txt"), "distinct candidate");
     fixture.scan(2).await;
 
     let tables = &fixture.import.services.tables;
@@ -916,7 +916,7 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     let fixture = Fixture::new("verdict-off-the-page").await;
     let first = fixture.disc_id_candidate("First");
     let second = fixture.disc_id_candidate("Second");
-    std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.temp.write(second.join("notes.txt"), "distinct candidate");
     fixture.set_identify_automatically(false).await;
     fixture.scan(2).await;
 

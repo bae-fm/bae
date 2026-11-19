@@ -20,6 +20,7 @@ use bae_records::DbArtist;
 use bae_store::test_fixtures::empty_db;
 use bae_store::test_fixtures::fixed_now;
 use bae_store::Store;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -391,16 +392,17 @@ pub(crate) fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
 
 /// A twelve-track sheet written against a WAV, the FLAC it was encoded to,
 /// and the rip log.
-pub(crate) fn walkthrough_folder() -> tempfile::TempDir {
-    let tmp = tempfile::TempDir::new().unwrap();
+pub(crate) fn walkthrough_folder() -> TestFolder {
+    let tmp = TestFolder::new();
     let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    std::fs::copy(
+    tmp.copy_fixture(
         bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac"),
         tmp.path().join("cd.flac"),
-    )
-    .unwrap();
-    std::fs::copy(fixtures.join("tests/fixtures/logs/test_album.log"), tmp.path().join("rip.log"))
-        .unwrap();
+    );
+    tmp.copy_fixture(
+        fixtures.join("tests/fixtures/logs/test_album.log"),
+        tmp.path().join("rip.log"),
+    );
     let mut cue =
         String::from("PERFORMER \"Test Artist\"\nTITLE \"Album\"\nFILE \"cd.wav\" WAVE\n");
     for track in 1..=12 {
@@ -409,7 +411,7 @@ pub(crate) fn walkthrough_folder() -> tempfile::TempDir {
             track - 1,
         ));
     }
-    std::fs::write(tmp.path().join("cd.cue"), cue).unwrap();
+    tmp.write("cd.cue", cue);
     tmp
 }
 

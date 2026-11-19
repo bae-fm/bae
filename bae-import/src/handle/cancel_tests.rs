@@ -6,17 +6,17 @@
 use super::*;
 use crate::handle::tests::*;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 /// Two picked candidates with their artists named, on one handle: enough to
 /// have one import running while another waits behind it.
 async fn two_importable(
-) -> (ImportServiceHandle, [TempDir; 2], crate::CandidateKey, crate::CandidateKey) {
+) -> (ImportServiceHandle, [TestFolder; 2], crate::CandidateKey, crate::CandidateKey) {
     let (parts, db, tmp) = setup_test_import().await;
     let tables = crate::tables::ImportTables::new(db);
-    let other = TempDir::new().unwrap();
+    let other = TestFolder::new();
     let (_, first, _) = picked_candidate(&tables, &tmp, "First Album").await;
     let (_, second, _) = picked_candidate(&tables, &other, "Second Album").await;
     let handle = parts.start().await.unwrap();
@@ -322,8 +322,10 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     let (handle, tmp, key, _) = two_importable().await;
     let library_dir = tmp[0].path().to_path_buf();
     let mut before = store_state(&handle, &library_dir).await;
-    let blocked =
-        crate::tests::files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
+    let blocked = crate::tests::files::UnopenableFile::block(
+        &tmp[0],
+        &key.test_folder().join("02 Track.flac"),
+    );
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
     await_import_outcome(&mut events, &import_id)
@@ -387,8 +389,10 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
 async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     let (handle, tmp, key, _) = two_importable().await;
     let library_dir = tmp[0].path().to_path_buf();
-    let blocked =
-        crate::tests::files::UnopenableFile::block(&key.test_folder().join("02 Track.flac"));
+    let blocked = crate::tests::files::UnopenableFile::block(
+        &tmp[0],
+        &key.test_folder().join("02 Track.flac"),
+    );
     let mut events = handle.every_event();
     let failed = handle.start_import(&key).await.unwrap().expect_queued();
     let error = await_import_outcome(&mut events, &failed)

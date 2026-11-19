@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 use std::time::{Duration, UNIX_EPOCH};
 
 fn at(seconds: u64) -> Option<SystemTime> {
@@ -44,7 +45,7 @@ fn unavailable_creation_time_is_absent_but_io_errors_propagate() {
 
 #[test]
 fn reads_an_existing_folder_and_reports_a_missing_one() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = TestFolder::new();
     let date = FolderDate::read(directory.path()).unwrap();
     #[cfg(target_os = "macos")]
     assert!(matches!(date, Some(FolderDate::AddedToDirectory(_))), "{date:?}");
@@ -57,8 +58,8 @@ fn reads_an_existing_folder_and_reports_a_missing_one() {
 #[cfg(target_os = "macos")]
 #[test]
 fn a_folder_read_alone_has_the_dates_its_batch_gives() {
-    let root = tempfile::tempdir().unwrap();
-    std::fs::create_dir(root.path().join("One")).unwrap();
+    let root = TestFolder::new();
+    root.create_folder(root.path().join("One"));
     let alone = FolderTimes::read(&root.path().join("One")).unwrap();
     let batch = attributes::read_directory(root.path()).unwrap();
     assert_eq!(batch[std::ffi::OsStr::new("One")], alone);
@@ -87,9 +88,9 @@ fn folders_listed_with_no_dates_keep_their_order() {
 
 #[test]
 fn reads_every_folder_and_leaves_a_missing_one_undated() {
-    let root = tempfile::tempdir().unwrap();
+    let root = TestFolder::new();
     for name in ["One", "Two"] {
-        std::fs::create_dir(root.path().join(name)).unwrap();
+        root.create_folder(root.path().join(name));
     }
     let folders = [PathBuf::from("One"), PathBuf::from("Missing"), PathBuf::from("Two")];
     let times = times_of_folders(root.path(), &folders, &ScanCancellation::new()).unwrap();
@@ -102,7 +103,7 @@ fn reads_every_folder_and_leaves_a_missing_one_undated() {
 
 #[test]
 fn a_cancelled_pass_reads_no_dates() {
-    let root = tempfile::tempdir().unwrap();
+    let root = TestFolder::new();
     let cancellation = ScanCancellation::new();
     cancellation.cancel();
     assert!(matches!(
@@ -117,25 +118,19 @@ fn a_cancelled_pass_reads_no_dates() {
 #[cfg(target_os = "macos")]
 #[test]
 fn a_folder_moved_in_later_is_walked_before_one_modified_later() {
-    let place = tempfile::tempdir().unwrap();
+    let place = TestFolder::new();
     let root = place.path().join("Library");
-    std::fs::create_dir(&root).unwrap();
+    place.create_folder(&root);
     // Made outside the root first, with an old modified date.
     let elsewhere = place.path().join("Arrives Later");
-    std::fs::create_dir(&elsewhere).unwrap();
-    std::fs::File::open(&elsewhere)
-        .unwrap()
-        .set_modified(UNIX_EPOCH + Duration::from_secs(1_000_000_000))
-        .unwrap();
+    place.create_folder(&elsewhere);
+    place.open(&elsewhere).set_modified(UNIX_EPOCH + Duration::from_secs(1_000_000_000)).unwrap();
     // Made in the root, with a modified date newer than the moved folder's
     // but before either was made.
     let already = root.join("Already There");
-    std::fs::create_dir(&already).unwrap();
-    std::fs::File::open(&already)
-        .unwrap()
-        .set_modified(SystemTime::now() - Duration::from_secs(3_600))
-        .unwrap();
-    std::fs::rename(&elsewhere, root.join("Arrives Later")).unwrap();
+    place.create_folder(&already);
+    place.open(&already).set_modified(SystemTime::now() - Duration::from_secs(3_600)).unwrap();
+    place.rename(&elsewhere, root.join("Arrives Later"));
 
     let folders = [PathBuf::from("Already There"), PathBuf::from("Arrives Later")];
     let times = times_of_folders(&root, &folders, &ScanCancellation::new()).unwrap();

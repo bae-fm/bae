@@ -10,14 +10,15 @@ use crate::ImportError;
 use bae_audio::ProbeResult;
 use bae_records::DbTrack;
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 use coven::SequentialIds;
 use std::sync::Arc;
 
 #[test]
 fn cross_file_index00_uses_the_previous_files_tail_as_pregap() {
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("album.cue");
-    std::fs::write(
+    temp.write(
         &cue_path,
         r#"FILE "first.flac" WAVE
   TRACK 01 AUDIO
@@ -27,8 +28,7 @@ INDEX 00 00:08:00
 FILE "second.flac" WAVE
 INDEX 01 00:00:00
 "#,
-    )
-    .expect("write cue");
+    );
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
     let make_probe = |seconds| ProbeResult {
@@ -91,9 +91,9 @@ fn cue_backed_segments_emit_audio_pregap_byte_window() {
     // A synthetic CUE over the real container: track 2 carries a genuine
     // audio pregap (INDEX 00 at 0:20, after track 1's INDEX 01 at 0:00). All
     // positions sit inside the ~1:30 fixture so every seek lands.
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("Test Album.cue");
-    std::fs::write(
+    temp.write(
         &cue_path,
         r#"PERFORMER "Test Artist"
 TITLE "Test Album"
@@ -109,8 +109,7 @@ INDEX 01 00:30:00
 TITLE "Track Three"
 INDEX 01 01:00:00
 "#,
-    )
-    .expect("write cue");
+    );
 
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
@@ -224,13 +223,13 @@ INDEX 01 01:00:00
 #[test]
 fn cue_backed_segments_ignore_rejected_index00_boundaries() {
     bae_audio::init();
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("Album.cue");
     let audio_path = temp.path().join("test.wav");
     let samples: Vec<i32> = (0..12 * 60 * 75 * 2)
         .map(|i| (((i / 2) as f64 * 0.3).sin() * 0.3 * i32::MAX as f64) as i32)
         .collect();
-    std::fs::write(
+    temp.write(
         &audio_path,
         bae_audio::encode_i32(
             bae_audio::EncodeFormat::PcmWav { bits_per_sample: 16 },
@@ -239,9 +238,8 @@ fn cue_backed_segments_ignore_rejected_index00_boundaries() {
             2,
         )
         .expect("encode the image"),
-    )
-    .expect("write the image");
-    std::fs::write(
+    );
+    temp.write(
         &cue_path,
         r#"PERFORMER "Artist Name"
 TITLE "Album Title"
@@ -262,8 +260,7 @@ TITLE "Track Four"
 INDEX 00 05:05:00
 INDEX 01 11:01:30
 "#,
-    )
-    .expect("write cue");
+    );
 
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
@@ -331,14 +328,13 @@ INDEX 01 11:01:30
 /// window.
 #[test]
 fn a_slice_before_a_data_track_ends_where_the_data_starts() {
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("album.cue");
-    std::fs::write(
+    temp.write(
         &cue_path,
         "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
          TRACK 02 MODE1/2352\n    INDEX 01 00:05:00\n",
-    )
-    .expect("write cue");
+    );
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
     let path = temp.path().join("image.flac");
@@ -403,7 +399,7 @@ impl bae_audio::DecodedSink for CollectedSamples {
 #[test]
 fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
     bae_audio::init();
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let sample_rate = 44_100u64;
     // Two seconds: 150 CD frames of 588 samples each.
     let first_len = 2 * sample_rate;
@@ -423,10 +419,10 @@ fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
     let first_path = temp.path().join("first.flac");
     let second_path = temp.path().join("second.flac");
     let first = flac_of(first_len);
-    std::fs::write(&first_path, &first).expect("write first.flac");
-    std::fs::write(&second_path, flac_of(sample_rate)).expect("write second.flac");
+    temp.write(&first_path, &first);
+    temp.write(&second_path, flac_of(sample_rate));
     let cue_path = temp.path().join("album.cue");
-    std::fs::write(
+    temp.write(
         &cue_path,
         r#"FILE "first.flac" WAVE
   TRACK 01 AUDIO
@@ -436,8 +432,7 @@ fn a_pregap_in_the_final_frames_of_the_file_before_gets_its_byte() {
 FILE "second.flac" WAVE
     INDEX 01 00:00:00
 "#,
-    )
-    .expect("write cue");
+    );
 
     let probe = |path: &std::path::Path| {
         bae_audio::probe_audio_from_path(path, bae_util::test_files::place()).expect("probe")
@@ -544,8 +539,8 @@ impl bae_audio::DecodedSink for PacketPlaces {
 /// is the frame its first sample is in, as a decode from the stream's start
 /// places its frames.
 fn assert_track_start_is_its_frame(name: &str, format: bae_audio::EncodeFormat) {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let (bytes, segments) = cue_image(temp.path(), name, format);
+    let temp = TestFolder::new();
+    let (bytes, segments) = cue_image(&temp, name, format);
     let track2 =
         segments.iter().find(|segment| segment.start_sample > 0).expect("track 2's segment");
 
@@ -607,16 +602,14 @@ fn an_aac_image_tracks_start_byte_is_the_frame_holding_its_first_sample() {
 #[test]
 fn an_image_whose_track_starts_cannot_be_read_fails_the_import() {
     bae_audio::init();
-    let temp = tempfile::tempdir().expect("tempdir");
+    let temp = TestFolder::new();
     let cue_path = temp.path().join("album.cue");
-    std::fs::write(
+    temp.write(
         &cue_path,
         "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
          TRACK 02 AUDIO\n    INDEX 01 00:05:00\n",
-    )
-    .expect("write cue");
-    let path = temp.path().join("image.flac");
-    std::fs::write(&path, b"bytes FFmpeg reads as no audio").expect("write image");
+    );
+    let path = temp.write("image.flac", b"bytes FFmpeg reads as no audio");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
             .expect("parse cue"),
@@ -708,7 +701,8 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     let tracks = cue_backed_tracks(dir);
     assert_eq!(tracks.len(), 3, "fixture is a 3-track single-file CUE album");
 
-    let file_size = std::fs::metadata(format!("{dir}/Test Album.ape")).unwrap().len();
+    let file_size =
+        bae_util::test_files::read_fixture(format!("{dir}/Test Album.ape")).len() as u64;
     let mut file_ids = HashMap::new();
     file_ids.insert(PathBuf::from(format!("{dir}/Test Album.ape")), "file-1".to_string());
 
@@ -741,12 +735,12 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
     assert_eq!(main_segments[2].start_byte, Some(e1), "track 3 starts where track 2 ends");
 }
 
-/// Ten seconds of a stereo tone encoded as `format`, written into `dir` as
+/// Ten seconds of a stereo tone encoded as `format`, written into `folder` as
 /// `name` with a CUE sheet that starts track 2 three seconds in. Returns the
 /// image's bytes and the segments import builds for its two tracks: track 1
 /// first, then track 2, each in the file `"image"`.
 fn cue_image(
-    dir: &std::path::Path,
+    folder: &TestFolder,
     name: &str,
     format: bae_audio::EncodeFormat,
 ) -> (Vec<u8>, Vec<bae_records::DbAudioSegment>) {
@@ -754,17 +748,14 @@ fn cue_image(
         .map(|i| (((i / 2) as f64 * 0.031).sin() * 0.3 * i32::MAX as f64) as i32)
         .collect();
     let bytes = bae_audio::encode_i32(format, &samples, 44_100, 2).expect("encode the image");
-    let path = dir.join(name);
-    std::fs::write(&path, &bytes).expect("write the image");
-    let cue_path = dir.join(format!("{name}.cue"));
-    std::fs::write(
-        &cue_path,
+    let path = folder.write(name, &bytes);
+    let cue_path = folder.write(
+        format!("{name}.cue"),
         format!(
             "FILE \"{name}\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
              TRACK 02 AUDIO\n    INDEX 01 00:03:00\n"
         ),
-    )
-    .expect("write the cue");
+    );
     let probe =
         bae_audio::probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {

@@ -7,13 +7,12 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::ScanEvent;
 use bae_identify::signals::ArtworkScan;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
-use tempfile::TempDir;
 
 /// Canned text lines keyed by file name; the optional gate holds each image
 /// until the test opens it, so a test can act mid-OCR.
@@ -109,8 +108,8 @@ pub(super) async fn collect_snapshots(
 }
 
 /// A throwaway library records over a temp dir, which must outlive it.
-pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
-    let tmp = TempDir::new().unwrap();
+pub(super) async fn make_database() -> (bae_store::Store, TestFolder) {
+    let tmp = TestFolder::new();
     let db =
         bae_store::Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
             .await
@@ -121,7 +120,7 @@ pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
 /// Start a service; the bus sender comes back so a test can inject events.
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(super) async fn make_service(
-) -> (ExtractionService, ImportEventBus, crate::ImportEvents, TempDir) {
+) -> (ExtractionService, ImportEventBus, crate::ImportEvents, TestFolder) {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
@@ -141,11 +140,11 @@ pub(super) async fn make_service(
 
 /// Start a service with `analyzer` registered and an extraction running over
 /// `folder` as `"cand-1"`, with the watch its run holds open until it ends.
-/// The `TempDir` must outlive the service.
+/// The `TestFolder` must outlive the service.
 pub(super) async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
-) -> (ExtractionService, crate::ImportEvents, crate::extraction::ExtractionWatch, TempDir) {
+) -> (ExtractionService, crate::ImportEvents, crate::extraction::ExtractionWatch, TestFolder) {
     let (handle, _tx, rx, lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
     let run = handle.start(
@@ -157,8 +156,10 @@ pub(super) async fn start_signals(
 }
 
 pub(super) fn fixture_flac() -> Vec<u8> {
-    std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/flac/01 Test Track 1.flac"))
-        .expect("read FLAC fixture")
+    bae_util::test_files::read_fixture(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/flac/01 Test Track 1.flac"
+    ))
 }
 
 /// Just the JPEG magic — enough for `is_valid_image` to accept it.
@@ -168,19 +169,19 @@ pub(super) fn minimal_jpeg() -> Vec<u8> {
 
 /// A release folder holding one FLAC plus the given images and documents.
 pub(super) fn build_release(
-    tmp: &TempDir,
+    tmp: &TestFolder,
     folder_name: &str,
     images: &[&str],
     documents: &[(&str, &str)],
 ) -> PathBuf {
     let folder = tmp.path().join(folder_name);
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("01 - Track.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("01 - Track.flac"), fixture_flac());
     for img in images {
-        fs::write(folder.join(img), minimal_jpeg()).unwrap();
+        tmp.write(folder.join(img), minimal_jpeg());
     }
     for (name, content) in documents {
-        fs::write(folder.join(name), content.as_bytes()).unwrap();
+        tmp.write(folder.join(name), content.as_bytes());
     }
     folder
 }
@@ -243,7 +244,7 @@ pub(super) fn settled(signals: &Signals) -> bool {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn no_artwork_emits_one_settled_snapshot() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
@@ -268,10 +269,10 @@ async fn no_artwork_emits_one_settled_snapshot() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn cue_fields_land_in_fast_pass() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
     let cue = r#"PERFORMER "Artist Alpha"
 TITLE "Album Title A"
 FILE "audio.flac" WAVE
@@ -280,7 +281,7 @@ FILE "audio.flac" WAVE
     TITLE "Track One"
     INDEX 01 00:00:00
 "#;
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
@@ -305,10 +306,10 @@ FILE "audio.flac" WAVE
 #[tokio::test(flavor = "multi_thread")]
 async fn cue_catalog_becomes_barcode() {
     // A CUE `CATALOG` is the disc's UPC/EAN: a barcode, not a catalog number.
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
     let cue = "CATALOG 0075678164521\n\
 PERFORMER \"Artist Alpha\"\n\
 TITLE \"Album Title A\"\n\
@@ -316,7 +317,7 @@ FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     TITLE \"Track One\"\n    \
     INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
@@ -333,10 +334,10 @@ FILE \"audio.flac\" WAVE\n  \
 #[tokio::test(flavor = "multi_thread")]
 async fn an_all_zero_cue_catalog_is_not_a_barcode() {
     // An unfilled `CATALOG` of zeros is a placeholder, not a barcode.
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
     let cue = "CATALOG 0000000000000\n\
 PERFORMER \"Artist Alpha\"\n\
 TITLE \"Album Title A\"\n\
@@ -344,7 +345,7 @@ FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     TITLE \"Track One\"\n    \
     INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
@@ -361,15 +362,15 @@ FILE \"audio.flac\" WAVE\n  \
 /// A `CATALOG` whose check digit fails is not a code to look up.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_cue_catalog_whose_check_digit_fails_is_not_a_barcode() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Some Folder");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
     let cue = "CATALOG 5012345678901\n\
 FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
@@ -386,7 +387,7 @@ FILE \"audio.flac\" WAVE\n  \
 async fn text_files_feed_free_text() {
     // A text-file line matching a path component clusters with it, which shows
     // the text file reached the pipeline.
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(
         &tmp,
         "Artist Alpha - Album Title B",
@@ -409,7 +410,7 @@ async fn text_files_feed_free_text() {
 /// not a scan that found none.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Album Title", &["Cover.jpg", "Back.jpg"], &[]);
 
     // No `register_analyzer` — this is Windows and Linux today.
@@ -436,17 +437,17 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
 /// A CUE `CATALOG` barcode needs no analyzer and settles without one.
 #[tokio::test(flavor = "multi_thread")]
 async fn no_analyzer_still_settles_cue_catalog_barcodes() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = tmp.path().join("Album Title");
-    fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
-    fs::write(folder.join("Cover.jpg"), minimal_jpeg()).unwrap();
+    tmp.create_folder(&folder);
+    tmp.write(folder.join("audio.flac"), fixture_flac());
+    tmp.write(folder.join("Cover.jpg"), minimal_jpeg());
     let cue = "CATALOG 0075678164521\n\
 FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
     TITLE \"Track One\"\n    \
     INDEX 01 00:00:00\n";
-    fs::write(folder.join("Album.cue"), cue).unwrap();
+    tmp.write(folder.join("Album.cue"), cue);
 
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.start(
@@ -469,7 +470,7 @@ FILE \"audio.flac\" WAVE\n  \
 /// anything that heard the settle reuses it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settled_reading_is_kept_before_it_is_announced() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
     let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
     let (handle, tx, _rx, _lib_tmp) = make_service().await;
@@ -502,7 +503,7 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
 /// reading and reads no image again.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_unchanged_folder_is_not_read_again() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
     let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
     let (handle, mut rx, mut first_run, _lib_tmp) =
@@ -617,7 +618,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
 /// already being read when it was cancelled.
 #[tokio::test]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let images: Vec<String> = (1..=IMAGES_IN_FLIGHT + 2).map(|n| format!("p{n}.jpg")).collect();
     let image_names: Vec<&str> = images.iter().map(String::as_str).collect();
     let folder = build_release(&tmp, "Some Folder", &image_names, &[]);
@@ -663,7 +664,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
 /// the replacement neither deadlocked nor panicked.
 #[tokio::test(flavor = "multi_thread")]
 async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
     let analyzer: Arc<dyn ArtworkAnalyzer> =
         Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]));
@@ -685,7 +686,7 @@ async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
 /// settles.
 #[tokio::test(flavor = "multi_thread")]
 async fn three_starts_cancel_each_predecessor() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
     let (gate, held, entries) = crate::tests::gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> =

@@ -1,8 +1,7 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 use lofty::tag::{Tag, TagType};
-use std::fs;
 use std::path::PathBuf;
-use tempfile::TempDir;
 
 const PLACEHOLDER_MP3: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_MP3;
 
@@ -154,9 +153,8 @@ fn a_tag_s_isrc_is_read() {
     let existing_tag_size = 10
         + PLACEHOLDER_MP3[6..10].iter().fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
     file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.mp3");
-    std::fs::write(&path, file).unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.mp3", file);
 
     assert_eq!(
         LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().delivery.isrcs,
@@ -166,9 +164,8 @@ fn a_tag_s_isrc_is_read() {
 
 #[test]
 fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.mp3");
-    std::fs::write(&path, unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG)).unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.mp3", unsynchronised_id3v24_mp3(PLACEHOLDER_JPEG));
 
     let (bytes, content_type) = LoftyFileTagReader
         .read(&path, bae_util::test_files::place())
@@ -191,9 +188,8 @@ fn embedded_cover_in_an_unsynchronised_id3v24_tag_reads_as_the_original_image() 
 
 #[test]
 fn lofty_reader_decodes_legacy_cyrillic_id3_text() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.mp3");
-    std::fs::write(&path, legacy_cyrillic_mp3()).unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.mp3", legacy_cyrillic_mp3());
 
     let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
@@ -206,9 +202,8 @@ fn lofty_reader_decodes_legacy_cyrillic_id3_text() {
 /// An ID3v2.4 frame of two values states both, each decoded.
 #[test]
 fn lofty_reader_keeps_each_value_of_an_id3v24_multivalue_frame() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.mp3");
-    std::fs::write(&path, legacy_cyrillic_multivalue_mp3()).unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.mp3", legacy_cyrillic_multivalue_mp3());
 
     let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
@@ -217,9 +212,8 @@ fn lofty_reader_keeps_each_value_of_an_id3v24_multivalue_frame() {
 
 #[test]
 fn lofty_reader_decodes_legacy_cyrillic_id3v1_text() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("01.mp3");
-    std::fs::write(&path, legacy_cyrillic_id3v1_mp3()).unwrap();
+    let dir = TestFolder::new();
+    let path = dir.write("01.mp3", legacy_cyrillic_id3v1_mp3());
 
     let read = LoftyFileTagReader.read(&path, bae_util::test_files::place()).unwrap().tags;
 
@@ -231,25 +225,21 @@ fn lofty_reader_decodes_legacy_cyrillic_id3v1_text() {
 const PLACEHOLDER_FLAC: &[u8] = include_bytes!("../tests/fixtures/flac/01 Test Track 1.flac");
 const PLACEHOLDER_M4A: &[u8] = bae_audio::test_fixtures::PLACEHOLDER_AAC;
 
-/// A FLAC carrying these Vorbis comments, written to `dir`.
-fn flac_with(dir: &Path, comments: &[(&str, &str)]) -> std::path::PathBuf {
-    use lofty::config::WriteOptions;
-    let path = dir.join("01.flac");
-    std::fs::write(&path, PLACEHOLDER_FLAC).unwrap();
+/// A FLAC carrying these Vorbis comments, written to `folder`.
+fn flac_with(folder: &TestFolder, comments: &[(&str, &str)]) -> std::path::PathBuf {
+    let path = folder.write("01.flac", PLACEHOLDER_FLAC);
     let mut tag = lofty::ogg::tag::VorbisComments::default();
     for (key, value) in comments {
         tag.push((*key).to_string(), (*value).to_string());
     }
-    tag.save_to_path(&path, WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tag(folder, &path, &tag);
     path
 }
 
-/// An MP4 file carrying these text atoms, written to `dir`.
-fn m4a_with(dir: &Path, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
-    use lofty::config::WriteOptions;
+/// An MP4 file carrying these text atoms, written to `folder`.
+fn m4a_with(folder: &TestFolder, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
     use lofty::mp4::{Atom, AtomData, AtomIdent, Ilst};
-    let path = dir.join("01.m4a");
-    std::fs::write(&path, PLACEHOLDER_M4A).unwrap();
+    let path = folder.write("01.m4a", PLACEHOLDER_M4A);
     let mut ilst = Ilst::default();
     ilst.insert(Atom::new(
         AtomIdent::Fourcc(*b"\xa9nam"),
@@ -258,7 +248,7 @@ fn m4a_with(dir: &Path, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
     for (fourcc, value) in atoms {
         ilst.insert(Atom::new(AtomIdent::Fourcc(*fourcc), AtomData::UTF8((*value).to_string())));
     }
-    ilst.save_to_path(&path, WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tag(folder, &path, &ilst);
     path
 }
 
@@ -266,11 +256,11 @@ fn m4a_with(dir: &Path, atoms: &[([u8; 4], &str)]) -> std::path::PathBuf {
 /// and its copyright line as written.
 #[test]
 fn a_tag_s_label_and_copyright_are_read() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let read = LoftyFileTagReader
         .read(
             &flac_with(
-                dir.path(),
+                &dir,
                 &[
                     ("LABEL", "Imprint Name"),
                     ("COPYRIGHT", "(C) 1999 Imprint Name (P) 1999 Imprint Name"),
@@ -283,17 +273,14 @@ fn a_tag_s_label_and_copyright_are_read() {
     assert_eq!(read.labels, ["Imprint Name"]);
     assert_eq!(read.copyrights, ["(C) 1999 Imprint Name (P) 1999 Imprint Name"]);
     let read = LoftyFileTagReader
-        .read(
-            &flac_with(dir.path(), &[("ORGANIZATION", "Other Imprint")]),
-            bae_util::test_files::place(),
-        )
+        .read(&flac_with(&dir, &[("ORGANIZATION", "Other Imprint")]), bae_util::test_files::place())
         .unwrap()
         .delivery;
     assert_eq!(read.labels, ["Other Imprint"]);
     assert_eq!(read.store, None);
     let read = LoftyFileTagReader
         .read(
-            &flac_with(dir.path(), &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")]),
+            &flac_with(&dir, &[("LABEL", "Imprint Name"), ("LABEL", "Second Imprint")]),
             bae_util::test_files::place(),
         )
         .unwrap()
@@ -305,19 +292,16 @@ fn a_tag_s_label_and_copyright_are_read() {
 /// kind marks nothing.
 #[test]
 fn bandcamp_s_comment_marks_a_bandcamp_download() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let read = LoftyFileTagReader
         .read(
-            &flac_with(dir.path(), &[("COMMENT", "Visit https://artistname.bandcamp.com")]),
+            &flac_with(&dir, &[("COMMENT", "Visit https://artistname.bandcamp.com")]),
             bae_util::test_files::place(),
         )
         .unwrap();
     assert_eq!(read.delivery.store, Some(StoreMarker::Bandcamp));
     let read = LoftyFileTagReader
-        .read(
-            &flac_with(dir.path(), &[("COMMENT", "Ripped with care")]),
-            bae_util::test_files::place(),
-        )
+        .read(&flac_with(&dir, &[("COMMENT", "Ripped with care")]), bae_util::test_files::place())
         .unwrap();
     assert_eq!(read.delivery.store, None);
 }
@@ -326,15 +310,15 @@ fn bandcamp_s_comment_marks_a_bandcamp_download() {
 /// catalog ids alone do not.
 #[test]
 fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     for atom in [*b"purd", *b"apID", *b"ownr"] {
         let read = LoftyFileTagReader
-            .read(&m4a_with(dir.path(), &[(atom, "placeholder")]), bae_util::test_files::place())
+            .read(&m4a_with(&dir, &[(atom, "placeholder")]), bae_util::test_files::place())
             .unwrap();
         assert_eq!(read.delivery.store, Some(StoreMarker::ITunesPurchase), "{atom:?}");
     }
     let read = LoftyFileTagReader
-        .read(&m4a_with(dir.path(), &[(*b"cnID", "1")]), bae_util::test_files::place())
+        .read(&m4a_with(&dir, &[(*b"cnID", "1")]), bae_util::test_files::place())
         .unwrap();
     assert_eq!(read.delivery.store, None);
 }
@@ -343,11 +327,11 @@ fn an_itunes_purchase_is_marked_by_its_purchase_atoms() {
 /// are two artists, and a value written twice is stated once.
 #[test]
 fn every_artist_a_file_names_is_read() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let read = LoftyFileTagReader
         .read(
             &flac_with(
-                dir.path(),
+                &dir,
                 &[
                     ("ARTIST", "Artist Alpha"),
                     ("ARTIST", "Artist Beta"),
@@ -369,11 +353,11 @@ fn every_artist_a_file_names_is_read() {
 /// original release date.
 #[test]
 fn every_year_a_file_s_dates_name_is_read() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let read = LoftyFileTagReader
         .read(
             &flac_with(
-                dir.path(),
+                &dir,
                 &[
                     ("DATE", "2005-03-01"),
                     ("ORIGINALDATE", "1971"),
@@ -387,7 +371,7 @@ fn every_year_a_file_s_dates_name_is_read() {
         .tags;
     assert_eq!(read.years, [2005, 1971]);
     let read = LoftyFileTagReader
-        .read(&flac_with(dir.path(), &[("TITLE", "Track Alpha")]), bae_util::test_files::place())
+        .read(&flac_with(&dir, &[("TITLE", "Track Alpha")]), bae_util::test_files::place())
         .unwrap()
         .tags;
     assert!(read.years.is_empty());
@@ -408,10 +392,10 @@ fn a_date_names_each_year_it_writes() {
 /// The compilation flag is read as set only when it says 1.
 #[test]
 fn the_compilation_flag_is_read() {
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let flagged = |value: &str| {
         LoftyFileTagReader
-            .read(&flac_with(dir.path(), &[("COMPILATION", value)]), bae_util::test_files::place())
+            .read(&flac_with(&dir, &[("COMPILATION", value)]), bae_util::test_files::place())
             .unwrap()
             .tags
             .compilation
@@ -427,24 +411,22 @@ const JPEG_BYTES: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0xFF, 0xD9];
 /// Copy the FLAC fixture into `dir/{name}` and embed a picture with the
 /// given type and MIME. Returns the destination path.
 fn copy_with_picture(
-    dir: &Path,
+    folder: &TestFolder,
     name: &str,
     pic_type: lofty::picture::PictureType,
     mime: lofty::picture::MimeType,
     data: &[u8],
 ) -> PathBuf {
-    use lofty::config::WriteOptions;
     use lofty::picture::Picture;
 
     let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let dest = dir.join(name);
-    fs::copy(&src, &dest).unwrap();
-    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    let dest = folder.copy_fixture(&src, name);
+    let mut tagged = crate::test_fixtures::read_tagged(folder, &dest);
     let mut tag = Tag::new(TagType::VorbisComments);
     tag.set_title("Track".to_string());
     tag.push_picture(Picture::unchecked(data.to_vec()).pic_type(pic_type).mime_type(mime).build());
     tagged.insert_tag(tag);
-    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tagged(folder, &dest, &tagged);
     dest
 }
 
@@ -461,9 +443,9 @@ fn embedded_cover(
 /// An embedded front cover is read and mapped to its `ContentType`.
 #[test]
 fn tag_read_cover_returns_front_cover() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let f = copy_with_picture(
-        temp.path(),
+        &temp,
         "01.flac",
         lofty::picture::PictureType::CoverFront,
         lofty::picture::MimeType::Jpeg,
@@ -477,10 +459,10 @@ fn tag_read_cover_returns_front_cover() {
 /// No embedded picture → None (the caller falls through to no cover).
 #[test]
 fn tag_read_cover_none_when_no_picture() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let dest = temp.path().join("01.flac");
-    fs::copy(&src, &dest).unwrap();
+    temp.copy_fixture(&src, &dest);
     assert!(embedded_cover(&dest).unwrap().is_none());
 }
 
@@ -488,14 +470,13 @@ fn tag_read_cover_none_when_no_picture() {
 /// wins regardless of which was pushed first.
 #[test]
 fn tag_read_cover_prefers_front_over_other() {
-    use lofty::config::WriteOptions;
     use lofty::picture::{MimeType, Picture, PictureType};
 
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let src = crate::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let dest = temp.path().join("01.flac");
-    fs::copy(&src, &dest).unwrap();
-    let mut tagged = lofty::read_from_path(&dest).unwrap();
+    temp.copy_fixture(&src, &dest);
+    let mut tagged = crate::test_fixtures::read_tagged(&temp, &dest);
     let mut tag = Tag::new(TagType::VorbisComments);
     tag.set_title("Track".to_string());
     // Back cover pushed first, front cover second.
@@ -512,7 +493,7 @@ fn tag_read_cover_prefers_front_over_other() {
             .build(),
     );
     tagged.insert_tag(tag);
-    tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+    crate::test_fixtures::save_tagged(&temp, &dest, &tagged);
 
     let (bytes, content_type) = embedded_cover(&dest).unwrap().expect("cover present");
     assert_eq!(bytes, JPEG_BYTES, "front cover wins over back");
@@ -523,9 +504,9 @@ fn tag_read_cover_prefers_front_over_other() {
 /// a back-cover-only file still yields a cover to seed.
 #[test]
 fn tag_read_cover_falls_back_to_non_front_picture() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let f = copy_with_picture(
-        temp.path(),
+        &temp,
         "01.flac",
         lofty::picture::PictureType::CoverBack,
         lofty::picture::MimeType::Jpeg,
@@ -540,9 +521,9 @@ fn tag_read_cover_falls_back_to_non_front_picture() {
 /// than being stored as a cover the library can't render.
 #[test]
 fn tag_read_cover_none_for_unsupported_mime() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let f = copy_with_picture(
-        temp.path(),
+        &temp,
         "01.flac",
         lofty::picture::PictureType::CoverFront,
         lofty::picture::MimeType::Tiff,
@@ -553,7 +534,6 @@ fn tag_read_cover_none_for_unsupported_mime() {
 
 #[test]
 fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
-    use lofty::config::WriteOptions;
     use lofty::picture::{MimeType, Picture, PictureType};
 
     for (mime, bytes, expected_type) in [
@@ -564,15 +544,10 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
             ContentType::Webp,
         ),
     ] {
-        let temp = TempDir::new().unwrap();
-        let dest = copy_with_picture(
-            temp.path(),
-            "01.flac",
-            PictureType::CoverFront,
-            MimeType::Bmp,
-            b"BM",
-        );
-        let mut tagged = lofty::read_from_path(&dest).unwrap();
+        let temp = TestFolder::new();
+        let dest =
+            copy_with_picture(&temp, "01.flac", PictureType::CoverFront, MimeType::Bmp, b"BM");
+        let mut tagged = crate::test_fixtures::read_tagged(&temp, &dest);
         let tag = tagged.primary_tag_mut().unwrap();
         tag.push_picture(
             Picture::unchecked(bytes.to_vec())
@@ -580,7 +555,7 @@ fn unsupported_front_picture_does_not_hide_supported_embedded_cover() {
                 .mime_type(mime)
                 .build(),
         );
-        tagged.save_to_path(&dest, WriteOptions::default()).unwrap();
+        crate::test_fixtures::save_tagged(&temp, &dest, &tagged);
 
         assert_eq!(embedded_cover(&dest).unwrap(), Some((bytes.to_vec(), expected_type)));
     }
@@ -611,9 +586,8 @@ fn image_content_type_maps_known_and_rejects_non_images() {
 /// can't be opened is a fault of reading it, and names the file.
 #[test]
 fn a_read_tells_tags_that_do_not_parse_from_a_file_that_cannot_be_read() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let garbage = dir.path().join("01.flac");
-    fs::write(&garbage, vec![7u8; 4096]).unwrap();
+    let dir = TestFolder::new();
+    let garbage = dir.write("01.flac", vec![7u8; 4096]);
     let missing = dir.path().join("02.flac");
 
     let garbage_read = LoftyFileTagReader.read(&garbage, bae_util::test_files::place()).map(|_| ());

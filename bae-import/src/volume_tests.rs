@@ -1,4 +1,5 @@
 use super::*;
+use bae_util::test_files::TestFolder;
 
 /// A temporary directory is on this machine's own disk. Weak as a test of
 /// the network branch — there is no network volume to mount from a test —
@@ -7,7 +8,7 @@ use super::*;
 /// quietly lose its watch.
 #[tokio::test]
 async fn a_folder_on_this_machine_is_local() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = TestFolder::new();
     assert_eq!(
         volume_kind(temp.path(), &bae_diagnostics::Diagnostics::noop()).await,
         VolumeKind::Local
@@ -36,10 +37,10 @@ async fn a_path_that_is_not_there_is_local() {
 /// that the folder is as it was.
 #[test]
 fn only_an_untouched_recorded_set_reads_as_unchanged() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = TestFolder::new();
     let album = temp.path().join("Album");
-    std::fs::create_dir_all(&album).unwrap();
-    std::fs::write(album.join("01.flac"), b"x").unwrap();
+    temp.create_folder(&album);
+    temp.write(album.join("01.flac"), b"x");
 
     let recorded = |path: &std::path::Path| {
         vec![(

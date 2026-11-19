@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::folder_scanner::tests::*;
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 // The order a folder's tracks play in, and the numbers its draft gives them:
@@ -12,6 +13,7 @@ use std::sync::Arc;
 /// Write `bytes` to `path` and tag it with `title` and whichever of
 /// `disc` and `track` are given, in `tag_type`'s own form.
 fn write_tagged_audio(
+    tmp: &TestFolder,
     path: &Path,
     bytes: &[u8],
     tag_type: lofty::tag::TagType,
@@ -19,11 +21,10 @@ fn write_tagged_audio(
     disc: Option<u32>,
     track: Option<u32>,
 ) {
-    use lofty::config::WriteOptions;
-    use lofty::file::{AudioFile, TaggedFileExt};
+    use lofty::file::TaggedFileExt;
     use lofty::tag::{Accessor, Tag};
-    std::fs::write(path, bytes).unwrap();
-    let mut tagged = lofty::read_from_path(path).expect("read for tagging");
+    tmp.write(path, bytes);
+    let mut tagged = crate::test_fixtures::read_tagged(tmp, path);
     let mut tag = Tag::new(tag_type);
     tag.set_title(title.to_string());
     if let Some(disc) = disc {
@@ -33,11 +34,19 @@ fn write_tagged_audio(
         tag.set_track(track);
     }
     tagged.insert_tag(tag);
-    tagged.save_to_path(path, WriteOptions::default()).expect("write tags");
+    crate::test_fixtures::save_tagged(tmp, path, &tagged);
 }
 
-fn tagged_flac(album: &Path, name: &str, title: &str, disc: Option<u32>, track: Option<u32>) {
+fn tagged_flac(
+    tmp: &TestFolder,
+    album: &Path,
+    name: &str,
+    title: &str,
+    disc: Option<u32>,
+    track: Option<u32>,
+) {
     write_tagged_audio(
+        tmp,
         &album.join(name),
         &fake_flac(),
         lofty::tag::TagType::VorbisComments,
@@ -85,9 +94,9 @@ fn tag_draft(root: &Path) -> Vec<(String, u16, u32, String)> {
 #[test]
 fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
     let (tmp, album) = album_dir();
-    tagged_flac(&album, "Alpha.flac", "Track Title Three", Some(1), Some(3));
-    tagged_flac(&album, "Beta.flac", "Track Title One", Some(1), Some(1));
-    tagged_flac(&album, "Gamma.flac", "Track Title Two", Some(1), Some(2));
+    tagged_flac(&tmp, &album, "Alpha.flac", "Track Title Three", Some(1), Some(3));
+    tagged_flac(&tmp, &album, "Beta.flac", "Track Title One", Some(1), Some(1));
+    tagged_flac(&tmp, &album, "Gamma.flac", "Track Title Two", Some(1), Some(2));
 
     assert_eq!(audio_order(&scan_files(&album)), ["Beta.flac", "Gamma.flac", "Alpha.flac"]);
     assert_eq!(
@@ -102,12 +111,13 @@ fn tagged_files_whose_names_carry_no_numbers_play_in_their_tags_order() {
 
 #[test]
 fn an_mp4_s_track_atom_and_an_id3_track_frame_order_their_files() {
-    let (_tmp, album) = album_dir();
-    let m4a =
-        std::fs::read(bae_audio::test_fixtures::audio_format_dir().join("placeholder-aac.m4a"))
-            .unwrap();
+    let (tmp, album) = album_dir();
+    let m4a = bae_util::test_files::read_fixture(
+        bae_audio::test_fixtures::audio_format_dir().join("placeholder-aac.m4a"),
+    );
     for (name, track) in [("Alpha.m4a", 2), ("Beta.m4a", 1)] {
         write_tagged_audio(
+            &tmp,
             &album.join(name),
             &m4a,
             lofty::tag::TagType::Mp4Ilst,
@@ -118,9 +128,10 @@ fn an_mp4_s_track_atom_and_an_id3_track_frame_order_their_files() {
     }
     assert_eq!(audio_order(&scan_files(&album)), ["Beta.m4a", "Alpha.m4a"]);
 
-    let (_tmp, album) = album_dir();
+    let (tmp, album) = album_dir();
     for (name, track) in [("Alpha.mp3", 2), ("Beta.mp3", 1)] {
         write_tagged_audio(
+            &tmp,
             &album.join(name),
             &fake_mp3(),
             lofty::tag::TagType::Id3v2,
@@ -135,9 +146,9 @@ fn an_mp4_s_track_atom_and_an_id3_track_frame_order_their_files() {
 #[test]
 fn a_file_s_tags_win_over_the_number_its_name_starts_with() {
     let (tmp, album) = album_dir();
-    tagged_flac(&album, "01 Gamma.flac", "Track Title Three", None, Some(3));
-    tagged_flac(&album, "02 Alpha.flac", "Track Title One", None, Some(1));
-    tagged_flac(&album, "03 Beta.flac", "Track Title Two", None, Some(2));
+    tagged_flac(&tmp, &album, "01 Gamma.flac", "Track Title Three", None, Some(3));
+    tagged_flac(&tmp, &album, "02 Alpha.flac", "Track Title One", None, Some(1));
+    tagged_flac(&tmp, &album, "03 Beta.flac", "Track Title Two", None, Some(2));
 
     assert_eq!(
         audio_order(&scan_files(&album)),
@@ -159,7 +170,7 @@ fn a_file_s_tags_win_over_the_number_its_name_starts_with() {
 fn untagged_files_take_their_disc_and_track_from_the_numbers_their_names_start_with() {
     let (tmp, album) = album_dir();
     for name in ["2-01 Gamma.flac", "1-02 Beta.flac", "1-01 Alpha.flac"] {
-        std::fs::write(album.join(name), fake_flac()).unwrap();
+        tmp.write(album.join(name), fake_flac());
     }
 
     assert_eq!(
@@ -178,11 +189,11 @@ fn untagged_files_take_their_disc_and_track_from_the_numbers_their_names_start_w
 
 #[test]
 fn an_untagged_file_s_name_places_it_among_tagged_ones_and_an_unnumbered_one_comes_last() {
-    let (_tmp, album) = album_dir();
-    std::fs::write(album.join("03 Zeta.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("Bonus.flac"), fake_flac()).unwrap();
-    tagged_flac(&album, "Alpha.flac", "Track Title Two", None, Some(2));
-    tagged_flac(&album, "Beta.flac", "Track Title One", None, Some(1));
+    let (tmp, album) = album_dir();
+    tmp.write(album.join("03 Zeta.flac"), fake_flac());
+    tmp.write(album.join("Bonus.flac"), fake_flac());
+    tagged_flac(&tmp, &album, "Alpha.flac", "Track Title Two", None, Some(2));
+    tagged_flac(&tmp, &album, "Beta.flac", "Track Title One", None, Some(1));
 
     assert_eq!(
         audio_order(&scan_files(&album)),
@@ -193,10 +204,10 @@ fn an_untagged_file_s_name_places_it_among_tagged_ones_and_an_unnumbered_one_com
 #[test]
 fn disc_tags_put_each_disc_s_tracks_together_in_their_order() {
     let (tmp, album) = album_dir();
-    tagged_flac(&album, "Alpha.flac", "Disc Two Track One", Some(2), Some(1));
-    tagged_flac(&album, "Beta.flac", "Disc One Track Two", Some(1), Some(2));
-    tagged_flac(&album, "Delta.flac", "Disc One Track One", Some(1), Some(1));
-    tagged_flac(&album, "Gamma.flac", "Disc Two Track Two", Some(2), Some(2));
+    tagged_flac(&tmp, &album, "Alpha.flac", "Disc Two Track One", Some(2), Some(1));
+    tagged_flac(&tmp, &album, "Beta.flac", "Disc One Track Two", Some(1), Some(2));
+    tagged_flac(&tmp, &album, "Delta.flac", "Disc One Track One", Some(1), Some(1));
+    tagged_flac(&tmp, &album, "Gamma.flac", "Disc Two Track Two", Some(2), Some(2));
 
     assert_eq!(
         audio_order(&scan_files(&album)),
@@ -220,9 +231,9 @@ fn disc_tags_put_each_disc_s_tracks_together_in_their_order() {
 #[test]
 fn a_catalog_tracklist_lands_on_the_files_its_numbers_are_tagged_with() {
     let (tmp, album) = album_dir();
-    tagged_flac(&album, "Alpha.flac", "Track Title Three", None, Some(3));
-    tagged_flac(&album, "Beta.flac", "Track Title One", None, Some(1));
-    tagged_flac(&album, "Gamma.flac", "Track Title Two", None, Some(2));
+    tagged_flac(&tmp, &album, "Alpha.flac", "Track Title Three", None, Some(3));
+    tagged_flac(&tmp, &album, "Beta.flac", "Track Title One", None, Some(1));
+    tagged_flac(&tmp, &album, "Gamma.flac", "Track Title Two", None, Some(2));
     let candidates = scan_valid(tmp.path().to_path_buf());
     let [candidate] = candidates.as_slice() else {
         panic!("one release");
