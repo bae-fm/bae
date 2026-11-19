@@ -85,22 +85,25 @@
         /// (images, the release editor, storage) — render without a
         /// missing-environment trap. The helper injects eight `.stub` domain
         /// services, a `Library` that returns the shot albums when the view
-        /// reads an album, the projection store over it, the four services
+        /// reads an album, a projection store over another such library, the four services
         /// the modal sheets read (`Importer`, `ImportStore`, `OutboxStore`,
         /// `ConfigStore`), and a new `PlaybackStore` and `UiStore`. The helper rebuilds no part of
         /// the view.
         @MainActor
         func albumDetailPreviewEnvironment() -> some View {
-            // The annotation names the type for the missing-environment
-            // audit, which reads a local's type from its annotation alone.
-            let library: Library = PreviewData.albumDetailLibrary()
-            return
-                self
+            // Each call builds its own library over the same shot albums:
+            // the missing-environment audit resolves a call's return type,
+            // and no local binding inside an environment modifier.
+            self
                 .environment(ImageStore.stub())
                 .environment(Playback.stub())
                 .environment(Queue.stub())
-                .environment(library)
-                .environment(LibraryProjectionStore(library: library))
+                .environment(PreviewData.albumDetailLibrary())
+                .environment(
+                    LibraryProjectionStore(
+                        library: PreviewData.albumDetailLibrary()
+                    )
+                )
                 .environment(ReleaseEditor.stub())
                 .environment(Sync.stub())
                 .environment(Downloads.stub())
