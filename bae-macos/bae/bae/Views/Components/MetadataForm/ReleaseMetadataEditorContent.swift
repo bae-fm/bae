@@ -42,11 +42,9 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 spacing: ReleaseMetadataLayout.blockSpacing
             ) {
                 lead()
-                ReleaseMetadataHeader(
-                    values: session.values,
+                SessionReleaseHeader(
+                    session: session,
                     albumArtistStanding: draft.albumArtistStanding,
-                    writer: session.fieldWriter,
-                    editingCommands: session.editingCommands,
                     artistSearch: library.artistSearch,
                     cover: { cover },
                     audioFacts: { sourceAudio },
@@ -269,5 +267,37 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
 
     private func eyebrow(_ key: String) -> some View {
         Eyebrow(verbatim: localizedCoreString(key))
+    }
+}
+
+/// The editable header over the form `session` holds. The header reads the
+/// form's values in its own body, so a change to them redraws the header
+/// alone and not the editor around it.
+private struct SessionReleaseHeader<
+    Cover: View,
+    AudioFacts: View,
+    AlbumRow: View
+>: View {
+    let session: ReleaseMetadataEditSession
+    let albumArtistStanding: BridgeArtistFieldStanding?
+    let artistSearch: ArtistSearchOpener
+    @ViewBuilder
+    let cover: () -> Cover
+    @ViewBuilder
+    let audioFacts: () -> AudioFacts
+    @ViewBuilder
+    let albumRow: () -> AlbumRow
+
+    var body: some View {
+        ReleaseMetadataHeader(
+            values: session.values,
+            albumArtistStanding: albumArtistStanding,
+            writer: session.fieldWriter,
+            editingCommands: session.editingCommands,
+            artistSearch: artistSearch,
+            cover: cover,
+            audioFacts: audioFacts,
+            albumRow: albumRow
+        )
     }
 }
