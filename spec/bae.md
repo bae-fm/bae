@@ -4136,8 +4136,10 @@ storage* where the line names the place the library is kept.
       provider told it: *Dropbox refused bae’s request (Invalid request).* /
       *If retrying does not help, restart bae.*
     - the library's database, the device's disk, decryption, an operation of
-      coven's own or a bug in bae: *bae ran into a problem on this Mac and
-      keeps trying.* / *If it does not clear, restart bae.*
+      coven's own, coven's copy of an image bae made (a cover, an artist
+      image or an avatar) failing its check, or a bug in bae: *bae ran into a
+      problem on this Mac and keeps trying.* / *If it does not clear, restart
+      bae.*; on Android, *this device*
     - a start that failed with sync not running: *bae could not connect to
       Dropbox when it started.* / *Check the internet connection, then
       reconnect.*, with *Reconnect*.

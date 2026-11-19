@@ -468,6 +468,7 @@
     <string name="sync_cause_disk_full">Acest dispozitiv a rămas fără spațiu. Eliberează puțin și bae va încerca din nou.</string>
     <string name="sync_cause_keys_unreadable">bae nu a putut citi cheile salvate pe acest dispozitiv.</string>
     <string name="sync_cause_library_unreadable">bae nu a putut citi biblioteca de pe acest dispozitiv.</string>
+    <string name="sync_cause_bae_problem">bae a întâmpinat o problemă pe acest dispozitiv și continuă să încerce. Dacă nu se rezolvă, repornește bae.</string>
     <string name="sync_cause_enter_new_restore_code">Introdu noul cod de restaurare pentru a restaura biblioteca pe acest dispozitiv. Restaurarea renunță la toate modificările pe care acest dispozitiv nu le-a trimis.</string>
     <string name="pins_at_once">Fixări simultane</string>
     <string name="pinning_empty">Nimic de fixat</string>

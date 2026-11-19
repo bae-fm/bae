@@ -454,6 +454,7 @@
     <string name="sync_cause_disk_full">此裝置空間不足。釋放一些空間後，bae 會重試。</string>
     <string name="sync_cause_keys_unreadable">bae 無法讀取此裝置上儲存的金鑰。</string>
     <string name="sync_cause_library_unreadable">bae 無法讀取此裝置上的音樂庫。</string>
+    <string name="sync_cause_bae_problem">bae 在此裝置上遇到了問題，並會繼續嘗試。如果問題沒有消除，請重新啟動 bae。</string>
     <string name="sync_cause_enter_new_restore_code">輸入新的還原碼，以還原此裝置上的資料庫。還原會捨棄此裝置尚未傳送的所有變更。</string>
     <string name="pins_at_once">同時釘選數</string>
     <string name="pinning_empty">沒有要釘選的內容</string>

@@ -101,6 +101,10 @@ struct SyncStatusStoreTests {
                 == "bae could not read the library on this Mac."
         )
         #expect(
+            BridgeSyncCause.baeProblemOnDevice.macLine
+                == "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae."
+        )
+        #expect(
             BridgeSyncCause.enterNewRestoreCode.macLine
                 == "Enter the new restore code to restore the library on this Mac. The restore discards any changes this Mac has not sent."
         )

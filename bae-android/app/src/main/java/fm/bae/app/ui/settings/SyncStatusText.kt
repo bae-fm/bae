@@ -41,6 +41,10 @@ internal fun syncCauseText(
             context.getString(R.string.sync_cause_library_unreadable)
         }
 
+        BridgeSyncCause.BaeProblemOnDevice -> {
+            context.getString(R.string.sync_cause_bae_problem)
+        }
+
         BridgeSyncCause.EnterNewRestoreCode -> {
             context.getString(R.string.sync_cause_enter_new_restore_code)
         }

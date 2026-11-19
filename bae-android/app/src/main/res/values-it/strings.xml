@@ -468,6 +468,7 @@
     <string name="sync_cause_disk_full">Questo dispositivo ha esaurito lo spazio. Liberane un po’ e bae riproverà.</string>
     <string name="sync_cause_keys_unreadable">bae non è riuscito a leggere le chiavi salvate su questo dispositivo.</string>
     <string name="sync_cause_library_unreadable">bae non è riuscito a leggere la libreria su questo dispositivo.</string>
+    <string name="sync_cause_bae_problem">bae ha riscontrato un problema su questo dispositivo e continua a riprovare. Se il problema non si risolve, riavvia bae.</string>
     <string name="sync_cause_enter_new_restore_code">Inserisci il nuovo codice di ripristino per ripristinare la libreria su questo dispositivo. Il ripristino scarta le modifiche che questo dispositivo non ha ancora inviato.</string>
     <string name="pins_at_once">Fissaggi simultanei</string>
     <string name="pinning_empty">Niente da fissare</string>

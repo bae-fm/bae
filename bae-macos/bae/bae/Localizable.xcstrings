@@ -147164,6 +147164,180 @@
         }
       }
     },
+    "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae." : {
+      "comment" : "Sync failed: bae's own copy of an image it made failed its check on this Mac; bae retries by itself.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "واجه bae مشكلة على هذا الـ Mac وما زال يحاول. إذا لم تزل المشكلة، أعد تشغيل bae."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae срещна проблем на този Mac и продължава да опитва. Ако проблемът не изчезне, рестартирайте bae."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae narazil na tomto Macu na problém a stále to zkouší. Pokud problém nezmizí, restartujte bae."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae stødte på et problem på denne Mac og prøver igen. Hvis det ikke går væk, så genstart bae."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae hat auf diesem Mac ein Problem festgestellt und versucht es weiter. Wenn das Problem bleibt, starte bae neu."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το bae αντιμετώπισε πρόβλημα σε αυτό το Mac και συνεχίζει να προσπαθεί. Αν δεν λυθεί, κάντε επανεκκίνηση του bae."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae tuvo un problema en este Mac y sigue intentándolo. Si no se resuelve, reinicia bae."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae kohtasi ongelman tällä Macilla ja yrittää edelleen. Jos ongelma ei poistu, käynnistä bae uudelleen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae a rencontré un problème sur ce Mac et réessaie. Si le problème persiste, redémarrez bae."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae נתקל בבעיה ב-Mac הזה וממשיך לנסות. אם הבעיה לא נעלמת, הפעל מחדש את bae."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae je naišao na problem na ovom Macu i nastavlja pokušavati. Ako se problem ne riješi, ponovno pokrenite bae."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A bae problémába ütközött ezen a Mac gépen, és tovább próbálkozik. Ha a hiba nem szűnik meg, indítsd újra a baet."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ha riscontrato un problema su questo Mac e continua a riprovare. Se il problema non si risolve, riavvia bae."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae でこの Mac 上の問題が発生しました。bae は再試行を続けます。解消しない場合は bae を再起動してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae가 이 Mac에서 문제를 만났고 계속 다시 시도합니다. 해결되지 않으면 bae를 다시 시작하세요."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae støtte på et problem på denne Macen og prøver videre. Hvis det ikke går over, start bae på nytt."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae is op deze Mac een probleem tegengekomen en blijft het proberen. Als het niet verdwijnt, start bae opnieuw."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae napotkał problem na tym Macu i próbuje dalej. Jeśli problem nie zniknie, uruchom bae ponownie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae encontrou um problema neste Mac e continua tentando. Se não se resolver, reinicie o bae."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae encontrou um problema neste Mac e continua a tentar. Se não se resolver, reinicie o bae."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae a întâmpinat o problemă pe acest Mac și continuă să încerce. Dacă nu se rezolvă, repornește bae."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae narazil na tomto Macu na problém a stále to skúša. Ak problém nezmizne, reštartujte bae."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae stötte på ett problem på den här Macen och försöker igen. Om det inte går över, starta om bae."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae bu Mac’te bir sorunla karşılaştı ve denemeye devam ediyor. Sorun geçmezse bae’yi yeniden başlatın."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae зіткнувся з проблемою на цьому Mac і продовжує спроби. Якщо проблема не зникне, перезапустіть bae."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 在此 Mac 上遇到了问题，并会继续尝试。如果问题没有消除，请重新启动 bae。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 在此 Mac 上遇到了問題，並會繼續嘗試。如果問題沒有消除，請重新啟動 bae。"
+          }
+        }
+      }
+    },
     "bae could not read the library on this Mac." : {
       "comment" : "Sync failed: the library's database on this Mac couldn't be read.",
       "extractionState" : "manual",

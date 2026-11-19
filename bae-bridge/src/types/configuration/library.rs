@@ -556,6 +556,8 @@ pub enum BridgeSyncCause {
     DeviceKeysUnreadable,
     /// bae could not read the library on this device.
     LibraryUnreadable,
+    /// bae ran into a problem on this device that it retries by itself.
+    BaeProblemOnDevice,
     /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device, and the restore discards what
     /// this device has not sent.
@@ -689,6 +691,7 @@ impl BridgeSyncCause {
             C::DeviceDiskFailed => plain("core.sync.cause.disk_failed"),
             C::DeviceKeysUnreadable => return Self::DeviceKeysUnreadable,
             C::LibraryUnreadable => return Self::LibraryUnreadable,
+            C::BaeProblemOnDevice => return Self::BaeProblemOnDevice,
             C::EnterNewRestoreCode => return Self::EnterNewRestoreCode,
             C::ChangesStayOnDevice => return Self::ChangesStayOnDevice,
             C::ProviderError { provider, detail } => BridgeMessage {

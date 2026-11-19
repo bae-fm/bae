@@ -42,6 +42,13 @@ extension BridgeSyncCause {
                 comment:
                     "Sync failed: the library's database on this Mac couldn't be read."
             )
+        case .baeProblemOnDevice:
+            String(
+                localized:
+                    "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae.",
+                comment:
+                    "Sync failed: bae's own copy of an image it made failed its check on this Mac; bae retries by itself."
+            )
         case .enterNewRestoreCode:
             String(
                 localized:

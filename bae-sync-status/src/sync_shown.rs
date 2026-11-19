@@ -79,6 +79,9 @@ pub enum SyncCauseLine {
     DeviceDiskFailed,
     DeviceKeysUnreadable,
     LibraryUnreadable,
+    /// bae's own failure on this device that sync retries by itself, such as
+    /// coven's copy of an image bae made failing its check.
+    BaeProblemOnDevice,
     /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device as a new device, and the restore
     /// discards what this device has not sent, since coven refuses every
@@ -323,9 +326,10 @@ impl SyncStatusSnapshot {
     fn reason_cause(&self, reason: &PendingReason, detail: Option<&str>) -> SyncCauseLine {
         use coven::FileMissingReason as M;
         match reason {
-            PendingReason::FileUnavailable(M::Source(_)) | PendingReason::Original { .. } => {
-                SyncCauseLine::FileMissingOrChanged
-            }
+            PendingReason::Original { .. } => SyncCauseLine::FileMissingOrChanged,
+            // coven's own copy of a file bae made failed its check; the person
+            // has no file to put back, and coven retries it by itself.
+            PendingReason::FileUnavailable(M::Source(_)) => SyncCauseLine::BaeProblemOnDevice,
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
             PendingReason::Failed(LocalFailure::DiskFull) => SyncCauseLine::DeviceDiskFull,
             PendingReason::Failed(LocalFailure::DiskDenied) => SyncCauseLine::DeviceDiskDenied,

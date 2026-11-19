@@ -460,6 +460,7 @@
     <string name="sync_cause_disk_full">Η συσκευή δεν έχει άλλο χώρο. Ελευθερώστε λίγο και το bae θα δοκιμάσει ξανά.</string>
     <string name="sync_cause_keys_unreadable">Το bae δεν μπόρεσε να διαβάσει τα αποθηκευμένα κλειδιά του σε αυτή τη συσκευή.</string>
     <string name="sync_cause_library_unreadable">Το bae δεν μπόρεσε να διαβάσει τη βιβλιοθήκη σε αυτή τη συσκευή.</string>
+    <string name="sync_cause_bae_problem">Το bae αντιμετώπισε πρόβλημα σε αυτή τη συσκευή και συνεχίζει να προσπαθεί. Αν δεν λυθεί, κάντε επανεκκίνηση του bae.</string>
     <string name="sync_cause_enter_new_restore_code">Εισαγάγετε τον νέο κωδικό επαναφοράς για να επαναφέρετε τη βιβλιοθήκη σε αυτή τη συσκευή. Η επαναφορά απορρίπτει όσες αλλαγές δεν έχει στείλει αυτή η συσκευή.</string>
     <string name="pins_at_once">Ταυτόχρονα καρφιτσώματα</string>
     <string name="pinning_empty">Τίποτα για καρφίτσωμα</string>

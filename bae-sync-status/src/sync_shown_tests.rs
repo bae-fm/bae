@@ -268,6 +268,13 @@ fn sync_failed_says_why_and_offers_retry_now() {
         cause(coven::PendingReason::FileUnavailable(coven::FileMissingReason::Source(
             coven::FileSourceFailure::Missing
         ))),
+        SyncCauseLine::BaeProblemOnDevice
+    );
+    assert_eq!(
+        cause(coven::PendingReason::Original {
+            path: "/music/a.flac".into(),
+            failure: coven::FileSourceFailure::Missing,
+        }),
         SyncCauseLine::FileMissingOrChanged
     );
     assert_eq!(

@@ -460,6 +460,7 @@
     <string name="sync_cause_disk_full">Denne enheten er tom for plass. Frigjør litt, så prøver bae igjen.</string>
     <string name="sync_cause_keys_unreadable">bae kunne ikke lese de lagrede nøklene sine på denne enheten.</string>
     <string name="sync_cause_library_unreadable">bae kunne ikke lese biblioteket på denne enheten.</string>
+    <string name="sync_cause_bae_problem">bae støtte på et problem på denne enheten og prøver videre. Hvis det ikke går over, start bae på nytt.</string>
     <string name="sync_cause_enter_new_restore_code">Skriv inn den nye gjenopprettingskoden for å gjenopprette biblioteket på denne enheten. Gjenopprettingen forkaster alle endringer som denne enheten ikke har sendt.</string>
     <string name="pins_at_once">Samtidige festinger</string>
     <string name="pinning_empty">Ingenting å feste</string>

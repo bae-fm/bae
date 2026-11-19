@@ -454,6 +454,7 @@
     <string name="sync_cause_disk_full">このデバイスは容量不足です。空き容量を増やすと、bae が再試行します。</string>
     <string name="sync_cause_keys_unreadable">bae がこのデバイスに保存されたキーを読み取れませんでした。</string>
     <string name="sync_cause_library_unreadable">bae がこのデバイス上のライブラリを読み取れませんでした。</string>
+    <string name="sync_cause_bae_problem">bae でこのデバイス上の問題が発生しました。bae は再試行を続けます。解消しない場合は bae を再起動してください。</string>
     <string name="sync_cause_enter_new_restore_code">新しい復元コードを入力すると、このデバイスのライブラリを復元できます。復元すると、このデバイスがまだ送信していない変更は破棄されます。</string>
     <string name="pins_at_once">同時ピン留め数</string>
     <string name="pinning_empty">ピン留めするものはありません</string>
