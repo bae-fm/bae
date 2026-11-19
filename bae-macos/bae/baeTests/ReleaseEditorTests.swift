@@ -26,8 +26,10 @@ struct ReleaseEditorTests {
     }
 
     @MainActor
-    @Test("Done and Library save through one persisted release session")
-    func persistedReleaseSessionSavesAndAdvancesItsCancelPoint() async throws {
+    @Test(
+        "A save holds the form opened on what it saved, which Cancel returns to"
+    )
+    func saveAdvancesTheFormCancelReturnsTo() async throws {
         let draft = PreviewData.releaseEditDraft(trackCount: 2)
         let library = PreviewReleaseLibrary(draft: draft)
         let session = PreviewData.releaseEditSession(
@@ -259,8 +261,8 @@ extension ReleaseEditorTests {
 }
 
 extension ReleaseEditorTests {
-    /// The titles core's session takes, in the order they reached it. This
-    /// actor writes each title to the session the editor's subscription
+    /// The titles the editor's form takes, in the order they reached it.
+    /// This actor writes each title to the draft the editor's subscription
     /// reads.
     private actor CoreSession {
         private(set) var titles: [String] = []
@@ -272,7 +274,7 @@ extension ReleaseEditorTests {
             session = PreviewReleaseEditSession(draft: draft)
         }
 
-        /// Take a title as core does: blank is not savable.
+        /// Take a title as the form does: blank is not savable.
         func setTitle(_ title: String) async {
             // The first change is held until the test lets it go, so a later
             // one would land first if the editor didn't wait for it.
@@ -297,7 +299,7 @@ extension ReleaseEditorTests {
 
     @MainActor
     @Test(
-        "each change reaches core in the order the person made it, and the editor shows the draft core sends"
+        "each change reaches the form in the order the person made it, and the editor shows the draft core sends"
     )
     func changesReachCoreInOrder() async throws {
         let draft = PreviewData.releaseEditDraft(trackCount: 1)
@@ -308,7 +310,7 @@ extension ReleaseEditorTests {
             releaseId: "release-test",
             opened: OpenedReleaseEdit(
                 drafts: core.session.drafts(),
-                session: ReleaseEditSessionCommands(
+                form: ReleaseEditFormCommands(
                     setField: { _, value in await core.setTitle(value) },
                     setLabels: preview.setLabels,
                     setBarcodes: preview.setBarcodes,

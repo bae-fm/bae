@@ -1,5 +1,5 @@
 //! The album a draft files under, as each owner's statement returns it: a
-//! candidate's pane and a release editor's session read it the same way.
+//! candidate's pane and a release editor's draft read it the same way.
 
 use crate::{AlbumLine, DraftAlbum};
 use bae_store::DbError;

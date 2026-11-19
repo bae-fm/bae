@@ -338,11 +338,13 @@ pub use types::{
 };
 #[cfg(desktop)]
 pub use types::{
+    AppliedCatalog, ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditForm, ReleaseEditSeed,
+};
+#[cfg(desktop)]
+pub use types::{
     CandidateMetadataDraft, CueAnalyzedAudioFile, CueFlacAnalysis, ImportDestination, ImportPhase,
     ImportProgress, ImportStep, PrepareStep, TrackAudio, TrackFile,
 };
-#[cfg(desktop)]
-pub use types::{ReleaseEditDisplayContext, ReleaseEditDraft, ReleaseEditSeed};
 #[cfg(desktop)]
 pub use watched_folder::WatchedFolder;
 

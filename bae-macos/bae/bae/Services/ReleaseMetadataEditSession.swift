@@ -1,13 +1,12 @@
 import BaeKit
 import Observation
 
-/// What one session core opened on a release does. Every editor holds its
-/// own, so two editors on one release never share an edit, an apply or a
-/// pick; core keeps the session for as long as these commands are held, and
-/// deletes it, writing nothing to the release, once they are not. Each
-/// command returns once core has written it; the editor reads the session's
-/// draft from the draft subscription it opened with.
-struct ReleaseEditSessionCommands: Sendable {
+/// What the form a release editor holds does. Every editor holds its own,
+/// so two editors on one release never share an edit, an apply or a pick,
+/// and an editor that closes drops its form, writing nothing to the release.
+/// Each change replaces the form and points the editor's draft read at it;
+/// an apply, a save and a Cancel return once core has answered.
+struct ReleaseEditFormCommands: Sendable {
     let setField:
         @Sendable (BridgeCandidateEditField, String) async throws -> Void
     let setLabels: @Sendable ([BridgeRawLabelEdit]) async throws -> Void
@@ -16,37 +15,38 @@ struct ReleaseEditSessionCommands: Sendable {
     let setAlbumArtists: @Sendable ([BridgeCredited]) async throws -> Void
     /// Write one track row's title and artists, by its id.
     let setTrack: @Sendable (BridgeRawTrackEdit) async throws -> Void
-    /// Apply a catalog release to the session, each network read it waits
-    /// on written to the apply's stream; its every value replaces the form,
+    /// Apply a catalog release to the form, each network read it waits on
+    /// written to the apply's stream; its every value replaces the form's,
     /// held until the save.
     let apply:
         @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws -> Void
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
-    /// Discard everything the session holds: core opens it again on the
-    /// release as the library holds it now.
+    /// Discard every change: the editor opens its form again on the release
+    /// as the library holds it now.
     let cancel: @Sendable () async throws -> Void
-    /// Save the session, which core opens again on what it saved; returns
-    /// the album the release is on after it. Core refuses the save, and
-    /// writes nothing, when the release changed after the session opened on
+    /// Save the form, and hold the form opened on what the save wrote;
+    /// returns the album the release is on after it. Core refuses the save,
+    /// and writes nothing, when the release changed after the form opened on
     /// it.
     let save: @Sendable () async throws -> String
 }
 
-/// A session core just opened on a release: the subscription that sends the
-/// session's draft, and the commands the session takes.
+/// A form an editor just opened on a release: the subscription that sends
+/// the form's draft, and the commands the form takes.
 struct OpenedReleaseEdit: Sendable {
-    /// The session's draft at once, then after each write that changes it;
-    /// `nil` once someone deletes the session's release.
+    /// The form's draft at once, then after each change of the form and
+    /// each write that changes what the draft shows; `nil` once someone
+    /// deletes the form's release.
     let drafts: PulledValues<BridgeReleaseEditDraft?>
-    let session: ReleaseEditSessionCommands
+    let form: ReleaseEditFormCommands
 }
 
-/// What a release editor asks core to do beyond its open session, each by
-/// release id.
+/// What a release editor asks core to do beyond its form, each by release
+/// id.
 struct ReleaseEditCommands {
-    /// Open a session of the editor's own: the release as the library holds
+    /// Open a form of the editor's own: the release as the library holds
     /// it, with nothing edited, applied or picked.
     let open: @Sendable (String) async throws -> OpenedReleaseEdit
     let searchAlbums: @MainActor (String) async throws -> [BridgeAlbumChoice]
@@ -56,13 +56,13 @@ struct ReleaseEditCommands {
 }
 
 /// One release editor's working state, behind the one release editor in the
-/// Library sheet and the import pane of an imported folder: the draft its
-/// session's subscription sent last, and the operations it sends that
-/// session. Every change goes to core as the person makes it, one after
+/// Library sheet and the import pane of an imported folder: the form it
+/// holds, through its commands, and the draft the form's subscription sent
+/// last. Every change makes a new form as the person makes it, one after
 /// another in the order the person made them. The subscription sends a new
-/// draft whenever a write changes the session or what the draft shows of the
-/// library, such as when someone merges an artist, renames the album or
-/// picks a cover.
+/// draft whenever the form changes or a write changes what the draft shows
+/// of the library, such as when someone merges an artist, renames the album
+/// or picks a cover.
 @MainActor
 @Observable
 final class ReleaseMetadataEditSession {
@@ -79,7 +79,7 @@ final class ReleaseMetadataEditSession {
     /// The draft the subscription sent last; `nil` until it sends its first,
     /// and the editor shows nothing until then.
     private(set) var draft: BridgeReleaseEditDraft?
-    /// The session's release is gone from the library, so the editor has
+    /// The form's release is gone from the library, so the editor has
     /// nothing to edit and closes.
     private(set) var releaseGone = false
     let editingCommands = EditingCommitCommands()
@@ -88,15 +88,14 @@ final class ReleaseMetadataEditSession {
     private(set) var failure: DisplayError?
 
     private let commands: ReleaseEditCommands
-    /// The session in core this editor works in, for as long as the editor
-    /// is open.
-    private let core: ReleaseEditSessionCommands
+    /// The form this editor holds, for as long as the editor is open.
+    private let form: ReleaseEditFormCommands
     @ObservationIgnored
     private var drafts:
         ScreenSubscription<PulledValues<BridgeReleaseEditDraft?>>?
     private var operationTask: Task<Void, Never>?
     private var operationSerial = 0
-    /// The last change sent to core; the next waits for it.
+    /// The last change made to the form; the next waits for it.
     private var lastChange: Task<Void, Never>?
 
     init(
@@ -105,7 +104,7 @@ final class ReleaseMetadataEditSession {
         commands: ReleaseEditCommands
     ) {
         self.releaseId = releaseId
-        core = opened.session
+        form = opened.form
         self.commands = commands
         drafts = ScreenSubscription(
             opened.drafts,
@@ -156,11 +155,11 @@ final class ReleaseMetadataEditSession {
         await write { try await $0.setTrack(edited) }
     }
 
-    /// Save the session; core opens it again on what the library now holds
-    /// in the same write. `onSuccess` receives the album the release is on
-    /// after the save. Core refuses the save, and writes nothing, when another
-    /// editor or device changed the release after this session opened;
-    /// Cancel opens it as it is now.
+    /// Save the form; the editor then holds the form opened on what the
+    /// save wrote. `onSuccess` receives the album the release is on after
+    /// the save. Core refuses the save, and writes nothing, when another
+    /// editor or device changed the release after this form opened; Cancel
+    /// opens it as it is now.
     func save(onSuccess: @escaping @MainActor @Sendable (String) -> Void) {
         let serial = begin(.saving)
         failure = nil
@@ -171,8 +170,8 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                let albumId = try await serially { [core] in
-                    try await core.save()
+                let albumId = try await serially { [form] in
+                    try await form.save()
                 }
                 finish(serial)
                 onSuccess(albumId)
@@ -191,8 +190,8 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Discard every change: core opens the session again on the release as
-    /// the library holds it.
+    /// Discard every change: the editor opens its form again on the release
+    /// as the library holds it.
     func cancelChanges() {
         let serial = begin(.cancelling)
         operationTask = Task { @MainActor in
@@ -202,7 +201,7 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                try await serially { [core] in try await core.cancel() }
+                try await serially { [form] in try await form.cancel() }
                 failure = nil
             }
             catch is CancellationError {}
@@ -226,8 +225,8 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                try await serially { [core] in
-                    try await core.apply(link, apply?.bridgeApply)
+                try await serially { [form] in
+                    try await form.apply(link, apply?.bridgeApply)
                 }
             }
             catch is CancellationError {}
@@ -245,7 +244,7 @@ final class ReleaseMetadataEditSession {
         failure = nil
         operationTask = Task { @MainActor in
             do {
-                try await serially { [core] in try await core.setAlbum(pick) }
+                try await serially { [form] in try await form.setAlbum(pick) }
             }
             catch is CancellationError {}
             catch {
@@ -266,14 +265,14 @@ final class ReleaseMetadataEditSession {
         drafts = nil
     }
 
-    /// Send one change of the form to core.
+    /// Make one change of the form.
     private func write(
         _ change:
-            @escaping @MainActor (ReleaseEditSessionCommands) async throws ->
+            @escaping @MainActor (ReleaseEditFormCommands) async throws ->
             Void
     ) async {
         do {
-            try await serially { [core] in try await change(core) }
+            try await serially { [form] in try await change(form) }
             failure = nil
         }
         catch is CancellationError {}
@@ -282,9 +281,9 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Run `step` once the change sent before it has finished, so core takes
-    /// the editor's changes in the order they were made. Cancelling the
-    /// caller cancels the step.
+    /// Run `step` once the change made before it has finished, so the form
+    /// takes the editor's changes in the order they were made. Cancelling
+    /// the caller cancels the step.
     private func serially<Value: Sendable>(
         _ step: @escaping @MainActor () async throws -> Value
     ) async throws -> Value {

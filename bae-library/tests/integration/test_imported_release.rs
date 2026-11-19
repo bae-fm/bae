@@ -110,13 +110,10 @@ impl ImportingLibrary {
     /// The release editor's draft of `release_id`, as it opens.
     async fn release_edit(&self, release_id: &str) -> bae_import::ReleaseEditDraft {
         let manager = self.library.manager();
-        let session = manager.open_release_edit(release_id).await.unwrap();
-        manager
-            .subscribe_release_edit_draft(&session)
-            .next()
-            .await
-            .unwrap()
-            .expect("the session is open")
+        let form = manager.open_release_edit(release_id).await.unwrap();
+        let read = manager.subscribe_release_edit_draft();
+        read.set(Some(form)).expect("the draft takes the form");
+        read.next().await.unwrap().expect("the library holds the release")
     }
 
     /// Stop the import service, which joins its threads, off the runtime.

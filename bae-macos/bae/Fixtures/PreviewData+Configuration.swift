@@ -224,8 +224,8 @@ extension PreviewData {
     }
 }
 
-/// A release's library as an edit session's commands meet it: opening
-/// reads what it holds, and a save becomes that.
+/// A release's library as an editor's form commands meet it: opening reads
+/// what it holds, and a save becomes that.
 actor PreviewReleaseLibrary {
     /// What the library held before anything was saved to it.
     nonisolated let opening: BridgeReleaseEditDraft
@@ -275,15 +275,15 @@ actor PreviewReleaseLibrary {
     {
         OpenedReleaseEdit(
             drafts: session.drafts(),
-            session: commands(of: session)
+            form: commands(of: session)
         )
     }
 
     /// What `session` does with each command.
     nonisolated func commands(
         of session: PreviewReleaseEditSession
-    ) -> ReleaseEditSessionCommands {
-        ReleaseEditSessionCommands(
+    ) -> ReleaseEditFormCommands {
+        ReleaseEditFormCommands(
             setField: { field, value in
                 await session.change { draft in
                     switch field {

@@ -526,11 +526,13 @@ artist is in the library, New when every one is new, how many are new, how
 many library artists its one credit could be, or how many of its credits
 are left to choose. A picked artist counts as in the library. The badges
 always name the artists that importing or saving the draft would name.
-bae stores the answer of these rules for each credit of a draft or a
-session. The write that adds or changes a credit, or changes an artist the
+bae stores the answer of these rules for each credit of a candidate's
+draft. The write that adds or changes a credit, or changes an artist the
 rules can name for it, stores the new answer in the same transaction,
 whether this device made the write or applied another device's, and the
-pane and the editor read the stored answers.
+pane reads the stored answers. The release editor holds its form itself,
+so its draft applies the same rules to each credit of the form as it reads
+it, and reads again when a write changes an artist the rules can name.
 
 **Edge cases.**
 
@@ -2145,8 +2147,8 @@ reported and stops for the session, as it does when the library closes.
   the disc they gave it or skips one they ignored; it reads a sheet they decided
   nothing about by the scan's rules. Its track lengths come from its stored
   tracks. The person searches from the release editor (§3.8) and picks its
-  pressing, which is applied to the release's edit session at once, with no
-  confirm step, and the editor shows what it gave. A pressing whose tracks don't
+  pressing, which the editor applies to its form at once, with no confirm
+  step, and the editor shows what it gave. A pressing whose tracks don't
   lay out on the stored ones is refused with both counts, and one several of
   whose disc sets fit them alike is refused naming those discs. The editor on
   every app states that refusal in its own line (G.1), as the import does, never
@@ -2165,29 +2167,29 @@ rows play, and show lengths and a CUE image's starts as the import pane's do,
 §3.6), and the same *Identify* controls — *Automatic* identifies the release from its files
 and *Search* opens the typed search — whose results replace the draft in
 place until a pick applies one, or *Back* returns to it. *Save* writes the
-session; *Cancel*, shown once something changed, discards it. While an apply
+form; *Cancel*, shown once something changed, discards its changes. While an apply
 reads a release from its catalog, the editor names the catalog it reads from,
 as an import's pick does (§3.5); saving, cancelling and picking an album are
 local and show no spinner, their controls disabled until they end.
 
-A library release is edited in a *session* the editor opens on it: its form
-holds the release's values as the library holds them. Each change the
-person makes — a field, a label or barcode row, a choice of what the
-pressing is, the album's artists, a track's title or artists — is written
-to the session as it is made, in the order made, as the import pane writes
-each to its draft (§3.6), and the editor shows the session as it returns:
-the form, how each credit in it stands to the library, whether anything
-changed, and why the form can't be saved, when it can't. The draft follows
+The editor opens with a *form* that holds the release's values as the
+library holds them, and the editor holds its form: bae stores none of the
+form's changes until a save. Each change the person makes (a field, a
+label or barcode row, a choice of what the pressing is, the album's artists,
+a track's title or artists) changes the form as it is made, in the order
+made, and the editor shows, for the form as it stands, how each credit in it
+stands to the library, whether anything changed, and why the form can't be
+saved, when it can't. The draft follows
 the library while the editor is open: how each credit stands to the
 library, the album's title and credits, and the cover show what the library
 holds after any write that changes them, including a write that merges an
 artist or renames the album, with no edit. Applying a catalog
-release in the session reads it once, against the release's stored track
+release to the form reads it once, against the release's stored track
 lengths and its files, and replaces every value the release holds — the
 album fields, the pressing, each track's title, artists, medium, side and
 number, the roles and works the catalog credits, the release's records (the
 applied one first) and the album those name — none of which is written yet;
-the cover stays the release's own. Saving writes the whole session in one
+the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where a catalog was applied, its every
 value too, so nothing a previous source credited survives. The release lands
 in the album its records name (§3.7), or in a library album the person
@@ -2196,25 +2198,27 @@ with the import pane's album picker: the album the release is in, the one an
 applied catalog's records name, or a new album where they name none the
 library holds, until the person picks one (a library album, or a new album,
 which a save writes with the release's edited title and year and the credits
-of the album it left); a pick holds over a catalog applied after it. The cover is not part of the session: a cover picked in the
-editor is written at once, and the session keeps what was applied and picked.
-Cancelling discards the session; nothing is re-read, and there is no reset to
+of the album it left); a pick holds over a catalog applied after it, and a
+library album the person picked stops being the pick once someone deletes
+it. The cover is not part of the form: the editor writes a cover the person
+picks at once, and the form keeps what the person applied and picked.
+Cancelling discards the form's changes; bae reads no source again, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing
 applied saves its edited fields alone, its mediums, roles and works as stored.
 A save decides each label as an import does (§2.3), and a label the person
 left as it was keeps the library label it named.
 
-Every editor opens a session of its own, so the editor sheet and the import
+Every editor holds a form of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
-never share an apply or a pick. A save's one write first checks the release
-against what its session opened on: if the library no longer holds it so — another
-session saved it, MCP wrote its fields, or an
-artist it credits was renamed — the save is refused, writes nothing, and the
-editor says the release changed after it opened; *Cancel* opens it again as
-it is now. Only the cover, which is written at once, never makes a session
-out of date. The check and the rows are one write, so nothing lands between
-them. After a save, the editor works in a fresh
-session opened on what it saved. When the person, another device or MCP
+never share an edit, an apply or a pick. A save's one write first checks the
+release against what its form opened on: if the library no longer holds it
+so (another editor saved it, MCP wrote its fields, or someone renamed an
+artist it credits), bae refuses the save and writes nothing, and the editor
+says the release changed after it opened; *Cancel* opens it again as it is
+now. Only the cover, which the editor writes at once, never makes a form out
+of date. The
+check and the rows are one write, so nothing lands between them. After a
+save, the editor works in a fresh form opened on what it saved. When the person, another device or MCP
 deletes a release while its editor is open, the editor closes: in the album
 detail the release's sheet closes, and in the import pane the folder
 returns to Found with its draft (A.5, `import_candidate_edit`).
@@ -5916,35 +5920,11 @@ Beside them, keyed by the candidate's key as the import list names it:
 | `import_identify_run` | each identify run in flight and the key it identifies. How the run stands is stored in the shape of the verdict it may end on (A.6), owned by the run instead of by a candidate's files: a verdict row, `running` while its lookups are out, with the ledger as it stands (clues still being read or scanned, cells queued or looking up, a title search waiting) and the releases its answers so far combine to as match rows, then the answer it reached while that is written; beside them the signals it last read, scans still going included, and how its rows stand against the text of those signals. A folder candidate's run has its rows only while its standing names the run, so no candidate shows a run its standing does not name, or a standing whose run published nothing. A library release's re-identify run, which has no standing, keeps its rows until it ends or the release's sheet closes. The pane and the release editor's search show the queue's wait or the run's state while identification does something for the key (for a re-identify session, its latest run in flight, else its latest answer), else the state of the candidate's stored verdict, else Idle, and show a verdict the same way in both. Every row a run owns goes with its row here, and the table is emptied as the library opens |
 | `import_candidate_search`, `import_candidate_search_source`, `import_candidate_search_pick`, `import_candidate_search_pick_album` | a person's typed search for a candidate (§3.5): the query as columns by mode (artist and album, catalog number, or barcode), and each catalog's part of it in the catalogs' order: not asked (switched off, or needing a credential the library lacks), searching, answered with the releases it returned (match rows the search owns, A.6), or failed (the catalog's failure with its HTTP status, or the error chain of bae breaking). Each answer, pick and switch lays the whole list of the search's releases out again in its own write, and stores each release's pressing row, its card and its place among its row's records, the text of each card and what each row lists (A.6), and that write also stores what the grouping rules decide for each card: its place among the cards (the card with the best row first), its sections (one for each album where it holds two albums of one catalog), the place of each row in its section (by the year its lead record states), its cover and the catalogs it names. The search stands searching while a part is, else failed when a part failed, else no matches when a part answered and no part returned a release, else found. bae writes each catalog's answer in a write of its own, and only to a part still searching, of the search bae asked it for: a new search for the key replaces the row on a run number never used again, so bae writes nothing for an answer to the replaced search, a second answer, or one for a part switched off. Retry puts only the failed parts back to searching, on the same run. Switching a catalog off closes its part of every search and deletes what it returned. A pick of a MusicBrainz release on the list stores what its documents state its album is on the other catalog, and the write lays the list out with every pick together: each MusicBrainz row holds the album bae works out for its group from every pick and the list; a release the list does not hold, a partner the pick claims included, is none of the search's. A folder candidate's search is of the files it names and goes in the scan write that leaves the candidate with other files or none; a library release's names none. Every row a search owns goes with its row, and the table is emptied as the library opens |
 
-The tables below hold each release editor's session (§3.8). Each session is
-one row of `release_edit_session` on one library release, and deleting the
-release deletes its sessions:
+Beside the drafts, keyed by a credit's folded name and catalog ids:
 
 | Table | Holds |
 |---|---|
-| `release_edit_session` | the session's release; what it opened on (`opened`): the release's form, tracks and album as the library held them, as JSON, which a save checks the release against and the editor compares the form with to say whether anything changed; and the form's album and pressing fields as `import_candidate_edit` holds a draft's |
-| `release_edit_label`, `release_edit_barcode`, `release_edit_album_artist` | the form's label and barcode rows as the person typed them and its album artists, as the candidate's tables hold them |
-| `release_edit_track`, `release_edit_track_artist` | each track row of the form by the library track it edits, in release order: its title, whether it takes the album's artists, and its own artists |
-| `release_edit_album_pick` | the album the person picked for the release, as `import_candidate_album_pick` holds a candidate's |
-| `release_edit_applied` | one row once the person applies a catalog release in the session; the rows below hold what the apply read, and deleting this row deletes them |
-| `release_edit_medium`, `release_edit_track_place` | the applied mediums, and each track's medium, side, number and the length the catalog lists for it |
-| `release_edit_track_role`, `release_edit_release_role`, `release_edit_work`, `release_edit_work_credit`, `release_edit_work_part`, `release_edit_track_work` | the roles and works the applied release credits |
-| `release_edit_record` | the records the apply read, the applied one first, which a save writes |
-
-Each change the editor sends is one write to its session's rows, and bae
-refuses a change to a session whose rows are gone. A save's one write
-writes the release and then the session again from the release as the save
-wrote it, under the same id; Cancel writes the session again from the release as it
-is now, in a write of its own. Closing the editor deletes its session's
-rows, and a delete that fails is reported as a bug. No session outlives the process, so the tables are emptied as the
-library opens.
-
-Beside the drafts and the sessions, keyed by a credit's folded name and
-catalog ids:
-
-| Table | Holds |
-|---|---|
-| `import_credit_resolution`, `import_credit_resolution_artist` | for each distinct artist credit a draft or a session holds, the library artists the rules of §2.3 name for it, in their order: none when importing would make a new artist, one, or the several the credit leaves ambiguous, each with the ids and sort name the rules give it. The write that adds or changes a credit, or changes an artist the rules can name for it, stores the answer in the same transaction, whether this device made the write or applied another device's, and the write that removes the last credit holding a key deletes its answer |
+| `import_credit_resolution`, `import_credit_resolution_artist` | for each distinct artist credit a draft holds, the library artists the rules of §2.3 name for it, in their order: none when importing would make a new artist, one, or the several the credit leaves ambiguous, each with the ids and sort name the rules give it. The write that adds or changes a credit, or changes an artist the rules can name for it, stores the answer in the same transaction, whether this device made the write or applied another device's, and the write that removes the last credit holding a key deletes its answer |
 | `import_credit_resolution_due` | the credits whose answer a transaction's writes may have changed; bae answers each one and empties the table before the transaction commits |
 
 Beside them, keyed by the release an import made:
@@ -6250,7 +6230,7 @@ Each is served at `/rest/<name>` and `/rest/<name>.view`.
 | `release_export` | queue an export of a release's files |
 | `release_storage_action` | move to storage, pin, unpin, queue a move-to-this-device, or cancel |
 | `output_status` | read the export queue |
-| `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value in an edit session of its own and save it, records and album with it, into the album its records name or a library album given over them |
+| `release_reidentify` | re-identify a release as a MusicBrainz or Discogs release: apply its every value to a form of its own and save it, records and album with it, into the album its records name or a library album given over them |
 | `release_album_set` | move a release into a library album, which keeps its own title and artists, as the editor's album picker does |
 | `release_metadata_update` | apply a metadata edit: the album fields, the pressing, and each track's title and artists (a track's place is the source's, not edited) |
 | `library_search` | search the library |

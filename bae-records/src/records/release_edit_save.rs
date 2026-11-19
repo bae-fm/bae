@@ -1,6 +1,6 @@
-//! Saving a library release's edit session: the edited fields, and every row
-//! a catalog applied in the session makes, with the release's new records and
-//! album, in one transaction.
+//! Saving a library release's editor's form: the edited fields, and every
+//! row a catalog applied in the editor makes, with the release's new records
+//! and album, in one transaction.
 
 use super::release::AlbumFields;
 use super::*;
@@ -13,7 +13,7 @@ pub enum ReleaseEditWrite {
     /// and each track's title and credits. Mediums, places, roles and works
     /// stay as stored.
     Fields(ReleaseMetadataRows),
-    /// Every row a catalog applied in the session makes, keyed by the
+    /// Every row a catalog applied in the editor makes, keyed by the
     /// release's own ids, its tracks' and the album it lands in: it replaces
     /// the release's mediums and places, roles and works as well, so nothing
     /// a previous source stated survives.
@@ -24,40 +24,39 @@ pub enum ReleaseEditWrite {
     },
 }
 
-/// Why a save of an edit session was refused. Nothing of it landed.
+/// Why a save of an editor's form was refused. Nothing of it landed.
 #[cfg(desktop)]
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseEditRefusal {
-    /// The release is no longer as the session opened on it, as the save's
+    /// The release is no longer as the editor opened on it, as the save's
     /// own write found it.
-    #[error("the release changed after the session opened")]
+    #[error("the release changed after the editor opened")]
     Stale,
-    /// The session's rows are gone: its editor closed it, or someone deleted
-    /// its release.
-    #[error("the session has ended")]
-    Closed,
+    /// The library no longer holds the release.
+    #[error("the release is gone")]
+    Gone,
     #[error(transparent)]
     Identity(#[from] IdentityRefusal),
 }
 
-/// Why a save of an edit session did not commit.
+/// Why a save of an editor's form did not commit.
 #[cfg(desktop)]
 pub type ReleaseEditSaveError = WriteError<ReleaseEditRefusal>;
 
 #[cfg(desktop)]
 impl Records {
-    /// Save an edit session: in one transaction, all of it or none, first
+    /// Save an editor's form: in one transaction, all of it or none, first
     /// check, as `still_as_opened` says, that the release is still as the
-    /// session opened on it, then move the release and replace its records
+    /// editor opened on it, then move the release and replace its records
     /// where `change` says (see `set_records_on`), then write `write`, then
-    /// write the session again on the release as this save wrote it, with
-    /// `reseed`. Before
-    /// it writes anything, the save refuses a release that is not as the
-    /// session opened on it as [`ReleaseEditRefusal::Stale`], and a closed
-    /// session as [`ReleaseEditRefusal::Closed`]; the check runs in the
-    /// write, so no other write lands between it and the rows, and none
-    /// lands between the rows and the session's new values.
-    pub async fn save_release_edit_atomic(
+    /// read what `saved` reads of the release as this save wrote it, and
+    /// return that. Before it writes anything, the save refuses a release
+    /// that is not as the editor opened on it as
+    /// [`ReleaseEditRefusal::Stale`], and one the library no longer holds as
+    /// [`ReleaseEditRefusal::Gone`]; the check runs in the write, so no other
+    /// write lands between it and the rows, and none lands between the rows
+    /// and what `saved` reads.
+    pub async fn save_release_edit_atomic<Saved: Send + 'static>(
         &self,
         change: Option<RecordsChange>,
         write: ReleaseEditWrite,
@@ -65,8 +64,8 @@ impl Records {
         still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
-        reseed: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<(), DbError> + Send + 'static,
-    ) -> Result<(), ReleaseEditSaveError> {
+        saved: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Saved, DbError> + Send + 'static,
+    ) -> Result<Saved, ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
         let pressing = PressingParts::new(
             &*self.ids,
@@ -113,7 +112,7 @@ impl Records {
                 }
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
                 emptiable.remove_emptied(&sql)?;
-                Ok(reseed(&sql)?)
+                Ok(saved(&sql)?)
             })
             .await
     }
@@ -199,7 +198,7 @@ fn write_applied_rows_on(
         };
         kept.insert(medium.id.as_str(), id);
     }
-    // The save checked, in this write, that the release is as the session
+    // The save checked, in this write, that the release is as the editor
     // opened on it, so it holds every track these rows name.
     for track in &rows.tracks {
         let medium_id = kept.get(track.medium_id.as_str()).unwrap_or(&track.medium_id);

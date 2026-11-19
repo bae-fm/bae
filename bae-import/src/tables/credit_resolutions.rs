@@ -1,24 +1,24 @@
-//! Which library artists each artist credit of a candidate's draft or of a
-//! release editor's session names, as the records' rule
-//! (`bae_records::resolve_credit_on`) decides it, stored per distinct credit
-//! (its folded name and its two catalog ids, all the rule reads of it).
+//! Which library artists each artist credit of a candidate's draft names, as
+//! the records' rule (`bae_records::credit_artists_on`) decides it, stored
+//! per distinct credit (its folded name and its two catalog ids, all the rule
+//! reads of it).
 //!
 //! The SQL file beside this one holds the tables and the triggers that mark a
 //! credit due when a write changes the credit or an artist the rule can name
 //! for it, in this device's writes and in the ones coven applies from another
 //! device alike. [`answer_due_credits`], the part's before-commit function,
 //! runs last in every such transaction: it answers each due credit with the
-//! rule, deletes the answer of a credit no draft or session holds any more,
-//! and empties the list. The import pane's and the release editor's reads
-//! join the stored answers (`artist_standings`).
+//! rule, deletes the answer of a credit no draft holds any more, and empties
+//! the list. The import pane's reads join the stored answers
+//! (`artist_standings`); a release editor's form is in no table, so its
+//! draft's read answers each of its credits with the same rule.
 
 use bae_catalogs::credits::ArtistCredit;
-use bae_records::{CreditResolution, ExistingArtist};
+use bae_records::ExistingArtist;
 use rusqlite::{params, OptionalExtension};
 
 /// The credit resolutions' part of the library's schema. It runs after the
-/// parts creating the draft's and the session's credit tables, which its
-/// triggers fire on.
+/// part creating the draft's credit tables, which its triggers fire on.
 pub(super) const SCHEMA: bae_store::SchemaPart =
     bae_store::SchemaPart::new(&[include_str!("credit_resolutions.sql")])
         .before_commit(answer_due_credits);
@@ -32,7 +32,7 @@ struct CreditKey {
 }
 
 /// Answer every credit the transaction's writes marked due and empty the
-/// list: each one a draft or a session still holds gets the rule's answer,
+/// list: each one a draft still holds gets the rule's answer,
 /// written where it differs from the stored one, and each one none holds
 /// loses its answer.
 fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
@@ -61,11 +61,7 @@ fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> 
                     musicbrainz_artist_id: key.musicbrainz_artist_id.clone(),
                     discogs_artist_id: key.discogs_artist_id.clone(),
                 };
-                let answer = match bae_records::resolve_credit_on(sql, &credit)? {
-                    CreditResolution::New => Vec::new(),
-                    CreditResolution::Library { artist } => vec![artist],
-                    CreditResolution::Ambiguous { artists } => artists,
-                };
+                let answer = bae_records::credit_artists_on(sql, &credit)?;
                 if stored_answer_on(sql, key)?.as_ref() != Some(&answer) {
                     store_answer_on(sql, key, &answer)?;
                 }
@@ -84,8 +80,7 @@ fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> 
     Ok(())
 }
 
-/// The name of one credit a draft or a session holds as `key`, any one of
-/// them: the rule reads only its folded name, which they share. `None` when
+/// The name of one credit a draft holds as `key`, any one of them: the rule reads only its folded name, which they share. `None` when
 /// none holds it.
 fn held_name_on(sql: &coven::CommitSql<'_>, key: &CreditKey) -> rusqlite::Result<Option<String>> {
     let holding = |table: &str| {
@@ -97,11 +92,9 @@ fn held_name_on(sql: &coven::CommitSql<'_>, key: &CreditKey) -> rusqlite::Result
     };
     sql.query_row(
         &format!(
-            "{} UNION ALL {} UNION ALL {} UNION ALL {} LIMIT 1",
+            "{} UNION ALL {} LIMIT 1",
             holding("import_candidate_album_artist_assignment"),
             holding("import_candidate_track_artist_assignment"),
-            holding("release_edit_album_artist"),
-            holding("release_edit_track_artist"),
         ),
         params![key.name_key, key.musicbrainz_artist_id, key.discogs_artist_id],
         |row| row.get(0),

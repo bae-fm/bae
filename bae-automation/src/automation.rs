@@ -435,9 +435,9 @@ impl Automation {
     }
 
     /// Re-identify a library release as the catalog release `pressing`
-    /// names: apply it in a fresh edit session and save it as applied —
-    /// every value, the records, and the album they name, or the library
-    /// album `album_id` picked over it, in one write as the editor's save.
+    /// names: apply it to a form of its own and save it as applied: every
+    /// value, the records, and the album they name, or the library album
+    /// `album_id` picked over it, in one write as the editor's save.
     pub async fn reidentify_release(
         &self,
         release_id: String,
@@ -445,34 +445,31 @@ impl Automation {
         album_id: Option<String>,
     ) -> Result<(), AutomationError> {
         let link = pressing.into_core();
-        // A session of its own: an editor open on the release in the app keeps
+        // A form of its own: an editor open on the release in the app keeps
         // its apply and pick, and this save makes that editor's save refuse.
-        let session = self.services.open_release_edit(&release_id).await?;
-        self.services
-            .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
+        let form = self.services.open_release_edit(&release_id).await?;
+        let mut form = self
+            .services
+            .apply_release_edit_catalog(form, &link, &bae_import::CatalogApplySteps::unread())
             .await?;
         if let Some(album_id) = album_id {
-            self.services
-                .set_release_edit_album(&session, bae_import::AlbumPick::Album { album_id })
-                .await?;
+            form.album_pick = bae_import::AlbumPick::Album { album_id };
         }
-        self.services.save_release_edit(&session).await?;
+        self.services.save_release_edit(form).await?;
         Ok(())
     }
 
     /// Move a library release into the library album `album_id`, which keeps
     /// its own title and artists: the editor's album pick, saved with the
-    /// release's values as they stand, in an edit session of its own.
+    /// release's values as they stand, in a form of its own.
     pub async fn set_release_album(
         &self,
         release_id: String,
         album_id: String,
     ) -> Result<(), AutomationError> {
-        let session = self.services.open_release_edit(&release_id).await?;
-        self.services
-            .set_release_edit_album(&session, bae_import::AlbumPick::Album { album_id })
-            .await?;
-        self.services.save_release_edit(&session).await?;
+        let mut form = self.services.open_release_edit(&release_id).await?;
+        form.album_pick = bae_import::AlbumPick::Album { album_id };
+        self.services.save_release_edit(form).await?;
         Ok(())
     }
 

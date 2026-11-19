@@ -56,9 +56,9 @@ pub enum UiErrorCategory {
     TiedMediums {
         mediums: Vec<u32>,
     },
-    /// A release edit session's save found the release changed since the
-    /// session opened on it — another editor saved it, or another device's
-    /// edit arrived — and wrote nothing.
+    /// A release editor's save found the release changed since the editor
+    /// opened on it (another editor saved it, or another device's edit
+    /// arrived) and wrote nothing.
     ReleaseChangedSinceOpened,
     /// A change acted on something that changed between its read and its
     /// write: a release, album or file it names went, a cover or artist image

@@ -617,23 +617,13 @@ impl AppServices {
     delegate_lib!(store, create_dropbox_shared_folder => create_dropbox_shared_folder(name: &str) -> coven::StorageFolder);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_library::ReleaseEdit, bae_library::LibraryError>);
+    delegate_async!(manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(session: &bae_library::ReleaseEdit, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(form: bae_import::ReleaseEditForm, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, save_release_edit => save_release_edit(session: &bae_library::ReleaseEdit) -> Result<(), bae_library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, set_release_edit_album => set_release_edit_album(session: &bae_library::ReleaseEdit, pick: bae_import::AlbumPick) -> Result<(), bae_library::LibraryError>);
-    #[cfg(desktop)]
-    delegate_sync!(manager, subscribe_release_edit_draft => subscribe_release_edit_draft(session: &bae_library::ReleaseEdit) -> bae_store::live_query::LiveValues<Option<bae_import::ReleaseEditDraft>>);
-    #[cfg(desktop)]
-    delegate_async!(manager, reopen_release_edit => reopen_release_edit(session: &bae_library::ReleaseEdit) -> Result<(), bae_library::LibraryError>);
-    #[cfg(desktop)]
-    delegate_async!(manager, edit_release_edit_field => edit_release_edit_field(session: &bae_library::ReleaseEdit, edit: bae_import::DraftFieldEdit) -> Result<(), bae_library::LibraryError>);
-    #[cfg(desktop)]
-    delegate_async!(manager, set_release_edit_album_artists => set_release_edit_album_artists(session: &bae_library::ReleaseEdit, assignments: Vec<bae_import::Credited>) -> Result<(), bae_library::LibraryError>);
-    #[cfg(desktop)]
-    delegate_async!(manager, set_release_edit_track => set_release_edit_track(session: &bae_library::ReleaseEdit, track: bae_import::RawTrackEdit) -> Result<(), bae_library::LibraryError>);
+    delegate_sync!(manager, subscribe_release_edit_draft => subscribe_release_edit_draft() -> bae_library::LiveReleaseEditDraft);
     #[cfg(desktop)]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), bae_library::LibraryError>);
     #[cfg(desktop)]

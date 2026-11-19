@@ -167,15 +167,8 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
         first_upcoming_until(&mut queue, |_| true).await;
 
         let manager = fixture.library.manager();
-        let session =
-            manager.open_release_edit(&release_id).await.expect("open the release's editor");
-        let mut edit = manager
-            .subscribe_release_edit_draft(&session)
-            .next()
-            .await
-            .expect("read the release's edit form")
-            .expect("the session is open")
-            .edit;
+        let mut edit =
+            manager.open_release_edit(&release_id).await.expect("open the release's editor").edit;
         edit.album_title = "Renamed Album".to_string();
         edit.tracks[0].title = "Renamed Opening Track".to_string();
         edit.tracks[1].title = "Renamed Second Track".to_string();

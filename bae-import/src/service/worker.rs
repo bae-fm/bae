@@ -53,13 +53,11 @@ impl ImportService {
         closing: tokio_util::sync::CancellationToken,
         file_tags: Arc<dyn crate::file_tag_reader::FileTagReader>,
     ) -> Result<ImportServiceHandle, crate::ImportError> {
-        // No run, import, catalog release that bae is applying,
-        // release edit session, held folder scan or raised scan alert
-        // outlives the process, so bae clears them all before anything reads
-        // them.
+        // No run, import, catalog release that bae is applying, held folder
+        // scan or raised scan alert outlives the process, so bae clears them
+        // all before anything reads them.
         tables.clear_candidate_standings().await?;
         tables.clear_catalog_apply_steps().await?;
-        tables.clear_release_edit_sessions().await?;
         tables.clear_held_folder_scans().await?;
         let runtime = CandidateRuntime::new(tables.clone(), diagnostics.clone());
         let event_tx = crate::ImportEventBus::new(runtime.clone());

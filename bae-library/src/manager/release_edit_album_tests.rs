@@ -1,17 +1,18 @@
-//! The album a release edit session files its release under: named, picked and new.
+//! The album a release editor's form files its release under: named, picked
+//! and new.
 
 use super::tests::{
-    album_pick, draft_after, insert_editable_tracks, musicbrainz_link, seed_musicbrainz,
+    album_pick, draft_now, insert_editable_tracks, musicbrainz_link, seed_musicbrainz,
 };
 use crate::manager::tests::*;
 use bae_records::DbAlbum;
 
-/// The session says which album a save files the release under: the one it
-/// is in, the one an applied catalog's records name (new where the library
-/// holds none), or the one the person picked, which an apply keeps and a
-/// fresh open drops.
+/// The form's draft says which album a save files the release under: the
+/// one it is in, the one an applied catalog's records name (new where the
+/// library holds none), or the one the person picked, which an apply keeps
+/// and a fresh open drops.
 #[tokio::test]
-async fn a_release_edit_session_names_the_album_its_save_files_under() {
+async fn a_release_edit_form_names_the_album_its_save_files_under() {
     use bae_import::DraftAlbum;
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -42,72 +43,43 @@ async fn a_release_edit_session_names_the_album_its_save_files_under() {
         line: bae_import::AlbumLine::TitleAlone { title: picked.title.clone() },
     };
 
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(super::tests::opened(manager, &session).await.album, named(&own));
-    let applied = draft_after(
-        manager,
-        &session,
-        manager.apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("named-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        ),
-    )
-    .await;
-    assert_eq!(applied.album, named(&grouped));
-    let applied = draft_after(
-        manager,
-        &session,
-        manager.apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("unnamed-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        ),
-    )
-    .await;
-    assert_eq!(applied.album, DraftAlbum::New);
+    let form = manager.open_release_edit(&release.id).await.unwrap();
+    assert_eq!(form.opened.album, named(&own));
+    let apply = |form, link| async move {
+        manager
+            .apply_release_edit_catalog(
+                form,
+                &musicbrainz_link(link),
+                &bae_import::CatalogApplySteps::unread(),
+            )
+            .await
+            .unwrap()
+    };
+    let form = apply(form, "named-new").await;
+    assert_eq!(draft_now(manager, &form).await.album, named(&grouped));
+    let mut form = apply(form, "unnamed-new").await;
+    assert_eq!(draft_now(manager, &form).await.album, DraftAlbum::New);
 
+    form.album_pick = album_pick(&picked);
+    assert_eq!(draft_now(manager, &form).await.album, picked_album);
+    let mut missing = form.clone();
+    missing.album_pick = bae_import::AlbumPick::Album { album_id: "no-such-album".to_string() };
     assert_eq!(
-        draft_after(
-            manager,
-            &session,
-            manager.set_release_edit_album(&session, album_pick(&picked))
-        )
-        .await
-        .album,
-        picked_album
+        draft_now(manager, &missing).await.album,
+        DraftAlbum::New,
+        "a pick of an album the library does not hold is no pick"
     );
-    let refused = manager
-        .set_release_edit_album(
-            &session,
-            bae_import::AlbumPick::Album { album_id: "no-such-album".to_string() },
-        )
-        .await;
-    assert!(
-        matches!(refused, Err(crate::LibraryError::AlbumMissing { .. })),
-        "the session refuses an album the library does not hold: {refused:?}"
-    );
-    let applied = draft_after(
-        manager,
-        &session,
-        manager.apply_release_edit_catalog(
-            &session,
-            &musicbrainz_link("named-new"),
-            &bae_import::CatalogApplySteps::unread(),
-        ),
-    )
-    .await;
-    assert_eq!(applied.album, picked_album, "an apply keeps the person's pick");
+    let mut form = apply(form, "named-new").await;
     assert_eq!(
-        draft_after(
-            manager,
-            &session,
-            manager.set_release_edit_album(&session, bae_import::AlbumPick::Records)
-        )
-        .await
-        .album,
+        draft_now(manager, &form).await.album,
+        picked_album,
+        "an apply keeps the person's pick"
+    );
+    form.album_pick = bae_import::AlbumPick::Records;
+    assert_eq!(
+        draft_now(manager, &form).await.album,
         named(&grouped),
-        "with no pick, the session files the release under the album its records name"
+        "with no pick, the form files the release under the album its records name"
     );
 }
 
@@ -127,27 +99,13 @@ async fn a_picked_new_album_files_the_release_under_a_fresh_album() {
     insert_release(manager, &sibling).await;
     insert_editable_tracks(manager, &release.id, 1).await;
 
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(
-        draft_after(
-            manager,
-            &session,
-            manager.set_release_edit_album(&session, bae_import::AlbumPick::New)
-        )
-        .await
-        .album,
-        DraftAlbum::PickedNew
-    );
-    assert!(manager.set_release_edit_album(&session, bae_import::AlbumPick::Records).await.is_ok());
-    manager.set_release_edit_album(&session, bae_import::AlbumPick::New).await.unwrap();
-    manager
-        .set_release_edit_album_artists(
-            &session,
-            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))],
-        )
-        .await
-        .unwrap();
-    manager.save_release_edit(&session).await.unwrap();
+    let mut form = manager.open_release_edit(&release.id).await.unwrap();
+    form.album_pick = bae_import::AlbumPick::New;
+    assert_eq!(draft_now(manager, &form).await.album, DraftAlbum::PickedNew);
+    form.edit.set_album_artists(vec![bae_import::Credited::plain(
+        bae_import::ArtistAssignment::named("Artist Name"),
+    )]);
+    manager.save_release_edit(form).await.unwrap();
 
     let filed = manager.records.find_album_id_for_release(&release.id).await.unwrap().unwrap();
     assert_ne!(filed, own.id, "the release left its album for a new one");

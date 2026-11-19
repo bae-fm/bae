@@ -39,7 +39,7 @@ extension ImportSearchFlow {
 
     /// `onSelect` owns what picking a pressing means for the surface that
     /// opened the pane. Import applies it to the candidate draft; the release
-    /// editor applies it to the library release's edit session.
+    /// editor applies it to the form it holds for the library release.
     ///
     /// `onBack` is the pane's way out, back to the draft it was opened from.
     @MainActor

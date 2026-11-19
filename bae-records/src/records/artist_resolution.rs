@@ -250,14 +250,17 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
         .ids
 }
 
-/// What the library holds for one credit as it stands now: the rule every
-/// write commits by, for the credit alone, against the committed library.
-/// The import stores its answer for each credit of a draft or a session.
-pub fn resolve_credit_on<Q: coven::SqlRead>(
+/// The library artists that the rule every write commits by names for one
+/// credit alone, against the committed library as it stands now, in the
+/// rule's order: none when committing would make a new artist, the one
+/// artist the credit names, or the several that carry its name when no
+/// catalog id tells them apart (committing then makes a new artist unless
+/// the person picks one). The import stores this answer for each credit of
+/// a draft, and a release editor's draft asks it for each credit of its form.
+pub fn credit_artists_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &bae_catalogs::credits::ArtistCredit,
-) -> rusqlite::Result<crate::CreditResolution> {
-    use crate::CreditResolution;
+) -> rusqlite::Result<Vec<crate::ExistingArtist>> {
     let row = DbArtist {
         id: String::new(),
         name: credit.name.clone(),
@@ -269,22 +272,11 @@ pub fn resolve_credit_on<Q: coven::SqlRead>(
     let committed = WriteSoFar { inserts: &[], staged: &[] };
     let (row, matched) = settled_catalog_match_on(sql, &row, committed)?;
     Ok(match matched {
-        Some(CatalogFound { holder: Holder::Library(held), .. }) => {
-            CreditResolution::Library { artist: held.row.into() }
-        }
+        Some(CatalogFound { holder: Holder::Library(held), .. }) => vec![held.row.into()],
         Some(CatalogFound { holder: Holder::New(_), .. }) => {
             unreachable!("a read of the committed library sees no artist a write makes")
         }
-        None => {
-            let mut named = name_matches_on(sql, &row, &[])?;
-            match named.len() {
-                0 => CreditResolution::New,
-                1 => CreditResolution::Library { artist: named.remove(0).into() },
-                _ => CreditResolution::Ambiguous {
-                    artists: named.into_iter().map(Into::into).collect(),
-                },
-            }
-        }
+        None => name_matches_on(sql, &row, &[])?.into_iter().map(Into::into).collect(),
     })
 }
 

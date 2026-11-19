@@ -60,8 +60,8 @@ struct ImportedReleasePane: View {
                 )
             }
             else {
-                // Opening the release's edit session reads the library;
-                // nothing shows until it lands.
+                // Opening the release's form reads the library; nothing
+                // shows until it lands.
                 Color.clear
                     .frame(
                         maxWidth: .infinity,
@@ -74,8 +74,8 @@ struct ImportedReleasePane: View {
         .padding(.bottom, ThemeSpace.page)
         .task(id: releaseId) { await load() }
         // When someone deletes the release while its editor is open, the
-        // pane drops the edit session; the import list then shows the folder
-        // as found.
+        // pane drops the editor; the import list then shows the folder as
+        // found.
         .onChange(of: session?.releaseGone == true) { _, gone in
             if gone {
                 session?.cancelTasks()

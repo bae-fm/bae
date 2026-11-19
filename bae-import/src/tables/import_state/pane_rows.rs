@@ -10,11 +10,9 @@
 //! Its tables are `pane_rows.sql`, and `values.sql` and `provenance.sql` for
 //! the draft's values and provenance, which every device's library holds.
 //!
-//! A release editor's session holds the same values in tables of its own
-//! (`tables::release_edit_session`), so the statements that write and read
-//! labels, barcodes, artist assignments, mediums, roles and works are in
-//! `tables::draft_rows`, and [`CANDIDATE_DRAFT`] names the candidate's
-//! tables for them.
+//! The statements that write and read labels, barcodes, artist assignments,
+//! mediums, roles and works are in `tables::draft_rows`, and
+//! [`CANDIDATE_DRAFT`] names the candidate's tables for them.
 
 pub(super) const SQL: &str = include_str!("pane_rows.sql");
 pub(super) const VALUES_SQL: &str = values::SQL;

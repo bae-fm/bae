@@ -24,7 +24,7 @@ mod actions;
 mod artist_standings;
 pub(crate) use artist_standings::{
     album_artist_standing_on, artist_field_standing_of_json, artist_standing_clauses,
-    track_artist_standing_sql, CreditSource, FieldStandingJson,
+    form_credit_answers_on, track_artist_standing_sql, CreditSource, FieldStandingJson,
 };
 mod counts;
 mod folder_images;

@@ -1,6 +1,5 @@
-//! A release's edit sessions: the seed an editor opens on, a catalog applied,
-//! the album picked, re-identifying, and a save refused once the release
-//! changed.
+//! A release's editor: the form it opens on, a catalog applied, the album
+//! picked, re-identifying, and a save refused once the release changed.
 
 use super::*;
 use crate::manager::tests::*;
@@ -9,7 +8,7 @@ use bae_catalogs::records::LookupRef;
 use bae_records::DbAlbum;
 use time::UtcDateTime;
 
-// ── Re-identify: a catalog applied in an edit session, then saved ─────
+// ── Re-identify: a catalog applied to a form, then saved ─────
 //
 // The applied release is fetched through `prepare_release`, so these tests
 // seed the release documents and the cover-art lookups first and it reads
@@ -28,15 +27,15 @@ async fn stored_for(
         .unwrap()
 }
 
-/// Apply `link` in an edit session of its own on `release_id` and save it as
+/// Apply `link` to a form of its own on `release_id` and save it as
 /// applied.
 async fn reidentify(manager: &LibraryManager, release_id: &str, link: bae_identify::PressingLink) {
-    let session = manager.open_release_edit(release_id).await.unwrap();
-    manager
-        .apply_release_edit_catalog(&session, &link, &bae_import::CatalogApplySteps::unread())
+    let form = manager.open_release_edit(release_id).await.unwrap();
+    let form = manager
+        .apply_release_edit_catalog(form, &link, &bae_import::CatalogApplySteps::unread())
         .await
         .unwrap();
-    manager.save_release_edit(&session).await.unwrap();
+    manager.save_release_edit(form).await.unwrap();
 }
 
 /// Seed the MusicBrainz release `release_id` of group `group_id`, listing
@@ -196,12 +195,12 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
     let new_release_id = "mismatch-re-identify-mb-rel-new";
     seed_musicbrainz(&manager, new_release_id, "mismatch-re-identify-mb-group-new", 12);
 
-    let session = manager.library.manager().open_release_edit(&release.id).await.unwrap();
+    let form = manager.library.manager().open_release_edit(&release.id).await.unwrap();
     let err = manager
         .library
         .manager()
         .apply_release_edit_catalog(
-            &session,
+            form,
             &musicbrainz_link(new_release_id),
             &bae_import::CatalogApplySteps::unread(),
         )
@@ -225,10 +224,10 @@ async fn a_reidentify_that_does_not_fit_the_stored_tracks_is_refused() {
         .is_empty());
 }
 
-/// Discarding a session with a catalog applied writes nothing: the library's
+/// Discarding a form with a catalog applied writes nothing: the library's
 /// values, records and album are exactly as they were.
 #[tokio::test]
-async fn discarding_a_session_restores_the_library_s_values_exactly() {
+async fn discarding_a_form_restores_the_library_s_values_exactly() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -236,26 +235,25 @@ async fn discarding_a_session_restores_the_library_s_values_exactly() {
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     insert_editable_tracks(manager, &release.id, 2).await;
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    let before = opened(manager, &session).await;
+    let form = manager.open_release_edit(&release.id).await.unwrap();
+    let before = form.opened.clone();
 
     let new_release_id = "discard-re-identify-mb-rel-new";
     seed_musicbrainz(&test, new_release_id, "discard-re-identify-mb-group-new", 2);
-    let applied = draft_after(
-        manager,
-        &session,
-        manager.apply_release_edit_catalog(
-            &session,
+    let applied = manager
+        .apply_release_edit_catalog(
+            form,
             &musicbrainz_link(new_release_id),
             &bae_import::CatalogApplySteps::unread(),
-        ),
-    )
-    .await;
+        )
+        .await
+        .unwrap();
+    let applied = draft_now(manager, &applied).await;
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
-    drop(session);
+    drop(applied);
 
     let reopened = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(opened(manager, &reopened).await, before);
+    assert_eq!(reopened.opened, before);
     assert!(manager.records.get_release_records(&release.id).await.unwrap().is_empty());
 }
 
@@ -397,21 +395,16 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
 
     let picked = DbAlbum { title: "Picked Album".to_string(), ..create_test_album() };
     manager.records.insert_album(&picked).await.unwrap();
-    let session = manager.open_release_edit(&release.id).await.unwrap();
+    let mut form = manager.open_release_edit(&release.id).await.unwrap();
+    form.album_pick = album_pick(&picked);
     assert_eq!(
-        draft_after(
-            manager,
-            &session,
-            manager.set_release_edit_album(&session, album_pick(&picked))
-        )
-        .await
-        .album,
+        draft_now(manager, &form).await.album,
         bae_import::DraftAlbum::Picked {
             album_id: picked.id.clone(),
             line: bae_import::AlbumLine::TitleAlone { title: "Picked Album".to_string() },
         }
     );
-    manager.save_release_edit(&session).await.unwrap();
+    manager.save_release_edit(form).await.unwrap();
     assert_eq!(
         manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone())
@@ -423,11 +416,11 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
     );
 }
 
-/// Two editors open on one release each hold their own session: what one
+/// Two editors open on one release each hold their own form: what one
 /// applies and picks is never the other's, and opening one more leaves both
 /// as they were.
 #[tokio::test]
-async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
+async fn two_forms_on_one_release_keep_their_own_apply_and_pick() {
     use bae_import::DraftAlbum;
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -442,38 +435,32 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
 
     let sheet = manager.open_release_edit(&release.id).await.unwrap();
     let pane = manager.open_release_edit(&release.id).await.unwrap();
-    manager
+    let mut sheet = manager
         .apply_release_edit_catalog(
-            &sheet,
+            sheet,
             &musicbrainz_link("two-sessions-new"),
             &bae_import::CatalogApplySteps::unread(),
         )
         .await
         .unwrap();
-    manager.set_release_edit_album(&sheet, album_pick(&picked)).await.unwrap();
+    sheet.album_pick = album_pick(&picked);
     let third = manager.open_release_edit(&release.id).await.unwrap();
 
     assert_eq!(
-        draft_after(
-            manager,
-            &pane,
-            manager.set_release_edit_album(&pane, bae_import::AlbumPick::Records)
-        )
-        .await
-        .album,
+        draft_now(manager, &pane).await.album,
         DraftAlbum::Named {
             album_id: own.id.clone(),
             line: bae_import::AlbumLine::TitleAlone { title: own.title.clone() },
         },
         "the other editor's pick and apply are not this one's"
     );
-    assert_eq!(opened(manager, &third).await, opened(manager, &pane).await);
-    manager.save_release_edit(&sheet).await.unwrap();
+    assert_eq!(third.opened, pane.opened);
+    manager.save_release_edit(sheet).await.unwrap();
 
     assert_eq!(
         manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone()),
-        "opening other sessions left this one's pick in place"
+        "opening other forms left this one's pick in place"
     );
     let records = manager.records.get_release_records(&release.id).await.unwrap();
     assert_eq!(
@@ -483,15 +470,14 @@ async fn two_sessions_on_one_release_keep_their_own_apply_and_pick() {
     );
 }
 
-/// Once one session saves a release, the library refuses the save of a
-/// session the test opened before that save, and writes nothing: the library
-/// keeps what the first session saved, and the save opens the first session
-/// again on the values it saved, so the first session can save again. The
-/// library also refuses the save of a session the test opened before a field
-/// write from elsewhere, and a session the test opens after the save saves as
-/// usual.
+/// Once one form saves a release, the library refuses the save of a form
+/// the test opened before that save, and writes nothing: the library keeps
+/// what the first form saved, and the save returns the form opened on the
+/// values it saved, so the first editor can save again. The library also
+/// refuses the save of a form the test opened before a field write from
+/// elsewhere, and a form the test opens after the save saves as usual.
 #[tokio::test]
-async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
+async fn a_form_s_save_is_refused_once_the_release_changed_under_it() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -501,13 +487,11 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     insert_editable_tracks(manager, &release.id, 2).await;
     let first = manager.open_release_edit(&release.id).await.unwrap();
     let second = manager.open_release_edit(&release.id).await.unwrap();
-    title_session(manager, &first, "Saved First").await;
-    manager.save_release_edit(&first).await.unwrap();
-    title_session(manager, &second, "Saved Second").await;
+    let first = manager.save_release_edit(titled(first, "Saved First")).await.unwrap();
     let refused = manager
-        .save_release_edit(&second)
+        .save_release_edit(titled(second, "Saved Second"))
         .await
-        .expect_err("the release changed after the second session opened");
+        .expect_err("the release changed after the second form opened");
     assert!(
         matches!(&refused, LibraryError::ReleaseEditStale { release_id } if *release_id == release.id),
         "{refused}"
@@ -516,59 +500,49 @@ async fn a_session_s_save_is_refused_once_the_release_changed_under_it() {
     let held = |manager: &LibraryManager| {
         let release_id = release.id.clone();
         let manager = manager.clone();
-        async move {
-            let session = manager.open_release_edit(&release_id).await.unwrap();
-            opened(&manager, &session).await.edit.album_title
-        }
+        async move { manager.open_release_edit(&release_id).await.unwrap().opened.edit.album_title }
     };
     assert_eq!(held(manager).await, "Saved First");
-    title_session(manager, &first, "Saved Again").await;
-    manager.save_release_edit(&first).await.expect("a save opens its session on what it saved");
+    manager
+        .save_release_edit(titled(first, "Saved Again"))
+        .await
+        .expect("a save returns the form opened on what it saved");
     assert_eq!(held(manager).await, "Saved Again");
 
     let opened_before_write = manager.open_release_edit(&release.id).await.unwrap();
-    let mut written = opened(manager, &opened_before_write).await.edit;
+    let mut written = opened_before_write.opened.edit.clone();
     written.album_title = "Written Elsewhere".to_string();
     written.album_artist_assignments =
         vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))];
     manager.apply_release_metadata_user_edit(&release.id, &written.shape().unwrap()).await.unwrap();
-    title_session(manager, &opened_before_write, "Saved Over It").await;
-    assert!(manager.save_release_edit(&opened_before_write).await.is_err());
+    assert!(manager.save_release_edit(titled(opened_before_write, "Saved Over It")).await.is_err());
     assert_eq!(held(manager).await, "Written Elsewhere");
 
     let fresh = manager.open_release_edit(&release.id).await.unwrap();
-    title_session(manager, &fresh, "Saved Fresh").await;
-    manager.save_release_edit(&fresh).await.unwrap();
+    manager.save_release_edit(titled(fresh, "Saved Fresh")).await.unwrap();
     assert_eq!(held(manager).await, "Saved Fresh");
 }
 
-/// Write `title` into `session`'s album title, credited to one artist.
-async fn title_session(manager: &LibraryManager, session: &ReleaseEdit, title: &str) {
-    manager
-        .edit_release_edit_field(
-            session,
-            bae_import::DraftFieldEdit::Text {
-                field: bae_import::CandidateEditField::AlbumTitle,
-                value: title.to_string(),
-            },
-        )
-        .await
-        .unwrap();
-    manager
-        .set_release_edit_album_artists(
-            session,
-            vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))],
-        )
-        .await
-        .unwrap();
+/// `form` with `title` as its album title, credited to one artist.
+pub(super) fn titled(
+    mut form: bae_import::ReleaseEditForm,
+    title: &str,
+) -> bae_import::ReleaseEditForm {
+    form.edit.set_field(bae_import::DraftFieldEdit::Text {
+        field: bae_import::CandidateEditField::AlbumTitle,
+        value: title.to_string(),
+    });
+    form.edit.set_album_artists(vec![bae_import::Credited::plain(
+        bae_import::ArtistAssignment::named("Artist Name"),
+    )]);
+    form
 }
 
-/// Each change is written to the session as it is made: the draft holds it,
-/// says the session changed and whether the form can be saved, and the
-/// library holds none of it until the save writes the session. Opening the
-/// release again drops it.
+/// Each change makes a new form: its draft holds the change, says the form
+/// changed and whether it can be saved, and the library holds none of it
+/// until the save writes the form. Opening the release again drops it.
 #[tokio::test]
-async fn a_session_holds_each_change_until_its_save() {
+async fn a_form_holds_each_change_until_its_save() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -576,8 +550,8 @@ async fn a_session_holds_each_change_until_its_save() {
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
     insert_editable_tracks(manager, &release.id, 2).await;
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    let opened = draft_now(manager, &session).await;
+    let mut form = manager.open_release_edit(&release.id).await.unwrap();
+    let opened = draft_now(manager, &form).await;
     assert!(!opened.changed, "nothing changed yet");
     let library_titles = |manager: &LibraryManager| {
         let release_id = release.id.clone();
@@ -597,43 +571,32 @@ async fn a_session_holds_each_change_until_its_save() {
 
     let mut row = opened.edit.tracks[1].clone();
     row.title = "Renamed Track".to_string();
-    let draft =
-        draft_after(manager, &session, manager.set_release_edit_track(&session, row.clone())).await;
+    assert!(form.edit.set_track(row.clone()));
+    let draft = draft_now(manager, &form).await;
     assert_eq!(draft.edit.tracks[1].title, "Renamed Track");
     assert!(draft.changed);
     assert_eq!(library_titles(manager).await, stored, "the library holds no change yet");
-    assert_eq!(draft_now(manager, &session).await.edit, draft.edit);
 
-    let blank = draft_after(
-        manager,
-        &session,
-        manager.edit_release_edit_field(
-            &session,
-            bae_import::DraftFieldEdit::Text {
-                field: bae_import::CandidateEditField::AlbumTitle,
-                value: "  ".to_string(),
-            },
-        ),
-    )
-    .await;
+    form.edit.set_field(bae_import::DraftFieldEdit::Text {
+        field: bae_import::CandidateEditField::AlbumTitle,
+        value: "  ".to_string(),
+    });
+    let blank = draft_now(manager, &form).await;
     assert_eq!(blank.invalid, Some(bae_import::EditValidationError::EmptyAlbumTitle));
-    assert!(manager.save_release_edit(&session).await.is_err(), "a blank title can't be saved");
-    title_session(manager, &session, "Album Title").await;
-    assert_eq!(draft_now(manager, &session).await.invalid, None);
+    assert!(manager.save_release_edit(form.clone()).await.is_err(), "a blank title can't be saved");
+    let form = titled(form, "Album Title");
+    assert_eq!(draft_now(manager, &form).await.invalid, None);
 
     let reopened = manager.open_release_edit(&release.id).await.unwrap();
     let reopened = draft_now(manager, &reopened).await;
-    assert_eq!(reopened.edit, opened.edit, "opening again drops what the session held");
+    assert_eq!(reopened.edit, opened.edit, "opening again drops what the form held");
     assert!(!reopened.changed);
 
-    manager.save_release_edit(&session).await.unwrap();
+    let mut form = manager.save_release_edit(form).await.unwrap();
     assert_eq!(library_titles(manager).await[1], "Renamed Track");
 
     row.id = "no-such-row".to_string();
-    assert!(
-        manager.set_release_edit_track(&session, row).await.is_err(),
-        "a row the form does not hold is refused"
-    );
+    assert!(!form.edit.set_track(row), "a row the form does not hold is refused");
 }
 
 #[tokio::test]
@@ -758,10 +721,9 @@ async fn release_edit_seed_uses_persisted_track_ids() {
     )
     .await;
 
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    let seed = opened(manager, &session).await;
+    let form = manager.open_release_edit(&release.id).await.unwrap();
 
-    assert_eq!(seed.edit.tracks[0].id, track.id);
+    assert_eq!(form.opened.edit.tracks[0].id, track.id);
 }
 
 #[tokio::test]
@@ -789,20 +751,19 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
         r#"{"id":"reset-editor-group"}"#.to_string(),
     );
     let library = manager.library.manager();
-    let session = library.open_release_edit(&release.id).await.unwrap();
-    let applied = draft_after(
-        library,
-        &session,
-        library.apply_release_edit_catalog(
-            &session,
+    let form = library.open_release_edit(&release.id).await.unwrap();
+    let applied = library
+        .apply_release_edit_catalog(
+            form,
             &bae_identify::PressingLink {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
             },
             &bae_import::CatalogApplySteps::unread(),
-        ),
-    )
-    .await;
+        )
+        .await
+        .unwrap();
+    let applied = draft_now(library, &applied).await;
     assert_eq!(
         applied.edit.tracks.into_iter().map(|track| track.id).collect::<Vec<_>>(),
         persisted_ids
@@ -830,13 +791,13 @@ async fn an_applied_catalog_tells_its_catalog_read() {
     let keep = told.clone();
     let steps =
         bae_import::CatalogApplySteps::recorded(move |step| keep.lock().unwrap().push(step));
-    let session = manager.library.manager().open_release_edit(&release.id).await.unwrap();
+    let form = manager.library.manager().open_release_edit(&release.id).await.unwrap();
 
     manager
         .library
         .manager()
         .apply_release_edit_catalog(
-            &session,
+            form,
             &bae_identify::PressingLink {
                 record: LookupRef::new(LookupCatalog::MusicBrainz, source_release_id),
                 partners: vec![],
@@ -910,8 +871,8 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     .await;
     store_test_cover(manager, &release.id, b"cover").await;
 
-    let session = manager.open_release_edit(&release.id).await.unwrap();
-    let draft = draft_now(manager, &session).await;
+    let form = manager.open_release_edit(&release.id).await.unwrap();
+    let draft = draft_now(manager, &form).await;
 
     assert_eq!(draft.cover.map(|cover| cover.id), Some(release.id.clone()));
     let sides = draft.sides.expect("the release has tracks");
@@ -941,43 +902,17 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
     ));
 }
 
-/// `session`'s draft once `command`, a change to it, has written.
-pub(super) async fn draft_after(
-    manager: &LibraryManager,
-    session: &ReleaseEdit,
-    command: impl std::future::Future<Output = Result<(), LibraryError>>,
-) -> bae_import::ReleaseEditDraft {
-    command.await.unwrap();
-    draft_now(manager, session).await
-}
-
-/// `session`'s draft as its live query reads it now.
+/// `form`'s draft as its live query reads it now.
 pub(super) async fn draft_now(
     manager: &LibraryManager,
-    session: &ReleaseEdit,
+    form: &bae_import::ReleaseEditForm,
 ) -> bae_import::ReleaseEditDraft {
-    manager
-        .subscribe_release_edit_draft(session)
-        .next()
-        .await
-        .expect("the draft reads")
-        .expect("the session is open")
+    let draft = manager.subscribe_release_edit_draft();
+    draft.set(Some(form.clone())).expect("the draft takes the form");
+    draft.next().await.expect("the draft reads").expect("the library holds the release")
 }
 
-/// What `session` opened on, as its rows hold it.
-pub(super) async fn opened(
-    manager: &LibraryManager,
-    session: &ReleaseEdit,
-) -> bae_import::ReleaseEditSeed {
-    bae_import::tables::ImportTables::new(manager.store.clone())
-        .load_release_edit_session(session.session)
-        .await
-        .unwrap()
-        .expect("the session is open")
-        .opened
-}
-
-/// Picking `album` as the album a session files its release under.
+/// Picking `album` as the album a form files its release under.
 pub(super) fn album_pick(album: &DbAlbum) -> bae_import::AlbumPick {
     bae_import::AlbumPick::Album { album_id: album.id.clone() }
 }

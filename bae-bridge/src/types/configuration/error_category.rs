@@ -44,8 +44,8 @@ pub enum BridgeErrorCategory {
     TiedMediums {
         mediums: Vec<u32>,
     },
-    /// A release edit session's save found the release changed since the
-    /// session opened on it, and wrote nothing.
+    /// A release editor's save found the release changed since the editor
+    /// opened on it, and wrote nothing.
     ReleaseChangedSinceOpened,
     /// A change to the library acted on something that changed between its
     /// read and its write, and wrote nothing; asking again acts on what now

@@ -54,8 +54,8 @@ mod catalog_match;
 pub mod label_resolution;
 #[cfg(any(test, feature = "test-utils"))]
 pub use artist_resolution::resolved_in_an_empty_library;
+pub use artist_resolution::{credit_artists_on, ArtistCredits};
 use artist_resolution::{relink_album_artists, relink_track_artists};
-pub use artist_resolution::{resolve_credit_on, ArtistCredits};
 pub use artist_resolution::{IdentityRefusal, IdentityWriteError};
 use label_resolution::pressing_write;
 pub use label_resolution::{PressingParts, PressingWrite};

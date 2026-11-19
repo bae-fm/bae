@@ -77,7 +77,7 @@ pub use config::LiveSaveChoice;
 pub use device_storage::{DeviceStorage, StorageKind, StoragePart};
 pub use people::{DeviceCutOff, DeviceRemoval};
 #[cfg(desktop)]
-pub use release_edit::ReleaseEdit;
+pub use release_edit::LiveReleaseEditDraft;
 #[cfg(desktop)]
 mod save;
 #[cfg(desktop)]
@@ -137,7 +137,7 @@ pub enum LibraryError {
     /// tracks came or went after the edit was composed.
     #[error("the release has {release_tracks} tracks, the edit supplies {edit_tracks}")]
     TrackCountChanged { release_tracks: usize, edit_tracks: usize },
-    /// An edit session's editor named a track row its session doesn't hold.
+    /// A release editor named a track row its form doesn't hold.
     #[error("release edit has no track row '{0}'")]
     EditRowMissing(String),
     /// A release an operation names is not in the library: it was deleted,
@@ -168,15 +168,10 @@ pub enum LibraryError {
     #[error("Release editor cannot load: {0}")]
     #[cfg(desktop)]
     ReleaseEditLoad(#[from] bae_import::ReleaseEditLoadError),
-    /// A release edit session's save found the release changed since the
-    /// session opened on it, and wrote nothing.
-    #[error("Release '{release_id}' changed since its edit session opened")]
+    /// A release editor's save found the release changed since the editor
+    /// opened on it, and wrote nothing.
+    #[error("Release '{release_id}' changed since its editor opened")]
     ReleaseEditStale { release_id: String },
-    /// A command reached an edit session of `release_id` whose rows are
-    /// gone: its editor closed it, or someone deleted the release. The
-    /// command wrote nothing.
-    #[error("The edit session of release '{release_id}' has ended")]
-    ReleaseEditClosed { release_id: String },
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -440,7 +435,6 @@ impl LibraryError {
                 ReleaseWork::Transfer => C::Internal,
             },
             LibraryError::ReleaseEditStale { .. } => C::ReleaseChangedSinceOpened,
-            LibraryError::ReleaseEditClosed { .. } => C::ChangedMeanwhile,
             LibraryError::FilenamePattern(_) => C::FilenamePatternInvalid,
             LibraryError::FolderPattern(_) => C::FolderPatternInvalid,
             LibraryError::Export(_) => C::Export,
@@ -809,8 +803,8 @@ pub struct LibraryManager {
     /// too.
     #[cfg(desktop)]
     release_reads: bae_import::ReleaseReads,
-    /// The import's tables, which hold each release editor's session and
-    /// the sheet bindings a release's identity is read with.
+    /// The import's tables, which read each release editor's draft and
+    /// hold the sheet bindings a release's identity is read with.
     #[cfg(desktop)]
     import_tables: bae_import::tables::ImportTables,
     /// Where a test holds each run of a pin's query of which of its

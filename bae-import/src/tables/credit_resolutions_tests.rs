@@ -1,8 +1,8 @@
-//! Each credit a draft or a release editor's session holds has the records'
-//! rule's answer stored after every write that can change it: the credit's
-//! own writes, an import's artists, an artist's other printed names, ids it
-//! gains, merges, a deleted artist, and another device's artist write as this
-//! device applies it. A credit no draft or session holds has no answer.
+//! Each credit a draft holds has the records' rule's answer stored after
+//! every write that can change it: the credit's own writes, an import's
+//! artists, an artist's other printed names, ids it gains, merges, a deleted
+//! artist, and another device's artist write as this device applies it. A
+//! credit no draft holds has no answer.
 
 use super::*;
 use crate::identification::tests::fixed_now;
@@ -54,6 +54,15 @@ fn key_of(credit: &ArtistCredit) -> CreditKey {
     }
 }
 
+/// How a test reads an answer: the library artists it names, as none, one or
+/// several.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CreditResolution {
+    Library { artist: ExistingArtist },
+    New,
+    Ambiguous { artists: Vec<ExistingArtist> },
+}
+
 fn resolution_of(mut artists: Vec<ExistingArtist>) -> CreditResolution {
     match artists.len() {
         0 => CreditResolution::New,
@@ -63,7 +72,7 @@ fn resolution_of(mut artists: Vec<ExistingArtist>) -> CreditResolution {
 }
 
 /// Each credit's stored answer, after checking in one read that every credit
-/// a draft or a session holds has the rule's answer for it stored, that no
+/// a draft holds has the rule's answer for it stored, that no
 /// credit none holds has one, and that none is left due.
 async fn stored_answers(db: &Store) -> Answers {
     db.read(|sql| {
@@ -72,11 +81,7 @@ async fn stored_answers(db: &Store) -> Answers {
                  SELECT name, musicbrainz_artist_id, discogs_artist_id \
                  FROM import_candidate_album_artist_assignment WHERE assignment_kind = 'credit' \
                  UNION ALL SELECT name, musicbrainz_artist_id, discogs_artist_id \
-                 FROM import_candidate_track_artist_assignment WHERE assignment_kind = 'credit' \
-                 UNION ALL SELECT name, musicbrainz_artist_id, discogs_artist_id \
-                 FROM release_edit_album_artist WHERE assignment_kind = 'credit' \
-                 UNION ALL SELECT name, musicbrainz_artist_id, discogs_artist_id \
-                 FROM release_edit_track_artist WHERE assignment_kind = 'credit') \
+                 FROM import_candidate_track_artist_assignment WHERE assignment_kind = 'credit') \
              GROUP BY bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id",
             [],
             |row| {
@@ -113,7 +118,7 @@ async fn stored_answers(db: &Store) -> Answers {
         assert_eq!(stored.len(), held.len(), "one answer per credit held: {stored:?}");
         let mut answers = Vec::new();
         for credit in &held {
-            let ruled = bae_records::resolve_credit_on(&sql, credit)?;
+            let ruled = resolution_of(bae_records::credit_artists_on(&sql, credit)?);
             let (_, answer) = stored
                 .iter()
                 .find(|(key, _)| *key == key_of(credit))
@@ -345,33 +350,6 @@ async fn a_draft_s_credit_is_answered_again_as_it_changes() {
         .await
         .unwrap();
     assert!(stored_answers(&db).await.is_empty(), "a picked artist has no answer");
-}
-
-/// A release editor's session holds answers for its credits as a draft does,
-/// and closing it removes them.
-#[tokio::test]
-async fn a_session_s_credits_are_answered_until_it_closes() {
-    let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
-    bae_records::test_fixtures::seed_artist_album_release(&db).await;
-    let tables = ImportTables::new(db.clone());
-    let session =
-        tables.open_release_edit_session(bae_records::test_fixtures::RELEASE_A).await.unwrap();
-    for (credit, named) in
-        [(credit("artist name primary", None, None), true), (credit("Somebody", None, None), false)]
-    {
-        let album = credited(std::slice::from_ref(&credit));
-        tables
-            .change_release_edit_session(session, move |form| {
-                form.album_artist_assignments = album;
-                Ok(())
-            })
-            .await
-            .unwrap();
-        let answer = answer(&db, &credit.name).await;
-        assert_eq!(names(&answer, bae_records::test_fixtures::ARTIST_PRIMARY), named);
-    }
-    tables.close_release_edit_session(session).await.unwrap();
-    assert!(stored_answers(&db).await.is_empty());
 }
 
 /// The library's own writes move the answers they reach: an import's new

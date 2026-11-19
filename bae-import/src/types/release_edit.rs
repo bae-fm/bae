@@ -1,6 +1,5 @@
 //! A release edit as it is written: the values an edit saves and the rule
-//! every saved edit holds, and the edit session a library release's editor
-//! opens.
+//! every saved edit holds, and the form a library release's editor holds.
 
 use super::*;
 
@@ -95,7 +94,7 @@ pub struct TrackUserEdit {
 }
 
 /// The library album a draft files under when it is written: an import's, or
-/// a library release's edit session's.
+/// a library release editor's.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DraftAlbum {
     /// A new album, because the person picked no album and the draft's
@@ -149,11 +148,11 @@ pub enum AlbumPick {
     Album { album_id: String },
 }
 
-/// A library release's values as an edit session opens on them: the raw
-/// form, what the editor shows beside the form, and the album the release is
-/// in. The cover is not among them: the cover picker writes it at once,
-/// outside any session, so it never makes a session's values stale. A save
-/// refuses a release whose values are no longer these.
+/// A library release's values as an editor opens on them: the raw form,
+/// what the editor shows beside the form, and the album the release is in.
+/// The cover is not among them: the cover picker writes it at once, outside
+/// any form, so it never makes an editor's values stale. A save refuses a
+/// release whose values are no longer these.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditSeed {
@@ -162,12 +161,67 @@ pub struct ReleaseEditSeed {
     pub album: DraftAlbum,
 }
 
-/// A library release's edit session as its editor shows it now: the form
-/// with each change the person made in it, the release's cover as it is now,
-/// the tracks beside the form, the album a save files the release under,
-/// how the form's album artists stand to the library, whether a
-/// save would write anything the session did not open on, and why the form
-/// can't be saved, when it can't.
+/// What applying a catalog release in a release editor read: every value,
+/// which the apply lays onto the release's tracks in order, and the records
+/// the pick names, the applied one first.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppliedCatalog {
+    pub draft: crate::LibraryDraft,
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
+}
+
+/// The form a library release's editor holds, and every read and save of
+/// the editor takes: what the editor opened on, the form with each change
+/// the person made, the catalog release the person applied and the album
+/// they picked. Each change makes a new form; nothing in core keeps one.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditForm {
+    pub release_id: String,
+    /// The release as the library held it when the editor opened, or when
+    /// its last save wrote it. A save refuses a release the library no
+    /// longer holds so.
+    pub opened: ReleaseEditSeed,
+    pub edit: RawReleaseEdit,
+    pub applied: Option<AppliedCatalog>,
+    pub album_pick: AlbumPick,
+}
+
+#[cfg(desktop)]
+impl ReleaseEditForm {
+    /// The form an editor opens with on `release_id` as `seed` holds it:
+    /// nothing edited, applied or picked.
+    pub fn opened_on(release_id: String, seed: ReleaseEditSeed) -> Self {
+        Self {
+            release_id,
+            edit: seed.edit.clone(),
+            opened: seed,
+            applied: None,
+            album_pick: AlbumPick::Records,
+        }
+    }
+
+    /// Whether a save would write anything the editor did not open on.
+    pub fn changed(&self) -> bool {
+        self.edit != self.opened.edit
+            || self.applied.is_some()
+            || self.album_pick != AlbumPick::Records
+    }
+
+    /// The form with `applied`'s values in place of the form's and of the
+    /// catalog applied before; the album the person picked stays picked.
+    pub fn applying(self, applied: AppliedCatalog) -> Self {
+        Self { edit: applied.draft.release_edit(), applied: Some(applied), ..self }
+    }
+}
+
+/// A library release's editor's draft, as the editor shows it for one form:
+/// the form with its picked artists as the library holds them now, the
+/// release's cover as it is now, the tracks beside the form, the album a
+/// save files the release under, how the form's album artists stand to the
+/// library, whether a save would write anything the editor did not open on,
+/// and why the form can't be saved, when it can't.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDraft {

@@ -1,8 +1,8 @@
--- Which library artists the records' rule (`bae_records::resolve_credit_on`)
--- names for each artist credit a candidate's draft or a release editor's
--- session holds, stored once per distinct credit as the rule reads one: its
--- folded name and its two catalog ids. The rule reads nothing else of a
--- credit, so two credits alike in these name the same artists.
+-- Which library artists the records' rule (`bae_records::credit_artists_on`)
+-- names for each artist credit a candidate's draft holds, stored once per
+-- distinct credit as the rule reads one: its folded name and its two catalog
+-- ids. The rule reads nothing else of a credit, so two credits alike in these
+-- name the same artists.
 --
 -- Every write that changes a credit or an artist the rule can name for it
 -- adds the credit to `import_credit_resolution_due` through the triggers
@@ -11,7 +11,7 @@
 -- the same transaction and empties the list, so no transaction commits with
 -- a due credit and no reader sees a credit without its answer.
 
--- One row per distinct credit that a draft or a session holds, answered.
+-- One row per distinct credit that a draft holds, answered.
 -- Its artists are the answer: none for a new artist, one for the library
 -- artist the credit names, several for the ones it leaves ambiguous.
 CREATE TABLE IF NOT EXISTS import_credit_resolution (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS import_credit_resolution_due (
     discogs_artist_id     TEXT
 ) STRICT;
 
--- A credit a draft or a session gains, loses or changes is due: the old one
+-- A credit a draft gains, loses or changes is due: the old one
 -- and the new one.
 
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_album_credit_added
@@ -124,62 +124,6 @@ END;
 CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_draft_track_credit_changed
 AFTER UPDATE OF assignment_kind, name, musicbrainz_artist_id, discogs_artist_id
 ON import_candidate_track_artist_assignment
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    SELECT bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id
-    WHERE OLD.assignment_kind = 'credit';
-    INSERT INTO import_credit_resolution_due
-    SELECT bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id
-    WHERE NEW.assignment_kind = 'credit';
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_album_credit_added
-AFTER INSERT ON release_edit_album_artist
-WHEN NEW.assignment_kind = 'credit'
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    VALUES (bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_album_credit_removed
-AFTER DELETE ON release_edit_album_artist
-WHEN OLD.assignment_kind = 'credit'
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    VALUES (bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_album_credit_changed
-AFTER UPDATE OF assignment_kind, name, musicbrainz_artist_id, discogs_artist_id
-ON release_edit_album_artist
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    SELECT bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id
-    WHERE OLD.assignment_kind = 'credit';
-    INSERT INTO import_credit_resolution_due
-    SELECT bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id
-    WHERE NEW.assignment_kind = 'credit';
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_track_credit_added
-AFTER INSERT ON release_edit_track_artist
-WHEN NEW.assignment_kind = 'credit'
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    VALUES (bae_artist_name_key(NEW.name), NEW.musicbrainz_artist_id, NEW.discogs_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_track_credit_removed
-AFTER DELETE ON release_edit_track_artist
-WHEN OLD.assignment_kind = 'credit'
-BEGIN
-    INSERT INTO import_credit_resolution_due
-    VALUES (bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id);
-END;
-
-CREATE TRIGGER IF NOT EXISTS import_credit_resolution_on_session_track_credit_changed
-AFTER UPDATE OF assignment_kind, name, musicbrainz_artist_id, discogs_artist_id
-ON release_edit_track_artist
 BEGIN
     INSERT INTO import_credit_resolution_due
     SELECT bae_artist_name_key(OLD.name), OLD.musicbrainz_artist_id, OLD.discogs_artist_id

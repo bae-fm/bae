@@ -463,3 +463,68 @@ pub(crate) fn insert_track_artist_assignments(
     }
     Ok(())
 }
+
+/// One artist assignment of a form that no table holds, as a statement
+/// binds it in a JSON array that [`assignment_rows_sql`] reads: the columns
+/// a draft table stores it in, with the track it credits (none for the
+/// album's) and its places.
+#[derive(serde::Serialize)]
+pub(crate) struct AssignmentJson<'a> {
+    track_id: Option<&'a str>,
+    track_position: usize,
+    position: usize,
+    assignment_kind: &'static str,
+    artist_id: Option<&'a str>,
+    name: Option<&'a str>,
+    sort_name: Option<&'a str>,
+    musicbrainz_artist_id: Option<&'a str>,
+    discogs_artist_id: Option<&'a str>,
+    credit_key: Option<&'a str>,
+    credited_as: Option<&'a str>,
+    join_phrase: Option<&'a str>,
+}
+
+/// `assignments` as [`AssignmentJson`] rows: the album's when `track` is
+/// `None`, else those of the track of that id at that place.
+pub(crate) fn assignment_json_rows<'a>(
+    track: Option<(&'a str, usize)>,
+    assignments: &'a [Credited],
+) -> impl Iterator<Item = AssignmentJson<'a>> {
+    assignments.iter().enumerate().map(move |(position, assignment)| {
+        let columns = assignment_columns(assignment);
+        AssignmentJson {
+            track_id: track.map(|(id, _)| id),
+            track_position: track.map_or(0, |(_, place)| place),
+            position,
+            assignment_kind: columns.kind,
+            artist_id: columns.artist_id,
+            name: columns.name,
+            sort_name: columns.sort_name,
+            musicbrainz_artist_id: columns.musicbrainz_id,
+            discogs_artist_id: columns.discogs_id,
+            credit_key: columns.credit_key,
+            credited_as: columns.credited_as,
+            join_phrase: columns.join_phrase,
+        }
+    })
+}
+
+/// A subquery over the JSON array of [`AssignmentJson`] rows that the
+/// parameter `param` binds, with the columns of a draft's assignment table
+/// and `track_id` and `track_position`.
+pub(crate) fn assignment_rows_sql(param: &str) -> String {
+    format!(
+        "(SELECT j.value ->> 'track_id' AS track_id, \
+                 j.value ->> 'track_position' AS track_position, \
+                 j.value ->> 'position' AS position, \
+                 j.value ->> 'assignment_kind' AS assignment_kind, \
+                 j.value ->> 'artist_id' AS artist_id, j.value ->> 'name' AS name, \
+                 j.value ->> 'sort_name' AS sort_name, \
+                 j.value ->> 'musicbrainz_artist_id' AS musicbrainz_artist_id, \
+                 j.value ->> 'discogs_artist_id' AS discogs_artist_id, \
+                 j.value ->> 'credit_key' AS credit_key, \
+                 j.value ->> 'credited_as' AS credited_as, \
+                 j.value ->> 'join_phrase' AS join_phrase \
+          FROM json_each({param}) AS j)"
+    )
+}

@@ -29,15 +29,3 @@ impl From<DbArtist> for ExistingArtist {
         }
     }
 }
-
-/// What the library holds for one credit, as it stands when read.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CreditResolution {
-    /// The credit names this library artist.
-    Library { artist: ExistingArtist },
-    /// No library artist is this one: committing creates it.
-    New,
-    /// Several library artists carry the credit's name and no catalog id tells
-    /// them apart. Committing creates a new artist unless the person picks one.
-    Ambiguous { artists: Vec<ExistingArtist> },
-}

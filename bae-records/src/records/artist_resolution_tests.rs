@@ -447,7 +447,7 @@ async fn read_credit(
     db: &bae_store::Store,
     name: &str,
     discogs_artist_id: Option<&str>,
-) -> crate::CreditResolution {
+) -> Vec<crate::ExistingArtist> {
     let credit = bae_catalogs::credits::ArtistCredit {
         credited_as: None,
         name: name.to_string(),
@@ -455,7 +455,7 @@ async fn read_credit(
         musicbrainz_artist_id: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
     };
-    db.read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &credit)?)).await.unwrap()
+    db.read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &credit)?)).await.unwrap()
 }
 
 fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
@@ -465,15 +465,12 @@ fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
 #[tokio::test]
 async fn a_read_credit_is_new_until_the_library_holds_its_artist() {
     let (db, _tmp) = library().await;
-    assert_eq!(read_credit(&db, "Artist Name", None).await, crate::CreditResolution::New);
+    assert_eq!(read_credit(&db, "Artist Name", None).await, []);
 
     add_artist(&db, "library-artist", "Ärtist Name", None, None).await;
 
-    let crate::CreditResolution::Library { artist } = read_credit(&db, "artist name", None).await
-    else {
-        panic!("the folded name names the library artist");
-    };
-    assert_eq!(artist.artist_id, "library-artist");
+    let named = read_credit(&db, "artist name", None).await;
+    assert_eq!(artist_ids(&named), ["library-artist"], "the folded name names the library artist");
 }
 
 #[tokio::test]
@@ -482,12 +479,8 @@ async fn a_read_credit_shared_by_two_library_artists_is_ambiguous() {
     add_artist(&db, "first", "Artist Name", None, None).await;
     add_artist(&db, "second", "Artist Name", None, Some("mb-2")).await;
 
-    let crate::CreditResolution::Ambiguous { artists } =
-        read_credit(&db, "Artist Name", None).await
-    else {
-        panic!("two artists share the name");
-    };
-    assert_eq!(artist_ids(&artists), ["first", "second"]);
+    let artists = read_credit(&db, "Artist Name", None).await;
+    assert_eq!(artist_ids(&artists), ["first", "second"], "two artists share the name");
 }
 
 #[tokio::test]
@@ -495,10 +488,7 @@ async fn a_read_credit_with_another_catalog_id_than_the_named_artist_is_new() {
     let (db, _tmp) = library().await;
     add_artist(&db, "library-artist", "Artist Name", Some("discogs-x"), None).await;
 
-    assert_eq!(
-        read_credit(&db, "Artist Name", Some("discogs-y")).await,
-        crate::CreditResolution::New
-    );
+    assert_eq!(read_credit(&db, "Artist Name", Some("discogs-y")).await, []);
 }
 
 /// A read of a credit whose two ids name two artists names the MusicBrainz
@@ -516,13 +506,10 @@ async fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
         musicbrainz_artist_id: Some("mb-1".to_string()),
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let resolution =
-        db.read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &credit)?)).await.unwrap();
+    let named =
+        db.read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &credit)?)).await.unwrap();
 
-    let crate::CreditResolution::Library { artist } = resolution else {
-        panic!("the MusicBrainz id names the artist, got {resolution:?}");
-    };
-    assert_eq!(artist.artist_id, "by-musicbrainz");
+    assert_eq!(artist_ids(&named), ["by-musicbrainz"], "the MusicBrainz id names the artist");
 }
 
 /// A read of a credit whose id two library artists hold names the one the
@@ -533,12 +520,8 @@ async fn a_read_credit_whose_id_two_artists_hold_is_the_smaller_one() {
     add_artist(&db, "first", "Artist One", Some("discogs-1"), None).await;
     add_artist(&db, "second", "Artist Two", Some("discogs-1"), None).await;
 
-    let crate::CreditResolution::Library { artist } =
-        read_credit(&db, "Artist Name", Some("discogs-1")).await
-    else {
-        panic!("one id names one artist");
-    };
-    assert_eq!(artist.artist_id, "first");
+    let named = read_credit(&db, "Artist Name", Some("discogs-1")).await;
+    assert_eq!(artist_ids(&named), ["first"], "one id names one artist");
 }
 
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
@@ -855,14 +838,11 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
     };
     for device in [devices.a(), devices.b()] {
         let read = read.clone();
-        let resolution = device
-            .read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &read)?))
+        let named = device
+            .read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &read)?))
             .await
             .unwrap();
-        let crate::CreditResolution::Library { artist } = &resolution else {
-            panic!("the id names one artist, got {resolution:?}");
-        };
-        assert_eq!(artist.artist_id, "artist-a");
+        assert_eq!(artist_ids(&named), ["artist-a"], "the id names one artist");
     }
 }
 

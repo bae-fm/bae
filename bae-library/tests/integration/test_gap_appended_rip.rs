@@ -76,15 +76,11 @@ async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, temp
 #[tokio::test]
 async fn the_editor_s_rows_each_name_the_file_their_body_plays_from() {
     let (library, release_id, _dir) = import_rip().await;
-    let session = library.manager().open_release_edit(&release_id).await.expect("open the editor");
+    let form = library.manager().open_release_edit(&release_id).await.expect("open the editor");
 
-    let draft = library
-        .manager()
-        .subscribe_release_edit_draft(&session)
-        .next()
-        .await
-        .expect("read the draft")
-        .expect("the session is open");
+    let read = library.manager().subscribe_release_edit_draft();
+    read.set(Some(form)).expect("the draft takes the form");
+    let draft = read.next().await.expect("read the draft").expect("the library holds the release");
     let sources: Vec<&str> = draft
         .sides
         .iter()

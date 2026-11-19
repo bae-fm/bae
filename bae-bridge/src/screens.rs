@@ -224,15 +224,30 @@ pulled_read! {
 
 #[cfg(desktop)]
 pulled_read! {
-    /// A release editor's session's draft, as the editor shows it; `None`
-    /// once the session's release is gone.
+    /// A release editor's draft, as the editor shows it for the form it set
+    /// last; `None` once the form's release is gone. The subscription keeps
+    /// one live query while the editor is open, and the editor sets each new
+    /// form on it.
     ReleaseEditDraftSubscription:
-        LiveValues<Option<bae_import::ReleaseEditDraft>>
+        bae_library::LiveReleaseEditDraft
             => Option<crate::types::BridgeReleaseEditDraft>,
     converted by |draft: Option<bae_import::ReleaseEditDraft>| {
         draft.map(crate::types::BridgeReleaseEditDraft::from_core)
     },
     built by release_edit_draft
+}
+
+#[cfg(desktop)]
+#[uniffi::export]
+impl ReleaseEditDraftSubscription {
+    /// Read the draft of `form` from now on: the form the editor holds after
+    /// its last change.
+    pub fn set_form(
+        &self,
+        form: std::sync::Arc<crate::BridgeReleaseEditForm>,
+    ) -> Result<(), BridgeError> {
+        self.inner.set(Some(form.core().clone())).map(|_revision| ()).map_err(BridgeError::from)
+    }
 }
 
 #[cfg(feature = "cast")]

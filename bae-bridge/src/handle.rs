@@ -110,7 +110,7 @@ mod release_edit;
 #[cfg(desktop)]
 mod release_grouping;
 #[cfg(desktop)]
-pub use release_edit::ReleaseEditSession;
+pub use release_edit::BridgeReleaseEditForm;
 #[cfg(desktop)]
 mod import_projection;
 mod library_projection;

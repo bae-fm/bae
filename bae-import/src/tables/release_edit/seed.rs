@@ -1,7 +1,8 @@
-//! A library release as its editor reads it, and the seed a session opens
+//! A library release as its editor reads it, and the seed an editor opens
 //! on: the release's form, tracks and album as the library holds them.
 
 use super::*;
+use crate::{DraftAlbum, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
 
 /// A release as the editor reads it: its detail, its album's title, year and
 /// artists, and its tracks' audio in release order.
@@ -111,17 +112,5 @@ pub(crate) fn release_edit_seed(
             album_id: release.album_id,
             line: crate::AlbumLine::of(album_title, artist_line),
         },
-    })
-}
-
-/// The seed of the release `release_id` as the write `sql` finds it, which
-/// the write stores as what a session opened on or checks a save against.
-pub(super) fn seed_on(
-    sql: &CovenWrite<'_>,
-    release_id: &str,
-) -> Result<Result<ReleaseEditSeed, ReleaseEditSeedRefusal>, DbError> {
-    Ok(match release_edit_rows_on(sql, release_id)? {
-        None => Err(ReleaseEditSeedRefusal::ReleaseMissing(release_id.to_string())),
-        Some(rows) => release_edit_seed(rows.processed()).map_err(ReleaseEditSeedRefusal::from),
     })
 }

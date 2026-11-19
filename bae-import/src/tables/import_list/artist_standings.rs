@@ -1,13 +1,15 @@
 //! How each artist field of a candidate's draft or of a release editor's
-//! session stands to the library: the album's artists, and each track's own.
+//! form stands to the library: the album's artists, and each track's own.
 //! One set of WITH clauses over the field's credits reads it, which the
 //! statements of the pane and the editor put in front of their own and join
 //! to the rows they read.
 //!
-//! The clauses read which library artists each credit names from the answer
-//! the library stores for it (`credit_resolutions`), which every write that
-//! can change the answer stores in its own transaction. A picked artist is in
-//! the library. A field's own standing counts its artists' with GROUP BY.
+//! The clauses read which library artists each credit names from the records'
+//! rule's answer to it: for a draft, the answer the library stores
+//! (`credit_resolutions`), which every write that can change it stores in its
+//! own transaction; for a form, which no table holds, the answer its read
+//! asks the same rule for. A picked artist is in the library. A field's own
+//! standing counts its artists' with GROUP BY.
 
 use super::*;
 use crate::{ArtistFieldStanding, ArtistStanding, ArtistsStanding};
@@ -20,33 +22,30 @@ use bae_records::ExistingArtist;
 /// standing as JSON ([`artist_field_standing_of_json`]).
 const ARTIST_STANDING_CLAUSES: &str = "
 raw AS ({raw}),
+-- The rule's answer to each credit the source answers, by the folded name
+-- and catalog ids the rule reads: the library artists it names as a JSON
+-- array, in the rule's order.
+credit_answer (name_key, mb, dg, artists) AS ({answers}),
 -- Each place of each field with its artist's standing: a picked artist is in
--- the library, and a credit stands as its stored answer says, with the
--- library artists it could be when it is ambiguous. The answer to a credit
--- is the library artists it names, in the rule's order: none for a new
--- artist, one in the library, several left ambiguous. A credit with no
--- stored answer has no kind, which no standing reads.
+-- the library, and a credit stands as its answer says, with the library
+-- artists it could be when it is ambiguous: none names a new artist, one an
+-- artist in the library, several leave it ambiguous. A credit with no answer
+-- has no kind, which no standing reads.
 placed_standing AS (
     SELECT part, track_id, position, kind,
            CASE WHEN kind = 'ambiguous' THEN artists END AS choices
     FROM (SELECT raw.part, raw.track_id, raw.position,
                  CASE WHEN raw.assignment_kind = 'picked' THEN 'library'
-                      WHEN answer.id IS NULL THEN NULL
-                      ELSE CASE (SELECT COUNT(*) FROM import_credit_resolution_artist AS a
-                                 WHERE a.resolution = answer.id)
+                      WHEN answer.name_key IS NULL THEN NULL
+                      ELSE CASE json_array_length(answer.artists)
                                WHEN 0 THEN 'new' WHEN 1 THEN 'library' ELSE 'ambiguous' END
                  END AS kind,
-                 (SELECT json_group_array(json_object(
-                             'artist_id', a.artist_id, 'name', a.name, 'sort_name', a.sort_name,
-                             'musicbrainz_artist_id', a.musicbrainz_artist_id,
-                             'discogs_artist_id', a.discogs_artist_id) ORDER BY a.position)
-                  FROM import_credit_resolution_artist AS a
-                  WHERE a.resolution = answer.id) AS artists
+                 answer.artists AS artists
           FROM raw
-          LEFT JOIN import_credit_resolution AS answer
+          LEFT JOIN credit_answer AS answer
               ON raw.assignment_kind = 'credit'
              AND answer.name_key = bae_artist_name_key(raw.name)
-             AND answer.musicbrainz_artist_id IS raw.mb AND answer.discogs_artist_id IS raw.dg)
+             AND answer.mb IS raw.mb AND answer.dg IS raw.dg)
 ),
 -- Each field's standing, counted over its places: one artist that could be
 -- several is a choice among them; else any such artist leaves that many to
@@ -76,11 +75,13 @@ artist_field_standing AS MATERIALIZED (
 )";
 
 /// Whose artist fields the standing clauses read: a candidate's draft, or a
-/// release editor's session by its id.
+/// release editor's form, whose album artists and explicit tracks' artists
+/// the statement binds as the JSON arrays that `draft_rows`'
+/// `assignment_json_rows` makes.
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
     Candidate(crate::tables::import_state::OneCandidate<'a>),
-    Session(&'a i64),
+    Form { album_artists: &'a String, track_artists: &'a String, answers: &'a String },
 }
 
 impl CreditSource<'_> {
@@ -89,47 +90,122 @@ impl CreditSource<'_> {
     /// position, assignment_kind, credited_as, name, sort_name, mb, dg)`: the
     /// album's in part 0 with no track, each track's in part 1.
     fn raw(self) -> String {
-        let (tables, track, owner) = match self {
-            Self::Candidate(candidate) => (
-                &crate::tables::import_state::CANDIDATE_DRAFT,
-                "import_candidate_track",
-                candidate.hash_sql(),
-            ),
-            Self::Session(_) => {
-                (&crate::tables::RELEASE_EDIT_SESSION_DRAFT, "release_edit_track", ":session")
+        match self {
+            Self::Candidate(candidate) => {
+                let tables = &crate::tables::import_state::CANDIDATE_DRAFT;
+                format!(
+                    "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, \
+                            a.position AS position, a.assignment_kind, a.credited_as, a.name, \
+                            a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
+                     FROM {album_artist} AS a \
+                     WHERE a.{key} = {owner} \
+                     UNION ALL \
+                     SELECT 1, t.track_id, t.position, a.position, a.assignment_kind, \
+                            a.credited_as, a.name, a.sort_name, a.musicbrainz_artist_id, \
+                            a.discogs_artist_id \
+                     FROM {track_artist} AS a \
+                     JOIN import_candidate_track AS t \
+                         ON t.{key} = a.{key} AND t.track_id = a.track_id \
+                     WHERE a.{key} = {owner} AND t.artist_assignment_kind = 'explicit'",
+                    album_artist = tables.album_artist,
+                    track_artist = tables.track_artist,
+                    key = tables.key,
+                    owner = candidate.hash_sql(),
+                )
             }
-        };
-        format!(
-            "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, a.position AS position, \
-                    a.assignment_kind, a.credited_as, a.name, a.sort_name, \
-                    a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
-             FROM {album_artist} AS a \
-             WHERE a.{key} = {owner} \
-             UNION ALL \
-             SELECT 1, t.track_id, t.position, a.position, a.assignment_kind, a.credited_as, \
-                    a.name, a.sort_name, a.musicbrainz_artist_id, a.discogs_artist_id \
-             FROM {track_artist} AS a \
-             JOIN {track} AS t ON t.{key} = a.{key} AND t.track_id = a.track_id \
-             WHERE a.{key} = {owner} AND t.artist_assignment_kind = 'explicit'",
-            album_artist = tables.album_artist,
-            track_artist = tables.track_artist,
-            key = tables.key,
-        )
+            Self::Form { .. } => {
+                let rows = crate::tables::draft_rows::assignment_rows_sql;
+                format!(
+                    "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, \
+                            a.position AS position, a.assignment_kind, a.credited_as, a.name, \
+                            a.sort_name, a.musicbrainz_artist_id AS mb, a.discogs_artist_id AS dg \
+                     FROM {album} AS a \
+                     UNION ALL \
+                     SELECT 1, a.track_id, a.track_position, a.position, a.assignment_kind, \
+                            a.credited_as, a.name, a.sort_name, a.musicbrainz_artist_id, \
+                            a.discogs_artist_id \
+                     FROM {tracks} AS a",
+                    album = rows(":album_artists"),
+                    tracks = rows(":track_artists"),
+                )
+            }
+        }
     }
 
-    /// What [`Self::raw`] binds, as a statement's parameters.
+    /// The statement selecting the rule's answer to each credit as
+    /// `(name_key, mb, dg, artists)`: for a candidate, the answers the
+    /// library stores for its draft's credits (`credit_resolutions`); for a
+    /// form, the answers its read asked the same rule for
+    /// ([`form_credit_answers_on`]), which the statement binds as JSON.
+    fn answers(self) -> &'static str {
+        match self {
+            Self::Candidate(_) => {
+                "SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id, \
+                        (SELECT json_group_array(json_object( \
+                                    'artist_id', a.artist_id, 'name', a.name, \
+                                    'sort_name', a.sort_name, \
+                                    'musicbrainz_artist_id', a.musicbrainz_artist_id, \
+                                    'discogs_artist_id', a.discogs_artist_id) \
+                                ORDER BY a.position) \
+                         FROM import_credit_resolution_artist AS a WHERE a.resolution = r.id) \
+                 FROM import_credit_resolution AS r"
+            }
+            Self::Form { .. } => {
+                "SELECT bae_artist_name_key(j.value ->> 'name'), j.value ->> 'mb', \
+                        j.value ->> 'dg', MAX(j.value ->> 'artists') \
+                 FROM json_each(:credit_answers) AS j GROUP BY 1, 2, 3"
+            }
+        }
+    }
+
+    /// What [`Self::raw`] and [`Self::answers`] bind, as a statement's
+    /// parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match self {
             Self::Candidate(candidate) => candidate.params(),
-            Self::Session(session) => vec![(":session", *session as &dyn rusqlite::ToSql)],
+            Self::Form { album_artists, track_artists, answers } => vec![
+                (":album_artists", *album_artists as &dyn rusqlite::ToSql),
+                (":track_artists", *track_artists as &dyn rusqlite::ToSql),
+                (":credit_answers", *answers as &dyn rusqlite::ToSql),
+            ],
         }
     }
+}
+
+/// The records' rule's answer to each credit among `edit`'s album artists
+/// and its tracks' own, as the JSON array a form's credit source binds: each
+/// credit's name and catalog ids, and the library artists the rule names
+/// for it. A credit the form holds twice is in it twice, and the source's
+/// statement groups them. The rule reads through `sql`, so a live read that asks it reads
+/// again after a write that changes an artist it can name.
+pub(crate) fn form_credit_answers_on(
+    sql: &impl coven::SqlRead,
+    edit: &crate::RawReleaseEdit,
+) -> Result<String, DbError> {
+    let tracks = edit.tracks.iter().flat_map(|track| match &track.artist_assignments {
+        crate::TrackArtistAssignments::AlbumArtists => [].as_slice(),
+        crate::TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
+    });
+    let mut answers = Vec::new();
+    for credited in edit.album_artist_assignments.iter().chain(tracks) {
+        let crate::ArtistAssignment::Credit { credit } = &credited.artist else {
+            continue;
+        };
+        answers.push(serde_json::json!({
+            "name": credit.name,
+            "mb": credit.musicbrainz_artist_id,
+            "dg": credit.discogs_artist_id,
+            "artists": bae_records::credit_artists_on(sql, credit)?,
+        }));
+    }
+    serde_json::to_string(&answers)
+        .map_err(|error| DbError::encode("a form's credit answers", error))
 }
 
 /// The clauses over `source`'s credits. A statement puts them after its
 /// WITH and binds [`CreditSource::params`].
 pub(crate) fn artist_standing_clauses(source: CreditSource<'_>) -> String {
-    ARTIST_STANDING_CLAUSES.replace("{raw}", &source.raw())
+    ARTIST_STANDING_CLAUSES.replace("{raw}", &source.raw()).replace("{answers}", source.answers())
 }
 
 /// An expression for the standing JSON of the artist field of the track

@@ -44,7 +44,7 @@ struct ReleaseEditorWaitTests {
     /// its wait.
     private func heldSession() -> ReleaseMetadataEditSession {
         let draft = PreviewData.releaseEditDraft(trackCount: 2)
-        let held = ReleaseEditSessionCommands(
+        let held = ReleaseEditFormCommands(
             setField: { _, _ in },
             setLabels: { _ in },
             setBarcodes: { _ in },
@@ -58,7 +58,7 @@ struct ReleaseEditorWaitTests {
         )
         let opened = OpenedReleaseEdit(
             drafts: PreviewReleaseEditSession(draft: draft).drafts(),
-            session: held
+            form: held
         )
         return ReleaseMetadataEditSession(
             releaseId: "release-test",

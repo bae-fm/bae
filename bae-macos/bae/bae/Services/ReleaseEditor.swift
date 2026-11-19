@@ -3,8 +3,8 @@ import Foundation
 
 /// Release-level mutations and the cover lookups the editor needs.
 /// Covers cover changes, pinning, deleting a release or a whole album,
-/// primary-release selection, opening a release edit session (whose own
-/// commands write each change, apply a catalog, pick its album and save),
+/// primary-release selection, opening a release editor's form (whose
+/// commands change it, apply a catalog, pick its album and save it),
 /// reading one of a release's documents, and the lookups of the covers the
 /// catalogs offer a release's or a candidate's picker.
 @MainActor
@@ -25,8 +25,9 @@ final class ReleaseEditor: Observable {
     let deleteAlbum: @Sendable (_ albumId: String) async throws -> Void
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
-    /// Open an edit session of the caller's own on a release: its draft as
-    /// the library holds the release, and the session's commands.
+    /// Open a form of the caller's own on a release: the release's values
+    /// as the library holds them, the draft read that follows the form, and
+    /// the form's commands.
     let openReleaseEdit:
         @Sendable (_ releaseId: String) async throws -> OpenedReleaseEdit
     /// The text of the release's document `fileId`, decoded by core.
@@ -134,35 +135,57 @@ final class ReleaseEditor: Observable {
         )
     }
 
-    /// An edit session of `handle`'s on the release, and the commands it takes.
+    /// A form of the caller's own on the release, read from `handle`, the
+    /// draft read that follows it, and the commands it takes.
     private static func openEdit(
         _ handle: any AppHandleProtocol,
         releaseId: String
     ) async throws -> OpenedReleaseEdit {
-        let session = try await handle.openReleaseEdit(releaseId: releaseId)
+        let form = HeldReleaseEditForm(
+            form: try await handle.openReleaseEdit(releaseId: releaseId),
+            drafts: handle.subscribeReleaseEditDraft(),
+            handle: handle
+        )
+        try form.showDraft()
         return OpenedReleaseEdit(
-            drafts: PulledValues(session.draftSubscription()),
-            session: ReleaseEditSessionCommands(
-                setField: { try await session.setField(field: $0, value: $1) },
-                setLabels: { try await session.setLabels(labels: $0) },
-                setBarcodes: { try await session.setBarcodes(barcodes: $0) },
-                setPressingFact: {
-                    try await session.setPressingFact(fact: $0)
+            drafts: PulledValues(form.drafts),
+            form: ReleaseEditFormCommands(
+                setField: { field, value in
+                    try await form.change {
+                        $0.withField(field: field, value: value)
+                    }
                 },
-                setAlbumArtists: {
-                    try await session.setAlbumArtists(assignments: $0)
+                setLabels: { labels in
+                    try await form.change { $0.withLabels(labels: labels) }
                 },
-                setTrack: { try await session.setTrack(track: $0) },
-                apply: { try await session.applyCatalog(link: $0, apply: $1) },
-                setAlbum: { try await session.setAlbum(pick: $0) },
-                cancel: { try await session.cancel() },
-                save: { try await session.save() }
+                setBarcodes: { barcodes in
+                    try await form.change {
+                        $0.withBarcodes(barcodes: barcodes)
+                    }
+                },
+                setPressingFact: { fact in
+                    try await form.change { $0.withPressingFact(fact: fact) }
+                },
+                setAlbumArtists: { assignments in
+                    try await form.change {
+                        $0.withAlbumArtists(assignments: assignments)
+                    }
+                },
+                setTrack: { track in
+                    try await form.change { try $0.withTrack(track: track) }
+                },
+                apply: { try await form.apply(link: $0, apply: $1) },
+                setAlbum: { pick in
+                    try await form.change { $0.withAlbum(pick: pick) }
+                },
+                cancel: { try await form.reopen() },
+                save: { try await form.save() }
             )
         )
     }
 
-    /// The commands an edit session on a release sends core, finding albums
-    /// to pick with `searchAlbums`.
+    /// The commands a release editor sends core beyond its form, finding
+    /// albums to pick with `searchAlbums`.
     func editCommands(
         searchAlbums:
             @escaping @MainActor (String) async throws ->
@@ -196,4 +219,68 @@ final class ReleaseEditor: Observable {
             ReleaseEditor()
         }
     #endif
+}
+
+/// The form one release editor holds, as core gave it, and the draft read
+/// that follows it. Core keeps no form: each change replaces the form held
+/// here and sets it on the read, and an apply, a save or a Cancel hands core
+/// the form and holds the form core returns.
+@MainActor
+final class HeldReleaseEditForm {
+    private var form: BridgeReleaseEditForm
+    let drafts: ReleaseEditDraftSubscription
+    private let handle: any AppHandleProtocol
+
+    init(
+        form: BridgeReleaseEditForm,
+        drafts: ReleaseEditDraftSubscription,
+        handle: any AppHandleProtocol
+    ) {
+        self.form = form
+        self.drafts = drafts
+        self.handle = handle
+    }
+
+    /// Point the draft read at the form held now.
+    func showDraft() throws {
+        try drafts.setForm(form: form)
+    }
+
+    /// Hold the form `next` makes of the one held now.
+    func change(
+        _ next:
+            @Sendable (BridgeReleaseEditForm) throws -> BridgeReleaseEditForm
+    ) throws {
+        form = try next(form)
+        try showDraft()
+    }
+
+    /// Hold the form with the catalog release `link` picks applied, each
+    /// network read the apply waits on written to `apply`'s row.
+    func apply(link: BridgePressingLink, apply: BridgeCatalogApply?)
+        async throws
+    {
+        form = try await handle.applyReleaseEditCatalog(
+            form: form,
+            link: link,
+            apply: apply
+        )
+        try showDraft()
+    }
+
+    /// Save the form held now, then hold the form opened on what the save
+    /// wrote; returns the album the release is on after the save.
+    func save() async throws -> String {
+        let saved = try await handle.saveReleaseEdit(form: form)
+        form = saved.form
+        try showDraft()
+        return saved.albumId
+    }
+
+    /// Hold the form opened again on the release as the library holds it
+    /// now, which drops every change.
+    func reopen() async throws {
+        form = try await handle.openReleaseEdit(releaseId: form.releaseId())
+        try showDraft()
+    }
 }

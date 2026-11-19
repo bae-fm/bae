@@ -237,7 +237,7 @@ impl Records {
     }
 
     /// Save an edit of `release_id` applying a catalog that credits the
-    /// roles and works `links` hold, as an edit session's save does: its
+    /// roles and works `links` hold, as a release editor's save does: its
     /// album, pressing, tracks and credits as they stand, and `links` in
     /// place of every role credit and work link the release had.
     #[cfg(desktop)]

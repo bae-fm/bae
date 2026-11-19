@@ -1,206 +1,168 @@
 use super::*;
 
-/// One open release editor's session on a library release: the form with
-/// each change the person made in it, what bae read from the catalog the
-/// person applied in it and the album they picked in it, which core keeps
-/// in its tables until the session saves. Every
-/// editor opens its own, so two editors on one release never share an edit,
-/// an apply or a pick; releasing the session deletes it, writing nothing to
-/// the release. The editor reads the session's draft through
-/// [`Self::draft_subscription`], and each command writes the session and
-/// returns once its write is done.
+/// The form a library release's editor holds: what the editor opened on, the
+/// form with each change the person made, the catalog release the person
+/// applied and the album they picked. The app holds it and core keeps none:
+/// each change returns a new form, the editor's draft subscription reads the
+/// form the app sets on it, and a save writes the form the app sends. The
+/// app never reads into it; the draft shows it.
 #[derive(uniffi::Object)]
-pub struct ReleaseEditSession {
-    inner: bae_library::ReleaseEdit,
-    services: AppServices,
-    runtime: crate::operation_runtime::OperationRuntime,
+pub struct BridgeReleaseEditForm {
+    inner: bae_import::ReleaseEditForm,
+}
+
+impl BridgeReleaseEditForm {
+    fn of(inner: bae_import::ReleaseEditForm) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self { inner })
+    }
+
+    /// The form as core reads and saves it.
+    pub(crate) fn core(&self) -> &bae_import::ReleaseEditForm {
+        &self.inner
+    }
+
+    /// This form with `change` made to a copy of it.
+    fn changed(
+        &self,
+        change: impl FnOnce(&mut bae_import::ReleaseEditForm),
+    ) -> std::sync::Arc<Self> {
+        let mut inner = self.inner.clone();
+        change(&mut inner);
+        Self::of(inner)
+    }
+}
+
+#[uniffi::export]
+impl BridgeReleaseEditForm {
+    /// The release the form edits.
+    pub fn release_id(&self) -> String {
+        self.inner.release_id.clone()
+    }
+
+    /// The form with one album-level text field as the person left it.
+    pub fn with_field(
+        &self,
+        field: crate::types::BridgeCandidateEditField,
+        value: String,
+    ) -> std::sync::Arc<Self> {
+        let edit = bae_import::DraftFieldEdit::Text { field: field.into_core(), value };
+        self.changed(|form| form.edit.set_field(edit))
+    }
+
+    /// The form with its label rows as the person left them; a label that
+    /// keeps the name it had keeps its catalog ids.
+    pub fn with_labels(
+        &self,
+        labels: Vec<crate::types::BridgeRawLabelEdit>,
+    ) -> std::sync::Arc<Self> {
+        let edit = bae_import::DraftFieldEdit::Labels(
+            labels.into_iter().map(crate::types::BridgeRawLabelEdit::into_core).collect(),
+        );
+        self.changed(|form| form.edit.set_field(edit))
+    }
+
+    /// The form with its barcode rows as the person left them.
+    pub fn with_barcodes(&self, barcodes: Vec<String>) -> std::sync::Arc<Self> {
+        let edit = bae_import::DraftFieldEdit::Barcodes(barcodes);
+        self.changed(|form| form.edit.set_field(edit))
+    }
+
+    /// The form with one choice of what the pressing is.
+    pub fn with_pressing_fact(
+        &self,
+        fact: crate::types::BridgePressingFactEdit,
+    ) -> std::sync::Arc<Self> {
+        let edit = bae_import::DraftFieldEdit::PressingFact(fact.into_core());
+        self.changed(|form| form.edit.set_field(edit))
+    }
+
+    /// The form with `assignments` as its ordered album credits.
+    pub fn with_album_artists(
+        &self,
+        assignments: Vec<crate::types::BridgeCredited>,
+    ) -> std::sync::Arc<Self> {
+        let assignments: Vec<_> =
+            assignments.into_iter().map(crate::types::BridgeCredited::into_core).collect();
+        self.changed(|form| form.edit.set_album_artists(assignments))
+    }
+
+    /// The form with one track row's title and artists as the person left
+    /// them, by the row's id. Refused for a row the form does not hold.
+    pub fn with_track(
+        &self,
+        track: crate::types::BridgeRawTrackEdit,
+    ) -> Result<std::sync::Arc<Self>, BridgeError> {
+        let track = track.into_core();
+        let id = track.id.clone();
+        let mut inner = self.inner.clone();
+        if inner.edit.set_track(track) {
+            Ok(Self::of(inner))
+        } else {
+            Err(bae_library::LibraryError::EditRowMissing(id).into())
+        }
+    }
+
+    /// The form with `pick` as the album a save files the release under: a
+    /// library album, a new one, or the album its records name.
+    pub fn with_album(&self, pick: crate::types::BridgeAlbumPick) -> std::sync::Arc<Self> {
+        let pick = pick.into_core();
+        self.changed(|form| form.album_pick = pick)
+    }
 }
 
 forward! {
     #[cfg(desktop)]
     async this => {
-        /// Open an edit session of its own on a library release: its form,
-        /// seeded from the release's values as the library holds them, with
-        /// nothing edited, applied or picked.
-        fn open_release_edit(release_id: String) -> std::sync::Arc<ReleaseEditSession> {
-            Ok(std::sync::Arc::new(ReleaseEditSession {
-                inner: this.services.open_release_edit(&release_id).await?,
-                services: this.services.clone(),
-                runtime: this.runtime.clone(),
-            }))
+        /// The form an editor opens with on a library release: its values
+        /// as the library holds them now, with nothing edited, applied or
+        /// picked. Cancel opens the form again.
+        fn open_release_edit(release_id: String) -> std::sync::Arc<BridgeReleaseEditForm> {
+            Ok(BridgeReleaseEditForm::of(this.services.open_release_edit(&release_id).await?))
+        }
+
+        /// `form` with the catalog release `link` picks applied: every value
+        /// it gives replaces the form's, held in the form until a save. When
+        /// the app shows the apply's step, core writes each network read it
+        /// waits on to `apply`'s row while the read runs.
+        fn apply_release_edit_catalog(
+            form: std::sync::Arc<BridgeReleaseEditForm>,
+            link: crate::types::BridgePressingLink,
+            apply: Option<std::sync::Arc<crate::BridgeCatalogApply>>,
+        ) -> std::sync::Arc<BridgeReleaseEditForm> {
+            let steps = crate::screens::catalog_apply_steps(apply.as_deref());
+            Ok(BridgeReleaseEditForm::of(
+                this.services
+                    .apply_release_edit_catalog(form.inner.clone(), &link.into_core(), &steps)
+                    .await?,
+            ))
+        }
+
+        /// Save `form` into the album it files the release under: every
+        /// value, in one write. Returns the album the release is on after
+        /// the save and the form opened on what the save wrote. Core refuses
+        /// the save and writes nothing when the form holds a value core
+        /// can't save, or when the release changed after the form opened on
+        /// it (`BridgeErrorCategory::ReleaseChangedSinceOpened`).
+        fn save_release_edit(
+            form: std::sync::Arc<BridgeReleaseEditForm>,
+        ) -> crate::types::BridgeReleaseEditSaved {
+            let saved = this.services.save_release_edit(form.inner.clone()).await?;
+            let album_id = this.services.get_album_id_for_release(&saved.release_id).await?;
+            Ok(crate::types::BridgeReleaseEditSaved { album_id, form: BridgeReleaseEditForm::of(saved) })
         }
     }
 }
 
 #[uniffi::export]
-impl ReleaseEditSession {
-    /// The session's draft as the editor shows it, now and after each write
-    /// that changes it: each command's, and each write that merges an artist
-    /// in the library, renames the album or picks a cover. The subscription
-    /// sends `None` once
-    /// someone deletes the session's release.
-    pub fn draft_subscription(&self) -> std::sync::Arc<crate::ReleaseEditDraftSubscription> {
+impl AppHandle {
+    /// A release editor's draft, showing nothing until `set_form` names the
+    /// form the editor holds.
+    pub fn subscribe_release_edit_draft(
+        &self,
+    ) -> std::sync::Arc<crate::ReleaseEditDraftSubscription> {
         crate::screens::release_edit_draft(
-            self.services.subscribe_release_edit_draft(&self.inner),
+            self.services.subscribe_release_edit_draft(),
             self.runtime.clone(),
         )
-    }
-}
-
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl ReleaseEditSession {
-    /// Write one album-level text field of the form as the person left it.
-    pub async fn set_field(
-        self: std::sync::Arc<Self>,
-        field: crate::types::BridgeCandidateEditField,
-        value: String,
-    ) -> Result<(), BridgeError> {
-        let edit = bae_import::DraftFieldEdit::Text { field: field.into_core(), value };
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_field", move || async move {
-                Ok(self.services.edit_release_edit_field(&self.inner, edit).await?)
-            })
-            .await
-    }
-
-    /// Write the form's label rows as the person left them.
-    pub async fn set_labels(
-        self: std::sync::Arc<Self>,
-        labels: Vec<crate::types::BridgeRawLabelEdit>,
-    ) -> Result<(), BridgeError> {
-        let edit = bae_import::DraftFieldEdit::Labels(
-            labels.into_iter().map(crate::types::BridgeRawLabelEdit::into_core).collect(),
-        );
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_labels", move || async move {
-                Ok(self.services.edit_release_edit_field(&self.inner, edit).await?)
-            })
-            .await
-    }
-
-    /// Write the form's barcode rows as the person left them.
-    pub async fn set_barcodes(
-        self: std::sync::Arc<Self>,
-        barcodes: Vec<String>,
-    ) -> Result<(), BridgeError> {
-        let edit = bae_import::DraftFieldEdit::Barcodes(barcodes);
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_barcodes", move || async move {
-                Ok(self.services.edit_release_edit_field(&self.inner, edit).await?)
-            })
-            .await
-    }
-
-    /// Write one choice of what the pressing is.
-    pub async fn set_pressing_fact(
-        self: std::sync::Arc<Self>,
-        fact: crate::types::BridgePressingFactEdit,
-    ) -> Result<(), BridgeError> {
-        let edit = bae_import::DraftFieldEdit::PressingFact(fact.into_core());
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_pressing_fact", move || async move {
-                Ok(self.services.edit_release_edit_field(&self.inner, edit).await?)
-            })
-            .await
-    }
-
-    /// Replace the form's ordered album credits.
-    pub async fn set_album_artists(
-        self: std::sync::Arc<Self>,
-        assignments: Vec<crate::types::BridgeCredited>,
-    ) -> Result<(), BridgeError> {
-        let assignments: Vec<_> =
-            assignments.into_iter().map(crate::types::BridgeCredited::into_core).collect();
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_album_artists", move || async move {
-                Ok(self.services.set_release_edit_album_artists(&self.inner, assignments).await?)
-            })
-            .await
-    }
-
-    /// Write one track row's title and artists as the person left them, by
-    /// the row's id.
-    pub async fn set_track(
-        self: std::sync::Arc<Self>,
-        track: crate::types::BridgeRawTrackEdit,
-    ) -> Result<(), BridgeError> {
-        let track = track.into_core();
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_track", move || async move {
-                Ok(self.services.set_release_edit_track(&self.inner, track).await?)
-            })
-            .await
-    }
-
-    /// Apply the catalog release `link` picks to this session: every value it
-    /// gives, held until the session saves, replaces the form. When the app
-    /// shows the apply's step, the session writes each network read it
-    /// waits on to `apply`'s row while the read runs.
-    pub async fn apply_catalog(
-        self: std::sync::Arc<Self>,
-        link: crate::types::BridgePressingLink,
-        apply: Option<std::sync::Arc<crate::BridgeCatalogApply>>,
-    ) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.apply_catalog", move || async move {
-                let steps = crate::screens::catalog_apply_steps(apply.as_deref());
-                Ok(self
-                    .services
-                    .apply_release_edit_catalog(&self.inner, &link.into_core(), &steps)
-                    .await?)
-            })
-            .await
-    }
-
-    /// Record what the person picked for the album this session files the
-    /// release under: a library album, a new one, or the album its records
-    /// name.
-    pub async fn set_album(
-        self: std::sync::Arc<Self>,
-        pick: crate::types::BridgeAlbumPick,
-    ) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.set_album", move || async move {
-                Ok(self.services.set_release_edit_album(&self.inner, pick.into_core()).await?)
-            })
-            .await
-    }
-
-    /// Discard everything the session holds: the session opens again on the
-    /// release as the library holds it now.
-    pub async fn cancel(self: std::sync::Arc<Self>) -> Result<(), BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.cancel", move || async move {
-                Ok(self.services.reopen_release_edit(&self.inner).await?)
-            })
-            .await
-    }
-
-    /// Save this session into the album it files the release under: every
-    /// value, in one write, which opens the session again on what it saved.
-    /// Returns the album the release is on after the save. Core refuses the
-    /// save and writes nothing when the form holds a value core can't save,
-    /// or when the release changed after the session opened on it
-    /// (`BridgeErrorCategory::ReleaseChangedSinceOpened`).
-    pub async fn save(self: std::sync::Arc<Self>) -> Result<String, BridgeError> {
-        let runtime = self.runtime.clone();
-        runtime
-            .run("ReleaseEditSession.save", move || async move {
-                self.services.save_release_edit(&self.inner).await?;
-                self.services
-                    .get_album_id_for_release(self.inner.release_id())
-                    .await
-                    .map_err(BridgeError::from)
-            })
-            .await
     }
 }

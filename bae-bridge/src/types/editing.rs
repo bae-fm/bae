@@ -530,7 +530,7 @@ pub struct BridgeRawReleaseEdit {
 }
 
 /// The library album a draft files under when it is written: an import's, or
-/// a library release's edit session's. Mirrors `bae_import::DraftAlbum`.
+/// a library release's editor's. Mirrors `bae_import::DraftAlbum`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDraftAlbum {
     /// A new album, because the person picked none and the draft's records
@@ -605,14 +605,24 @@ mirror_enum! {
     },
 }
 
-/// A library release's edit session as its editor shows it now: the form
-/// with each change the person made in it, the release's cover as it is
-/// now, the summary of its audio, its tracks in the table's sides beside
-/// their form rows, the
-/// files no track plays from, the album a save files the release under,
-/// how the form's album artists stand to the library, whether a
-/// save would write anything the session did not open on, and why the form
-/// can't be saved, when it can't. Mirrors `bae_import::ReleaseEditDraft`.
+/// What a release editor's save returns: the album the release is on after
+/// the save, and the form opened on what the save wrote, which the editor
+/// holds from then on.
+#[cfg(desktop)]
+#[derive(uniffi::Record)]
+pub struct BridgeReleaseEditSaved {
+    pub album_id: String,
+    pub form: std::sync::Arc<crate::BridgeReleaseEditForm>,
+}
+
+/// A library release's editor's draft for the form it holds: the form with
+/// its picked artists as the library holds them now, the release's cover as
+/// it is now, the summary of its audio, its tracks in the table's sides
+/// beside their form rows, the files no track plays from, the album a save
+/// files the release under, how the form's album artists stand to the
+/// library, whether a save would write anything the editor did not open on,
+/// and why the form can't be saved, when it can't. Mirrors
+/// `bae_import::ReleaseEditDraft`.
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditDraft {

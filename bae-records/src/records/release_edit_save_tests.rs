@@ -1,15 +1,15 @@
-//! Saving an edit session: refused, with nothing written, when the release
-//! is not as the session opened on it, as the save's own write finds it.
+//! Saving an editor's form: refused, with nothing written, when the release
+//! is not as the editor opened on it, as the save's own write finds it.
 
 use super::*;
 use crate::test_fixtures::{ALBUM_A, RELEASE_A, TRACK_A};
 
-/// A write that lands after a session opened makes its save refuse, and the
+/// A write that lands after an editor opened makes its save refuse, and the
 /// refusal is decided in the save's write: the check reads the release there,
 /// so it sees the write that landed, and the release keeps what that write
 /// left. A save whose check finds the release as it stands goes through.
 #[tokio::test]
-async fn a_save_is_refused_once_the_release_changed_after_the_session_opened() {
+async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     crate::test_fixtures::album_with_tracks(
@@ -19,7 +19,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_session_opened() {
         &[(TRACK_A, "Track Title")],
     )
     .await;
-    // What the session opened on.
+    // What the editor opened on.
     let opened = records.find_album_by_id(ALBUM_A).await.unwrap().unwrap().title;
     records.rename_album_for_test(ALBUM_A, "Written Elsewhere").await.unwrap();
 

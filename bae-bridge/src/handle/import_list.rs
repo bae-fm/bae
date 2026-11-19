@@ -32,7 +32,7 @@ impl AppHandle {
     /// A new object that follows one catalog apply the app shows: a pick, or
     /// the release editor applying a catalog release. The app subscribes to
     /// its step, then passes it as `apply` to `select_candidate_release` or
-    /// `ReleaseEditSession.apply_catalog`.
+    /// `apply_release_edit_catalog`.
     pub fn catalog_apply(&self) -> std::sync::Arc<crate::BridgeCatalogApply> {
         crate::screens::catalog_apply(self.services.clone(), self.runtime.clone())
     }
