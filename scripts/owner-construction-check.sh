@@ -12,13 +12,13 @@ cd "$ROOT"
 checker_revision="5b09cad025726f8238a30b40ded9dec83952b9f8"
 # Every checkout on this machine runs the one checker installed for its
 # revision. The first checkout that needs a revision builds the checker from
-# scratch, in a target folder of its own, installs it into a new folder beside
+# scratch, in a target folder of its own, puts it into a new folder beside
 # the shared ones, and renames that folder into place, so no checkout runs a
 # partly written checker. The folder's `.crates.toml` records the source cargo
 # built, and a folder whose record does not name this revision is built again,
 # so a checker never runs that came from other source than the revision it
 # names.
-checker_directory="${XDG_CACHE_HOME:-$HOME/.cache}/owner-construction-check/installs"
+checker_directory="${XDG_CACHE_HOME:-$HOME/.cache}/owner-construction-check"
 checker_root="$checker_directory/$checker_revision"
 built_from_revision() {
     grep -q "bae-fm/coven?rev=$checker_revision#$checker_revision" "$1/.crates.toml" 2>/dev/null &&
