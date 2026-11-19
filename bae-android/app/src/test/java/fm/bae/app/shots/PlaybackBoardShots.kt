@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.playback.AndroidFullPlayer
+import fm.bae.app.ui.playback.AndroidTransport
+import fm.bae.app.ui.playback.AndroidVolumeSlider
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
-import fm.bae.app.ui.playback.ExpandedTransportRow
-import fm.bae.app.ui.playback.ExpandedVolumeRow
 import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -51,10 +51,10 @@ class PlaybackBoardShots : BoardShot() {
                             onCollapse = {},
                             seek = { removed.SeekRow(SeekLineLook.LARGE) },
                             transport = {
-                                ExpandedTransportRow(true, removed.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {})
+                                AndroidTransport(true, removed.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
                             },
                             secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { ExpandedVolumeRow(0.7f, false, {}, {}, {}) },
+                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}) },
                         )
                     }
                 }
@@ -73,10 +73,10 @@ class PlaybackBoardShots : BoardShot() {
                             onCollapse = {},
                             seek = { playing.SeekRow(SeekLineLook.LARGE) },
                             transport = {
-                                ExpandedTransportRow(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {})
+                                AndroidTransport(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
                             },
                             secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { ExpandedVolumeRow(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") },
+                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") },
                         )
                     }
                 }

@@ -117,24 +117,30 @@ internal fun AndroidStorageUsage(
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
         ) {
             for (segment in segments) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(modifier = Modifier.size(DOT).background(segment.kind.color, CircleShape))
-                    Text(
-                        text = segment.label,
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = segment.size,
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
+                AndroidUsageKey(segment)
             }
         }
+    }
+}
+
+/** One kind in the legend: its colour's dot, its name and its size. */
+@Composable
+internal fun AndroidUsageKey(segment: StorageUsageSegment) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(DOT).background(segment.kind.color, CircleShape))
+        Text(
+            text = segment.label,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = segment.size,
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 

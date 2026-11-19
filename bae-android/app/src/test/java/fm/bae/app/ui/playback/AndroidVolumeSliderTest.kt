@@ -29,7 +29,7 @@ import uniffi.bae_bridge.BridgeRendererKind
 /** The volume row: mute and the slider, which shows a dragged level until the call that sets it returns, or for a receiver that takes no volume from bae, a line saying where it is set. */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
-class ExpandedVolumeRowTest {
+class AndroidVolumeSliderTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -46,7 +46,7 @@ class ExpandedVolumeRowTest {
     private fun show(receiverWithoutVolume: String?) {
         compose.setContent {
             TestTheme {
-                ExpandedVolumeRow(0.7f, false, {}, {}, {}, receiverWithoutVolume)
+                AndroidVolumeSlider(0.7f, false, {}, {}, {}, receiverWithoutVolume)
             }
         }
     }
@@ -78,7 +78,7 @@ class ExpandedVolumeRowTest {
         compose.setContent {
             root = LocalView.current
             TestTheme {
-                ExpandedVolumeRow(0.7f, false, {}, {}, { level ->
+                AndroidVolumeSlider(0.7f, false, {}, {}, { level ->
                     sets.add(level)
                     stored.await()
                 })

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -38,29 +39,26 @@ internal fun AndroidQueuePlaceholderRow() {
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 160.dp, height = 12.dp)
-                        .clip(RoundedCornerShape(ThemeRadius.bar))
-                        .background(placeholderColor),
-            )
+            AndroidPlaceholderLine(width = 160.dp, height = 12.dp)
             Spacer(modifier = Modifier.height(ThemeSpace.compact))
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 100.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(ThemeRadius.bar))
-                        .background(placeholderColor),
-            )
+            AndroidPlaceholderLine(width = 100.dp, height = 10.dp)
             Spacer(modifier = Modifier.height(ThemeSpace.compact))
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 120.dp, height = 10.dp)
-                        .clip(RoundedCornerShape(ThemeRadius.bar))
-                        .background(placeholderColor),
-            )
+            AndroidPlaceholderLine(width = 120.dp, height = 10.dp)
         }
     }
+}
+
+/** A grey bar of [width] and [height] where a line of text will be. */
+@Composable
+internal fun AndroidPlaceholderLine(
+    width: Dp,
+    height: Dp,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(width = width, height = height)
+                .clip(RoundedCornerShape(ThemeRadius.bar))
+                .background(BaeTheme.surfaces.placeholder),
+    )
 }

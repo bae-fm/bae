@@ -1,7 +1,6 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,25 +10,16 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -39,13 +29,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.DisplayError
@@ -69,9 +57,6 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 
 private val logger = BaeLogger("bae.AndroidFullPlayerContainer")
-
-private val skipGlyphSize = 36.dp
-private val skipBoxSize = 56.dp
 
 /**
  * Full-screen player in a [ModalBottomSheet] opened from [AndroidNowPlayingBarContainer], with
@@ -159,12 +144,13 @@ private fun ExpandedPlayer(
         onCollapse = onCollapse,
         seek = { ExpandedSeekSection(session = session, player = player) },
         transport = {
-            ExpandedTransportRow(
+            AndroidTransport(
                 isPlaying = isPlaying,
                 waitsOnStorage = waitsOnStorage,
                 onPrevious = { player.seekToPreviousMediaItem() },
                 onPlayPause = { player.togglePlayPause() },
                 onNext = { player.seekToNextMediaItem() },
+                full = true,
             )
         },
         secondaryControls = {
@@ -174,7 +160,7 @@ private fun ExpandedPlayer(
             )
         },
         volumeRow = {
-            ExpandedVolumeRow(
+            AndroidVolumeSlider(
                 volume = volume,
                 isMuted = isMuted,
                 onSetMuted = { session.appHandle.setMuted(it) },
@@ -298,44 +284,6 @@ private fun ExpandedSeekSection(
 }
 
 @Composable
-internal fun ExpandedTransportRow(
-    isPlaying: Boolean,
-    waitsOnStorage: Boolean,
-    onPrevious: () -> Unit,
-    onPlayPause: () -> Unit,
-    onNext: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AndroidIconButton(
-            icon = Icons.Filled.SkipPrevious,
-            contentDescription = stringResource(R.string.player_previous),
-            onClick = onPrevious,
-            glyph = skipGlyphSize,
-            box = skipBoxSize,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.section))
-        AndroidPlayPause(
-            isPlaying = isPlaying,
-            iconSize = 48.dp,
-            waitsOnStorage = waitsOnStorage,
-            onToggle = onPlayPause,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.section))
-        AndroidIconButton(
-            icon = Icons.Filled.SkipNext,
-            contentDescription = stringResource(R.string.player_next),
-            onClick = onNext,
-            glyph = skipGlyphSize,
-            box = skipBoxSize,
-        )
-    }
-}
-
-@Composable
 internal fun ExpandedSecondaryControls(
     repeatMode: BridgeRepeatMode,
     onCycleRepeat: () -> Unit,
@@ -350,61 +298,6 @@ internal fun ExpandedSecondaryControls(
             contentDescription = stringResource(R.string.repeat_mode),
             onClick = onCycleRepeat,
             tone = if (repeatMode == BridgeRepeatMode.OFF) IconTone.MUTED else IconTone.ACCENT,
-        )
-    }
-}
-
-@Composable
-internal fun ExpandedVolumeRow(
-    volume: Float,
-    isMuted: Boolean,
-    onSetMuted: (Boolean) -> Unit,
-    onDragVolume: (Float) -> Unit,
-    onSetVolume: suspend (Float) -> Unit,
-    receiverWithoutVolume: String? = null,
-) {
-    // A receiver that takes no volume from bae keeps its volume itself: no mute
-    // and no slider, which could only be refused, and a line saying where it is set.
-    if (receiverWithoutVolume != null) {
-        Box(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), contentAlignment = Alignment.Center) {
-            Text(
-                text = stringResource(R.string.volume_set_on_receiver, receiverWithoutVolume),
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
-        return
-    }
-    // Follow the finger from a local value while dragging, moving the output
-    // as it goes. When the drag ends, the row calls onSetVolume once with the
-    // last level and shows that level until the call returns; then the slider
-    // shows [volume].
-    var dragVolume by remember { mutableStateOf<Float?>(null) }
-    val scope = rememberCoroutineScope()
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        AndroidIconButton(
-            icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-            contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),
-            onClick = { onSetMuted(!isMuted) },
-            tone = IconTone.MUTED,
-        )
-        AndroidVolumeSlider(
-            value = dragVolume ?: volume,
-            onValueChange = {
-                dragVolume = it
-                onDragVolume(it)
-            },
-            onValueChangeFinished = {
-                dragVolume?.let { level ->
-                    scope.launch {
-                        onSetVolume(level)
-                        // When a new drag started while onSetVolume ran, keep that drag's level.
-                        if (dragVolume == level) dragVolume = null
-                    }
-                }
-            },
-            modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
         )
     }
 }

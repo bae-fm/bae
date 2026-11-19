@@ -16,11 +16,11 @@ import fm.bae.app.ui.playback.AndroidPlayPause
 import fm.bae.app.ui.playback.AndroidQueuePlaceholderRow
 import fm.bae.app.ui.playback.AndroidQueueRow
 import fm.bae.app.ui.playback.AndroidQueueSection
+import fm.bae.app.ui.playback.AndroidTransport
+import fm.bae.app.ui.playback.AndroidVolumeSlider
 import fm.bae.app.ui.playback.CastBarButton
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
-import fm.bae.app.ui.playback.ExpandedTransportRow
-import fm.bae.app.ui.playback.ExpandedVolumeRow
-import fm.bae.app.ui.playback.NowPlayingTransport
+import fm.bae.app.ui.playback.NowPlayingBarControls
 import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -85,10 +85,10 @@ class PlaybackComponentShots : BoardShot() {
                             onCollapse = {},
                             seek = { playing.SeekRow(SeekLineLook.LARGE) },
                             transport = {
-                                ExpandedTransportRow(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {})
+                                AndroidTransport(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
                             },
                             secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { ExpandedVolumeRow(0.7f, false, {}, {}, {}) },
+                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}) },
                         )
                     }
                 }
@@ -161,7 +161,7 @@ internal fun Bar(staging: PlayerStaging) =
             failure = null,
             onExpand = {},
             transport = {
-                NowPlayingTransport(
+                NowPlayingBarControls(
                     isPlaying = true,
                     waitsOnStorage = staging.waitsOnStorage,
                     repeatMode = BridgeRepeatMode.OFF,

@@ -229,7 +229,7 @@ private fun NowPlayingTransportButtons(
 ) {
     val isPlaying by player.isPlayingOrLoading.collectAsState()
     val waitsOnStorage by player.waitsOnStorage.collectAsState()
-    NowPlayingTransport(
+    NowPlayingBarControls(
         isPlaying = isPlaying,
         waitsOnStorage = waitsOnStorage,
         repeatMode = repeatMode,

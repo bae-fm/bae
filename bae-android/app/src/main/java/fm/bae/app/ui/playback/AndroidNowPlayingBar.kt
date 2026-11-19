@@ -3,7 +3,6 @@ package fm.bae.app.ui.playback
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,10 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +31,6 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.library
 import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -82,9 +77,10 @@ internal fun AndroidNowPlayingBar(
                     if (failure != null) {
                         AndroidErrorLine(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
                     } else if (track != null) {
-                        NowPlayingTrackInfo(
+                        AndroidNowPlayingTrack(
                             track = track,
                             onExpand = onExpand,
+                            modifier = Modifier.weight(1f),
                         )
                     }
                     transport()
@@ -96,10 +92,12 @@ internal fun AndroidNowPlayingBar(
     }
 }
 
+/** The playing track: its cover, title and artists, which open the full player as one TalkBack element. */
 @Composable
-private fun RowScope.NowPlayingTrackInfo(
-    track: fm.bae.app.playback.NowPlaying,
+internal fun AndroidNowPlayingTrack(
+    track: NowPlaying,
     onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val title = track.display.title(context)
@@ -121,8 +119,7 @@ private fun RowScope.NowPlayingTrackInfo(
     }
     Row(
         modifier =
-            Modifier
-                .weight(1f)
+            modifier
                 .clickable(onClick = onExpand)
                 // One TalkBack element named for the track, instead of an
                 // unnamed button and loose text.
@@ -155,9 +152,9 @@ private fun RowScope.NowPlayingTrackInfo(
     }
 }
 
-/** The bar's transport: previous, play/pause, next, cast, the queue and repeat. */
+/** The bar's controls: the [AndroidTransport], cast, the queue and repeat. */
 @Composable
-internal fun NowPlayingTransport(
+internal fun NowPlayingBarControls(
     isPlaying: Boolean,
     waitsOnStorage: Boolean,
     repeatMode: BridgeRepeatMode,
@@ -168,19 +165,13 @@ internal fun NowPlayingTransport(
     onOpenQueue: () -> Unit,
     onCycleRepeat: () -> Unit,
 ) {
-    AndroidIconButton(
-        Icons.Filled.SkipPrevious,
-        stringResource(R.string.player_previous),
-        onClick = onPrevious,
-        box = ICON_BUTTON_BAR_BOX,
-    )
-    AndroidPlayPause(
+    AndroidTransport(
         isPlaying = isPlaying,
-        iconSize = ThemeIcon.large,
         waitsOnStorage = waitsOnStorage,
-        onToggle = onPlayPause,
+        onPrevious = onPrevious,
+        onPlayPause = onPlayPause,
+        onNext = onNext,
     )
-    AndroidIconButton(Icons.Filled.SkipNext, stringResource(R.string.player_next), onClick = onNext, box = ICON_BUTTON_BAR_BOX)
     castButton()
     AndroidIconButton(
         Icons.AutoMirrored.Filled.List,
