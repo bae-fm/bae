@@ -133,7 +133,7 @@ impl ImportServiceHandle {
                 self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::Panicked(bug))
             })??;
         }
-        Ok(self.services.tables.load_folder_scan_progress(Default::default()).await?.statuses)
+        Ok(self.services.tables.load_folder_scan_statuses().await?)
     }
 
     pub async fn refresh_watched_folder(

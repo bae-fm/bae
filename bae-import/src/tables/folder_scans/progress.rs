@@ -106,10 +106,10 @@ fn alert_kind_text(kind: FolderScanAlertKind) -> &'static str {
     }
 }
 
-fn load_folder_scan_progress_on(
+/// Each watched folder's status, in the order the folders are listed.
+fn load_folder_scan_statuses_on(
     sql: &SqlReadContext<'_>,
-    raised: &RaisedScanAlerts,
-) -> Result<FolderScanProgress, DbError> {
+) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
     let mut statuses = Vec::new();
     for (watched_folder_path, status, detail, volume) in
         sql.query(FOLDER_SCAN_STATUSES, [], |row| {
@@ -126,6 +126,14 @@ fn load_folder_scan_progress_on(
             folder: crate::WatchedFolder::from_path(watched_folder_path),
         });
     }
+    Ok(statuses)
+}
+
+fn load_folder_scan_progress_on(
+    sql: &SqlReadContext<'_>,
+    raised: &RaisedScanAlerts,
+) -> Result<FolderScanProgress, DbError> {
+    let statuses = load_folder_scan_statuses_on(sql)?;
     let (has_problem, scanning) =
         sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get(1)?)))?;
     let mut alerts = Vec::new();
@@ -309,9 +317,15 @@ impl ImportTables {
         self.store.read(move |sql| load_stored_folder_scans_on(&sql)).await
     }
 
+    /// Each watched folder's scan status now.
+    pub async fn load_folder_scan_statuses(&self) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
+        self.store.read(move |sql| load_folder_scan_statuses_on(&sql)).await
+    }
+
     /// Where each watched folder's scan stands now, with an alert for each
     /// problem not among `raised`.
-    pub async fn load_folder_scan_progress(
+    #[cfg(test)]
+    pub(crate) async fn load_folder_scan_progress(
         &self,
         raised: RaisedScanAlerts,
     ) -> Result<FolderScanProgress, DbError> {

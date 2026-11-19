@@ -96,10 +96,13 @@ class ImportStore {
         do {
             try setRaisedScanAlerts?(Array(raisedScanAlerts))
         }
+        // The library closed, which ends the folder scans with it.
+        catch BridgeError.Cancelled {}
         catch {
             importStoreLogger.error(
                 "the folder scans did not take the raised alerts: \(String(describing: error))"
             )
+            reportFailure(error)
         }
     }
 
