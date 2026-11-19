@@ -154,6 +154,21 @@ fn a_forgotten_pairing_asks_again_and_replaces_what_bae_kept() {
     assert_ne!(second.keys.controller, first.keys.controller, "the new pairing replaced the old");
 }
 
+/// A pairing by code already proved this device and the receiver to each
+/// other, so bae hands its keys to playback without pair-verifying them
+/// first: a receiver that refuses every pair-verify still takes the cast,
+/// and only the session's own pair-verify reaches it.
+#[test]
+fn a_pairing_by_code_moves_playback_without_verifying_again() {
+    let mut receiver = CodeReceiver::new(ReceiverCode::pins(&["0482"]));
+    receiver.refusal = Some(CodeRefusal::VerifyM2(0x02));
+    let casting = Casting::to(receiver, "0x204");
+    casting
+        .cast(ScriptedPrompt::answering(&["0482"]))
+        .expect("the cast moves playback with the keys the pairing agreed on");
+    assert!(casting.kept().is_some());
+}
+
 /// A receiver that asks for a PIN on every cast asks on each, and bae keeps
 /// nothing of it on this device.
 #[test]

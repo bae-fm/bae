@@ -169,7 +169,7 @@ impl CastController {
                         prompt,
                     )
                     .await?;
-                self.verified(target, kept).await
+                Ok(Ap2Auth::Verify(kept))
             }
         }
     }
@@ -190,21 +190,10 @@ impl CastController {
                 Err(error) => return Err(airplay_pairing_failure(error, &target.receiver.name)),
             },
         };
+        // Pair-setup proved this device and the receiver to each other; the
+        // session pair-verifies with the keys it agreed on.
         let kept = self.pair_by_code(target, code, why, KeptFor::LaterCasts, prompt).await?;
-        self.verified(target, kept).await
-    }
-
-    /// Pair-verify once with `kept`, which a pairing by code just agreed on.
-    async fn verified(
-        &self,
-        target: &Ap2Receiver,
-        kept: KeptPairing,
-    ) -> Result<Ap2Auth, CastError> {
-        let auth = Ap2Auth::Verify(kept);
-        self.pair_with(target, auth.clone())
-            .await?
-            .map_err(|error| airplay_pairing_failure(error, &target.receiver.name))?;
-        Ok(auth)
+        Ok(Ap2Auth::Verify(kept))
     }
 
     /// Pair with the receiver once as `auth` says, off the runtime. The
