@@ -11,9 +11,14 @@ import Testing
 struct SidePauseCountdownTests {
     private static let resumesAtMs: Int64 = 1_767_225_605_000
 
-    private static let countdown = BridgeSideCountdown(
-        resumesAtMs: resumesAtMs
+    private static let resumesAt = Date(
+        timeIntervalSince1970: TimeInterval(resumesAtMs) / 1000
     )
+
+    /// The countdown core sends for the next side or disc.
+    private static func countdown(_ key: String) -> BridgeCountdown {
+        BridgeCountdown(key: key, until: resumesAt)
+    }
 
     private static func prompt(
         _ boundary: BridgePauseBoundary
@@ -22,7 +27,7 @@ struct SidePauseCountdownTests {
             id: "pause-1",
             boundary: boundary,
             sideLabel: "A",
-            countdown: countdown
+            countdown: nil
         )
     }
 
@@ -71,11 +76,11 @@ struct SidePauseCountdownTests {
 
     @Test("seconds left round up and stop at zero")
     func secondsLeftRoundUp() {
+        let countdown = Self.countdown(
+            "core.playback.pause.side_ended.countdown"
+        )
         func left(before ms: Int64) -> Int {
-            countdownSecondsLeft(
-                deadlineMs: Self.resumesAtMs,
-                nowMs: Self.before(ms).millisecondsSince1970
-            )
+            countdown.secondsLeft(at: Self.before(ms))
         }
         #expect(left(before: 5_000) == 5)
         #expect(left(before: 4_001) == 5)
@@ -87,18 +92,18 @@ struct SidePauseCountdownTests {
 
     @Test("the card line names the medium and the seconds left")
     func cardLineCountsDown() {
-        let side = Self.prompt(.side)
-        let disc = Self.prompt(.disc)
+        let side = Self.countdown("core.playback.pause.side_ended.countdown")
+        let disc = Self.countdown("core.playback.pause.disc_ended.countdown")
         #expect(
-            side.countdownLine(Self.countdown, at: Self.before(5_000))
+            side.line(at: Self.before(5_000))
                 == "The next side starts in 5 seconds."
         )
         #expect(
-            side.countdownLine(Self.countdown, at: Self.before(900))
+            side.line(at: Self.before(900))
                 == "The next side starts in 1 second."
         )
         #expect(
-            disc.countdownLine(Self.countdown, at: Self.before(15_000))
+            disc.line(at: Self.before(15_000))
                 == "The next disc starts in 15 seconds."
         )
     }

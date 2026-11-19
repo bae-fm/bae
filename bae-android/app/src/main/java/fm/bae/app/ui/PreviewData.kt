@@ -317,7 +317,6 @@ object PreviewData {
                     countdown = null,
                 ),
             titleKey = "core.playback.pause.side_ended.title",
-            countdownKey = "core.playback.pause.side_ended.countdown",
             keepPausingKey = "core.playback.pause.side_ended.keep_pausing",
         )
 
@@ -332,7 +331,6 @@ object PreviewData {
                     countdown = null,
                 ),
             titleKey = "core.playback.pause.disc_ended.title",
-            countdownKey = "core.playback.pause.disc_ended.countdown",
             keepPausingKey = "core.playback.pause.disc_ended.keep_pausing",
         )
 

@@ -60,9 +60,8 @@ struct SyncStatusBlock: View {
                     VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                         SyncCauseText(text: cause)
                         if let countdown = shown.causeCountdown {
-                            CountdownTimeline(deadline: countdown.until) {
-                                now in
-                                SyncCauseText(text: countdown.line(at: now))
+                            CountdownTimeline(countdown) { line in
+                                SyncCauseText(text: line)
                                     .monospacedDigit()
                                     .accessibilityAddTraits(.updatesFrequently)
                             }

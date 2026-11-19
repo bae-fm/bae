@@ -548,7 +548,7 @@ pub enum BridgeSyncStatusWord {
 pub enum BridgeSyncCause {
     Message {
         message: BridgeMessage,
-        countdown: Option<BridgeSyncCountdown>,
+        countdown: Option<BridgeCountdown>,
     },
     /// The disk on this device is full.
     DeviceDiskFull,
@@ -562,17 +562,6 @@ pub enum BridgeSyncCause {
     EnterNewRestoreCode,
     /// The changes this device made stay on it until it signs in again.
     ChangesStayOnDevice,
-}
-
-/// A line that counts down to the moment `until`, such as when sync resumes
-/// after the provider asked bae to wait. The UI words the catalog message
-/// `key` with the whole seconds left, rounded up, as its `seconds` argument,
-/// and words it again as each second passes; core, not the UI, acts at
-/// `until`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSyncCountdown {
-    pub key: String,
-    pub until: std::time::SystemTime,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -679,7 +668,7 @@ impl BridgeSyncCause {
         let message = match cause {
             C::UploadFailedWillRetry => plain("core.sync.cause.upload_failed"),
             C::ProviderWait { provider, until } => {
-                countdown = Some(BridgeSyncCountdown {
+                countdown = Some(BridgeCountdown {
                     key: "core.sync.cause.provider_wait.countdown".to_string(),
                     until,
                 });

@@ -759,7 +759,7 @@ fn a_providers_wait_crosses_with_a_countdown_to_when_sync_resumes() {
                     value: "Dropbox".into()
                 }],
             },
-            countdown: Some(crate::types::BridgeSyncCountdown {
+            countdown: Some(crate::types::BridgeCountdown {
                 key: "core.sync.cause.provider_wait.countdown".into(),
                 until,
             }),

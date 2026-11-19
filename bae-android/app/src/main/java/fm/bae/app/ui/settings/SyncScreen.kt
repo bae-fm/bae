@@ -54,12 +54,12 @@ import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncCause
-import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncFix
 
 private val logger = BaeLogger("bae.SyncScreen")
@@ -439,11 +439,11 @@ internal fun SyncStatusBlock(
 /** The line under a cause that counts down to core's moment, redrawn each whole second and read out as it changes. */
 @Composable
 private fun SyncCountdownLine(
-    countdown: BridgeSyncCountdown,
+    countdown: BridgeCountdown,
     nowMs: () -> Long,
 ) {
     Text(
-        text = rememberCountdownLine(countdown.key, countdown.until.toEpochMilli(), nowMs),
+        text = rememberCountdownLine(countdown, nowMs),
         style = ThemeText.body.style,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )

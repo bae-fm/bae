@@ -122,7 +122,7 @@ struct SyncStatusStoreTests {
                     key: "core.sync.cause.provider_wait",
                     args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
                 ),
-                countdown: BridgeSyncCountdown(
+                countdown: BridgeCountdown(
                     key: "core.sync.cause.provider_wait.countdown",
                     until: resumes
                 )

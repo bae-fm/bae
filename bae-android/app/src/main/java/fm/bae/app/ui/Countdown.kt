@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import fm.bae.app.coreString
 import kotlinx.coroutines.delay
+import uniffi.bae_bridge.BridgeCountdown
 
 private const val MILLIS_PER_SECOND = 1_000L
 
@@ -43,15 +44,15 @@ internal fun rememberCountdownNow(
 }
 
 /**
- * Core's countdown message [key] with the whole seconds left until [deadlineMs] as its `seconds` argument, worded
- * again as each whole second before the deadline passes.
+ * Core's countdown line: its message with the whole seconds left until its moment as the `seconds` argument, worded
+ * again as each whole second before the moment passes.
  */
 @Composable
 internal fun rememberCountdownLine(
-    key: String,
-    deadlineMs: Long,
+    countdown: BridgeCountdown,
     nowMs: () -> Long,
 ): String {
+    val deadlineMs = countdown.until.toEpochMilli()
     val now = rememberCountdownNow(deadlineMs, nowMs)
-    return LocalContext.current.coreString(key, mapOf("seconds" to countdownSecondsLeft(deadlineMs, now)))
+    return LocalContext.current.coreString(countdown.key, mapOf("seconds" to countdownSecondsLeft(deadlineMs, now)))
 }

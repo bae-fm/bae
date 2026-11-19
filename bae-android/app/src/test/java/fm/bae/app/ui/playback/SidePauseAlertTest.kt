@@ -18,7 +18,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeSideCountdown
+import uniffi.bae_bridge.BridgeCountdown
+import java.time.Instant
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -110,7 +111,14 @@ class SidePauseAlertTest {
         val side = PreviewData.sidePausePrompt()
         val prompt =
             side.copy(
-                prompt = side.prompt.copy(countdown = BridgeSideCountdown(resumesAtMs = 15_000L)),
+                prompt =
+                    side.prompt.copy(
+                        countdown =
+                            BridgeCountdown(
+                                key = "core.playback.pause.side_ended.countdown",
+                                until = Instant.ofEpochMilli(15_000L),
+                            ),
+                    ),
             )
         show(prompt = prompt, nowMs = { 900L })
 

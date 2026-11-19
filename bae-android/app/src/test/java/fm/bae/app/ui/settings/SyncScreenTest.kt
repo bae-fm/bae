@@ -32,12 +32,12 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeLibraryClosing
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSyncCause
-import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
@@ -191,7 +191,7 @@ class SyncScreenTest {
                                 listOf(BridgeMessageArg("provider", "Dropbox")),
                             ),
                         countdown =
-                            BridgeSyncCountdown(
+                            BridgeCountdown(
                                 key = "core.sync.cause.provider_wait.countdown",
                                 until = Instant.ofEpochMilli(resumesAtMs),
                             ),

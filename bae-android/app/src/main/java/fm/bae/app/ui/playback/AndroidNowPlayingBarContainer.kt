@@ -37,8 +37,8 @@ import fm.bae.app.ui.components.color
 import fm.bae.app.ui.rememberCountdownLine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeRepeatMode
-import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
 /**
@@ -182,11 +182,7 @@ fun SidePauseAlert(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     prompt.countdown?.let { countdown ->
-                        SidePauseCountdownLine(
-                            messageKey = wording.countdownKey,
-                            countdown = countdown,
-                            nowMs = nowMs,
-                        )
+                        SidePauseCountdownLine(countdown = countdown, nowMs = nowMs)
                     }
                     AndroidCheckbox(
                         label = context.coreString(wording.keepPausingKey),
@@ -212,12 +208,11 @@ fun SidePauseAlert(
 /** The countdown line, redrawn each whole second until core's deadline and read out as it changes. */
 @Composable
 private fun SidePauseCountdownLine(
-    messageKey: String,
-    countdown: BridgeSideCountdown,
+    countdown: BridgeCountdown,
     nowMs: () -> Long,
 ) {
     Text(
-        text = rememberCountdownLine(messageKey, countdown.resumesAtMs, nowMs),
+        text = rememberCountdownLine(countdown, nowMs),
         style = ThemeText.strong.style,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

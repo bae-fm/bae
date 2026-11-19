@@ -11,13 +11,13 @@ import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.settings.StorageSection
 import fm.bae.app.ui.settings.SyncStatusBlock
 import org.junit.Test
+import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
-import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import java.time.Instant
@@ -68,7 +68,7 @@ private fun dropboxAskedToWait() =
     BridgeSyncCause.Message(
         message = BridgeMessage("core.sync.cause.provider_wait", listOf(BridgeMessageArg("provider", "Dropbox"))),
         countdown =
-            BridgeSyncCountdown(
+            BridgeCountdown(
                 key = "core.sync.cause.provider_wait.countdown",
                 until = Instant.now().plusSeconds(WAIT_SECONDS_LEFT),
             ),

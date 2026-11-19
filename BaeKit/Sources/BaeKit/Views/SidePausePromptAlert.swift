@@ -65,7 +65,7 @@ private struct SidePausePromptCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let countdown = prompt.countdown {
-                SidePauseCountdownLine(prompt: prompt, countdown: countdown)
+                SidePauseCountdownLine(countdown: countdown)
             }
 
             Toggle(isOn: $keepPausing) {
@@ -134,12 +134,11 @@ private struct SidePausePromptCard: View {
 /// The countdown line, redrawn as each second before core's deadline runs out;
 /// core, not this view, starts the next side or disc.
 private struct SidePauseCountdownLine: View {
-    let prompt: BridgeSidePausePrompt
-    let countdown: BridgeSideCountdown
+    let countdown: BridgeCountdown
 
     var body: some View {
-        CountdownTimeline(deadline: countdown.resumesAt) { now in
-            Text(verbatim: prompt.countdownLine(countdown, at: now))
+        CountdownTimeline(countdown) { line in
+            Text(verbatim: line)
                 .themeText(.strong)
                 .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)

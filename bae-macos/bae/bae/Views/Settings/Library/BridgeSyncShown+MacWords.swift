@@ -10,7 +10,7 @@ extension BridgeSyncShown {
 
     /// The line under the cause that counts down to when sync resumes, when
     /// the cause names that moment.
-    var causeCountdown: BridgeSyncCountdown? {
+    var causeCountdown: BridgeCountdown? {
         guard case .message(_, let countdown) = cause else { return nil }
         return countdown
     }

@@ -31,15 +31,3 @@ extension Date {
         return formatter.localizedString(for: self, relativeTo: Date())
     }
 }
-
-extension BridgeSyncCountdown {
-    /// The countdown's line at `now`: core's words with the whole seconds
-    /// left.
-    public func line(at now: Date) -> String {
-        localizedCountdownLine(
-            key: key,
-            deadlineMs: until.millisecondsSince1970,
-            at: now
-        )
-    }
-}

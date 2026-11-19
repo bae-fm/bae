@@ -8,7 +8,6 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeTrackDisplay
-import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
 import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
 import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
@@ -35,14 +34,13 @@ fun BridgeNowPlayingDisplay.title(context: Context): String {
 fun BridgeNowPlayingDisplay.artist(context: Context): String? = library?.let { context.creditLineText(it.artistLine) }
 
 /**
- * A side-pause prompt with the catalog keys its title, countdown and checkbox
- * are worded from, looked up from the kind of boundary that ended when the
+ * A side-pause prompt with the catalog keys its title and checkbox are worded
+ * from, looked up from the kind of boundary that ended when the
  * player receives it, so the dialog renders without calling the bridge.
  */
 data class SidePausePrompt(
     val prompt: BridgeSidePausePrompt,
     val titleKey: String,
-    val countdownKey: String,
     val keepPausingKey: String,
 ) {
     companion object {
@@ -50,7 +48,6 @@ data class SidePausePrompt(
             SidePausePrompt(
                 prompt = prompt,
                 titleKey = bridgePauseBoundaryTitleKey(prompt.boundary),
-                countdownKey = bridgePauseBoundaryCountdownKey(prompt.boundary),
                 keepPausingKey = bridgePauseBoundaryKeepPausingKey(prompt.boundary),
             )
     }

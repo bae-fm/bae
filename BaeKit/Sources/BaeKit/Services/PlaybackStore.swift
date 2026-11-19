@@ -280,26 +280,6 @@ extension BridgeSidePausePrompt {
             bridgePauseBoundaryKeepPausingKey(boundary: boundary)
         )
     }
-
-    /// The line counting down to the next side or disc at `now`, formatted
-    /// against the current locale so the seconds take its plural form.
-    public func countdownLine(
-        _ countdown: BridgeSideCountdown,
-        at now: Date
-    ) -> String {
-        localizedCountdownLine(
-            key: bridgePauseBoundaryCountdownKey(boundary: boundary),
-            deadlineMs: countdown.resumesAtMs,
-            at: now
-        )
-    }
-}
-
-extension BridgeSideCountdown {
-    /// When the next side starts.
-    public var resumesAt: Date {
-        Date(timeIntervalSince1970: TimeInterval(resumesAtMs) / 1000)
-    }
 }
 
 extension BridgeNowPlayingDisplay {

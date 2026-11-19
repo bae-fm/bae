@@ -210,7 +210,7 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn side_pause_prompt_carries_its_kind_and_countdown_deadline_in_epoch_millis() {
+    fn side_pause_prompt_carries_its_kind_and_a_countdown_to_the_next_disc() {
         use bae_playback::{PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt};
 
         let resumes_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:05Z").unwrap();
@@ -227,7 +227,10 @@ mod conversion_roundtrip {
                 id: "next:1:Cd".to_string(),
                 boundary: BridgePauseBoundary::Disc,
                 side_label: "1".to_string(),
-                countdown: Some(BridgeSideCountdown { resumes_at_ms: 1_767_225_605_000 }),
+                countdown: Some(BridgeCountdown {
+                    key: "core.playback.pause.disc_ended.countdown".to_string(),
+                    until: std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_767_225_605),
+                }),
             }
         );
     }
