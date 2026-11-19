@@ -2211,7 +2211,10 @@ library holds, until the person picks one (a library album, or a new album,
 which a save writes with the release's edited title and year and the credits
 of the album it left); a pick holds over a catalog applied after it. A
 library album the person picked stops being the pick once someone deletes
-it. The cover is not part of the form: the editor writes a cover the person
+it. When someone deletes a library artist the person picked for a credit,
+the editor shows that credit by the artist's name as the form holds it, and
+how it stands to the library as for a name the person typed. The cover is
+not part of the form: the editor writes a cover the person
 picks at once, and the form keeps what the person applied and picked.
 Cancelling discards the form's changes; bae reads no source again, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing

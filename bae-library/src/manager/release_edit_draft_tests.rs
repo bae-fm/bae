@@ -123,6 +123,92 @@ async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
     .await;
 }
 
+/// An artist the library holds for one other album's release alone, and
+/// that release's id: deleting the release deletes the artist.
+async fn artist_of_its_own_release(
+    manager: &LibraryManager,
+    name: &str,
+) -> (bae_records::DbArtist, String) {
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.records.insert_album(&album).await.unwrap();
+    insert_release(manager, &release).await;
+    let artist = bae_records::DbArtist {
+        id: bae_util::test_ids::test_uuid("7d2a4c1e-5b3f-4e8a-9c6d-2f1e0a9b8c7d"),
+        name: name.to_string(),
+        sort_name: Some(format!("{name}, Sorted")),
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: time::UtcDateTime::now(),
+    };
+    manager.records.insert_artist(&artist).await.unwrap();
+    manager
+        .records
+        .insert_album_artist(&bae_records::DbAlbumArtist::new(
+            &coven::UuidIds,
+            &album.id,
+            &artist.id,
+            0,
+            time::UtcDateTime::now(),
+        ))
+        .await
+        .unwrap();
+    (artist, release.id)
+}
+
+#[tokio::test]
+async fn an_artist_the_form_picked_shows_as_a_new_credit_once_deleted() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release_id = release_of_two_tracks(manager).await;
+    let (artist, other_release) = artist_of_its_own_release(manager, "Departed Artist").await;
+    let mut form = manager.open_release_edit(&release_id).await.unwrap();
+    let picked = || {
+        vec![bae_import::Credited::plain(bae_import::ArtistAssignment::picked(
+            bae_records::ExistingArtist::from(artist.clone()),
+        ))]
+    };
+    form.edit.set_album_artists(picked());
+    let mut track = form.edit.tracks[0].clone();
+    track.artist_assignments = bae_import::TrackArtistAssignments::Explicit(picked());
+    assert!(form.edit.set_track(track));
+    let draft = draft_of(manager, &form);
+    let stands = |wanted: bae_import::ArtistStanding| {
+        move |draft: &Option<bae_import::ReleaseEditDraft>| {
+            draft.as_ref().is_some_and(|draft| {
+                let track_standing = draft
+                    .sides
+                    .iter()
+                    .flatten()
+                    .flat_map(bae_import::ReleaseEditTrackSide::rows)
+                    .find_map(|row| row.artist_standing.as_ref());
+                [draft.album_artist_standing.as_ref(), track_standing].into_iter().all(|standing| {
+                    standing
+                        .is_some_and(|standing| standing.artists == std::slice::from_ref(&wanted))
+                })
+            })
+        }
+    };
+    draft_until(&draft, "the picked artist", stands(bae_import::ArtistStanding::Library)).await;
+
+    manager.delete_release(&other_release).await.unwrap();
+    assert_eq!(manager.records.find_artist_by_id(&artist.id).await.unwrap(), None);
+
+    draft_until(&draft, "the credit as new", stands(bae_import::ArtistStanding::New)).await;
+    let draft = draft_now(manager, &form).await;
+    let credit = bae_import::Credited::plain(bae_import::ArtistAssignment::Credit {
+        credit: bae_catalogs::credits::ArtistCredit {
+            sort_name: Some("Departed Artist, Sorted".to_string()),
+            ..bae_catalogs::credits::ArtistCredit::named("Departed Artist")
+        },
+    });
+    assert_eq!(draft.edit.album_artist_assignments, std::slice::from_ref(&credit));
+    assert_eq!(
+        draft.edit.tracks[0].artist_assignments,
+        bae_import::TrackArtistAssignments::Explicit(vec![credit])
+    );
+}
+
 #[tokio::test]
 async fn the_live_draft_shows_a_cover_picked_after_it_opened() {
     let (test, _temp_dir) = setup_test_manager().await;

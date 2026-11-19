@@ -140,7 +140,7 @@ fn store_album_artist_assignment(
     position: usize,
     assignment: &Credited,
 ) -> Result<(), DbError> {
-    let row = AssignmentRow::of(None, position, assignment);
+    let row = AssignmentRow::of(assignment);
     sql.execute(
         "INSERT INTO import_candidate_album_artist_assignment \
              (content_hash, position, assignment_kind, artist_id, name, sort_name, \
@@ -177,7 +177,7 @@ pub(crate) fn insert_track_artist_assignments(
     assignments: &[Credited],
 ) -> Result<(), DbError> {
     for (position, assignment) in assignments.iter().enumerate() {
-        let row = AssignmentRow::of(None, position, assignment);
+        let row = AssignmentRow::of(assignment);
         sql.execute(
             "INSERT INTO import_candidate_track_artist_assignment \
                  (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \

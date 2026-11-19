@@ -217,8 +217,9 @@ impl ReleaseEditForm {
 }
 
 /// A library release's editor's draft, as the editor shows it for one form:
-/// the form with its picked artists as the library holds them now, the
-/// release's cover as it is now, the tracks beside the form, the album a
+/// the form with its picked artists as the library holds them now, each one
+/// the library no longer holds as a credit of the values the form holds for
+/// it, the release's cover as it is now, the tracks beside the form, the album a
 /// save files the release under, how the form's album artists stand to the
 /// library, whether a save would write anything the editor did not open on,
 /// and why the form can't be saved, when it can't.
