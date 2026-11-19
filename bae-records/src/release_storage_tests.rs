@@ -44,14 +44,14 @@ fn the_storage_row_names_the_device_that_alone_holds_its_audio() {
     bae_store::test_devices::run_two_store_test(
         crate::test_fixtures::TEST_SCHEMA,
         async |devices| {
-            let dir = tempfile::tempdir().unwrap();
+            let dir = bae_util::test_files::TestFolder::new();
             let (a, b) = (devices.a(), devices.b());
             write_library(&crate::test_fixtures::test_records(a)).await;
             devices.converge("SELECT id FROM releases").await;
 
-            import_file(a, dir.path(), RELEASE_EARLY, "track.flac", Flac).await;
-            import_file(a, dir.path(), RELEASE_EARLY, "cover.jpg", Jpeg).await;
-            import_file(a, dir.path(), RELEASE_LATE, "front.jpg", Jpeg).await;
+            import_file(a, &dir, RELEASE_EARLY, "track.flac", Flac).await;
+            import_file(a, &dir, RELEASE_EARLY, "cover.jpg", Jpeg).await;
+            import_file(a, &dir, RELEASE_LATE, "front.jpg", Jpeg).await;
             devices.converge("SELECT id, release_id, file FROM release_files").await;
             devices.converge("SELECT id, coordinates FROM coven_files").await;
 

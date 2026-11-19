@@ -16,7 +16,10 @@ async fn bars_now(store: &bae_store::Store) -> ActivityBarRows {
 
 /// Send what the upload queue can, with `FILE_LATE`'s original gone, so bae
 /// stores only the early release's file.
-async fn upload_all_but_the_late_file(store: &bae_store::Store, originals: &std::path::Path) {
+async fn upload_all_but_the_late_file(
+    store: &bae_store::Store,
+    originals: &bae_util::test_files::TestFolder,
+) {
     std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
     store.set_uploads_paused(false).await.unwrap();
     store.retry_uploads_now().await.unwrap();

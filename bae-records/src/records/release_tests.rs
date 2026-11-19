@@ -367,7 +367,7 @@ async fn the_editor_reads_which_file_holds_a_track_s_body_and_where_it_starts() 
             }),
             created_at: time::UtcDateTime::now(),
         };
-        aggregate_ordering::insert_file(&db, tmp.path(), file.clone(), 1).await;
+        aggregate_ordering::insert_file(&db, &tmp, file.clone(), 1).await;
         files.push(file);
     }
     let format = crate::DbAudioFormat::new(

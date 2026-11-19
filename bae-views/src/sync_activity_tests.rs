@@ -370,7 +370,7 @@ async fn activity_now(store: &bae_store::Store) -> SyncActivity {
 /// paused, with a folder for the originals its files are staged from. The
 /// store is closed before its runtime ends, as a store still syncing must be.
 pub(crate) fn run_on_library_with_storage(
-    test: impl AsyncFnOnce(&bae_store::Store, &std::path::Path) + Send + 'static,
+    test: impl AsyncFnOnce(&bae_store::Store, &bae_util::test_files::TestFolder) + Send + 'static,
 ) {
     bae_store::test_devices::on_device_runtime(async move || {
         let dir = tempfile::TempDir::new().unwrap();
@@ -388,8 +388,8 @@ pub(crate) fn run_on_library_with_storage(
         .await;
         let store = sources.store(handle);
         store.set_uploads_paused(true).await.unwrap();
-        let originals = tempfile::TempDir::new().unwrap();
-        test(&store, originals.path()).await;
+        let originals = bae_util::test_files::TestFolder::new();
+        test(&store, &originals).await;
         store.close().await.expect("close the store");
     });
 }
@@ -401,7 +401,7 @@ pub(crate) const FILE_LATE: &str = "6c1d4a1f-3e8b-4d72-8b5f-2a3c4d5e6f72";
 /// device only.
 pub(crate) async fn write_releases_with_files(
     store: &bae_store::Store,
-    originals: &std::path::Path,
+    originals: &bae_util::test_files::TestFolder,
 ) {
     use bae_records::test_fixtures::storage_listing::*;
     write_library(&bae_records::test_fixtures::test_records(store)).await;

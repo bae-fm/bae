@@ -43,7 +43,7 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
         ("d3edb846-9b0b-4a64-b0f6-3f117b686bc0", RELEASE_EARLY, "cover.jpg", 10),
         ("161dd6f3-3bdd-4312-b5d3-8b9d83b53694", RELEASE_EARLY, "back.jpg", 20),
     ] {
-        insert_file(&db, tmp.path(), file).await;
+        insert_file(&db, &tmp, file).await;
     }
     let ids = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<Vec<_>>();
 
@@ -77,7 +77,7 @@ async fn the_storage_list_counts_and_sorts_by_files_as_they_change() {
         ("cda4c2ec-c6fa-422c-a224-d4f56ca5f3f3", RELEASE_LATE, "two.jpg", 2),
         ("4b6e1f0a-3c2d-4e5f-8a9b-0c1d2e3f4a5b", RELEASE_LATE, "three.jpg", 3),
     ] {
-        insert_file(&db, tmp.path(), file).await;
+        insert_file(&db, &tmp, file).await;
     }
     assert_eq!(
         crate::LibraryViews::new(db.clone())
@@ -555,7 +555,9 @@ const PROBE_RELEASE: &str = "6d1f3a2b-4c5e-4f60-8a7b-9c0d1e2f3a02";
 /// A library on which `first`'s trigger runs first as a release arrives,
 /// with the count of every release whose listing row a write asks to
 /// refresh.
-async fn counting_refreshes(first: FirstOnArrival) -> (Store, tempfile::TempDir, RefreshCount) {
+async fn counting_refreshes(
+    first: FirstOnArrival,
+) -> (Store, bae_util::test_files::TestFolder, RefreshCount) {
     let schema = count_refreshes(
         watch_first_insert(
             run_trigger_first(crate::TEST_SCHEMA, first.trigger()),

@@ -22,11 +22,13 @@ pub async fn write_library(records: &crate::Records) {
 /// device only from an original of `size` zero bytes written under `dir`.
 pub async fn insert_file(
     store: &bae_store::Store,
-    dir: &std::path::Path,
+    dir: &bae_util::test_files::TestFolder,
     (id, release, name, size): (&str, &str, &str, u64),
 ) {
     let original = dir.join(id);
-    std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
+    dir.open_with(&original, std::fs::OpenOptions::new().write(true).create_new(true))
+        .set_len(size)
+        .unwrap();
     super::test_records(store)
         .insert_file_for_test(
             &NewReleaseFile::new(
@@ -48,13 +50,12 @@ pub async fn insert_file(
 /// `dir`.
 pub async fn import_file(
     store: &bae_store::Store,
-    dir: &std::path::Path,
+    dir: &bae_util::test_files::TestFolder,
     release: &str,
     name: &str,
     content_type: bae_util::content_type::ContentType,
 ) {
-    let original = dir.join(name);
-    std::fs::write(&original, name).unwrap();
+    let original = dir.write(name, name);
     let file = NewReleaseFile::new(
         release,
         name,

@@ -50,7 +50,7 @@ async fn release_detail_orders_track_artists_and_keeps_tracks_without_artists() 
 #[tokio::test]
 async fn release_detail_files_are_in_case_insensitive_natural_order() {
     let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
-    insert_files_out_of_natural_order(&db, tmp.path()).await;
+    insert_files_out_of_natural_order(&db, &tmp).await;
 
     let detail = crate::LibraryViews::new(db.clone())
         .find_db_release_detail(RELEASE_A)
@@ -404,7 +404,7 @@ async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
             time::UtcDateTime::now(),
         );
         file.source_audio = layout.map(source);
-        insert_file(&db, tmp.path(), file, size).await;
+        insert_file(&db, &tmp, file, size).await;
     }
 
     let detail = crate::LibraryViews::new(db.clone())

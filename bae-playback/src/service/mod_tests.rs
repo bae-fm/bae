@@ -8,7 +8,7 @@ use crate::audio_output::{
     PlayerOutput,
 };
 use crate::renderer::channel::{FakeChannel, FakeChannelState};
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 pub(super) struct TestAudioStream;
 
@@ -162,7 +162,7 @@ pub(super) async fn fill_test_release(service: &mut PlaybackService, release_id:
 /// outlives it.
 pub(super) struct SeededStore {
     db: bae_store::Store,
-    home: TempDir,
+    home: TestFolder,
 }
 
 impl SeededStore {
@@ -185,7 +185,7 @@ pub(super) async fn seeded_store_with_track_length(
     releases: &[(&str, &[&str])],
     track_length_ms: u64,
 ) -> SeededStore {
-    let home = TempDir::new().unwrap();
+    let home = TestFolder::new();
     let db =
         bae_store::Store::new_test(crate::TEST_SCHEMA, home.path(), Arc::new(coven::SystemClock))
             .await
@@ -618,7 +618,7 @@ async fn seed_track(
     });
     bae_records::test_fixtures::aggregate_ordering::insert_file(
         store.store(),
-        store.home.path(),
+        &store.home,
         file,
         4_096,
     )

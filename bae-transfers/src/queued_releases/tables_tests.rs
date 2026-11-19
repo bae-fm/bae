@@ -286,16 +286,12 @@ async fn an_entry_keeps_its_files_and_size_after_its_release_is_gone() {
     write_library(&records).await;
     insert_file(
         &db,
-        tmp.path(),
+        &tmp,
         ("6d1a0c52-3f2e-4f0b-8f43-0c6f1c0a7a11", RELEASE_EARLY, "front.jpg", 100),
     )
     .await;
-    insert_file(
-        &db,
-        tmp.path(),
-        ("b7c2e9f4-12d8-4a35-9a60-5e1b8d3c2f22", RELEASE_EARLY, "back.jpg", 20),
-    )
-    .await;
+    insert_file(&db, &tmp, ("b7c2e9f4-12d8-4a35-9a60-5e1b8d3c2f22", RELEASE_EARLY, "back.jpg", 20))
+        .await;
     enqueue_releases(&db, vec![download(RELEASE_EARLY)]).await.unwrap();
 
     let queued = release_queue::<DownloadRequest>(&db).await.unwrap();

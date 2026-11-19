@@ -17,7 +17,13 @@ fn offered(url: &str, source: Catalog) -> RemoteCover {
     }
 }
 
-async fn image_file(db: &Store, dir: &std::path::Path, id: &str, name: &str, kind: ContentType) {
+async fn image_file(
+    db: &Store,
+    dir: &bae_util::test_files::TestFolder,
+    id: &str,
+    name: &str,
+    kind: ContentType,
+) {
     bae_records::test_fixtures::aggregate_ordering::insert_file(
         db,
         dir,
@@ -38,9 +44,10 @@ use bae_util::content_type::ContentType;
 
 /// The release has a saved cover, three catalog covers and files of three
 /// kinds: its two images and a PDF the picker never offers.
-async fn seeded() -> (ImportTables, Store, tempfile::TempDir, tempfile::TempDir) {
+async fn seeded(
+) -> (ImportTables, Store, bae_util::test_files::TestFolder, bae_util::test_files::TestFolder) {
     let (db, temp) = live_db(crate::TEST_SCHEMA).await;
-    let files = tempfile::tempdir().unwrap();
+    let files = bae_util::test_files::TestFolder::new();
     bae_records::test_fixtures::write_cover(
         &bae_records::test_fixtures::test_records(&db),
         RELEASE_ID,
@@ -49,7 +56,7 @@ async fn seeded() -> (ImportTables, Store, tempfile::TempDir, tempfile::TempDir)
     .await;
     image_file(
         &db,
-        files.path(),
+        &files,
         &bae_util::test_ids::test_uuid("file-back"),
         "Back.jpg",
         ContentType::Jpeg,
@@ -57,7 +64,7 @@ async fn seeded() -> (ImportTables, Store, tempfile::TempDir, tempfile::TempDir)
     .await;
     image_file(
         &db,
-        files.path(),
+        &files,
         &bae_util::test_ids::test_uuid("file-art"),
         "art 2.png",
         ContentType::Png,
@@ -65,7 +72,7 @@ async fn seeded() -> (ImportTables, Store, tempfile::TempDir, tempfile::TempDir)
     .await;
     image_file(
         &db,
-        files.path(),
+        &files,
         &bae_util::test_ids::test_uuid("file-booklet"),
         "booklet.pdf",
         ContentType::Pdf,
@@ -291,7 +298,7 @@ async fn a_new_image_file_reaches_an_open_picker() {
 
     image_file(
         &db,
-        file_dir.path(),
+        &file_dir,
         &bae_util::test_ids::test_uuid("file-new"),
         "Inlay.jpg",
         ContentType::Jpeg,

@@ -23,7 +23,7 @@ async fn release_files_are_read_in_each_order_the_storage_sheet_sorts_by() {
     {
         insert_file(
             &db,
-            tmp.path(),
+            &tmp,
             NewReleaseFile {
                 id: bae_util::test_ids::test_uuid(&format!("sorted-file-{i}")),
                 release_id: RELEASE_A.to_string(),

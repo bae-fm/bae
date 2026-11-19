@@ -20,7 +20,9 @@ const TRACK_ARTIST_SECOND: &str = "8ccac2a7-7e60-4f52-881e-0b349ff78cc5";
 /// with three releases, two of them at one place in its order, and a work
 /// credited to two composers. Each list's rows are written in an order other
 /// than their own, so a read that orders them shows it does.
-pub async fn aggregate_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn aggregate_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     RecordsFixture::new()
         .artist(ARTIST_PRIMARY, "Artist Name Primary")
@@ -77,7 +79,9 @@ fn credited_tracks(tracks: &[(&str, &str)]) -> RecordsFixture {
 
 /// The library a queue item's track artists are read from, on `schema`:
 /// [`credited_tracks`] with one track.
-pub async fn queue_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn queue_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     credited_tracks(&[(TRACK_A, "Track Title A")]).write(&test_records(&db)).await;
     (db, tmp)
@@ -85,7 +89,9 @@ pub async fn queue_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile:
 
 /// The library a release's detail is read from, on `schema`:
 /// [`credited_tracks`] with a second track, credited to none of its own.
-pub async fn release_detail_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn release_detail_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     credited_tracks(&[(TRACK_A, "Track Title A"), (TRACK_B, "Track Title B")])
         .write(&test_records(&db))
@@ -97,12 +103,14 @@ pub async fn release_detail_db(schema: bae_store::Schema) -> (bae_store::Store, 
 /// `size` zero bytes written under `dir`.
 pub async fn insert_file(
     db: &bae_store::Store,
-    dir: &std::path::Path,
+    dir: &bae_util::test_files::TestFolder,
     file: NewReleaseFile,
     size: u64,
 ) {
     let original = dir.join(&file.id);
-    std::fs::File::create_new(&original).unwrap().set_len(size).unwrap();
+    dir.open_with(&original, std::fs::OpenOptions::new().write(true).create_new(true))
+        .set_len(size)
+        .unwrap();
     super::test_records(db).insert_file_for_test(&file, &original).await.unwrap();
 }
 
@@ -113,7 +121,10 @@ pub const FILES_IN_NATURAL_ORDER: [&str; 5] =
 
 /// Seed `RELEASE_A` with the files of `FILES_IN_NATURAL_ORDER`, inserted out
 /// of order, mixed case, with a two-digit number.
-pub async fn insert_files_out_of_natural_order(db: &bae_store::Store, dir: &std::path::Path) {
+pub async fn insert_files_out_of_natural_order(
+    db: &bae_store::Store,
+    dir: &bae_util::test_files::TestFolder,
+) {
     for (i, name) in
         ["Track 10.flac", "cover.jpg", "Track 2.flac", "Back.jpg", "album.cue"].iter().enumerate()
     {

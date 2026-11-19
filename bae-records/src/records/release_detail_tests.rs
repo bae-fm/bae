@@ -223,7 +223,7 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
     const ARTWORK_ELSEWHERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e03";
     const TWO_ELSEWHERE: &str = "5a1c0a52-0a3c-4c3e-9d0f-1d2b3c4d5e04";
     bae_store::test_devices::run_two_store_test(TEST_SCHEMA, async |devices| {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let (a, b) = (devices.a(), devices.b());
         crate::test_fixtures::library::RecordsFixture::new()
             .album(ALBUM_A, "Album Title", None, &[])
@@ -235,12 +235,12 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
             .await;
         devices.converge("SELECT id FROM releases").await;
 
-        storage_listing::import_file(b, dir.path(), PLAYS_HERE, "here.flac", Flac).await;
-        storage_listing::import_file(a, dir.path(), ONE_ELSEWHERE, "one.flac", Flac).await;
-        storage_listing::import_file(a, dir.path(), ONE_ELSEWHERE, "cover.jpg", Jpeg).await;
-        storage_listing::import_file(a, dir.path(), ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
-        storage_listing::import_file(a, dir.path(), TWO_ELSEWHERE, "b-second.flac", Flac).await;
-        storage_listing::import_file(a, dir.path(), TWO_ELSEWHERE, "a-first.flac", Flac).await;
+        storage_listing::import_file(b, &dir, PLAYS_HERE, "here.flac", Flac).await;
+        storage_listing::import_file(a, &dir, ONE_ELSEWHERE, "one.flac", Flac).await;
+        storage_listing::import_file(a, &dir, ONE_ELSEWHERE, "cover.jpg", Jpeg).await;
+        storage_listing::import_file(a, &dir, ARTWORK_ELSEWHERE, "front.jpg", Jpeg).await;
+        storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "b-second.flac", Flac).await;
+        storage_listing::import_file(a, &dir, TWO_ELSEWHERE, "a-first.flac", Flac).await;
         devices.converge("SELECT id, release_id, file FROM release_files").await;
         devices.converge("SELECT id, coordinates FROM coven_files").await;
 

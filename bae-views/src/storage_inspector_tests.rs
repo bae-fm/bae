@@ -230,7 +230,7 @@ async fn the_inspectors_read_holds_the_releases_own_entries() {
 #[tokio::test]
 async fn the_file_details_read_the_file_by_its_id() {
     let (db, tmp) = release_detail_db(crate::TEST_SCHEMA).await;
-    insert_files_out_of_natural_order(&db, tmp.path()).await;
+    insert_files_out_of_natural_order(&db, &tmp).await;
     let cover = bae_util::test_ids::test_uuid("ordering-file-1");
 
     let mut live = crate::LibraryViews::new(db.clone()).subscribe_storage_file(Some(cover.clone()));
