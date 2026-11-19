@@ -106,6 +106,10 @@ final class ImportListSlot {
     private var surroundings: [any Sendable] = []
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
+    /// How many reveals wait for the slot's first list. A test reads it to
+    /// know that a reveal it asked for before the list is waiting.
+    @ObservationIgnored
+    private(set) var revealsWaitingForFirstList = 0
     /// The last change asked for, which the next one waits on so the changes
     /// reach core in the order they were made.
     @ObservationIgnored
@@ -252,7 +256,11 @@ extension ImportListSlot {
     /// Throws `ImportListSlotError.noList` when no read is running, or the
     /// read showed no list.
     private func firstShown() async throws -> ShownImportList {
-        if current == nil { await reloadTask?.value }
+        if current == nil {
+            revealsWaitingForFirstList += 1
+            defer { revealsWaitingForFirstList -= 1 }
+            await reloadTask?.value
+        }
         guard let current else { throw ImportListSlotError.noList }
         return current
     }

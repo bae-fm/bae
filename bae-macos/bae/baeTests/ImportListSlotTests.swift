@@ -666,7 +666,7 @@ extension CandidatePlacementNavigationTests {
         )
         slot.startLoad()
         let reveal = Task { try await slot.revealCandidate(candidateKey(61)) }
-        await Task.yield()
+        try await Wait.until { slot.revealsWaitingForFirstList == 1 }
         XCTAssertNil(slot.list)
 
         opened.continuation.yield(())
