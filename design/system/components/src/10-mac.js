@@ -35,6 +35,12 @@
         h('div', { className: 'bae-m-alert-buttons' }, props.children)));
   }
 
+  // The round back button before a page's heading, named for where it goes back to (`to`): a Settings page under another, a playlist open in the side pane.
+  function MacBackButton(props) {
+    return h('button', { type: 'button', className: 'bae-m-back', 'aria-label': 'Back to ' + props.to },
+      h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' })));
+  }
+
   function MacSettingsWindow(props) {
     return h('div', { className: 'bae-m-window', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
       h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
@@ -48,8 +54,7 @@
         })),
       h('main', { className: 'bae-m-main' },
         props.title ? h('div', { className: 'bae-m-heading' },
-          props.back ? h('button', { type: 'button', className: 'bae-m-back', 'aria-label': 'Back to ' + props.back },
-            h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' }))) : null,
+          props.back ? h(MacBackButton, { to: props.back }) : null,
           h('h1', null, props.title)) : null,
         // `scroll`: the pane scrolled this many px, as a scrolled pane draws: the heading stays, the content runs under it from that offset and the window's bottom edge cuts it off.
         props.scroll ? h('div', { className: 'bae-m-main-scroll' }, h('div', { style: { transform: 'translateY(-' + Number(props.scroll) + 'px)' } }, props.children)) : props.children));

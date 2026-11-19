@@ -549,7 +549,7 @@
   "mac.playlists.list.dc.html": {
    "h": 760,
    "page": "explore",
-   "title": "Exploration: macOS: a playlist's page, beside the side pane",
+   "title": "Exploration: macOS: a playlist's page in the side pane",
    "w": 1200,
    "x": 0,
    "y": 1720
@@ -6014,7 +6014,7 @@
   "code-playlist-page": {
    "page": "explore",
    "size": 24,
-   "text": "What the code needs for these boards:\n- Clicking a playlist in the side pane's Playlists tab opens its page in the window, in place of the library's view, and the pane keeps that playlist selected. Today Playlists is a fourth view of the library (LibraryBrowserMode.playlists, bae-macos/bae/bae/Services/UiStore.swift:16), which lists the playlists beside the page (PlaylistsContent, bae-macos/bae/bae/Views/Library/LibraryView.swift:373). bae change, with the side pane's Playlists tab.\n- The page's × (Close playlist) shows the library's view again. PlaylistDetailPane (bae-macos/bae/bae/Views/Library/Playlists/PlaylistDetailPane.swift) draws no ×. bae change.\n- New playlist… opens from the pane's +, and the playlist made opens in the window. Today the Playlists view's heading holds New playlist… (LibraryView.swift:201). bae change.",
+   "text": "What the code needs for these boards:\n- Clicking a playlist in the side pane's Playlists tab opens its page inside the pane, with a back button to the list, and the window keeps the library's view. The pane's tabs stay switchable, and the Playlists tab shows the open playlist again on coming back. Today Playlists is a fourth view of the library (LibraryBrowserMode.playlists, bae-macos/bae/bae/Services/UiStore.swift:16), which lists the playlists beside the page in the window (PlaylistsContent, bae-macos/bae/bae/Views/Library/LibraryView.swift). bae change, with the side pane's Playlists tab.\n- The page fits the pane's width: the name after the back button, the picture beside owner, count and length over who sees it, Play, Shuffle and the owner's ⋯, then compact track rows. PlaylistDetailPane (bae-macos/bae/bae/Views/Library/Playlists/PlaylistDetailPane.swift) lays it out for the window. bae change.\n- New playlist… opens from the pane's +, and the playlist made opens in the pane. bae change.",
    "w": 420,
    "x": 0,
    "y": 2560

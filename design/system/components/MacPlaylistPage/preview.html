@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS library" height=300 -->
+<!-- @dsCard group="macOS library" height=340 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacPlaylistPage</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  function page(o) { return h('div', { style: { width: 720 } }, h(B.MacPlaylistPage, Object.assign({ name: 'Late night', covers: 'Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns', owner: 'Ana', count: '12 tracks', length: '54 min', sharing: 'Everyone' }, o), slot('Tracks'))); }
+  function page(o) { return h('div', { style: { width: 404 } }, h(B.MacPlaylistPage, Object.assign({ name: 'Late night', covers: 'Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns', owner: 'Ana', count: '12 tracks', length: '54 min', sharing: 'Everyone' }, o), slot('Tracks'))); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Options', page({ options: 'Edit playlist…,-,Delete playlist…' })),
     W('No options', page({}))));

@@ -3080,10 +3080,13 @@ blank library or profile name. On macOS the side pane's Playlists tab lists
 the playlists, each with its picture, name, track count and who sees it, and
 a + button at the start of the pane's top, *New playlist…* to screen readers,
 opens the sheet for a new one; clicking a playlist
-opens its page in the window, as the playlist made opens. The page takes the
-place of the library's view, the pane stays open with that playlist selected,
-and the page's × (*Close playlist* to screen readers) shows the view again.
-Dragging tracks onto
+opens its page inside the pane, as the playlist made opens, and the window
+keeps the library's view. The page fits the pane's width: a back button
+(*Back to Playlists* to screen readers) and the playlist's name, its picture
+beside its owner, count and length over who sees it, Play, Shuffle and the
+owner's ⋯, then its tracks. The pane's tabs stay switchable while a playlist
+is open, and the Playlists tab shows the open playlist again when the person
+comes back to it. Dragging tracks onto
 a playlist in the pane adds them to its end: while they are held over it the
 playlist is drawn in the accent.
 On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
