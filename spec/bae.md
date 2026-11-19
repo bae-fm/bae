@@ -281,16 +281,17 @@ between them. The keys are device-local and
 are not synced; every reader of the library file on the device (the app, MCP and
 Subsonic) sees the one order.
 
-**Browsing.** The library shows one view at a time: albums, artists,
-composers or playlists. The view's name heads the page, and its menu switches
-views. On macOS the artists, composers and playlists views list their rows
+**Browsing.** The library shows one view at a time: albums, artists or
+composers. The view's name heads the page, and its menu switches
+views. On macOS the artists and composers views list their rows
 beside the open one's page. At the
 top of the list the heading is full size; as the list scrolls it shrinks into a
 slim bar pinned above it, and a scroll that stops part way leaves it at the
 nearer size. On Android, the heading's end holds Search, the Activity
-button (§6.4) and ⋮, whose menu gives the view's sort under *Sort by* (the
-fields, the direction, and for albums *Group by artist*; the playlists view has
-none), then *Shuffle library* and *Settings*; screen readers name that ⋮ *More options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
+button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
+fields, the direction, and for albums *Group by artist*), then *Shuffle
+library*, and last the person's menu (below); screen readers name that ⋮ *More
+options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
 opened from another page), and the album page's ⋮ *Album options*. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
@@ -298,6 +299,24 @@ count, which opens the artist; the header of the artist being scrolled through
 stays pinned under the heading, as a slim strip of picture and name, until the
 next artist's header pushes it off. A card in a group shows the album's year
 and, when it credits others besides the group's artist, "with" them.
+
+**The person's menu.** The person's picture, or the initials of their name
+(§5.4), ends the top bar: on a Mac at the end of the window's title bar, and on
+Android after ⋮. Screen readers name it *Your menu*. It opens a menu of *Add
+device…* and, for an admin, *Invite someone…*, then, after a divider,
+*Playlists* and *History*, and, after another, *Settings…* (on Android *Add
+device*, *Invite someone* for an admin, *Playlists*, *History* and *Settings*).
+Add device opens the pairing of a new device, as *Add device…* on Your devices
+does; Invite someone opens the invite, as People's *Invite…* does; on a Mac
+whose library has no cloud home yet, *Set up a cloud home…* comes first and
+opens the cloud home setup, as the Sync page's *Set up a cloud home…* does, and
+Add device and Invite someone each open a sheet that says the cloud home comes
+first: "To add a device, set up a cloud home first. Your library and music stay
+on this Mac until you do." (an invite says "To invite someone, …"), with
+*Cancel* and *Set up a cloud home…*. On a Mac, Playlists and History open in
+the side pane beside the queue, which a control at its top switches between
+*Queue*, *Playlists* and *History*; on Android each opens as its own screen
+with a back arrow.
 
 A release has tracks, a cover, and the files its tracks play from. Its pressing
 facts are typed values in bae's own vocabulary (Appendix H), read from what the
@@ -2949,11 +2968,16 @@ the network, not what a seek jumped over. The row is written when the play
 counts and updated as he keeps listening. Its start time is the playing
 device's clock when the play began, stored as UTC.
 
-bae records plays and syncs them by their audience. A person's plays show
-with their profile, newest first, under the day they were played: the
-person's own page lists all of theirs, and another person's page lists the
-plays they share with *Everyone*. No view lists the household's plays
-together.
+bae records plays and syncs them by their audience. A person's plays show with
+their profile, newest first, under the day they were played: the person's own
+page lists all of theirs, and another person's page lists the plays they share
+with *Everyone*. *History*, from the person's menu, lists the plays this device
+holds together, newest first, each with when it was played and whose it is,
+under the day they were played, and shows everyone's plays or one person's. On
+a Mac History is a tab of the side pane, and the end of its first day's heading
+names whose plays it shows, *Everyone* or a person's name, in the accent with a
+⌄, above the column of whose each play is, and opens a menu of those choices;
+on Android the same choice ends the screen's top bar.
 
 Each play is its own row, with a fresh id, so a play count is the number of
 rows, never a cell holding a number.
@@ -3004,10 +3028,14 @@ playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,
 starting on *Only me*; a blank name cannot be made, by the rule that refuses a
-blank library or profile name. On macOS the Playlists heading's *New
-playlist…* button opens the sheet for it, and the playlist made opens in the
-view.
-On Android the Playlists view lists the playlists with a *New playlist* button
+blank library or profile name. On macOS the side pane's Playlists tab lists
+the playlists, each with its picture, name, track count and who sees it, and
+a + button at the start of the pane's top, *New playlist…* to screen readers,
+opens the sheet for a new one; clicking a playlist
+opens its page in the window, as the playlist made opens. Dragging tracks onto
+a playlist in the pane adds them to its end: while they are held over it the
+playlist is drawn in the accent.
+On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
 under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person
 without a profile sees *Playlists appear once you have a profile* and no

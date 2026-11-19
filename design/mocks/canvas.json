@@ -477,7 +477,7 @@
   "android.playlists.list.dc.html": {
    "h": 916,
    "page": "explore",
-   "title": "Exploration: Playlists",
+   "title": "Playlists",
    "w": 412,
    "x": 3840,
    "y": 1720
@@ -4450,6 +4450,70 @@
    "w": 412,
    "x": 5748,
    "y": 12968
+  },
+  "android.library.avatar-menu.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Your menu",
+   "w": 412,
+   "x": 2426,
+   "y": 3032
+  },
+  "mac.library.avatar-menu.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: your menu",
+   "w": 1200,
+   "x": 5110,
+   "y": 4428
+  },
+  "mac.playback.side-playlists.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the side pane's playlists",
+   "w": 1200,
+   "x": 8930,
+   "y": 4272
+  },
+  "mac.playback.side-playlists-dropping.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: dropping tracks on a playlist",
+   "w": 1200,
+   "x": 10210,
+   "y": 4272
+  },
+  "mac.playback.side-history.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the side pane's history",
+   "w": 1200,
+   "x": 11490,
+   "y": 4272
+  },
+  "android.history.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "History",
+   "w": 412,
+   "x": 4832,
+   "y": 1720
+  },
+  "mac.library.avatar-menu.no-cloud-home-asks.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: your menu, with no cloud home",
+   "w": 1200,
+   "x": 7670,
+   "y": 4428
+  },
+  "mac.library.avatar-menu.no-cloud-home-sheet.dc.html": {
+   "h": 760,
+   "page": "home",
+   "title": "macOS: Add device… with no cloud home",
+   "w": 1200,
+   "x": 8950,
+   "y": 4428
   }
  },
  "createdOnFiles": {

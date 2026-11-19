@@ -143,7 +143,8 @@
           props.sync === 'attention' ? h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 17 })) : null,
           // A queue held (Paused, Waiting for network) with nothing moving: the button stays, as a pause symbol, so the hold can be seen.
           props.sync === 'paused' ? h(MacIconButton, { icon: 'pause', label: 'Activity' }) : null,
-          h(MacIconButton, { icon: 'gear', label: 'Settings' }))),
+          // The person's picture, or initials, ends the bar and opens their menu: Add device…, Invite someone… (or Set up a cloud home…), Playlists, History, Settings…. `avatar`: their name (the boards' person is Ana); `avatarImage`: their picture.
+          h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'Your menu', className: 'bae-m-iconbtn bae-m-avatarbtn' }, h(Avatar, { name: props.avatar || 'Ana', image: props.avatarImage, size: 22 })))),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
       h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
   }
@@ -317,7 +318,9 @@
           props.sync === 'moving' ? h('span', { className: 'bae-a-iconbtn' }, h(AndroidSpinner, { size: 16 })) : null,
           props.sync === 'attention' ? h(AndroidIconButton, { icon: 'warning', label: 'Activity', tone: 'warning' }) : null,
           props.sync === 'paused' ? h(AndroidIconButton, { icon: 'pause', label: 'Activity' }) : null,
-          h(AndroidIconButton, { icon: 'more', label: 'More options' })),
+          h(AndroidIconButton, { icon: 'more', label: 'More options' }),
+          // The person's picture, or initials, ends the bar and opens their menu: Add device, Invite someone, Playlists, History, Settings. `avatar`: their name (the boards' person is Ana); `avatarImage`: their picture.
+          h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': 'Your menu', className: 'bae-a-iconbtn' }, h(Avatar, { name: props.avatar || 'Ana', image: props.avatarImage, size: 32 }))),
       h('main', { className: 'bae-a-libbody' }, split.content),
       h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
       split.over);

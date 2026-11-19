@@ -15,7 +15,9 @@
     var top = [
       props.title ? h('header', { key: 'top', className: 'bae-a-topbar' },
         props.back ? h(AndroidIconButton, { icon: 'back', label: 'Back' }) : null,
-        h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title)) : null,
+        h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title),
+        // `menu`: a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
+        props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 20 })) : null) : null,
       h('main', { key: 'main', className: 'bae-a-main' }, split.content),
       split.over.length ? h(React.Fragment, { key: 'over' }, split.over) : null];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.

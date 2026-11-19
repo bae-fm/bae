@@ -229,6 +229,7 @@
 .bae-m-queue-section { display: flex; align-items: center; gap: 6px; padding: 12px 8px 4px; }
 .bae-m-queue-section-title { flex: 1; min-width: 0; font: 600 11px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-queue-clear { font: 400 11px var(--font-sans); color: var(--accent); }
+.bae-m-queue-menu { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: 400 11px var(--font-sans); color: var(--accent); fill: currentColor; cursor: pointer; }
 .bae-m-queue-shuffle { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); color: var(--text-secondary); fill: currentColor; }
 .bae-m-queue-shuffle-on { color: var(--accent); background: var(--accent-tint); }
 .bae-m-queue-insert { position: relative; z-index: 1; flex: none; height: 2px; margin: -1px 8px; background: var(--accent); }
@@ -300,3 +301,9 @@
 .bae-m-np-novolume { font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
 .bae-a-fp-novolume { justify-content: center; min-height: 48px; font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; background: var(--accent-tint-strong); color: var(--accent); font-weight: 600; font-family: var(--font-sans); }
+.bae-m-pane-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.bae-m-pane-close { justify-self: end; display: flex; }
+.bae-m-pane-new { justify-self: start; display: flex; }
+.bae-m-avatarbtn { padding: 0; }
+.bae-m-librow-drop { background: var(--accent-tint); box-shadow: inset 0 0 0 2px var(--accent); }
+.bae-m-queue-section-wide { padding-right: 16px; }

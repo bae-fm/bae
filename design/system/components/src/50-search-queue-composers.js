@@ -13,7 +13,8 @@
     var style = { marginTop: props.top ? Number(props.top) : null, marginLeft: ml || null };
     if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h('div', { className: 'bae-ph', style: { width: 44, height: 44, borderRadius: 6, flex: 'none' } }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-ph', style: { width: 140, height: 11 } }), h('div', { className: 'bae-ph', style: { width: 80, height: 10 } })));
-    return h('div', { className: cx('bae-m-librow', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
+    // `dropping`: tracks dragged over the row land in it when let go (a playlist in the side pane).
+    return h('div', { className: cx('bae-m-librow', props.dropping && 'bae-m-librow-drop', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
       props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 44 }) : h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.missing }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-m-librow-title' }, props.title), h('div', { className: 'bae-m-librow-sub' }, props.subtitle || ' ')),
       props.trailing ? h('span', { className: 'bae-m-librow-trail' }, props.trailing) : null);
@@ -28,9 +29,16 @@
   }
 
   // ---- Queue and playback (macOS) ----
+  // The side pane: Queue, Playlists or History (`tab`), switched by its tabs. Playlists lists the playlists, each a place to drop tracks; History lists plays, newest first, filtered by whose. Only the queue shows what's playing.
   function MacQueuePanel(props) {
+    var tab = props.tab || 'Queue';
+    // The head: the tabs centred, close at the end; on Playlists, + at the start makes a new playlist.
+    var head = h('div', { className: 'bae-m-queue-head bae-m-pane-head' },
+      tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
+      h(MacSegmentedControl, { options: 'Queue,Playlists,History', selected: tab }), h('span', { className: 'bae-m-pane-close' }, h(MacCloseButton)));
+    if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body' }, props.children));
     return h('aside', { className: 'bae-m-queue' },
-      h('div', { className: 'bae-m-queue-head' }, h('h2', null, 'Queue'), h(MacCloseButton)),
+      head,
       props.title ? h('div', { className: 'bae-m-queue-np' },
         h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
         h('div', { className: 'bae-m-queue-np-text' },
@@ -41,10 +49,13 @@
       props.empty ? h('div', { className: 'bae-m-queue-empty' }, h('div', { className: 'bae-m-cu-title' }, 'Queue is empty'), h('div', { className: 'bae-m-cu-desc' }, 'Drag tracks here or play an album'))
         : h('div', { className: 'bae-m-queue-body' }, props.children));
   }
+  // `wide`: more room at the end, for a list whose rows end in a person (History).
   function MacQueueSection(props) {
-    return h('div', { className: 'bae-m-queue-section' },
+    return h('div', { className: cx('bae-m-queue-section', props.wide && 'bae-m-queue-section-wide') },
       h('span', { className: 'bae-m-queue-section-title' }, props.title),
       props.clear ? h('span', { className: 'bae-m-queue-clear' }, 'Clear') : null,
+      // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.
+      props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-m-queue-menu' }, props.menu, h(Glyph, { set: 'mac', name: 'down', size: 9 })) : null,
       props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 11 })) : null);
   }
   function MacQueuePlaceholderRow() {

@@ -121,3 +121,4 @@
 .bae-progress-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
 .bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
 .bae-a-iconbtn-off { opacity: 0.38; }
+.bae-a-topbar-menu { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 0 var(--space-related); min-height: 48px; border: 0; background: none; font: 500 14px/20px var(--font-android); color: var(--text-primary); fill: currentColor; cursor: pointer; }
