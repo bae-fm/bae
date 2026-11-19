@@ -57,8 +57,10 @@ internal class DialogAction(
 )
 
 /**
- * A dialog's last row, at its right: [dismiss] (Cancel) first, in the text colour, then the [action], in
- * the accent, in the danger colour when destructive, or as the accent's filled button when filled.
+ * A dialog's last row, at its right: [dismiss] (Cancel) first, then the [action], in the accent, in the
+ * danger colour when destructive, or as the accent's filled button when filled. Beside an action, Cancel is
+ * in the text colour, so two coloured buttons never sit side by side; alone, as under a list of choices, it
+ * keeps the accent.
  */
 @Composable
 internal fun AndroidDialogActions(
@@ -69,7 +71,7 @@ internal fun AndroidDialogActions(
         dismiss?.let {
             AndroidButton(
                 kind = ButtonKind.TEXT,
-                tone = ButtonTone.NEUTRAL,
+                tone = if (action != null) ButtonTone.NEUTRAL else ButtonTone.DEFAULT,
                 onClick = it.onClick,
                 enabled = it.enabled,
             ) {
