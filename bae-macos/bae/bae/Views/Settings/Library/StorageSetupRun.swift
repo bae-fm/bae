@@ -7,9 +7,8 @@ private let logger = Logger.bae("StorageSetupRun")
 /// A sheet's storage setup while it runs, and the person's Cancel of it.
 /// Before its point of no return a cancel undoes the setup, which takes
 /// effect between its steps rather than in the middle of a request, so the
-/// sheet shows the cancel under way until the setup's call ends, then
-/// `onCancelled` closes it. Past that point the setup finishes, and Cancel
-/// isn't offered.
+/// sheet shows the cancel under way until the setup's call ends. Past that
+/// point the setup finishes, and Cancel isn't offered.
 @MainActor
 @Observable
 final class StorageSetupRun {
@@ -25,12 +24,6 @@ final class StorageSetupRun {
     private(set) var state: State = .idle
     @ObservationIgnored
     private var task: Task<Void, Never>?
-    @ObservationIgnored
-    private let onCancelled: () -> Void
-
-    init(onCancelled: @escaping () -> Void) {
-        self.onCancelled = onCancelled
-    }
 
     var isRunning: Bool {
         if case .idle = state {
@@ -86,7 +79,6 @@ final class StorageSetupRun {
                 logger.debug(
                     "Storage setup cancelled: \(String(reflecting: failure))"
                 )
-                onCancelled()
                 return
             }
             state = .idle

@@ -63,17 +63,16 @@ struct SyncSetupWizard: View {
     /// The provider the list has selected, which Continue opens.
     @State
     private var choice: BridgeCloudProvider = providerOptions.first ?? .s3
-    /// The setup a step runs; a cancelled one closes the wizard once its
-    /// call ends.
+    /// The setup a step runs; a cancelled one leaves the wizard on its step
+    /// once its call ends.
     @State
-    private var run: StorageSetupRun
+    private var run = StorageSetupRun()
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
         if let only = providerOptions.first, providerOptions.count == 1 {
             _step = State(initialValue: .configure(only))
         }
-        _run = State(initialValue: StorageSetupRun(onCancelled: {}))
     }
 
     var body: some View {

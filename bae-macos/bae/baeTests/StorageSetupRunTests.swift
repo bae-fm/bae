@@ -22,24 +22,16 @@ private final class HeldCall {
     }
 }
 
-/// Whether the sheet closed for a cancelled setup.
-@MainActor
-@Observable
-private final class Closing {
-    var closed = false
-}
-
 @MainActor
 @Suite("A sheet's storage setup and its Cancel")
 struct StorageSetupRunTests {
     /// A cancel before the point of no return shows under way until the
     /// setup's call ends cancelled, which coven answers once it has undone
-    /// what setup wrote; only then does the sheet close.
-    @Test("a cancel shows under way until the call ends, then closes")
+    /// what setup wrote; only then does the run end.
+    @Test("a cancel shows under way until the call ends")
     func cancelShowsUnderWayUntilTheCallEnds() async throws {
         let call = HeldCall()
-        let closing = Closing()
-        let run = StorageSetupRun(onCancelled: { closing.closed = true })
+        let run = StorageSetupRun()
         run.start(
             StorageSetupFollowing(
                 staging: BridgeStorageSetupProgress(
@@ -64,11 +56,10 @@ struct StorageSetupRunTests {
             return
         }
         #expect(!run.cancelOffered)
-        #expect(!closing.closed)
 
         call.fail(BridgeError.Cancelled)
-        try await Wait.until { closing.closed }
-        #expect(!run.isRunning)
+        try await Wait.until { !run.isRunning }
+        #expect(!run.isCancelling)
     }
 
     /// Past its point of no return the setup finishes: Cancel isn't
@@ -76,9 +67,7 @@ struct StorageSetupRunTests {
     @Test("a setup past its point of no return offers no Cancel")
     func finishingOffersNoCancel() async throws {
         let call = HeldCall()
-        let run = StorageSetupRun(onCancelled: {
-            Issue.record("a finishing setup closed as cancelled")
-        })
+        let run = StorageSetupRun()
         run.start(
             StorageSetupFollowing(
                 staging: BridgeStorageSetupProgress(
