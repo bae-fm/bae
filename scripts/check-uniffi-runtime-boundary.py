@@ -170,11 +170,10 @@ def matching_brace(masked: str, opening: int) -> int:
     return matching_bracket(masked, opening, "{", "}")
 
 
-def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
-    """Each exported method's name, whether it is async, and its body with
-    comments and strings masked."""
+def exported_methods(path: Path) -> list[tuple[str, bool]]:
+    """Each exported method's name and whether it is async."""
     masked = mask_non_code(path.read_text())
-    methods: list[tuple[str, bool, str]] = []
+    methods: list[tuple[str, bool]] = []
     attribute = re.compile(r"#\s*\[\s*uniffi::export\b")
     method = re.compile(r"\bpub\s+(?:\([^)]*\)\s+)?(async\s+)?fn\s+(\w+)\b")
 
@@ -191,15 +190,7 @@ def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
         closing = matching_brace(masked, opening)
         impl_masked = masked[opening + 1 : closing]
         for found in method.finditer(impl_masked):
-            body_opening = impl_masked.find("{", found.end())
-            body_closing = matching_brace(impl_masked, body_opening)
-            methods.append(
-                (
-                    found.group(2),
-                    found.group(1) is not None,
-                    impl_masked[body_opening + 1 : body_closing],
-                )
-            )
+            methods.append((found.group(2), found.group(1) is not None))
     return methods
 
 
@@ -210,7 +201,7 @@ def check(root: Path) -> tuple[list[str], int]:
     violations: list[str] = []
     async_exports = set()
     for path in sorted((root / "bae-bridge" / "src").rglob("*.rs")):
-        for name, is_async, _body in exported_methods(path):
+        for name, is_async in exported_methods(path):
             if is_async:
                 async_exports.add(lower_camel(name))
 
