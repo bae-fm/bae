@@ -458,6 +458,10 @@ impl ProgressStream {
 
     /// A new stream, which calls from now on write. A cancelled stream holds
     /// nothing from then on.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "keyed_values.rs defines the stream beside its writer: each feed builds the stream and the values its writer writes"
+    )]
     pub(crate) fn feed(&self) -> Arc<KeyedValueStream> {
         let values = StreamValues::new();
         *self.values.lock().unwrap() = Some(values.clone());

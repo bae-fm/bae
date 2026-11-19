@@ -77,4 +77,10 @@ disallowed-methods = [
     # AppDir the app is handed, and a test puts its own under a temporary
     # folder.
     { path = "dirs::home_dir", reason = "take an AppDir: the person's home holds their own libraries" },
+    # A screen's fast values travel on a KeyedValueStream the app pulls, and the
+    # bridge builds one only where it feeds it: the screens module, and
+    # keyed_values.rs, which defines the stream beside its writer. Code anywhere
+    # else gets a stream from those.
+    { path = "bae_bridge::keyed_values::KeyedValueStream::new", reason = "build a stream in the bridge's screens module or in keyed_values.rs, beside its writer" },
+    { path = "bae_bridge::keyed_values::StreamValues::new", reason = "build a stream's values in the bridge's screens module or in keyed_values.rs, beside its writer" },
 ]

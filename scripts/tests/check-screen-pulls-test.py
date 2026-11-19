@@ -149,28 +149,6 @@ class ScreenPullTests(unittest.TestCase):
                 ],
             )
 
-    def test_a_stream_built_outside_the_screens_module_fails(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            self.copied_tree(root)
-            self.write(
-                root,
-                BRIDGE_HANDLE,
-                "fn levels(runtime: OperationRuntime) -> Arc<KeyedValueStream> {\n"
-                "    let values = StreamValues::new();\n"
-                "    Arc::new(KeyedValueStream::new(values, CancellationToken::new(), runtime))\n"
-                "}\n",
-            )
-            self.assertEqual(
-                CHECK.check(root),
-                [
-                    f"{BRIDGE_HANDLE}:2: builds a StreamValues outside the "
-                    "screens module",
-                    f"{BRIDGE_HANDLE}:3: builds a KeyedValueStream outside the "
-                    "screens module",
-                ],
-            )
-
     def test_a_swift_screen_pulling_itself_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

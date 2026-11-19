@@ -13,7 +13,8 @@ each is refused:
   `screens/`). An object the app pulls is a type with a `next` method; one
   defined elsewhere is built elsewhere, since its fields are its module's. A
   `KeyedValueStream` is defined beside its writer in `keyed_values.rs`, so
-  for it the refusal is any construction outside `screens`.
+  it is exempt from the definition check. clippy.toml refuses building one
+  outside `screens` and `keyed_values.rs`.
 - An app reading a subscription other than through its helper. Each app pulls
   through one helper file (`APPS`); any other `.next(` member call in the
   app's own code is refused, apart from the receivers `OTHER_NEXT_CALLS` lists
@@ -63,9 +64,6 @@ ALLOWED_CALLBACKS = {
         "startup on"
     ),
 }
-
-# The constructions of a stream's values that only `screens` may make.
-STREAM_CONSTRUCTORS = ("KeyedValueStream", "StreamValues")
 
 
 @dataclass(frozen=True)
@@ -222,18 +220,6 @@ def exported(tokens: list[Token], fn_index: int) -> bool:
     return before[-1:] == ["pub"] or before == ["pub", "async"]
 
 
-def stream_constructions(tokens: list[Token]) -> list[tuple[int, str]]:
-    found = []
-    for index in range(len(tokens) - 2):
-        if (
-            tokens[index].text in STREAM_CONSTRUCTORS
-            and tokens[index + 1].text == "::"
-            and tokens[index + 2].text == "new"
-        ):
-            found.append((tokens[index].line, tokens[index].text))
-    return found
-
-
 def check_bridge(root: Path) -> list[str]:
     violations = []
     declared = set()
@@ -253,12 +239,6 @@ def check_bridge(root: Path) -> list[str]:
             violations.append(
                 f"{relative}:{line}: {name} is pulled from but defined "
                 "outside the screens module"
-            )
-        if relative == STREAM_FILE:
-            continue
-        for line, name in stream_constructions(tokens):
-            violations.append(
-                f"{relative}:{line}: builds a {name} outside the screens module"
             )
     for name in sorted(set(ALLOWED_CALLBACKS) - declared):
         violations.append(

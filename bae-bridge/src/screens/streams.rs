@@ -27,6 +27,10 @@ pub(crate) trait RunFeed: FnOnce(CancellationToken, Writes) {}
 impl<F: FnOnce(CancellationToken, Writes)> RunFeed for F {}
 
 /// A new stream, its `writes` handed to `run`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the screens module builds each stream beside the feed that writes it"
+)]
 fn feed<Fut>(
     runtime: OperationRuntime,
     run: impl RunFeed,
@@ -114,6 +118,10 @@ fn write_outbox_transfers(
 /// Two new streams written by one feed, which ends once the host has
 /// cancelled or dropped both, or the library closes. Each stream is cancelled
 /// on its own.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the screens module builds each stream beside the feed that writes it"
+)]
 fn feed_pair<Fut>(
     runtime: OperationRuntime,
     run: impl RunFeed,

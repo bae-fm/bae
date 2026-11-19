@@ -4,6 +4,10 @@ use std::pin::{pin, Pin};
 use std::task::{Context, Poll, Waker};
 
 /// A stream and the writer its feed holds, the stream pulled on `runtime`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the stream its test feeds, as the screens module does"
+)]
 fn fed_stream(
     runtime: &tokio::runtime::Runtime,
 ) -> (Arc<KeyedValueStream>, StreamWriter, Arc<StreamValues>) {

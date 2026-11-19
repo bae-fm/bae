@@ -48,6 +48,10 @@ fn a_tracks_held_stretches_are_held_under_its_track() {
 /// kind, each read whole: a release that turns to the other kind or ends
 /// leaves it.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the stream its test feeds, as the screens module does"
+)]
 fn a_download_stream_holds_only_its_own_kind_of_download() {
     use bae_transfers::{DownloadTransfer, MoveToThisDeviceTransferProgress};
     let pin = DownloadTransfer::Pin(
@@ -91,6 +95,10 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
 /// total's. A release the delivery doesn't name leaves its stream, and the
 /// total's stream holds nothing once the outbox sends no file.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the stream its test feeds, as the screens module does"
+)]
 fn each_outbox_delivery_writes_both_streams_whole() {
     use bae_library::{OutboxTransfers, ReleaseUploadTransfer, UploadBar, UploadTransfer};
     let (release_values, total_values) = (StreamValues::new(), StreamValues::new());
@@ -142,6 +150,10 @@ fn each_outbox_delivery_writes_both_streams_whole() {
 /// line's number as decimal text, the key each app builds from
 /// `BridgeActivityLine`.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the stream its test feeds, as the screens module does"
+)]
 fn the_activity_bars_hold_each_line_under_its_number() {
     let values = StreamValues::new();
     let writer = StreamWriter::new(values.clone());
@@ -181,6 +193,10 @@ fn a_track_held_from_start_to_end_in_one_stretch_is_at_rest() {
 /// track plays and a seek's target at once, and keeps a paused track's
 /// position without marking it as moving.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: it builds the stream its test feeds, as the screens module does"
+)]
 fn the_position_stream_holds_each_position_and_rests_while_paused() {
     let values = StreamValues::new();
     let writer = StreamWriter::new(values.clone());
