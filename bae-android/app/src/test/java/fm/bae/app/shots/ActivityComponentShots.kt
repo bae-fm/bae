@@ -7,6 +7,7 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.sync.ActivityWords
 import fm.bae.app.ui.sync.AndroidActivity
+import fm.bae.app.ui.sync.AndroidActivityButton
 import fm.bae.app.ui.sync.activityProblems
 import fm.bae.fastvalues.LatestStream
 import org.junit.Test
@@ -42,6 +43,31 @@ class ActivityComponentShots : BoardShot() {
         component("android.component.activity.status-unknown", wide = true) {
             Sheet(activity = null, error = DisplayError("bae couldn’t read the sync status."))
         }
+
+    @Test
+    fun androidComponentActivityButtonMoving() =
+        component("android.component.activity-button.moving") { Button(PreviewData.syncActivity(needsAttention = false)) }
+
+    @Test
+    fun androidComponentActivityButtonAttention() =
+        component("android.component.activity-button.attention") { Button(idle.copy(failure = PreviewData.syncActivity(true).failure)) }
+
+    @Test
+    fun androidComponentActivityButtonPaused() = component("android.component.activity-button.paused") { Button(idle.copy(held = true)) }
+}
+
+@Composable
+private fun Button(activity: BridgeSyncActivity) {
+    val store = remember { SyncActivityStore().also { it.apply(activity) } }
+    AndroidActivityButton(
+        store = store,
+        app = emptyList(),
+        dismissed = emptySet(),
+        onDismissProblem = {},
+        onOpenSettings = {},
+        onOpenDownloads = {},
+        onSetDownloadsPaused = {},
+    )
 }
 
 private val idle =
