@@ -706,7 +706,7 @@ fn a_restore_cancelled_after_registering_says_it_stays_unfinished() {
 #[tokio::test]
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    reason = "file system: checks bae's own libraries folder in the app directory, which coven does not own"
 )]
 async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_copies() {
     let temp = bae_util::test_files::TestFolder::new();
@@ -747,15 +747,8 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     .expect_err("counting opens the library, which only finishing the restore allows");
     assert!(format!("{counted:?}").contains("ReplacementUnfinished"), "{counted:?}");
 
-    // The restored copy waits in a hidden directory inside the store's.
-    let store_files = || {
-        std::fs::read_dir(temp.path().join("stores"))
-            .unwrap()
-            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
-            .filter(|name| name.contains(&store.to_string()))
-            .collect::<Vec<_>>()
-    };
-    assert!(store_files().contains(&store.to_string()));
+    // The store's files are on disk, and the restored copy with them.
+    assert!(installation.store_dir(&store).files_exist());
 
     remove_unopenable_library(
         &app_dir,
@@ -767,7 +760,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     .await
     .unwrap();
     assert!(installation.stores().await.unwrap().is_empty());
-    assert_eq!(store_files(), Vec::<String>::new());
+    assert!(!installation.store_dir(&store).files_exist());
     assert!(!app_dir.registered_library(&store.to_string()).exists());
     assert!(app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())

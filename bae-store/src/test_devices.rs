@@ -122,27 +122,6 @@ pub async fn pair_store(
         .unwrap()
 }
 
-/// Copy every file and folder in `from` into `to`, making `to` and each
-/// folder below it, as copying an installation's folder to a backup does.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
-pub fn copy_folder(from: &std::path::Path, to: &std::path::Path) {
-    std::fs::create_dir_all(to).expect("create the copy's folder");
-    for entry in std::fs::read_dir(from).expect("read the folder") {
-        let entry = entry.expect("read an entry of the folder");
-        let target = to.join(entry.file_name());
-        let kind = entry.file_type().expect("read an entry's kind");
-        if kind.is_dir() {
-            copy_folder(&entry.path(), &target);
-        } else {
-            assert!(kind.is_file(), "{} is neither a file nor a folder", entry.path().display());
-            std::fs::copy(entry.path(), target).expect("copy a file");
-        }
-    }
-}
-
 /// Open the device's store `store` again, as the app opens a library. With
 /// `migrations`, the store opens with them in place of `schema`'s own, as an
 /// update of the app that brings a new schema does.

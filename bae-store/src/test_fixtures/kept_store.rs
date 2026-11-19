@@ -114,7 +114,7 @@ impl KeptSeeds {
     /// is missing and moves it into place only once it is complete.
     #[expect(
         clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+        reason = "file system: keeps the seeds under target/bench-seed, folders no library reads: a seed's closed store is copied only through coven"
     )]
     async fn kept(&self, n: u64) -> PathBuf {
         let root = self.root();
@@ -132,10 +132,8 @@ impl KeptSeeds {
                 let keychain = building.join("keychain");
                 let (store, from) = match &previous {
                     Some((from, before)) => {
-                        crate::test_devices::copy_folder(&before.join("app"), &app);
+                        coven::copy_tree(before, &building);
                         let id = read_store_id(before);
-                        std::fs::copy(before.join("keychain"), &keychain)
-                            .expect("copy the keychain");
                         let store = open_kept(self.schema, &app, &keychain, id, kept_clock()).await;
                         (store, *from)
                     }
@@ -156,30 +154,12 @@ impl KeptSeeds {
     /// A copy of the kept seed of size `n`, opened. The `TestFolder` owns the
     /// copy, so it must outlive the store.
     pub async fn seeded_copy(&self, n: u64) -> (Store, bae_util::test_files::TestFolder) {
-        self.seeded_copy_planted(n, |_| ()).await
-    }
-
-    /// Like [`Self::seeded_copy`], but calls `plant` on the copy's closed
-    /// folder before opening it, so a test can damage the data or drop a
-    /// family of triggers.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-    )]
-    pub async fn seeded_copy_planted(
-        &self,
-        n: u64,
-        plant: impl FnOnce(&Path),
-    ) -> (Store, bae_util::test_files::TestFolder) {
         let seed = self.kept(n).await;
         let tmp = bae_util::test_files::TestFolder::new();
-        let app = tmp.path().join("app");
-        let keychain = tmp.path().join("keychain");
-        crate::test_devices::copy_folder(&seed.join("app"), &app);
-        std::fs::copy(seed.join("keychain"), &keychain).expect("copy the keychain");
-        plant(&app);
+        coven::copy_tree(&seed, tmp.path());
+        let id = parse_store_id(&tmp.read_text("store-id"));
         let store =
-            open_kept(self.schema, &app, &keychain, read_store_id(&seed), kept_clock()).await;
+            open_kept(self.schema, &tmp.join("app"), &tmp.join("keychain"), id, kept_clock()).await;
         (store, tmp)
     }
 }
@@ -190,9 +170,12 @@ fn kept_clock() -> ClockRef {
 
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    reason = "file system: reads the store id a seed folder under target/bench-seed holds, no library's file"
 )]
 fn read_store_id(seed: &Path) -> StoreId {
-    let text = std::fs::read_to_string(seed.join("store-id")).expect("read the store id");
+    parse_store_id(&std::fs::read_to_string(seed.join("store-id")).expect("read the store id"))
+}
+
+fn parse_store_id(text: &str) -> StoreId {
     StoreId(uuid::Uuid::parse_str(text.trim()).expect("parse the store id"))
 }

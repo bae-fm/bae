@@ -287,16 +287,11 @@ impl TestDevice {
     /// `newer`, wait until the device has sent every write, then close it,
     /// put the kept copy back and open that. Sync stays stopped until the
     /// test starts it.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-    )]
     pub async fn restore_backup_behind(&mut self, newer: impl AsyncFnOnce(&TestDevice)) {
-        let id = self.store().store_id();
-        let folder = self.app.coven_app_dir().join("stores").join(id.to_string());
+        let store_dir = self.installation.store_dir(&self.store().store_id());
         let backup = bae_util::test_files::TestFolder::new();
         self.close().await;
-        stores::copy_folder(&folder, backup.path());
+        store_dir.copy_files(backup.path());
         self.open_again(None).await;
         self.store().start_sync().await.unwrap();
         newer(&*self).await;
@@ -305,8 +300,7 @@ impl TestDevice {
         })
         .await;
         self.close().await;
-        std::fs::remove_dir_all(&folder).unwrap();
-        stores::copy_folder(backup.path(), &folder);
+        store_dir.restore_files(backup.path());
         self.open_again(None).await;
     }
 
