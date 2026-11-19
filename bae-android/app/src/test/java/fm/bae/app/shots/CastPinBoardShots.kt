@@ -97,6 +97,7 @@ class CastPinBoardShots : BoardShot() {
     fun androidPlaybackCastPinRefused() =
         shot("android.playback.cast-pin.refused") {
             Picker(
+                connecting = null,
                 failure =
                     CastStart.Failure(
                         DisplayError(
@@ -110,15 +111,21 @@ class CastPinBoardShots : BoardShot() {
             )
         }
 
-    /** The cast picker over the library, as the boards draw it, with [failure] above its receivers. */
+    /**
+     * The cast picker over the library, as the boards draw it: connecting to [connecting] while a dialog asks for
+     * its code, or with [failure] above its receivers once the cast failed.
+     */
     @Composable
-    private fun Picker(failure: CastStart.Failure? = null) {
+    private fun Picker(
+        connecting: String? = "Kitchen",
+        failure: CastStart.Failure? = null,
+    ) {
         SheetScene(title = stringResource(R.string.cast), behind = { PlayingLibraryScreen() }) {
             PickerFailures(endedFailure = null, castFailure = failure)
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
                 receivers = receivers,
-                connectingName = null,
+                connectingName = connecting,
                 onCast = {},
                 onDisconnect = {},
                 looking = stringResource(R.string.cast_looking_for_devices),
