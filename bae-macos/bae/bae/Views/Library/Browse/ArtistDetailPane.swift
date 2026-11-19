@@ -6,8 +6,6 @@ struct ArtistDetailPane: View {
     let detail: BridgeArtistDetail?
     @Environment(LibraryBrowseSession.self)
     private var session
-    @Environment(UiStore.self)
-    private var uiStore
 
     var body: some View {
         if detail == nil, session.selectedArtistId == nil {
@@ -25,26 +23,11 @@ struct ArtistDetailPane: View {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
                     MacDetailHeader(summary: detail.artist)
-                    ArtistCreditNamesSection(
+                    MacArtistOtherNames(
                         artistId: detail.artist.artistId,
                         names: detail.creditNames
                     )
-                    LazyVGrid(
-                        columns: [
-                            GridItem(
-                                .adaptive(minimum: 140),
-                                spacing: ThemeSpace.group
-                            )
-                        ],
-                        alignment: .leading,
-                        spacing: ThemeSpace.group
-                    ) {
-                        ForEach(detail.albums) { album in
-                            MacArtistAlbumTile(album: album) {
-                                uiStore.navigateToAlbum(album.id)
-                            }
-                        }
-                    }
+                    MacArtistAlbumGrid(albums: detail.albums)
                 }
                 // A selected artist's read is local: nothing shows until it
                 // lands.

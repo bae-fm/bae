@@ -140,7 +140,7 @@ struct StorageFileMark: View {
                 .accessibilityElement()
                 .accessibilityLabel(queuedLabel(kind))
         case .moving(let kind, let source):
-            TransferRing(kind: kind, source: source)
+            MacProgressRing(color: kind.color, source: source)
                 .accessibilityElement()
                 .accessibilityLabel(movingLabel(kind))
         }

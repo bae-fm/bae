@@ -79,10 +79,12 @@ struct MacStorageWindow: View {
             minWidth: Self.minimumWidth,
             minHeight: Self.minimumHeight
         )
-        .storageManagerToolbar(
-            filter: $filter,
-            search: $search,
-            inspectorPresented: $inspectorPresented
+        .modifier(
+            MacStorageToolbar(
+                filter: $filter,
+                search: $search,
+                inspectorPresented: $inspectorPresented
+            )
         )
         .onAppear {
             if runner == nil {

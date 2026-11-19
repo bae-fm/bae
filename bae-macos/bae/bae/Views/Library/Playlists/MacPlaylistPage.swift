@@ -22,8 +22,6 @@ struct MacPlaylistPage: View {
     @State
     private var deleting: BridgePlaylistSummary?
 
-    private static var pictureSize: CGFloat { 72 }
-
     var body: some View {
         if detail == nil, session.selectedPlaylistId == nil {
             // Nothing chosen: the placeholder fills the pane, centred.
@@ -39,7 +37,13 @@ struct MacPlaylistPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
-                    header(detail.summary)
+                    MacPlaylistHeader(
+                        summary: detail.summary,
+                        onEdit: {
+                            editing = EditPlaylistSheetState(detail.summary)
+                        },
+                        onDelete: { deleting = detail.summary }
+                    )
                     PlaylistEntryList(
                         detail: detail,
                         play: { entry in
@@ -78,49 +82,6 @@ struct MacPlaylistPage: View {
         .macAlert(item: $deleting) { playlist in
             DeletePlaylistConfirmation.alert(name: playlist.name) {
                 delete(playlist)
-            }
-        }
-    }
-
-    private func header(_ summary: BridgePlaylistSummary) -> some View {
-        HStack(spacing: ThemeSpace.edge) {
-            PlaylistPicture(cover: summary.cover, size: Self.pictureSize)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text(summary.name)
-                    .themeText(.title)
-                    .lineLimit(2)
-                HStack(spacing: ThemeSpace.inline) {
-                    Avatar(
-                        initials: summary.owner.initials,
-                        picture: summary.owner.avatarVersion.map {
-                            (summary.owner.person, $0)
-                        },
-                        size: 16
-                    )
-                    Text(
-                        FactList.joined([
-                            summary.owner.name,
-                            summary.trackCount.localizedLine,
-                            summary.totalDuration?.text,
-                        ]) + " " + FactList.glyph
-                    )
-                    StatusChip(verbatim: summary.sharing.label)
-                }
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: ThemeSpace.related)
-            Button("Play") { playback.playPlaylist(summary.id, nil, false) }
-                .buttonStyle(PrimaryButtonStyle())
-            Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
-            if summary.yours {
-                MacMoreMenu {
-                    PlaylistOptionsMenu(
-                        onEdit: { editing = EditPlaylistSheetState(summary) },
-                        onDelete: { deleting = summary }
-                    )
-                }
             }
         }
     }

@@ -1,18 +1,19 @@
 import BaeKit
 import SwiftUI
 
-extension View {
-    /// The Storage Manager window's toolbar: the All / Local / Cloud
-    /// control, the Filter field and the Inspector button. `off` draws each
-    /// in its own off state, for the window with no library open, where none
-    /// of them does anything.
-    func storageManagerToolbar(
-        filter: Binding<BridgeStorageFilter>,
-        search: Binding<String>,
-        inspectorPresented: Binding<Bool>,
-        off: Bool = false
-    ) -> some View {
-        filterField(search, off: off)
+/// The Storage Manager window's toolbar: the All / Local / Cloud control,
+/// the Filter field and the Inspector button. `off` draws each in its own off
+/// state, for the window with no library open, where none of them does
+/// anything.
+struct MacStorageToolbar: ViewModifier {
+    let filter: Binding<BridgeStorageFilter>
+    let search: Binding<String>
+    let inspectorPresented: Binding<Bool>
+    var off = false
+
+    func body(content: Content) -> some View {
+        content
+            .filterField(search, off: off)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     MacSegmentedControl(

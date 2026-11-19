@@ -101,11 +101,17 @@ struct MacCoverGallery: View {
                 }
                 .frame(maxWidth: .infinity)
                 Divider()
-                preview
-                    .frame(width: 360)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(ThemeSpace.section)
-                    .background(Theme.well)
+                MacCoverPreview(
+                    content: content,
+                    isSaving: isSaving,
+                    previewFocused: $previewFocused,
+                    onOpenLightbox: { browser.layout = .lightbox },
+                    onFocus: { self.focus($0) }
+                )
+                .frame(width: 360)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(ThemeSpace.section)
+                .background(Theme.well)
             }
             Divider()
             HStack(spacing: ThemeSpace.edge) {
@@ -363,68 +369,6 @@ extension MacCoverGallery {
             Text("No remote covers found").foregroundStyle(.secondary)
         case .linked, .failed:
             EmptyView()
-        }
-    }
-
-    @ViewBuilder
-    private var preview: some View {
-        if let focus = content.focus {
-            let cover = CoverItem(gallery: focus.cover)
-            VStack(spacing: ThemeSpace.compact) {
-                Button {
-                    browser.layout = .lightbox
-                } label: {
-                    Artwork(
-                        content: cover.image,
-                        contentMode: .fit,
-                        pointSize: 800
-                    )
-                    .frame(width: 300, height: 300)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.accentPlain)
-                .accessibilityLabel(Text("View in lightbox"))
-                .help("View in lightbox")
-                .keyboardShortcut(.space, modifiers: [])
-                .focusable()
-                .focusEffectDisabled()
-                .focused($previewFocused)
-                .disabled(isSaving)
-                Text(verbatim: cover.label)
-                    .themeText(.heading)
-                    .multilineTextAlignment(.center)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: cover.sourceLabel)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
-                    Button {
-                        self.focus(focus.neighbors?.previous)
-                    } label: {
-                        Image(systemName: "chevron.backward")
-                    }
-                    .accessibilityLabel(Text("Previous image"))
-                    Text("\(Int(focus.position) + 1) of \(content.total)")
-                        .monospacedDigit().foregroundStyle(.secondary)
-                    Button {
-                        self.focus(focus.neighbors?.next)
-                    } label: {
-                        Image(systemName: "chevron.forward")
-                    }
-                    .accessibilityLabel(Text("Next image"))
-                }
-                .buttonStyle(.accentBorderless)
-                .disabled(focus.neighbors == nil || isSaving)
-            }
-        }
-        else {
-            ContentUnavailableView {
-                Text("No cover art available")
-            }
         }
     }
 }

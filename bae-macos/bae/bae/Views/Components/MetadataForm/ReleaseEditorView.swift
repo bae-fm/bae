@@ -98,34 +98,30 @@ struct ReleaseEditorView: View {
     /// The identify entries the import pane offers, then the session's own
     /// Cancel and Save.
     private var actionRow: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.edge) {
-            HStack(spacing: ThemeSpace.related) {
-                Text("Identify")
-                    .themeText(.strong)
-                    .foregroundStyle(.secondary)
-                Button("Automatic") { identifyAutomatically() }
-                    .buttonStyle(.accentBordered)
-                Button("Search") { openSearch(.search) }
-                    .buttonStyle(.accentBordered)
-            }
-            .disabled(session.isBusy)
-            Spacer(minLength: ThemeSpace.group)
-            HStack(spacing: ThemeSpace.related) {
-                Button("Cancel") {
-                    searchSection = nil
-                    session.cancelChanges()
+        MacIdentifyBar(
+            spacing: ThemeSpace.edge,
+            identifyDisabled: session.isBusy,
+            onAutomatic: { identifyAutomatically() },
+            onSearch: { openSearch(.search) },
+            onMetadataCommand: nil,
+            trailing: {
+                HStack(spacing: ThemeSpace.related) {
+                    Button("Cancel") {
+                        searchSection = nil
+                        session.cancelChanges()
+                    }
+                    .opacity(session.draft?.changed == true ? 1 : 0)
+                    .allowsHitTesting(session.draft?.changed == true)
+                    .disabled(session.isBusy)
+                    Button("Save") {
+                        session.save(onSuccess: onSaved)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(session.isBusy)
                 }
-                .opacity(session.draft?.changed == true ? 1 : 0)
-                .allowsHitTesting(session.draft?.changed == true)
-                .disabled(session.isBusy)
-                Button("Save") {
-                    session.save(onSuccess: onSaved)
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
-                .disabled(session.isBusy)
             }
-        }
+        )
     }
 
     /// The catalog search under this release's key; picking a pressing

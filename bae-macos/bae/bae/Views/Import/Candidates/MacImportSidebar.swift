@@ -23,9 +23,6 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
     @ViewBuilder
     let content: () -> Content
 
-    @FocusState
-    private var filterFocused: Bool
-
     var body: some View {
         ImportSidebarList {
             VStack(spacing: 0) {
@@ -35,20 +32,11 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
                 // Separates choosing the tab from filtering it.
                 Divider()
 
-                HStack(spacing: ThemeSpace.related) {
-                    ImportListFilterField(
-                        text: $filterText,
-                        focused: $filterFocused,
-                        narrowed: narrowed
-                    )
-                    trailing()
-                }
-                .padding(.horizontal, ThemeSpace.group)
-                .frame(height: ImportFilterBarLayout.rowHeight)
-                // A click anywhere on the row puts the caret in the
-                // field; the controls at the end keep their own clicks.
-                .contentShape(Rectangle())
-                .onTapGesture { filterFocused = true }
+                MacImportFilterRow(
+                    filterText: $filterText,
+                    narrowed: narrowed,
+                    trailing: trailing
+                )
             }
         } content: {
             content()

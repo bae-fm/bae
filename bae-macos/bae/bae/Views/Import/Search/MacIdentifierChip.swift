@@ -112,6 +112,16 @@ struct MacIdentifierChip<Trailing: View>: View {
     }
 }
 
+extension MacIdentifierChip where Trailing == IdentifierDash {
+    /// A chip that says nothing ran here: its label, any value it holds and
+    /// a dash.
+    init(label: String, value: String? = nil, values: [String] = []) {
+        self.init(label: label, value: value, values: values) {
+            IdentifierDash()
+        }
+    }
+}
+
 /// How a chip that holds several values writes them.
 enum MacIdentifierChipValues {
     /// Every value, separated by " · ".

@@ -4,7 +4,7 @@ import SwiftUI
 /// The artist's other printed names on its page: each one renamed in place
 /// or removed, and a field to add another. Credits printing a name follow it
 /// when it is renamed, and print the artist's own name once it is removed.
-struct ArtistCreditNamesSection: View {
+struct MacArtistOtherNames: View {
     let artistId: String
     let names: [BridgeArtistCreditName]
     @Environment(ArtistEditor.self)

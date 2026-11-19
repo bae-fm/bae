@@ -31,7 +31,7 @@ enum TrackSavePanel {
         let picker = SaveFormatPicker(
             configStore: configStore,
             outputs: outputs,
-            frame: NSRect(x: 54, y: 5, width: 190, height: 24),
+            frame: MacSavePanelFormat.popupFrame,
             openFormats: openFormats,
             onChange: { [weak panel] choice in
                 // The stem, suggested or typed, stays as it is.
@@ -50,14 +50,7 @@ enum TrackSavePanel {
             panel.allowedContentTypes = [type]
         }
 
-        let accessoryContainer = NSView(
-            frame: NSRect(x: 0, y: 0, width: 250, height: 34)
-        )
-        let label = NSTextField(labelWithString: String(localized: "Format:"))
-        label.frame = NSRect(x: 0, y: 7, width: 50, height: 20)
-        accessoryContainer.addSubview(label)
-        accessoryContainer.addSubview(picker.popup)
-        panel.accessoryView = accessoryContainer
+        panel.accessoryView = MacSavePanelFormat(popup: picker.popup)
 
         return SaveFilePanel(savePanel: panel, picker: picker)
     }

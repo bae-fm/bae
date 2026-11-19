@@ -41,7 +41,13 @@ struct MacReleaseFiles: View {
     private func line(_ row: BridgeMappingFileRow) -> some View {
         switch row {
         case .file(let file):
-            fileLine(file)
+            MacReleaseFileRow(
+                name: file.name,
+                size: file.sizeText,
+                damage: file.damageText,
+                onOpen: file.role == .document
+                    ? { onOpenDocument(file.name, file.fileId) } : nil
+            )
         case .sheet(let sheet):
             if let sheetActions {
                 MacImportSheetCaption(
@@ -51,55 +57,12 @@ struct MacReleaseFiles: View {
                 )
             }
             else {
-                openable(
+                MacReleaseFileRow(
                     name: sheet.name,
                     size: sheet.size.fileSizeText,
-                    id: sheet.sheetId
+                    onOpen: { onOpenDocument(sheet.name, sheet.sheetId) }
                 )
             }
         }
-    }
-
-    private func fileLine(_ file: BridgeMappingFile) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            if file.role == .document {
-                openable(name: file.name, size: file.sizeText, id: file.fileId)
-            }
-            else {
-                content(name: file.name, size: file.sizeText)
-            }
-            if let damage = file.damageText {
-                Text(damage)
-                    .themeText(.fine)
-                    .foregroundStyle(Theme.warning)
-            }
-        }
-    }
-
-    /// A file that opens: a button named by the file, with its size beside
-    /// the name.
-    private func openable(name: String, size: String, id: String) -> some View {
-        Button {
-            onOpenDocument(name, id)
-        } label: {
-            content(name: name, size: size)
-        }
-        .buttonStyle(.accentPlain)
-        .accessibilityLabel(Text(verbatim: name))
-    }
-
-    private func content(name: String, size: String) -> some View {
-        HStack(spacing: ThemeSpace.group) {
-            Text(name)
-                .themeText(.mono)
-                .cutLine(.fileName)
-            Spacer(minLength: 0)
-            Text(size)
-                .themeText(.fine)
-                .foregroundStyle(.tertiary)
-                // A squeezed row truncates the name, never wraps the size.
-                .fixedSize()
-        }
-        .contentShape(Rectangle())
     }
 }

@@ -8,8 +8,7 @@ struct MacFileDetails: View {
     let file: BridgeFile
     let onClose: () -> Void
 
-    /// The labels' column, and the inset above the details.
-    private static let labelWidth: CGFloat = 84
+    /// The inset above the details.
     private static let topInset: CGFloat = 14
 
     var body: some View {
@@ -28,42 +27,24 @@ struct MacFileDetails: View {
                 .accessibilityLabel(Text("Close file details"))
                 .help(Text("Close file details"))
             }
-            Grid(
-                alignment: .leadingFirstTextBaseline,
-                horizontalSpacing: ThemeSpace.group,
-                verticalSpacing: ThemeSpace.compact
-            ) {
+            MacFactsGrid {
                 if let folder = file.folder {
-                    detail("Folder") { Text(folder) }
+                    MacFact("Folder") { Text(folder) }
                 }
-                detail("Kind") { Text(kindText) }
+                MacFact("Kind") { Text(kindText) }
                 if let format = file.audioFormat {
-                    detail("Format") { Text(format.text) }
+                    MacFact("Format") { Text(format.text) }
                 }
-                detail("Size") {
+                MacFact("Size") {
                     Text(file.fileSizeText).monospacedDigit()
                 }
             }
-            .themeText(.detail)
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.top, Self.topInset)
         .padding(.bottom, ThemeSpace.edge)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceElevated)
-    }
-
-    private func detail(
-        _ label: LocalizedStringKey,
-        @ViewBuilder value: () -> some View
-    ) -> some View {
-        GridRow {
-            Text(label)
-                .foregroundStyle(.secondary)
-                .frame(width: Self.labelWidth, alignment: .leading)
-            value()
-                .textSelection(.enabled)
-        }
     }
 
     private var kindText: String {

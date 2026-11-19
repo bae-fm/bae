@@ -28,7 +28,7 @@ struct MacStorageFooter: View {
             }
             Spacer()
             if let uploads = queues?.uploads {
-                StorageQueueControl(
+                MacQueueRate(
                     queue: .uploads,
                     paused: uploads.wait == .paused(by: .person),
                     hold: uploads.wait?.text
@@ -37,7 +37,7 @@ struct MacStorageFooter: View {
                 }
             }
             if let downloads = queues?.downloads {
-                StorageQueueControl(
+                MacQueueRate(
                     queue: .downloads,
                     paused: downloads.wait == .paused,
                     hold: downloads.wait?.text
@@ -48,7 +48,7 @@ struct MacStorageFooter: View {
                 }
             }
             if let outputs = queues?.outputs {
-                StorageQueueControl(
+                MacQueueRate(
                     queue: .outputs,
                     paused: outputs.wait == .paused,
                     hold: outputs.wait?.text
@@ -64,57 +64,6 @@ struct MacStorageFooter: View {
         .themeText(.body)
         .padding(.horizontal)
         .padding(.vertical, ThemeSpace.related)
-    }
-}
-
-/// One running queue in the footer: its glyph, how fast it goes, or how far
-/// for exports, which count percent rather than bytes, or in the rate's place
-/// what holds the queue back, and the button that pauses it, or resumes it
-/// while paused.
-private struct StorageQueueControl<Progress: View>: View {
-    let queue: StorageQueueKind
-    let paused: Bool
-    /// What holds the queue back, in words.
-    let hold: String?
-    @ViewBuilder
-    let progress: () -> Progress
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            HStack(spacing: ThemeSpace.inline) {
-                glyph
-                    .themeIcon(.small)
-                if let hold {
-                    Text(hold)
-                }
-                else {
-                    progress()
-                        .monospacedDigit()
-                }
-            }
-            QueuePauseButton(queue: queue, paused: paused)
-                .buttonStyle(.accentBorderless)
-        }
-        // A narrow table keeps each queue's rate whole on one line; the
-        // release count and total give way instead.
-        .fixedSize()
-    }
-
-    @ViewBuilder
-    private var glyph: some View {
-        switch queue {
-        case .uploads:
-            Image(systemName: "arrow.up")
-                .foregroundStyle(StorageTransferKind.upload.color)
-                .accessibilityLabel(Text("Uploads"))
-        case .downloads:
-            Image(systemName: "arrow.down")
-                .foregroundStyle(StorageTransferKind.pin.color)
-                .accessibilityLabel(Text("Downloads"))
-        case .outputs:
-            Image(systemName: "square.and.arrow.up")
-                .accessibilityLabel(Text("Exports"))
-        }
     }
 }
 

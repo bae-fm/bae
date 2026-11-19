@@ -166,7 +166,7 @@ struct MacPressingRow: View {
                     .foregroundStyle(.tertiary)
             }
             else {
-                StatedValuesText(pressing.years)
+                MacSourcedValue(pressing.years)
                     .themeText(.strong)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -194,7 +194,7 @@ struct MacPressingRow: View {
                 }
             }
             if !pressing.barcodes.isEmpty {
-                StatedValuesText(pressing.barcodes)
+                MacSourcedValue(pressing.barcodes)
                     .themeText(.body)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -314,7 +314,7 @@ extension MacPressingRow {
         {
             HStack(spacing: ThemeSpace.related) {
                 if !pressing.areas.isEmpty || !pressing.media.isEmpty {
-                    StatedValuesText(parts: [pressing.media, pressing.areas])
+                    MacSourcedValue(parts: [pressing.media, pressing.areas])
                         .themeText(.detail)
                         .foregroundStyle(.tertiary)
                         .cutLine(.prose)
@@ -334,7 +334,7 @@ extension MacPressingRow {
     @ViewBuilder
     private var noteLine: some View {
         if let notes = agreements?.notes, !notes.isEmpty {
-            StatedValuesText(notes.map(\.stated))
+            MacSourcedValue(notes.map(\.stated))
                 .themeText(.detail)
                 .italic()
                 .foregroundStyle(.tertiary)

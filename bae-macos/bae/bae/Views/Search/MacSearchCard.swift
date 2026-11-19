@@ -146,17 +146,9 @@ struct MacSearchCard: View {
         @ViewBuilder row: @escaping (Item) -> Row
     ) -> some View {
         if count > 0 {
-            sectionHeader(title)
+            MacSearchSection(title)
             ForEach(items, id: id) { row($0) }
         }
-    }
-
-    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
-        MacEyebrow(title)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, ThemeSpace.related)
-            .padding(.top, ThemeSpace.group)
-            .padding(.bottom, ThemeSpace.related)
     }
 
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {

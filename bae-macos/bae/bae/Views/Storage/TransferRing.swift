@@ -82,25 +82,3 @@ final class TransferRingNSView: NSView {
         CATransaction.commit()
     }
 }
-
-/// SwiftUI's place for a file's transfer ring: it hands the ring the file's
-/// stream and its colour, never a value.
-struct TransferRing: NSViewRepresentable {
-    let kind: StorageTransferKind
-    let source: LatestSource<Double>
-
-    func makeNSView(context _: Context) -> TransferRingNSView {
-        let view = TransferRingNSView(color: NSColor(kind.color))
-        view.follow(source)
-        return view
-    }
-
-    func updateNSView(_ view: TransferRingNSView, context _: Context) {
-        view.color = NSColor(kind.color)
-        view.follow(source)
-    }
-
-    static func dismantleNSView(_ view: TransferRingNSView, coordinator _: ()) {
-        view.stopFollowing()
-    }
-}

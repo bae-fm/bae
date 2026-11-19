@@ -60,17 +60,11 @@ struct MacStorageUsage: View {
     private var legend: some View {
         FlowLayout(spacing: ThemeSpace.group, rowSpacing: ThemeSpace.inline) {
             ForEach(usage.segments) { segment in
-                HStack(spacing: ThemeSpace.inline) {
-                    Circle()
-                        .fill(segment.kind.color)
-                        .frame(width: 8, height: 8)
-                    Text(verbatim: segment.kind.title)
-                        .foregroundStyle(.secondary)
-                    Text(verbatim: segment.bytes.fileSizeText)
-                        .monospacedDigit()
-                }
-                .themeText(.detail)
-                .fixedSize()
+                MacUsageKey(
+                    color: segment.kind.color,
+                    title: segment.kind.title,
+                    size: segment.bytes.fileSizeText
+                )
             }
         }
     }

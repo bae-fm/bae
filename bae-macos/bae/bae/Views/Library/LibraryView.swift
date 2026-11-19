@@ -299,7 +299,7 @@ extension LibraryView {
                     )
                 }
                 else {
-                    BrowseSplit {
+                    MacBrowseSplit {
                         BrowseList(list: composerList) { index in
                             composerRow(at: index, list: composerList)
                         }
@@ -348,7 +348,7 @@ extension LibraryView {
                     )
                 }
                 else {
-                    BrowseSplit {
+                    MacBrowseSplit {
                         BrowseList(list: artistList) { index in
                             artistRow(at: index, list: artistList)
                         }

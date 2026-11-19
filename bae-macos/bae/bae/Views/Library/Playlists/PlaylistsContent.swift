@@ -23,7 +23,7 @@ struct PlaylistsContent: View {
                     )
                 }
                 else {
-                    BrowseSplit {
+                    MacBrowseSplit {
                         list(listing)
                     } detail: {
                         MacPlaylistPage(detail: detail)

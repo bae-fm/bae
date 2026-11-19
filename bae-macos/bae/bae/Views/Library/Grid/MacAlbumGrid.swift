@@ -434,12 +434,9 @@ extension MacAlbumGrid {
     ) -> some View {
         switch cell {
         case .heading(_, let title):
-            Text(verbatim: title)
-                .themeText(.rowTitle)
-                .padding(.horizontal, ThemeSpace.compact)
+            MacArtistGroupHeading(name: title)
                 .frame(width: metrics.rowWidth, alignment: .leading)
                 .frame(width: metrics.cardWidth, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
         case .album(let position, let albumId, let sectionId):
             placed(
                 albumCard(

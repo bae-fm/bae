@@ -87,12 +87,8 @@ struct MacLibraryRow: View {
     private var lines: some View {
         if loading {
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.placeholder)
-                    .frame(width: 140, height: 11)
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.placeholder)
-                    .frame(width: 80, height: 10)
+                MacPlaceholderLine(width: 140, height: 11)
+                MacPlaceholderLine(width: 80, height: 10)
             }
         }
         else {

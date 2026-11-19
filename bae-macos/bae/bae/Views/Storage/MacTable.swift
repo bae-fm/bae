@@ -478,7 +478,7 @@ extension MacTable.Coordinator {
         forRow row: Int,
         column: StorageTableColumn
     ) -> some View {
-        StorageListCell(list: list, position: row, column: column)
+        MacTableRow(list: list, position: row, column: column)
             .environment(imageStore)
             .environment(downloadStore)
             .environment(outboxStore)
@@ -673,29 +673,5 @@ final class StorageTableHeader: NSTableHeaderView {
     override func menu(for event: NSEvent) -> NSMenu? {
         menus?.showColumnsMenu(in: self)
         return nil
-    }
-}
-
-/// One cell of the storage table, drawn from the row the list's query
-/// returned at `position`, or a placeholder until that row's page lands. It
-/// reads the list itself, so it follows the row as the query answers again.
-private struct StorageListCell: View {
-    let list: StorageList
-    let position: Int
-    let column: StorageTableColumn
-
-    var body: some View {
-        if let row = list.row(at: position) {
-            StorageReleaseCell(
-                release: ReleaseSummary(from: row.release),
-                album: row.album,
-                status: row.status,
-                dateAdded: row.dateAdded,
-                column: column
-            )
-        }
-        else {
-            StorageRowPlaceholderCell(column: column)
-        }
     }
 }

@@ -1,11 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// The values the records of a pressing state, each followed by the catalogs
-/// that state it, in grey: "1992 MusicBrainz / 1993 Discogs". Each part is
-/// one fact's values, and the parts follow each other under the list
-/// separator.
-struct StatedValuesText: View {
+/// A pressing fact: the values the records of a pressing state, each followed
+/// by the catalogs that state it, in grey: "1992 MusicBrainz / 1993 Discogs".
+/// Each part is one fact's values, and the parts follow each other under the
+/// list separator.
+struct MacSourcedValue: View {
     let parts: [[StatedValue]]
 
     init(_ values: [StatedValue]) {

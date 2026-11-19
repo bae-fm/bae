@@ -2,14 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// A strip's sizes, outside the generic view so callers can read them.
-enum ThumbnailStripLayout {
+enum MacThumbnailStripLayout {
     /// Each thumbnail's side, which callers also decode their images at.
     static let thumbnailSize: CGFloat = 56
 }
 
 /// A horizontal strip of thumbnails that keeps the current item centered; the
 /// caller supplies each item's image view and stroke.
-struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
+struct MacThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
     let items: [Item]
     /// The item shown now.
     let current: Item.ID
@@ -68,8 +68,8 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
         } label: {
             content(item)
                 .frame(
-                    width: ThumbnailStripLayout.thumbnailSize,
-                    height: ThumbnailStripLayout.thumbnailSize
+                    width: MacThumbnailStripLayout.thumbnailSize,
+                    height: MacThumbnailStripLayout.thumbnailSize
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay(

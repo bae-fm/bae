@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The artist and composer modes' two panes: the master list at a fixed
 /// width with a hairline on its edge, and the detail pane filling the rest.
-struct BrowseSplit<ListPane: View, Detail: View>: View {
+struct MacBrowseSplit<ListPane: View, Detail: View>: View {
     private static var listWidth: CGFloat { 320 }
 
     @ViewBuilder

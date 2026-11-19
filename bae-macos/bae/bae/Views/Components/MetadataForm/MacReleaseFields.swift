@@ -202,16 +202,15 @@ struct MacReleaseFields: View {
         monospaced: Bool,
         onCommit: @escaping @MainActor (String) async -> Void
     ) -> some View {
-        CommittedTextField(
+        MacInlineField(
             placeholder: "\u{2014}",
             value: text,
             name: name,
             monospaced: monospaced,
-            chrome: .inline,
             font: ThemeText.body.nsFont,
             placeholderRole: .emptyMark,
             editingCommands: editingCommands,
-            onCommit: onCommit,
+            onCommit: onCommit
         )
         .fixedSize(horizontal: true, vertical: false)
         .frame(

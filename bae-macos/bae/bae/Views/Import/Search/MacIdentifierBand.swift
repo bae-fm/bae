@@ -45,11 +45,11 @@ struct MacIdentifierBand: View {
         case .reading:
             MacIdentifierChip(label: label) { ChipWait(waitingOn: run.discId) }
         case .absent:
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help("No LOG or CUE in the folder")
         // The CUE's audio is at a rate no CD holds, so no Disc ID was read.
         case .notCdAudio(let sampleRateHz):
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help(
                     sampleRateHz.map { sampleRateHz in
                         String(
@@ -73,9 +73,7 @@ struct MacIdentifierBand: View {
             discIdButton(label: label, discId: disc.discId, lookup: nil)
         // Only Settings can switch on the catalog that answers Disc IDs.
         case .notAsked(reason: .noCatalog):
-            MacIdentifierChip(label: label, value: disc.discId) {
-                IdentifierDash()
-            }
+            MacIdentifierChip(label: label, value: disc.discId)
         case let lookup:
             discIdButton(label: label, discId: disc.discId, lookup: lookup)
         }
@@ -120,10 +118,10 @@ struct MacIdentifierBand: View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.barcode)
         switch run.barcode {
         case .absent:
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help("No barcode source")
         case .noCodes:
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help("No barcode on the artwork")
         case .rows(let rows):
             ForEach(rows, id: \.value) { row in
@@ -162,7 +160,7 @@ struct MacIdentifierBand: View {
         let label = String(localized: "Catalog #")
         switch run.catalog {
         case .noneFound:
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help("None found")
         case .numbers(let rows, _):
             ForEach(rows, id: \.value) { row in
@@ -202,13 +200,11 @@ struct MacIdentifierBand: View {
         case .reading:
             MacIdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
         case .absent:
-            MacIdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label)
                 .help("No ISRC in the files’ tags")
         // Only Settings can switch on the catalog that answers ISRCs.
         case .read(let isrcs, .notAsked(reason: _)):
-            MacIdentifierChip(label: label, values: isrcs) {
-                IdentifierDash()
-            }
+            MacIdentifierChip(label: label, values: isrcs)
         case .read(let isrcs, let lookup):
             MacIdentifierChip(label: label, values: isrcs) {
                 ProviderCapsule(

@@ -16,7 +16,7 @@ struct MacStorageBand: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
             HStack(spacing: ThemeSpace.related) {
-                storageStatus
+                MacStorageState(state: release.summary.storageState)
                 pill
             }
             if let missing = release.summary.upload?.missing {
@@ -103,28 +103,6 @@ struct MacStorageBand: View {
     private var pinQueued: Bool {
         if case .queued = release.downloadStatus { return true }
         return false
-    }
-
-    /// The resting storage state.
-    private var storageStatus: some View {
-        HStack(spacing: ThemeSpace.compact) {
-            switch release.summary.storageState {
-            case .onOneDevice:
-                Image(systemName: "folder").themeIcon(.medium)
-                    .accessibilityHidden(true)
-                Text("Local")
-            case .inStorage(pinned: true):
-                Image(systemName: "pin").themeIcon(.medium)
-                    .accessibilityHidden(true)
-                Text("Pinned")
-            case .inStorage(pinned: false):
-                Image(systemName: "cloud").themeIcon(.medium)
-                    .accessibilityHidden(true)
-                Text("In cloud")
-            }
-        }
-        .themeText(.body)
-        .foregroundStyle(.secondary)
     }
 
     private var transferActions: some View {

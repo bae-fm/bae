@@ -28,54 +28,6 @@ struct ImportReleaseSourceActions {
     let unlink: () -> Void
 }
 
-/// A command in the card's metadata menu. Each replaces what the person has,
-/// so the card asks before running it.
-enum ImportDraftCommand: CaseIterable, Identifiable {
-    /// Replace the draft with what the candidate's own files say.
-    case resetToFileMetadata
-    case clearMetadata
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .resetToFileMetadata: String(localized: "Reset to file metadata")
-        case .clearMetadata: String(localized: "Clear metadata")
-        }
-    }
-
-    /// What the confirmation asks.
-    var question: String {
-        switch self {
-        case .resetToFileMetadata: String(localized: "Reset to file metadata?")
-        case .clearMetadata: String(localized: "Clear metadata?")
-        }
-    }
-
-    /// What the confirmation says the command changes and keeps.
-    var consequence: String {
-        switch self {
-        case .resetToFileMetadata:
-            String(
-                localized:
-                    "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
-            )
-        case .clearMetadata:
-            String(
-                localized:
-                    "The candidate files and mapping choices will remain unchanged."
-            )
-        }
-    }
-
-    func run(with actions: ImportReleaseSourceActions) {
-        switch self {
-        case .resetToFileMetadata: actions.resetToFileMetadata()
-        case .clearMetadata: actions.clearMetadata()
-        }
-    }
-}
-
 /// The editable metadata draft card: the action row, the cover beside the
 /// release fields, and the catalogs that describe the release.
 struct MacImportDraft: View {
@@ -217,63 +169,39 @@ struct MacImportDraft: View {
         }
     }
 
-    /// The identify entries and metadata menu, then the commit controls once
-    /// there is something to commit; only Automatic starts a run.
+    /// The identify bar, with the commit controls once there is something to
+    /// commit; only Automatic starts a run.
     private var actionRow: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.related) {
-                Text("Identify")
-                    .themeText(.strong)
-                    .foregroundStyle(.secondary)
-                Button("Automatic") {
-                    sourceActions.identifyAutomatically()
-                }
-                .buttonStyle(.accentBordered)
-                Button("Search") {
-                    sourceActions.searchForRelease()
-                }
-                .buttonStyle(.accentBordered)
-                candidateMenu
-            }
-            .disabled(isReading)
-            Spacer(minLength: ThemeSpace.group)
-            if let commit {
-                if commit.untitledTrackCount > 0 {
-                    Text(
-                        localizedCoreString(
-                            "ui.import.commit.unanswered",
-                            commit.untitledTrackCount
+        MacIdentifyBar(
+            spacing: ThemeSpace.related,
+            identifyDisabled: isReading,
+            onAutomatic: sourceActions.identifyAutomatically,
+            onSearch: sourceActions.searchForRelease,
+            onMetadataCommand: { confirming = $0 },
+            trailing: {
+                if let commit {
+                    if commit.untitledTrackCount > 0 {
+                        Text(
+                            localizedCoreString(
+                                "ui.import.commit.unanswered",
+                                commit.untitledTrackCount
+                            )
                         )
+                        .themeText(.detail)
+                        .foregroundStyle(Theme.warning)
+                    }
+                    if configStore.syncs {
+                        MacImportDestination(
+                            destination: commit.importDestination
+                        )
+                    }
+                    ImportConfirmationCardAction(
+                        importStatus: commit.importStatus,
+                        onConfirmImport: commit.actions.confirmImport
                     )
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.warning)
-                }
-                if configStore.syncs {
-                    MacImportDestination(
-                        destination: commit.importDestination
-                    )
-                }
-                ImportConfirmationCardAction(
-                    importStatus: commit.importStatus,
-                    onConfirmImport: commit.actions.confirmImport
-                )
-            }
-        }
-    }
-
-    /// Commands that replace the draft's metadata.
-    private var candidateMenu: some View {
-        MacMenuButton(bordered: true) {
-            for command in ImportDraftCommand.allCases {
-                MacMenuItem(verbatim: command.title) {
-                    confirming = command
                 }
             }
-        } label: {
-            Image(systemName: "ellipsis")
-        }
-        .accessibilityLabel(Text("Metadata"))
-        .fixedSize()
+        )
     }
 }
 

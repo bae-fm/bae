@@ -121,58 +121,20 @@ struct MacNowPlayingBar: View {
 
     private var centerColumn: some View {
         VStack(spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.section) {
-                shuffleButton
-
-                navButton(
-                    "backward.fill",
-                    help: "Previous",
-                    action: onPrevious
-                )
-
-                playPauseButton
-
-                navButton(
-                    "forward.fill",
-                    help: "Next",
-                    action: onNext
-                )
-
-                if let settings {
-                    repeatButton(settings.repeatMode)
-                }
-                else {
-                    controlSpace
-                }
-            }
+            MacTransport(
+                isPlaying: isPlaying,
+                waitsOnStorage: waitsOnStorage,
+                shuffled: shuffled,
+                repeatMode: settings?.repeatMode,
+                onPlayPause: onPlayPause,
+                onNext: onNext,
+                onPrevious: onPrevious,
+                onSetShuffle: onSetShuffle,
+                onSetRepeatMode: onSetRepeatMode
+            )
 
             progressBar
         }
-    }
-
-    private var shuffleButton: some View {
-        Button {
-            onSetShuffle(!shuffled)
-        } label: {
-            toggleLabel("shuffle")
-        }
-        .buttonStyle(IconHoverButtonStyle(isOn: shuffled).accentFocus())
-        .help(shuffled ? "Turn off shuffle" : "Shuffle")
-        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
-    }
-
-    private func repeatButton(_ repeatMode: BridgeRepeatMode) -> some View {
-        let active = repeatMode != .off
-        let glyph = repeatMode == .track ? "repeat.1" : "repeat"
-        return Button {
-            onSetRepeatMode(bridgeNextRepeatMode(mode: repeatMode))
-        } label: {
-            toggleLabel(glyph)
-        }
-        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
-        .help(Self.repeatHelp(repeatMode))
-        .accessibilityLabel("Repeat")
-        .accessibilityValue(Self.repeatValue(repeatMode))
     }
 
     /// The room one icon control takes, holding a control's place while
@@ -180,39 +142,6 @@ struct MacNowPlayingBar: View {
     fileprivate var controlSpace: some View {
         Color.clear
             .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-    }
-
-    /// The slot shuffle and repeat share; `IconHoverButtonStyle` draws it
-    /// accent on an accent tint when the button is on.
-    private func toggleLabel(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .themeIcon(.large)
-            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-            .contentShape(Rectangle())
-    }
-
-    private func navButton(
-        _ systemName: String,
-        help: LocalizedStringKey,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(IconHoverButtonStyle().accentFocus())
-        .help(help)
-        .accessibilityLabel(help)
-    }
-
-    private var playPauseButton: some View {
-        MacPlayPause(
-            isPlaying: isPlaying,
-            waitsOnStorage: waitsOnStorage,
-            onToggle: onPlayPause
-        )
     }
 
     /// The seek bar, which draws the parts of the track whose bytes are here
@@ -228,36 +157,6 @@ struct MacNowPlayingBar: View {
         .frame(maxWidth: .infinity)
         .frame(height: 20)
         .accessibilityLabel("Playback position")
-    }
-
-    /// The repeat button's tooltip: one whole string per mode, so each
-    /// language orders its own words.
-    private static func repeatHelp(
-        _ repeatMode: BridgeRepeatMode
-    ) -> LocalizedStringKey {
-        switch repeatMode {
-        case .off:
-            "Repeat: off"
-        case .context:
-            "Repeat: all"
-        case .track:
-            "Repeat: one"
-        }
-    }
-
-    /// The mode as the button's accessibility value, which VoiceOver reads
-    /// after the name Repeat and announces when it changes.
-    private static func repeatValue(
-        _ repeatMode: BridgeRepeatMode
-    ) -> LocalizedStringKey {
-        switch repeatMode {
-        case .off:
-            "Off"
-        case .context:
-            "All"
-        case .track:
-            "One"
-        }
     }
 }
 

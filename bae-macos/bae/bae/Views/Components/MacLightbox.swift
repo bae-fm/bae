@@ -106,7 +106,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                 labelView
 
                 if place.canCycle {
-                    ThumbnailStrip(
+                    MacThumbnailStrip(
                         items: place.items,
                         current: place.current.id,
                         centered: true,
@@ -121,7 +121,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                     ) { item in
                         Artwork(
                             content: item.image,
-                            pointSize: ThumbnailStripLayout.thumbnailSize
+                            pointSize: MacThumbnailStripLayout.thumbnailSize
                         )
                     }
                     .padding(.bottom, ThemeSpace.group)

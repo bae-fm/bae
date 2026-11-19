@@ -15,14 +15,13 @@ struct MacReleaseIdentity<AudioFacts: View, AlbumRow: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-            CommittedTextField(
+            MacInlineField(
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
                 name: String(localized: "Album title"),
-                chrome: .inline,
                 font: ThemeText.title.nsFont,
                 editingCommands: editingCommands,
-                onCommit: { await writer.setField(.albumTitle, $0) },
+                onCommit: { await writer.setField(.albumTitle, $0) }
             )
             MacAlbumArtistField(
                 assignments: values.albumArtistAssignments,
@@ -37,15 +36,14 @@ struct MacReleaseIdentity<AudioFacts: View, AlbumRow: View>: View {
             .foregroundStyle(.secondary)
             .modifier(FieldChrome(focused: false, style: .inline))
             // The album's original year; the pressing's year is under Release.
-            CommittedTextField(
+            MacInlineField(
                 placeholder: String(localized: "Album year"),
                 value: values.albumYear,
                 name: String(localized: "Album year"),
-                chrome: .inline,
                 font: ThemeText.body.nsFont,
                 textColor: .tertiaryLabelColor,
                 editingCommands: editingCommands,
-                onCommit: { await writer.setField(.albumYear, $0) },
+                onCommit: { await writer.setField(.albumYear, $0) }
             )
             audioFacts()
                 .padding(.horizontal, FieldChrome.inlineHorizontalPadding)

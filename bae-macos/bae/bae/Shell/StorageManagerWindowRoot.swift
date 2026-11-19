@@ -36,11 +36,13 @@ struct StorageManagerNoLibrary: View {
             minHeight: MacStorageWindow.minimumHeight,
             maxHeight: .infinity
         )
-        .storageManagerToolbar(
-            filter: .constant(.all),
-            search: .constant(""),
-            inspectorPresented: .constant(false),
-            off: true
+        .modifier(
+            MacStorageToolbar(
+                filter: .constant(.all),
+                search: .constant(""),
+                inspectorPresented: .constant(false),
+                off: true
+            )
         )
     }
 }

@@ -15,15 +15,9 @@ struct MacQueuePlaceholderRow: View {
                     height: MacQueueRow.artworkSize
                 )
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.placeholder)
-                    .frame(width: 140, height: 12)
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.placeholder)
-                    .frame(width: 90, height: Self.detailBarHeight)
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.placeholder)
-                    .frame(width: 120, height: Self.detailBarHeight)
+                MacPlaceholderLine(width: 140, height: 12)
+                MacPlaceholderLine(width: 90, height: Self.detailBarHeight)
+                MacPlaceholderLine(width: 120, height: Self.detailBarHeight)
             }
             Spacer()
         }

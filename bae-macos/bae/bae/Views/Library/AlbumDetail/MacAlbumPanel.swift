@@ -64,48 +64,15 @@ struct MacAlbumPanel: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                    Text(album.title)
-                        .themeText(.hero)
-                        .lineLimit(1)
-                    HStack(spacing: ThemeSpace.related) {
-                        Text(album.artistLine.text)
-                            .foregroundStyle(.secondary)
-                        if let year = album.year {
-                            Text(verbatim: FactList.glyph)
-                                .foregroundStyle(.tertiary)
-                            Text(PressingText.year(year))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .themeText(.heading)
-                    .lineLimit(1)
-                    if detail.showsReleaseChoices {
-                        releasePicker
-                    }
-                    ReleaseFactsLine(
-                        pressingLine: selectedRelease.pressingLine,
-                        labelsLine: selectedRelease.labelsLine,
-                        records: selectedRelease.records,
-                        hasRecords: selectedRelease.hasRecords
-                    )
-                    // Why this Mac can't play the release: the device its
-                    // audio is on, or its originals missing here.
-                    if let unplayable = selectedRelease.unplayableLine {
-                        Text(unplayable)
-                            .themeText(.detail)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: ThemeSpace.related) {
-                        Button("Play", action: onPlay)
-                            .buttonStyle(PrimaryButtonStyle())
-                        albumMenu
-                    }
-                    .padding(.top, ThemeSpace.group)
-                    MacAlbumRating(
-                        rating: detail.rating,
+                    MacAlbumHeader(
+                        detail: detail,
+                        currentReleaseId: currentReleaseId,
+                        onSelectRelease: onSelectRelease,
+                        onPlay: onPlay,
                         onRate: onRateAlbum
-                    )
-                    .padding(.top, ThemeSpace.related)
+                    ) {
+                        albumMenuItems
+                    }
                     MacTrackColumns(
                         release: selectedRelease,
                         isCompilation: album.isCompilation,
@@ -150,33 +117,21 @@ struct MacAlbumPanel: View {
         }
     }
 
-    private var albumMenu: some View {
-        MacMenuButton {
-            AlbumMenu(
-                offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
-                onPlay: onPlay,
-                onShuffle: onShuffle,
-                onAddNext: onAddNextAlbum,
-                onAddToQueue: onAddAlbumToQueue,
-                onEdit: onEdit,
-                onOpenStorage: onOpenStorage,
-                onExport: onExportRelease,
-                onSaveAs: onSaveReleaseAs,
-                onSetPrimaryRelease: onSetPrimaryRelease,
-                onDeleteRelease: onDeleteRelease,
-                onDeleteAlbum: onDeleteAlbum
-            )
-        } label: {
-            Image(systemName: "ellipsis")
-                .themeIcon(.medium)
-                .foregroundStyle(.secondary)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .background(
-                    Theme.hover,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
-        }
-        .fixedSize()
+    private var albumMenuItems: AlbumMenu {
+        AlbumMenu(
+            offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
+            onPlay: onPlay,
+            onShuffle: onShuffle,
+            onAddNext: onAddNextAlbum,
+            onAddToQueue: onAddAlbumToQueue,
+            onEdit: onEdit,
+            onOpenStorage: onOpenStorage,
+            onExport: onExportRelease,
+            onSaveAs: onSaveReleaseAs,
+            onSetPrimaryRelease: onSetPrimaryRelease,
+            onDeleteRelease: onDeleteRelease,
+            onDeleteAlbum: onDeleteAlbum
+        )
     }
 
     private var albumArt: some View {
@@ -184,27 +139,6 @@ struct MacAlbumPanel: View {
             imageRef: selectedRelease.summary.cover,
             pointSize: Self.coverSize
         )
-    }
-
-    private var releasePicker: some View {
-        // The segments and the binding read the same releases, so a clicked
-        // segment's index names one of them.
-        let releases = detail.releases
-        return MacSegmentedControl(
-            selectedIndex: Binding(
-                get: { detail.shownReleaseIndex },
-                set: { newIndex in onSelectRelease(releases[newIndex].id) },
-            ),
-            segments: releases.map { release in
-                MacSegmentedControl.Segment(
-                    label: release.displayName,
-                    systemImage: release.id == currentReleaseId
-                        ? "speaker.fill" : nil,
-                )
-            },
-        )
-        .padding(.top, ThemeSpace.inline)
-        .padding(.bottom, ThemeSpace.line)
     }
 }
 

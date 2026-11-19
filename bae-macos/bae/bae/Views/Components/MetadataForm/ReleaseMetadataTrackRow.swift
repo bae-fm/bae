@@ -29,11 +29,10 @@ struct ReleaseMetadataTrackRow: View {
                     width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
                 )
-            CommittedTextField(
+            MacInlineField(
                 placeholder: localizedCoreString("ui.import.slots.untitled"),
                 value: track.title,
                 name: localizedCoreString("ui.import.mapping.column.title"),
-                chrome: .inline,
                 fillsWidth: true,
                 editingCommands: editingCommands,
                 onCommit: { value in
