@@ -312,9 +312,10 @@ Add device opens the pairing of a new device, as *Add device…* on Your devices
 does; Invite someone opens the invite, as People's *Invite…* does; on a Mac
 whose library has no cloud home yet, *Set up a cloud home…* comes first and
 opens the cloud home setup, as the Sync page's *Set up a cloud home…* does, and
-Add device and Invite someone each open a sheet that says the cloud home comes
-first: "To add a device, set up a cloud home first. Your library and music stay
-on this Mac until you do." (an invite says "To invite someone, …"), with
+Add device and Invite someone each open a sheet, titled *Add a device* or
+*Invite someone*, that says the cloud home comes first: "To add a device, set
+up a cloud home first. Your library and music stay on this Mac until you do."
+(an invite says "To invite someone, …"), with
 *Cancel* and *Set up a cloud home…*. On a Mac, Playlists and History open in
 the side pane beside the queue, which a control at its top switches between
 *Queue*, *Playlists* and *History*; on Android each opens as its own screen

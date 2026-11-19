@@ -48,12 +48,6 @@ extension ShotScene {
             backing: (backing.library, backing.session),
             playbackStore: boardPlayback(),
             history: history,
-            membership: MembershipStore.stub(
-                people: PreviewData.members(
-                    reaching: PreviewData.previewDropboxStorage
-                ),
-                selfIsAdmin: true
-            ),
             size: CGSize(width: 1200, height: 760)
         )
         return ShotStage(window) { history.list != nil }

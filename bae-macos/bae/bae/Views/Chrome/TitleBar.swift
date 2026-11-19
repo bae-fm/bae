@@ -19,8 +19,6 @@ struct TitleBar: View {
     private var libraryProjections
     @Environment(UiStore.self)
     var uiStore
-    @Environment(\.openSettingsWindow)
-    private var openSettings
     @Binding
     var searchText: String
     /// Told the search field's frame in `SearchOverlaySpace` whenever it
@@ -65,18 +63,7 @@ struct TitleBar: View {
 
                 ActivityButton()
 
-                Button(action: { openSettings() }) {
-                    Image(systemName: "gearshape")
-                        .themeIcon(.large)
-                        .frame(
-                            width: ThemeSize.hitTarget,
-                            height: ThemeSize.hitTarget
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(IconHoverButtonStyle().accentFocus())
-                .help("Settings")
-                .accessibilityLabel("Settings")
+                PersonMenu()
             }
         }
         .padding(.leading, titleBarLeadingPadding)
