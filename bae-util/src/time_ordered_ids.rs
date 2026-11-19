@@ -24,6 +24,10 @@ impl TimeOrderedIds {
 }
 
 impl IdSource for TimeOrderedIds {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "new ids: this is the one place bae makes ids, from the clock its owner was handed"
+    )]
     fn new_id(&self) -> Uuid {
         let since_epoch = self
             .clock

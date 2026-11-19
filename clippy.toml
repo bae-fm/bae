@@ -34,4 +34,10 @@ disallowed-methods = [
     { path = "tokio_util::task::TaskTracker::spawn_local_on", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking_on", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
+    # Every id bae makes comes from the IdSource its owner was handed, so the
+    # clock a test controls times it; the one place that makes ids is
+    # bae-util's time_ordered_ids. Parsing an id and Uuid::new_v5 stay free.
+    { path = "uuid::Uuid::new_v4", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
+    { path = "uuid::Uuid::new_v7", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
+    { path = "uuid::Uuid::now_v7", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
 ]
