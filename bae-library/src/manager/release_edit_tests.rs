@@ -35,7 +35,7 @@ async fn reidentify(manager: &LibraryManager, release_id: &str, link: bae_identi
         .apply_release_edit_catalog(form, &link, &bae_import::CatalogApplySteps::unread())
         .await
         .unwrap();
-    manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
+    manager.save_release_edit(form, super::GonePick::Unpick).await.unwrap();
 }
 
 /// Seed the MusicBrainz release `release_id` of group `group_id`, listing
@@ -403,7 +403,7 @@ async fn saving_moves_the_release_to_the_album_its_records_or_the_person_name() 
             line: bae_import::AlbumLine::TitleAlone { title: "Picked Album".to_string() },
         }
     );
-    manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
+    manager.save_release_edit(form, super::GonePick::Unpick).await.unwrap();
     assert_eq!(
         manager.records.find_album_id_for_release(&release.id).await.unwrap(),
         Some(picked.id.clone())
@@ -454,7 +454,7 @@ async fn two_forms_on_one_release_keep_their_own_apply_and_pick() {
         "the other editor's pick and apply are not this one's"
     );
     assert_eq!(third.opened, pane.opened);
-    manager.save_release_edit(sheet, super::PickedAlbumGone::Unpick).await.unwrap();
+    manager.save_release_edit(sheet, super::GonePick::Unpick).await.unwrap();
 
     assert_eq!(
         manager.records.find_album_id_for_release(&release.id).await.unwrap(),
@@ -487,11 +487,11 @@ async fn a_form_s_save_is_refused_once_the_release_changed_under_it() {
     let first = manager.open_release_edit(&release.id).await.unwrap();
     let second = manager.open_release_edit(&release.id).await.unwrap();
     let first = manager
-        .save_release_edit(titled(first, "Saved First"), super::PickedAlbumGone::Unpick)
+        .save_release_edit(titled(first, "Saved First"), super::GonePick::Unpick)
         .await
         .unwrap();
     let refused = manager
-        .save_release_edit(titled(second, "Saved Second"), super::PickedAlbumGone::Unpick)
+        .save_release_edit(titled(second, "Saved Second"), super::GonePick::Unpick)
         .await
         .expect_err("the release changed after the second form opened");
     assert!(
@@ -506,7 +506,7 @@ async fn a_form_s_save_is_refused_once_the_release_changed_under_it() {
     };
     assert_eq!(held(manager).await, "Saved First");
     manager
-        .save_release_edit(titled(first, "Saved Again"), super::PickedAlbumGone::Unpick)
+        .save_release_edit(titled(first, "Saved Again"), super::GonePick::Unpick)
         .await
         .expect("a save returns the form opened on what it saved");
     assert_eq!(held(manager).await, "Saved Again");
@@ -518,19 +518,13 @@ async fn a_form_s_save_is_refused_once_the_release_changed_under_it() {
         vec![bae_import::Credited::plain(bae_import::ArtistAssignment::named("Artist Name"))];
     manager.apply_release_metadata_user_edit(&release.id, &written.shape().unwrap()).await.unwrap();
     assert!(manager
-        .save_release_edit(
-            titled(opened_before_write, "Saved Over It"),
-            super::PickedAlbumGone::Unpick
-        )
+        .save_release_edit(titled(opened_before_write, "Saved Over It"), super::GonePick::Unpick)
         .await
         .is_err());
     assert_eq!(held(manager).await, "Written Elsewhere");
 
     let fresh = manager.open_release_edit(&release.id).await.unwrap();
-    manager
-        .save_release_edit(titled(fresh, "Saved Fresh"), super::PickedAlbumGone::Unpick)
-        .await
-        .unwrap();
+    manager.save_release_edit(titled(fresh, "Saved Fresh"), super::GonePick::Unpick).await.unwrap();
     assert_eq!(held(manager).await, "Saved Fresh");
 }
 
@@ -602,7 +596,7 @@ async fn a_form_holds_each_change_until_its_save() {
     let blank = draft_now(manager, &form).await;
     assert_eq!(blank.invalid, Some(bae_import::EditValidationError::EmptyAlbumTitle));
     assert!(
-        manager.save_release_edit(form.clone(), super::PickedAlbumGone::Unpick).await.is_err(),
+        manager.save_release_edit(form.clone(), super::GonePick::Unpick).await.is_err(),
         "a blank title can't be saved"
     );
     let form = titled(form, "Album Title");
@@ -612,7 +606,7 @@ async fn a_form_holds_each_change_until_its_save() {
     assert_eq!(reopened.edit, form.opened.edit, "opening again drops what the form held");
     assert!(!draft_now(manager, &reopened).await.changed);
 
-    let mut form = manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
+    let mut form = manager.save_release_edit(form, super::GonePick::Unpick).await.unwrap();
     assert_eq!(library_titles(manager).await[1], "Renamed Track");
 
     row.id = "no-such-row".to_string();

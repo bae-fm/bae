@@ -176,7 +176,7 @@ impl Records {
     /// `release_id`'s metadata as an edit of it starts from: the album, the
     /// release, its tracks and their credits as they stand, every credited
     /// artist picked.
-    async fn release_metadata_for_test(
+    pub(crate) async fn release_metadata_for_test(
         &self,
         release_id: &str,
     ) -> Result<ReleaseMetadataRows, DbError> {
@@ -296,7 +296,7 @@ impl Records {
                 write: ReleaseEditWrite::Applied { rows, picked },
                 album_fields: AlbumFields::Written,
             },
-            None,
+            super::GonePicks::Refuse,
             |_| Ok(Ok(())),
             |_| Ok(()),
         )

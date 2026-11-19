@@ -89,8 +89,7 @@ async fn a_release_edit_form_names_the_album_its_save_files_under() {
     deleted_pick.edit.set_album_artists(vec![bae_import::Credited::plain(
         bae_import::ArtistAssignment::named("Artist Name"),
     )]);
-    let refused =
-        manager.save_release_edit(deleted_pick.clone(), super::PickedAlbumGone::Refuse).await;
+    let refused = manager.save_release_edit(deleted_pick.clone(), super::GonePick::Refuse).await;
     assert!(
         matches!(
             &refused,
@@ -99,7 +98,7 @@ async fn a_release_edit_form_names_the_album_its_save_files_under() {
         "a caller that names the album itself is refused: {refused:?}"
     );
     manager
-        .save_release_edit(deleted_pick, super::PickedAlbumGone::Unpick)
+        .save_release_edit(deleted_pick, super::GonePick::Unpick)
         .await
         .expect("a deleted pick is no pick");
     assert_eq!(
@@ -131,7 +130,7 @@ async fn a_picked_new_album_files_the_release_under_a_fresh_album() {
     form.edit.set_album_artists(vec![bae_import::Credited::plain(
         bae_import::ArtistAssignment::named("Artist Name"),
     )]);
-    manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
+    manager.save_release_edit(form, super::GonePick::Unpick).await.unwrap();
 
     let filed = manager.records.find_album_id_for_release(&release.id).await.unwrap().unwrap();
     assert_ne!(filed, own.id, "the release left its album for a new one");

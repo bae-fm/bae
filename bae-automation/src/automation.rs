@@ -455,7 +455,7 @@ impl Automation {
         if let Some(album_id) = album_id {
             form.album_pick = bae_import::AlbumPick::Album { album_id };
         }
-        self.services.save_release_edit(form, bae_library::PickedAlbumGone::Refuse).await?;
+        self.services.save_release_edit(form, bae_library::GonePick::Refuse).await?;
         Ok(())
     }
 
@@ -469,7 +469,7 @@ impl Automation {
     ) -> Result<(), AutomationError> {
         let mut form = self.services.open_release_edit(&release_id).await?;
         form.album_pick = bae_import::AlbumPick::Album { album_id };
-        self.services.save_release_edit(form, bae_library::PickedAlbumGone::Refuse).await?;
+        self.services.save_release_edit(form, bae_library::GonePick::Refuse).await?;
         Ok(())
     }
 

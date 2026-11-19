@@ -113,19 +113,19 @@ impl LibraryManager {
     /// the one the person picked, else the one the applied records name. A
     /// form where the person applied no catalog writes the fields, and moves
     /// the release only to an album the person picked. When the library no
-    /// longer holds the library album the person picked, `gone` says what the
-    /// save does. The same write reads the release as this save wrote it,
-    /// and the method returns the form opened on that.
+    /// longer holds a library artist or album the person picked, `gone` says
+    /// what the save does. The same write reads the release as this save
+    /// wrote it, and the method returns the form opened on that.
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
     /// the library no longer holds the release as the form opened on it. The
     /// write itself finds that out, and whether the library holds the picked
-    /// album: it reads the release and the album as they stand, so no write
-    /// lands between the checks and the rows.
+    /// artists and album: it reads the release, the artists and the album as
+    /// they stand, so no write lands between the checks and the rows.
     pub async fn save_release_edit(
         &self,
         form: bae_import::ReleaseEditForm,
-        gone: PickedAlbumGone,
+        gone: GonePick,
     ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
         let release_id = form.release_id.clone();
         let shaped = form.edit.shape()?;
@@ -137,18 +137,23 @@ impl LibraryManager {
         };
         let plan =
             self.release_edit_plan(&form, &form.album_pick, &shaped, &opened, &records).await?;
-        let unpicked = match (&form.album_pick, gone) {
-            (bae_import::AlbumPick::Album { .. }, PickedAlbumGone::Unpick) => Some(
-                self.release_edit_plan(
-                    &form,
-                    &bae_import::AlbumPick::Records,
-                    &shaped,
-                    &opened,
-                    &records,
-                )
-                .await?,
-            ),
-            _ => None,
+        let gone = match (gone, &form.album_pick) {
+            (GonePick::Refuse, _) => bae_records::GonePicks::Refuse,
+            (GonePick::Unpick, bae_import::AlbumPick::Album { .. }) => {
+                bae_records::GonePicks::Unpick {
+                    unpicked: Some(
+                        self.release_edit_plan(
+                            &form,
+                            &bae_import::AlbumPick::Records,
+                            &shaped,
+                            &opened,
+                            &records,
+                        )
+                        .await?,
+                    ),
+                }
+            }
+            (GonePick::Unpick, _) => bae_records::GonePicks::Unpick { unpicked: None },
         };
         let saved_id = release_id.clone();
         let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
@@ -158,7 +163,7 @@ impl LibraryManager {
             bae_import::tables::release_edit_form_on(sql, &saved_id)
         };
         self.records
-            .save_release_edit_atomic(plan, unpicked, still_as_opened, saved)
+            .save_release_edit_atomic(plan, gone, still_as_opened, saved)
             .await
             .map_err(|error| release_edit_save_error(error, &release_id))
     }
@@ -261,15 +266,17 @@ impl LibraryManager {
     }
 }
 
-/// What a save does when the library no longer holds the library album the
-/// form picked.
+/// What a save does when the library no longer holds a library artist or
+/// album the form picked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PickedAlbumGone {
-    /// The album stops being the pick, as the editor's draft shows it: the
-    /// save files the release as with no pick.
+pub enum GonePick {
+    /// The pick stops being the pick, as the editor's draft shows it: the
+    /// save writes a picked artist as a credit of the values the form holds
+    /// for it, and files the release as with no album pick.
     Unpick,
-    /// The save refuses with [`LibraryError::AlbumMissing`] and writes
-    /// nothing, for a caller that named the album itself.
+    /// The save refuses, writing nothing, with [`LibraryError::AlbumMissing`]
+    /// for the album and [`LibraryError::Identity`] for an artist, for a
+    /// caller that named them itself.
     Refuse,
 }
 

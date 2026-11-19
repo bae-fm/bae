@@ -84,7 +84,7 @@ mod release_edit_save;
 pub use release::AlbumFields;
 #[cfg(desktop)]
 pub use release_edit_save::{
-    ReleaseEditPlan, ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite,
+    GonePicks, ReleaseEditPlan, ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite,
 };
 mod emptied;
 use emptied::Emptiable;

@@ -153,7 +153,7 @@ forward! {
         fn save_release_edit(
             form: std::sync::Arc<BridgeReleaseEditForm>,
         ) -> crate::types::BridgeReleaseEditSaved {
-            let saved = this.services.save_release_edit(form.inner.clone(), bae_library::PickedAlbumGone::Unpick).await?;
+            let saved = this.services.save_release_edit(form.inner.clone(), bae_library::GonePick::Unpick).await?;
             let album_id = this.services.get_album_id_for_release(&saved.release_id).await?;
             Ok(crate::types::BridgeReleaseEditSaved { album_id, form: BridgeReleaseEditForm::of(saved) })
         }

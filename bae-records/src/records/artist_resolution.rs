@@ -534,7 +534,7 @@ impl CatalogCredit for DbArtist {
     }
 }
 
-fn artist_by_id_on<Q: coven::SqlRead>(
+pub(super) fn artist_by_id_on<Q: coven::SqlRead>(
     sql: &Q,
     artist_id: &str,
 ) -> Result<Option<DbArtist>, DbError> {

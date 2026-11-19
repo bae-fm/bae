@@ -615,7 +615,7 @@ impl AppServices {
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, open_release_edit => open_release_edit(release_id: &str) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, apply_release_edit_catalog => apply_release_edit_catalog(form: bae_import::ReleaseEditForm, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
-    delegate_async!(#[cfg(desktop)] manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm, gone: bae_library::PickedAlbumGone) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
+    delegate_async!(#[cfg(desktop)] manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm, gone: bae_library::GonePick) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     delegate_sync!(#[cfg(desktop)] manager, subscribe_release_edit_draft => subscribe_release_edit_draft() -> bae_library::LiveReleaseEditDraft);
     delegate_async!(#[cfg(desktop)] manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), bae_library::LibraryError>);
     delegate_async!(#[cfg(desktop)] manager, enqueue_release_save => enqueue_release_save(release_id: &str, target_dir: std::path::PathBuf, preset_id: &str) -> Result<(), bae_library::LibraryError>);

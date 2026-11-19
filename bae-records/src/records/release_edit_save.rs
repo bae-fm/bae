@@ -24,6 +24,103 @@ pub enum ReleaseEditWrite {
     },
 }
 
+#[cfg(desktop)]
+impl ReleaseEditWrite {
+    /// The write with each artist the form picked that the library no
+    /// longer holds made a credit of the values the form holds for it, as
+    /// the editor shows it: a credit row of its own, which the write decides
+    /// as it does a typed name, and each album and track link to it printing
+    /// what the form printed.
+    fn with_gone_picks_as_credits(
+        self,
+        sql: &CovenWrite<'_>,
+        ids: &dyn coven::IdSource,
+    ) -> Result<Self, DbError> {
+        Ok(match self {
+            Self::Fields(mut metadata) => {
+                gone_picks_as_credits(
+                    sql,
+                    ids,
+                    &mut metadata.credits,
+                    &mut metadata.picked,
+                    &mut metadata.album_artists,
+                    &mut metadata.track_artists,
+                )?;
+                Self::Fields(metadata)
+            }
+            Self::Applied { mut rows, mut picked } => {
+                gone_picks_as_credits(
+                    sql,
+                    ids,
+                    &mut rows.artists,
+                    &mut picked,
+                    &mut rows.album_artists,
+                    &mut rows.track_artists,
+                )?;
+                Self::Applied { rows, picked }
+            }
+        })
+    }
+}
+
+/// Make each of `picked` the library no longer holds a credit of its row in
+/// `credits`: the row under a new id, no longer picked, and each of
+/// `album_artists` and `track_artists` that links it linking the new row
+/// and printing what it printed, its credit name or else the artist's name.
+#[cfg(desktop)]
+fn gone_picks_as_credits(
+    sql: &CovenWrite<'_>,
+    ids: &dyn coven::IdSource,
+    credits: &mut [DbArtist],
+    picked: &mut Vec<String>,
+    album_artists: &mut [DbAlbumArtist],
+    track_artists: &mut [DbTrackArtist],
+) -> Result<(), DbError> {
+    let mut gone = std::collections::HashMap::new();
+    for artist_id in picked.iter() {
+        if super::artist_resolution::artist_by_id_on(sql, artist_id)?.is_none() {
+            let credit = credits
+                .iter_mut()
+                .find(|credit| credit.id == *artist_id)
+                .unwrap_or_else(|| panic!("picked artist {artist_id} is no credit of the write"));
+            credit.id = ids.new_id().to_string();
+            gone.insert(artist_id.clone(), (credit.id.clone(), credit.name.clone()));
+        }
+    }
+    picked.retain(|artist_id| !gone.contains_key(artist_id));
+    let relink = |artist_id: &mut String, credit: &mut Option<crate::credits::CreditName>| {
+        if let Some((id, name)) = gone.get(artist_id.as_str()) {
+            artist_id.clone_from(id);
+            credit.get_or_insert_with(|| crate::credits::CreditName::of(name));
+        }
+    };
+    for link in album_artists {
+        relink(&mut link.artist_id, &mut link.credit);
+    }
+    for link in track_artists {
+        relink(&mut link.artist_id, &mut link.credit);
+    }
+    Ok(())
+}
+
+/// What a save does with a pick of its form that the library no longer
+/// holds.
+#[cfg(desktop)]
+pub enum GonePicks {
+    /// The pick stops being the pick, as the release editor shows it: a
+    /// picked artist saves as a credit of the values the form holds for it,
+    /// and a save that moves the release into a picked album writes
+    /// `unpicked`, the plan with no album pick, instead (`None` where the
+    /// form picked no album, so a move into an album the library no longer
+    /// holds is refused as [`ReleaseEditRefusal::AlbumGone`]).
+    Unpick { unpicked: Option<ReleaseEditPlan> },
+    /// The save refuses, writing nothing: as
+    /// [`IdentityRefusal::ArtistGone`] for a picked artist and as
+    /// [`ReleaseEditRefusal::AlbumGone`] for the album, for a caller that
+    /// named them itself.
+    Refuse,
+}
+
 /// What a save writes: where the release goes and its records (see
 /// `set_records_on`), the rows it writes over the release's, and whether
 /// the album's own fields are written.
@@ -96,10 +193,9 @@ impl Records {
     /// check, as `still_as_opened` says, that the release is still as the
     /// editor opened on it, then write `plan`: move the release and replace
     /// its records where its change says (see `set_records_on`), then write
-    /// its rows. When `plan` moves the release into a library album the
-    /// library no longer holds, the save writes `unpicked` instead, or, with
-    /// none, refuses as [`ReleaseEditRefusal::AlbumGone`]. Last it reads what
-    /// `saved` reads of the release as this save wrote it, and returns that.
+    /// its rows. `gone` says what the save does with a picked artist or
+    /// album the library no longer holds. Last it reads what `saved` reads
+    /// of the release as this save wrote it, and returns that.
     /// Before it writes anything, the save refuses a release that is not as
     /// the editor opened on it as [`ReleaseEditRefusal::Stale`], and one the
     /// library no longer holds as [`ReleaseEditRefusal::Gone`]; the checks run
@@ -108,7 +204,7 @@ impl Records {
     pub async fn save_release_edit_atomic<Saved: Send + 'static>(
         &self,
         plan: ReleaseEditPlan,
-        unpicked: Option<ReleaseEditPlan>,
+        gone: GonePicks,
         still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
@@ -119,7 +215,11 @@ impl Records {
         self.store
             .write(move |sql| {
                 still_as_opened(&sql)?.map_err(WriteError::Refused)?;
-                let plan = match plan.existing_target() {
+                let (unpicked, picks_as_credits) = match gone {
+                    GonePicks::Unpick { unpicked } => (unpicked, true),
+                    GonePicks::Refuse => (None, false),
+                };
+                let mut plan = match plan.existing_target() {
                     Some(album_id) if !super::release_records::album_held_on(&sql, album_id)? => {
                         unpicked.ok_or_else(|| {
                             WriteError::Refused(ReleaseEditRefusal::AlbumGone {
@@ -129,6 +229,9 @@ impl Records {
                     }
                     _ => plan,
                 };
+                if picks_as_credits {
+                    plan.write = plan.write.with_gone_picks_as_credits(&sql, &*ids)?;
+                }
                 let pressing = PressingParts::new(&*ids, now_dt, plan.pressing());
                 let emptiable = Emptiable::of_releases(&sql, &[plan.release_id()])?
                     .including_album(&sql, plan.album_id())?;

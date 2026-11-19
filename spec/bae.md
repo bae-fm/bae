@@ -2213,7 +2213,8 @@ of the album it left); a pick holds over a catalog applied after it. A
 library album the person picked stops being the pick once someone deletes
 it. When someone deletes a library artist the person picked for a credit,
 the editor shows that credit by the artist's name as the form holds it, and
-how it stands to the library as for a name the person typed. The cover is
+how it stands to the library as for a name the person typed, and a save
+writes that credit as it writes a typed name. The cover is
 not part of the form: the editor writes a cover the person
 picks at once, and the form keeps what the person applied and picked.
 Cancelling discards the form's changes; bae reads no source again, and there is no reset to
@@ -6292,7 +6293,7 @@ detail:
 | `DeviceResetRequired` | resets the device (§6.4): when another installation replaced this one or the member's keys changed, bae asks first and shows the reset's warning; when another installation uses this device's id and this copy is the one behind, bae resets at once without asking |
 | `DeviceRemoved` | stops syncing this library on this device for good: the device, or its person, was removed from the library, or the library refused a joined device's admission |
 | `Import`, `ImportData` | reads the detail: an import couldn't finish, because a catalog or a source couldn't answer or be read, or its candidate or the library's artists changed before its write, and importing again works on what now stands |
-| `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist a credit picked that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
+| `ChangedMeanwhile` | asks again, on what now stands: what a change acted on changed before it was written, and nothing was written (a release, album or file deleted before a change of it, an album or release a deletion was planned against, a release whose tracks came or went under an edit, a cover or artist image replaced again, a release picked as its album's primary that moved to another album, an artist given a printed name that was deleted or merged, an artist that an import's or MCP's credit picked and that left the library, a candidate or the watched folders that changed under a change to them, a cancel that came after the import began writing) |
 | `InvalidEdit` | fixes what they typed, as the line says: an album title, an artist, an artist's name, a year |
 | `FilenamePatternInvalid`, `FolderPatternInvalid` | fixes the file or folder name pattern in Settings: a save named by a pattern that can't make a name wrote nothing, and the detail says why |
 | `WatchedFolderOverlap` | watches another folder: the one they asked for lies in a watched folder, or holds one that bae started watching while it added theirs, and the detail names both |

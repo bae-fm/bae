@@ -24,17 +24,14 @@ async fn a_save_returns_the_form_opened_on_what_it_saved() {
     let form = manager.open_release_edit(&release_id).await.unwrap();
 
     let saved = manager
-        .save_release_edit(titled(form, "Saved Title"), super::PickedAlbumGone::Unpick)
+        .save_release_edit(titled(form, "Saved Title"), super::GonePick::Unpick)
         .await
         .unwrap();
 
     assert_eq!(saved.edit.album_title, "Saved Title");
     let draft = draft_now(manager, &saved).await;
     assert!(!draft.changed, "the saved form opened on what it saved");
-    manager
-        .save_release_edit(titled(saved, "Saved Again"), super::PickedAlbumGone::Unpick)
-        .await
-        .unwrap();
+    manager.save_release_edit(titled(saved, "Saved Again"), super::GonePick::Unpick).await.unwrap();
 }
 
 #[tokio::test]
@@ -45,7 +42,7 @@ async fn opening_again_reads_the_release_as_it_is() {
     let opened = manager.open_release_edit(&release_id).await.unwrap();
     let other = manager.open_release_edit(&release_id).await.unwrap();
     manager
-        .save_release_edit(titled(other, "Written Elsewhere"), super::PickedAlbumGone::Unpick)
+        .save_release_edit(titled(other, "Written Elsewhere"), super::GonePick::Unpick)
         .await
         .unwrap();
 
@@ -157,7 +154,7 @@ async fn artist_of_its_own_release(
 }
 
 #[tokio::test]
-async fn an_artist_the_form_picked_shows_as_a_new_credit_once_deleted() {
+async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let release_id = release_of_two_tracks(manager).await;
@@ -213,6 +210,14 @@ async fn an_artist_the_form_picked_shows_as_a_new_credit_once_deleted() {
         first_row.edit.artist_assignments,
         bae_import::TrackArtistAssignments::Explicit(vec![credit])
     );
+
+    // The save writes the credit the editor shows.
+    manager.save_release_edit(form, super::GonePick::Unpick).await.expect("the form saves");
+    let album_id = manager.records.find_album_id_for_release(&release_id).await.unwrap().unwrap();
+    let credits = manager.records.get_artists_for_album(&album_id).await.unwrap();
+    let [saved] = credits.as_slice() else { panic!("one album credit: {credits:?}") };
+    assert_ne!(saved.artist.id, artist.id);
+    assert_eq!(saved.artist.name, "Departed Artist");
 }
 
 #[tokio::test]
