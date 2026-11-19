@@ -85,8 +85,7 @@ struct MacStorageChip: View {
 }
 
 /// A storage state that stands still, as a word in the row's text: primary
-/// text, or a problem's tone colour. The design system draws it at 11 points
-/// regular, a size its text roles don't name.
+/// text, or a problem's tone colour, in the cell text role.
 private struct StorageWord: View {
     let text: Text
     let tone: StatusTone?
@@ -103,7 +102,7 @@ private struct StorageWord: View {
 
     var body: some View {
         text
-            .font(.system(size: 11))
+            .themeText(.cell)
             .lineLimit(1)
             .foregroundStyle(tone?.color ?? Theme.textPrimary)
     }
