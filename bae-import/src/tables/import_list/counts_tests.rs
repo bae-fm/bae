@@ -8,26 +8,14 @@ impl Library {
     /// The counts as they stand, one readable line each: the tab, the item,
     /// the filter entry when the rows have one, and the count.
     async fn counts(&self) -> Vec<String> {
-        self.db
-            .read(|sql| {
-                Ok(sql.query(
-                    "SELECT tab, item, pending_entry, count FROM import_list_count \
-                     ORDER BY tab, item, pending_entry",
-                    [],
-                    |row| {
-                        let entry = row.get::<_, Option<String>>(2)?;
-                        Ok(format!(
-                            "{} {}{} {}",
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1)?,
-                            entry.map(|entry| format!(" {entry}")).unwrap_or_default(),
-                            row.get::<_, i64>(3)?,
-                        ))
-                    },
-                )?)
-            })
+        self.stored_counts()
             .await
-            .unwrap()
+            .into_iter()
+            .map(|(tab, item, entry, count)| {
+                let entry = entry.map(|entry| format!(" {entry}")).unwrap_or_default();
+                format!("{tab} {item}{entry} {count}")
+            })
+            .collect()
     }
 
     /// Run `write` alone, check the counts against a COUNT over the

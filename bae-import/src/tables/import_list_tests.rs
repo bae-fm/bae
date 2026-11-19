@@ -223,33 +223,37 @@ impl Library {
     /// for each tab, item and filter entry, what a COUNT over every placement
     /// row says, and hold nothing else.
     pub(crate) async fn counted(&self) {
-        let (kept, placed) = self
-            .db
-            .read(|sql| {
-                let rows = |statement: &str| {
-                    sql.query(statement, [], |row| {
-                        Ok((
-                            row.get::<_, String>(0)?,
-                            row.get::<_, String>(1)?,
-                            row.get::<_, Option<String>>(2)?,
-                            row.get::<_, i64>(3)?,
-                        ))
-                    })
-                };
-                Ok((
-                    rows(
-                        "SELECT tab, item, pending_entry, count FROM import_list_count \
-                         ORDER BY tab, item, pending_entry",
-                    )?,
-                    rows(
-                        "SELECT tab, item, pending_entry, COUNT(*) FROM import_list_placement \
-                         GROUP BY tab, item, pending_entry ORDER BY tab, item, pending_entry",
-                    )?,
-                ))
+        assert_eq!(
+            self.stored_counts().await,
+            self.count_rows(
+                "SELECT tab, item, pending_entry, COUNT(*) FROM import_list_placement \
+                 GROUP BY tab, item, pending_entry ORDER BY tab, item, pending_entry",
+            )
+            .await,
+            "the counts kept beside the placement"
+        );
+    }
+
+    /// The counts kept beside the placement as they stand, in order.
+    pub(crate) async fn stored_counts(&self) -> Vec<CountRow> {
+        self.count_rows(
+            "SELECT tab, item, pending_entry, count FROM import_list_count \
+             ORDER BY tab, item, pending_entry",
+        )
+        .await
+    }
+
+    /// The rows `statement` selects, each a tab, an item, a filter entry and
+    /// a count.
+    async fn count_rows(&self, statement: &'static str) -> Vec<CountRow> {
+        self.db
+            .read(move |sql| {
+                Ok(sql.query(statement, [], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+                })?)
             })
             .await
-            .unwrap();
-        assert_eq!(kept, placed, "the counts kept beside the placement");
+            .unwrap()
     }
 
     /// Check the search index holds each release's folded shown text under
@@ -364,6 +368,10 @@ impl Library {
         }
     }
 }
+
+/// One count of the placement's rows: their tab, their item, their entry of
+/// Found's filter when they have one, and how many there are.
+pub(crate) type CountRow = (String, String, Option<String>, i64);
 
 /// `tab` in the default order, unfiltered.
 pub(crate) fn view(tab: TriageTab) -> ImportListView {
