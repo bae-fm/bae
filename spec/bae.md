@@ -2062,8 +2062,10 @@ fetch the catalogs' covers and store them, replacing what the last fetch
 stored on this device (§A.8). The open picker shows that fetch, a change to
 the release's files or saved cover, or the candidate's folder, draft or link,
 from this or another device, and the person's choice of another source or
-another cover as each happens. bae stores a candidate's fetch with the link it
-fetched for, and its picker shows the fetch only while the candidate
+another cover as each happens. A scan of other folders, and the drafts and
+links bae stores for them, write none of the rows a candidate's picker reads,
+so coven reruns the picker's read for none of them. bae stores a candidate's
+fetch with the link it fetched for, and its picker shows the fetch only while the candidate
 keeps that link; otherwise it offers what the pressing that bae read the
 draft from offers (above). A fetch that fails stores nothing, so the covers stored
 stay on screen, and for a release or candidate that names no catalog release,

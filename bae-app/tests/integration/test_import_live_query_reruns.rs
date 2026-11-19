@@ -1,12 +1,13 @@
 //! How often the import screen's live queries rerun while a scan writes
 //! folders, with the screen open on one candidate: the pane's read of that
 //! candidate, the list's count and two of its windows, and the scans'
-//! progress. The pane reads only its candidate's rows, so a scan writing other
-//! folders must not rerun the pane's query; the count and the progress show
-//! every folder and rerun with each write, and a window reruns for the writes
-//! it can hold. Each folder holds one file of a size no other folder's
-//! file has, so each write stores rows of its own, as a real scan's folders
-//! do. Run explicitly:
+//! progress; and, in a test of its own, the read of that candidate's cover
+//! picker. The pane and the picker read only their candidate's rows, so a scan
+//! writing other folders must not rerun their queries; the count and the
+//! progress show every folder and rerun with each write, and a window reruns
+//! for the writes it can hold. Each folder holds one file of a size no other
+//! folder's file has, so each write stores rows of its own, as a real scan's
+//! folders do. Run explicitly:
 //!
 //!   scripts/cargo.sh test -p bae-app --features test-utils --test integration \
 //!     -- test_import_live_query_reruns:: --ignored --nocapture
@@ -34,6 +35,12 @@ const SETTLE: Duration = Duration::from_secs(60);
 
 /// The folder `name` below `root`, holding one FLAC of `size` bytes.
 fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
+    folder_with(root, name, size, &[])
+}
+
+/// The folder `name` below `root`, holding one FLAC of `size` bytes and the
+/// images `images`, by their names.
+fn folder_with(root: &Path, name: &str, size: u64, images: &[&str]) -> ScanItem {
     let path = root.join(name);
     let mut file = ScannedFile::new(path.join("01.flac"), "01.flac".to_string(), size, 1);
     file.source_audio = Some(ScannedAudio {
@@ -48,12 +55,18 @@ fn folder(root: &Path, name: &str, size: u64) -> ScanItem {
             channels: 2,
         },
     });
+    let images = images.iter().map(|image| CandidateFile {
+        file: ScannedFile::new(path.join(image), image.to_string(), 500, 1),
+        role: FileRole::Artwork,
+    });
     ScanItem::Valid(FolderCandidate {
         file_root: path.clone(),
-        path,
+        path: path.clone(),
         name: name.to_string(),
         files: CategorizedFiles {
-            files: vec![CandidateFile { file, role: FileRole::Audio }],
+            files: std::iter::once(CandidateFile { file, role: FileRole::Audio })
+                .chain(images)
+                .collect(),
             parts: Vec::new(),
         },
         watched_folder_path: root.to_path_buf(),
@@ -281,5 +294,106 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
         reader.abort();
         assert!(reader.await.unwrap_err().is_cancelled());
     }
+    services.close().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "a measurement of live query reruns, run on its own"]
+async fn a_scan_leaves_the_open_cover_gallery_alone() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let library = temp.path().join("library");
+    std::fs::create_dir_all(&library).unwrap();
+    let test_library = bae_library::test_libraries::open_test_library(&library).await;
+    let tables = bae_import::tables::ImportTables::new(test_library.store().clone());
+    test_library.manager().set_identify_automatically(false).await.unwrap();
+    let services = bae_app::test_services::start_services(&test_library)
+        .await
+        .expect("the test library's services start");
+
+    let root = temp.path().join("watched");
+    tables.add_watched_import_folder(&root).await.unwrap();
+    let generation = tables.begin_folder_scan(&root, bae_import::VolumeKind::Local).await.unwrap();
+    let seed = folder(&root, "0000 seed", 1_000);
+    let ScanItem::Valid(seed_candidate) = &seed else { unreachable!("the folder is valid") };
+    let key = CandidateKey::folder(&seed_candidate.path);
+    tables.save_folder_scan_item(&root, generation, &seed).await.unwrap();
+
+    // The picker's query on the seed under all its sources, read as the
+    // picker reads it, each count of the folder's images beside how often
+    // the query had run when it returned it.
+    let mut gallery = tables.subscribe_cover_gallery(Some(bae_import::CoverGalleryRequest {
+        owner: bae_import::CoverGalleryOwner::Candidate(key),
+        filter: bae_import::CoverFilter::All,
+        focus: None,
+    }));
+    let (gallery_tx, mut gallery_seen) = tokio::sync::watch::channel(None::<(u32, Counted)>);
+    let gallery_reader = bae_util::test_spawn::task(async move {
+        while let Some(event) = gallery.next_inline().await {
+            if let Some(snapshot) = event.result.expect("the picker reads") {
+                let images = snapshot.gallery.files.expect("all shows the folder's images").count;
+                gallery_tx.send_replace(Some((images, Counted::of(&gallery.runs()))));
+            }
+        }
+    });
+    settle(&mut gallery_seen, "the picker", |shown| matches!(shown, Some((0, _)))).await;
+    let gallery_before = gallery_seen.borrow().expect("the picker showed the seed").1;
+
+    for n in 1..=WRITES {
+        tables
+            .save_folder_scan_item(
+                &root,
+                generation,
+                &folder(&root, &format!("{n:05} folder"), 2_000 + n),
+            )
+            .await
+            .unwrap();
+    }
+
+    // The picker has nothing to show for the scan's writes, so a write it
+    // does show closes them: the scan finds an image in the seed's folder,
+    // and once the picker shows it, it has run for everything the scan wrote
+    // before it. Its runs, less the one that showed that write, are the
+    // scan's.
+    tables
+        .save_folder_scan_item(
+            &root,
+            generation,
+            &folder_with(&root, "0000 seed", 1_000, &["cover.jpg"]),
+        )
+        .await
+        .unwrap();
+    settle(&mut gallery_seen, "the picker", |shown| matches!(shown, Some((1, _)))).await;
+    let gallery_counted =
+        gallery_seen.borrow().expect("the picker showed the image").1.since(gallery_before);
+    let gallery_counted = Counted {
+        runs: gallery_counted.runs - 1,
+        writes: gallery_counted.writes - 1,
+        equal: gallery_counted.equal,
+    };
+
+    println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
+    println!(
+        "  {:14} {:5} ({:5}, {:5})",
+        "cover gallery", gallery_counted.runs, gallery_counted.writes, gallery_counted.equal
+    );
+    for (kind, count) in
+        [("runs", gallery_counted.runs), ("caused_by_a_write", gallery_counted.writes)]
+    {
+        bae_store::test_fixtures::window_cost::report_cost(
+            &format!("cover_gallery/{kind}"),
+            count as f64,
+            "count",
+        );
+    }
+
+    // As for the pane: no scan write here writes a row of the picker's
+    // candidate, so the count is 0 on every run.
+    assert_eq!(
+        gallery_counted.runs, 0,
+        "the scan's writes of other folders reran the cover gallery"
+    );
+
+    gallery_reader.abort();
+    assert!(gallery_reader.await.unwrap_err().is_cancelled());
     services.close().await.unwrap();
 }

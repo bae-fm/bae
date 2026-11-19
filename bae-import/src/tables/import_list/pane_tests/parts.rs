@@ -603,3 +603,59 @@ async fn the_picker_offers_the_covers_the_linked_release_states() {
         )
     );
 }
+
+/// The candidate's picker reads only that candidate's rows, so coven reruns
+/// its read for a fetch of that candidate's covers and for no write of
+/// another folder: the scan that finds it, and the draft and link its
+/// identification stores.
+#[tokio::test]
+async fn another_folder_s_scan_and_link_leave_the_picker_s_read_unmarked() {
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let shown = linked(&db, &root).await;
+    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
+    let mut live = tables.subscribe_cover_gallery(Some(crate::CoverGalleryRequest {
+        owner: crate::CoverGalleryOwner::Candidate(shown.key()),
+        filter: crate::CoverFilter::All,
+        focus: None,
+    }));
+    live.next_inline().await.expect("the read runs").result.unwrap().expect("the picker reads");
+
+    let other = crate::CandidateKey::folder(&folder_below(&root, "Other"));
+    let other = key_candidate(&root, &other);
+    tables.save_folder_scan_item(&root, generation, &ScanItem::Valid(other.clone())).await.unwrap();
+    let hash = other.files.content_hash();
+    assert_ne!(hash, shown.files.content_hash(), "the folders hold different files");
+    let record = LookupRef::new(LookupCatalog::MusicBrainz, "mb-linked");
+    let draft = tables.load_import_candidate_pane_rows(&hash).await.unwrap().draft.release_edit();
+    tables
+        .replace_metadata(
+            &hash,
+            &other.key(),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease { record: record.clone() }),
+            &[],
+        )
+        .await
+        .unwrap();
+    tables
+        .replace_link(
+            &hash,
+            Some(&crate::ReleaseLink::Pressing(bae_identify::PressingLink {
+                record,
+                partners: vec![],
+            })),
+            &[],
+        )
+        .await
+        .unwrap();
+    assert!(
+        !live.is_marked_for_rerun(),
+        "another folder's writes reached none of the picker's rows"
+    );
+
+    let shown_hash = shown.files.content_hash();
+    let link = tables.candidate_cover_link(&shown_hash).await.unwrap();
+    tables.replace_candidate_covers(&shown_hash, link, Some(Vec::new())).await.unwrap();
+    assert!(live.is_marked_for_rerun(), "a fetch of the candidate's covers changes what it reads");
+}
