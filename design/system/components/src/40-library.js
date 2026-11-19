@@ -207,7 +207,7 @@
           h('div', { className: 'bae-m-plpage-facts' }, [props.count, props.length].join(' · '), shared),
           h('div', { className: 'bae-m-plpage-actions' },
             h(MacButton, { kind: 'primary' }, 'Play'),
-            h(MacMoreMenu, { boxed: true, label: 'Playlist options', items: ['Shuffle'].concat(props.options ? ['-'].concat(list(props.options)) : []).join(','), open: props.optionsOpen, highlighted: props.highlighted })))),
+            h(MacMoreMenu, { boxed: true, label: 'Playlist options', items: ['Shuffle'].concat(list(props.options)).join(','), open: props.optionsOpen, highlighted: props.highlighted })))),
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }
 
