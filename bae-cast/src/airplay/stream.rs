@@ -628,9 +628,9 @@ fn spawn_sync_thread(
             let latency_frames = control.latency_frames();
             let mut first = true;
             loop {
-                let now_ts = initial_timestamp
-                    .wrapping_add(control.frames_sent() as u32)
-                    .wrapping_add(latency_frames);
+                // The sender runs the latency ahead of what the receiver
+                // plays: the next frame it sends plays a latency from now.
+                let now_ts = initial_timestamp.wrapping_add(control.frames_sent() as u32);
                 let played = now_ts.wrapping_sub(latency_frames);
                 let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
                 if let Err(e) = socket.send_to(&packet, dst) {

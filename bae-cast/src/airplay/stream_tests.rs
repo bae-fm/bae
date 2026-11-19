@@ -203,6 +203,41 @@ fn the_sender_owes_no_audio_for_the_time_setup_took() {
     assert_eq!(control.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
 }
 
+/// A sync packet tells the receiver which frame it should be playing now and
+/// which frame the sender sends next: the sender runs the latency ahead, so
+/// the frame it sends next plays a latency from now. Sabotage: count the
+/// latency onto the next frame, and the receiver plays each frame as it
+/// arrives and runs out.
+#[test]
+fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
+    let receiver = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    receiver.set_read_timeout(Some(bae_util::test_channels::HANG_GUARD)).unwrap();
+    let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
+    // The sender has sent 300 packets of a stream that started at 1000.
+    control.record_frames(300 * u64::from(FRAMES_PER_PACKET));
+    let (stop, stopped) = std::sync::mpsc::channel();
+    let sender = spawn_sync_thread(
+        &Diagnostics::noop(),
+        UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
+        receiver.local_addr().unwrap(),
+        1000,
+        control,
+        stopped,
+    )
+    .expect("spawn the sync sender");
+
+    let mut packet = [0u8; 64];
+    let (len, _) = receiver.recv_from(&mut packet).expect("the sender sends a sync packet");
+    drop(stop);
+    sender.join();
+
+    assert_eq!(len, 20);
+    let playing = u32::from_be_bytes(packet[4..8].try_into().unwrap());
+    let next = u32::from_be_bytes(packet[16..20].try_into().unwrap());
+    assert_eq!(next, 1000 + 300 * FRAMES_PER_PACKET, "the frame the sender sends next");
+    assert_eq!(playing, next - 88_200, "the frame playing now, a latency before it");
+}
+
 /// A source whose pull panics: a bug in the samples' way to the sender.
 struct PanickingSource;
 impl PcmSource for PanickingSource {
