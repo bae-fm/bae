@@ -58,7 +58,6 @@ jobs:
 
     - name: Check the boundaries between owners, the apps and the bridge
       run: |
-        python3 scripts/coven-builder-boundary.py
         python3 scripts/swift-owner-dependency-boundary.py
         python3 scripts/keyed-value-stream-boundary.py
 

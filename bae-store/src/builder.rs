@@ -4,9 +4,12 @@
 /// `ids`: the pair one process makes once, where the app's composition makes
 /// it, so every library the process builds, opens or restores stamps and
 /// names its rows the same way. Taking a builder any other way would leave
-/// coven's own random ids in a library the app writes; the
-/// `coven-builder-boundary` check holds every `.builder()` call in bae to
-/// this function.
+/// coven's own random ids in a library the app writes; clippy
+/// refuses every `Coven::builder` call in bae outside this function.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "coven builder: this is the one place bae takes a builder, with the clock and the ids together"
+)]
 pub fn store_builder(
     installation: &coven::Coven,
     clock: coven::ClockRef,

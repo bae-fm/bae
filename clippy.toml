@@ -40,4 +40,11 @@ disallowed-methods = [
     { path = "uuid::Uuid::new_v4", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
     { path = "uuid::Uuid::new_v7", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
     { path = "uuid::Uuid::now_v7", reason = "take a coven::IdSource and call new_id; only bae-util's time_ordered_ids makes ids" },
+    # A builder from Coven::builder has coven's random ids and the system clock
+    # unless its caller sets its own. bae's libraries are written with its
+    # time-ordered ids on one clock, made once by the process's composition;
+    # the one function that takes a builder is bae-store's store_builder, which
+    # takes the clock and the ids together. Tests take theirs through
+    # bae_store::test_devices.
+    { path = "coven::Coven::builder", reason = "use bae_store::store_builder, which sets the clock and the ids together" },
 ]
