@@ -62,6 +62,13 @@ struct TriageTabBarTests {
         }
     }
 
+    @Test("each tab is named with its count once the count arrives")
+    func tabNames() {
+        #expect(TriageTabBar.name(of: .pending, count: 14) == "Found, 14")
+        #expect(TriageTabBar.name(of: .done, count: 31) == "Imported, 31")
+        #expect(TriageTabBar.name(of: .skipped, count: nil) == "Skipped")
+    }
+
     @Observable
     fileprivate final class Selection {
         var tab: BridgeTriageTab = .pending

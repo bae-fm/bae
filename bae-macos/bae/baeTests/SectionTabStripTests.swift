@@ -13,11 +13,12 @@ struct SectionTabStripTests {
     )
     func stripIsATabGroup() throws {
         var pressed: [MainSection] = []
-        let model = SectionTabsModel(
-            selection: .library,
+        let model = TabStripModel(
+            tabs: SectionTabStrip.tabs,
+            selection: MainSection.library,
             onSelect: { pressed.append($0) }
         )
-        let strip = SectionTabStripView(model: model)
+        let strip = TabStripView(model: model)
 
         #expect(strip.accessibilityRole() == .tabGroup)
         let tabs = try #require(

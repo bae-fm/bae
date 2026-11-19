@@ -15,10 +15,13 @@ struct ImportListFilterField: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
+            // The field's name says what it does, so the glyph says
+            // nothing more to assistive technology.
             Image(systemName: "magnifyingglass")
                 .themeIcon(ImportFilterBarLayout.glyph)
                 .foregroundStyle(.tertiary)
-            TextField("Filter…", text: $text)
+                .accessibilityHidden(true)
+            TextField("Filter", text: $text, prompt: Text("Filter"))
                 .textFieldStyle(.plain)
                 .themeText(.body)
                 .focused(focused)
