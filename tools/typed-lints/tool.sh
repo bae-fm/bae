@@ -36,8 +36,10 @@ build:2)
     source=$(mktemp -d "$work/coven.XXXXXX")
     trap 'rm -rf "$source"' EXIT
     git -C "$source" init --quiet
-    git -C "$source" sparse-checkout set --no-cone /Cargo.toml /tools/typed-lints/ \
-        /tools/owner-construction-policy/ /scripts/cargo.sh
+    # The patterns go on stdin: Git Bash would rewrite an argument that starts
+    # with a slash into a Windows path.
+    printf '%s\n' /Cargo.toml /tools/typed-lints/ /tools/owner-construction-policy/ \
+        /scripts/cargo.sh | git -C "$source" sparse-checkout set --no-cone --stdin
     git -C "$source" fetch --quiet --depth 1 --filter=blob:none \
         https://github.com/bae-fm/coven "$revision"
     git -C "$source" checkout --quiet FETCH_HEAD
