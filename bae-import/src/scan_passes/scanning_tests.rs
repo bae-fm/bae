@@ -435,7 +435,7 @@ async fn a_failure_the_store_refuses_is_the_roots_status_until_its_next_pass() {
     let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
     let coordinator = start_coordinator(&scan, command_rx);
     let progress = || async {
-        let progress = test.tables().load_folder_scan_progress().await.unwrap();
+        let progress = test.tables().load_folder_scan_progress(Default::default()).await.unwrap();
         let [status] = <[_; 1]>::try_from(progress.statuses).expect("one root is watched");
         status.status
     };
@@ -471,7 +471,7 @@ async fn a_first_scan_that_cannot_begin_shows_as_failed() {
     let coordinator = start_coordinator(&scan, command_rx);
 
     assert_eq!(refresh(&commands, &root).await, Ok(()));
-    let progress = test.tables().load_folder_scan_progress().await.unwrap();
+    let progress = test.tables().load_folder_scan_progress(Default::default()).await.unwrap();
     let [status] = <[_; 1]>::try_from(progress.statuses).expect("the watched folder is listed");
     assert_eq!(status.folder.path, root);
     let crate::FolderScanStatus::Failed { error, on_network_volume } = status.status else {

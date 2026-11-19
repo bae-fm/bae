@@ -208,18 +208,20 @@ impl ImportServiceHandle {
         Ok(read.rows.into_iter().map(|(item, _key)| item).collect())
     }
 
-    /// Each watched folder's scan status: the first value at once, then a
-    /// value after each write that changes it, whether a scan stored it, the
-    /// folder scan coordinator wrote what it keeps for the scans, or the app
-    /// marked an alert shown. Closing the library ends the subscription.
+    /// Each watched folder's scan status, with an alert for each problem not
+    /// among the raised alerts the request names, starting from `initial`: a
+    /// value after each write that changes it, whether a scan stored it or
+    /// the folder scan coordinator wrote what it keeps for the scans, and
+    /// after each new request.
     pub fn subscribe_folder_scans(
         &self,
-    ) -> bae_store::live_query::LiveValues<crate::FolderScanProgress> {
-        bae_store::live_query::LiveValues::new(
-            self.services.tables.subscribe_folder_scan_progress(),
-            self.services.closing.child_token(),
-            self.bugs(),
-        )
+        initial: crate::RaisedScanAlerts,
+    ) -> coven::ReconfigurableLiveQuery<
+        crate::RaisedScanAlerts,
+        crate::FolderScanProgress,
+        bae_store::DbError,
+    > {
+        self.services.tables.subscribe_folder_scan_progress(initial)
     }
 
     /// The folders bae is scanning, each with how many folders its scan has
@@ -233,22 +235,6 @@ impl ImportServiceHandle {
             self.services.closing.child_token(),
             self.bugs(),
         )
-    }
-
-    /// Record that the app raised the alert for `watched_folder_path`'s
-    /// problem of `kind` with `detail`, so the folder scans list no alert
-    /// for it until the folder's problem ends.
-    pub async fn mark_folder_scan_alert_shown(
-        &self,
-        watched_folder_path: &std::path::Path,
-        kind: crate::FolderScanAlertKind,
-        detail: String,
-    ) -> Result<(), crate::ImportError> {
-        Ok(self
-            .services
-            .tables
-            .mark_folder_scan_alert_shown(watched_folder_path, kind, detail)
-            .await?)
     }
 
     /// How many entries each tab holds, for a test that waits on a scan: the

@@ -63,6 +63,12 @@ pub type LiveImportSelection = LiveRead<
 pub type LiveCoverGallery =
     LiveRead<Option<bae_import::CoverGalleryRequest>, bae_import::CoverGallerySnapshot>;
 
+/// A live read of where each watched folder's scan stands, with an alert for
+/// each problem not among the alerts the app raised. The raised alerts change
+/// in place through [`LiveRead::set`].
+#[cfg(desktop)]
+pub type LiveFolderScans = LiveRead<bae_import::RaisedScanAlerts, bae_import::FolderScanProgress>;
+
 /// A live read of the images the lightbox of a candidate's folder shows.
 /// The candidate and the image shown change in place through
 /// [`LiveRead::set`]; `None` reads nothing.

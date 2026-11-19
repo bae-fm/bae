@@ -4,7 +4,7 @@ use crate::WatchedPathError;
 use std::path::PathBuf;
 use tracing::warn;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct WatchedFolder {
     pub path: PathBuf,
     /// The text that shows the folder: its last name's escape

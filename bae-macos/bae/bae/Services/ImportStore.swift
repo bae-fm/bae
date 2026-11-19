@@ -47,31 +47,30 @@ class ImportStore {
     /// list is empty until the first delivery.
     private(set) var scanningFolders: [BridgeScanningFolder] = []
 
-    /// The scan alerts this store raised whose write that marks them shown
-    /// has not finished, each with the task that writes the mark. A delivery
-    /// made before the write commits still lists the alert, and the store
-    /// does not raise it again; once the write finishes, the folder scans say
-    /// whether they still list it.
+    /// Every scan alert this store raised while the app runs. The folder
+    /// scans' query takes them in its request and lists no alert for them.
+    /// The store sets them on the query before it pulls the next delivery,
+    /// so no delivery lists an alert the store raised.
     @ObservationIgnored
-    private var scanAlertMarks: [BridgeFolderScanAlert: Task<Void, Never>] =
-        [:]
+    private var raisedScanAlerts: Set<BridgeFolderScanAlert> = []
 
     /// The store calls this for each watched folder whose scan failed or
     /// that is not watched, while the folder scans list an alert for it.
     /// Whoever owns an error surface sets it: this store has none.
     ///
     /// The alert arrives on the folder scans rather than as a transient
-    /// event because core stores the problem and which alerts the app
-    /// raised, so core delivers it whenever the UI subscribes rather than
-    /// only to whoever was already listening. A scan that failed during
-    /// launch, before the store subscribed, is in the first delivery.
+    /// event because core stores the problem, so core delivers it whenever
+    /// the UI subscribes rather than only to whoever was already listening.
+    /// A scan that failed during launch, before the store subscribed, is in
+    /// the first delivery.
     @ObservationIgnored
     var onScanFailure: ((BridgeFolderScanAlert) -> Void)?
 
-    /// Records in core that the app raised an alert, so the folder scans
-    /// stop listing it. Whoever sets `onScanFailure` sets this too.
+    /// Hands the folder scans' query every alert the store raised, so the
+    /// folder scans stop listing them. Whoever subscribes to the folder scans
+    /// sets it.
     @ObservationIgnored
-    var markScanAlertShown: ((BridgeFolderScanAlert) async throws -> Void)?
+    var setRaisedScanAlerts: (([BridgeFolderScanAlert]) throws -> Void)?
 
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
@@ -84,13 +83,23 @@ class ImportStore {
         scanningFolders = next
     }
 
-    /// Take delivered folder scans, and raise each alert they list that this
-    /// store is not already marking shown.
+    /// Take delivered folder scans, raise each alert they list, and hand the
+    /// query every alert raised so far. Handing it the alerts it already has
+    /// reads nothing again.
     @MainActor
     func applyFolderScans(_ next: BridgeFolderScans) {
         folderScans = next
-        for alert in next.alerts where scanAlertMarks[alert] == nil {
-            raiseScanAlert(alert)
+        for alert in next.alerts {
+            onScanFailure?(alert)
+            raisedScanAlerts.insert(alert)
+        }
+        do {
+            try setRaisedScanAlerts?(Array(raisedScanAlerts))
+        }
+        catch {
+            importStoreLogger.error(
+                "the folder scans did not take the raised alerts: \(String(describing: error))"
+            )
         }
     }
 
@@ -407,36 +416,6 @@ extension ImportStore {
 }
 
 extension ImportStore {
-    /// Raise `alert`, and mark it shown in core. Until that write finishes,
-    /// the store does not raise the alert again for a delivery that still
-    /// lists it; a mark that fails leaves the alert in the list, so the
-    /// store raises it again on the next delivery.
-    @MainActor
-    private func raiseScanAlert(_ alert: BridgeFolderScanAlert) {
-        onScanFailure?(alert)
-        let mark = markScanAlertShown
-        scanAlertMarks[alert] = Task { @MainActor [weak self] in
-            do {
-                try await mark?(alert)
-            }
-            catch {
-                importStoreLogger.error(
-                    "core did not mark the scan alert for \(alert.folder.name) shown: \(String(describing: error))"
-                )
-                self?.reportFailure(error)
-            }
-            self?.scanAlertMarks[alert] = nil
-        }
-    }
-
-    /// Wait until every scan alert mark this store started has returned.
-    @MainActor
-    func scanAlertMarksReturned() async {
-        while let mark = scanAlertMarks.values.first {
-            await mark.value
-        }
-    }
-
     /// Take delivered import counts, writing each only when it moved so its
     /// readers redraw only then.
     func applyImportCounts(_ counts: BridgeImportCounts) {

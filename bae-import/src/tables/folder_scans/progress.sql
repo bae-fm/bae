@@ -1,8 +1,7 @@
 -- Each watched folder's scan status, as the import list's chrome shows it:
 -- the outcome its scan stored, or the state the folder scan coordinator keeps
--- for it that no scan stores, and which problems the app has raised an alert
--- for. The two tables here describe only the process that wrote them, so the
--- import service empties them as the library opens.
+-- for it that no scan stores. The table here describes only the process that
+-- wrote it, so the import service empties it as the library opens.
 
 -- The state the folder scan coordinator keeps for a folder's scan, which the
 -- coordinator writes in the step that changes it. The state is 'running'
@@ -21,44 +20,6 @@ CREATE TABLE IF NOT EXISTS folder_scan_held (
     CHECK ((state = 'failed') = (error IS NOT NULL)),
     CHECK ((state = 'failed') = (volume IS NOT NULL))
 ) STRICT;
-
--- The problem of each watched folder that the app has raised an alert for:
--- its kind and its detail. The app raises an alert for each problem with no
--- row here and then writes one. When the folder's problem ends, the triggers
--- below delete the row, so the next problem raises its alert again, even with
--- the same detail.
-CREATE TABLE IF NOT EXISTS folder_scan_alert_shown (
-    watched_folder_path BLOB PRIMARY KEY,
-    kind                TEXT NOT NULL CHECK (kind IN ('failed', 'unwatched')),
-    detail              TEXT NOT NULL,
-    FOREIGN KEY (watched_folder_path)
-        REFERENCES watched_import_folders (path)
-        ON DELETE CASCADE
-) STRICT;
-
--- A new scan of the folder, or the end of one, ends the problem its last
--- outcome stored.
-CREATE TRIGGER IF NOT EXISTS folder_scan_alert_shown_on_outcome
-AFTER UPDATE OF status ON folder_scan_roots
-WHEN NEW.status IS NOT OLD.status
-BEGIN
-    DELETE FROM folder_scan_alert_shown WHERE watched_folder_path = NEW.watched_folder_path;
-END;
-
--- A failure the coordinator held ends when its row goes or changes.
-CREATE TRIGGER IF NOT EXISTS folder_scan_alert_shown_on_held_removed
-AFTER DELETE ON folder_scan_held
-WHEN OLD.state = 'failed'
-BEGIN
-    DELETE FROM folder_scan_alert_shown WHERE watched_folder_path = OLD.watched_folder_path;
-END;
-
-CREATE TRIGGER IF NOT EXISTS folder_scan_alert_shown_on_held_changed
-AFTER UPDATE ON folder_scan_held
-WHEN OLD.state = 'failed'
-BEGIN
-    DELETE FROM folder_scan_alert_shown WHERE watched_folder_path = OLD.watched_folder_path;
-END;
 
 -- Each watched folder's scan status and its detail, with its place in the
 -- list and the volume it is shown on, which is NULL for a folder no scan has

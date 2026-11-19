@@ -43,7 +43,7 @@ fn found_counts(folders: &[crate::ScanningFolder]) -> Vec<u64> {
 
 /// The only watched folder's status.
 async fn only_status(tables: &crate::tables::ImportTables) -> crate::FolderScanStatus {
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     let [status] = <[_; 1]>::try_from(progress.statuses).expect("the library watches one root");
     status.status
 }
@@ -64,8 +64,8 @@ async fn progress_follows_the_walk_in_flight() {
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
-    let mut live = tables.subscribe_folder_scan_progress();
-    let initial = live.next_inline().await.expect("the query stays open").unwrap();
+    let mut live = tables.subscribe_folder_scan_progress(Default::default());
+    let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         initial.statuses[0].status,
         crate::FolderScanStatus::Scanning { on_network_volume: false }
@@ -80,6 +80,7 @@ async fn progress_follows_the_walk_in_flight() {
         .await
         .expect("finishing the scan wakes the progress")
         .expect("the query stays open")
+        .result
         .unwrap();
     assert_eq!(
         complete.statuses[0].status,
@@ -135,7 +136,7 @@ async fn an_unfinished_scan_nothing_reads_failed() {
     let (tables, root, _temp) = watching_music().await;
     tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
 
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
         crate::FolderScanStatus::Failed { error: STOPPED.to_string(), on_network_volume: false }
@@ -181,7 +182,7 @@ async fn a_stored_outcome_stands_while_the_root_is_being_read() {
     tables.finish_folder_scan(&root, generation, Some("share disconnected")).await.unwrap();
     tables.hold_root_scans(running(&root)).await.unwrap();
 
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
         crate::FolderScanStatus::Failed {
@@ -200,7 +201,7 @@ async fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
     let (tables, root, _temp) = watching_music().await;
     for held in [crate::folder_scan_status::HeldRootScans::new(), running(&root)] {
         tables.hold_root_scans(held).await.unwrap();
-        let progress = tables.load_folder_scan_progress().await.unwrap();
+        let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
         assert_eq!(progress.statuses[0].status, crate::FolderScanStatus::NotScanned);
         assert!(!progress.has_problem);
     }
@@ -209,7 +210,7 @@ async fn a_folder_with_no_scan_is_listed_once_its_failure_is_held() {
         .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Network))
         .await
         .unwrap();
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     assert_eq!(
         progress.statuses,
         [crate::WatchedFolderScanStatus {
@@ -235,7 +236,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
         .await
         .unwrap();
 
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     assert_eq!(
         progress.statuses[0].status,
         crate::FolderScanStatus::NotWatched {
@@ -247,12 +248,14 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     assert!(!progress.scanning);
 }
 
-/// The alerts the folder scans list, as kind and detail.
+/// The alerts the folder scans list with `raised` as the alerts the app
+/// raised, as kind and detail.
 async fn listed_alerts(
     tables: &crate::tables::ImportTables,
+    raised: &[crate::FolderScanAlert],
 ) -> Vec<(crate::FolderScanAlertKind, String)> {
     tables
-        .load_folder_scan_progress()
+        .load_folder_scan_progress(raised.iter().cloned().collect())
         .await
         .unwrap()
         .alerts
@@ -261,125 +264,89 @@ async fn listed_alerts(
         .collect()
 }
 
-/// The progress lists an alert for a folder's problem until the app marks it
-/// shown. The same problem stays shown; the progress lists a different one
-/// again, and also a problem with the same detail of another kind.
+/// The alert for `/music`'s problem of `kind` with `detail`.
+fn music_alert(
+    root: &std::path::Path,
+    kind: crate::FolderScanAlertKind,
+    detail: &str,
+) -> crate::FolderScanAlert {
+    crate::FolderScanAlert {
+        folder: crate::WatchedFolder { path: root.to_path_buf(), name: "music".to_string() },
+        kind,
+        detail: detail.to_string(),
+    }
+}
+
+/// The progress lists an alert for each folder's problem that is not among
+/// the alerts the app raised: a raised problem stays unlisted whatever stores
+/// it, and the progress lists a problem with another detail, or with the
+/// same detail of another kind.
 #[tokio::test]
-async fn the_progress_lists_a_problem_s_alert_until_the_app_marks_it_shown() {
+async fn the_progress_lists_each_problem_the_app_raised_no_alert_for() {
     use crate::FolderScanAlertKind::{Failed, NotWatched};
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    let progress = tables.load_folder_scan_progress().await.unwrap();
-    assert_eq!(
-        progress.alerts,
-        [crate::FolderScanAlert {
-            folder: crate::WatchedFolder { path: root.clone(), name: "music".to_string() },
-            kind: Failed,
-            detail: "offline".to_string(),
-        }]
-    );
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
+    assert_eq!(progress.alerts, [music_alert(&root, Failed, "offline")]);
 
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, []);
+    let raised = [music_alert(&root, Failed, "offline")];
+    assert_eq!(listed_alerts(&tables, &raised).await, []);
 
     tables
         .hold_root_scans(unstored(&root, "no such column", crate::VolumeKind::Local))
         .await
         .unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(Failed, "no such column".to_string())]);
-    tables.mark_folder_scan_alert_shown(&root, Failed, "no such column".to_string()).await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, []);
-
+    assert_eq!(listed_alerts(&tables, &raised).await, [(Failed, "no such column".to_string())]);
     tables.hold_root_scans(unstored(&root, "offline", crate::VolumeKind::Local)).await.unwrap();
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
+    assert_eq!(listed_alerts(&tables, &raised).await, []);
+
     tables.hold_root_scans(crate::folder_scan_status::HeldRootScans::new()).await.unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan_unwatched(&root, generation, "offline").await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(NotWatched, "offline".to_string())]);
+    assert_eq!(listed_alerts(&tables, &raised).await, [(NotWatched, "offline".to_string())]);
 }
 
-/// The progress lists an alert again for the next problem of a folder whose
-/// problem ended, even one with the same detail: a new scan of the folder
-/// ends the stored problem, and its next pass ends a failure the coordinator
-/// held.
+/// A new request on the same live query changes the alerts it lists: the
+/// alerts the app raised drop out of the next value.
 #[tokio::test]
-async fn a_folder_that_recovers_gets_an_alert_for_its_next_problem() {
+async fn raising_an_alert_drops_it_from_the_live_progress() {
     use crate::FolderScanAlertKind::Failed;
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
 
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
+    let mut live = tables.subscribe_folder_scan_progress(Default::default());
+    let first = live.next_inline().await.expect("the query stays open").result.unwrap();
+    assert_eq!(first.alerts, [music_alert(&root, Failed, "offline")]);
 
-    tables
-        .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Local))
-        .await
-        .unwrap();
-    tables
-        .mark_folder_scan_alert_shown(&root, Failed, "the disk is full".to_string())
-        .await
-        .unwrap();
-    tables.hold_root_scans(running(&root)).await.unwrap();
-    tables
-        .hold_root_scans(unstored(&root, "the disk is full", crate::VolumeKind::Local))
-        .await
-        .unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(Failed, "the disk is full".to_string())]);
+    let raised = crate::RaisedScanAlerts::from([music_alert(&root, Failed, "offline")]);
+    live.requests().set(raised.clone()).unwrap();
+    let after = tokio::time::timeout(HANG_GUARD, async {
+        loop {
+            let event = live.next_inline().await.expect("the query stays open");
+            if event.request == raised {
+                break event.result.unwrap();
+            }
+        }
+    })
+    .await
+    .expect("the new request delivers");
+    assert_eq!(after.alerts, []);
+    assert!(after.has_problem, "the folder's problem stands while its alert is raised");
 }
 
-/// A completed scan ends the folder's problem, so the next failed or
-/// unwatched scan lists its alert again, even with the detail the app
-/// already showed.
+/// The library opens with nothing the coordinator held.
 #[tokio::test]
-async fn a_completed_scan_ends_the_problem_so_the_next_one_alerts_again() {
-    use crate::FolderScanAlertKind::{Failed, NotWatched};
+async fn opening_the_library_clears_what_the_coordinator_held() {
     let (tables, root, _temp) = watching_music().await;
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
-
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, [], "a completed scan has no problem");
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
-
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan_unwatched(&root, generation, "limit reached").await.unwrap();
-    tables
-        .mark_folder_scan_alert_shown(&root, NotWatched, "limit reached".to_string())
-        .await
-        .unwrap();
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, None).await.unwrap();
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan_unwatched(&root, generation, "limit reached").await.unwrap();
-    assert_eq!(listed_alerts(&tables).await, [(NotWatched, "limit reached".to_string())]);
-}
-
-/// A folder no longer watched records no alert, and the library opens with
-/// nothing held and an alert listed again for every problem.
-#[tokio::test]
-async fn opening_the_library_clears_what_the_coordinator_held_and_the_alerts_shown() {
-    use crate::FolderScanAlertKind::Failed;
-    let (tables, root, _temp) = watching_music().await;
-    let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
-    tables.mark_folder_scan_alert_shown(&root, Failed, "offline".to_string()).await.unwrap();
     let other = crate::tables::watched_path::host_root("/other");
-    tables.mark_folder_scan_alert_shown(&other, Failed, "offline".to_string()).await.unwrap();
+    tables.hold_root_scans(running(&root)).await.unwrap();
     tables.hold_root_scans(running(&other)).await.unwrap();
 
     tables.clear_held_folder_scans().await.unwrap();
 
     assert_eq!(tables.load_held_root_scans().await.unwrap(), Default::default());
-    assert_eq!(listed_alerts(&tables).await, [(Failed, "offline".to_string())]);
 }
 
 /// Whether a watched folder is on a network volume is what its scan recorded
@@ -482,7 +449,7 @@ async fn progress_lists_the_folders_in_their_order_from_the_index() {
     for root in &roots {
         tables.add_watched_import_folder(root).await.unwrap();
     }
-    let progress = tables.load_folder_scan_progress().await.unwrap();
+    let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
     assert_eq!(
         progress.statuses.iter().map(|status| status.folder.path.clone()).collect::<Vec<_>>(),
         roots

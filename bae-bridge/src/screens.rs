@@ -450,11 +450,31 @@ pulled_read! {
 
 #[cfg(desktop)]
 pulled_read! {
-    /// Where each watched folder's scan stands.
+    /// Where each watched folder's scan stands, with an alert for each
+    /// problem not among the alerts the app raised. The subscription keeps
+    /// one live query while it is open, and the app sets the alerts it
+    /// raised on it as it raises them; it starts with none.
     FolderScansSubscription:
-        LiveValues<bae_import::FolderScanProgress> => crate::types::BridgeFolderScans,
+        bae_app::live_reads::LiveFolderScans => crate::types::BridgeFolderScans,
     converted by crate::types::BridgeFolderScans::from_core,
     built by folder_scans
+}
+
+#[cfg(desktop)]
+#[uniffi::export]
+impl FolderScansSubscription {
+    /// Read with `raised` as every alert the app raised from now on: the
+    /// folder scans list no alert for a problem among them.
+    pub fn set_raised(
+        &self,
+        raised: Vec<crate::types::BridgeFolderScanAlert>,
+    ) -> Result<(), crate::types::BridgeError> {
+        let raised = raised
+            .into_iter()
+            .map(crate::types::BridgeFolderScanAlert::into_core)
+            .collect::<Result<bae_import::RaisedScanAlerts, _>>()?;
+        self.inner.set(raised).map(|_revision| ()).map_err(crate::types::BridgeError::from)
+    }
 }
 
 #[cfg(desktop)]

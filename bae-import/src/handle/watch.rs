@@ -133,7 +133,7 @@ impl ImportServiceHandle {
                 self.services.diagnostics.bug(bae_util::task_failure::TaskFailed::Panicked(bug))
             })??;
         }
-        Ok(self.services.tables.load_folder_scan_progress().await?.statuses)
+        Ok(self.services.tables.load_folder_scan_progress(Default::default()).await?.statuses)
     }
 
     pub async fn refresh_watched_folder(
@@ -193,7 +193,7 @@ impl ImportServiceHandle {
         mut accept: impl FnMut(&crate::FolderScanProgress) -> bool,
     ) -> crate::FolderScanProgress {
         let mut scans = bae_store::live_results::LiveResults::new(
-            self.services.tables.subscribe_folder_scan_progress(),
+            self.services.tables.subscribe_folder_scan_progress(Default::default()),
             self.services.diagnostics.bug_sink(),
         );
         loop {
@@ -201,6 +201,7 @@ impl ImportServiceHandle {
                 .next()
                 .await
                 .expect("the folder scan query stays open")
+                .result
                 .expect("the folder scan query reads");
             if accept(&progress) {
                 return progress;

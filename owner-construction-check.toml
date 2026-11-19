@@ -1176,7 +1176,6 @@ tables = [
     "folder_scan_roots",
     "folder_scan_directory",
     "folder_scan_held",
-    "folder_scan_alert_shown",
     "scan_candidate",
     "scan_candidate_file",
     "scan_candidate_unit",

@@ -35,74 +35,53 @@ struct ImportStoreScanFailureTests {
         )
     }
 
-    /// The marks the store asked core to write, in order.
+    /// The raised alerts the store handed the folder scans' query, in order.
     @MainActor
-    private final class Marks {
-        var marked: [BridgeFolderScanAlert] = []
+    private final class Requests {
+        var sets: [Set<BridgeFolderScanAlert>] = []
     }
 
-    private struct MarkRefused: Error {}
-
-    /// The store raises each alert the folder scans list and asks core to
-    /// mark it shown, including at launch: the app's startup scan fails
-    /// before the store subscribes, so its alert arrives in the first
+    /// The store raises each alert the folder scans list and hands the query
+    /// the alerts it raised, including at launch: the app's startup scan
+    /// fails before the store subscribes, so its alert arrives in the first
     /// delivery.
     @MainActor
-    @Test("the store raises a listed alert and marks it shown")
-    func theStoreRaisesAListedAlertAndMarksItShown() async {
+    @Test("the store raises a listed alert and hands it to the query")
+    func theStoreRaisesAListedAlertAndHandsItToTheQuery() {
         let store = ImportStore()
         var raised: [BridgeFolderScanAlert] = []
         store.onScanFailure = { raised.append($0) }
-        let marks = Marks()
-        store.markScanAlertShown = { alert in marks.marked.append(alert) }
+        let requests = Requests()
+        store.setRaisedScanAlerts = { requests.sets.append(Set($0)) }
 
         let failed = Self.alert("/Media", "no such column")
         let notWatched = Self.alert("/Other", "limit reached", .notWatched)
         store.applyFolderScans(Self.scans([failed, notWatched]))
-        await store.scanAlertMarksReturned()
 
         #expect(raised == [failed, notWatched])
-        #expect(Set(marks.marked) == [failed, notWatched])
+        #expect(requests.sets == [[failed, notWatched]])
     }
 
-    /// A delivery made before an alert's mark finishes still lists the
-    /// alert, and the store does not raise it again.
+    /// The query's request holds every alert the store raised while the app
+    /// runs, not only the last delivery's.
     @MainActor
-    @Test("the store raises an alert once while core writes its mark")
-    func theStoreRaisesAnAlertOnceWhileCoreWritesItsMark() async {
+    @Test("the store hands the query every alert it raised")
+    func theStoreHandsTheQueryEveryAlertItRaised() {
         let store = ImportStore()
         var raised: [BridgeFolderScanAlert] = []
         store.onScanFailure = { raised.append($0) }
-        let (held, release) = AsyncStream<Void>.makeStream()
-        store.markScanAlertShown = { _ in
-            for await _ in held { break }
-        }
+        let requests = Requests()
+        store.setRaisedScanAlerts = { requests.sets.append(Set($0)) }
 
-        let failed = Self.alert("/Media", "offline")
-        store.applyFolderScans(Self.scans([failed]))
-        store.applyFolderScans(Self.scans([failed]))
-        release.yield()
-        await store.scanAlertMarksReturned()
+        let offline = Self.alert("/Media", "offline")
+        let full = Self.alert("/Other", "the disk is full")
+        store.applyFolderScans(Self.scans([offline]))
+        store.applyFolderScans(Self.scans([full]))
+        store.applyFolderScans(Self.scans([]))
 
-        #expect(raised == [failed])
-    }
-
-    /// A mark core refused leaves the alert in the list, so the store raises
-    /// it again on the next delivery that lists it.
-    @MainActor
-    @Test("the store raises an alert again when its mark fails")
-    func theStoreRaisesAnAlertAgainWhenItsMarkFails() async {
-        let store = ImportStore()
-        var raised: [BridgeFolderScanAlert] = []
-        store.onScanFailure = { raised.append($0) }
-        store.markScanAlertShown = { _ in throw MarkRefused() }
-
-        let failed = Self.alert("/Media", "offline")
-        store.applyFolderScans(Self.scans([failed]))
-        await store.scanAlertMarksReturned()
-        store.applyFolderScans(Self.scans([failed]))
-        await store.scanAlertMarksReturned()
-
-        #expect(raised == [failed, failed])
+        #expect(raised == [offline, full])
+        #expect(
+            requests.sets == [[offline], [offline, full], [offline, full]]
+        )
     }
 }

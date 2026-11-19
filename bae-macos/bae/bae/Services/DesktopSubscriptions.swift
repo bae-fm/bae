@@ -220,9 +220,6 @@ final class DesktopSubscriptions {
         // starting up is raised on the first delivery instead of being
         // published to nobody.
         importStore.onScanFailure = Self.scanFailureAlert(on: uiStore)
-        importStore.markScanAlertShown = { [appHandle] alert in
-            try await appHandle.markFolderScanAlertShown(alert: alert)
-        }
         importList = ImportListSlot(
             importStore: importStore,
             uiStore: uiStore,
@@ -282,8 +279,12 @@ final class DesktopSubscriptions {
             importStore.previewPosition.feed(from: appHandle),
             importStore.importPercents.feed(from: appHandle),
         ]
+        let scans = appHandle.subscribeFolderScans()
+        importStore.setRaisedScanAlerts = { raised in
+            try scans.setRaised(raised: raised)
+        }
         folderScans = ScreenSubscription(
-            appHandle.subscribeFolderScans(),
+            scans,
             onValue: { [importStore] scans in
                 importStore.applyFolderScans(scans)
             },

@@ -585,6 +585,22 @@ impl crate::types::BridgeFolderScanAlert {
             detail,
         }
     }
+
+    /// The alert as core names it; a path that is no path is the app's
+    /// mistake.
+    pub(crate) fn into_core(
+        self,
+    ) -> Result<bae_import::FolderScanAlert, crate::types::BridgeError> {
+        let Self { folder, kind, detail } = self;
+        Ok(bae_import::FolderScanAlert {
+            folder: bae_import::WatchedFolder {
+                path: crate::from_app::path(folder.path)?,
+                name: folder.name,
+            },
+            kind: kind.into_core(),
+            detail,
+        })
+    }
 }
 
 impl crate::types::BridgeImportQueueSummary {

@@ -215,14 +215,14 @@ pub struct BridgeFolderScans {
     /// Whether bae is scanning any root, for the filter bar's scan
     /// indicator.
     pub scanning: bool,
-    /// Each root's problem that the app has raised no alert for, in
-    /// watched-folder order. The app raises each one and marks it shown
-    /// (`AppHandle::mark_folder_scan_alert_shown`).
+    /// Each root's problem that is not among the alerts the app raised, in
+    /// watched-folder order. The app raises each one and adds it to the
+    /// alerts it raised (`FolderScansSubscription::set_raised`).
     pub alerts: Vec<BridgeFolderScanAlert>,
 }
 
-/// A watched folder's problem the app has raised no alert for. Mirrors
-/// `bae_import::FolderScanAlert`.
+/// A watched folder's problem, which the app raises an alert for once.
+/// Mirrors `bae_import::FolderScanAlert`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeFolderScanAlert {
     pub folder: BridgeWatchedFolder,

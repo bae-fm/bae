@@ -1,9 +1,8 @@
 //! Where each watched folder's scan stands, as one live query
 //! (`progress.sql`): each folder's status from its stored scan and what the
 //! folder scan coordinator holds of it, whether any folder has a problem,
-//! whether bae is scanning any folder, and the problems the app has raised
-//! no alert for. Also the coordinator's writes of what it holds, and the app's record
-//! of the alerts it raised.
+//! whether bae is scanning any folder, and the problems not among the alerts
+//! the app says it raised. Also the coordinator's writes of what it holds.
 //!
 //! The found count moves with every folder a scan walks, so it is not read
 //! here: the scanning folders have a read of their own,
@@ -13,7 +12,7 @@
 use super::*;
 use crate::folder_scan_status::{
     FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus, HeldRootScan,
-    HeldRootScans, ScanningFolder, StoredRootScan, StoredScan, StoredScanOutcome,
+    HeldRootScans, RaisedScanAlerts, ScanningFolder, StoredRootScan, StoredScan, StoredScanOutcome,
     WatchedFolderScanStatus,
 };
 
@@ -28,16 +27,33 @@ const FOLDER_SCAN_FLAGS: &str = "SELECT \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status IN ('failed', 'unwatched')), \
      EXISTS (SELECT 1 FROM folder_scan_status WHERE status = 'scanning')";
 
-/// Each folder's problem with no alert shown for it, in the order the folders
-/// are listed.
+/// Each folder's problem that is not among the raised alerts `?1` names, as a
+/// JSON array of each one's folder path in hex, kind and detail, in the order
+/// the folders are listed.
 const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder.status, \
             folder.detail \
      FROM folder_scan_status AS folder \
      WHERE folder.status IN ('failed', 'unwatched') \
-       AND NOT EXISTS (SELECT 1 FROM folder_scan_alert_shown AS shown \
-           WHERE shown.watched_folder_path = folder.watched_folder_path \
-             AND shown.kind = folder.status AND shown.detail = folder.detail) \
+       AND (folder.watched_folder_path, folder.status, folder.detail) NOT IN \
+           (SELECT unhex(value ->> 0), value ->> 1, value ->> 2 FROM json_each(?1)) \
      ORDER BY folder.position";
+
+/// `raised` as the JSON array [`OWED_FOLDER_SCAN_ALERTS`] binds.
+fn raised_alerts_json(raised: &RaisedScanAlerts) -> String {
+    serde_json::to_string(
+        &raised
+            .iter()
+            .map(|alert| {
+                (
+                    hex::encode(coven::path_bytes(&alert.folder.path)),
+                    alert_kind_text(alert.kind),
+                    alert.detail.as_str(),
+                )
+            })
+            .collect::<Vec<_>>(),
+    )
+    .expect("raised alerts serialize as JSON")
+}
 
 /// A folder's status from the view's `status`, `detail` and `volume`.
 fn folder_scan_status(
@@ -90,7 +106,10 @@ fn alert_kind_text(kind: FolderScanAlertKind) -> &'static str {
     }
 }
 
-fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanProgress, DbError> {
+fn load_folder_scan_progress_on(
+    sql: &SqlReadContext<'_>,
+    raised: &RaisedScanAlerts,
+) -> Result<FolderScanProgress, DbError> {
     let mut statuses = Vec::new();
     for (watched_folder_path, status, detail, volume) in
         sql.query(FOLDER_SCAN_STATUSES, [], |row| {
@@ -110,9 +129,11 @@ fn load_folder_scan_progress_on(sql: &SqlReadContext<'_>) -> Result<FolderScanPr
     let (has_problem, scanning) =
         sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get(1)?)))?;
     let mut alerts = Vec::new();
-    for (watched_folder_path, kind, detail) in sql.query(OWED_FOLDER_SCAN_ALERTS, [], |row| {
-        Ok((path_column::get(row, 0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-    })? {
+    for (watched_folder_path, kind, detail) in
+        sql.query(OWED_FOLDER_SCAN_ALERTS, [raised_alerts_json(raised)], |row| {
+            Ok((path_column::get(row, 0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+        })?
+    {
         alerts.push(FolderScanAlert {
             folder: crate::WatchedFolder::from_path(watched_folder_path),
             kind: alert_kind(&kind)?,
@@ -288,16 +309,25 @@ impl ImportTables {
         self.store.read(move |sql| load_stored_folder_scans_on(&sql)).await
     }
 
-    /// Where each watched folder's scan stands now.
-    pub async fn load_folder_scan_progress(&self) -> Result<FolderScanProgress, DbError> {
-        self.store.read(move |sql| load_folder_scan_progress_on(&sql)).await
+    /// Where each watched folder's scan stands now, with an alert for each
+    /// problem not among `raised`.
+    pub async fn load_folder_scan_progress(
+        &self,
+        raised: RaisedScanAlerts,
+    ) -> Result<FolderScanProgress, DbError> {
+        self.store.read(move |sql| load_folder_scan_progress_on(&sql, &raised)).await
     }
 
-    /// Where each watched folder's scan stands, live.
+    /// Where each watched folder's scan stands, live, with an alert for each
+    /// problem not among the raised alerts the request names, starting from
+    /// `initial`. A new request changes them on the same query.
     pub fn subscribe_folder_scan_progress(
         &self,
-    ) -> coven::LiveQuery<FolderScanProgress, bae_store::DbError> {
-        self.store.subscribe(move |sql| load_folder_scan_progress_on(&sql))
+        initial: RaisedScanAlerts,
+    ) -> coven::ReconfigurableLiveQuery<RaisedScanAlerts, FolderScanProgress, DbError> {
+        self.store.subscribe_reconfigurable(initial, |raised, sql| {
+            load_folder_scan_progress_on(&sql, raised)
+        })
     }
 
     /// Hold `root`'s scan as running, as the folder scan coordinator holds a
@@ -371,39 +401,12 @@ impl ImportTables {
             .await
     }
 
-    /// Record that the app raised the alert for `watched_folder_path`'s
-    /// problem of `kind` with `detail`, so the folder's progress lists no
-    /// alert for it. A folder no longer watched records nothing.
-    pub async fn mark_folder_scan_alert_shown(
-        &self,
-        watched_folder_path: &std::path::Path,
-        kind: FolderScanAlertKind,
-        detail: String,
-    ) -> Result<(), DbError> {
-        let watched_folder_path = coven::path_bytes(watched_folder_path);
-        let kind = alert_kind_text(kind);
-        self.store
-            .call(move |sql| {
-                sql.execute(
-                    "INSERT INTO folder_scan_alert_shown (watched_folder_path, kind, detail) \
-                     SELECT path, ?, ? FROM watched_import_folders WHERE path = ? \
-                     ON CONFLICT (watched_folder_path) DO UPDATE SET \
-                         kind = excluded.kind, detail = excluded.detail",
-                    params![kind, detail, watched_folder_path],
-                )?;
-                Ok(())
-            })
-            .await
-    }
-
     /// Remove the state the folder scan coordinator kept for every root's
-    /// scan and every alert the app raised. The import service calls this
-    /// as the library opens, because those rows describe only the process
-    /// that wrote them.
+    /// scan. The import service calls this as the library opens, because
+    /// those rows describe only the process that wrote them.
     pub(crate) async fn clear_held_folder_scans(&self) -> Result<(), DbError> {
         self.store
             .call(|sql| {
-                sql.execute("DELETE FROM folder_scan_alert_shown", [])?;
                 sql.execute("DELETE FROM folder_scan_held", [])?;
                 Ok(())
             })

@@ -970,12 +970,11 @@ is scanning, with how many folders the scan has stored so far.
 
 On a Mac, a folder whose scan failed, or that is not watched, raises an alert
 headlined "Could not scan {folder}" or "Not watching {folder} for changes",
-with the error or the reason. The folder scans list each problem the app has
-raised no alert for. bae records each alert it raised in the device-local table
-`folder_scan_alert_shown`, so one problem raises one alert. A folder's problem
-ends when a new scan of the folder starts, and the folder's next problem raises
-its alert again, even with the same error. The library empties that table each
-time it opens, so a problem still stored at launch raises its alert again.
+with the error or the reason. The app keeps, while it runs, the problems it
+raised an alert for, each by its folder, kind and detail. The folder scans
+list's query takes those problems in its request and lists each problem not
+among them, so one problem raises one alert while the app runs, and a problem
+still stored when the app starts raises its alert again.
 
 **What a scan reads.** A scan reads each file once. For each track it checks
 whether bae can play it and reads its tags, which place it in play order, name
@@ -5842,7 +5841,7 @@ All sync (§5), except `admin_operations`.
 | `skipped_import_candidates` | candidates the person dismissed |
 | `folder_discovery` | when each folder was first seen, and its date |
 | `folder_scan_generation_sequence`, `folder_scan_roots`, `folder_scan_directory` | each watched folder's last scan, with how it ended once it stored that, and the directories it saw; whether a pass is reading the folder is in `folder_scan_held` (§3.1) |
-| `folder_scan_held`, `folder_scan_alert_shown` | what bae holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store), and the problems whose alert the app raised; both last only as long as the process, so the library empties them as it opens (§3.1) |
+| `folder_scan_held` | what bae holds of each folder's scan that no scan stores (a pass reading it, or a failure its scan could not store); it lasts only as long as the process, so the library empties it as it opens (§3.1) |
 | `scan_candidate`, `scan_candidate_file`, `scan_candidate_part` | the candidates a scan found, their files and their folders, and for each the image the folder's cover rules pick when bae reads no tags (its blank cover, which the scan writes with its files) and, for a broken one, why bae can't import it (which the scan also writes with its files), with an index on each watched folder's candidates by the folder each reads its files from; each file by its name in the release and its path, a BLOB of coven's bytes for it |
 | `scan_candidate_tag_snapshot`, `scan_candidate_file_tag` | the tags read from a candidate's audio that place, name and seed it (no ISRCs, labels, copyright lines or store markers, §3.3), or for a file whose tags don't parse, why, and its embedded cover |
 | `scan_skipped_file`, `scan_skipped_tags` | a broken folder's files as the scan read them, and what its tags call it; two of its files can show one name, so each is unique by its path |

@@ -45,7 +45,6 @@ impl AppServices {
     delegate_async!(import, import_select_candidate_file_tags => select_candidate_file_tags(candidate_key: bae_import::CandidateKey) -> Result<u64, bae_import::ImportError>);
     delegate_async!(import, import_clear_candidate_metadata => clear_candidate_metadata(candidate_key: bae_import::CandidateKey) -> Result<u64, bae_import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: std::path::PathBuf) -> Result<(), bae_import::ImportError>);
-    delegate_async!(import, import_mark_folder_scan_alert_shown => mark_folder_scan_alert_shown(watched_folder_path: &std::path::Path, kind: bae_import::FolderScanAlertKind, detail: String) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: bae_import::CandidateKey, sheet_file_id: String, file_reference: String, audio_file_id: Option<String>) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: bae_import::CandidateKey, sheet_file_id: String, disc: bae_import::folder_scanner::SheetDisc) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_refresh_candidate_covers => refresh_candidate_covers(candidate_key: &bae_import::CandidateKey) -> Result<(), bae_import::ImportError>);
@@ -62,7 +61,6 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &bae_import::CandidateKey, track: bae_import::RawTrackEdit) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &bae_import::CandidateKey, track_ids: Vec<String>, assignments: bae_import::TrackArtistAssignments) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, load_import_candidate => load_candidate(key: &bae_import::CandidateKey) -> Result<Option<ImportCandidateDetail>, bae_import::ImportError>);
-    delegate_sync!(import, subscribe_folder_scans => subscribe_folder_scans() -> bae_store::live_query::LiveValues<bae_import::FolderScanProgress>);
     delegate_sync!(import, subscribe_scanning_folders => subscribe_scanning_folders() -> bae_store::live_query::LiveValues<Vec<bae_import::ScanningFolder>>);
     delegate_sync!(import, subscribe_import_counts => subscribe_counts() -> bae_store::live_query::LiveValues<bae_import::ImportCounts>);
     delegate_sync!(import, subscribe_candidate_runtime => subscribe_candidate_runtime(key: &bae_import::CandidateKey) -> bae_store::live_query::LiveValues<bae_import::CandidateRuntimeView>);
@@ -263,6 +261,19 @@ impl AppServices {
         bae_store::live_query::LiveRead::new(
             self.inner.manager.until_closed(self.inner.import.subscribe_cover_gallery(None)),
             |_read, snapshot| snapshot,
+        )
+    }
+
+    /// Return a live read of where each watched folder's scan stands, with
+    /// an alert for each problem not among the alerts the app raised. The
+    /// app sets the alerts it raised on the same read as it raises them; the
+    /// read starts with none.
+    pub fn subscribe_folder_scans(&self) -> crate::live_reads::LiveFolderScans {
+        bae_store::live_query::LiveRead::new(
+            self.inner
+                .manager
+                .until_closed(self.inner.import.subscribe_folder_scans(Default::default())),
+            |_read, progress| Some(progress),
         )
     }
 

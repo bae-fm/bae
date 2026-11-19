@@ -72,16 +72,18 @@ pub struct FolderScanProgress {
     /// Whether bae is scanning any root, for the filter bar's scan
     /// indicator.
     pub scanning: bool,
-    /// Each root's problem that the app has raised no alert for, in
-    /// watched-folder order.
+    /// Each root's problem that is not among the alerts the request says
+    /// the app raised, in watched-folder order.
     pub alerts: Vec<FolderScanAlert>,
 }
 
-/// A watched folder's problem that the app has raised no alert for. The app
-/// raises one and marks it shown
-/// ([`crate::ImportServiceHandle::mark_folder_scan_alert_shown`]), and the
-/// app raises an alert again for the folder's next problem.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The problems the app raised an alert for while it runs, which the folder
+/// scans' query takes in its request: the query lists an alert for each
+/// problem not among them.
+pub type RaisedScanAlerts = std::collections::BTreeSet<FolderScanAlert>;
+
+/// A watched folder's problem, which the app raises an alert for once.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FolderScanAlert {
     pub folder: crate::WatchedFolder,
     pub kind: FolderScanAlertKind,
@@ -89,7 +91,7 @@ pub struct FolderScanAlert {
     pub detail: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FolderScanAlertKind {
     /// The folder's scan failed.
     Failed,
