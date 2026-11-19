@@ -3,6 +3,8 @@ use crate::{remove_unopenable_library, unsent_before_removal, UnfinishedRemoval}
 use bae_app_dir::AppDir;
 use coven::Storage as _;
 
+#[path = "bootstrap_tests/codes.rs"]
+mod codes;
 #[path = "bootstrap_tests/settings.rs"]
 mod settings;
 

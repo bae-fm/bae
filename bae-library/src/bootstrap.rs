@@ -224,7 +224,10 @@ pub async fn join_with_invite(
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
     let code = &crate::sync::restore_code::entered(code);
-    let invite = invite_info(code)?;
+    // Coven refuses a restore or pairing code before the provider sign-in,
+    // so the person is asked for no sign-in the join would refuse.
+    let invite = coven::decode_invite_info(code)
+        .map_err(|error| restore_error(coven::BootstrapError::Code(error)))?;
     if clock.now() >= invite.expires_at
         && !unfinished_joins(&builder, diagnostics)
             .await?
@@ -274,7 +277,10 @@ pub async fn join_with_pairing(
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
     let code = &crate::sync::restore_code::entered(code);
-    let pairing = pairing_info(code)?;
+    // Coven refuses a restore or invite code before the provider sign-in,
+    // so the person is asked for no sign-in the pairing would refuse.
+    let pairing = coven::decode_pairing_info(code)
+        .map_err(|error| restore_error(coven::BootstrapError::Code(error)))?;
     if clock.now() >= pairing.expires_at {
         return Ok(None);
     }
@@ -409,41 +415,6 @@ pub async fn resume_restore(
         resumed => resumed,
     }
     .map_err(|error| reported_restore_error(diagnostics, error))
-}
-
-/// The invite a code holds; a restore code is refused before any sign-in.
-fn invite_info(code: &str) -> Result<coven::InviteInfo, RestoreFromCodeError> {
-    match coven::decode_code_info(code) {
-        Ok(coven::CodeInfo::Invite(invite)) => Ok(invite),
-        Ok(coven::CodeInfo::Restore(_)) => {
-            Err(restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
-                expected: coven::CodeKind::Invite,
-                actual: coven::CodeKind::Restore,
-            })))
-        }
-        Ok(coven::CodeInfo::Pairing(_)) => {
-            Err(restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
-                expected: coven::CodeKind::Invite,
-                actual: coven::CodeKind::Pairing,
-            })))
-        }
-        Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
-    }
-}
-
-fn pairing_info(code: &str) -> Result<coven::PairingInfo, RestoreFromCodeError> {
-    let wrong = |actual| {
-        restore_error(coven::BootstrapError::Code(coven::CodeError::WrongKind {
-            expected: coven::CodeKind::Pairing,
-            actual,
-        }))
-    };
-    match coven::decode_code_info(code) {
-        Ok(coven::CodeInfo::Pairing(pairing)) => Ok(pairing),
-        Ok(coven::CodeInfo::Restore(_)) => Err(wrong(coven::CodeKind::Restore)),
-        Ok(coven::CodeInfo::Invite(_)) => Err(wrong(coven::CodeKind::Invite)),
-        Err(error) => Err(restore_error(coven::BootstrapError::Code(error))),
-    }
 }
 
 /// What a join call came to, once coven answered it: the library it let
