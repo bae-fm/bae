@@ -516,32 +516,11 @@ pub async fn restore_replacing_device(
     cancel: &watch::Receiver<bool>,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<coven::CovenHandle, RestoreFromCodeError> {
-    // Coven refuses an invite or another library's code too, but only after
-    // the provider sign-in below; refusing it first asks for no sign-in the
-    // restore would never use.
+    // Coven refuses an invite or another library's code before the provider
+    // sign-in, so the person is asked for no sign-in the restore would refuse.
     let code = &crate::sync::restore_code::entered(code);
-    let refused = |error| restore_error(coven::BootstrapError::Code(error));
-    let access = match coven::decode_code_info(code).map_err(refused)? {
-        coven::CodeInfo::Restore(metadata) if metadata.store_id == store => metadata.oauth_access,
-        coven::CodeInfo::Restore(metadata) => {
-            return Err(refused(coven::CodeError::WrongStore {
-                expected: store,
-                actual: metadata.store_id,
-            }))
-        }
-        coven::CodeInfo::Invite { .. } => {
-            return Err(refused(coven::CodeError::WrongKind {
-                expected: coven::CodeKind::Restore,
-                actual: coven::CodeKind::Invite,
-            }))
-        }
-        coven::CodeInfo::Pairing(_) => {
-            return Err(refused(coven::CodeError::WrongKind {
-                expected: coven::CodeKind::Restore,
-                actual: coven::CodeKind::Pairing,
-            }))
-        }
-    };
+    let access = coven::restore_sign_in(store, code)
+        .map_err(|error| restore_error(coven::BootstrapError::Code(error)))?;
     auth::authenticate(&mut builder, access, cancel, diagnostics).await?;
     let status = |status| match status {
         coven::BootstrapStatus::Opening(progress) => on_open_progress(progress),

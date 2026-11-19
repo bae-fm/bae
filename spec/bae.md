@@ -4230,9 +4230,9 @@ offers nothing.
   ([coven §12.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#123-replacing-a-members-keys)).
   So the state says, before the scan, that the restore discards them.
   *Enter restore code…* opens the restore screen, where the person pastes or scans
-  the new code, on the Mac and on Android. bae checks first
-  that the code restores this library; another library's code, or an invite,
-  changes nothing. coven then restores this device with the code: a new device
+  the new code, on the Mac and on Android. Before any
+  sign-in, coven checks that the code restores this library; another library's
+  code, or an invite, changes nothing. coven then restores this device with the code: a new device
   loads the library beside this device's copy, takes its place once it has
   loaded, and starts without the changes the old copy had not sent
   ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)).
