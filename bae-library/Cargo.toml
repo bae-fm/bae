@@ -40,7 +40,8 @@ bae-views = { workspace = true }
 coven = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-toml = { workspace = true }
+# Reads the dev reset's profile file.
+toml = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
 # The S3 endpoint a library connects to, parsed for coven's location.
@@ -159,7 +160,7 @@ default = []
 oauth-providers = ["bae-store/oauth-providers"]
 # A debug app's dev reset: the profile it recreates its library from. Debug
 # macOS bridge builds turn it on; release builds leave it out.
-dev-reset = ["bae-app-dir/dev-reset"]
+dev-reset = ["bae-app-dir/dev-reset", "dep:toml"]
 # Forwards coven's test-utils so bae-library's own integration tests get the
 # re-exported clock/id fakes (FixedClock, …), bae-app-dir's so the fixtures
 # can put an app directory at a test's path, bae-store's, bae-records', bae-people's and
