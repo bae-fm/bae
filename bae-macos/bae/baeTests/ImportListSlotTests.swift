@@ -400,10 +400,10 @@ struct ImportListSlotViewChangeTests {
         try await Wait.until { !delivery.requests.isEmpty }
         #expect(delivery.requests.last?.tab == .done)
         #expect(slot.list === previous)
-        #expect(slot.shown?.view.tab == .pending)
+        #expect(slot.current?.request.view.tab == .pending)
 
         delivery.resolve()
-        try await Wait.until { slot.shown?.view.tab == .done }
+        try await Wait.until { slot.current?.request.view.tab == .done }
         #expect(slot.list !== previous)
     }
 
@@ -436,7 +436,7 @@ struct ImportListSlotViewChangeTests {
 
         slot.setTab(.done)
         try await Wait.until {
-            slot.shown?.view.tab == .done && opened == [0, 60]
+            slot.current?.request.view.tab == .done && opened == [0, 60]
         }
 
         #expect(slot.place?.position == 60)
@@ -475,7 +475,9 @@ struct ImportListSlotViewChangeTests {
         slot.place = place
 
         slot.setSortOrder(.oldestFirst)
-        try await Wait.until { slot.shown?.view.order == .oldestFirst }
+        try await Wait.until {
+            slot.current?.request.view.order == .oldestFirst
+        }
 
         #expect(opened == [0])
         #expect(slot.place == place)
@@ -565,7 +567,7 @@ final class CandidatePlacementNavigationTests: XCTestCase {
         XCTAssertEqual(outcome.position, 61)
         XCTAssertEqual(uiStore.importCandidateTab, .done)
         XCTAssertTrue(uiStore.importCandidateFilterText.isEmpty)
-        XCTAssertEqual(slot.shown?.view.tab, .done)
+        XCTAssertEqual(slot.current?.request.view.tab, .done)
         XCTAssertEqual(
             slot.list?.idAt(61),
             candidateStableKey(targetKey)
@@ -632,7 +634,7 @@ extension CandidatePlacementNavigationTests {
         let position = try await reveal.value
 
         XCTAssertNil(position)
-        XCTAssertEqual(slot.shown?.view.tab, .pending)
+        XCTAssertEqual(slot.current?.request.view.tab, .pending)
         XCTAssertEqual(uiStore.importCandidateTab, .pending)
         XCTAssertTrue(selection.keys.isEmpty)
     }
@@ -673,7 +675,7 @@ extension CandidatePlacementNavigationTests {
         let position = try await reveal.value
 
         XCTAssertEqual(position, 61)
-        XCTAssertEqual(slot.shown?.view.tab, .done)
+        XCTAssertEqual(slot.current?.request.view.tab, .done)
         XCTAssertEqual(selection.keys, [candidateKey(61)])
     }
 

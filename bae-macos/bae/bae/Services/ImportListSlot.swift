@@ -211,10 +211,6 @@ final class ImportListSlot {
     /// The list on screen.
     var list: PaginatedList<BridgeImportListItem>? { current?.list }
 
-    // periphery:ignore - read by baeTests
-    /// The request the list on screen reads.
-    var shown: BridgeImportListRequest? { current?.request }
-
     /// How many of the tab's rows the list shows, when the list on screen
     /// was read under `narrowing`, the filter the field holds now; nil when
     /// the list was read for another filter or has not counted yet, so the

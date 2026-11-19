@@ -105,7 +105,7 @@ struct ImportCandidateTablePlaceTests {
 
         slot.setFilterText("release")
         try await Wait.until {
-            slot.shown?.view.filterText == "release"
+            slot.current?.request.view.filterText == "release"
                 && slot.place?.position == 0
         }
         try await ImportListHosting.withList(
@@ -149,7 +149,7 @@ struct ImportCandidateTablePlaceTests {
             // in place of the table, so the wait looks for the table without
             // failing the test while the table is absent.
             try await Wait.until {
-                slot.shown?.view.filterText == "release"
+                slot.current?.request.view.filterText == "release"
                     && SnapshotTestSupport.descendants(of: content)
                         .compactMap { $0 as? ImportCandidateTableView }
                         .first
