@@ -8,7 +8,8 @@
 //! Their tables are the SQL files beside the listings that read them: the
 //! album grid's (`album/listing.sql`), the artist list's (`artist.sql`), the
 //! composer list's (`composer.sql`), a composer's page's
-//! (`composer_detail.sql`), the Storage Manager's (`storage.sql`), library
+//! (`composer_detail.sql`), the Storage Manager's (`storage.sql` and
+//! `storage_totals.sql`), library
 //! search's (`search.sql`). Each holds values a list sorts, filters or counts by that
 //! come from several library tables, each kept in a device-local table so an
 //! index serves it. Local triggers write them in the same write as the rows
@@ -38,6 +39,7 @@ mod storage_actions;
 mod storage_browse;
 #[cfg(desktop)]
 pub mod storage_inspector;
+mod storage_totals;
 mod sync_activity;
 mod uploads;
 
@@ -103,6 +105,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[bae_store::SchemaPart::new(
     composer::SQL,
     composer_detail::SQL,
     storage::SQL,
+    storage_totals::SQL,
     sync_activity::SQL,
     search::SQL,
     name_keys::SQL,

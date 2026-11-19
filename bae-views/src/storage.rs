@@ -531,25 +531,27 @@ pub(crate) fn storage_selected_query(filter: StorageFilter, searching: bool) -> 
 }
 
 /// How many releases the Storage Manager list under `filter` holds and their
-/// files' total size. When the caller passes `pattern`, the count and size
-/// cover only the releases whose album the search pattern finds.
+/// files' total size: with no `pattern`, the stored totals
+/// (`storage_totals.sql`). When the caller passes `pattern`, the count and
+/// size cover only the releases whose album the search pattern finds,
+/// counted over their storage rows.
 pub(crate) fn storage_counts_on(
     sql: &SqlReadContext<'_>,
     filter: StorageFilter,
     pattern: Option<&str>,
 ) -> Result<(u64, u64), DbError> {
-    let rows = pattern.map_or(StorageRows::Listed, |_| StorageRows::Searched);
+    let Some(pattern) = pattern else {
+        return crate::storage_totals::storage_totals_on(sql, stored_value(filter));
+    };
     let statement = format!(
         "SELECT COUNT(*), COALESCE(SUM(st.total_size), 0) \
          FROM release_storage st JOIN releases r ON r.id = st.release_id \
          WHERE {stored} AND {searched}",
         stored = stored_value(filter)
             .map_or_else(|| "1".to_string(), |stored| format!("st.stored = {stored}")),
-        searched = storage_search_condition(rows, "r.album_id"),
+        searched = storage_search_condition(StorageRows::Searched, "r.album_id"),
     );
-    let params: Vec<(&str, &dyn rusqlite::ToSql)> =
-        pattern.iter().map(|pattern| (":search", pattern as &dyn rusqlite::ToSql)).collect();
-    Ok(sql.query_row(&statement, params.as_slice(), |row| {
+    Ok(sql.query_row(&statement, rusqlite::named_params! { ":search": pattern }, |row| {
         Ok((row.get::<_, i64>(0)? as u64, row.get::<_, i64>(1)? as u64))
     })?)
 }

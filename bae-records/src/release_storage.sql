@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     release_id TEXT PRIMARY KEY REFERENCES releases (id) ON DELETE CASCADE,
     file_count INTEGER NOT NULL,
     total_size INTEGER NOT NULL,
-    stored INTEGER NOT NULL,
+    stored INTEGER NOT NULL CHECK (stored IN (0, 1)),
     pinned_count INTEGER NOT NULL,
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
