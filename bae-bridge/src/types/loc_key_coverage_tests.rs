@@ -496,6 +496,7 @@ fn produced_keys() -> Vec<String> {
         BridgeSyncStatusWord::SyncFailed,
     ] {
         keys.push(status.key().to_string());
+        keys.push(status.short_key().to_string());
     }
     keys.extend(sync_cause_messages().into_iter().map(|message| message.key));
     for outcome in [
