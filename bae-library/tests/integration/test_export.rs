@@ -455,7 +455,6 @@ fn write_libflac_track(
     filename: &str,
     title: &str,
 ) -> Vec<u8> {
-    use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
 
@@ -463,7 +462,7 @@ fn write_libflac_track(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/libflac-level-0.flac"),
         dir.join(filename),
     );
-    let mut file = lofty::read_from(&mut folder.open(&destination)).unwrap();
+    let mut file = bae_import::test_fixtures::read_tagged(folder, &destination);
     let mut tag = Tag::new(TagType::VorbisComments);
     tag.set_title(title.to_string());
     tag.set_artist("Artist Name".to_string());
@@ -472,11 +471,7 @@ fn write_libflac_track(
     tag.set_track(1);
     tag.insert_text(ItemKey::Comment, "the source's own comment".to_string());
     file.insert_tag(tag);
-    file.save_to(
-        &mut folder.open_with(&destination, std::fs::OpenOptions::new().read(true).write(true)),
-        WriteOptions::default(),
-    )
-    .unwrap();
+    bae_import::test_fixtures::save_tagged(folder, &destination, &file);
     folder.read(destination)
 }
 

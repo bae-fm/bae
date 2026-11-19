@@ -139,7 +139,6 @@ fn generate_tagged_album_files(
     year: Option<u16>,
     tracks: &[TaggedTrack<'_>],
 ) {
-    use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::items::Timestamp;
     use lofty::tag::{Tag, TagType};
@@ -150,7 +149,7 @@ fn generate_tagged_album_files(
     for t in tracks {
         let dest = dir.join(t.filename);
         folder.write(&dest, &flac);
-        let mut tagged = lofty::read_from(&mut folder.open(&dest)).expect("read for tagging");
+        let mut tagged = bae_import::test_fixtures::read_tagged(folder, &dest);
         let mut tag = Tag::new(TagType::VorbisComments);
         tag.set_title(t.title.to_string());
         tag.set_artist(album_artist.to_string());
@@ -168,12 +167,7 @@ fn generate_tagged_album_files(
         }
         tag.set_track(t.track_number);
         tagged.insert_tag(tag);
-        tagged
-            .save_to(
-                &mut folder.open_with(&dest, std::fs::OpenOptions::new().read(true).write(true)),
-                WriteOptions::default(),
-            )
-            .expect("save tags");
+        bae_import::test_fixtures::save_tagged(folder, &dest, &tagged);
     }
 }
 
@@ -205,7 +199,6 @@ fn generate_tagged_album_files_with_embedded_cover(
     album_artist: &str,
     tracks: &[TaggedTrack<'_>],
 ) {
-    use lofty::config::WriteOptions;
     use lofty::picture::{MimeType, Picture, PictureType};
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
@@ -216,7 +209,7 @@ fn generate_tagged_album_files_with_embedded_cover(
     for t in tracks {
         let dest = dir.join(t.filename);
         folder.write(&dest, &flac);
-        let mut tagged = lofty::read_from(&mut folder.open(&dest)).expect("read for tagging");
+        let mut tagged = bae_import::test_fixtures::read_tagged(folder, &dest);
         let mut tag = Tag::new(TagType::VorbisComments);
         tag.set_title(t.title.to_string());
         tag.set_artist(album_artist.to_string());
@@ -230,12 +223,7 @@ fn generate_tagged_album_files_with_embedded_cover(
                 .build(),
         );
         tagged.insert_tag(tag);
-        tagged
-            .save_to(
-                &mut folder.open_with(&dest, std::fs::OpenOptions::new().read(true).write(true)),
-                WriteOptions::default(),
-            )
-            .expect("save tags");
+        bae_import::test_fixtures::save_tagged(folder, &dest, &tagged);
     }
 }
 
