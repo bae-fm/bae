@@ -653,11 +653,7 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     handle.close().await.unwrap();
     drop(handle);
     home.point_at(id);
-    std::fs::write(
-        home._temp.path().join(".bae").join("stores").join(id.to_string()).join("storage.json"),
-        "{not settings",
-    )
-    .unwrap();
+    home.installation.store_dir(&id).damage_storage_settings();
     let listed = home
         .app_dir
         .discover_libraries(&home.installation, coven::task::HeardBugs::shared().as_ref())

@@ -65,10 +65,6 @@ async fn discovery_lists_a_store_whose_name_cant_be_read() {
 /// A library whose storage settings can't be read is listed with why, and
 /// the others still list as they are.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
@@ -77,11 +73,7 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
     for name in ["Openable", "Unreadable"] {
         ids.push(store(&installation, name).await);
     }
-    std::fs::write(
-        tmp.path().join("stores").join(ids[1].to_string()).join("storage.json"),
-        "{not settings",
-    )
-    .unwrap();
+    installation.store_dir(&ids[1]).damage_storage_settings();
 
     let libraries = app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())

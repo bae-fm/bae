@@ -775,10 +775,6 @@ async fn a_move_to_this_device_passes_over_a_release_already_queued() {
 /// refuses a file not in the cloud when the move runs, the entry fails with
 /// coven's reason, and the release's original stays where it was.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_move_to_this_device_of_a_local_release_fails_with_covens_refusal() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -790,8 +786,7 @@ async fn a_move_to_this_device_of_a_local_release_fails_with_covens_refusal() {
         &[("track.flac", b"local audio")],
     )
     .await;
-    let folder = temp_dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = temp_dir.create_folder("local");
 
     let error = move_to_this_device_and_wait(manager, std::slice::from_ref(&release.id), &folder)
         .await

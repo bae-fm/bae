@@ -165,27 +165,13 @@ struct StoreState {
     files: Vec<PathBuf>,
 }
 
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreState {
-    let mut files = Vec::new();
-    let mut dirs = vec![library_dir.to_path_buf()];
-    while let Some(dir) = dirs.pop() {
-        for entry in std::fs::read_dir(&dir).unwrap() {
-            let path = entry.unwrap().path();
-            if path.is_dir() {
-                dirs.push(path);
-            } else if !path
-                .file_name()
-                .is_some_and(|name| name.to_string_lossy().starts_with("test.db"))
-            {
-                files.push(path);
-            }
-        }
-    }
-    files.sort();
+    let files = coven::files_under(library_dir)
+        .into_iter()
+        .filter(|path| {
+            !path.file_name().is_some_and(|name| name.to_string_lossy().starts_with("test.db"))
+        })
+        .collect();
     let rows = handle.services.store.every_row_for_test().await.unwrap();
     StoreState { rows, files }
 }

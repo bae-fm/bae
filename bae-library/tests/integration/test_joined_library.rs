@@ -163,10 +163,6 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
 /// and discarding again finds nothing. The household's own library is not
 /// touched.
 #[test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
     on_app_runtime(async {
         let household = Household::new().await;
@@ -219,14 +215,8 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
             "no join is under way for another library"
         );
 
-        let settings: Vec<_> = walk(guest_dir.path())
-            .into_iter()
-            .filter(|path| path.file_name().is_some_and(|name| name == "settings.json"))
-            .collect();
-        let [settings] = &settings[..] else {
-            panic!("the join saved one settings file: {settings:?}");
-        };
-        std::fs::write(settings, b"{").unwrap();
+        let store_dir = guest.store_dir(&store);
+        store_dir.damage_settings();
 
         let error = bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS)
             .await
@@ -243,7 +233,7 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
         bae_library::discard_unfinished_installation(&builder, store, &NO_DIAGNOSTICS)
             .await
             .unwrap();
-        assert!(!settings.exists());
+        assert!(!store_dir.files_exist());
         assert!(bae_library::unfinished_joins(&builder, &NO_DIAGNOSTICS).await.unwrap().is_empty());
         let again = bae_library::discard_unfinished_installation(&builder, store, &NO_DIAGNOSTICS)
             .await
@@ -251,22 +241,4 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
         assert_eq!(again.category(), bae_diagnostics::UiErrorCategory::Config, "{again:?}");
         household.owner.close().await.unwrap();
     });
-}
-
-/// Every file under `dir`.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
-fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
-    let mut files = Vec::new();
-    for entry in std::fs::read_dir(dir).unwrap() {
-        let path = entry.unwrap().path();
-        if path.is_dir() {
-            files.extend(walk(&path));
-        } else {
-            files.push(path);
-        }
-    }
-    files
 }

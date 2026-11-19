@@ -189,7 +189,7 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
 #[tokio::test]
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    reason = "file system: reads the copy bae staged in its own temporary folder, a file no library holds"
 )]
 async fn the_artwork_gathering_stages_each_image_coven_reads() {
     use bae_util::content_type::ContentType;
