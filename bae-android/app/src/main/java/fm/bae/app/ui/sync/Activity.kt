@@ -38,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
@@ -80,7 +81,7 @@ internal fun AndroidActivityButton(
     var details by remember { mutableStateOf<ErrorDetails?>(null) }
     if (moving || held || problems.needsAttention) {
         val label = LocalContext.current.coreString("core.activity.title")
-        IconButton(
+        AndroidIconButton(
             onClick = { listShown = true },
             modifier = Modifier.semantics { contentDescription = label },
         ) {

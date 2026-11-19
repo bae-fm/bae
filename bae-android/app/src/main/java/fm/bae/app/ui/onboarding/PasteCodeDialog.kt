@@ -14,13 +14,11 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
+import fm.bae.app.ui.components.TextFieldKind
 import fm.bae.app.ui.components.WordGapTransformation
-
-/** A code field is tall at least as three 24dp lines and the design's 28dp of padding, and grows to six lines. */
-private val CODE_FIELD_MIN_HEIGHT = 98.dp
-private const val CODE_FIELD_MAX_LINES = 6
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
@@ -43,15 +41,11 @@ fun PasteCodeDialog(
         title = text.title,
         message = text.instructions,
         content = {
-            OutlinedTextField(
+            AndroidTextField(
                 value = pasteInput,
                 onValueChange = onInputChange,
-                label = { Text(text.label) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT),
-                textStyle = ThemeText.mono.style,
-                visualTransformation = WordGapTransformation,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
-                maxLines = CODE_FIELD_MAX_LINES,
+                label = text.label,
+                kind = TextFieldKind.CODE,
             )
         },
         confirmButton = {

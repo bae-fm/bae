@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -95,9 +96,11 @@ internal fun LibraryMoreMenu(
 ) {
     val close = { state.openMenu = null }
     Box {
-        IconButton(onClick = { state.openMenu = LibraryHeaderMenu.MORE }) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more_options))
-        }
+        AndroidIconButton(
+            Icons.Filled.MoreVert,
+            stringResource(R.string.more_options),
+            onClick = { state.openMenu = LibraryHeaderMenu.MORE },
+        )
         AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close, minWidth = 220.dp) {
             LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
         }

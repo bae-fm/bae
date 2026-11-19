@@ -102,13 +102,13 @@ private fun AndroidSnackbar(data: SnackbarData) {
         dismissAction =
             if (visuals.withDismissAction) {
                 {
-                    IconButton(onClick = data::dismiss, modifier = Modifier.size(CLOSE_BOX)) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.close),
-                            modifier = Modifier.size(CLOSE_GLYPH),
-                        )
-                    }
+                    AndroidIconButton(
+                        icon = Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.close),
+                        onClick = data::dismiss,
+                        modifier = Modifier.size(CLOSE_BOX),
+                        glyph = CLOSE_GLYPH,
+                    )
                 }
             } else {
                 null

@@ -29,6 +29,7 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidStep
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.NoticeLook
 
 /**
@@ -57,20 +58,12 @@ internal fun JoinNameStep(
             modifier = Modifier.verticalScroll(rememberScrollState()),
             top = true,
         ) {
-            OutlinedTextField(
+            AndroidTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.onboarding_your_name)) },
-                // TalkBack reads the label as the field's name. Clearing the hint's semantics keeps TalkBack from
-                // reading the hint, which still shows in the empty field.
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.onboarding_name_placeholder),
-                        modifier = Modifier.clearAndSetSemantics {},
-                    )
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                label = stringResource(R.string.onboarding_your_name),
+                placeholder = stringResource(R.string.onboarding_name_placeholder),
+                modifier = Modifier.focusRequester(focus),
                 keyboardOptions =
                     KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { if (ready) onJoin(name) }),

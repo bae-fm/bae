@@ -25,9 +25,11 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidPinField
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.TextFieldKind
 import fm.bae.app.ui.components.focusOnShow
 import uniffi.bae_bridge.BridgeAirPlayCode
 import uniffi.bae_bridge.BridgeAirPlayCodeRequest
@@ -125,18 +127,15 @@ internal fun castCodeDialogParts(
                         enabled = !pairing,
                     )
                 } else {
-                    OutlinedTextField(
+                    AndroidTextField(
                         value = code,
                         onValueChange = onCodeChange,
-                        label = { Text(stringResource(R.string.cast_password)) },
-                        isError = fieldLine != null,
-                        supportingText = fieldLine?.let { line -> { Text(line) } },
-                        modifier = focus.fillMaxWidth(),
+                        label = stringResource(R.string.cast_password),
+                        modifier = focus,
+                        kind = TextFieldKind.SECRET,
+                        helper = fieldLine,
+                        error = fieldLine != null,
                         enabled = !pairing,
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions =
-                            KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
                     )
                 }
                 if (pairing) {

@@ -24,6 +24,7 @@ import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -71,7 +72,7 @@ class BasicComponentShots : BoardShot() {
     fun androidComponentButtonUnderAField() =
         component("android.component.button.under-a-field", wide = true) {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                OutlinedTextField(value = "AKIAEXAMPLEKEY", onValueChange = {}, label = { Text("Access key ID") })
+                AndroidTextField(value = "AKIAEXAMPLEKEY", onValueChange = {}, label = "Access key ID")
                 AndroidButton(onClick = {}, kind = ButtonKind.TEXT, alignTo = ButtonAlign.FIELD) { Text("Use my key instead") }
             }
         }

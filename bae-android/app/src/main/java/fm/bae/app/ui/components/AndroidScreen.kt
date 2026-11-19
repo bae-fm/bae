@@ -53,9 +53,7 @@ internal fun AndroidTopBar(
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = backLabel)
-        }
+        AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, backLabel, onClick = onBack)
         if (title != null) {
             Text(text = title, style = ThemeText.androidBarTitle.style)
         }

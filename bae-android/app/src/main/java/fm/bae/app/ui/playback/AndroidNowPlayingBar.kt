@@ -41,7 +41,10 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidErrorLine
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
+import fm.bae.app.ui.components.ICON_BUTTON_BAR_BOX
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.components.liftsSnackbar
 import uniffi.bae_bridge.BridgeNowPlayingDisplay
@@ -165,32 +168,31 @@ internal fun NowPlayingTransport(
     onOpenQueue: () -> Unit,
     onCycleRepeat: () -> Unit,
 ) {
-    BarIconButton(onClick = onPrevious) {
-        Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.player_previous))
-    }
+    AndroidIconButton(
+        Icons.Filled.SkipPrevious,
+        stringResource(R.string.player_previous),
+        onClick = onPrevious,
+        box = ICON_BUTTON_BAR_BOX,
+    )
     AndroidPlayPause(
         isPlaying = isPlaying,
         iconSize = ThemeIcon.large,
         waitsOnStorage = waitsOnStorage,
         onToggle = onPlayPause,
     )
-    BarIconButton(onClick = onNext) {
-        Icon(Icons.Filled.SkipNext, contentDescription = stringResource(R.string.player_next))
-    }
+    AndroidIconButton(Icons.Filled.SkipNext, stringResource(R.string.player_next), onClick = onNext, box = ICON_BUTTON_BAR_BOX)
     castButton()
-    BarIconButton(onClick = onOpenQueue) {
-        Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.queue))
-    }
-    BarIconButton(onClick = onCycleRepeat) {
-        Icon(
-            imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-            contentDescription = stringResource(R.string.player_repeat),
-            tint =
-                if (repeatMode == BridgeRepeatMode.OFF) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-        )
-    }
+    AndroidIconButton(
+        Icons.AutoMirrored.Filled.List,
+        stringResource(R.string.queue),
+        onClick = onOpenQueue,
+        box = ICON_BUTTON_BAR_BOX,
+    )
+    AndroidIconButton(
+        icon = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+        contentDescription = stringResource(R.string.player_repeat),
+        onClick = onCycleRepeat,
+        tone = if (repeatMode == BridgeRepeatMode.OFF) IconTone.MUTED else IconTone.ACCENT,
+        box = ICON_BUTTON_BAR_BOX,
+    )
 }

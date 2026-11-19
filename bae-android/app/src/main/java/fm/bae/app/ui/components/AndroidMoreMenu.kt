@@ -25,9 +25,7 @@ fun AndroidMoreMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }, enabled = enabled) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
-        }
+        AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.more), onClick = { expanded = true }, enabled = enabled)
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             items { expanded = false }
         }

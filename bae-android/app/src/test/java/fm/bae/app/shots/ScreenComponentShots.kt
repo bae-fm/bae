@@ -17,6 +17,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
@@ -48,9 +49,7 @@ class ScreenComponentShots : BoardShot() {
                     nowPlayingBar = { Bar(playing) },
                     modifier = Modifier.height(480.dp),
                     actions = {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.album_options))
-                        }
+                        AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.album_options), onClick = {})
                     },
                 ) {
                     Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {

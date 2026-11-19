@@ -26,22 +26,19 @@ internal fun AndroidS3KeyFields(
     accessKeyIdModifier: Modifier = Modifier,
     secretAccessKeyModifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
+    AndroidTextField(
         value = accessKeyId,
         onValueChange = onAccessKeyIdChange,
-        label = { Text(stringResource(R.string.s3_access_key_id)) },
-        modifier = accessKeyIdModifier.fillMaxWidth(),
-        singleLine = true,
+        label = stringResource(R.string.s3_access_key_id),
+        modifier = accessKeyIdModifier,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false),
     )
-    OutlinedTextField(
+    AndroidTextField(
         value = secretAccessKey,
         onValueChange = onSecretAccessKeyChange,
-        label = { Text(stringResource(R.string.s3_secret_access_key)) },
-        supportingText = secretNote?.let { note -> { Text(note) } },
-        modifier = secretAccessKeyModifier.fillMaxWidth(),
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        label = stringResource(R.string.s3_secret_access_key),
+        modifier = secretAccessKeyModifier,
+        kind = TextFieldKind.SECRET,
+        helper = secretNote,
     )
 }

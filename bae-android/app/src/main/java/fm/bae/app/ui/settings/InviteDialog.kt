@@ -33,6 +33,7 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.AndroidSegmentedControl
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -222,13 +223,12 @@ private fun InviteAccessFields(
     if (storage is BridgeStorageLocation.S3) {
         S3InviteFields(input, first)
     } else {
-        OutlinedTextField(
+        AndroidTextField(
             value = input.email,
             onValueChange = { input.email = it.trim() },
-            label = { Text(stringResource(storage.emailLabel())) },
-            supportingText = { Text(stringResource(storage.emailHelp())) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().focusRequester(first),
+            label = stringResource(storage.emailLabel()),
+            helper = stringResource(storage.emailHelp()),
+            modifier = Modifier.focusRequester(first),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
         )
     }

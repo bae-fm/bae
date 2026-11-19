@@ -23,8 +23,11 @@ import fm.bae.app.data.CastStart
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.ICON_BUTTON_BAR_BOX
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeBrowsingFor
@@ -66,18 +69,13 @@ internal fun CastBarButton(
     casting: Boolean,
     onClick: () -> Unit,
 ) {
-    BarIconButton(onClick = onClick) {
-        Icon(
-            imageVector = Icons.Filled.Cast,
-            contentDescription = stringResource(R.string.cast),
-            tint =
-                if (casting) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-        )
-    }
+    AndroidIconButton(
+        icon = Icons.Filled.Cast,
+        contentDescription = stringResource(R.string.cast),
+        onClick = onClick,
+        tone = if (casting) IconTone.ACCENT else IconTone.MUTED,
+        box = ICON_BUTTON_BAR_BOX,
+    )
 }
 
 /**

@@ -385,21 +385,18 @@ fun AndroidErrorDetails(
         ) {
             Text(text = text, style = ThemeText.mono.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(
+        AndroidIconButton(
+            icon = Icons.Filled.ContentCopy,
+            contentDescription = stringResource(R.string.copy_details),
             onClick = { copy(copyText) },
             modifier =
                 Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = ThemeSpace.related, end = ThemeSpace.related)
                     .size(COPY_BOX),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ContentCopy,
-                contentDescription = stringResource(R.string.copy_details),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(ThemeIcon.small),
-            )
-        }
+            tone = IconTone.MUTED,
+            glyph = ThemeIcon.small,
+        )
     }
 }
 

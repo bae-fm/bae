@@ -32,6 +32,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidInlineIconButton
 
 /** The search field's height; its pill shape is half of it. */
@@ -51,12 +52,7 @@ internal fun AndroidSearchBar(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.close_search),
-                )
-            }
+            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.close_search), onClick = onClose)
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,

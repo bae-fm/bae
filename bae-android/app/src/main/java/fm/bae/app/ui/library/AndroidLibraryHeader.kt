@@ -48,6 +48,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import kotlin.math.roundToInt
 
@@ -135,9 +136,7 @@ internal fun AndroidLibraryHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LibraryViewHeading(state = state, progress = progress, modifier = Modifier.weight(1f))
-        IconButton(onClick = { state.searchOpen = true }) {
-            Icon(imageVector = Icons.Filled.Search, contentDescription = stringResource(R.string.search))
-        }
+        AndroidIconButton(Icons.Filled.Search, stringResource(R.string.search), onClick = { state.searchOpen = true })
         syncActivity()
         LibraryMoreMenu(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
     }

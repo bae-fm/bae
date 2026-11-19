@@ -30,13 +30,12 @@ internal fun TrackOptionsMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector = Icons.Filled.MoreVert,
-                contentDescription = stringResource(R.string.track_options),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        AndroidIconButton(
+            icon = Icons.Filled.MoreVert,
+            contentDescription = stringResource(R.string.track_options),
+            onClick = { expanded = true },
+            tone = IconTone.MUTED,
+        )
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             TrackOption(R.string.play_next, onPlayNext) { expanded = false }
             TrackOption(R.string.add_to_queue, onAddToQueue) { expanded = false }

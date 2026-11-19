@@ -16,6 +16,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSegmentedControl
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
@@ -47,12 +48,11 @@ internal fun playlistDialogParts(
         title = title,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                OutlinedTextField(
+                AndroidTextField(
                     value = name,
                     onValueChange = onNameChange,
-                    label = { Text(stringResource(R.string.playlist_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().focusOnShow(),
+                    label = stringResource(R.string.playlist_name),
+                    modifier = Modifier.focusOnShow(),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     AndroidSegmentedControl(

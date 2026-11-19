@@ -32,6 +32,8 @@ import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidIconButton
+import fm.bae.app.ui.components.IconTone
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -108,7 +110,7 @@ private fun TransferLine(
 }
 
 /**
- * The Pinning line's tonal Pause, or Resume while pinning is paused: a [PAUSE_CONTAINER] disc whose
+ * The Pinning line's tonal Pause, or Resume while pinning is paused: a 32dp disc whose
  * touch area is the usual 48dp.
  */
 @Composable
@@ -116,21 +118,11 @@ private fun PausePinning(
     paused: Boolean,
     onClick: () -> Unit,
 ) {
-    val tint = MaterialTheme.colorScheme.primary
-    IconButton(onClick = onClick, modifier = Modifier.size(PAUSE_CONTAINER).wrapContentSize(unbounded = true)) {
-        Box(
-            modifier = Modifier.size(PAUSE_CONTAINER).background(tint.copy(alpha = ThemeOpacity.tint), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
-                tint = tint,
-                modifier = Modifier.size(PAUSE_GLYPH),
-            )
-        }
-    }
+    AndroidIconButton(
+        icon = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+        contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
+        onClick = onClick,
+        tone = IconTone.ACCENT,
+        tonal = true,
+    )
 }
-
-private val PAUSE_CONTAINER = 32.dp
-private val PAUSE_GLYPH = 18.dp

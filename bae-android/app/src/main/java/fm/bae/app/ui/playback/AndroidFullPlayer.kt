@@ -60,8 +60,10 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.Artwork
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -204,9 +206,12 @@ internal fun AndroidFullPlayer(
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
         // Pulled left so the glyph, not the button, sits at the cover's edge.
-        IconButton(onClick = onCollapse, modifier = Modifier.offset(x = -ThemeSpace.group)) {
-            Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
-        }
+        AndroidIconButton(
+            Icons.Filled.ExpandMore,
+            stringResource(R.string.collapse),
+            onClick = onCollapse,
+            modifier = Modifier.offset(x = -ThemeSpace.group),
+        )
 
         Spacer(modifier = Modifier.height(ThemeSpace.related))
 
@@ -305,13 +310,13 @@ internal fun ExpandedTransportRow(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(skipBoxSize)) {
-            Icon(
-                Icons.Filled.SkipPrevious,
-                contentDescription = stringResource(R.string.player_previous),
-                modifier = Modifier.size(skipGlyphSize),
-            )
-        }
+        AndroidIconButton(
+            icon = Icons.Filled.SkipPrevious,
+            contentDescription = stringResource(R.string.player_previous),
+            onClick = onPrevious,
+            glyph = skipGlyphSize,
+            box = skipBoxSize,
+        )
         Spacer(modifier = Modifier.width(ThemeSpace.section))
         AndroidPlayPause(
             isPlaying = isPlaying,
@@ -320,13 +325,13 @@ internal fun ExpandedTransportRow(
             onToggle = onPlayPause,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.section))
-        IconButton(onClick = onNext, modifier = Modifier.size(skipBoxSize)) {
-            Icon(
-                Icons.Filled.SkipNext,
-                contentDescription = stringResource(R.string.player_next),
-                modifier = Modifier.size(skipGlyphSize),
-            )
-        }
+        AndroidIconButton(
+            icon = Icons.Filled.SkipNext,
+            contentDescription = stringResource(R.string.player_next),
+            onClick = onNext,
+            glyph = skipGlyphSize,
+            box = skipBoxSize,
+        )
     }
 }
 
@@ -340,18 +345,12 @@ internal fun ExpandedSecondaryControls(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onCycleRepeat) {
-            Icon(
-                imageVector = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
-                contentDescription = stringResource(R.string.repeat_mode),
-                tint =
-                    if (repeatMode == BridgeRepeatMode.OFF) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-            )
-        }
+        AndroidIconButton(
+            icon = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+            contentDescription = stringResource(R.string.repeat_mode),
+            onClick = onCycleRepeat,
+            tone = if (repeatMode == BridgeRepeatMode.OFF) IconTone.MUTED else IconTone.ACCENT,
+        )
     }
 }
 
@@ -384,13 +383,12 @@ internal fun ExpandedVolumeRow(
     var dragVolume by remember { mutableStateOf<Float?>(null) }
     val scope = rememberCoroutineScope()
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onSetMuted(!isMuted) }) {
-            Icon(
-                imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        AndroidIconButton(
+            icon = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = stringResource(if (isMuted) R.string.unmute else R.string.mute),
+            onClick = { onSetMuted(!isMuted) },
+            tone = IconTone.MUTED,
+        )
         AndroidVolumeSlider(
             value = dragVolume ?: volume,
             onValueChange = {

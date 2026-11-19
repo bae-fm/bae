@@ -25,7 +25,9 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
+import fm.bae.app.ui.components.IconTone
 import uniffi.bae_bridge.BridgeImageRef
 
 /**
@@ -85,13 +87,12 @@ internal fun AndroidQueueRow(
                     modifier = Modifier.padding(horizontal = ThemeSpace.related),
                 )
             }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = stringResource(R.string.queue_remove),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            AndroidIconButton(
+                icon = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.queue_remove),
+                onClick = onRemove,
+                tone = IconTone.MUTED,
+            )
             Icon(
                 imageVector = Icons.Filled.DragHandle,
                 contentDescription = stringResource(R.string.queue_drag_to_reorder),

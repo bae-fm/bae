@@ -30,6 +30,7 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidStorageUsage
+import fm.bae.app.ui.components.AndroidSwitch
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
@@ -114,7 +115,7 @@ private fun PinnedSection(
             title = askTitle,
             subtitle = stringResource(R.string.storage_ask_before_unpinning_note),
             trailing = {
-                Switch(
+                AndroidSwitch(
                     checked = asksBeforeUnpinning,
                     onCheckedChange = onAskBeforeUnpinning,
                     modifier = Modifier.semantics { contentDescription = askTitle },

@@ -66,7 +66,9 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -200,7 +202,9 @@ private fun Context.galleryLabelText(label: BridgeGalleryLabel): String =
 /** Close button, inset out of the status bar and any display cutout. */
 @Composable
 private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
-    IconButton(
+    AndroidIconButton(
+        icon = Icons.Filled.Close,
+        contentDescription = stringResource(R.string.close),
         onClick = onDismiss,
         modifier =
             Modifier
@@ -208,13 +212,8 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 ).padding(ThemeSpace.inline),
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Close,
-            contentDescription = stringResource(R.string.close),
-            tint = BaeTheme.colors.onFill,
-        )
-    }
+        tone = IconTone.ON_FILL,
+    )
 }
 
 /**

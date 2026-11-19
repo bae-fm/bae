@@ -34,6 +34,7 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
@@ -206,13 +207,12 @@ internal fun renameLibraryParts(
         title = stringResource(R.string.settings_rename_library_title),
         content = {
             Column {
-                OutlinedTextField(
+                AndroidTextField(
                     value = draft,
                     onValueChange = onDraftChange,
-                    label = { Text(stringResource(R.string.settings_library_new_name)) },
-                    supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().focusOnShow(),
+                    label = stringResource(R.string.settings_library_new_name),
+                    helper = stringResource(R.string.name_shown_to_everyone),
+                    modifier = Modifier.focusOnShow(),
                 )
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }

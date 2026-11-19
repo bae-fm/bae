@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.PreviewTheme
+import fm.bae.app.ui.components.AndroidIconButton
+import fm.bae.app.ui.components.ICON_BUTTON_BAR_BOX
 import fm.bae.fastvalues.LatestStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -43,7 +45,7 @@ class TouchTargetTest {
         compose.setContent {
             PreviewTheme {
                 Box(modifier = Modifier.size(200.dp), contentAlignment = Alignment.Center) {
-                    BarIconButton(onClick = { presses++ }) { Icon(Icons.Filled.Cast, contentDescription = null) }
+                    AndroidIconButton(Icons.Filled.Cast, null, onClick = { presses++ }, box = ICON_BUTTON_BAR_BOX)
                 }
             }
         }

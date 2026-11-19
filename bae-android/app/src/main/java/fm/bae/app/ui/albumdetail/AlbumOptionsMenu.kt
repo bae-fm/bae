@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -33,9 +34,7 @@ internal fun AlbumOptionsMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.album_options))
-        }
+        AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.album_options), onClick = { expanded = true })
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }, minWidth = 240.dp) {
             if (onSetPrimaryRelease != null) {
                 DropdownMenuItem(

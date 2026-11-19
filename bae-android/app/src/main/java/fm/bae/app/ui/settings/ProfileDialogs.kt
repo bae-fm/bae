@@ -23,6 +23,7 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
+import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
@@ -155,13 +156,12 @@ internal fun renameProfileParts(
         title = stringResource(R.string.onboarding_person_name),
         content = {
             Column {
-                OutlinedTextField(
+                AndroidTextField(
                     value = draft,
                     onValueChange = onDraftChange,
-                    label = { Text(stringResource(R.string.invite_name)) },
-                    supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().focusOnShow(),
+                    label = stringResource(R.string.invite_name),
+                    helper = stringResource(R.string.name_shown_to_everyone),
+                    modifier = Modifier.focusOnShow(),
                 )
                 error?.let {
                     AndroidNotice(

@@ -22,7 +22,9 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidEyebrow
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.ButtonKind
+import fm.bae.app.ui.components.IconTone
 
 /**
  * A queue section's label with its Clear, whose content description is [clearDescription] because a
@@ -50,20 +52,14 @@ internal fun AndroidQueueSection(
             Text(stringResource(R.string.queue_clear))
         }
         if (shuffled != null) {
-            IconButton(onClick = onShuffle) {
-                Icon(
-                    imageVector = Icons.Filled.Shuffle,
-                    contentDescription =
-                        stringResource(if (shuffled) R.string.queue_shuffle_off else R.string.queue_shuffle_on),
-                    tint =
-                        if (shuffled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    modifier = Modifier.size(ThemeIcon.medium),
-                )
-            }
+            AndroidIconButton(
+                icon = Icons.Filled.Shuffle,
+                contentDescription =
+                    stringResource(if (shuffled) R.string.queue_shuffle_off else R.string.queue_shuffle_on),
+                onClick = onShuffle,
+                tone = if (shuffled) IconTone.ACCENT else IconTone.MUTED,
+                glyph = ThemeIcon.medium,
+            )
         }
     }
 }

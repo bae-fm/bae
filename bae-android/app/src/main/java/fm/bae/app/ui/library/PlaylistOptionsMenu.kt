@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
@@ -29,9 +30,7 @@ internal fun PlaylistOptionsMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
-            Icon(imageVector = Icons.Filled.MoreVert, contentDescription = stringResource(R.string.playlist_options))
-        }
+        AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.playlist_options), onClick = { expanded = true })
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.playlist_edit_menu)) },

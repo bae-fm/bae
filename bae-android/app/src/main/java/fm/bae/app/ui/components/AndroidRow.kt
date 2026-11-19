@@ -120,7 +120,7 @@ internal fun AndroidRow(
         value?.let {
             Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        switch?.let { Switch(checked = it.checked, onCheckedChange = null, enabled = enabled) }
+        switch?.let { AndroidSwitch(checked = it.checked, onCheckedChange = null, enabled = enabled) }
         trailing?.invoke(this)
         icon?.let {
             Icon(

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
+import fm.bae.app.ui.components.AndroidIconButton
 
 /** How far the arc sits outside the glyph, on each side. */
 private val arcClearance = 8.dp
@@ -46,12 +47,12 @@ fun AndroidPlayPause(
             )
         }
         // Room around the glyph, so the arc turns clear of it at either size.
-        IconButton(onClick = onToggle, modifier = Modifier.size(iconSize + arcClearance * 2)) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                modifier = Modifier.size(iconSize),
-            )
-        }
+        AndroidIconButton(
+            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
+            onClick = onToggle,
+            modifier = Modifier.size(iconSize + arcClearance * 2),
+            glyph = iconSize,
+        )
     }
 }
