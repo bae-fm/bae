@@ -200,7 +200,7 @@
     var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 12 })) : null;
     return h('section', { className: 'bae-m-plpage' },
       h('div', { className: 'bae-m-plpage-head' },
-        h(PlaylistPicture, { covers: props.covers, size: 101, radius: 10 }),
+        h(PlaylistPicture, { covers: props.covers, size: 103, radius: 10 }),
         h('div', { className: 'bae-m-plpage-text' },
           h('h1', { className: 'bae-m-plpage-name' }, props.name),
           h('div', { className: 'bae-m-plpage-owner' }, h(Avatar, { name: props.owner, size: 16 }), props.owner),
