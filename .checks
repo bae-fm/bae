@@ -6,8 +6,9 @@
 # kind: `check` (static check), `fix` (formatter; builds re-stages what it
 # changed) or `test` (a checker's own test: never run by the hook). paths: the
 # files the line reads, as comma-separated globs. `{files}` is the staged files
-# that match; `{crates}` is `-p <crate>` for each workspace crate holding one.
-# A line with neither runs once, on everything it reads. Formatting and static
+# that match; `{crates}` is `-p <crate>` for each workspace crate holding one,
+# and every crate for a file an `every:<glob>` path matches. A line with neither
+# runs once, on everything it reads. Formatting and static
 # analysis only; the tests are the `test` lines.
 
 # Rust
@@ -25,7 +26,11 @@ whole frozen-shrinks owner-construction-check.toml,scripts/check-frozen-shrinks.
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
 # clippy's lints and the typed lints, in one compile (scripts/clippy-crates.sh).
-check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml scripts/clippy-crates.sh {crates}
+# The `every:` paths pin and build the typed lints' driver (tools/typed-lints)
+# and run clippy with it (scripts/clippy-*.sh): a change to them changes the
+# lints of every crate, so it lints every crate, as a change to
+# rust-toolchain.toml does.
+check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml,rust-toolchain.toml,every:tools/typed-lints/*.sh,every:scripts/clippy-*.sh scripts/clippy-crates.sh {crates}
 
 # The apps' sources and the bridge they call
 whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py
