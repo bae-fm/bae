@@ -4709,7 +4709,7 @@
   "code-name": {
    "page": "library",
    "size": 24,
-   "text": "What the code needs for these boards:\n- The Name row renames your profile. The bridge has rename_profile, but no app calls it. bae change.",
+   "text": "What the code needs for these boards:\n- The Name row renames your profile. The bridge has rename_profile, but no app calls it. bae change.\n- The Picture row picks and removes your picture, and each person's row starts with theirs. The bridge has set_avatar, which no app calls, and avatar(person), which BaeKit's ImageStore loads (BaeKit/Sources/BaeKit/Services/ImageStore.swift:240) but no view draws. The Mac's You section (bae-macos/bae/bae/Views/Settings/Library/PeopleAndDevicesPage.swift:371) and Android's (bae-android/app/src/main/java/fm/bae/app/ui/settings/PeoplePages.kt:128) have no Picture row. bae change.",
    "w": 420,
    "x": 5208,
    "y": 12968
