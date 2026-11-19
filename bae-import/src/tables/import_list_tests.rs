@@ -236,7 +236,7 @@ impl Library {
         );
         assert_eq!(
             self.stored_group_counts().await,
-            self.group_count_rows(
+            self.count_rows(
                 "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
                         pending_entry, COUNT(*) \
                  FROM import_list_placement WHERE item <> 'group' AND group_folder IS NOT NULL \
@@ -249,25 +249,12 @@ impl Library {
 
     /// The group counts kept beside the placement as they stand, in order.
     pub(crate) async fn stored_group_counts(&self) -> Vec<GroupCountRow> {
-        self.group_count_rows(
+        self.count_rows(
             "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
                     pending_entry, count \
              FROM import_list_group_count ORDER BY 1, 2, 3",
         )
         .await
-    }
-
-    /// The rows `statement` selects, each a watched folder, a group, a filter
-    /// entry and a count.
-    async fn group_count_rows(&self, statement: &'static str) -> Vec<GroupCountRow> {
-        self.db
-            .read(move |sql| {
-                Ok(sql.query(statement, [], |row| {
-                    Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-                })?)
-            })
-            .await
-            .unwrap()
     }
 
     /// The counts kept beside the placement as they stand, in order.
@@ -279,9 +266,15 @@ impl Library {
         .await
     }
 
-    /// The rows `statement` selects, each a tab, an item, a filter entry and
-    /// a count.
-    async fn count_rows(&self, statement: &'static str) -> Vec<CountRow> {
+    /// The rows `statement` selects, each three columns that say what it
+    /// counts (a tab, an item and a filter entry; or a watched folder, a
+    /// group and a filter entry) and a count.
+    async fn count_rows<A, B, C>(&self, statement: &'static str) -> Vec<(A, B, C, i64)>
+    where
+        A: rusqlite::types::FromSql + Send + 'static,
+        B: rusqlite::types::FromSql + Send + 'static,
+        C: rusqlite::types::FromSql + Send + 'static,
+    {
         self.db
             .read(move |sql| {
                 Ok(sql.query(statement, [], |row| {
