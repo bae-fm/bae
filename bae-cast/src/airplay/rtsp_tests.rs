@@ -97,7 +97,12 @@ fn scripted_fake_receiver_drives_the_setup_sequence_in_order() {
         (methods, record_session)
     });
 
-    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
+    let mut conn = RtspConnection::connect(
+        addr.ip(),
+        addr.port(),
+        SenderIdentity::new("bae/test", "Kitchen Mac"),
+    )
+    .unwrap();
     assert_eq!(conn.request(&RtspRequest::new(Method::Options, "*")).unwrap().status, 200);
     conn.request(&RtspRequest::with_body(
         Method::Announce,
@@ -141,7 +146,12 @@ fn a_401_without_a_readable_challenge_is_an_error() {
         )
         .unwrap();
     });
-    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
+    let mut conn = RtspConnection::connect(
+        addr.ip(),
+        addr.port(),
+        SenderIdentity::new("bae/test", "Kitchen Mac"),
+    )
+    .unwrap();
     conn.answer_challenges_with(DigestPassword {
         password: "hunter2".to_string(),
         style: DigestStyle::Standard,

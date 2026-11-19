@@ -3,10 +3,8 @@
 //! and pair-verify. Each drives its state machine
 //! ([`super::pairing`], [`super::pair_verify`]) one request at a time.
 //!
-//! Every pairing request names this device in `X-Apple-Client-Name`: tvOS 27
-//! and HomeView make a PIN on `/pair-pin-start` but show none, and log
-//! `clientName is nil`, when the header is missing (pyatv issues 2866 and
-//! 2950, pull 2894).
+//! Every pairing request names this device in `X-Apple-Client-Name`, as every
+//! request on the connection does ([`super::rtsp::SenderIdentity`]).
 
 use super::ap2_session::Ap2Error;
 use super::pair_verify::PairVerify;
@@ -24,19 +22,13 @@ pub(crate) const PAIR_PIN_START: &str = "/pair-pin-start";
 const PAIR_VERIFY_M1: &str = "/pair-verify M1";
 const PAIR_VERIFY_M3: &str = "/pair-verify M3";
 
-/// The header that names this device to the person at the receiver.
-const CLIENT_NAME: &str = "X-Apple-Client-Name";
-
 /// Drive transient pair-setup (SRP) over the plaintext RTSP socket, returning
 /// the SRP key. Every request after M4 is encrypted with keys derived from it,
 /// and the audio key comes from the same secret.
-pub(crate) fn run_transient_pair_setup(
-    conn: &mut RtspConnection,
-    client_name: &str,
-) -> Result<Vec<u8>, Ap2Error> {
+pub(crate) fn run_transient_pair_setup(conn: &mut RtspConnection) -> Result<Vec<u8>, Ap2Error> {
     let mut pairing = TransientPairing::new();
     let post = |conn: &mut RtspConnection, step, body| {
-        pair_post(conn, "/pair-setup", step, TRANSIENT_HKP, client_name, body)
+        pair_post(conn, "/pair-setup", step, TRANSIENT_HKP, body)
     };
     let m1 = pairing.start()?;
     let m2 = post(conn, PAIR_SETUP_M1, m1)?;
@@ -46,12 +38,11 @@ pub(crate) fn run_transient_pair_setup(
 }
 
 /// Ask the receiver to show a PIN (`POST /pair-pin-start`, no body), for a
-/// pair-setup with that PIN. The receiver shows `client_name` beside it.
-pub(crate) fn start_pin(conn: &mut RtspConnection, client_name: &str) -> Result<(), Ap2Error> {
+/// pair-setup with that PIN. The receiver shows the connection's client name
+/// beside it.
+pub(crate) fn start_pin(conn: &mut RtspConnection) -> Result<(), Ap2Error> {
     let response = conn.request(
-        &RtspRequest::new(Method::Post, "/pair-pin-start")
-            .header("X-Apple-HKP", CODE_HKP)
-            .header(CLIENT_NAME, client_name),
+        &RtspRequest::new(Method::Post, "/pair-pin-start").header("X-Apple-HKP", CODE_HKP),
     )?;
     if response.is_success() {
         Ok(())
@@ -64,13 +55,12 @@ pub(crate) fn start_pin(conn: &mut RtspConnection, client_name: &str) -> Result<
 /// and return the keys every later session pair-verifies with.
 pub(crate) fn run_code_pair_setup(
     conn: &mut RtspConnection,
-    client_name: &str,
     code: &str,
     identity: ControllerIdentity,
 ) -> Result<PairingKeys, Ap2Error> {
     let mut pairing = CodePairing::new(code, identity);
     let post = |conn: &mut RtspConnection, step, body| {
-        pair_post(conn, "/pair-setup", step, CODE_HKP, client_name, body)
+        pair_post(conn, "/pair-setup", step, CODE_HKP, body)
     };
     let m1 = pairing.start()?;
     let m2 = post(conn, PAIR_SETUP_M1, m1)?;
@@ -86,25 +76,23 @@ pub(crate) fn run_code_pair_setup(
 /// longer knows this device.
 pub(crate) fn run_pair_verify(
     conn: &mut RtspConnection,
-    client_name: &str,
     keys: &PairingKeys,
 ) -> Result<[u8; 32], Ap2Error> {
     let mut verify = PairVerify::new(keys);
     let m1 = verify.start()?;
-    let m2 = match pair_post(conn, "/pair-verify", PAIR_VERIFY_M1, CODE_HKP, client_name, m1) {
+    let m2 = match pair_post(conn, "/pair-verify", PAIR_VERIFY_M1, CODE_HKP, m1) {
         Err(Ap2Error::Rejected { status: 470, .. }) => {
             return Err(PairingError::PairingLost.into());
         }
         replied => replied?,
     };
     let m3 = verify.handle_m2(&m2)?;
-    let m4 = pair_post(conn, "/pair-verify", PAIR_VERIFY_M3, CODE_HKP, client_name, m3)?;
+    let m4 = pair_post(conn, "/pair-verify", PAIR_VERIFY_M3, CODE_HKP, m3)?;
     Ok(verify.handle_m4(&m4)?)
 }
 
 /// POST a pairing body to `path`, as the step named `step`, marked with the
-/// `X-Apple-HKP` value receivers require and `client_name`, and return the
-/// response body for
+/// `X-Apple-HKP` value receivers require, and return the response body for
 /// the state machine to read. A receiver may answer a refusal with a non-2xx
 /// status and an Error TLV (shairport-sync does), so a body that carries an
 /// error goes to the state machine whatever the status, which reads it as the
@@ -115,13 +103,11 @@ fn pair_post(
     path: &str,
     step: &'static str,
     hkp: &str,
-    client_name: &str,
     body: Vec<u8>,
 ) -> Result<Vec<u8>, Ap2Error> {
     let response = conn.request(
         &RtspRequest::with_body(Method::Post, path, "application/octet-stream", body)
-            .header("X-Apple-HKP", hkp)
-            .header(CLIENT_NAME, client_name),
+            .header("X-Apple-HKP", hkp),
     )?;
     let names_an_error = Tlv8::decode(&response.body)
         .is_ok_and(|tlv| tlv.get_u8(tlv_type::ERROR).is_some_and(|code| code != 0));

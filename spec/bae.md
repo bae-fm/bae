@@ -4939,8 +4939,11 @@ with the encryption its RAOP advertisement states; its AirPlay advertisement
 states neither, so a receiver seen only there is not offered.
 
 **Pairing.** bae pairs with an AirPlay receiver when the cast starts, before
-playback moves. Each pairing request gives the receiver this device's name as
-Your devices lists it, and a receiver that shows a PIN shows that name with it.
+playback moves. Every request bae sends an AirPlay receiver, to pair or to
+play, gives the receiver this device's name as Your devices lists it. A
+receiver that shows a PIN shows that name with it, and a receiver that asks
+its owner to accept the cast, as a Mac's AirPlay Receiver does, names this
+device in that prompt.
 A receiver that asks for a PIN or a password does not fail the
 cast: bae asks the person for the code in a sheet (macOS) or a dialog
 (Android), and the cast goes on when the receiver accepts it. On macOS the

@@ -19,9 +19,10 @@ use bae_playback::AudioError;
 use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
-use super::device_verification::{SessionVerification, VerificationError};
+use super::device_verification::VerificationError;
 use super::digest::DigestPassword;
 use super::pairing::PairingError;
+use super::pairing_keys::VerificationKey;
 use super::session::{RaopError, RaopSession};
 use super::stream::{PcmFeed, SystemClock};
 
@@ -29,9 +30,11 @@ use super::stream::{PcmFeed, SystemClock};
 pub(crate) struct RaopSink {
     receiver: IpAddr,
     rtsp_port: u16,
-    /// What each session proves bae with, for a receiver that verifies the
+    /// The name each session's requests give this device.
+    client_name: String,
+    /// The key each session proves bae with, for a receiver that verifies the
     /// device.
-    verification: Option<SessionVerification>,
+    verification: Option<VerificationKey>,
     /// The password the receiver asks for as HTTP Digest, if it has one.
     password: Option<DigestPassword>,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
@@ -50,7 +53,8 @@ impl RaopSink {
     pub(crate) fn new(
         receiver: IpAddr,
         rtsp_port: u16,
-        verification: Option<SessionVerification>,
+        client_name: String,
+        verification: Option<VerificationKey>,
         password: Option<DigestPassword>,
         encryption: RaopEncryption,
         initial_volume: bae_playback::Volume,
@@ -60,6 +64,7 @@ impl RaopSink {
         Self {
             receiver,
             rtsp_port,
+            client_name,
             verification,
             password,
             encryption,
@@ -86,6 +91,7 @@ impl AirPlaySink for RaopSink {
             &self.diagnostics,
             self.receiver,
             self.rtsp_port,
+            &self.client_name,
             self.verification.as_ref(),
             self.password.as_ref(),
             PcmFeed::new(source, wake),

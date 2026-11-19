@@ -45,6 +45,9 @@ pub(crate) struct VerificationReceiver {
     pub(crate) refuse_verify_keys: Option<&'static str>,
     /// Each request it took, as its method and URI, in order.
     pub(crate) requests: Vec<String>,
+    /// The sender's name each request gave in `X-Apple-Client-Name`, in
+    /// order.
+    pub(crate) client_names: Vec<Option<String>>,
     /// The RTP ports its SETUP names.
     pub(crate) ports: (u16, u16),
     /// The password it asks for as HTTP Digest, on the requests it says.
@@ -77,6 +80,7 @@ impl VerificationReceiver {
             forbids_unverified: false,
             refuse_verify_keys: None,
             requests: Vec::new(),
+            client_names: Vec::new(),
             ports: (1, 1),
             password: None,
             setup: None,
@@ -99,6 +103,7 @@ impl VerificationReceiver {
         let mut verified = false;
         while let Some(request) = read_request(reader).unwrap() {
             self.requests.push(format!("{} {}", request.method.as_str(), request.uri));
+            self.client_names.push(request.header("X-Apple-Client-Name").map(String::from));
             let cseq = request.cseq().to_string();
             if let Some(gate) = &mut self.password {
                 if !gate.lets_through(&request) {

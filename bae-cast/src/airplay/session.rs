@@ -19,10 +19,13 @@ use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE}
 use tracing::warn;
 
 use super::crypto::RaopCipher;
-use super::device_verification::{self, SessionVerification, VerificationError};
+use super::device_verification::{self, VerificationError};
 use super::digest::DigestPassword;
+use super::pairing_keys::VerificationKey;
 use super::rtp::NtpTime;
-use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
+use super::rtsp::{
+    Method, RtspConnection, RtspRequest, RtspResponse, SenderIdentity, UNAUTHORIZED,
+};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
     RtpAudio, RtpPosition, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
@@ -50,21 +53,23 @@ pub(crate) enum RaopError {
     Verification(#[from] VerificationError),
 }
 
-/// Connect to `receiver` as a RAOP session does: answer its Digest challenge
-/// with `password` where bae has one, and prove bae with `verification`
-/// where the receiver verifies the device.
+/// Connect to `receiver` as a RAOP session does, naming this device
+/// `client_name`: answer its Digest challenge with `password` where bae has
+/// one, and prove bae with `verification`, the key its pairing gave the
+/// receiver, where the receiver verifies the device.
 fn open(
     receiver: IpAddr,
     rtsp_port: u16,
-    verification: Option<&SessionVerification>,
+    client_name: &str,
+    verification: Option<&VerificationKey>,
     password: Option<&DigestPassword>,
 ) -> Result<RtspConnection, RaopError> {
-    let mut conn = RtspConnection::connect(receiver, rtsp_port, RAOP_USER_AGENT)?;
+    let mut conn = RtspConnection::connect(receiver, rtsp_port, raop_sender(client_name))?;
     if let Some(password) = password {
         conn.answer_challenges_with(password.clone());
     }
-    if let Some(SessionVerification { key, client_name }) = verification {
-        device_verification::verify(&mut conn, client_name, key).map_err(|error| match error {
+    if let Some(key) = verification {
+        device_verification::verify(&mut conn, key).map_err(|error| match error {
             VerificationError::Rejected { status: UNAUTHORIZED, .. } => RaopError::PasswordRefused,
             error => RaopError::Verification(error),
         })?;
@@ -81,10 +86,11 @@ fn open(
 pub(crate) fn password_accepted(
     receiver: IpAddr,
     rtsp_port: u16,
-    verification: Option<&SessionVerification>,
+    client_name: &str,
+    verification: Option<&VerificationKey>,
     password: &DigestPassword,
 ) -> Result<bool, RaopError> {
-    match answers_password(receiver, rtsp_port, verification, password) {
+    match answers_password(receiver, rtsp_port, client_name, verification, password) {
         Ok(()) => Ok(true),
         Err(RaopError::PasswordRefused) => Ok(false),
         Err(error) => Err(error),
@@ -94,10 +100,11 @@ pub(crate) fn password_accepted(
 fn answers_password(
     receiver: IpAddr,
     rtsp_port: u16,
-    verification: Option<&SessionVerification>,
+    client_name: &str,
+    verification: Option<&VerificationKey>,
     password: &DigestPassword,
 ) -> Result<(), RaopError> {
-    let mut conn = open(receiver, rtsp_port, verification, Some(password))?;
+    let mut conn = open(receiver, rtsp_port, client_name, verification, Some(password))?;
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
     expect_success("OPTIONS", &options)?;
     let session_id = NtpTime::now().fraction;
@@ -116,7 +123,12 @@ fn answers_password(
 }
 
 /// The `User-Agent` of every request bae sends a RAOP receiver.
-pub(crate) const RAOP_USER_AGENT: &str = "bae/1 (RAOP)";
+const RAOP_USER_AGENT: &str = "bae/1 (RAOP)";
+
+/// This device, named `client_name`, as a RAOP sender.
+pub(crate) fn raop_sender(client_name: &str) -> SenderIdentity {
+    SenderIdentity::new(RAOP_USER_AGENT, client_name)
+}
 
 /// The status a RAOP receiver answers OPTIONS with when it asks for device
 /// verification it didn't advertise (OwnTone `raop_cb_startup_options`).
@@ -125,8 +137,13 @@ const FORBIDDEN: u16 = 403;
 /// Whether the receiver asks for device verification its advertisement
 /// didn't state: it answers OPTIONS, on a connection of its own, with 403.
 /// Any other answer asks for nothing before the session's own handshake.
-pub(crate) fn asks_for_verification(receiver: IpAddr, rtsp_port: u16) -> std::io::Result<bool> {
-    let mut conn = RtspConnection::connect(receiver, rtsp_port, RAOP_USER_AGENT)?;
+/// `client_name` names this device to the receiver.
+pub(crate) fn asks_for_verification(
+    receiver: IpAddr,
+    rtsp_port: u16,
+    client_name: &str,
+) -> std::io::Result<bool> {
+    let mut conn = RtspConnection::connect(receiver, rtsp_port, raop_sender(client_name))?;
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
     Ok(options.status == FORBIDDEN)
 }
@@ -314,16 +331,17 @@ pub(crate) struct RaopSession {
 }
 
 impl RaopSession {
-    /// Connect to `receiver`, prove bae with `verification` where the
-    /// receiver verifies the device, answer its Digest challenge with
-    /// `password` where it has one, run the handshake, and start streaming
-    /// `feed`. `cipher` is the negotiated encryption ([`RaopCipher::none`]
+    /// Connect to `receiver`, naming this device `client_name`, prove bae
+    /// with `verification` where the receiver verifies the device, answer its
+    /// Digest challenge with `password` where it has one, run the handshake,
+    /// and start streaming `feed`. `cipher` is the negotiated encryption ([`RaopCipher::none`]
     /// for `et=0`).
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
         rtsp_port: u16,
-        verification: Option<&SessionVerification>,
+        client_name: &str,
+        verification: Option<&VerificationKey>,
         password: Option<&DigestPassword>,
         feed: PcmFeed,
         failed: AirPlayFailed,
@@ -331,7 +349,7 @@ impl RaopSession {
         volume: bae_playback::Volume,
         clock: Arc<dyn MonotonicClock>,
     ) -> Result<Self, RaopError> {
-        let mut conn = open(receiver, rtsp_port, verification, password)?;
+        let mut conn = open(receiver, rtsp_port, client_name, verification, password)?;
         let local_ip = conn.local_addr();
 
         // Open the timing and control sockets before SETUP so their ports can

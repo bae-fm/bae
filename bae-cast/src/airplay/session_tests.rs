@@ -96,7 +96,9 @@ fn handshake_drives_the_7_1_sequence_in_order() {
         (methods, announce_sdp, volume_body)
     });
 
-    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
+    let mut conn =
+        RtspConnection::connect(addr.ip(), addr.port(), SenderIdentity::new("bae/test", CLIENT))
+            .unwrap();
     let sdp = build_announce_sdp(7, conn.local_addr(), addr.ip(), &RaopCipher::none());
     let (negotiated, audio_latency) = perform_handshake(
         &mut conn,
@@ -172,6 +174,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         &bae_diagnostics::Diagnostics::noop(),
         addr.ip(),
         addr.port(),
+        CLIENT,
         None,
         None,
         crate::airplay::stream::PcmFeed::new(
@@ -214,14 +217,8 @@ fn verifying_receiver(
     (port, receiver, [audio, control])
 }
 
-fn verification(
-    key: &crate::airplay::pairing_keys::VerificationKey,
-) -> crate::airplay::device_verification::SessionVerification {
-    crate::airplay::device_verification::SessionVerification {
-        key: key.clone(),
-        client_name: "Studio Mac".to_string(),
-    }
-}
+/// The name each session's requests give this device.
+const CLIENT: &str = "Studio Mac";
 
 /// A session to a receiver that verifies the device proves bae's key on its
 /// connection before the handshake, which the receiver then takes.
@@ -233,7 +230,8 @@ fn a_session_verifies_the_device_before_its_handshake() {
         &bae_diagnostics::Diagnostics::noop(),
         [127, 0, 0, 1].into(),
         port,
-        Some(&verification(&key)),
+        CLIENT,
+        Some(&key),
         None,
         crate::airplay::stream::PcmFeed::new(
             Box::new(SilentSource),
@@ -252,6 +250,47 @@ fn a_session_verifies_the_device_before_its_handshake() {
         requests[..3],
         ["POST /pair-verify", "POST /pair-verify", "OPTIONS *"],
         "{requests:?}"
+    );
+}
+
+/// Every request of a session names this device in `X-Apple-Client-Name`,
+/// from the device verification to the TEARDOWN, so the receiver can show
+/// its owner who casts. Sabotage: drop the header from the connection's
+/// sender headers, and the receiver records no name.
+#[test]
+fn every_request_of_a_session_names_this_device() {
+    let key = crate::airplay::pairing_keys::VerificationKey::new();
+    let (port, receiver, _rtp) = verifying_receiver(&key);
+    let session = RaopSession::start(
+        &bae_diagnostics::Diagnostics::noop(),
+        [127, 0, 0, 1].into(),
+        port,
+        CLIENT,
+        Some(&key),
+        None,
+        crate::airplay::stream::PcmFeed::new(
+            Box::new(SilentSource),
+            bae_playback::airplay_output::PcmWake::unattached(),
+        ),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+        RaopCipher::none(),
+        bae_playback::Volume::FULL,
+        Arc::new(crate::airplay::stream::SystemClock::new()),
+    )
+    .expect("the verified session starts");
+    drop(session);
+
+    let receiver = receiver.lock().unwrap();
+    let methods: Vec<&str> =
+        receiver.requests.iter().filter_map(|request| request.split(' ').next()).collect();
+    assert_eq!(
+        methods,
+        ["POST", "POST", "OPTIONS", "ANNOUNCE", "SETUP", "RECORD", "SET_PARAMETER", "TEARDOWN"]
+    );
+    assert!(
+        receiver.client_names.iter().all(|name| name.as_deref() == Some(CLIENT)),
+        "{:?}",
+        receiver.client_names
     );
 }
 
@@ -274,7 +313,8 @@ fn a_session_start_on_a_receiver_that_forgot_the_key_names_it() {
     let sink = crate::airplay::sink::RaopSink::new(
         [127, 0, 0, 1].into(),
         port,
-        Some(verification(&key)),
+        CLIENT.to_string(),
+        Some(key.clone()),
         None,
         crate::airplay::capabilities::RaopEncryption::None,
         bae_playback::Volume::FULL,
@@ -317,6 +357,7 @@ fn start_session(port: u16, password: &DigestPassword) -> Result<RaopSession, Ra
         &bae_diagnostics::Diagnostics::noop(),
         [127, 0, 0, 1].into(),
         port,
+        CLIENT,
         None,
         Some(password),
         crate::airplay::stream::PcmFeed::new(
@@ -375,6 +416,7 @@ fn a_session_start_the_receiver_refuses_the_password_of_names_the_receiver() {
     let sink = crate::airplay::sink::RaopSink::new(
         [127, 0, 0, 1].into(),
         port,
+        CLIENT.to_string(),
         None,
         Some(password("hunter3")),
         crate::airplay::capabilities::RaopEncryption::None,

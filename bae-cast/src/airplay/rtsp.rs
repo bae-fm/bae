@@ -215,6 +215,37 @@ fn parse_status_line(line: &str) -> io::Result<(u16, String)> {
     Ok((status, reason))
 }
 
+/// Who sends a connection's requests, which every request on it says: the
+/// sender software (`User-Agent`), which receivers key some behavior off, and
+/// this device's name (`X-Apple-Client-Name`), which a receiver shows its
+/// owner beside a PIN and in the prompt to accept the cast. tvOS 27 and
+/// HomeView show no PIN, and log `clientName is nil`, without the name (pyatv
+/// issues 2866 and 2950); OwnTone sends both on every request.
+#[derive(Debug, Clone)]
+pub(crate) struct SenderIdentity {
+    user_agent: String,
+    client_name: String,
+}
+
+impl SenderIdentity {
+    pub(crate) fn new(user_agent: impl Into<String>, client_name: impl Into<String>) -> Self {
+        Self { user_agent: user_agent.into(), client_name: client_name.into() }
+    }
+
+    /// This device's name, as the receiver shows it.
+    pub(crate) fn client_name(&self) -> &str {
+        &self.client_name
+    }
+
+    /// The headers that say who sends a request.
+    pub(crate) fn headers(&self) -> Vec<(String, String)> {
+        vec![
+            ("User-Agent".to_string(), self.user_agent.clone()),
+            ("X-Apple-Client-Name".to_string(), self.client_name.clone()),
+        ]
+    }
+}
+
 /// The live RTSP control connection to a receiver: a TCP stream, the monotonic
 /// `CSeq`, and the headers every request on this connection carries. Owned and
 /// driven on one thread (each call blocks on the socket), matching how the Cast
@@ -223,8 +254,8 @@ pub(crate) struct RtspConnection {
     writer: TcpStream,
     reader: BufReader<TcpStream>,
     cseq: u32,
-    /// Sent as `User-Agent` on every request. Receivers key some behavior off it.
-    user_agent: String,
+    /// Who sends every request.
+    sender: SenderIdentity,
     /// Set from a SETUP response's `Session` header; echoed on later requests.
     session: Option<String>,
     /// The local address the receiver sees us on, for building request URIs and
@@ -241,14 +272,10 @@ pub(crate) const UNAUTHORIZED: u16 = 401;
 impl RtspConnection {
     /// Open the RTSP control connection to `addr:port`, giving up after
     /// [`CONTROL_TIMEOUT`].
-    pub(crate) fn connect(
-        addr: IpAddr,
-        port: u16,
-        user_agent: impl Into<String>,
-    ) -> io::Result<Self> {
+    pub(crate) fn connect(addr: IpAddr, port: u16, sender: SenderIdentity) -> io::Result<Self> {
         let stream = TcpStream::connect_timeout(&SocketAddr::new(addr, port), CONTROL_TIMEOUT)?;
         stream.set_nodelay(true).ok();
-        Self::from_stream(stream, user_agent)
+        Self::from_stream(stream, sender)
     }
 
     /// Build a connection over an already-open stream (loopback fakes in tests use
@@ -256,10 +283,7 @@ impl RtspConnection {
     /// [`CONTROL_TIMEOUT`] fails, so a receiver that stops answering without
     /// closing the connection can't hold a request — or the TEARDOWN a
     /// session's drop sends on the playback service's thread — forever.
-    pub(crate) fn from_stream(
-        stream: TcpStream,
-        user_agent: impl Into<String>,
-    ) -> io::Result<Self> {
+    pub(crate) fn from_stream(stream: TcpStream, sender: SenderIdentity) -> io::Result<Self> {
         stream.set_read_timeout(Some(CONTROL_TIMEOUT))?;
         stream.set_write_timeout(Some(CONTROL_TIMEOUT))?;
         let local_addr = stream.local_addr()?.ip();
@@ -268,7 +292,7 @@ impl RtspConnection {
             writer: stream,
             reader,
             cseq: 0,
-            user_agent: user_agent.into(),
+            sender,
             session: None,
             local_addr,
             answer: None,
@@ -303,7 +327,7 @@ impl RtspConnection {
     }
 
     /// Send `request` and read its response, advancing `CSeq` and attaching the
-    /// connection's `User-Agent` and `Session` headers. A response whose `CSeq`
+    /// connection's sender and `Session` headers. A response whose `CSeq`
     /// doesn't echo the request's is a protocol error.
     pub(crate) fn request(&mut self, request: &RtspRequest) -> io::Result<RtspResponse> {
         let response = self.send(request)?;
@@ -329,7 +353,7 @@ impl RtspConnection {
         self.cseq += 1;
         let cseq = self.cseq;
 
-        let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
+        let mut extra = self.sender.headers();
         if let Some(session) = &self.session {
             extra.push(("Session".to_string(), session.clone()));
         }

@@ -3,6 +3,11 @@ use crate::airplay::ap2_channel::control_keys;
 use std::io::{BufRead, Write};
 use std::net::TcpListener;
 
+/// The sender the control tests' connections speak as.
+fn test_sender() -> SenderIdentity {
+    SenderIdentity::new("bae/test", "Kitchen Mac")
+}
+
 #[test]
 fn setup_stream_body_carries_the_audio_key() {
     let shk = [0x7Bu8; 32];
@@ -17,11 +22,12 @@ fn setup_stream_body_carries_the_audio_key() {
     assert_eq!(stream.get("controlPort").unwrap().as_integer(), Some(6001));
 }
 
-/// The SETUP session body announces NTP timing at bae's timing port, and no
-/// PTP clock, which bae doesn't run.
+/// The SETUP session body announces NTP timing at bae's timing port, no PTP
+/// clock, which bae doesn't run, and this device's name.
 #[test]
 fn setup_session_body_announces_ntp_timing() {
-    let body = setup_session_body("group", "session", "AA:BB:CC:DD:EE:FF", 6002);
+    let body = setup_session_body("group", "session", "AA:BB:CC:DD:EE:FF", 6002, "Kitchen Mac");
+    assert_eq!(body.get("name").unwrap().as_string(), Some("Kitchen Mac"));
     assert_eq!(body.get("timingProtocol").unwrap().as_string(), Some("NTP"));
     assert_eq!(body.get("timingPort").unwrap().as_integer(), Some(6002));
     assert!(body.get("timingPeerInfo").is_none());
@@ -117,7 +123,7 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
 
     let stream = TcpStream::connect(addr).unwrap();
     let local_ip = stream.local_addr().unwrap().ip();
-    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", test_sender(), None).unwrap();
     let params = Ap2SetupParams {
         group_uuid: "group".to_string(),
         session_uuid: "session".to_string(),
@@ -144,6 +150,7 @@ struct ReadRequest {
     body: Plist,
     authorization: Option<String>,
     rtp_info: Option<String>,
+    client_name: Option<String>,
 }
 
 /// Read one encrypted RTSP request from the fake receiver's socket: decrypt
@@ -175,6 +182,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<ReadRequest> {
     let mut cseq = String::new();
     let mut authorization = None;
     let mut rtp_info = None;
+    let mut client_name = None;
     let mut content_length = 0usize;
     loop {
         let mut header = String::new();
@@ -190,6 +198,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<ReadRequest> {
                 "cseq" => cseq = v.trim().to_string(),
                 "authorization" => authorization = Some(v.trim().to_string()),
                 "rtp-info" => rtp_info = Some(v.trim().to_string()),
+                "x-apple-client-name" => client_name = Some(v.trim().to_string()),
                 "content-length" => {
                     content_length = v.trim().parse().expect("valid content-length")
                 }
@@ -207,7 +216,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<ReadRequest> {
     } else {
         bplist::decode(body_bytes).unwrap()
     };
-    Some(ReadRequest { method, cseq, body, authorization, rtp_info })
+    Some(ReadRequest { method, cseq, body, authorization, rtp_info, client_name })
 }
 
 fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
@@ -254,6 +263,11 @@ struct Captured {
     methods: Vec<String>,
     saw_shk: bool,
     timing_protocol: String,
+    /// The sender's name each encrypted request gave in
+    /// `X-Apple-Client-Name`, in order.
+    client_names: Vec<Option<String>>,
+    /// The `name` SETUP (session) gave the sender.
+    session_name: Option<String>,
     /// The second byte of the first datagram on its control port: a sync
     /// packet's marker and type.
     sync_type: u8,
@@ -372,9 +386,12 @@ fn run_ap2_session(
         let mut saw_shk = false;
         let mut timing_protocol = String::new();
         let mut timing_port = None;
+        let mut client_names = Vec::new();
+        let mut session_name = None;
         for step in 0..4 {
-            let ReadRequest { method, cseq, body, .. } =
+            let ReadRequest { method, cseq, body, client_name, .. } =
                 read_encrypted_request(&mut reader, &mut channel);
+            client_names.push(client_name);
             if method == "SETUP" && body.get("streams").is_some() {
                 if let Plist::Array(items) = body.get("streams").unwrap() {
                     saw_shk = items[0].get("shk") == Some(&Plist::Data(shk.to_vec()));
@@ -384,6 +401,7 @@ fn run_ap2_session(
                 timing_protocol =
                     body.get("timingProtocol").and_then(Plist::as_string).unwrap_or("").to_string();
                 timing_port = body.get("timingPort").and_then(Plist::as_integer);
+                session_name = body.get("name").and_then(Plist::as_string).map(String::from);
             }
             if method == "SETUP" && body.get("streams").is_some() {
                 sync_clock(timing_port.expect("SETUP (session) named the timing port") as u16);
@@ -429,7 +447,15 @@ fn run_ap2_session(
         let mut sync = [0u8; 64];
         control_udp.recv_from(&mut sync).expect("the sender sends sync packets");
 
-        Captured { methods, saw_shk, timing_protocol, sync_type: sync[1], pcm }
+        Captured {
+            methods,
+            saw_shk,
+            timing_protocol,
+            client_names,
+            session_name,
+            sync_type: sync[1],
+            pcm,
+        }
     });
 
     // The sender: pair, set up, and stream five packets of known PCM.
@@ -480,6 +506,18 @@ fn full_ap2_session_pairs_sets_up_and_streams_encrypted_audio() {
     // One packet = 352 stereo frames of 0x0102, little-endian.
     assert_eq!(c.pcm.len(), 352 * 2 * 2);
     assert_eq!(&c.pcm[..4], &[0x02, 0x01, 0x02, 0x01]);
+}
+
+/// A session names this device to the receiver in SETUP (session)'s `name`
+/// and in `X-Apple-Client-Name` on every encrypted request, so the
+/// receiver's prompt to accept the cast says who casts. Sabotage: drop the
+/// header from the sender headers, or the `name` from the body, and the
+/// receiver records none.
+#[test]
+fn an_ap2_session_names_this_device_to_the_receiver() {
+    let (c, _) = run_full_ap2_session(None);
+    assert_eq!(c.session_name.as_deref(), Some("Kitchen Mac"));
+    assert_eq!(c.client_names, vec![Some("Kitchen Mac".to_string()); 4]);
 }
 
 /// A receiver that reports its `audioLatency` (11 025 frames, 0.25 s): the
@@ -616,7 +654,7 @@ fn a_digest_challenge_is_answered_with_the_password_on_every_later_request() {
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control =
-        Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("hunter2".to_string()))
+        Ap2Control::new(stream, &shared, "rtsp://x/1", test_sender(), Some("hunter2".to_string()))
             .unwrap();
     control.flush(RtpPosition::START).unwrap();
     control.teardown().unwrap();
@@ -638,7 +676,7 @@ fn a_refused_password_is_the_pairing_lost() {
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control =
-        Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("old".to_string()))
+        Ap2Control::new(stream, &shared, "rtsp://x/1", test_sender(), Some("old".to_string()))
             .unwrap();
     let refused = control.flush(RtpPosition::START).unwrap_err();
     assert!(matches!(refused, Ap2Error::Pairing(PairingError::PairingLost)), "{refused:?}");
@@ -654,7 +692,7 @@ fn a_401_without_a_password_is_the_request_refused() {
     let server = serve_digest_receiver(listener, shared, 1);
 
     let stream = TcpStream::connect(addr).unwrap();
-    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", test_sender(), None).unwrap();
     let refused = control.flush(RtpPosition::START).unwrap_err();
     assert!(matches!(refused, Ap2Error::Rejected { status: 401, .. }), "{refused:?}");
     server.join().unwrap();
@@ -689,7 +727,7 @@ fn a_flush_names_the_packet_the_sender_sends_next() {
     });
 
     let stream = TcpStream::connect(addr).unwrap();
-    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", test_sender(), None).unwrap();
     control.flush(RtpPosition { sequence: 250, timestamp: 88_000 }).unwrap();
 
     assert_eq!(

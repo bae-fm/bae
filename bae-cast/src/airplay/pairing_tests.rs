@@ -2,7 +2,7 @@ use super::*;
 use crate::airplay::ap2_pairing::{run_transient_pair_setup, PAIR_SETUP_M1};
 use crate::airplay::ap2_session::{Ap2Error, AP2_USER_AGENT};
 use crate::airplay::fake_receiver::{serve_transient_pair_setup, SrpServer};
-use crate::airplay::rtsp::RtspConnection;
+use crate::airplay::rtsp::{RtspConnection, SenderIdentity};
 use std::net::TcpListener;
 
 /// The full transient handshake completes and both sides derive the same
@@ -80,8 +80,13 @@ fn pair_with_user_agent(user_agent: &str) -> (Result<Vec<u8>, Ap2Error>, Result<
         serve_transient_pair_setup(&mut reader, &mut stream)
     });
 
-    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), user_agent).unwrap();
-    let sender = run_transient_pair_setup(&mut conn, "Kitchen Mac");
+    let mut conn = RtspConnection::connect(
+        addr.ip(),
+        addr.port(),
+        SenderIdentity::new(user_agent, "Kitchen Mac"),
+    )
+    .unwrap();
+    let sender = run_transient_pair_setup(&mut conn);
     (sender, server.join().unwrap())
 }
 

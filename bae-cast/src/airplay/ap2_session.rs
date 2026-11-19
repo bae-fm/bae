@@ -33,7 +33,9 @@ use super::bplist::{self, Plist};
 use super::digest::{DigestAnswer, DigestPassword, DigestStyle, Unauthorized};
 use super::pairing::PairingError;
 use super::pairing_keys::KeptPairing;
-use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
+use super::rtsp::{
+    Method, RtspConnection, RtspRequest, RtspResponse, SenderIdentity, UNAUTHORIZED,
+};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
     RtpAudio, RtpPosition, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
@@ -49,15 +51,24 @@ const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 /// sends `AirPlay/550.10`.
 pub(crate) const AP2_USER_AGENT: &str = "AirPlay/999.0.0";
 
-/// The SETUP session (step 1) body: NTP timing at bae's timing port, and the
-/// session identity the receiver keys its session on.
+/// This device, named `client_name`, as an AirPlay 2 sender.
+pub(crate) fn ap2_sender(client_name: &str) -> SenderIdentity {
+    SenderIdentity::new(AP2_USER_AGENT, client_name)
+}
+
+/// The SETUP session (step 1) body: NTP timing at bae's timing port, the
+/// session identity the receiver keys its session on, and this device's
+/// `name`, which the receiver shows its owner (pyatv sends it there, and
+/// shairport-sync reads the sender's name from it).
 pub(crate) fn setup_session_body(
     group_uuid: &str,
     session_uuid: &str,
     mac_address: &str,
     timing_port: u16,
+    name: &str,
 ) -> Plist {
     Plist::Dict(vec![
+        ("name".to_string(), Plist::String(name.to_string())),
         ("timingProtocol".to_string(), Plist::String("NTP".to_string())),
         ("groupUUID".to_string(), Plist::String(group_uuid.to_string())),
         ("sessionUUID".to_string(), Plist::String(session_uuid.to_string())),
@@ -146,7 +157,8 @@ pub(crate) struct Ap2Control {
     channel: HapChannel,
     cseq: u32,
     uri: String,
-    user_agent: String,
+    /// Who sends every request.
+    sender: SenderIdentity,
     /// The password a receiver that has one asks for again, as HTTP Digest,
     /// after pair-verify, and the challenge that asked for it.
     answer: Option<DigestAnswer>,
@@ -160,7 +172,7 @@ impl Ap2Control {
         stream: TcpStream,
         shared_secret: &[u8],
         uri: impl Into<String>,
-        user_agent: impl Into<String>,
+        sender: SenderIdentity,
         password: Option<String>,
     ) -> std::io::Result<Self> {
         let reader = BufReader::new(stream.try_clone()?);
@@ -170,7 +182,7 @@ impl Ap2Control {
             channel: HapChannel::from_shared_secret(shared_secret),
             cseq: 0,
             uri: uri.into(),
-            user_agent: user_agent.into(),
+            sender,
             answer: password.map(|password| {
                 DigestAnswer::new(DigestPassword { password, style: DigestStyle::Standard })
             }),
@@ -180,7 +192,7 @@ impl Ap2Control {
     /// Send one RTSP request over the encrypted channel and read its response.
     pub(crate) fn request(&mut self, request: &RtspRequest) -> Result<RtspResponse, Ap2Error> {
         self.cseq += 1;
-        let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
+        let mut extra = self.sender.headers();
         let answer = self.answer.as_ref();
         if let Some(authorization) =
             answer.and_then(|answer| answer.authorization(request.method.as_str(), &request.uri))
@@ -235,6 +247,7 @@ impl Ap2Control {
                 &session.session_uuid,
                 &session.mac_address,
                 session.local_timing_port,
+                self.sender.client_name(),
             ),
             "SETUP(session)",
         )?;
@@ -363,17 +376,13 @@ pub(crate) enum Ap2Auth {
 }
 
 impl Ap2Auth {
-    /// Pair on `conn`, naming this device `client_name`, and return the
-    /// secret the session is keyed from: the SRP key of a transient
-    /// pair-setup, or the X25519 secret of a pair-verify.
-    fn session_secret(
-        &self,
-        conn: &mut RtspConnection,
-        client_name: &str,
-    ) -> Result<Vec<u8>, Ap2Error> {
+    /// Pair on `conn` and return the secret the session is keyed from: the
+    /// SRP key of a transient pair-setup, or the X25519 secret of a
+    /// pair-verify.
+    fn session_secret(&self, conn: &mut RtspConnection) -> Result<Vec<u8>, Ap2Error> {
         match self {
-            Ap2Auth::Transient => run_transient_pair_setup(conn, client_name),
-            Ap2Auth::Verify(kept) => Ok(run_pair_verify(conn, client_name, &kept.keys)?.to_vec()),
+            Ap2Auth::Transient => run_transient_pair_setup(conn),
+            Ap2Auth::Verify(kept) => Ok(run_pair_verify(conn, &kept.keys)?.to_vec()),
         }
     }
 
@@ -396,8 +405,8 @@ pub(crate) fn pair_once(
     client_name: &str,
     auth: &Ap2Auth,
 ) -> Result<(), Ap2Error> {
-    let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
-    auth.session_secret(&mut conn, client_name)?;
+    let mut conn = RtspConnection::connect(receiver, airplay_port, ap2_sender(client_name))?;
+    auth.session_secret(&mut conn)?;
     Ok(())
 }
 
@@ -461,10 +470,11 @@ impl Ap2Session {
         clock: Arc<dyn MonotonicClock>,
         ids: &dyn coven::IdSource,
     ) -> Result<Self, Ap2Error> {
-        let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
+        let sender = ap2_sender(client_name);
+        let mut conn = RtspConnection::connect(receiver, airplay_port, sender.clone())?;
         let local_ip = conn.local_addr();
 
-        let shared = auth.session_secret(&mut conn, client_name)?;
+        let shared = auth.session_secret(&mut conn)?;
 
         // Open the timing/control sockets before SETUP so their ports are
         // announced. bae answers timing requests from now on: the receiver
@@ -480,7 +490,7 @@ impl Ap2Session {
         let uri = format!("rtsp://{local_ip}/{session_uuid}");
 
         let mut control =
-            Ap2Control::new(conn.into_stream(), &shared, uri, AP2_USER_AGENT, auth.password())?;
+            Ap2Control::new(conn.into_stream(), &shared, uri, sender, auth.password())?;
         let params = Ap2SetupParams {
             group_uuid,
             session_uuid,

@@ -61,8 +61,6 @@ const VERIFY_SIGNATURE: &str = "/pair-verify signature";
 /// The status a receiver answers a wrong PIN with.
 const WRONG_PIN_STATUS: u16 = 500;
 
-/// The header that names this device to the person at the receiver.
-const CLIENT_NAME: &str = "X-Apple-Client-Name";
 const PLIST: &str = "application/x-apple-binary-plist";
 const OCTETS: &str = "application/octet-stream";
 
@@ -76,15 +74,6 @@ const AES_LEN: usize = 16;
 /// AES-128-GCM with the 16-byte IV the receiver expects.
 type Aes128Gcm16 = AesGcm<Aes128, U16>;
 type Aes128Ctr = ctr::Ctr128BE<Aes128>;
-
-/// What each RAOP session to a receiver that verifies the device proves bae
-/// with: the key the pairing gave the receiver, and the name the requests
-/// give this device.
-#[derive(Debug, Clone)]
-pub(crate) struct SessionVerification {
-    pub(crate) key: VerificationKey,
-    pub(crate) client_name: String,
-}
 
 /// A failure pairing with an AirPlay 1 receiver or verifying bae to it.
 #[derive(Debug, thiserror::Error)]
@@ -119,13 +108,9 @@ impl From<SrpError> for VerificationError {
 }
 
 /// Ask the receiver to show a PIN, for a pairing with that PIN. The receiver
-/// shows `client_name` beside it.
-pub(crate) fn show_pin(
-    conn: &mut RtspConnection,
-    client_name: &str,
-) -> Result<(), VerificationError> {
-    let response =
-        conn.request(&RtspRequest::new(Method::Post, PIN_START).header(CLIENT_NAME, client_name))?;
+/// shows the connection's client name beside it.
+pub(crate) fn show_pin(conn: &mut RtspConnection) -> Result<(), VerificationError> {
+    let response = conn.request(&RtspRequest::new(Method::Post, PIN_START))?;
     if response.is_success() {
         Ok(())
     } else {
@@ -138,21 +123,20 @@ pub(crate) fn show_pin(
 /// proof with 500 didn't take the PIN.
 pub(crate) fn pair_with_pin(
     conn: &mut RtspConnection,
-    client_name: &str,
     pin: &str,
     key: &VerificationKey,
 ) -> Result<(), VerificationError> {
     let pairing = PinPairing::new(pin, key);
-    let salt = post(conn, "/pair-setup-pin", SETUP_USER, PLIST, client_name, pairing.start())?;
+    let salt = post(conn, "/pair-setup-pin", SETUP_USER, PLIST, pairing.start())?;
     let (proof, client) = pairing.answer_salt(&salt)?;
-    let confirmed = match post(conn, "/pair-setup-pin", SETUP_PROOF, PLIST, client_name, proof) {
+    let confirmed = match post(conn, "/pair-setup-pin", SETUP_PROOF, PLIST, proof) {
         Err(VerificationError::Rejected { status: WRONG_PIN_STATUS, .. }) => {
             return Err(VerificationError::WrongPin);
         }
         replied => replied?,
     };
     let sealed_key = pairing.answer_proof(&confirmed, &client)?;
-    post(conn, "/pair-setup-pin", SETUP_KEY, PLIST, client_name, sealed_key)?;
+    post(conn, "/pair-setup-pin", SETUP_KEY, PLIST, sealed_key)?;
     Ok(())
 }
 
@@ -162,7 +146,6 @@ pub(crate) fn pair_with_pin(
 /// the connection answers its challenge with.
 pub(crate) fn verify(
     conn: &mut RtspConnection,
-    client_name: &str,
     key: &VerificationKey,
 ) -> Result<(), VerificationError> {
     let verify = PairVerify::new(key);
@@ -172,10 +155,9 @@ pub(crate) fn verify(
         }
         other => other,
     };
-    let reply = post(conn, "/pair-verify", VERIFY_KEYS, OCTETS, client_name, verify.start())
-        .map_err(known)?;
+    let reply = post(conn, "/pair-verify", VERIFY_KEYS, OCTETS, verify.start()).map_err(known)?;
     let signature = verify.answer(&reply)?;
-    post(conn, "/pair-verify", VERIFY_SIGNATURE, OCTETS, client_name, signature).map_err(known)?;
+    post(conn, "/pair-verify", VERIFY_SIGNATURE, OCTETS, signature).map_err(known)?;
     Ok(())
 }
 
@@ -186,13 +168,9 @@ fn post(
     path: &str,
     step: &'static str,
     content_type: &str,
-    client_name: &str,
     body: Vec<u8>,
 ) -> Result<Vec<u8>, VerificationError> {
-    let response = conn.request(
-        &RtspRequest::with_body(Method::Post, path, content_type, body)
-            .header(CLIENT_NAME, client_name),
-    )?;
+    let response = conn.request(&RtspRequest::with_body(Method::Post, path, content_type, body))?;
     if response.is_success() {
         Ok(response.body)
     } else {
