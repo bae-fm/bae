@@ -27,6 +27,7 @@ screen against them. Each line names one rule file there.
 - `text-in-a-block-shares-one-left-edge.md`: one left edge, markers hanging in
   the margin, leading columns.
 - `menus-size-to-their-items.md`: a menu's width and its separator lines.
+- `add-controls-say-add.md`: the words on a control that adds to a list.
 - `page-headers-follow-the-album-page.md`: the header of a page about one
   thing.
 - `board-sample-data-agrees-with-itself.md`: counts, totals and names that
