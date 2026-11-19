@@ -276,8 +276,8 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
 
 #[cfg(any(test, feature = "test-utils"))]
 impl Schema {
-    /// Open the library on `conn`, a fresh in-memory connection the caller
-    /// opened, outside coven. The function registers the schema's functions
+    /// Open the library on `conn`, a fresh connection the caller opened, in
+    /// memory or on a database file of its own, outside coven. The function registers the schema's functions
     /// and collations, has coven make every object the app's SQL reads and
     /// register its own SQL functions there, with device 1 as this device,
     /// and runs the schema's statements in order. The function is a

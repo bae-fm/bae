@@ -591,63 +591,30 @@ mod playback_queue_bench {
         start.elapsed().as_secs_f64()
     }
 
-    /// The SQLite file holding the store's tables, below `dir`.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-    )]
-    fn database_file(dir: &std::path::Path) -> std::path::PathBuf {
-        let mut found = Vec::new();
-        let mut folders = vec![dir.to_path_buf()];
-        while let Some(folder) = folders.pop() {
-            for entry in std::fs::read_dir(&folder).unwrap() {
-                let path = entry.unwrap().path();
-                if path.is_dir() {
-                    folders.push(path);
-                    continue;
-                }
-                let mut head = [0u8; 16];
-                let is_sqlite = std::fs::File::open(&path)
-                    .and_then(|mut file| std::io::Read::read_exact(&mut file, &mut head))
-                    .is_ok()
-                    && &head == b"SQLite format 3\0";
-                if !is_sqlite {
-                    continue;
-                }
-                let holds_queue: bool = rusqlite::Connection::open(&path)
-                    .unwrap()
-                    .query_row(
-                        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE name = 'playback_context')",
-                        [],
-                        |row| row.get(0),
-                    )
-                    .unwrap();
-                if holds_queue {
-                    found.push(path);
-                }
-            }
-        }
-        assert_eq!(found.len(), 1, "{found:?}");
-        found.remove(0)
-    }
-
-    fn plain_connection(path: &std::path::Path) -> rusqlite::Connection {
-        let plain = rusqlite::Connection::open(path).unwrap();
-        plain.busy_timeout(std::time::Duration::from_secs(60)).unwrap();
-        plain
-    }
-
-    /// `RELEASE_A` holding `TRACKS` tracks with random ids, as a library's are.
-    async fn library_db() -> (Store, bae_util::test_files::TestFolder, std::path::PathBuf) {
+    /// `RELEASE_A` holding `TRACKS` tracks with random ids, as a library's are,
+    /// planted in the store's library outside its writes.
+    async fn library_db() -> (Store, bae_util::test_files::TestFolder) {
         let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
         seed_artist_album_release(&db).await;
         test_records(&db)
             .insert_release_medium(&bae_records::DbReleaseMedium::new_test(RELEASE_A))
             .await
             .unwrap();
-        let path = database_file(tmp.path());
-        bae_records::test_fixtures::bulk_tracks::insert_with_triggers_off(&path, RELEASE_A, TRACKS);
-        (db, tmp, path)
+        bae_records::test_fixtures::bulk_tracks::plant_in_library(tmp.path(), RELEASE_A, TRACKS);
+        (db, tmp)
+    }
+
+    /// A library of its own for the plain SQLite runs: the same schema and
+    /// tracks as `library_db`, in a database file the bench makes itself, with
+    /// a 60 second busy timeout.
+    fn plain_library(folder: &bae_util::test_files::TestFolder) -> rusqlite::Connection {
+        let plain = rusqlite::Connection::open(folder.join("plain-library.db")).unwrap();
+        plain.busy_timeout(std::time::Duration::from_secs(60)).unwrap();
+        crate::TEST_SCHEMA.open_bare_library(&plain);
+        // The tracks name a release and a medium this library lacks.
+        plain.pragma_update(None, "foreign_keys", false).unwrap();
+        bae_records::test_fixtures::bulk_tracks::insert_into(&plain, RELEASE_A, TRACKS);
+        plain
     }
 
     /// A library play through bae's writes: into an empty lane, replacing a full
@@ -762,7 +729,7 @@ mod playback_queue_bench {
     #[tokio::test(flavor = "multi_thread")]
     #[ignore = "benchmark: fills a 1,000,000-track library"]
     async fn playback_queue_bench_library_play() {
-        let (db, _tmp, path) = library_db().await;
+        let (db, tmp) = library_db().await;
 
         bae_writes(&db, "no live queries").await;
 
@@ -783,7 +750,7 @@ mod playback_queue_bench {
         }
 
         // The same statements in plain SQLite, the lane empty and then full.
-        let mut plain = plain_connection(&path);
+        let mut plain = plain_library(&tmp);
         let into_lane = fill_into(LIBRARY_FILL, "playback_context");
         let into_unindexed = fill_into(LIBRARY_FILL, "bench_unindexed_lane");
         plain_query(&plain, "the fill's rows alone, read and counted", LIBRARY_ROWS);
@@ -821,7 +788,7 @@ mod playback_queue_bench {
             &into_unindexed,
             false,
         );
-        PlaybackQueueTables::new(db.clone()).fill(ContextFill::LibraryShuffled).await.unwrap();
+        plain.execute(&into_lane, []).unwrap();
         let copy_lane = format!(
             "{UNINDEXED_LANE} INSERT INTO bench_unindexed_lane SELECT entry, ordered, shuffled, track_id FROM playback_context;"
         );
