@@ -23,9 +23,6 @@ bae-store = { workspace = true }
 bae-people = { workspace = true }
 bae-records = { workspace = true }
 bae-diagnostics = { workspace = true }
-# The identify reducer, its view and its verdicts, which only the desktop
-# import pipeline drives; the crate is empty on mobile.
-bae-identify = { workspace = true }
 bae-playback = { workspace = true }
 bae-preferences = { workspace = true }
 bae-track-audio = { workspace = true }
@@ -66,6 +63,9 @@ getrandom = { workspace = true, features = ["js"] }
 # Import: watched folders, candidates, identification and the import that
 # writes a release into the store, and the release-edit model.
 bae-import = { workspace = true }
+# The identify reducer, its view and its verdicts, which only the desktop
+# import pipeline drives.
+bae-identify = { workspace = true }
 lofty = { workspace = true }
 
 [dev-dependencies]
