@@ -200,7 +200,7 @@ object BridgeFixtures {
             id = id,
             name = name,
             sharing = sharing,
-            owner = BridgePlaylistOwner(person = "person-1", name = "Mara", avatarVersion = null),
+            owner = BridgePlaylistOwner(person = "person-1", name = "Mara", initials = "M", avatarVersion = null),
             yours = true,
             trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12uL),
             totalDuration = null,

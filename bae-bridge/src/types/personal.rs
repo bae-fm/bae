@@ -73,6 +73,8 @@ impl BridgeEntryPlace {
 pub struct BridgePersonProfile {
     pub id: String,
     pub name: String,
+    /// The letters an avatar draws while the person has no picture.
+    pub initials: String,
     pub history_sharing: BridgeHistorySharing,
     /// The version of the person's avatar, which an app caches the image
     /// `AppHandle::avatar` reads under; it moves whenever the avatar's bytes
@@ -92,6 +94,7 @@ impl BridgePersonProfile {
         } = value;
         Self {
             id: id.0.to_string(),
+            initials: bae_people::people::initials(&name),
             name,
             history_sharing: BridgeHistorySharing::from_core(history_sharing),
             avatar_version: avatar.map(|avatar| avatar.version),
@@ -149,6 +152,8 @@ impl BridgeAlbumRating {
 pub struct BridgePlaylistOwner {
     pub person: String,
     pub name: String,
+    /// The letters an avatar draws while the person has no picture.
+    pub initials: String,
     /// The version of the person's avatar, which an app caches the image
     /// `AppHandle::avatar` reads under; `None` without an avatar.
     pub avatar_version: Option<String>,
@@ -212,6 +217,7 @@ impl BridgePlaylistSummary {
             sharing: BridgeSharing::from_core(sharing),
             owner: BridgePlaylistOwner {
                 person: owner.person.0.to_string(),
+                initials: bae_people::people::initials(&owner.name),
                 name: owner.name,
                 avatar_version: owner.avatar_version,
             },

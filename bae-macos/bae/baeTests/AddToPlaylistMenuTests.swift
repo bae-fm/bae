@@ -13,6 +13,7 @@ struct AddToPlaylistMenuTests {
             owner: BridgePlaylistOwner(
                 person: "person",
                 name: "Person",
+                initials: "P",
                 avatarVersion: nil
             ),
             yours: true,

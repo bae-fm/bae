@@ -10,6 +10,8 @@ use time::UtcDateTime;
 mod collections;
 pub use collections::{album_ratings_on, own_track_stars_sql};
 mod history;
+mod initials;
+pub use initials::initials;
 mod joining;
 pub use joining::private_circle_name;
 mod profiles;

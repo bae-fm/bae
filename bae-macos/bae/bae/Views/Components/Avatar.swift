@@ -4,7 +4,8 @@ import SwiftUI
 /// A person's picture: their avatar once the profile has one, else their
 /// initials in the accent on the strong accent tint. Round.
 struct Avatar: View {
-    let name: String
+    /// The letters drawn while there is no picture.
+    let initials: String
     /// The person and the version of their avatar, when they have one.
     var picture: (person: String, version: String)?
     let size: CGFloat
@@ -12,7 +13,7 @@ struct Avatar: View {
     var body: some View {
         ZStack {
             Circle().fill(Theme.accentStrong)
-            Text(verbatim: Self.initials(of: name))
+            Text(verbatim: initials)
                 .font(.system(size: size * 0.4, weight: .semibold))
                 .foregroundStyle(Theme.accent)
             if let picture {
@@ -29,14 +30,6 @@ struct Avatar: View {
         .clipShape(Circle())
         .accessibilityHidden(true)
     }
-
-    /// The first letter of up to two words, upper case.
-    static func initials(of name: String) -> String {
-        name.split(whereSeparator: \.isWhitespace)
-            .prefix(2)
-            .compactMap { $0.first.map { String($0).uppercased() } }
-            .joined()
-    }
 }
 
 extension Avatar {
@@ -44,7 +37,7 @@ extension Avatar {
     /// or their initials while it names none.
     init(profile: BridgePersonProfile, size: CGFloat) {
         self.init(
-            name: profile.name,
+            initials: profile.initials,
             picture: profile.avatarVersion.map { (profile.id, $0) },
             size: size
         )

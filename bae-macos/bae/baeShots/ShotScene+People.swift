@@ -399,6 +399,7 @@ extension ShotScene {
         id: "11",
         member: "4a1f2c3d-0000-4000-8000-000000000009",
         label: "another@example.com",
+        labelInitials: "A",
         access: .providerAccount(email: "another@example.com"),
         shown: .code(code: "invite-code", progress: .waiting),
         held: nil
@@ -410,6 +411,7 @@ extension ShotScene {
         id: "11",
         member: "4a1f2c3d-0000-4000-8000-000000000009",
         label: "dan@example.com",
+        labelInitials: "D",
         access: .providerAccount(email: "dan@example.com"),
         shown: .code(code: "invite-code", progress: .waiting),
         held: nil
@@ -420,6 +422,7 @@ extension ShotScene {
         id: "12",
         member: "4a1f2c3d-0000-4000-8000-000000000009",
         label: "dan@example.com",
+        labelInitials: "D",
         access: .providerAccount(email: "dan@example.com"),
         shown: .granting,
         held: nil
@@ -430,8 +433,12 @@ extension ShotScene {
         id: "13",
         member: "4a1f2c3d-0000-4000-8000-000000000009",
         label: "dan@example.com",
+        labelInitials: "D",
         access: .providerAccount(email: "dan@example.com"),
-        shown: .code(code: "invite-code", progress: .joining(name: "Dan")),
+        shown: .code(
+            code: "invite-code",
+            progress: .joining(name: "Dan", initials: "D")
+        ),
         held: nil
     )
 

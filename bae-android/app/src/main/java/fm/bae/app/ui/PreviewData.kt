@@ -370,6 +370,7 @@ object PreviewData {
                 BridgePersonProfile(
                     id = member.id,
                     name = "Person Name",
+                    initials = "PN",
                     historySharing = BridgeHistorySharing.PRIVATE,
                     avatarVersion = null,
                 ),

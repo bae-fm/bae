@@ -37,6 +37,7 @@ class PictureRowsTest {
         BridgePersonProfile(
             id = "person-1",
             name = "Ana",
+            initials = "A",
             historySharing = BridgeHistorySharing.PRIVATE,
             avatarVersion = avatarVersion,
         )

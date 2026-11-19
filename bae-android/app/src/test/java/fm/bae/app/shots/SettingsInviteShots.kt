@@ -94,7 +94,7 @@ class SettingsInviteShots : BoardShot() {
             ScreenScene {
                 PeoplePageScene(
                     anaAndBen(),
-                    invites = listOf(danInvite(BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Joining("Dan")))),
+                    invites = listOf(danInvite(BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Joining("Dan", "D")))),
                 )
             }
         }

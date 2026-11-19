@@ -147,6 +147,7 @@ extension ShotScene {
         BridgePlaylistOwner(
             person: "person-\(name)",
             name: name,
+            initials: String(name.prefix(1)),
             avatarVersion: nil
         )
     }

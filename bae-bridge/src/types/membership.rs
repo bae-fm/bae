@@ -248,6 +248,8 @@ pub struct BridgeInvite {
     /// What names the invite: the address it shares with, or on S3 the id of
     /// the key it carries.
     pub label: String,
+    /// The letters an avatar draws for the invite's label.
+    pub label_initials: String,
     /// The access the invite grants; on S3 the id of the key it carries.
     pub access: BridgeMemberAccess,
     pub shown: BridgeInviteShown,
@@ -311,8 +313,8 @@ pub enum BridgeInviteProgress {
     /// decline after comparing the confirmation number.
     Deciding { request: Arc<crate::BridgeJoinRequest> },
     /// Its person is being let in; it can no longer be cancelled. `name` is
-    /// the name their request carried.
-    Joining { name: String },
+    /// the name their request carried, with the letters an avatar draws for it.
+    Joining { name: String, initials: String },
 }
 impl BridgeInvite {
     pub(crate) fn from_core(value: bae_views::OpenInvite) -> Self {
@@ -344,26 +346,31 @@ impl BridgeInvite {
                             BridgeInviteProgress::Waiting
                         }
                     },
-                    InviteProgress::Joining => BridgeInviteProgress::Joining {
+                    InviteProgress::Joining => {
                         // The read that lists the invite names every request
                         // it lists (or fails): an approval whose request has
                         // no name is a bug of bae's, reported here without
                         // ending the app. The row then names the person by
                         // their address, never by a made-up name.
-                        name: requester.unwrap_or_else(|| {
+                        let name = requester.unwrap_or_else(|| {
                             tracing::error!(
                                 invite = %invite.id.0,
                                 "bug: an approved request has no name"
                             );
                             label.clone()
-                        }),
-                    },
+                        });
+                        BridgeInviteProgress::Joining {
+                            initials: bae_people::people::initials(&name),
+                            name,
+                        }
+                    }
                 },
             },
         };
         Self {
             id: invite.id.0.to_string(),
             member: invite.member.0.to_string(),
+            label_initials: bae_people::people::initials(&label),
             label,
             access: BridgeMemberAccess::from_core(invite.access),
             shown,

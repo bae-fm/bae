@@ -19,15 +19,15 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.ui.appearance.ThemeOpacity
 import uniffi.bae_bridge.BridgePersonProfile
 
-/** What an [AndroidAvatar] draws: the person's [name], whose initials stand in while they have no [picture]. */
+/** What an [AndroidAvatar] draws: the [initials] that stand in while the person has no [picture]. */
 internal class AvatarFace(
-    val name: String,
+    val initials: String,
     val picture: ImageContent.Avatar?,
 )
 
 /** The face of [this] person: their picture at the version their profile names, when they have one. */
 internal fun BridgePersonProfile.face(): AvatarFace =
-    AvatarFace(name, avatarVersion?.let { ImageContent.Avatar(person = id, version = it) })
+    AvatarFace(initials, avatarVersion?.let { ImageContent.Avatar(person = id, version = it) })
 
 /** A person's picture, or their initials in the accent on its tint while they have none. Round. */
 @Composable
@@ -48,7 +48,7 @@ internal fun AndroidAvatar(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = initialsOf(face.name),
+            text = face.initials,
             color = accent,
             fontSize = (size.value * INITIALS_SHARE).sp,
             fontWeight = FontWeight.SemiBold,
@@ -61,11 +61,3 @@ internal fun AndroidAvatar(
 
 /** The initials' size as a share of the avatar's. */
 private const val INITIALS_SHARE = 0.4f
-
-/** The first letter of up to two words of [name], upper case. */
-internal fun initialsOf(name: String): String =
-    name
-        .split(Regex("\\s+"))
-        .filter { it.isNotEmpty() }
-        .take(2)
-        .joinToString("") { it.first().uppercase() }

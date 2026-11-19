@@ -92,7 +92,7 @@ struct PlaylistDetailPane: View {
                     .lineLimit(2)
                 HStack(spacing: ThemeSpace.inline) {
                     Avatar(
-                        name: summary.owner.name,
+                        initials: summary.owner.initials,
                         picture: summary.owner.avatarVersion.map {
                             (summary.owner.person, $0)
                         },

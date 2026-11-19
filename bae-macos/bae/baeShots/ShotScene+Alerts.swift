@@ -189,6 +189,7 @@ extension ShotScene {
                 id: "11",
                 member: "4a1f2c3d-0000-4000-8000-000000000009",
                 label: "dan@example.com",
+                labelInitials: "D",
                 access: .providerAccount(email: "dan@example.com"),
                 shown: .code(code: "invite-code", progress: .waiting),
                 held: nil

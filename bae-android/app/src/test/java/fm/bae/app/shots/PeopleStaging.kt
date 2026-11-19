@@ -103,6 +103,7 @@ internal fun invitation(
     id = "invite-$address",
     member = member,
     label = address,
+    labelInitials = address.take(1).uppercase(),
     access = BridgeMemberAccess.ProviderAccount(address),
     shown = shown,
     held = null,
@@ -174,7 +175,13 @@ private fun person(
         )
     val shown = PreviewData.person(member)
     return shown.copy(
-        profile = shown.profile?.copy(name = name, historySharing = history, avatarVersion = if (picture) "1" else null),
+        profile =
+            shown.profile?.copy(
+                name = name,
+                initials = name.take(1),
+                historySharing = history,
+                avatarVersion = if (picture) "1" else null,
+            ),
     )
 }
 

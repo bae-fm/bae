@@ -168,7 +168,7 @@ private fun PeopleCard(
             val name = person.profile?.name ?: stringResource(R.string.members_unnamed)
             AndroidRow(
                 title = name,
-                avatar = person.profile?.face() ?: AvatarFace(name, picture = null),
+                avatar = person.profile?.face() ?: AvatarFace(initials = "", picture = null),
                 subtitle =
                     stringResource(
                         R.string.people_role_and_devices,

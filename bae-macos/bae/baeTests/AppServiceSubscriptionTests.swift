@@ -282,6 +282,7 @@ struct InvitesSubscriptionTests {
             id: id,
             member: "member-1",
             label: "dan@example.com",
+            labelInitials: "D",
             access: .providerAccount(email: "dan@example.com"),
             shown: .code(code: "invite-code", progress: .waiting),
             held: nil

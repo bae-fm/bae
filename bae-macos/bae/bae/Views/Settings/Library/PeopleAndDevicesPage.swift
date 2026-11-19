@@ -431,7 +431,7 @@ extension PeopleAndDevicesPage {
                 PageLinkRow(
                     title: displayName(person),
                     avatar: person.profile.map { Avatar(profile: $0, size: 28) }
-                        ?? Avatar(name: displayName(person), size: 28),
+                        ?? Avatar(initials: "", size: 28),
                     tag: member.role.label,
                     value: deviceCount(member),
                     opens: store.selfIsAdmin,
@@ -898,10 +898,10 @@ private struct InviteRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            if case .code(_, .joining(let name)) = invite.shown {
+            if case .code(_, .joining(let name, let initials)) = invite.shown {
                 PageLinkRow(
                     title: name,
-                    avatar: Avatar(name: name, size: 28),
+                    avatar: Avatar(initials: initials, size: 28),
                     tag: String(localized: "Joining"),
                     value: invite.label,
                     opens: false,
@@ -911,7 +911,7 @@ private struct InviteRow: View {
             else {
                 PageLinkRow(
                     title: invite.label,
-                    avatar: Avatar(name: invite.label, size: 28),
+                    avatar: Avatar(initials: invite.labelInitials, size: 28),
                     tag: String(localized: "Invited"),
                     value: waitsForSharing
                         ? String(localized: "Shares access once online") : "",

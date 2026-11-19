@@ -361,7 +361,7 @@ internal fun InviteRow(
     if (joining != null) {
         AndroidRow(
             title = joining.name,
-            avatar = AvatarFace(joining.name, picture = null),
+            avatar = AvatarFace(joining.initials, picture = null),
             subtitle = invite.label,
             tag = stringResource(R.string.members_joining),
         )
@@ -370,7 +370,7 @@ internal fun InviteRow(
     val held = invite.held
     AndroidRow(
         title = invite.label,
-        avatar = AvatarFace(invite.label, picture = null),
+        avatar = AvatarFace(invite.labelInitials, picture = null),
         tag = stringResource(R.string.members_invited),
         subtitle =
             when {
