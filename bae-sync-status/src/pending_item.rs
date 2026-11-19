@@ -37,8 +37,7 @@ pub struct PendingWait {
     pub reason: coven::PendingReason,
     /// The text of the error behind `reason`, with every cause below it,
     /// when the run that met it kept it; none after the store reopens.
-    /// coven keeps it beside every record but the connection's, whose error
-    /// the sync status keeps instead (`SyncStatusSnapshot::read`).
+    /// coven keeps it beside every record, the connection's included.
     pub cause: Option<String>,
     pub action: PendingAction,
 }
