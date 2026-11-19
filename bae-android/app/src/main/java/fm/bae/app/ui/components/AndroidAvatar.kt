@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +42,9 @@ internal fun AndroidAvatar(
             modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(accent.copy(alpha = ThemeOpacity.tintStrong)),
+                .background(accent.copy(alpha = ThemeOpacity.tintStrong))
+                // The row beside it names the person; the initials would read into that name.
+                .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
         Text(
