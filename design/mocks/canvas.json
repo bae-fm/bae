@@ -4482,6 +4482,14 @@
    "w": 1200,
    "x": 8950,
    "y": 4428
+  },
+  "mac.playlists.dropping.dc.html": {
+   "h": 760,
+   "page": "explore",
+   "title": "Exploration: macOS: tracks dropped on an open playlist",
+   "w": 1200,
+   "x": 11332,
+   "y": 11864
   }
  },
  "createdOnFiles": {

@@ -3097,7 +3097,9 @@ Playlists tab shows the open playlist again when the person comes back to
 it, whether after switching tabs, after closing and reopening the pane, or
 from *Playlists* in the person's menu. Deleting the open playlist returns the pane to the list.
 Dragging tracks onto a playlist in the pane adds them to its end: while they
-are held over it the playlist is drawn in the accent.
+are held over it the playlist is drawn in the accent. Dragging tracks or an
+album from the window onto an open playlist's tracks adds them where the
+person lets go, a line between the rows marking the spot.
 On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
 under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person
