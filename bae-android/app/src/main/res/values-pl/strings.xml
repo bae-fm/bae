@@ -480,7 +480,6 @@
     <string name="sync_fix_remove">Usuń z tego urządzenia</string>
     <string name="sync_cause_disk_full">Na tym urządzeniu brakuje miejsca. Zwolnij trochę, a bae spróbuje ponownie.</string>
     <string name="sync_cause_keys_unreadable">bae nie mógł odczytać zapisanych kluczy na tym urządzeniu.</string>
-    <string name="sync_cause_library_unreadable">bae nie mógł odczytać biblioteki na tym urządzeniu.</string>
     <string name="sync_cause_bae_problem">bae napotkał problem na tym urządzeniu i próbuje dalej. Jeśli problem nie zniknie, uruchom bae ponownie.</string>
     <string name="sync_cause_enter_new_restore_code">Wprowadź nowy kod przywracania, aby przywrócić bibliotekę na tym urządzeniu. Przywracanie odrzuca wszystkie zmiany, których to urządzenie nie wysłało.</string>
     <string name="pins_at_once">Równoczesne przypinania</string>

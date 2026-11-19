@@ -462,7 +462,6 @@
     <string name="sync_fix_remove">Ta bort från den här enheten</string>
     <string name="sync_cause_disk_full">Den här enheten har slut på utrymme. Frigör lite så försöker bae igen.</string>
     <string name="sync_cause_keys_unreadable">bae kunde inte läsa sina sparade nycklar på den här enheten.</string>
-    <string name="sync_cause_library_unreadable">bae kunde inte läsa biblioteket på den här enheten.</string>
     <string name="sync_cause_bae_problem">bae stötte på ett problem på den här enheten och försöker igen. Om det inte går över, starta om bae.</string>
     <string name="sync_cause_enter_new_restore_code">Ange den nya återställningskoden för att återställa biblioteket på den här enheten. Återställningen tar bort alla ändringar som den här enheten inte har skickat.</string>
     <string name="pins_at_once">Samtidiga fästningar</string>

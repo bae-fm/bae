@@ -462,7 +462,6 @@
     <string name="sync_fix_remove">Eltávolítás erről az eszközről</string>
     <string name="sync_cause_disk_full">Ennek az eszköznek elfogyott a helye. Szabadíts fel egy keveset, és a bae újra megpróbálja.</string>
     <string name="sync_cause_keys_unreadable">A bae nem tudta elolvasni a mentett kulcsait ezen az eszközön.</string>
-    <string name="sync_cause_library_unreadable">A bae nem tudta elolvasni a könyvtárat ezen az eszközön.</string>
     <string name="sync_cause_bae_problem">A bae problémába ütközött ezen az eszközön, és tovább próbálkozik. Ha a hiba nem szűnik meg, indítsd újra a baet.</string>
     <string name="sync_cause_enter_new_restore_code">Add meg az új helyreállítási kódot, hogy visszaállítsd a könyvtárat ezen az eszközön. A visszaállítás elveti azokat a módosításokat, amelyeket ez az eszköz még nem küldött el.</string>
     <string name="pins_at_once">Egyidejű rögzítések</string>

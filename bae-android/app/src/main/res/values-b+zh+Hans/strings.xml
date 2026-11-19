@@ -456,7 +456,6 @@
     <string name="sync_fix_remove">从此设备移除</string>
     <string name="sync_cause_disk_full">此设备空间不足。释放一些空间后，bae 会重试。</string>
     <string name="sync_cause_keys_unreadable">bae 无法读取此设备上保存的密钥。</string>
-    <string name="sync_cause_library_unreadable">bae 无法读取此设备上的音乐库。</string>
     <string name="sync_cause_bae_problem">bae 在此设备上遇到了问题，并会继续尝试。如果问题没有消除，请重新启动 bae。</string>
     <string name="sync_cause_enter_new_restore_code">输入新的恢复码，以恢复此设备上的库。恢复会丢弃此设备尚未发送的所有更改。</string>
     <string name="pins_at_once">同时固定数</string>

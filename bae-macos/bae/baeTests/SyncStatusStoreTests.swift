@@ -97,10 +97,6 @@ struct SyncStatusStoreTests {
                 == "The keychain is locked. Unlock it to keep syncing."
         )
         #expect(
-            BridgeSyncCause.libraryUnreadable.macLine
-                == "bae could not read the library on this Mac."
-        )
-        #expect(
             BridgeSyncCause.baeProblemOnDevice.macLine
                 == "bae ran into a problem on this Mac and keeps trying. If it does not clear, restart bae."
         )

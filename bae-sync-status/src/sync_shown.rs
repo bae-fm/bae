@@ -75,13 +75,11 @@ pub enum SyncCauseLine {
     DeviceDiskFull,
     /// The operating system refused bae a file it needs.
     DeviceDiskDenied,
-    /// The disk on this device failed for any other reason.
-    DeviceDiskFailed,
     DeviceKeysUnreadable,
-    LibraryUnreadable,
     /// bae's own failure on this device that sync retries by itself: a failure
-    /// of decryption, of an operation of coven's own or of bae, or of coven's
-    /// copy of an image bae made failing its check.
+    /// of the library's database, of the device's disk other than a full
+    /// disk or a refused file, of decryption, of an operation of coven's own or of bae,
+    /// or of coven's copy of an image bae made failing its check.
     BaeProblemOnDevice,
     /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device as a new device, and the restore
@@ -333,9 +331,9 @@ impl SyncStatusSnapshot {
             PendingReason::Refused(_) => SyncCauseLine::ChangeDamaged,
             PendingReason::Failed(LocalFailure::DiskFull) => SyncCauseLine::DeviceDiskFull,
             PendingReason::Failed(LocalFailure::DiskDenied) => SyncCauseLine::DeviceDiskDenied,
-            PendingReason::Failed(LocalFailure::DiskOther) => SyncCauseLine::DeviceDiskFailed,
+            PendingReason::Failed(LocalFailure::DiskOther) => SyncCauseLine::BaeProblemOnDevice,
             PendingReason::Failed(LocalFailure::KeyCustody) => SyncCauseLine::DeviceKeysUnreadable,
-            PendingReason::Failed(LocalFailure::Database) => SyncCauseLine::LibraryUnreadable,
+            PendingReason::Failed(LocalFailure::Database) => SyncCauseLine::BaeProblemOnDevice,
             PendingReason::Failed(
                 LocalFailure::Crypto
                 | LocalFailure::Operation

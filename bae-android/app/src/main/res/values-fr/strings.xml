@@ -470,7 +470,6 @@
     <string name="sync_fix_remove">Retirer de cet appareil</string>
     <string name="sync_cause_disk_full">Cet appareil n’a plus d’espace. Libérez-en et bae réessaiera.</string>
     <string name="sync_cause_keys_unreadable">bae n’a pas pu lire ses clés enregistrées sur cet appareil.</string>
-    <string name="sync_cause_library_unreadable">bae n’a pas pu lire la bibliothèque sur cet appareil.</string>
     <string name="sync_cause_bae_problem">bae a rencontré un problème sur cet appareil et réessaie. Si le problème persiste, redémarrez bae.</string>
     <string name="sync_cause_enter_new_restore_code">Saisissez le nouveau code de restauration pour restaurer la bibliothèque sur cet appareil. La restauration supprime les modifications que cet appareil n’a pas encore envoyées.</string>
     <string name="pins_at_once">Épinglages simultanés</string>

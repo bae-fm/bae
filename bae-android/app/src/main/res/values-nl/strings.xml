@@ -464,7 +464,6 @@
     <string name="sync_fix_remove">Verwijderen van dit apparaat</string>
     <string name="sync_cause_disk_full">Dit apparaat heeft geen ruimte meer. Maak wat vrij en bae probeert het opnieuw.</string>
     <string name="sync_cause_keys_unreadable">bae kon zijn opgeslagen sleutels op dit apparaat niet lezen.</string>
-    <string name="sync_cause_library_unreadable">bae kon de bibliotheek op dit apparaat niet lezen.</string>
     <string name="sync_cause_bae_problem">bae is op dit apparaat een probleem tegengekomen en blijft het proberen. Als het niet verdwijnt, start bae opnieuw.</string>
     <string name="sync_cause_enter_new_restore_code">Voer de nieuwe herstelcode in om de bibliotheek op dit apparaat te herstellen. Het herstellen verwijdert alle wijzigingen die dit apparaat nog niet heeft verstuurd.</string>
     <string name="pins_at_once">Gelijktijdig vastzetten</string>

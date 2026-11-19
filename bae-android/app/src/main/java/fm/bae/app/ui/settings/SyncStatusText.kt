@@ -37,10 +37,6 @@ internal fun syncCauseText(
             context.getString(R.string.sync_cause_keys_unreadable)
         }
 
-        BridgeSyncCause.LibraryUnreadable -> {
-            context.getString(R.string.sync_cause_library_unreadable)
-        }
-
         BridgeSyncCause.BaeProblemOnDevice -> {
             context.getString(R.string.sync_cause_bae_problem)
         }

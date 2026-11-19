@@ -831,7 +831,6 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         C::SignInToICloud,
         C::FileMissingOrChanged,
         C::DeviceDiskDenied,
-        C::DeviceDiskFailed,
         C::ProviderError {
             provider: coven::CloudProvider::Dropbox,
             detail: "Internal server error".to_string(),
@@ -862,10 +861,6 @@ fn device_causes_are_the_platforms_to_word() {
     assert_eq!(
         BridgeSyncCause::from_core(C::DeviceKeysUnreadable),
         BridgeSyncCause::DeviceKeysUnreadable
-    );
-    assert_eq!(
-        BridgeSyncCause::from_core(C::LibraryUnreadable),
-        BridgeSyncCause::LibraryUnreadable
     );
     assert_eq!(
         BridgeSyncCause::from_core(C::BaeProblemOnDevice),

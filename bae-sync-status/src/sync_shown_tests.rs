@@ -287,7 +287,7 @@ fn sync_failed_says_why_and_offers_retry_now() {
     );
     assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::DiskOther)),
-        SyncCauseLine::DeviceDiskFailed
+        SyncCauseLine::BaeProblemOnDevice
     );
     assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::KeyCustody)),
@@ -295,7 +295,7 @@ fn sync_failed_says_why_and_offers_retry_now() {
     );
     assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::Database)),
-        SyncCauseLine::LibraryUnreadable
+        SyncCauseLine::BaeProblemOnDevice
     );
     assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::Bug)),

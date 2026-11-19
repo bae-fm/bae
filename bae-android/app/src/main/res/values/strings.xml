@@ -523,7 +523,6 @@
     <string name="sync_fix_remove">Remove from this device</string>
     <string name="sync_cause_disk_full">This device is out of space. Free some up and bae will try again.</string>
     <string name="sync_cause_keys_unreadable">bae could not read its saved keys on this device.</string>
-    <string name="sync_cause_library_unreadable">bae could not read the library on this device.</string>
     <string name="sync_cause_bae_problem">bae ran into a problem on this device and keeps trying. If it does not clear, restart bae.</string>
     <string name="sync_cause_enter_new_restore_code">Enter the new restore code to restore the library on this device. The restore discards any changes this device has not sent.</string>
     <string name="pins_at_once">Pins at once</string>

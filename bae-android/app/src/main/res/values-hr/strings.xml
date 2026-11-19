@@ -472,7 +472,6 @@
     <string name="sync_fix_remove">Ukloni s ovog uređaja</string>
     <string name="sync_cause_disk_full">Na ovom uređaju je ponestalo prostora. Oslobodite malo i bae će pokušati ponovno.</string>
     <string name="sync_cause_keys_unreadable">bae nije mogao pročitati svoje spremljene ključeve na ovom uređaju.</string>
-    <string name="sync_cause_library_unreadable">bae nije mogao pročitati fonoteku na ovom uređaju.</string>
     <string name="sync_cause_bae_problem">bae je naišao na problem na ovom uređaju i nastavlja pokušavati. Ako se problem ne riješi, ponovno pokrenite bae.</string>
     <string name="sync_cause_enter_new_restore_code">Unesite novi kod za vraćanje da biste vratili fonoteku na ovaj uređaj. Vraćanje odbacuje sve izmjene koje ovaj uređaj nije poslao.</string>
     <string name="pins_at_once">Istodobna prikvačivanja</string>

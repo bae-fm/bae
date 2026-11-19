@@ -36,12 +36,6 @@ extension BridgeSyncCause {
                 comment:
                     "Sync failed: the keychain holding bae's saved keys can't be read while it is locked."
             )
-        case .libraryUnreadable:
-            String(
-                localized: "bae could not read the library on this Mac.",
-                comment:
-                    "Sync failed: the library's database on this Mac couldn't be read."
-            )
         case .baeProblemOnDevice:
             String(
                 localized:
