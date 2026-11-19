@@ -45,7 +45,6 @@ bae-util = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
 # The ids coven's progress steps name.
 uuid = { workspace = true }
-tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]
