@@ -49,6 +49,10 @@ pub(crate) trait DirectoryReader: Send + Sync {
 pub(crate) struct OsDirectoryReader;
 
 impl DirectoryReader for OsDirectoryReader {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: reads the person's folder before coven records its files"
+    )]
     fn read(
         &self,
         root: &Path,

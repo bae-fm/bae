@@ -278,6 +278,10 @@ impl LibraryManager {
     /// Write the release's cover as `cover.jpg` in `staging_dir`, when it has
     /// one. The stored cover is already a JPEG. The file is created new, so a
     /// release file of that name fails the save rather than being replaced.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     async fn write_cover_file(
         &self,
         release_id: &str,
@@ -365,6 +369,10 @@ fn output_sibling(folder: &str, purpose: &str, release_id: &str) -> std::path::P
 /// Write the marker as a new file: when one of the release's own files is
 /// named `.bae-output`, it is already there, and the output fails rather than
 /// write over it.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: writes into the folder the person chose, which coven does not own"
+)]
 fn write_output_marker(staging_dir: &std::path::Path, release_id: &str) -> std::io::Result<()> {
     use std::io::Write;
     std::fs::OpenOptions::new()
@@ -379,6 +387,10 @@ fn write_output_marker(staging_dir: &std::path::Path, release_id: &str) -> std::
 /// export: once this returns, the new export is in place and the export has
 /// succeeded, and the backup is only what nothing refers to any more
 /// ([`remove_prior_export_backup`]).
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: writes into the folder the person chose, which coven does not own"
+)]
 fn replace_output_dir(
     staging_dir: &std::path::Path,
     final_dir: &std::path::Path,
@@ -424,6 +436,10 @@ fn replace_output_dir(
 /// Delete the earlier export `replace_output_dir` set aside. The new export is
 /// already in place and stays there: a failure names the backup left behind,
 /// and nothing is moved back.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: writes into the folder the person chose, which coven does not own"
+)]
 fn remove_prior_export_backup(backup_dir: &std::path::Path) -> Result<(), LibraryError> {
     std::fs::remove_dir_all(backup_dir).map_err(|error| {
         LibraryError::Export(format!(
@@ -448,6 +464,10 @@ impl StagingDir {
     /// Create the staging directory fresh. A leftover directory at this path (from
     /// a prior crash that skipped the drop cleanup) is removed first so the export
     /// starts from an empty tree rather than mixing in stale files.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     fn create(path: std::path::PathBuf) -> std::io::Result<Self> {
         if path.exists() {
             std::fs::remove_dir_all(&path)?;
@@ -468,6 +488,10 @@ impl StagingDir {
 }
 
 impl Drop for StagingDir {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     fn drop(&mut self) {
         if !self.armed {
             return;

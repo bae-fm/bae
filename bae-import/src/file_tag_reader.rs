@@ -54,6 +54,10 @@ impl FileTagReader for LoftyFileTagReader {
     /// Opens and parses `path` once: the concrete format's own reading, for
     /// the ID3v2 frames and MP4 atoms only it keeps, is the one the generic
     /// tag is taken from.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: reads the person's folder before coven records its files"
+    )]
     fn read(&self, path: &Path, place: LeasePlace) -> Result<FileTagRead, TagReadFailure> {
         let file_type = FileType::from_path(path);
         let mut file = place.open(path).map_err(|error| {

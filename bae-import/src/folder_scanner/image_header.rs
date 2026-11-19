@@ -15,6 +15,10 @@ use std::path::Path;
 /// no known magic is assumed valid — an unrecognized format is not evidence of
 /// corruption, so it must not block the import. is_valid_image opens the
 /// file in `place`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 pub(super) fn is_valid_image(path: &Path, place: LeasePlace) -> io::Result<bool> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::ImageCheck, path);

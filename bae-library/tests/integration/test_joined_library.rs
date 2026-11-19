@@ -163,6 +163,10 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
 /// and discarding again finds nothing. The household's own library is not
 /// touched.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
     on_app_runtime(async {
         let household = Household::new().await;
@@ -250,6 +254,10 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
 }
 
 /// Every file under `dir`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 fn walk(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap() {

@@ -29,6 +29,10 @@ trait WatchBackend: Send {
 }
 
 impl WatchBackend for RecommendedWatcher {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: watches the person's watched folders, which coven does not own"
+    )]
     fn watch(&mut self, path: &Path, mode: RecursiveMode) -> notify::Result<()> {
         Watcher::watch(self, path, mode)
     }
@@ -298,6 +302,10 @@ fn refused(directory: &Path, message: &str) -> UnwatchedReason {
 
 /// Start each root's watch as the platform's own, reporting on `events`
 /// with the root it watches.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: watches the person's watched folders, which coven does not own"
+)]
 fn platform_watch(events: std::sync::mpsc::Sender<RootEvent>) -> OpenWatch {
     Box::new(move |root: &Path| {
         let root = Arc::new(

@@ -74,6 +74,10 @@ pub(crate) async fn volume_kind(
 /// between two readings of the same directory on the same filesystem — and
 /// rounding to the second would hide every change made in the same second as
 /// the walk that recorded it, which is a change nothing would then notice.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 pub(crate) fn directory_modified_at(path: &Path) -> Option<i64> {
     let modified = match std::fs::metadata(path).and_then(|metadata| metadata.modified()) {
         Ok(modified) => modified,

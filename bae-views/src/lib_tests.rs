@@ -632,6 +632,10 @@ mod window_cost {
     /// in the context lane, then each release's zero to three files, staged on
     /// this device only from originals under `originals`, one original for
     /// each size, which every file of that size names.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: seeds the kept originals under target/bench-seed, files no library holds"
+    )]
     pub(crate) async fn seed(db: &Store, originals: &std::path::Path, start: u64, end: u64) {
         let records = bae_records::test_fixtures::test_records(db);
         db.write(move |sql| {

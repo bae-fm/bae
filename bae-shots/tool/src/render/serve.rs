@@ -36,6 +36,10 @@ fn preview_component(path: &str) -> Option<&str> {
 }
 
 /// What a URL path is served from, if it names something.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn route(root: &Path, url_path: &str) -> Option<Route> {
     let path = url_path.split(['?', '#']).next()?;
     let path = path.strip_prefix("/storage").filter(|p| p.starts_with('/')).unwrap_or(path);
@@ -78,6 +82,10 @@ fn content_type(file: &Path) -> &'static str {
     }
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 async fn respond(root: &Path, mut stream: TcpStream) -> std::io::Result<()> {
     let mut request = Vec::new();
     let mut buffer = [0u8; 4096];

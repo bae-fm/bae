@@ -26,6 +26,10 @@ enum Said {
     Panicked(Bug),
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 pub(crate) fn scan_for_candidates_with_reader_cancellable_and_directories<R, F, D>(
     reader: &R,
     root: PathBuf,

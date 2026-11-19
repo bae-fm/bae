@@ -232,6 +232,10 @@ pub(crate) struct StagedFiles {
 
 impl StagedFiles {
     /// A new, empty folder. Blocking.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
+    )]
     fn create() -> std::io::Result<Self> {
         Ok(Self { dir: tempfile::tempdir()? })
     }
@@ -260,6 +264,10 @@ impl StagedFiles {
 
 /// Write `bytes` to a file at `path`, making the folders above it.
 /// Blocking.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
+)]
 fn write_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;

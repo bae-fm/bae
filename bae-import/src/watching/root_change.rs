@@ -107,6 +107,10 @@ pub(super) async fn root_change_of(
 /// file directly in it came or went, or it holds tracks of its own (whose
 /// release takes in the audio-free folders beside them). Hidden entries are
 /// skipped because the scan never lists them.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: watches the person's watched folders, which coven does not own"
+)]
 pub(super) fn root_change(
     root: &Path,
     changed: &[&Path],
@@ -158,6 +162,10 @@ pub(super) fn root_change(
 /// itself, since the record cannot tell which of its files moved.
 ///
 /// Listing the root holds it open, which takes a place of `lease` meanwhile.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: watches the person's watched folders, which coven does not own"
+)]
 pub(super) fn network_changes(
     root: &Path,
     recorded: &[(PathBuf, i64)],

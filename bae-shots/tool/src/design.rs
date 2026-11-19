@@ -41,6 +41,10 @@ struct Canvas {
     boards: BTreeMap<String, Frame>,
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn read(path: &Path) -> Result<Vec<u8>, DesignError> {
     std::fs::read(path)
         .map_err(|e| DesignError::Unreadable { path: path.to_path_buf(), reason: e.to_string() })
@@ -84,6 +88,10 @@ pub(crate) fn frame(root: &Path, name: &str) -> Result<Frame, DesignError> {
 
 /// The board's file and every part it mounts with `dc-import`, parts of parts
 /// included, by name.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn reached(root: &Path, name: &str) -> Result<BTreeMap<String, PathBuf>, DesignError> {
     let import = Regex::new(r#"<dc-import\s[^>]*?\bname="([^"]+)""#).unwrap();
     let mut files = BTreeMap::new();

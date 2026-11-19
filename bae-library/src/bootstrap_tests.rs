@@ -9,6 +9,10 @@ mod codes;
 mod settings;
 
 #[tokio::test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -134,6 +138,10 @@ async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
 }
 
 #[tokio::test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn failed_creation_removes_the_partial_library() {
     let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -696,6 +704,10 @@ fn a_restore_cancelled_after_registering_says_it_stays_unfinished() {
 /// one it replaced: nothing of the library is left listed, its files and the
 /// pointer naming it are gone, and no removal record is left.
 #[tokio::test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_copies() {
     let temp = bae_util::test_files::TestFolder::new();
     let app_dir = AppDir::at(temp.path()).unwrap();

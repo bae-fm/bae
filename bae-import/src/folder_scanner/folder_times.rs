@@ -51,6 +51,10 @@ impl FolderTimes {
     }
 
     /// What `path`'s metadata gives, which carries no date added.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: reads the person's folder before coven records its files"
+    )]
     fn of_metadata(path: &Path) -> io::Result<Self> {
         let metadata = std::fs::metadata(path)?;
         Ok(Self {

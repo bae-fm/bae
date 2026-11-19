@@ -137,6 +137,10 @@ const EXTENSIONS: [&str; 2] = ["png", "json"];
 /// and the completeness check sees only what this run wrote. The folder is
 /// shared by every branch built in a checkout; what another branch left behind
 /// would otherwise read as undeclared.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn clear(out: &Path, platform: Platform) -> Result<(), CaptureError> {
     std::fs::create_dir_all(out).map_err(|e| CaptureError::Directory(out.to_path_buf(), e))?;
     let entries =
@@ -156,6 +160,10 @@ pub(crate) fn clear(out: &Path, platform: Platform) -> Result<(), CaptureError> 
 /// selected shot wrote its PNG and its element list, which read back and agree
 /// with each other, and `out` holds no shot file of `platform` that no harness
 /// declares.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn check_complete(
     out: &Path,
     platform: Platform,

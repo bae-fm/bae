@@ -739,6 +739,10 @@ fn parsed(
 }
 
 /// Fail unless `file` is still the version the listing found.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
     let metadata = std::fs::metadata(&file.version.path)
         .map_err(|source| FolderScanError::io(&file.version.path, source))?;

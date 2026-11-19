@@ -21,6 +21,10 @@ async fn release_memory_keeps_the_library_readable_and_writable() {
 
 /// Removing the active library closes its custody and removes both directories.
 #[tokio::test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn removal_releases_custody_and_preferences() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -38,6 +42,10 @@ async fn removal_releases_custody_and_preferences() {
 /// What removal would lose is read without removing anything; the removal
 /// then discards it.
 #[tokio::test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn removal_discards_the_unsent_work_it_reports() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();

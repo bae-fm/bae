@@ -21,6 +21,10 @@ fn main() -> ExitCode {
     }
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn run() -> Result<(), String> {
     let raw: Vec<String> = std::env::args().skip(1).collect();
     let mut theme_path = PathBuf::from("design/theme.toml");
@@ -82,6 +86,10 @@ fn emit(theme: &Theme, target: Option<String>, out_dir: Option<PathBuf>) -> Resu
 
 /// Leaves an unchanged file's timestamp alone, so the platform build does not
 /// recompile what did not change.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn write_if_changed(path: &Path, contents: &str) -> Result<(), String> {
     if fs::read_to_string(path).is_ok_and(|existing| existing == contents) {
         return Ok(());

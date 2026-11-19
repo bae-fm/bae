@@ -63,6 +63,10 @@ fn value<'a>(raw: &'a [String], i: &mut usize) -> Result<&'a str, String> {
     raw.get(*i).map(String::as_str).ok_or_else(|| format!("`{}` needs a value", raw[*i - 1]))
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn run() -> Result<(), String> {
     let args = parse_args()?;
 
@@ -139,6 +143,10 @@ fn emit_target(args: &Args, catalog: &Catalog) -> Result<(), String> {
     Ok(())
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn write_file(path: &Path, contents: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("creating {}: {e}", parent.display()))?;

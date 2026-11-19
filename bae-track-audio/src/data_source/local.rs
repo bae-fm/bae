@@ -22,6 +22,10 @@ impl LocalReader {
 }
 
 impl AudioDataReader for LocalReader {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: reads a file the scan, the import or the preview names, before coven records it"
+    )]
     fn start_reading(
         self: Box<Self>,
         buffer: SharedSparseBuffer,

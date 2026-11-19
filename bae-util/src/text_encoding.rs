@@ -35,6 +35,10 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
 /// Read a file, opened in `place`, and decode its contents, detecting
 /// encoding automatically. read_text_file closes the file before it drops
 /// `place`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads a cue sheet or a log of the person's folder before coven records it"
+)]
 pub fn read_text_file(path: &Path, place: LeasePlace) -> std::io::Result<DecodedText> {
     let mut file = place.open(path)?;
     let mut bytes = Vec::new();

@@ -20,6 +20,10 @@ pub enum CreateFileError {
 /// there, so two of the release's files written at one path fail the output
 /// rather than leave one file where the release has two. `subject` names the
 /// file and `shown` its path below the output's folder, for the error.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: writes into the folder the person chose, which coven does not own"
+)]
 pub fn create_new_file(
     path: &Path,
     shown: &Path,

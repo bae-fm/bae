@@ -71,6 +71,10 @@ impl DiskImageCache {
 
     /// The answer the cache keeps for `url`, marked as the most recently
     /// used; none when it keeps none.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: the catalog image cache, files bae keeps itself, which coven does not own"
+    )]
     async fn get(&self, url: &str) -> Result<Option<DiskImageEntry>, RemoteImageError> {
         let file = file_for(url);
         let kept = {
@@ -159,6 +163,10 @@ impl DiskImageCache {
 
     /// Delete every row, then the folder with every file in it, those no row
     /// names among them.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: the catalog image cache, files bae keeps itself, which coven does not own"
+    )]
     async fn clear(&self) -> Result<(), DbError> {
         let _changing = self.changing.lock().await;
         self.store.call(forget_all).await?;
@@ -191,6 +199,10 @@ impl DiskImageCache {
 
     /// Remove `files`, whose rows are gone. A file that stays only takes
     /// space, so the failure is logged.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: the catalog image cache, files bae keeps itself, which coven does not own"
+    )]
     async fn remove_files(&self, files: Vec<String>) -> Result<(), RemoteImageError> {
         let dir = self.dir.clone();
         self.diagnostics
@@ -215,6 +227,10 @@ fn file_for(url: &str) -> String {
 
 /// Write `entry` to `path` in `dir` through a spool file that replaces it
 /// whole, and return the file's size.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: the catalog image cache, files bae keeps itself, which coven does not own"
+)]
 fn write_file(dir: &Path, path: &Path, entry: &DiskImageEntry) -> std::io::Result<u64> {
     use std::io::Write;
 

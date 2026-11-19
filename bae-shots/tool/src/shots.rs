@@ -32,6 +32,10 @@ pub(crate) struct Shot {
 
 impl Shot {
     /// Reads the files `name` wrote into `dir`.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+    )]
     pub(crate) fn load(dir: &Path, name: &Name) -> Result<Self, ShotError> {
         let json = name.file_name("json");
         let png = name.file_name("png");
@@ -125,6 +129,10 @@ fn platform<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Platform, D::E
 
 impl ElementList {
     /// Reads the element list file at `path`.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+    )]
     pub(crate) fn load(path: &Path) -> Result<Self, ShotError> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| ShotError::Read(path.display().to_string(), e))?;

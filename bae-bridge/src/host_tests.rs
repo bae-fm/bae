@@ -21,6 +21,10 @@ fn an_opened_store_keeps_its_original_custody() {
 /// A host over a temporary bae directory, as a test or a preview starts one,
 /// takes the directory with it when it ends.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: checks the folder AppDir::temporary made, bae's own directory"
+)]
 fn a_temporary_bae_directory_ends_with_its_host() {
     let app_dir = BridgeAppDir::temporary().unwrap();
     let path = app_dir.core().libraries().parent().unwrap().to_path_buf();

@@ -72,6 +72,10 @@ fn cbr_mp3(samples: &[i32], layout: Layout, bitrate_kbps: u32) -> Vec<u8> {
 
 /// `samples`, stereo at 44.1 kHz, encoded by LAME at VBR quality 2, with the
 /// Xing/LAME header the MP3 muxer writes or without one.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: FFmpeg opens a file by path, a file in the test's own TestFolder"
+)]
 fn vbr_mp3(samples: &[i32], xing: bool) -> Vec<u8> {
     use ffmpeg_next as ff;
 

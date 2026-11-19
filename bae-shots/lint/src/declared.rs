@@ -32,6 +32,10 @@ pub struct Declared {
 }
 
 /// Every shot both harnesses declare, in name order, each once.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub fn read(root: &Path) -> Result<Vec<Declared>, DeclaredError> {
     let mut all = Vec::new();
     for (directory, extension, find) in [

@@ -7,6 +7,10 @@
 /// Run `damage` on the library file under `directory` that holds `table`,
 /// from a connection of its own, past the store and its checks. Panics when
 /// no library file there holds the table.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: the one place a test writes damage into a library's own file by path"
+)]
 pub fn plant_in_library_file(directory: &std::path::Path, table: &str, damage: &str) {
     let mut planted = false;
     let mut dirs = vec![directory.to_path_buf()];

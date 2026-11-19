@@ -473,6 +473,10 @@ struct TopLevelReading {
 /// A folder that is not there yields nothing, unless the reading was asked
 /// for by name — a decision about a folder that went away is refused, not
 /// stored as an empty reading.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 fn read_top_level_folder(
     reader: &dyn crate::folder_scanner::DirectoryReader,
     watcher: &FolderWatcher,

@@ -3,11 +3,15 @@
 //! takes its places from.
 //!
 //! bae reads and writes a library's files only through coven, and a test
-//! follows the same rule: [`TestFolder`] and [`read_fixture`] are the only
-//! test code that touches the file system. A `TestFolder` makes a fresh
-//! temporary folder and writes, reads and deletes files inside it, and
-//! `read_fixture` reads a file committed to the repo. Neither reaches any
-//! other file.
+//! follows the same rule: [`TestFolder`], [`read_fixture`] and
+//! [`fixture_entries`] are where a test touches the file system. A
+//! `TestFolder` makes a fresh temporary folder and writes, reads and deletes
+//! files inside it. `read_fixture` and `fixture_entries` read files and
+//! folders committed to the repo. None of them reaches any other file. The
+//! other test code that calls the file system is a function that carries a
+//! `clippy::disallowed_methods` mark with its reason: a test home that no
+//! library's file reaches, or a known violation that reads a library's file by
+//! path.
 
 use std::fs::{File, Metadata, OpenOptions, Permissions};
 use std::path::{Component, Path, PathBuf};
@@ -36,6 +40,10 @@ pub fn place() -> LeasePlace {
 /// The resolved path of `path`, a file or folder committed to the repo. Panics
 /// naming the path, and how to get it back, when the checkout lacks it, and
 /// panics when `path` is outside the repo.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a test reads the fixture files committed to the repo, which no library holds"
+)]
 fn committed_path(path: &Path) -> PathBuf {
     let repo = std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
         .expect("the repo's folder resolves");
@@ -52,6 +60,10 @@ fn committed_path(path: &Path) -> PathBuf {
 }
 
 /// The names of the files and folders in the folder at `path`, sorted.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: the test folder is the one place a test touches files, all inside a temporary folder of its own that no library holds"
+)]
 fn sorted_entries(path: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(path)
         .unwrap_or_else(|error| panic!("list {}: {error}", path.display()))
@@ -67,6 +79,10 @@ fn sorted_entries(path: &Path) -> Vec<String> {
 /// The bytes of `path`, a file committed to the repo. Panics naming the file,
 /// and how to get it back, when the checkout lacks it, and panics when `path`
 /// is outside the repo.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a test reads the fixture files committed to the repo, which no library holds"
+)]
 pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
     let path = path.as_ref();
     std::fs::read(committed_path(path)).unwrap_or_else(|error| {
@@ -102,6 +118,10 @@ impl Default for TestFolder {
     }
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: the test folder is the one place a test touches files, all inside a temporary folder of its own that no library holds"
+)]
 impl TestFolder {
     /// A new, empty folder.
     pub fn new() -> Self {

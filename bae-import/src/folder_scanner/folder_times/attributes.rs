@@ -79,6 +79,10 @@ pub(super) fn added(path: &Path) -> io::Result<Option<SystemTime>> {
 /// by name. A date the file system doesn't keep, such as date added on an
 /// SMB share, is `None`; an entry whose attributes could not be read is
 /// left out.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 pub(super) fn read_directory(directory: &Path) -> io::Result<HashMap<OsString, FolderTimes>> {
     let opened = std::fs::File::open(directory)?;
     let mut attributes = attribute_list(ASKED_OF_EACH);

@@ -592,6 +592,10 @@ mod playback_queue_bench {
     }
 
     /// The SQLite file holding the store's tables, below `dir`.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    )]
     fn database_file(dir: &std::path::Path) -> std::path::PathBuf {
         let mut found = Vec::new();
         let mut folders = vec![dir.to_path_buf()];

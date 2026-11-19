@@ -78,6 +78,10 @@ struct DiscogsSection {
 
 impl DevResetProfile {
     /// Read the profile at `path`, which must be mode 600.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: the dev profile in bae's own directory, which coven does not own"
+    )]
     pub fn read(path: &Path) -> Result<Self, DevResetProfileError> {
         let read_error = |error| DevResetProfileError::Read { path: path.to_path_buf(), error };
         let mode = std::fs::metadata(path).map_err(read_error)?.permissions();

@@ -119,6 +119,10 @@ fn noise_mp3(seconds: u32, seed: u32) -> Vec<u8> {
 /// Every frame of the MP3 at `path`, as its demuxer reads it from the start:
 /// the frame's first sample, past the encoder delay its first frame begins
 /// before sample 0 by, and the byte it begins at.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: FFmpeg opens a file by path, a file in the test's own TestFolder"
+)]
 fn mp3_frames(path: &Path) -> Vec<(i64, u64)> {
     let mut input = ffmpeg_next::format::input(&path).expect("open the MP3");
     let stream = input.stream(0).expect("the MP3's stream");
@@ -159,6 +163,10 @@ fn assert_mp3_points(points: &[ScrubPoint], frames: &[(i64, u64)]) {
 /// Every frame of the FLAC at `path`, as its demuxer reads it from the start:
 /// the frame's first sample and the byte it begins at. A FLAC frame decodes
 /// alone, so a decode from it plays exactly from its own sample.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: FFmpeg opens a file by path, a file in the test's own TestFolder"
+)]
 fn frames(path: &Path) -> Vec<ScrubPoint> {
     let mut input = ffmpeg_next::format::input(&path).expect("open the FLAC");
     input

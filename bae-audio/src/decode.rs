@@ -167,6 +167,10 @@ unsafe fn allocate_input_format_context(
 /// lies, and with the flag a seek lands there; without it the demuxer seeks
 /// through its own index, which is where a decode puts the recorded frame it
 /// starts at ([`DecodeStart::Frame`]).
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: FFmpeg opens no URL here, only bae's reader over bytes it holds"
+)]
 unsafe fn open_and_probe_input(
     fmt_ctx: &mut *mut ffmpeg_sys_next::AVFormatContext,
     avio: *mut ffmpeg_sys_next::AVIOContext,

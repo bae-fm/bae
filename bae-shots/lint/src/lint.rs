@@ -53,6 +53,10 @@ pub fn problems(root: &Path, declared: &[Declared], record: &Record) -> Vec<Prob
 }
 
 /// Why `name` has no board, when it has none.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn no_board(root: &Path, name: &Name) -> Option<String> {
     match name {
         Name::Screen(_) => {

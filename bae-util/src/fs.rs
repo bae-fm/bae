@@ -11,6 +11,13 @@ pub fn hash_bytes(bytes: &[u8]) -> String {
 /// Windows (access is denied); `OpenOptionsExt::custom_flags` with
 /// `FILE_FLAG_BACKUP_SEMANTICS` can, which bae doesn't do, so there the synced
 /// file is all bae syncs; coven syncs directories on Unix only as well.
+#[cfg_attr(
+    unix,
+    expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own; AppDir owns these paths and should do this work"
+    )
+)]
 pub fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {

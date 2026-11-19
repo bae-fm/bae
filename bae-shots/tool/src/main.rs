@@ -161,6 +161,10 @@ fn header(commit: String, base: Option<String>, outcome: &verify::Outcome) -> re
 
 /// Prints the outcome, writes the report into `report_dir` and, in CI, the
 /// step summary. True when nothing fails.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn finish(
     outcome: &verify::Outcome,
     header: &report::Header,

@@ -154,6 +154,10 @@ pub(crate) fn partition(
     })
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn verify(job: &Verification) -> Result<Outcome, String> {
     let root = job.root;
     let runtime = runtime::check(root).map_err(|e| e.to_string())?;

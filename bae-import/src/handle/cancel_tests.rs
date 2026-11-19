@@ -165,6 +165,10 @@ struct StoreState {
     files: Vec<PathBuf>,
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreState {
     let mut files = Vec::new();
     let mut dirs = vec![library_dir.to_path_buf()];

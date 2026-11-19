@@ -148,6 +148,10 @@ impl Drop for OpenedFile {
 /// read of the file failed (`Io`), or its stream info can't be read or it has
 /// no audio stream (`NotAudio`). Closing the file returns its place to the
 /// lease.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: opens a file the scan, the import or the preview names, before coven records it, and FFmpeg over that open file with no URL"
+)]
 unsafe fn open_best_audio_stream(
     path: &Path,
     place: LeasePlace,

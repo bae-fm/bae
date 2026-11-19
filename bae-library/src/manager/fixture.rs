@@ -60,6 +60,10 @@ pub enum LibraryFixtureError {
 }
 
 impl LibraryFixture {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a debug UI test's fixture files, which no library holds"
+    )]
     pub fn read(path: &std::path::Path) -> Result<Self, LibraryFixtureError> {
         let bytes = std::fs::read(path)
             .map_err(|source| LibraryFixtureError::Read { path: path.to_path_buf(), source })?;
@@ -211,6 +215,10 @@ impl LibraryManager {
 
     /// The cover row of `release_id` and the bytes it stores, read from the
     /// image at `path` and resized as every stored cover is.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a debug UI test's fixture files, which no library holds"
+    )]
     async fn fixture_cover(
         &self,
         path: &std::path::Path,

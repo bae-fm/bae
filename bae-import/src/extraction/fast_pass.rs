@@ -287,6 +287,10 @@ fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
 /// Read a text file, capped and decoded whatever its encoding. A file that
 /// cannot be opened or read, one that left the folder after the scan
 /// included, is an error.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 fn read_capped_text(path: &Path, place: LeasePlace) -> Result<String, crate::ImportError> {
     use std::io::Read;
 

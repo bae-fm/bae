@@ -49,6 +49,10 @@ impl LibraryManager {
     /// (the user's own file, the local store, the cache, or the cloud), so a
     /// file of any size costs one window of memory; each write runs on a
     /// blocking thread.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     async fn export_one_file(
         &self,
         file: &DbFile,

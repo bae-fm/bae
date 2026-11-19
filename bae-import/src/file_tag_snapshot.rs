@@ -28,6 +28,10 @@ impl FileObservation {
 
     /// `file` as it stands on disk now: the size and modification time a stat
     /// reads.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: reads the person's folder before coven records its files"
+    )]
     pub(crate) fn of(file: &ScannedFile) -> Result<Self, crate::folder_scanner::FolderScanError> {
         let metadata = std::fs::metadata(&file.version.path).map_err(|source| {
             crate::folder_scanner::FolderScanError::io(&file.version.path, source)

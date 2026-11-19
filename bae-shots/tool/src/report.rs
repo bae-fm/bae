@@ -403,6 +403,10 @@ pub(crate) fn summary(outcome: &Outcome, header: &Header) -> String {
 }
 
 /// Writes `index.html` and the pictures of the checked pairs into `dir`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn write(dir: &Path, outcome: &Outcome, header: &Header) -> Result<(), String> {
     let images = dir.join("img");
     std::fs::create_dir_all(&images)

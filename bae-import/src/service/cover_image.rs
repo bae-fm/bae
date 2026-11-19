@@ -125,6 +125,10 @@ fn downloaded_cover(image: RemoteImage) -> Result<Vec<u8>, ImportError> {
 /// The read runs on a blocking thread, so a cover on a slow volume does not
 /// stall the import worker's runtime, and opens the file in a place of
 /// `lease`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads the person's folder before coven records its files"
+)]
 async fn folder_cover(
     discovered_files: &[CandidateFile],
     selected_cover_path: &str,

@@ -43,6 +43,10 @@ impl AppDir {
     /// directory, removed with everything in it once the last clone of this
     /// directory is gone: the home of a test's or a preview's host.
     #[cfg(any(test, feature = "test-utils"))]
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a temporary bae directory for a test or a preview, which coven does not own"
+    )]
     pub fn temporary() -> std::io::Result<Self> {
         let folder = tempfile::Builder::new().prefix("bae-").tempdir()?;
         Ok(Self {
@@ -51,6 +55,10 @@ impl AppDir {
         })
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own"
+    )]
     fn create(path: PathBuf) -> std::io::Result<Self> {
         std::fs::create_dir_all(&path).map_err(|error| bae_util::fs::io_error_at(&path, error))?;
         Ok(Self {
@@ -63,6 +71,10 @@ impl AppDir {
     /// Delete everything under the app directory, leaving it empty: a dev
     /// reset's fresh start.
     #[cfg(feature = "dev-reset")]
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own"
+    )]
     pub fn clear(&self) -> std::io::Result<()> {
         std::fs::remove_dir_all(&self.path)?;
         std::fs::create_dir(&self.path)
@@ -91,6 +103,10 @@ impl AppDir {
     }
 
     /// Name `store` as the library this device last opened.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own"
+    )]
     pub fn save_active_library(&self, store: coven::StoreId) -> Result<(), AppDirError> {
         coven::write_atomic(&self.active_library_pointer(), store.to_string().as_bytes())?;
         Ok(())
@@ -137,6 +153,10 @@ impl AppDir {
 
     /// A bae-owned installation id shared by this installation's libraries.
     /// Publishing without replacement makes concurrent first launches agree.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own"
+    )]
     pub fn install_id(&self, ids: &dyn coven::IdSource) -> Result<String, AppDirError> {
         use std::io::Write;
         let path = self.path.join("install-id");
@@ -335,6 +355,10 @@ pub fn parse_library_id(library_id: &str) -> Result<coven::StoreId, AppDirError>
     })?))
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: bae's own directory, which coven does not own"
+)]
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, AppDirError> {
     match std::fs::read_to_string(path) {
         Ok(content) => Ok(Some(content)),

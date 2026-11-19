@@ -68,6 +68,10 @@ impl Record {
     }
 
     /// The record in the file at `path`; none when there is no file.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+    )]
     pub fn load(path: &Path) -> Result<Self, RecordError> {
         match std::fs::read_to_string(path) {
             Ok(text) => Self::parse(&text, &path.display().to_string()),
@@ -109,12 +113,20 @@ impl Record {
         Ok(format!("{HEADER}{}", toml::to_string(self).map_err(RecordError::Format)?))
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+    )]
     pub fn save(&self, path: &Path) -> Result<(), RecordError> {
         std::fs::write(path, self.to_text()?).map_err(|e| RecordError::Write(path.to_path_buf(), e))
     }
 
     /// Writes the record in `results` as the repository's record at `root`:
     /// the one place a run's results reach `design/shots.toml`.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+    )]
     pub fn promote(results: &Path, root: &Path) -> Result<(), RecordError> {
         if !results.is_file() {
             return Err(RecordError::Read(

@@ -13,6 +13,10 @@ use std::path::{Path, PathBuf};
 
 /// The checkout the command runs in: the nearest directory above the working
 /// directory that holds the design system's components.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub fn repository_root() -> Result<PathBuf, String> {
     let start = std::env::current_dir().map_err(|e| e.to_string())?;
     start

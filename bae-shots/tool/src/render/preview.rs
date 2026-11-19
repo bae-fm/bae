@@ -62,6 +62,10 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// Checks that the copies of React are the pinned files.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn check_react(root: &Path) -> Result<(), PreviewError> {
     for (file, expected) in [(REACT, REACT_SHA256), (REACT_DOM, REACT_DOM_SHA256)] {
         let path = root.join(file);

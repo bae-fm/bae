@@ -18,6 +18,10 @@ impl LibraryManager {
     /// directory, for a test that doesn't read its bytes. Production inserts
     /// files only as part of an import.
     #[cfg(any(test, feature = "test-utils"))]
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: test-only, writes originals under AppDir::test_originals, files coven does not own"
+    )]
     pub async fn add_file(
         &self,
         file: &bae_records::NewReleaseFile,

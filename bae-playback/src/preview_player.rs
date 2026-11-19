@@ -205,6 +205,10 @@ impl PreviewPlayer {
     /// preview first. The outcome distinguishes a clean start from a setup
     /// failure (stat/probe) and a stream-start failure, so the service reports
     /// the matching `playback_failed` operation.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: plays a local file before its import, before coven records it"
+    )]
     pub(crate) async fn play(
         &mut self,
         target: PreviewTarget,

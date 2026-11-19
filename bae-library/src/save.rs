@@ -239,6 +239,10 @@ impl OutputPathsGuard {
 }
 
 impl Drop for OutputPathsGuard {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     fn drop(&mut self) {
         if self.committed {
             return;
@@ -317,6 +321,10 @@ impl SaveService {
         .map(|_| ())
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: writes into the folder the person chose, which coven does not own"
+    )]
     async fn save_track_with_codec(
         plan: SaveTrackPlan,
         streams: HashMap<String, SharedSparseBuffer>,
@@ -554,6 +562,10 @@ impl ReplayGainTags {
 /// Write every known metadata tag that describes this exported file. Cover art
 /// is written when the export plan found cover bytes; disc number is only
 /// written for digital media because side-based media do not map to ID3 discs.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: writes into the folder the person chose, which coven does not own"
+)]
 fn write_tags(
     path: &Path,
     tag_type: lofty::tag::TagType,

@@ -47,6 +47,10 @@ pub(super) struct WatchedRoot {
 impl WatchedRoot {
     /// `path`, and the spelling its watch will report it under: where it
     /// resolves to on disk now, on macOS; `path` itself elsewhere.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: watches the person's watched folders, which coven does not own"
+    )]
     pub(super) fn resolve(path: &Path) -> std::io::Result<Self> {
         Ok(Self {
             path: path.to_path_buf(),

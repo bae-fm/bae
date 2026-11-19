@@ -112,6 +112,10 @@ impl KeptSeeds {
     /// The kept seed of size `n`, a folder holding the closed store's folder
     /// (`app`), its keychain file and its id. `kept` makes the folder when it
     /// is missing and moves it into place only once it is complete.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    )]
     async fn kept(&self, n: u64) -> PathBuf {
         let root = self.root();
         let mut previous: Option<(u64, PathBuf)> = None;
@@ -158,6 +162,10 @@ impl KeptSeeds {
     /// Like [`Self::seeded_copy`], but calls `plant` on the copy's closed
     /// folder before opening it, so a test can damage the data or drop a
     /// family of triggers.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+    )]
     pub async fn seeded_copy_planted(
         &self,
         n: u64,
@@ -180,6 +188,10 @@ fn kept_clock() -> ClockRef {
     std::sync::Arc::new(coven::FixedClock::new(super::fixed_now().into()))
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
+)]
 fn read_store_id(seed: &Path) -> StoreId {
     let text = std::fs::read_to_string(seed.join("store-id")).expect("read the store id");
     StoreId(uuid::Uuid::parse_str(text.trim()).expect("parse the store id"))

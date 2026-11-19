@@ -107,6 +107,10 @@ pub(crate) struct Checked {
     pub live_published_at: String,
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn read(path: &Path) -> Result<Vec<u8>, RuntimeError> {
     std::fs::read(path)
         .map_err(|e| RuntimeError::Unreadable { path: path.to_path_buf(), reason: e.to_string() })
@@ -129,6 +133,10 @@ pub(crate) fn copy_path(root: &Path) -> PathBuf {
 }
 
 /// Checks the copy against its own record and against the live record.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn check(root: &Path) -> Result<Checked, RuntimeError> {
     let bytes = read(&copy_path(root))?;
     let recorded: CopyRecord = record(&root.join(COPY_RECORD))?;

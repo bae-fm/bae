@@ -12,6 +12,10 @@ const CORE_STRINGS: &str = "bae-android/app/src/main/res/values/core_strings.xml
 
 /// Takes the shots `prefixes` select (all when empty) into `out`, an absolute
 /// path.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn capture(
     root: &Path,
     declared: &[Name],

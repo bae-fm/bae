@@ -12,6 +12,10 @@ pub(crate) const PINNED: &str = "157.0.8103.78";
 
 /// Where fetched builds are kept: `BAE_SHOTS_CHROME_CACHE`, else the build
 /// volume, else the user's cache directory.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn cache_dir() -> Result<PathBuf, ChromeError> {
     if let Some(dir) = std::env::var_os("BAE_SHOTS_CHROME_CACHE") {
         return Ok(PathBuf::from(dir));
@@ -75,6 +79,10 @@ impl Platform {
 /// when it is not there. Each run unpacks in a folder of its own and renames
 /// it into place, so the folder is whole or absent; of two runs that fetch at
 /// once, the one that renames second finds the build there and uses it.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn installed() -> Result<PathBuf, ChromeError> {
     let platform = Platform::of(std::env::consts::OS, std::env::consts::ARCH).ok_or_else(|| {
         ChromeError::Fetch(format!(
@@ -125,6 +133,10 @@ fn installed() -> Result<PathBuf, ChromeError> {
 }
 
 /// Fails unless the file at `archive` hashes to `expected`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 fn verify(archive: &Path, expected: &str) -> Result<(), ChromeError> {
     let fetch = |e: std::io::Error| ChromeError::Fetch(format!("{}: {e}", archive.display()));
     let mut hasher = Sha256::new();
@@ -171,6 +183,10 @@ impl Chrome {
 /// headless with sRGB colour and no scrollbars, runs `work` with it and closes
 /// it. The browser's events are driven alongside `work` and end with it, so
 /// no task outlives the call.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) async fn with_chrome<T>(work: impl AsyncFnOnce(&Chrome) -> T) -> Result<T, ChromeError> {
     let executable = installed()?;
     let profile = tempfile::tempdir().map_err(|e| ChromeError::Launch(e.to_string()))?;

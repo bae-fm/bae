@@ -60,6 +60,10 @@ pub(crate) fn hashes(
 /// Renders the board of each of `names` into `out` as `<name>.png` and
 /// `<name>.json`. Needs the design builds and the runtime check done; starts
 /// no browser when there is nothing to render.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 pub(crate) fn boards(root: &Path, names: &[Name], out: &Path) -> Result<(), String> {
     if names.is_empty() {
         return Ok(());
@@ -90,6 +94,10 @@ struct Drawn {
     unshot: Vec<crate::shots::Bounds>,
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a dev tool that reads and writes the repo's files, never a library's"
+)]
 async fn draw_with(
     root: &Path,
     names: &[Name],
