@@ -4,7 +4,7 @@ use super::*;
 /// of the code's kind, before any sign-in and before anything connects.
 #[tokio::test]
 async fn a_join_or_a_pairing_refuses_a_restore_code() {
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());

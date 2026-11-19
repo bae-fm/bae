@@ -103,7 +103,8 @@ async fn the_upload_queue_names_the_first_wait_that_holds() {
     manager.store.set_uploads_paused(true).await.unwrap();
     insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("held"),
+        &temp_dir,
+        temp_dir.path().join("held"),
         "Album Title",
         &[("a.flac", &vec![b'a'; 1000])],
     )

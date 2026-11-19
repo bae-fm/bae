@@ -780,7 +780,8 @@ async fn a_move_to_this_device_of_a_local_release_fails_with_covens_refusal() {
     let manager = test.library.manager();
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("source"),
+        &temp_dir,
+        temp_dir.path().join("source"),
         "Local",
         &[("track.flac", b"local audio")],
     )
