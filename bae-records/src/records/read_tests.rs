@@ -54,11 +54,12 @@ fn insert_file(
             }
             None => (None, None, None, None, None, None),
         };
-    // The record of the coven file the row references, as coven writes it.
+    // The record of the coven file the row references, as coven writes it: a
+    // file only device 1 holds.
     let file = bae_util::test_ids::test_uuid(id);
     conn.execute(
         "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
-         VALUES (?1, '', 1, '', 'release_files')",
+         VALUES (?1, '', 1, 'device 1', 'release_files')",
         [&file],
     )?;
     conn.execute(
@@ -124,7 +125,7 @@ fn insert_carried_file(
     let file = bae_util::test_ids::test_uuid(id);
     conn.execute(
         "INSERT OR IGNORE INTO coven_files (id, audience, size, coordinates, namespace) \
-         VALUES (?1, '', 1, '', 'release_files')",
+         VALUES (?1, '', 1, 'device 1', 'release_files')",
         [&file],
     )?;
     conn.execute(
