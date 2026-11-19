@@ -97,6 +97,30 @@ impl Counted {
             equal: self.equal - before.equal,
         }
     }
+
+    /// The runs a write counted here caused before the closing write: a
+    /// write the reader shows once it has run for every write before it,
+    /// which caused one run whose result changed.
+    fn without_closing_write(self) -> Self {
+        Self { runs: self.runs - 1, writes: self.writes - 1, equal: self.equal }
+    }
+
+    /// Print each query's runs over the scan's writes, by its name, and
+    /// report its runs and those a write caused as costs.
+    fn report(measured: &[(&str, Self)]) {
+        println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
+        for (name, counted) in measured {
+            println!("  {name:14} {:5} ({:5}, {:5})", counted.runs, counted.writes, counted.equal);
+            let metric = name.replace(' ', "_");
+            for (kind, count) in [("runs", counted.runs), ("caused_by_a_write", counted.writes)] {
+                bae_store::test_fixtures::window_cost::report_cost(
+                    &format!("{metric}/{kind}"),
+                    count as f64,
+                    "count",
+                );
+            }
+        }
+    }
 }
 
 /// Wait until `seen` holds a value `ready` accepts, failing after [`SETTLE`].
@@ -251,33 +275,20 @@ async fn a_scan_leaves_the_open_candidate_pane_alone() {
     // write, are the scan's.
     tables.set_import_candidate_skipped(&seed_candidate.path, true).await.unwrap();
     settle(&mut pane_seen, "the pane", |shown| matches!(shown, Some((true, _)))).await;
-    let pane_counted =
-        pane_seen.borrow().expect("the pane showed the candidate").1.since(pane_before);
-    let pane_counted = Counted {
-        runs: pane_counted.runs - 1,
-        writes: pane_counted.writes - 1,
-        equal: pane_counted.equal,
-    };
+    let pane_counted = pane_seen
+        .borrow()
+        .expect("the pane showed the candidate")
+        .1
+        .since(pane_before)
+        .without_closing_write();
 
-    println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
-    let measured = [
+    Counted::report(&[
         ("candidate pane", pane_counted),
         ("count", count_counted),
         ("window above the scan", windows_counted[0]),
         ("window that holds the scan", windows_counted[1]),
         ("progress", progress_counted),
-    ];
-    for (name, counted) in measured {
-        println!("  {name:14} {:5} ({:5}, {:5})", counted.runs, counted.writes, counted.equal);
-        let metric = name.replace(' ', "_");
-        for (kind, count) in [("runs", counted.runs), ("caused_by_a_write", counted.writes)] {
-            bae_store::test_fixtures::window_cost::report_cost(
-                &format!("{metric}/{kind}"),
-                count as f64,
-                "count",
-            );
-        }
-    }
+    ]);
 
     // Coven reruns a query for a commit only when the commit changes a row
     // the query's conditions allow, which depends on the rows written, not on
@@ -363,28 +374,14 @@ async fn a_scan_leaves_the_open_cover_gallery_alone() {
         .await
         .unwrap();
     settle(&mut gallery_seen, "the picker", |shown| matches!(shown, Some((1, _)))).await;
-    let gallery_counted =
-        gallery_seen.borrow().expect("the picker showed the image").1.since(gallery_before);
-    let gallery_counted = Counted {
-        runs: gallery_counted.runs - 1,
-        writes: gallery_counted.writes - 1,
-        equal: gallery_counted.equal,
-    };
+    let gallery_counted = gallery_seen
+        .borrow()
+        .expect("the picker showed the image")
+        .1
+        .since(gallery_before)
+        .without_closing_write();
 
-    println!("{WRITES} scan writes, runs (caused by a write, of those unchanged):");
-    println!(
-        "  {:14} {:5} ({:5}, {:5})",
-        "cover gallery", gallery_counted.runs, gallery_counted.writes, gallery_counted.equal
-    );
-    for (kind, count) in
-        [("runs", gallery_counted.runs), ("caused_by_a_write", gallery_counted.writes)]
-    {
-        bae_store::test_fixtures::window_cost::report_cost(
-            &format!("cover_gallery/{kind}"),
-            count as f64,
-            "count",
-        );
-    }
+    Counted::report(&[("cover gallery", gallery_counted)]);
 
     // As for the pane: no scan write here writes a row of the picker's
     // candidate, so the count is 0 on every run.
