@@ -5,6 +5,7 @@ use crate::service::tests::*;
 /// file before — fetches from both as the playing track, so a preload yields
 /// to it in either.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn every_file_the_playing_track_reads_fetches_as_the_playing_one() {
     let arbiter = FetchArbiter::new();
     let buffers = FileBuffers::new(

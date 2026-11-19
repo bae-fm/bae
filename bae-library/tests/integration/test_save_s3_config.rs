@@ -26,6 +26,10 @@ fn unreachable_s3_config() -> S3ConfigData {
 }
 
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn probe_failure_persists_nothing_and_surfaces_as_storage_setup_network() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (library, _tmp) = setup_fresh_library(&runtime);
@@ -50,6 +54,10 @@ fn probe_failure_persists_nothing_and_surfaces_as_storage_setup_network() {
 /// Runs in its own process: a host stack too narrow for the save overflows,
 /// and an overflow aborts the process it happens in.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn save_s3_config_survives_a_narrow_host_stack() {
     in_own_process("test_save_s3_config::save_s3_config_survives_a_narrow_host_stack", || {
         let runtime = tokio::runtime::Runtime::new().expect("build test runtime");

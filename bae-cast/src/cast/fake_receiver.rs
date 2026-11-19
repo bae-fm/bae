@@ -88,6 +88,10 @@ impl FakeReceiver {
         Self::serve_with(stream, Some(Model::new()))
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     fn serve_with<S>(stream: S, model: Option<Model>) -> Self
     where
         S: AsyncRead + AsyncWrite + Send + 'static,
@@ -106,6 +110,10 @@ impl FakeReceiver {
     /// Listen on `127.0.0.1:0`, take one connection and serve it over TLS with
     /// a certificate made for the test. Returns the fake and its port.
     /// With `as_receiver`, it plays a Default Media Receiver.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     pub(crate) async fn serve_tls(as_receiver: bool) -> (Self, u16) {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind a local port");
         let port = listener.local_addr().expect("a bound address").port();

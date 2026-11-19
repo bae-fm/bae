@@ -5,6 +5,10 @@ use std::sync::Arc;
 /// the host after the library is gone, and finished there.
 #[cfg(unix)]
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
     use std::os::unix::fs::PermissionsExt;
     let runtime = tokio::runtime::Builder::new_multi_thread()

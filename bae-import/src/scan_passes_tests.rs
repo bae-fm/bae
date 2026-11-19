@@ -204,6 +204,7 @@ pub(crate) const TAGGED_FLAC_FIXTURES: [&str; 2] = [
 ];
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let test = setup_import_service().await;
     let tables = test.tables().clone();

@@ -190,6 +190,10 @@ enum FillFailure {
 /// the same way, so its readers stop and `on_error` runs instead of every
 /// reader waiting for bytes that never come. The task holds the buffer only
 /// weakly, as the fill does, so dropping its last reader still ends the fill.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the fill runs on the runtime its caller runs on, and ends when the buffer it holds weakly loses its last reader"
+)]
 fn spawn_fill(
     diagnostics: Diagnostics,
     buffer: &SharedSparseBuffer,

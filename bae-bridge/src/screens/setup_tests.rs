@@ -10,6 +10,10 @@ use bae_util::test_channels::HANG_GUARD;
 /// The stream's one key holds where the call is while it runs, and nothing
 /// once the call's writing ends.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn the_stream_holds_the_running_step_until_the_call_ends() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let setup = library_setup(OperationRuntime::new(
@@ -35,6 +39,10 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
 
 /// Creating a library runs one step, which ends with the call.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn creating_a_library_reports_its_step() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -62,6 +70,10 @@ fn creating_a_library_reports_its_step() {
 /// A blank creator's name fails the call before anything is made: no library
 /// is listed and no step ran.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_blank_creator_name_creates_nothing() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -85,6 +97,10 @@ fn a_blank_creator_name_creates_nothing() {
 /// the latest first; the counts of a step go to the stream alone, so a
 /// count moving wakes no pull, and a step without counts empties the stream.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let setup = library_setup(OperationRuntime::new(
@@ -148,6 +164,10 @@ fn a_restore_s_states_are_pulled_and_its_counts_are_streamed() {
 /// subscription as it changes: not while it connects or loads, whose counts
 /// go to the stream alone, then once it creates the library in storage.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_storage_setup_s_finishing_is_pulled_as_it_changes() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let setup = library_setup(OperationRuntime::new(

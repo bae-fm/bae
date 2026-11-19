@@ -35,6 +35,20 @@ disallowed-methods = [
     { path = "tokio_util::task::TaskTracker::spawn_local_on", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking_on", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
+    # A runtime outlives the function that builds it, and the work on it ends
+    # on a panic with no one told, unless its owner reports and stops it. A
+    # runtime is built only at a composition root, which keeps and stops it.
+    # Builder::new_current_thread and new_multi_thread are not listed:
+    # #[tokio::test] and #[tokio::main] expand to them in generated code that
+    # no mark can cover, so owner-construction-check.toml keeps those two names.
+    { path = "tokio::runtime::Runtime::new", reason = "take the runtime handle the composition root owns: a runtime is built only at a composition root" },
+    # Handle::current takes whatever runtime the caller happens to run on, so
+    # the work it starts has no owner that stops it. Take the handle as an
+    # argument.
+    { path = "tokio::runtime::Handle::current", reason = "take a tokio::runtime::Handle as an argument instead of the ambient runtime" },
+    { path = "tokio::runtime::Handle::try_current", reason = "take a tokio::runtime::Handle as an argument instead of the ambient runtime" },
+    # A local task is a spawn nobody joins, like the spawns above.
+    { path = "tokio::task::spawn_local", reason = "use Diagnostics::spawn_reported, which ends what a task that panics served" },
     # Every id bae makes comes from the IdSource its owner was handed, so the
     # clock a test controls times it; the one place that makes ids is
     # bae-util's time_ordered_ids. Parsing an id and Uuid::new_v5 stay free.

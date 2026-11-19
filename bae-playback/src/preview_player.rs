@@ -726,6 +726,10 @@ fn resolve_preview_probe(
 impl PreviewPlayer {
     /// Inject an active preview over a caller-built pipeline so service-level
     /// tests can exercise the completion/stop teardown seam without real audio.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     pub(crate) fn set_active_for_test(
         &mut self,
         path: std::path::PathBuf,

@@ -223,6 +223,7 @@ async fn coordinator_shutdown_waits_for_active_scan() {
 /// again: the check answers whatever it finds, and its answer frees the
 /// folder for the next check.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_network_folder_found_unchanged_is_checked_again() {
     let test = setup_import_service().await;
     let tables = test.tables().clone();

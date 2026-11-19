@@ -106,6 +106,7 @@ impl TestService {
     }
 }
 
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(crate) async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))

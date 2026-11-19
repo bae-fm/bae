@@ -45,6 +45,10 @@ fn the_profile_crosses_with_its_bucket() {
 /// them, follow Connecting storage on the same stream.
 #[cfg(desktop)]
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_dev_reset_reports_each_step_until_one_fails() {
     use crate::types::{BridgeFastValue, BridgeSetupProgress, BridgeSetupStep as Step};
 

@@ -164,6 +164,10 @@ impl BenchLibrary {
 /// close it. Then empty the bucket, whether creating, `body` or closing
 /// failed or panicked. A panic in them unwinds on once the bucket is
 /// emptied.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the bench is its own composition root: it builds the runtime its library runs on and drops it when the run ends"
+)]
 pub(crate) fn run(
     name: &str,
     tracks: usize,

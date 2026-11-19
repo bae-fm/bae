@@ -654,6 +654,7 @@ impl crate::audio_output::AudioOutputDevice for ScriptedDevice {
 
 /// The playback service over `store`, reporting to `diagnostics`, playing on
 /// `device`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 fn start_playback_on(
     store: &SeededStore,
     diagnostics: bae_diagnostics::Diagnostics,

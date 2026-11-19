@@ -70,6 +70,10 @@ impl TestLibrary {
     /// `providers` were built on. The catalog sessions, the image cache over
     /// `http` and the closing token are built here, as the bootstrap builds
     /// them from the one transport it holds.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     pub async fn open_with(
         store: Store,
         app_dir: bae_app_dir::AppDir,
@@ -211,6 +215,10 @@ impl TestLibrary {
 
     /// The import service alone, over the library's store, ending as the
     /// library closes.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     pub async fn start_import(&self) -> Result<ImportServiceHandle, bae_import::ImportError> {
         bae_import::ImportService::start(
             tokio::runtime::Handle::current(),
@@ -312,6 +320,10 @@ impl TestLibrary {
         self.start_playback_reporting(device, clock, 100, restore_playback).await
     }
 
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "test code: it takes the runtime the test runs on"
+    )]
     async fn start_playback_reporting(
         &self,
         device: Box<dyn bae_playback::AudioOutputDevice>,

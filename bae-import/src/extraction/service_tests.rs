@@ -119,6 +119,7 @@ pub(super) async fn make_database() -> (bae_store::Store, TempDir) {
 }
 
 /// Start a service; the bus sender comes back so a test can inject events.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(super) async fn make_service(
 ) -> (ExtractionService, ImportEventBus, crate::ImportEvents, TempDir) {
     let candidates = CandidateRuntime::for_test().await;
@@ -546,6 +547,7 @@ async fn a_fast_pass_that_panics_says_why_there_is_no_pass() {
 /// it feeds ends on that as an error instead of waiting on a snapshot that is
 /// not coming.
 #[tokio::test(flavor = "multi_thread")]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let candidates = CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());

@@ -199,6 +199,10 @@ impl Session {
     /// handle ending on the app runtime — it can't wait there for work only
     /// a runtime can do, so a thread of its own ends the session, and the
     /// close stays under way in the host's record until that thread ends.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a released library closes on a thread of its own when the caller is on a runtime thread, which cannot drop the runtime: it asks whether it is on one, and the host waits on the thread"
+    )]
     fn end_released(
         &self,
         closing: impl std::future::Future<Output = Closing> + Send + 'static,

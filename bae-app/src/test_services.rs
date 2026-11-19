@@ -12,6 +12,7 @@ pub async fn start_services(library: &TestLibrary) -> Result<AppServices, Servic
 }
 
 /// [`start_services`] with playback on `device`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub async fn start_services_on(
     library: &TestLibrary,
     device: Box<dyn bae_playback::AudioOutputDevice>,

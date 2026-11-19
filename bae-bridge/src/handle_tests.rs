@@ -307,6 +307,10 @@ fn cancelling_an_album_view_finishes_pending_next() {
 }
 
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn save_sync_config_survives_the_uniffi_worker_stack() {
     const CHILD: &str = "BAE_BRIDGE_SAVE_SYNC_CONFIG_STACK_CHILD";
 
@@ -860,6 +864,10 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
 /// library again waits for that close, so it never finds the store still
 /// held, and the store the handle had open ends closed.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
     let root = tempfile::tempdir().unwrap();
     let host = test_host(root.path());

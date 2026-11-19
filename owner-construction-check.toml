@@ -9,7 +9,8 @@
 # only at a composition root or inside a task made for one operation
 # (capability-construction), and handed on only along the paths the policy
 # lists (capability-boundaries). Work that runs on after its caller returns
-# (the [[background_starts]] below) starts only at a listed root.
+# (the [[background_starts]] below, and clippy.toml) starts only at a listed
+# root.
 rules = ["capability-boundaries", "capability-construction", "component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies", "read-shapes"]
 
 # The code generator for the bindings answers only to the conventions.
@@ -668,29 +669,11 @@ OpenCalls = "LibrarySessions"
 "bae-shots/tool/src/render/serve.rs" = ["with_server"]
 # A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
-# The one place a task that reports its panic starts, and the one for a
-# thread: each hands its handle to the caller, which aborts or joins it.
-"bae-diagnostics/src/background.rs" = [
-    "Diagnostics::spawn_ending",
-    "Diagnostics::spawn_thread_reported",
-    "Diagnostics::run_on_thread",
-]
-# Scoped threads: the scope joins them before the function returns.
-"bae-import/src/folder_scanner/folder_times.rs" = ["read_each_at_once"]
-# Scoped threads: the scope joins them before the function returns.
-"bae-import/src/folder_scanner/scan/root.rs" = ["read_folders_at_once"]
 # The folder-state commit lock is built once with the import services; clones share it.
 "bae-import/src/folder_state_commit.rs" = ["FolderStateCommit::new"]
-# One candidate write, awaited before the call returns.
-"bae-import/src/handle/commit.rs" = ["ImportServiceHandle::committed"]
-# One read per watched folder, in a set the call drains before it returns.
-"bae-import/src/handle/watch.rs" = ["ImportServiceHandle::read_watched_folders"]
 # Starts the identification queue with the services it runs on; its handle
 # stops it.
 "bae-import/src/identification.rs" = ["start"]
-# A settling answer runs in the queue's set, which the queue's loop joins
-# and, when it ends, drops and so aborts.
-"bae-import/src/identification/queue/reactions.rs" = ["advance"]
 # The imports a person can cancel are tracked in one shared set, built with the import
 # services.
 "bae-import/src/import_cancel.rs" = ["ImportCancels::new"]
@@ -785,13 +768,7 @@ OpenCalls = "LibrarySessions"
 "bae-audio/src/track_stream.rs" = ["StreamingState::new"]
 "bae-bridge/src/airplay_prompt.rs" = ["NativeCodePrompt::new"]
 "bae-bridge/src/audio_focus.rs" = ["PlatformAudioFocus::new"]
-"bae-bridge/src/handle.rs" = [
-    "AppHandle::start",
-    # A released library closes on a thread of its own when the caller is on a runtime thread,
-    # which cannot drop the runtime. It asks whether it is on one, and hands the thread it
-    # starts to the host to wait on.
-    "Session::end_released",
-]
+"bae-bridge/src/handle.rs" = ["AppHandle::start"]
 "bae-bridge/src/host/steps.rs" = [
     "BridgeLibraryClosing::new",
     "BridgeLibraryOpening::new",
@@ -803,12 +780,7 @@ OpenCalls = "LibrarySessions"
     "StreamWriter::new",
 ]
 "bae-bridge/src/oauth.rs" = ["NativeOAuthPresenter::new"]
-"bae-bridge/src/operation_runtime.rs" = [
-    "OperationRuntime::new",
-    # Every operation the bridge runs starts here: its caller awaits it and aborts it when
-    # dropped, or a persistent one runs on to its terminal state.
-    "spawn",
-]
+"bae-bridge/src/operation_runtime.rs" = ["OperationRuntime::new"]
 "bae-bridge/src/screens/setup.rs" = ["SetupStateWatch::new"]
 "bae-bridge/src/signals.rs" = ["ArtworkAnalyzerAdapter::new"]
 "bae-cast/src/airplay/ap2_session.rs" = ["Ap2Session::start"]
@@ -989,16 +961,10 @@ OpenCalls = "LibrarySessions"
     "CovenFileReader::for_playback",
     "CovenFileReader::new",
     "FetchArbiter::new",
-    # Ends when the buffer it holds weakly goes.
-    "spawn_fill",
 ]
 "bae-track-audio/src/data_source/local.rs" = ["LocalReader::new"]
 "bae-track-audio/src/storage_fetch.rs" = ["StorageFetches::new"]
-"bae-track-audio/src/track_sources.rs" = [
-    "SourceStream::start",
-    # The tracks' work runs in a set this function drains, and drops if it fails.
-    "run_tracks_over_sources",
-]
+"bae-track-audio/src/track_sources.rs" = ["SourceStream::start"]
 "bae-transfers/src/queued_releases.rs" = [
     "QueuedReleases::clone",
     "QueuedReleases::new",
@@ -1014,21 +980,14 @@ OpenCalls = "LibrarySessions"
     "ServerController::start",
 ]
 
-# Work that runs on after its caller returns starts only at a listed root,
-# which keeps it and stops it: a runtime, the ambient runtime a task would
-# take without being handed one, and a thread or task spawn.
+# A runtime is built only at a listed root, which keeps it and stops it.
+# clippy.toml holds the rest of the work that runs on after its caller returns
+# (the other runtime constructor, the ambient runtime and every spawn), but not
+# these two names: #[tokio::test] and #[tokio::main] expand to them in
+# generated code that no clippy mark can cover.
 [[background_starts]]
 kind = "runtime construction"
-paths = ["Runtime::new", "Builder::new_current_thread", "Builder::new_multi_thread"]
-
-[[background_starts]]
-kind = "ambient runtime acquisition"
-paths = ["Handle::current", "Handle::try_current"]
-
-[[background_starts]]
-kind = "thread or future spawn"
-paths = ["tokio::spawn", "task::spawn", "task::spawn_blocking", "task::spawn_local", "thread::spawn"]
-methods = ["spawn", "spawn_blocking", "spawn_local"]
+paths = ["Builder::new_current_thread", "Builder::new_multi_thread"]
 
 # SQLite: the store and the crates whose domains keep tables in it. Only
 # these name a raw rusqlite handle.

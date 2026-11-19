@@ -30,6 +30,7 @@ async fn client_over_a_fake_receiver() -> (CastClient, FakeReceiver) {
     (client, fake)
 }
 
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn connect_to(
     stream: tokio::io::DuplexStream,
     deadlines: Deadlines,
@@ -419,6 +420,7 @@ async fn ending_a_session_stops_the_media_then_closes_the_connections_then_the_s
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_client_connects_over_tls_and_plays_in_the_receivers_app() {
     let (mut fake, port) = FakeReceiver::serve_tls(true).await;
     let client = CastClient::connect(

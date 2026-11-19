@@ -44,6 +44,10 @@ fn keys(names: &[&str]) -> Option<Result<Vec<Vec<u8>>, BridgeError>> {
 /// A key moving holds its latest value and is not pulled; only a key
 /// starting or stopping is.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn only_a_key_starting_or_stopping_is_pulled() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -64,6 +68,10 @@ fn only_a_key_starting_or_stopping_is_pulled() {
 /// order; one that came and went is pulled once, and `latest` says it holds
 /// nothing.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn the_keys_changed_since_the_last_pull_come_in_one_pull() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -80,6 +88,10 @@ fn the_keys_changed_since_the_last_pull_come_in_one_pull() {
 /// A reset holds exactly the keys it names, and the pull names the ones that
 /// started or stopped, not the ones that only moved.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_reset_pulls_the_keys_that_came_and_went() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -96,6 +108,10 @@ fn a_reset_pulls_the_keys_that_came_and_went() {
 
 /// A pull waiting for a key answers once one starts.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_waiting_pull_answers_when_a_key_starts() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (_stream, writer, values) = fed_stream(&runtime);
@@ -109,6 +125,10 @@ fn a_waiting_pull_answers_when_a_key_starts() {
 
 /// The host's pull runs on the stream's runtime and answers what changed.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn the_host_pulls_on_the_streams_runtime() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, _values) = fed_stream(&runtime);
@@ -122,6 +142,10 @@ fn the_host_pulls_on_the_streams_runtime() {
 /// Once its feed ends the stream holds nothing, and the keys it held are
 /// pulled.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_stream_empties_when_its_feed_ends() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -137,6 +161,10 @@ fn a_stream_empties_when_its_feed_ends() {
 /// A failed read empties the stream; its keys are pulled, then the failure,
 /// once; the next read fills it again.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_failed_read_is_pulled_after_the_keys_it_emptied() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -156,6 +184,10 @@ fn a_failed_read_is_pulled_after_the_keys_it_emptied() {
 
 /// Cancelling or dropping the stream stops its feed.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn cancelling_or_dropping_a_stream_stops_its_feed() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, _writer, _values) = fed_stream(&runtime);
@@ -173,6 +205,10 @@ fn cancelling_or_dropping_a_stream_stops_its_feed() {
 /// value are pulled, every pull after answers that it was cancelled, and it
 /// takes nothing its writer writes or fails after.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_cancelled_stream_holds_nothing_and_takes_no_write() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -195,6 +231,10 @@ fn a_cancelled_stream_holds_nothing_and_takes_no_write() {
 /// or stops moving and whenever its value changes; a moving key's value
 /// changing is not named.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_key_at_rest_is_pulled_when_it_flips_or_its_value_changes() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -236,6 +276,10 @@ fn download(bytes_done: u64) -> BridgeFastValue {
 /// it has gone [`QUIET`] unsaid, and moves again when it changes. A view is
 /// told of each flip, and of a change while at rest.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -273,6 +317,10 @@ fn a_value_unchanged_for_the_quiet_time_rests_and_moves_again_when_it_changes() 
 /// Each key rests on its own clock: one that keeps moving does not hold a
 /// stalled one awake, and a reset that repeats a key's value leaves it be.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn each_key_rests_on_its_own_clock() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -306,6 +354,10 @@ fn each_key_rests_on_its_own_clock() {
 /// frame of those 10 s with the key always moving, and for the frames of the
 /// quiet time alone once it rests.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
@@ -328,6 +380,10 @@ fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
 /// whatever feed writes it: a share that stops changing rests as a stalled
 /// download's does, and the pull returns its key.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_pull_rests_a_key_left_unchanged_for_the_quiet_time() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let (stream, writer, values) = fed_stream(&runtime);

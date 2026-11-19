@@ -620,6 +620,7 @@ async fn a_release_its_draft_cannot_be_read_from_is_no_match() {
 /// A cancelled run's lookup ends where it stands — here, waiting between
 /// retries on a provider that never answers — rather than running on.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
     struct Dropped(Option<tokio::sync::oneshot::Sender<()>>);
     impl Drop for Dropped {
@@ -658,6 +659,7 @@ async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
 /// answer hears the run broke, and ends it there. The panic hook reported the
 /// panic, so nothing here reports it again.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_lookup_that_panics_ends_its_run_as_broken() {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let diagnostics = bae_diagnostics::Diagnostics::noop().reporting_bugs_to(bugs.clone());

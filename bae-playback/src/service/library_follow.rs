@@ -28,6 +28,10 @@ where
     /// again. A failure because the store closed or because its handle failed
     /// ends the query, and the follow reads nothing more. A follow that panics
     /// is reported through `diagnostics` and reads nothing more either.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the follow runs on the runtime its caller runs on, and the LibraryFollow that holds its task stops it"
+    )]
     pub(super) fn new(
         query: coven::ReconfigurableLiveQuery<Request, Value, bae_store::DbError>,
         request: Request,

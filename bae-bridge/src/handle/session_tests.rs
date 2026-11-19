@@ -27,6 +27,10 @@ fn store() -> coven::StoreId {
 
 /// A session open on a runtime of its own, in `sessions`' record of open
 /// libraries.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn open_session(sessions: &Arc<crate::host::LibrarySessions>) -> Session {
     Session(Mutex::new(SessionState::Open {
         runtime: tokio::runtime::Runtime::new().expect("build the session's runtime"),
@@ -52,6 +56,10 @@ fn reporting() -> (bae_diagnostics::Diagnostics, Arc<bae_diagnostics::RecordingB
 /// panic is caught there and reported once, by the panic hook, so the open
 /// that later waits for that close is not failed by it.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_released_close_that_panics_on_its_thread_is_reported_not_raised_into_the_next_open() {
     let hooked = bae_diagnostics::test_panic::reported_panics();
     let message = "the close on its own thread broke its guarantee";
@@ -81,6 +89,10 @@ fn a_released_close_that_panics_on_its_thread_is_reported_not_raised_into_the_ne
 /// panic is caught there and reported once, by the panic hook, never
 /// unwinding out of the `Drop`.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_released_close_that_panics_inline_is_reported_not_unwound() {
     let hooked = bae_diagnostics::test_panic::reported_panics();
     let message = "the close inside the drop broke its guarantee";

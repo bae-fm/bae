@@ -3,6 +3,7 @@ use tempfile::TempDir;
 
 /// Sessions over a fresh library whose keyring is in memory, asking
 /// providers that reach nothing.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(crate) async fn test_sessions() -> (CatalogSessions, Store, TempDir) {
     let temp_dir = TempDir::new().unwrap();
     let db = Store::new_test(crate::TEST_SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
@@ -149,6 +150,7 @@ async fn discogs_validation_signals_confirm_and_reject() {
 
 /// Sessions over a fresh library asking a Discogs that `host` stands in for,
 /// reporting bugs to `bugs`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn sessions_over(
     host: &bae_util::test_host::FakeHost,
     bugs: Arc<bae_diagnostics::RecordingBugReporter>,

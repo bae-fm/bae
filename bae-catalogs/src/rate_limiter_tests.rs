@@ -236,6 +236,7 @@ async fn a_cancelled_waiter_costs_no_slot() {
 }
 
 #[tokio::test(start_paused = true)]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn an_uncontended_wait_neither_sleeps_nor_spawns_a_task() {
     let limiter = RateLimiter::new(INTERVAL, clock());
     let alive_before = tokio::runtime::Handle::current().metrics().num_alive_tasks();

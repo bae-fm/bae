@@ -174,6 +174,7 @@ async fn make_database() -> (bae_store::Store, TempDir) {
     (library.store().clone(), tmp)
 }
 
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn drive_fixture(
     fixture: &Fixture,
     folder: PathBuf,

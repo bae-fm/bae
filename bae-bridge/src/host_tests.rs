@@ -1,5 +1,9 @@
 use super::*;
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn an_opened_store_keeps_its_original_custody() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -171,6 +175,10 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
 /// only the open library can answer. Once its handle is released, the library
 /// is read as it last stood.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn an_open_library_stands_by_its_open_session() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -202,6 +210,10 @@ fn an_open_library_stands_by_its_open_session() {
 /// record of open libraries: its standing is read from the closed store, never
 /// asked of the closed handle.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -226,6 +238,10 @@ fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
 /// then reads the closed store: the library left the record as its close was
 /// recorded, so the call finds the close and never the half-closed library.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -261,6 +277,10 @@ fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
 /// close that begins while the call runs waits for it, so the call answers
 /// from the open library rather than failing on a runtime shutting down.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
     /// What the test hears first once the close has begun.
     enum Heard {
@@ -319,6 +339,10 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
 /// nothing and says so as a configuration fault; an id that is no library's
 /// is refused the same way before anything runs.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn discarding_an_installation_that_is_not_there_is_refused() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -389,6 +413,10 @@ fn a_failed_open_names_what_the_app_offers_next() {
 /// When bae cannot read a library kept only on this device, a reset has
 /// nothing to load, so the open fails and offers no recovery.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_damaged_library_kept_on_this_device_only_offers_no_recovery() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());

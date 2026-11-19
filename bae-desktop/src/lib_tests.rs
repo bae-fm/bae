@@ -3,6 +3,7 @@ use super::*;
 use bae_subsonic::{NotRunning, SubsonicStatus};
 
 #[test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 fn desktop_initialization_does_not_reenter_the_owned_runtime() {
     let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
 
@@ -37,6 +38,7 @@ fn desktop_controller_calls_do_not_reenter_the_owned_runtime() {
 /// can't run, the view says why, and the server starts once nothing stands in
 /// the way, with the switch never having moved.
 #[test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 fn the_subsonic_switch_stays_on_while_the_server_cannot_run() {
     let (runtime, services, _tmp) = bae_app::test_services::runtime_with_services();
     runtime.block_on(async {

@@ -112,6 +112,10 @@ impl EphemeralServer {
     /// with an error document. A server that panics reads as
     /// [`Self::panicked`], and `on_panic` runs, for its owner to end the cast
     /// it served.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the server runs on the runtime its caller runs on, and the EphemeralServer that holds its task cancels it"
+    )]
     async fn start(
         services: AppServices,
         network: ServingNetwork,

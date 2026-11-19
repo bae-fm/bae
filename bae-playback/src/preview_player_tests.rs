@@ -22,6 +22,7 @@ fn preview_source(buffer: SharedSparseBuffer) -> PreviewSource {
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_play_rejects_unprobeable_file() {
     let temp_dir = tempfile::TempDir::new().unwrap();
     let path = temp_dir.path().join("not-audio.bin");
@@ -51,6 +52,7 @@ async fn preview_play_rejects_unprobeable_file() {
 /// player stays paused across the switch, so ending the second preview is what
 /// resumes it. A preview that never paused the main player leaves it alone.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn switching_previews_keeps_the_main_player_resume() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = OwnCommands::channel();
@@ -84,6 +86,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
@@ -153,6 +156,7 @@ async fn preview_plays_only_the_requested_sample_window() {
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
@@ -231,6 +235,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
 /// leaves it playing; a toggle would have flipped each. Sabotage: route
 /// `set_paused` through `toggle_pause`, and the second pause starts it.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_preview_asked_to_pause_twice_stays_paused() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
@@ -319,6 +324,7 @@ impl AudioOutput for InvalidatingOutput {
 /// paused preview stays paused. Sabotage: restart at `StreamPosition::START`,
 /// and the new stream plays the window's first samples again.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
@@ -397,6 +403,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
 /// decoder; the owner cancels the buffer). The same start over a device whose
 /// outputs work leaves `active` populated with the file as the current path.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn failed_preview_stream_start_leaves_no_active_preview() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = OwnCommands::channel();
@@ -442,6 +449,7 @@ async fn failed_preview_stream_start_leaves_no_active_preview() {
 /// The preview listener maps a natural-completion audio event to a
 /// `PreviewCompleted` command — the seam the service turns into teardown.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_listener_maps_completion_to_preview_completed() {
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = OwnCommands::channel();
@@ -483,6 +491,7 @@ async fn preview_listener_maps_completion_to_preview_completed() {
 /// preview is asked to stop. Sabotage: report it as a playback error, and the
 /// service halts the main player with it.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_listener_ends_a_preview_whose_output_failed() {
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = OwnCommands::channel();
@@ -524,6 +533,7 @@ async fn preview_listener_ends_a_preview_whose_output_failed() {
 /// the main player gets back any resume it was owed. Sabotage: drop the
 /// `preview_failed` call after the Idle, and the screens see no reason.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn failed_preview_seek_surfaces_idle() {
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = OwnCommands::channel();
@@ -621,6 +631,7 @@ fn resolve_preview_probe_accepts_usable_format() {
 /// A preview holds its file open while it plays; stopping it, or switching
 /// to another file, closes it.
 #[tokio::test(flavor = "multi_thread")]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn ending_a_preview_closes_its_file() {
     bae_audio::init();
     let dir = tempfile::TempDir::new().unwrap();
@@ -677,6 +688,7 @@ async fn ending_a_preview_closes_its_file() {
 /// only place of a budget of one held, starting a preview waits for it, and
 /// the preview plays once the place goes back.
 #[tokio::test(flavor = "multi_thread")]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_preview_waits_for_a_place_then_plays() {
     let budget = coven::FileBudget::new(std::num::NonZeroUsize::MIN);
     let watch = budget.watch();

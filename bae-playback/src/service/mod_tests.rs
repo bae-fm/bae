@@ -261,6 +261,7 @@ pub(super) fn playback_service_over(
 }
 
 /// [`playback_service_over`] with the commands its loop (`PlaybackService::run`) serves.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(super) fn playback_service_and_commands_over(
     db: &bae_store::Store,
     diagnostics: bae_diagnostics::Diagnostics,

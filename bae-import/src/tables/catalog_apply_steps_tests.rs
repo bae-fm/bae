@@ -11,6 +11,7 @@ use crate::{CatalogApplyId, CatalogApplyStep, CatalogApplySteps};
 type StepQuery = coven::LiveQuery<Option<CatalogApplyStep>, bae_store::DbError>;
 
 /// The steps of the apply `id` names, over `tables`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 fn shown(id: &CatalogApplyId, tables: &ImportTables) -> CatalogApplySteps {
     CatalogApplySteps::shown(
         id.clone(),

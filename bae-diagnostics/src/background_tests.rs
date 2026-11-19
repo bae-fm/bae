@@ -106,6 +106,7 @@ async fn blocking_unawaited_work_has_its_panic_reported() {
 /// A panicking task's owner ends its work, and the panic is reported once, by
 /// the hook.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_reported_lets_its_owner_end_the_work_of_a_task_that_panicked() {
     let hooked = reported_panics();
     let message = "a queue index out of range";
@@ -133,6 +134,7 @@ async fn spawn_reported_lets_its_owner_end_the_work_of_a_task_that_panicked() {
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_reported_calls_nothing_when_the_task_finishes_or_is_aborted() {
     let (diagnostics, reports) = reporting();
     let runtime = tokio::runtime::Handle::current();
@@ -149,6 +151,7 @@ async fn spawn_reported_calls_nothing_when_the_task_finishes_or_is_aborted() {
 }
 
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn a_panic_in_on_panic_is_reported_and_goes_no_further() {
     let hooked = reported_panics();
     let first = "progress fanned out to a closed screen";
@@ -200,6 +203,7 @@ async fn spawn_thread_reported_calls_on_panic_on_the_thread_that_panicked() {
 /// A task that panics hands its `end` the panic, which the hook reported,
 /// and the joiner gets what `end` makes of it; the task reports nothing.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_ending_hands_a_panic_to_end_and_end_s_value_to_the_joiner() {
     let hooked = reported_panics();
     let message = "a window past the buffer's end";
@@ -226,6 +230,7 @@ async fn spawn_ending_hands_a_panic_to_end_and_end_s_value_to_the_joiner() {
 
 /// A task that finishes hands its value to `end`, and reports nothing.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_ending_hands_a_finished_value_to_end() {
     let (diagnostics, reports) = reporting();
     let task = diagnostics.spawn_ending(
@@ -240,6 +245,7 @@ async fn spawn_ending_hands_a_finished_value_to_end() {
 
 /// An aborted task's `end` never runs, and its joiner hears it was stopped.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_ending_tells_the_joiner_of_an_abort() {
     let (diagnostics, reports) = reporting();
     let task = diagnostics.spawn_ending(
@@ -256,6 +262,7 @@ async fn spawn_ending_tells_the_joiner_of_an_abort() {
 /// A panic in `end` is reported by the hook, naming the ending, and the
 /// joiner hears it.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn spawn_ending_hands_a_panic_in_end_to_the_joiner() {
     let hooked = reported_panics();
     let message = "the transfer's progress channel is gone";

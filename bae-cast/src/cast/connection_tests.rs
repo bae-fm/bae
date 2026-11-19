@@ -75,6 +75,7 @@ fn recording_end(ends: &Arc<Mutex<Vec<End>>>) -> OnEnd {
     Box::new(move |end| ends.lock().unwrap().push(end.clone()))
 }
 
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 fn harness_with(handler: Option<Handler>, fail_writes: Option<Arc<AtomicBool>>) -> Harness {
     let (client_end, fake_end) = tokio::io::duplex(64 * 1024);
     let fake = FakeReceiver::serve(fake_end);
@@ -378,6 +379,7 @@ async fn bae_sets_no_tls_key_log() {
     assert!(!config.key_log.will_log("CLIENT_RANDOM"));
 }
 
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn open_to(
     port: u16,
     ends: &Arc<Mutex<Vec<End>>>,

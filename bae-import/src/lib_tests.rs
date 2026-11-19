@@ -131,6 +131,10 @@ pub(crate) mod import {
     impl TestImport {
         /// Over `database` on `clock` and `ids`, asking `providers`, which were
         /// built on `http`, reporting to `diagnostics`.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test code: it takes the runtime the test runs on"
+        )]
         pub(crate) fn new(
             db: Store,
             providers: bae_catalogs::providers::Providers,
@@ -164,6 +168,10 @@ pub(crate) mod import {
         }
 
         /// Start an import service, as opening the library does.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test code: it takes the runtime the test runs on"
+        )]
         pub(crate) async fn start(&self) -> Result<ImportServiceHandle, crate::ImportError> {
             crate::ImportService::start(
                 tokio::runtime::Handle::current(),
@@ -182,6 +190,10 @@ pub(crate) mod import {
         }
 
         /// [`Self::start`] reading folders' tags through `file_tags`.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "test code: it takes the runtime the test runs on"
+        )]
         pub(crate) async fn start_reading_tags_with(
             &self,
             file_tags: std::sync::Arc<dyn crate::file_tag_reader::FileTagReader>,

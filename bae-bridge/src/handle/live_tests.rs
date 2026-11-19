@@ -8,6 +8,10 @@ fn open_library(root: &tempfile::TempDir) -> Arc<AppHandle> {
 }
 
 /// [`open_library`], reporting its bugs to `diagnostics`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn open_library_reporting(
     root: &tempfile::TempDir,
     diagnostics: Arc<crate::BridgeDiagnostics>,
@@ -87,6 +91,10 @@ fn a_feed_started_on_a_closed_library_never_runs() {
 /// closes: the pull waiting on it answers that it was cancelled, before the
 /// store closes, so it never answers from a closed store.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
     let root = tempfile::tempdir().unwrap();
     let app = open_library(&root);

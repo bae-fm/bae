@@ -20,6 +20,7 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
 }
 
 /// [`setup_inner`] reporting its bugs to `diagnostics`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 pub(super) async fn setup_inner_reporting_to(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {

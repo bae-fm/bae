@@ -14,6 +14,7 @@ async fn started() -> (
 }
 
 /// [`started`], reporting to `diagnostics`.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn started_reporting(
     diagnostics: bae_diagnostics::Diagnostics,
 ) -> (

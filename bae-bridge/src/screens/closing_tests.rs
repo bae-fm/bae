@@ -5,6 +5,10 @@ use super::*;
 /// Closing a library writes each step as it starts, in order, and the
 /// stream holds nothing once the close ends.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_close_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -36,6 +40,10 @@ fn a_close_writes_each_step_it_runs() {
 /// stopping its services to deleting its files, and the stream holds nothing
 /// once the removal ends.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn a_removal_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
@@ -68,6 +76,10 @@ fn a_removal_writes_each_step_it_runs() {
 /// Removing a library without opening it writes leaving it and deleting its
 /// files as each starts, and the stream holds nothing once the removal ends.
 #[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "test code: the runtime it builds ends with the test"
+)]
 fn an_unopened_removal_writes_each_step_it_runs() {
     let root = tempfile::tempdir().unwrap();
     let host = crate::handle::tests::test_host(root.path());
