@@ -10,8 +10,8 @@ use bae_records::DbAlbum;
 /// The form's draft says which album a save files the release under: the
 /// one it is in, the one an applied catalog's records name (new where the
 /// library holds none), or the one the person picked, which an apply keeps
-/// and a fresh open drops. A save refuses a pick of an album the library
-/// does not hold.
+/// and a fresh open drops. A library album the person picked stops being
+/// the pick once someone deletes it, so a save keeps the release's album.
 #[tokio::test]
 async fn a_release_edit_form_names_the_album_its_save_files_under() {
     use bae_import::DraftAlbum;
@@ -70,13 +70,6 @@ async fn a_release_edit_form_names_the_album_its_save_files_under() {
         DraftAlbum::New,
         "the draft shows no pick of an album the library does not hold"
     );
-    assert!(
-        matches!(
-            manager.save_release_edit(missing).await,
-            Err(super::LibraryError::AlbumMissing { album_id }) if album_id == "no-such-album"
-        ),
-        "a save refuses a pick of an album the library does not hold"
-    );
     let mut form = apply(form, "named-new").await;
     assert_eq!(
         draft_now(manager, &form).await.album,
@@ -88,6 +81,31 @@ async fn a_release_edit_form_names_the_album_its_save_files_under() {
         draft_now(manager, &form).await.album,
         named(&grouped),
         "with no pick, the form files the release under the album its records name"
+    );
+
+    let mut deleted_pick = manager.open_release_edit(&release.id).await.unwrap();
+    deleted_pick.album_pick =
+        bae_import::AlbumPick::Album { album_id: "no-such-album".to_string() };
+    deleted_pick.edit.set_album_artists(vec![bae_import::Credited::plain(
+        bae_import::ArtistAssignment::named("Artist Name"),
+    )]);
+    let refused =
+        manager.save_release_edit(deleted_pick.clone(), super::PickedAlbumGone::Refuse).await;
+    assert!(
+        matches!(
+            &refused,
+            Err(super::LibraryError::AlbumMissing { album_id }) if album_id == "no-such-album"
+        ),
+        "a caller that names the album itself is refused: {refused:?}"
+    );
+    manager
+        .save_release_edit(deleted_pick, super::PickedAlbumGone::Unpick)
+        .await
+        .expect("a deleted pick is no pick");
+    assert_eq!(
+        manager.get_album_id_for_release(&release.id).await.unwrap(),
+        own.id,
+        "a save with a deleted pick keeps the release's album"
     );
 }
 
@@ -113,7 +131,7 @@ async fn a_picked_new_album_files_the_release_under_a_fresh_album() {
     form.edit.set_album_artists(vec![bae_import::Credited::plain(
         bae_import::ArtistAssignment::named("Artist Name"),
     )]);
-    manager.save_release_edit(form).await.unwrap();
+    manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
 
     let filed = manager.records.find_album_id_for_release(&release.id).await.unwrap().unwrap();
     assert_ne!(filed, own.id, "the release left its album for a new one");

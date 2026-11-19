@@ -23,12 +23,18 @@ async fn a_save_returns_the_form_opened_on_what_it_saved() {
     let release_id = release_of_two_tracks(manager).await;
     let form = manager.open_release_edit(&release_id).await.unwrap();
 
-    let saved = manager.save_release_edit(titled(form, "Saved Title")).await.unwrap();
+    let saved = manager
+        .save_release_edit(titled(form, "Saved Title"), super::PickedAlbumGone::Unpick)
+        .await
+        .unwrap();
 
     let draft = draft_now(manager, &saved).await;
     assert_eq!(draft.edit.album_title, "Saved Title");
     assert!(!draft.changed, "the saved form opened on what it saved");
-    manager.save_release_edit(titled(saved, "Saved Again")).await.unwrap();
+    manager
+        .save_release_edit(titled(saved, "Saved Again"), super::PickedAlbumGone::Unpick)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -38,7 +44,10 @@ async fn opening_again_reads_the_release_as_it_is() {
     let release_id = release_of_two_tracks(manager).await;
     let opened = manager.open_release_edit(&release_id).await.unwrap();
     let other = manager.open_release_edit(&release_id).await.unwrap();
-    manager.save_release_edit(titled(other, "Written Elsewhere")).await.unwrap();
+    manager
+        .save_release_edit(titled(other, "Written Elsewhere"), super::PickedAlbumGone::Unpick)
+        .await
+        .unwrap();
 
     let reopened = manager.open_release_edit(&release_id).await.unwrap();
 

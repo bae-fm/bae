@@ -24,6 +24,49 @@ pub enum ReleaseEditWrite {
     },
 }
 
+/// What a save writes: where the release goes and its records (see
+/// `set_records_on`), the rows it writes over the release's, and whether
+/// the album's own fields are written.
+#[cfg(desktop)]
+pub struct ReleaseEditPlan {
+    pub change: Option<RecordsChange>,
+    pub write: ReleaseEditWrite,
+    pub album_fields: AlbumFields,
+}
+
+#[cfg(desktop)]
+impl ReleaseEditPlan {
+    /// The library album the plan moves the release into, when it moves it
+    /// into one the library holds already rather than a new one.
+    fn existing_target(&self) -> Option<&str> {
+        self.change
+            .as_ref()
+            .filter(|change| change.new_album.is_none())
+            .map(|change| change.target_album_id.as_str())
+    }
+
+    fn pressing(&self) -> &bae_types::pressing::Pressing {
+        match &self.write {
+            ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing,
+            ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing,
+        }
+    }
+
+    fn release_id(&self) -> &str {
+        match &self.write {
+            ReleaseEditWrite::Fields(metadata) => &metadata.release.id,
+            ReleaseEditWrite::Applied { rows, .. } => &rows.release.id,
+        }
+    }
+
+    fn album_id(&self) -> &str {
+        match &self.write {
+            ReleaseEditWrite::Fields(metadata) => &metadata.album.id,
+            ReleaseEditWrite::Applied { rows, .. } => &rows.album.id,
+        }
+    }
+}
+
 /// Why a save of an editor's form was refused. Nothing of it landed.
 #[cfg(desktop)]
 #[derive(Debug, thiserror::Error)]
@@ -36,7 +79,7 @@ pub enum ReleaseEditRefusal {
     #[error("the release is gone")]
     Gone,
     /// The library no longer holds the library album the save moves the
-    /// release into.
+    /// release into, and the caller gave no plan for that.
     #[error("album {album_id} is gone")]
     AlbumGone { album_id: String },
     #[error(transparent)]
@@ -51,67 +94,53 @@ pub type ReleaseEditSaveError = WriteError<ReleaseEditRefusal>;
 impl Records {
     /// Save an editor's form: in one transaction, all of it or none, first
     /// check, as `still_as_opened` says, that the release is still as the
-    /// editor opened on it, then move the release and replace its records
-    /// where `change` says (see `set_records_on`), then write `write`, then
-    /// read what `saved` reads of the release as this save wrote it, and
-    /// return that. Before it writes anything, the save refuses a release
-    /// that is not as the editor opened on it as
-    /// [`ReleaseEditRefusal::Stale`], and one the library no longer holds as
-    /// [`ReleaseEditRefusal::Gone`], and a move into a library album the
-    /// library no longer holds as [`ReleaseEditRefusal::AlbumGone`]; the
-    /// checks run in the write, so no other write lands between them and the
-    /// rows, and none lands between the rows and what `saved` reads.
+    /// editor opened on it, then write `plan`: move the release and replace
+    /// its records where its change says (see `set_records_on`), then write
+    /// its rows. When `plan` moves the release into a library album the
+    /// library no longer holds, the save writes `unpicked` instead, or, with
+    /// none, refuses as [`ReleaseEditRefusal::AlbumGone`]. Last it reads what
+    /// `saved` reads of the release as this save wrote it, and returns that.
+    /// Before it writes anything, the save refuses a release that is not as
+    /// the editor opened on it as [`ReleaseEditRefusal::Stale`], and one the
+    /// library no longer holds as [`ReleaseEditRefusal::Gone`]; the checks run
+    /// in the write, so no other write lands between them and the rows, and
+    /// none lands between the rows and what `saved` reads.
     pub async fn save_release_edit_atomic<Saved: Send + 'static>(
         &self,
-        change: Option<RecordsChange>,
-        write: ReleaseEditWrite,
-        album_fields: AlbumFields,
+        plan: ReleaseEditPlan,
+        unpicked: Option<ReleaseEditPlan>,
         still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
             + Send
             + 'static,
         saved: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Saved, DbError> + Send + 'static,
     ) -> Result<Saved, ReleaseEditSaveError> {
         let now_dt = self.store.now_utc();
-        let pressing = PressingParts::new(
-            &*self.ids,
-            self.store.now_utc(),
-            match &write {
-                ReleaseEditWrite::Fields(metadata) => &metadata.release.pressing,
-                ReleaseEditWrite::Applied { rows, .. } => &rows.release.pressing,
-            },
-        );
         let ids = self.ids.clone();
-        let release_id = match &write {
-            ReleaseEditWrite::Fields(metadata) => metadata.release.id.clone(),
-            ReleaseEditWrite::Applied { rows, .. } => rows.release.id.clone(),
-        };
-        let album_id = match &write {
-            ReleaseEditWrite::Fields(metadata) => metadata.album.id.clone(),
-            ReleaseEditWrite::Applied { rows, .. } => rows.album.id.clone(),
-        };
         self.store
             .write(move |sql| {
                 still_as_opened(&sql)?.map_err(WriteError::Refused)?;
-                if let Some(change) = &change {
-                    if change.new_album.is_none()
-                        && !super::release_records::album_held_on(&sql, &change.target_album_id)?
-                    {
-                        return Err(WriteError::Refused(ReleaseEditRefusal::AlbumGone {
-                            album_id: change.target_album_id.clone(),
-                        }));
+                let plan = match plan.existing_target() {
+                    Some(album_id) if !super::release_records::album_held_on(&sql, album_id)? => {
+                        unpicked.ok_or_else(|| {
+                            WriteError::Refused(ReleaseEditRefusal::AlbumGone {
+                                album_id: album_id.to_string(),
+                            })
+                        })?
                     }
-                }
-                let emptiable = Emptiable::of_releases(&sql, &[release_id.as_str()])?
-                    .including_album(&sql, &album_id)?;
-                if let Some(change) = &change {
+                    _ => plan,
+                };
+                let pressing = PressingParts::new(&*ids, now_dt, plan.pressing());
+                let emptiable = Emptiable::of_releases(&sql, &[plan.release_id()])?
+                    .including_album(&sql, plan.album_id())?;
+                if let Some(change) = &plan.change {
                     super::release_records::set_records_on(&sql, change, now_dt, &*ids)?;
                 }
                 let now = now_dt.to_rfc3339();
-                match &write {
+                match &plan.write {
                     ReleaseEditWrite::Fields(metadata) => write_release_metadata_on(
                         &sql,
                         metadata,
-                        album_fields,
+                        plan.album_fields,
                         &now,
                         &pressing_write(&pressing),
                     ),
@@ -119,7 +148,7 @@ impl Records {
                         &sql,
                         rows,
                         picked,
-                        album_fields,
+                        plan.album_fields,
                         &now,
                         &pressing_write(&pressing),
                     ),

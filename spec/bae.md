@@ -2198,10 +2198,9 @@ with the import pane's album picker: the album the release is in, the one an
 applied catalog's records name, or a new album where they name none the
 library holds, until the person picks one (a library album, or a new album,
 which a save writes with the release's edited title and year and the credits
-of the album it left); a pick holds over a catalog applied after it. When
-someone deletes the library album the person picked, the picker no longer
-shows it, and bae refuses a save and writes nothing until the person picks
-an album again. The cover is not part of the form: the editor writes a cover the person
+of the album it left); a pick holds over a catalog applied after it. A
+library album the person picked stops being the pick once someone deletes
+it. The cover is not part of the form: the editor writes a cover the person
 picks at once, and the form keeps what the person applied and picked.
 Cancelling discards the form's changes; bae reads no source again, and there is no reset to
 a source: the library holds no pointer back into one. A release with nothing

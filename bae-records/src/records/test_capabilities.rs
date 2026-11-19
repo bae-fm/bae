@@ -291,9 +291,12 @@ impl Records {
             track_artist_roles: links.track_artist_roles,
         };
         self.save_release_edit_atomic(
+            ReleaseEditPlan {
+                change: None,
+                write: ReleaseEditWrite::Applied { rows, picked },
+                album_fields: AlbumFields::Written,
+            },
             None,
-            ReleaseEditWrite::Applied { rows, picked },
-            AlbumFields::Written,
             |_| Ok(Ok(())),
             |_| Ok(()),
         )

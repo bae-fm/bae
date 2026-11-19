@@ -77,7 +77,7 @@ pub use config::LiveSaveChoice;
 pub use device_storage::{DeviceStorage, StorageKind, StoragePart};
 pub use people::{DeviceCutOff, DeviceRemoval};
 #[cfg(desktop)]
-pub use release_edit::LiveReleaseEditDraft;
+pub use release_edit::{LiveReleaseEditDraft, PickedAlbumGone};
 #[cfg(desktop)]
 mod save;
 #[cfg(desktop)]

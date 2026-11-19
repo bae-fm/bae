@@ -55,9 +55,12 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
         };
         records
             .save_release_edit_atomic(
+                ReleaseEditPlan {
+                    change: None,
+                    write: ReleaseEditWrite::Applied { rows, picked: Vec::new() },
+                    album_fields: AlbumFields::Written,
+                },
                 None,
-                ReleaseEditWrite::Applied { rows, picked: Vec::new() },
-                AlbumFields::Written,
                 check,
                 |_| Ok(()),
             )

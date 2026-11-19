@@ -112,46 +112,83 @@ impl LibraryManager {
     /// roles and works), its records, and the album the release lands in:
     /// the one the person picked, else the one the applied records name. A
     /// form where the person applied no catalog writes the fields, and moves
-    /// the release only to an album the person picked. The same write reads
-    /// the release as this save wrote it, and the method returns the form
-    /// opened on that.
+    /// the release only to an album the person picked. When the library no
+    /// longer holds the library album the person picked, `gone` says what the
+    /// save does. The same write reads the release as this save wrote it,
+    /// and the method returns the form opened on that.
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
-    /// the library no longer holds the release as the form opened on it, and
-    /// with [`LibraryError::AlbumMissing`] when it no longer holds the album
-    /// the save moves the release into. The write itself finds both out: it
-    /// reads the release and the album as they stand, so no write lands
-    /// between the checks and the rows.
+    /// the library no longer holds the release as the form opened on it. The
+    /// write itself finds that out, and whether the library holds the picked
+    /// album: it reads the release and the album as they stand, so no write
+    /// lands between the checks and the rows.
     pub async fn save_release_edit(
         &self,
         form: bae_import::ReleaseEditForm,
+        gone: PickedAlbumGone,
     ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
         let release_id = form.release_id.clone();
-        let release_id = release_id.as_str();
-        let edit = form.edit.clone();
-        let applied = form.applied.clone();
-        let pick = form.album_pick.clone();
-        let shaped = edit.shape()?;
+        let shaped = form.edit.shape()?;
         shaped.validate()?;
-        let (current_album_id, release, current_album, existing_tracks) =
-            self.load_release_for_edit(release_id).await?;
-        let records = match &applied {
+        let opened = self.load_release_for_edit(&release_id).await?;
+        let records = match &form.applied {
             Some(applied) => applied.records.clone(),
-            None => self.records.get_release_records(release_id).await?,
+            None => self.records.get_release_records(&release_id).await?,
         };
-        let change = match (&pick, &applied) {
+        let plan =
+            self.release_edit_plan(&form, &form.album_pick, &shaped, &opened, &records).await?;
+        let unpicked = match (&form.album_pick, gone) {
+            (bae_import::AlbumPick::Album { .. }, PickedAlbumGone::Unpick) => Some(
+                self.release_edit_plan(
+                    &form,
+                    &bae_import::AlbumPick::Records,
+                    &shaped,
+                    &opened,
+                    &records,
+                )
+                .await?,
+            ),
+            _ => None,
+        };
+        let saved_id = release_id.clone();
+        let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
+            bae_import::tables::release_edit_still_as_opened_on(sql, &form)
+        };
+        let saved = move |sql: &coven::CovenWrite<'_>| {
+            bae_import::tables::release_edit_form_on(sql, &saved_id)
+        };
+        self.records
+            .save_release_edit_atomic(plan, unpicked, still_as_opened, saved)
+            .await
+            .map_err(|error| release_edit_save_error(error, &release_id))
+    }
+
+    /// What a save of `form` writes with the album pick `pick`: where the
+    /// release goes, its rows, and whether the album keeps its own fields.
+    async fn release_edit_plan(
+        &self,
+        form: &bae_import::ReleaseEditForm,
+        pick: &bae_import::AlbumPick,
+        shaped: &bae_import::ReleaseUserEdit,
+        opened: &(String, DbRelease, DbAlbum, Vec<DbTrack>),
+        records: &[bae_catalogs::records::ReleaseRecord],
+    ) -> Result<bae_records::ReleaseEditPlan, LibraryError> {
+        let release_id = form.release_id.as_str();
+        let edit = &form.edit;
+        let (current_album_id, release, current_album, existing_tracks) = opened;
+        let change = match (pick, &form.applied) {
             (bae_import::AlbumPick::Album { album_id }, _) => Some(bae_records::RecordsChange {
                 release_id: release_id.to_string(),
-                records: records.clone(),
+                records: records.to_vec(),
                 current_album_id: current_album_id.clone(),
                 target_album_id: album_id.clone(),
                 new_album: None,
             }),
             (bae_import::AlbumPick::New, _) => {
-                let new_album = self.fresh_album_for_release(&current_album_id).await?;
+                let new_album = self.fresh_album_for_release(current_album_id).await?;
                 Some(bae_records::RecordsChange {
                     release_id: release_id.to_string(),
-                    records: records.clone(),
+                    records: records.to_vec(),
                     current_album_id: current_album_id.clone(),
                     target_album_id: new_album.id.clone(),
                     new_album: Some(new_album),
@@ -167,15 +204,15 @@ impl LibraryManager {
             .map_or(current_album_id.clone(), |change| change.target_album_id.clone());
         // A release the person moved into another album keeps that album's
         // own title and artists.
-        let album_fields = if matches!(&pick, bae_import::AlbumPick::Album { album_id } if *album_id != current_album_id)
+        let album_fields = if matches!(pick, bae_import::AlbumPick::Album { album_id } if album_id != current_album_id)
         {
             bae_records::AlbumFields::Kept
         } else {
             bae_records::AlbumFields::Written
         };
-        let write = match applied {
+        let write = match &form.applied {
             Some(applied) => {
-                let mut draft = applied.draft;
+                let mut draft = applied.draft.clone();
                 draft.album_title = edit.album_title.clone();
                 draft.album_artist_assignments = edit.album_artist_assignments.clone();
                 draft.album_year = edit.album_year.clone();
@@ -211,27 +248,29 @@ impl LibraryManager {
                 // and credits, and nothing else of the row, so the album the
                 // release is in stands for the one it moves into; the write
                 // checks that the library holds that one.
-                let album_row = bae_records::DbAlbum { id: target_album_id, ..current_album };
+                let album_row = DbAlbum { id: target_album_id, ..current_album.clone() };
                 bae_records::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
-                    release,
-                    &existing_tracks,
-                    &shaped.normalized(),
+                    release.clone(),
+                    existing_tracks,
+                    &shaped.clone().normalized(),
                 )?)
             }
         };
-        let saved_id = release_id.to_string();
-        let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
-            bae_import::tables::release_edit_still_as_opened_on(sql, &form)
-        };
-        let saved = move |sql: &coven::CovenWrite<'_>| {
-            bae_import::tables::release_edit_form_on(sql, &saved_id)
-        };
-        self.records
-            .save_release_edit_atomic(change, write, album_fields, still_as_opened, saved)
-            .await
-            .map_err(|error| release_edit_save_error(error, release_id))
+        Ok(bae_records::ReleaseEditPlan { change, write, album_fields })
     }
+}
+
+/// What a save does when the library no longer holds the library album the
+/// form picked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PickedAlbumGone {
+    /// The album stops being the pick, as the editor's draft shows it: the
+    /// save files the release as with no pick.
+    Unpick,
+    /// The save refuses with [`LibraryError::AlbumMissing`] and writes
+    /// nothing, for a caller that named the album itself.
+    Refuse,
 }
 
 /// A save's refusal as the library words it: a release changed since the

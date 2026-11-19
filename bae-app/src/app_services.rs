@@ -621,7 +621,7 @@ impl AppServices {
     #[cfg(desktop)]
     delegate_async!(manager, apply_release_edit_catalog => apply_release_edit_catalog(form: bae_import::ReleaseEditForm, link: &bae_identify::PressingLink, steps: &bae_import::CatalogApplySteps) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
-    delegate_async!(manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
+    delegate_async!(manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm, gone: bae_library::PickedAlbumGone) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
     delegate_sync!(manager, subscribe_release_edit_draft => subscribe_release_edit_draft() -> bae_library::LiveReleaseEditDraft);
     #[cfg(desktop)]

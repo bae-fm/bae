@@ -43,7 +43,7 @@ pub use records::{
     ReleaseDeletion,
 };
 #[cfg(desktop)]
-pub use records::{ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite};
+pub use records::{ReleaseEditPlan, ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite};
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 pub use records::{SeededAlbum, SeededAudio};
 pub use resolved_track_audio::{
