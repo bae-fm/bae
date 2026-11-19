@@ -63,10 +63,8 @@ private final class HistoryReads: @unchecked Sendable {
 private func play(_ title: String, by person: String) -> BridgeHistoryPlay {
     BridgeHistoryPlay(
         id: "play-\(title)",
-        trackId: "track-\(title)",
         title: title,
         artistLine: .named("Artist Name"),
-        albumTitle: "Album Title",
         cover: nil,
         startedAt: 0,
         playedOn: BridgeDay(year: 2026, month: 10, day: 18),

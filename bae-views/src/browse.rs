@@ -104,6 +104,12 @@ pub enum ListCountExtra {
         total_size: u64,
         searching: bool,
     },
+    /// History's menu of whose plays: the people it offers, and whose plays
+    /// it shows.
+    History {
+        people: Vec<crate::history::HistoryPerson>,
+        shown: crate::history::HistoryShown,
+    },
     /// The import list's count while filters narrow it: how many of its
     /// tab's entries the filters keep. The variant also holds the count of
     /// every tab.

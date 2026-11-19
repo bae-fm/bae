@@ -235,10 +235,8 @@ private struct PlaylistEntryRow: View {
     var body: some View {
         MacListRow(
             lead: number.map { String($0) } ?? "",
-            hanging: true,
             leadWidth: MacPlaylistPage.numberWidth,
             cover: entry.cover,
-            coverSize: 40,
             title: entry.title,
             subtitle: entry.artistLine.text,
             duration: DurationClock.label(entry.durationClock),

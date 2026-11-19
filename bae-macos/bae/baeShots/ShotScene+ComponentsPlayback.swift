@@ -211,11 +211,14 @@ extension ShotScene {
         component("mac.component.queue-section.up-next", height: 60) {
             MacQueueSection(
                 title: "Up next",
-                shuffled: false,
-                count: 2,
-                clearLabel: "Clear up next",
-                onClear: {},
-                onSetShuffle: nil
+                kind: .lane(
+                    MacQueueSection.Lane(
+                        clear: MacQueueSection.Clear(
+                            label: "Clear up next",
+                            action: {}
+                        )
+                    )
+                )
             )
             .frame(width: 380, alignment: .leading)
         },
@@ -225,11 +228,15 @@ extension ShotScene {
         ) {
             MacQueueSection(
                 title: "Playing from · Low Tide Hours",
-                shuffled: true,
-                count: 2,
-                clearLabel: "Clear playing from",
-                onClear: {},
-                onSetShuffle: { _ in }
+                kind: .lane(
+                    MacQueueSection.Lane(
+                        clear: MacQueueSection.Clear(
+                            label: "Clear playing from",
+                            action: {}
+                        ),
+                        shuffle: MacQueueSection.Shuffle(on: true) { _ in }
+                    )
+                )
             )
             .frame(width: 380, alignment: .leading)
         },

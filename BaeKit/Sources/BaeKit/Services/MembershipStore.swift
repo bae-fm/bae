@@ -9,7 +9,7 @@ private let logger = Logger.bae("MembershipStore")
 /// device's person is an admin, and core's joined list of the people (this
 /// device's person, the others and their counts), for as long as the library
 /// is open, from `start()`: the menu bar always shows Rename Library, which
-/// it enables, and History names the people whose plays it can show. The store reads the rest while
+/// it enables, and the title bar always shows the person's picture. The store reads the rest while
 /// a screen shows it, from `show()` to `hide()`: it subscribes to the
 /// requested profile and the invites. A person's page reads that person by
 /// member id, and each place that shows admin changes reads its own changes

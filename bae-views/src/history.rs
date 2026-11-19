@@ -8,11 +8,9 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HistoryRow {
     pub id: uuid::Uuid,
-    pub track_id: String,
     pub title: String,
     /// The track's credit line: its own credits, else its album's (§2.3).
     pub artist_line: bae_types::credits::CreditLine,
-    pub album_title: String,
     /// The cover of the release the track is on.
     pub cover: Option<ImageRef>,
     pub started_at: UtcDateTime,
@@ -30,6 +28,32 @@ pub struct HistoryRow {
 
 /// Whose plays History shows: everyone's, or one person's.
 pub type HistoryFilter = Option<coven::MemberId>;
+
+/// A person whose plays History's menu offers to show.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryPerson {
+    pub person: coven::MemberId,
+    pub name: String,
+    /// Whether History shows this person's plays.
+    pub chosen: bool,
+}
+
+/// Whose plays History shows, as its menu names them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HistoryShown {
+    Everyone,
+    Person { name: String },
+}
+
+/// How many plays History shows under a filter, and its menu of whose plays:
+/// the people of the library with a profile, this device's person first and
+/// the others by name, and whose plays the filter shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryCount {
+    pub plays: u64,
+    pub people: Vec<HistoryPerson>,
+    pub shown: HistoryShown,
+}
 
 /// History's order over `history` aliased `alias`: newest first, which its
 /// indexes hold backwards, the id telling apart plays begun at one moment.
@@ -66,7 +90,7 @@ fn opens_day_sql(filter: &HistoryFilter) -> String {
 /// `:limit`, each with its track, cover, person and key.
 fn history_rows_query(filter: &HistoryFilter, order: &ListOrder, seek: &Seek) -> String {
     format!(
-        "SELECT h.id, h.track_id, t.title, {credits} AS artist_line, a.title AS album_title, \
+        "SELECT h.id, t.title, {credits} AS artist_line, \
                 t.release_id, {cover} AS cover_version, h.started_at, h.played_on, \
                 {opens} AS opens_day, h.person_id, p.name AS person_name, {avatar} AS avatar, \
                 {keys} \
@@ -92,10 +116,8 @@ fn history_row(row: &Row<'_>) -> rusqlite::Result<HistoryRow> {
     let played_on = played_on_column(row)?;
     Ok(HistoryRow {
         id: uuid_column(row, "id")?,
-        track_id: row.get("track_id")?,
         title: row.get("title")?,
         artist_line: credit_line_column(row, "artist_line")?,
-        album_title: row.get("album_title")?,
         cover: cover_ref(&release_id, row.get("cover_version")?),
         started_at: rfc3339_column(row, "started_at")?,
         played_on,
@@ -111,11 +133,6 @@ fn played_on_column(row: &Row<'_>) -> rusqlite::Result<time::Date> {
     let text: String = row.get("played_on")?;
     time::Date::parse(&text, &time::format_description::well_known::Iso8601::DATE)
         .map_err(|error| column_conversion_error(row, "played_on", error))
-}
-
-fn uuid_column(row: &Row<'_>, column: &str) -> rusqlite::Result<uuid::Uuid> {
-    let value: String = row.get(column)?;
-    uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, column, error))
 }
 
 /// The person `filter` names, as the statements bind it.
@@ -142,18 +159,62 @@ fn history_rows_on(
     })?)
 }
 
-fn history_count_on(sql: &SqlReadContext<'_>, filter: &HistoryFilter) -> Result<u64, DbError> {
-    let statement =
-        format!("SELECT COUNT(*) FROM history h WHERE {}", person_condition("h", filter));
-    let count: i64 = match person_param(filter) {
+/// The people History's menu offers, this device's person first and the
+/// others by name, each marked when `:person` names them.
+fn history_people_sql() -> String {
+    format!(
+        "SELECT p.id AS person, p.name AS name, p.id IS :person AS chosen \
+         FROM coven_members AS m JOIN people AS p ON p.id = m.member \
+         WHERE NOT m.removed \
+         ORDER BY m.is_self DESC, {name_key}, m.member",
+        name_key = sort_key_sql("p.name"),
+    )
+}
+
+/// How many plays History shows under `filter`, with its menu of whose
+/// plays. A filter naming a person with no profile fails the read: the menu
+/// offers only people with one, and bae never deletes a profile.
+fn history_count_on(
+    sql: &SqlReadContext<'_>,
+    filter: &HistoryFilter,
+) -> Result<HistoryCount, DbError> {
+    let person = person_param(filter);
+    let count_sql =
+        format!("SELECT COUNT(*) AS plays FROM history h WHERE {}", person_condition("h", filter));
+    let plays = match &person {
         Some(person) => {
-            sql.query_row(&statement, rusqlite::named_params! { ":person": person }, |row| {
-                row.get(0)
+            sql.query_row(&count_sql, rusqlite::named_params! { ":person": person }, |row| {
+                count_column(row, "plays")
             })?
         }
-        None => sql.query_row(&statement, [], |row| row.get(0))?,
+        None => sql.query_row(&count_sql, [], |row| count_column(row, "plays"))?,
     };
-    Ok(u64::try_from(count).unwrap_or(0))
+    let people =
+        sql.query(&history_people_sql(), rusqlite::named_params! { ":person": person }, |row| {
+            Ok(HistoryPerson {
+                person: coven::MemberId(uuid_column(row, "person")?),
+                name: row.get("name")?,
+                chosen: row.get("chosen")?,
+            })
+        })?;
+    let shown = match &person {
+        Some(person) => HistoryShown::Person {
+            name: sql
+                .query_row("SELECT name FROM people WHERE id = ?1", [person], |row| row.get(0))?,
+        },
+        None => HistoryShown::Everyone,
+    };
+    Ok(HistoryCount { plays, people, shown })
+}
+
+/// History's count as the list shows it: its plays, and its menu of whose
+/// plays.
+pub fn resolve_history_count(count: HistoryCount) -> crate::ListCount {
+    crate::ListCount {
+        rows: count.plays,
+        items: count.plays,
+        extra: crate::ListCountExtra::History { people: count.people, shown: count.shown },
+    }
 }
 
 fn history_rows_before_on(
@@ -199,11 +260,12 @@ impl LibraryViews {
         })
     }
 
-    /// Follow how many plays History shows under `filter`.
+    /// Follow how many plays History shows under `filter`, with its menu of
+    /// whose plays.
     pub fn subscribe_history_count(
         &self,
         filter: HistoryFilter,
-    ) -> coven::LiveQuery<u64, bae_store::DbError> {
+    ) -> coven::LiveQuery<HistoryCount, bae_store::DbError> {
         self.store.subscribe(move |sql| history_count_on(&sql, &filter))
     }
 

@@ -283,11 +283,18 @@ extension QueueSection {
     private var sectionHeader: some View {
         MacQueueSection(
             title: title,
-            shuffled: shuffled,
-            count: count,
-            clearLabel: clearLaneLabel,
-            onClear: onClear,
-            onSetShuffle: onSetShuffle
+            kind: .lane(
+                MacQueueSection.Lane(
+                    clear: count > 0
+                        ? MacQueueSection.Clear(
+                            label: clearLaneLabel,
+                            action: onClear
+                        ) : nil,
+                    shuffle: onSetShuffle.map {
+                        MacQueueSection.Shuffle(on: shuffled, set: $0)
+                    }
+                )
+            )
         )
     }
 

@@ -49,7 +49,8 @@ extension ShotScene {
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:],
-        history: [BridgeHistoryPlay] = []
+        history: [BridgeHistoryPlay] = [],
+        historyPeople: [(id: String, name: String)] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
             albumList: { _, _ in
@@ -92,7 +93,8 @@ extension ShotScene {
                     history.filter {
                         person == nil || $0.person.person == person
                     },
-                    answers: UnansweredCount()
+                    answers: UnansweredCount(),
+                    extra: boardHistoryMenu(historyPeople, person: person)
                 )
             },
             releaseFiles: {
@@ -108,6 +110,31 @@ extension ShotScene {
             uiStore.selectAlbum(detail.album.id)
         }
         return (library, session)
+    }
+
+    /// History's menu of whose plays as core counts it under `person`:
+    /// `people` in their order, and whose plays it shows.
+    nonisolated private static func boardHistoryMenu(
+        _ people: [(id: String, name: String)],
+        person: String?
+    ) -> BridgeListCountExtra {
+        let shown: BridgeHistoryShown =
+            if let name = people.first(where: { $0.id == person })?.name {
+                .person(name: name)
+            }
+            else {
+                .everyone
+            }
+        return .history(
+            people: people.map {
+                BridgeHistoryPerson(
+                    person: $0.id,
+                    name: $0.name,
+                    chosen: $0.id == person
+                )
+            },
+            shown: shown
+        )
     }
 
     /// "Low Tide Hours" by Mara Quill playing: 1:42 into 5:03, the slider at

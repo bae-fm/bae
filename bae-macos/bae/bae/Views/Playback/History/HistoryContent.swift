@@ -3,15 +3,17 @@ import SwiftUI
 
 /// The side pane's History tab: the plays this device holds, newest first,
 /// under the day they were played, everyone's or one person's. The end of
-/// the first day's heading names whose plays it shows and opens the choice;
-/// with no plays, the choice sits under the line that says so.
+/// the first day's heading names whose plays it shows and opens the choice,
+/// which the list's count carries; with no plays, the choice sits under the
+/// line that says so.
 struct HistoryContent: View {
     @Environment(HistoryStore.self)
     private var store
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(MembershipStore.self)
-    private var membership
+
+    @State
+    private var retryRead = CancellableTaskSlot()
 
     var body: some View {
         Group {
@@ -22,19 +24,36 @@ struct HistoryContent: View {
                         advice: nil,
                         error: error,
                         look: .centered,
-                        action: nil
+                        action: error.retryAction {
+                            retryRead.replace { await list.loadInitial() }
+                        }
                     )
                 }
-                else if list.count?.rows == 0 {
-                    ContentUnavailableView {
-                        Text(emptyTitle)
-                    } actions: {
-                        whoseMenu(action: true)
+                else if let count = list.count {
+                    let menu = HistoryMenu(count: count)
+                    if count.rows == 0 {
+                        ContentUnavailableView {
+                            Text(menu.emptyTitle)
+                        } actions: {
+                            menu.inlineMenu(action: true) {
+                                uiStore.showHistory(of: $0)
+                            }
+                        }
+                        .frame(maxHeight: .infinity)
                     }
-                    .frame(maxHeight: .infinity)
+                    else {
+                        HistoryPlays(
+                            list: list,
+                            menu: menu.inlineMenu(action: false) {
+                                uiStore.showHistory(of: $0)
+                            }
+                        )
+                    }
                 }
                 else {
-                    HistoryPlays(list: list, menu: whoseMenu(action: false))
+                    // The count is a local read; nothing shows until it
+                    // lands.
+                    Color.clear
                 }
             }
             else {
@@ -46,58 +65,59 @@ struct HistoryContent: View {
         .onChange(of: uiStore.historyPerson, initial: true) { _, person in
             store.show(person: person)
         }
-        .onDisappear { store.cancel() }
+        .onDisappear {
+            retryRead.cancel()
+            store.cancel()
+        }
+    }
+}
+
+/// History's choice of whose plays, as its list's count hands it over: the
+/// people it offers and whose plays it shows.
+private struct HistoryMenu {
+    let people: [BridgeHistoryPerson]
+    let shown: BridgeHistoryShown
+
+    init(count: BridgeListCount) {
+        guard case .history(let people, let shown) = count.extra else {
+            preconditionFailure("History's count carried another list's extra")
+        }
+        self.people = people
+        self.shown = shown
     }
 
     /// Whose plays History shows, in the menu's words.
     private var shownName: String {
-        guard let person = uiStore.historyPerson else {
-            return String(localized: "Everyone")
+        switch shown {
+        case .everyone: String(localized: "Everyone")
+        case .person(let name): name
         }
-        return membership.people.flatMap { Self.name(of: person, in: $0) }
-            ?? ""
     }
 
-    private var emptyTitle: String {
-        guard uiStore.historyPerson != nil else {
-            return String(localized: "No plays yet")
+    /// The line an empty History says.
+    var emptyTitle: String {
+        switch shown {
+        case .everyone: String(localized: "No plays yet")
+        case .person(let name): String(localized: "No plays from \(name)")
         }
-        return String(localized: "No plays from \(shownName)")
     }
 
-    /// The choice of whose plays History shows: everyone's, then each person
-    /// with a profile.
-    private func whoseMenu(action: Bool) -> MacInlineMenu {
-        let people = membership.people.map(Self.named) ?? []
-        let chosen = uiStore.historyPerson
-        let uiStore = uiStore
+    /// The choice of everyone's plays or one person's, which `choose` takes
+    /// as the person's member id, or `nil` for everyone's.
+    func inlineMenu(
+        action: Bool,
+        choose: @escaping (String?) -> Void
+    ) -> MacInlineMenu {
+        let people = people
+        let everyone = shown == .everyone
         return MacInlineMenu(shownName, action: action) {
-            MacMenuItem("Everyone", checked: chosen == nil) {
-                uiStore.showHistory(of: nil)
-            }
+            MacMenuItem("Everyone", checked: everyone) { choose(nil) }
             for person in people {
-                MacMenuItem(verbatim: person.name, checked: chosen == person.id)
-                {
-                    uiStore.showHistory(of: person.id)
+                MacMenuItem(verbatim: person.name, checked: person.chosen) {
+                    choose(person.person)
                 }
             }
         }
-    }
-
-    /// The people of `people` with a profile, this device's person first.
-    private static func named(_ people: BridgePeople) -> [(
-        id: String, name: String
-    )] {
-        ([people.own].compactMap { $0 } + people.others)
-            .compactMap { person in
-                person.profile.map { (person.membership.id, $0.name) }
-            }
-    }
-
-    private static func name(of person: String, in people: BridgePeople)
-        -> String?
-    {
-        named(people).first { $0.id == person }?.name
     }
 }
 
@@ -148,26 +168,16 @@ private struct HistoryPlays: View {
                 if play.opensDay {
                     MacQueueSection(
                         title: HistoryWords.day(play.playedOn),
-                        menu: index == 0 ? menu : nil,
-                        wide: true,
-                        hang: true
+                        kind: .day(menu: index == 0 ? menu : nil)
                     )
                 }
                 MacListRow(
                     lead: HistoryWords.time(play.startedAt),
-                    hanging: true,
                     leadWidth: Self.timeWidth,
                     cover: play.cover,
-                    coverSize: 40,
                     title: play.title,
                     subtitle: play.artistLine.text,
-                    who: MacListRow.Who(
-                        name: play.person.name,
-                        initials: play.person.initials,
-                        picture: play.person.avatarVersion.map {
-                            (play.person.person, $0)
-                        }
-                    ),
+                    who: play.person,
                     wide: true
                 )
             }

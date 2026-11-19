@@ -160,11 +160,6 @@ pub(crate) const PLAYLIST_TOTAL_SQL: &str = "SELECT COUNT(*) FROM playlists AS p
 pub(crate) const CAN_CREATE_SQL: &str = "SELECT EXISTS (SELECT 1 FROM coven_members AS m \
      JOIN people AS p ON p.id = m.member WHERE m.is_self AND NOT m.removed)";
 
-fn uuid_column(row: &Row, index: usize) -> rusqlite::Result<uuid::Uuid> {
-    let value: String = row.get(index)?;
-    uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, index, error))
-}
-
 /// A cover a playlist's summary names, as [`playlists_sql`] writes it: a
 /// release and its cover's version, NULL for a release with no cover.
 #[derive(serde::Deserialize)]

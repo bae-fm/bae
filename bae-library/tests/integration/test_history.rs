@@ -205,10 +205,24 @@ async fn history_lists_plays_newest_first_under_their_days() {
         ]
     );
     let newest = &everyone.rows[0].0;
-    assert_eq!((newest.person, newest.album_title.as_str()), (person.id, "Album Title"));
+    assert_eq!(newest.person, person.id);
     assert_eq!(newest.person_name, person.name);
     let count = views.subscribe_history_count(None).next_inline().await.unwrap().unwrap();
-    assert_eq!(count, 3);
+    let menu = |chosen| {
+        vec![bae_views::history::HistoryPerson {
+            person: person.id,
+            name: person.name.clone(),
+            chosen,
+        }]
+    };
+    assert_eq!(
+        count,
+        bae_views::history::HistoryCount {
+            plays: 3,
+            people: menu(false),
+            shown: bae_views::history::HistoryShown::Everyone,
+        }
+    );
 
     let own = views
         .subscribe_history_window(Some(person.id), bae_store::ListWindow::top(10))
@@ -218,6 +232,16 @@ async fn history_lists_plays_newest_first_under_their_days() {
         .result
         .unwrap();
     assert_eq!(own.rows.len(), 3);
+    let own_counted =
+        views.subscribe_history_count(Some(person.id)).next_inline().await.unwrap().unwrap();
+    assert_eq!(
+        own_counted,
+        bae_views::history::HistoryCount {
+            plays: 3,
+            people: menu(true),
+            shown: bae_views::history::HistoryShown::Person { name: person.name.clone() },
+        }
+    );
     let nobody = coven::MemberId(test_uuid("days-nobody").parse().unwrap());
     let none = views
         .subscribe_history_window(Some(nobody), bae_store::ListWindow::top(10))
@@ -227,8 +251,9 @@ async fn history_lists_plays_newest_first_under_their_days() {
         .result
         .unwrap();
     assert!(none.rows.is_empty());
-    let none_counted =
-        views.subscribe_history_count(Some(nobody)).next_inline().await.unwrap().unwrap();
-    assert_eq!(none_counted, 0);
+    assert!(
+        views.subscribe_history_count(Some(nobody)).next_inline().await.unwrap().is_err(),
+        "History's menu offers only people with a profile, so a filter naming nobody fails"
+    );
     library.manager().close().await.unwrap();
 }

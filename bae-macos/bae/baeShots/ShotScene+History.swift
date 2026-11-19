@@ -41,7 +41,11 @@ extension ShotScene {
         let uiStore = UiStore()
         uiStore.openSidePane(.history)
         uiStore.showHistory(of: person)
-        let backing = boardLibraryBacking(uiStore: uiStore, history: plays)
+        let backing = boardLibraryBacking(
+            uiStore: uiStore,
+            history: plays,
+            historyPeople: [(anaMemberId, "Ana"), (benMemberId, "Ben")]
+        )
         let history = HistoryStore(library: backing.library, onError: { _ in })
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
@@ -146,10 +150,8 @@ extension ShotScene {
                     || boardPlayList[index - 1].daysAgo != play.daysAgo
                 return BridgeHistoryPlay(
                     id: "play-\(index)",
-                    trackId: "track-\(index)",
                     title: play.title,
                     artistLine: .named(play.artists),
-                    albumTitle: play.album,
                     cover: nil,
                     startedAt: Int64(started.timeIntervalSince1970 * 1000),
                     playedOn: BridgeDay(

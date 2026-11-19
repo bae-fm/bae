@@ -171,9 +171,9 @@ extension ShotScene {
         }
     ]
 
-    /// `MacListRow`, a play or a playlist's track: at rest, left faint and
-    /// raised while the owner drags it, and hanging its number in the margin
-    /// as a playlist's page in the side pane draws it.
+    /// `MacListRow`, a play or a playlist's track, its leading column hung
+    /// in the margin: at rest, left faint and raised while the owner drags
+    /// it, and with a playlist's number.
     private static let listRowScenes: [ShotScene] = [
         listRow("mac.component.list-row.default"),
         listRow("mac.component.list-row.lifted", lifted: true),
@@ -185,9 +185,7 @@ extension ShotScene {
         ) {
             MacListRow(
                 lead: "1",
-                hanging: true,
                 cover: cover("Low Tide Hours"),
-                coverSize: 40,
                 title: "Harbor Lights",
                 subtitle: "Mara Quill",
                 duration: "4:32"
@@ -205,14 +203,21 @@ extension ShotScene {
         component(id, height: 70, images: coverStore()) {
             MacListRow(
                 lead: "21:04",
+                leadWidth: 56,
                 cover: cover("Low Tide Hours"),
                 title: "Harbor Lights",
                 subtitle: "Mara Quill · Low Tide Hours",
-                who: MacListRow.Who(name: "Mara", initials: "M"),
+                who: BridgePlaylistOwner(
+                    person: "person-mara",
+                    name: "Mara",
+                    initials: "M",
+                    avatarVersion: nil
+                ),
                 duration: "4:32",
                 lifted: lifted,
                 dragging: dragging
             )
+            .padding(.leading, MacListRow.hang(leadWidth: 56))
             .frame(width: 380, alignment: .leading)
         }
     }

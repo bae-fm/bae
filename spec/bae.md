@@ -3024,9 +3024,10 @@ it was played and whose it is, under the day they were played, and shows
 everyone's plays or one person's. On a Mac History is a tab of the side pane,
 and the end of its first day's heading names whose plays it shows, *Everyone*
 or a person's name, in the accent with a ⌄, above the column of whose each play
-is, and opens a menu of those choices; on Android the same choice ends the
-screen's top bar. On a Mac each play's row is a playlist page's track row with
-the play's time where the track's number would be, hanging left of the
+is, and opens a menu of those choices: *Everyone*, then the library's people,
+this device's person first and the others by name; on Android the same choice
+ends the screen's top bar. On a Mac each play's row is a playlist page's track
+row with the play's time where the track's number would be, hanging left of the
 covers, then the cover, the track's title over its artist, and whose play it
 is at the row's end; the day headings start at the covers' edge. With no
 plays to show, History says *No plays yet*, or *No

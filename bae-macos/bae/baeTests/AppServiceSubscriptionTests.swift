@@ -198,7 +198,7 @@ struct InvitesSubscriptionTests {
         store.start()
         #expect(
             Set(handle.subscribed) == ["members", "people"],
-            "the menu bar's admin read and History's people"
+            "the menu bar's admin read and the title bar's picture"
         )
 
         store.show()

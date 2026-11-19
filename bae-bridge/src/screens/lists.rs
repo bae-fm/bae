@@ -182,6 +182,15 @@ impl BridgeListCount {
                 bae_views::ListCountExtra::Storage { total_size, searching } => {
                     BridgeListCountExtra::Storage { total_size, searching }
                 }
+                bae_views::ListCountExtra::History { people, shown } => {
+                    BridgeListCountExtra::History {
+                        people: people
+                            .into_iter()
+                            .map(crate::types::BridgeHistoryPerson::from_core)
+                            .collect(),
+                        shown: crate::types::BridgeHistoryShown::from_core(shown),
+                    }
+                }
                 #[cfg(desktop)]
                 bae_views::ListCountExtra::Import { narrowed, tabs } => {
                     let bae_import::TriageTabCounts { pending, done, skipped } = tabs;

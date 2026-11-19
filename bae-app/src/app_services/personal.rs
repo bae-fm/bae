@@ -54,14 +54,17 @@ impl AppServices {
         )
     }
 
-    /// How many plays History shows under `filter`.
+    /// How many plays History shows under `filter`, with its menu of whose
+    /// plays.
     pub fn subscribe_history_count(
         &self,
         filter: bae_views::history::HistoryFilter,
     ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
-        super::list_reads::list_rows(
-            &self.inner.manager,
-            self.inner.views.subscribe_history_count(filter),
+        self.inner.manager.values_until_closed(
+            self.inner
+                .views
+                .subscribe_history_count(filter)
+                .process(|count| Ok(bae_views::history::resolve_history_count(count))),
         )
     }
 

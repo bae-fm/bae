@@ -183,6 +183,12 @@ pub enum BridgeListCountExtra {
         total_size: u64,
         searching: bool,
     },
+    /// History's menu of whose plays: the people it offers, this device's
+    /// person first and the others by name, and whose plays it shows.
+    History {
+        people: Vec<super::BridgeHistoryPerson>,
+        shown: super::BridgeHistoryShown,
+    },
     /// How many of the import list's tab entries its filters keep, while
     /// they narrow it, and every tab's count, which the tab bar shows.
     #[cfg(desktop)]

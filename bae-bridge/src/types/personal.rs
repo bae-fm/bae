@@ -350,11 +350,9 @@ impl BridgeDay {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeHistoryPlay {
     pub id: String,
-    pub track_id: String,
     pub title: String,
     /// The track's credit line: its own credits, else its album's.
     pub artist_line: super::BridgeCreditLine,
-    pub album_title: String,
     /// The cover of the release the track is on; `None` when it has none.
     pub cover: Option<BridgeImageRef>,
     /// When the play began, as Unix epoch milliseconds; the app formats it.
@@ -373,10 +371,8 @@ impl BridgeHistoryPlay {
         use bae_util::timestamp::StoredTimestamp as _;
         let bae_views::history::HistoryRow {
             id,
-            track_id,
             title,
             artist_line,
-            album_title,
             cover,
             started_at,
             played_on,
@@ -387,10 +383,8 @@ impl BridgeHistoryPlay {
         } = value;
         Self {
             id: id.to_string(),
-            track_id,
             title,
             artist_line: super::BridgeCreditLine::from_core(artist_line),
-            album_title,
             cover: cover.map(BridgeImageRef::from_core),
             started_at: started_at.unix_timestamp_millis(),
             played_on: BridgeDay::from_core(played_on),
@@ -423,5 +417,36 @@ impl From<bae_people::collections::CollectionError> for BridgeError {
 impl From<bae_store::DbError> for BridgeError {
     fn from(error: bae_store::DbError) -> Self {
         Self::categorized(bae_diagnostics::database_category(&error), error)
+    }
+}
+
+/// A person whose plays History's menu offers to show.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeHistoryPerson {
+    /// Their member id, which History's list takes to show their plays.
+    pub person: String,
+    pub name: String,
+    /// Whether History shows this person's plays.
+    pub chosen: bool,
+}
+impl BridgeHistoryPerson {
+    pub(crate) fn from_core(value: bae_views::history::HistoryPerson) -> Self {
+        let bae_views::history::HistoryPerson { person, name, chosen } = value;
+        Self { person: person.to_string(), name, chosen }
+    }
+}
+
+/// Whose plays History shows, as its menu names them.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeHistoryShown {
+    Everyone,
+    Person { name: String },
+}
+impl BridgeHistoryShown {
+    pub(crate) fn from_core(value: bae_views::history::HistoryShown) -> Self {
+        match value {
+            bae_views::history::HistoryShown::Everyone => Self::Everyone,
+            bae_views::history::HistoryShown::Person { name } => Self::Person { name },
+        }
     }
 }
