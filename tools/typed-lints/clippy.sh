@@ -8,9 +8,7 @@
 # `#[expect(clippy::reqwest_error_display, reason = "...")]`, is a lint clippy's
 # own driver does not know and warns about. The hook's clippy
 # (scripts/clippy-crates.sh), `builds land`'s compile check (.land-compile) and
-# CI's clippy runs on Linux, macOS, iOS and Android go through here; CI's
-# Windows clippy runs clippy's own driver, so it fails on such a mark in code
-# it compiles.
+# CI's clippy runs on every platform go through here.
 #
 # cargo may run on another build machine: the program BUILDS_CARGO_BEFORE
 # names runs first on whichever machine runs it, and must point
@@ -18,8 +16,18 @@
 # caller names a program that runs driver.sh itself (scripts/clippy-crates.sh).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+top=$PWD
 case "$(rustc -vV | sed -n 's/^host: //p')" in
-*windows*) exe=.exe ;;
+*windows*)
+    exe=.exe
+    # Git Bash's paths (/d/a/...) mean nothing to cargo, which runs the driver
+    # from RUSTC_WORKSPACE_WRAPPER, so the path is Windows' own (D:/a/...).
+    top=$(cygpath -m "$PWD")
+    # The driver loads the compiler's DLLs, which Windows finds through PATH,
+    # from the toolchain's bin folder.
+    PATH="$(cygpath -u "$(rustc --print sysroot)")/bin:$PATH"
+    export PATH
+    ;;
 *) exe= ;;
 esac
 
@@ -35,6 +43,6 @@ for arg in "$@"; do
 done
 
 BUILDS_CARGO_BEFORE="${BUILDS_CARGO_BEFORE:-tools/typed-lints/driver.sh}" \
-    RUSTC_WORKSPACE_WRAPPER="$PWD/tools/typed-lints/built/typed-lints-driver$exe" \
+    RUSTC_WORKSPACE_WRAPPER="$top/tools/typed-lints/built/typed-lints-driver$exe" \
     CLIPPY_ARGS="$clippy_args" \
     exec scripts/cargo.sh check "${cargo_args[@]}"

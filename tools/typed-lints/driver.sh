@@ -13,14 +13,20 @@ if [ -x "$builds" ]; then
     exec "$builds" tool typed-lints >/dev/null
 fi
 # The build there is kept while its key is the checkout's, since CI runs
-# clippy several times in one job.
-out="$PWD/target/typed-lints/built"
+# clippy several times in one job. On Windows its folders take Windows' own
+# paths (D:/a/...), which both Git Bash and cargo read: cargo would take Git
+# Bash's /d/a/... for a folder on the current drive's root.
+top=$PWD
+if command -v cygpath >/dev/null 2>&1; then
+    top=$(cygpath -m "$PWD")
+fi
+out="$top/target/typed-lints/built"
 key=$(tools/typed-lints/tool.sh key)
 if [ "$(cat "$out/key" 2>/dev/null)" != "$key" ]; then
     rm -rf "$out"
     # A caller's CARGO_TARGET_DIR (CI's iOS clippy) would move the driver's
     # build out of the folder tool.sh copies it from.
-    env -u CARGO_TARGET_DIR BUILDS_TOOL_WORK="$PWD/target/typed-lints/work" \
+    env -u CARGO_TARGET_DIR BUILDS_TOOL_WORK="$top/target/typed-lints/work" \
         tools/typed-lints/tool.sh build "$out"
     printf '%s\n' "$key" > "$out/key"
 fi
