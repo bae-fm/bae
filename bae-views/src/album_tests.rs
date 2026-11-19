@@ -852,10 +852,12 @@ async fn a_release_says_whether_a_catalog_describes_it() {
     assert_eq!(after.records.len(), 1);
 }
 
-/// A person with no profile cannot rate: the album's page reads that, no one
-/// who rated it, and no stars on its tracks.
+/// The library's creator has their profile from the moment the library exists
+/// (§5.4), so the album's page offers them a rating before anyone rated: it
+/// shows the rating row, with no stars of theirs, no one who rated the album,
+/// and no stars on its tracks.
 #[tokio::test]
-async fn a_person_without_a_profile_reads_no_ratings() {
+async fn a_person_who_rated_nothing_can_rate_an_album_no_one_rated() {
     let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
     RecordsFixture::new()
         .artist(ARTIST_ALBUM, "Album Artist A")
@@ -868,8 +870,8 @@ async fn a_person_without_a_profile_reads_no_ratings() {
     let detail =
         crate::LibraryViews::new(db.clone()).find_album_detail(ALBUM_A).await.unwrap().unwrap();
 
-    assert!(!detail.rating.can_rate);
-    assert!(!detail.rating.shown);
+    assert!(detail.rating.can_rate);
+    assert!(detail.rating.shown);
     assert!(!detail.releases[0].has_other_files);
     assert_eq!(detail.rating.mine, None);
     assert!(detail.rating.raters.is_empty());
