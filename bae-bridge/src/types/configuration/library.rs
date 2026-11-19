@@ -702,7 +702,6 @@ impl BridgeSyncCause {
                 ],
             },
             C::ChangeDamaged => plain("core.sync.cause.change_damaged"),
-            C::SomethingWentWrong => plain("core.sync.cause.went_wrong"),
             C::Pending(reason) => plain(&BridgePendingReason::from_core(reason, None).key),
             C::Failure(error) => match crate::types::BridgeError::from_core(error) {
                 BridgeError::Diagnostic { category, .. } => {
@@ -710,7 +709,7 @@ impl BridgeSyncCause {
                 }
                 BridgeError::Cancelled
                 | BridgeError::ShuttingDown
-                | BridgeError::NotFound { .. } => plain("core.sync.cause.went_wrong"),
+                | BridgeError::NotFound { .. } => return Self::BaeProblemOnDevice,
             },
         };
         Self::Message { message, countdown }

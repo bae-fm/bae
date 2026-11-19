@@ -837,7 +837,6 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
             detail: "Internal server error".to_string(),
         },
         C::ChangeDamaged,
-        C::SomethingWentWrong,
     ]
     .into_iter()
     .flat_map(|cause| {

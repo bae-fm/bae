@@ -299,7 +299,7 @@ fn sync_failed_says_why_and_offers_retry_now() {
     );
     assert_eq!(
         cause(coven::PendingReason::Failed(coven::LocalFailure::Bug)),
-        SyncCauseLine::SomethingWentWrong
+        SyncCauseLine::BaeProblemOnDevice
     );
     assert_eq!(
         cause(coven::PendingReason::Refused(coven::Refusal::ContentHash)),

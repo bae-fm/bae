@@ -79,8 +79,9 @@ pub enum SyncCauseLine {
     DeviceDiskFailed,
     DeviceKeysUnreadable,
     LibraryUnreadable,
-    /// bae's own failure on this device that sync retries by itself, such as
-    /// coven's copy of an image bae made failing its check.
+    /// bae's own failure on this device that sync retries by itself: a failure
+    /// of decryption, of an operation of coven's own or of bae, or of coven's
+    /// copy of an image bae made failing its check.
     BaeProblemOnDevice,
     /// Another of the person's devices made a new restore code: entering it
     /// restores the library on this device as a new device, and the restore
@@ -93,7 +94,6 @@ pub enum SyncCauseLine {
         detail: String,
     },
     ChangeDamaged,
-    SomethingWentWrong,
     /// Any other pending condition, in the words of its pending record.
     Pending(PendingReason),
     /// A failure told as its category line: why the last start failed, or
@@ -306,7 +306,7 @@ impl SyncStatusSnapshot {
         };
         match (reason, self.failure()) {
             (None, Some(error)) => SyncCauseLine::Failure(error),
-            (None, None) => SyncCauseLine::SomethingWentWrong,
+            (None, None) => SyncCauseLine::BaeProblemOnDevice,
             (Some(never), _) => never,
         }
     }
@@ -341,7 +341,7 @@ impl SyncStatusSnapshot {
                 | LocalFailure::Operation
                 | LocalFailure::Bug
                 | LocalFailure::Shutdown,
-            ) => SyncCauseLine::SomethingWentWrong,
+            ) => SyncCauseLine::BaeProblemOnDevice,
             PendingReason::Storage { provider, failure: _, answered: _ } => {
                 SyncCauseLine::ProviderError {
                     provider: *provider,
