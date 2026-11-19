@@ -66,17 +66,17 @@ pub struct UnwatchedReason {
 }
 
 impl UnwatchedReason {
-    /// The directory as the person reads it: the name of the watched
-    /// `folder`, then the path below it, such as `Downloads/Albums/2024`. A
-    /// directory outside the folder shows as its whole path.
+    /// The directory as the person reads it: its path from the name of the
+    /// watched `folder` down, such as `Downloads/Albums/2024`. A directory
+    /// outside the folder, or a folder that is a root, shows as its whole
+    /// path.
     pub fn shown_directory(&self, folder: &crate::WatchedFolder) -> String {
-        match self.directory.strip_prefix(&folder.path) {
-            Ok(below) => std::iter::once(folder.name.clone())
-                .chain(below.components().map(|part| coven::path_text(part.as_ref())))
-                .collect::<Vec<_>>()
-                .join("/"),
-            Err(_) => coven::path_text(&self.directory),
-        }
+        folder
+            .path
+            .parent()
+            .and_then(|parent| self.directory.strip_prefix(parent).ok())
+            .map(crate::folder_scanner::relative_path_string)
+            .unwrap_or_else(|| coven::path_text(&self.directory))
     }
 }
 
