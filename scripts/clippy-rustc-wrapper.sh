@@ -42,9 +42,23 @@ if [ -x "$HOME/.local/bin/builds-rustc" ]; then
 fi
 case "$1" in
 */typed-lints-rustc)
+    # The compile's arguments as rustc reads them: cargo passes them in an
+    # argfile (`@<path>`, one argument a line) when the command line is too
+    # long for the system, as a crate's often is on Windows.
+    compile_args=()
+    for arg in "$@"; do
+        case "$arg" in
+        @*)
+            while IFS= read -r line || [ -n "$line" ]; do
+                compile_args+=("${line%$'\r'}")
+            done < "${arg#@}" || exit 1
+            ;;
+        *) compile_args+=("$arg") ;;
+        esac
+    done
     out_dir= incremental= name=
     prev=
-    for arg in "$@"; do
+    for arg in "${compile_args[@]}"; do
         case "$prev" in
         --out-dir) out_dir=$arg ;;
         --crate-name) name=$arg ;;
