@@ -894,3 +894,47 @@ async fn a_limited_search_keeps_the_first_titles() {
     assert_eq!(tracks(&few), tracks(&all));
     assert_eq!(works(&few), works(&all));
 }
+
+/// A search reads its first tracks and works in title order from their
+/// entries' title indexes, so it stops at its limit: the read that picks them
+/// computes no title's key and sorts nothing, and the statement that reads
+/// what each shows keeps that order without sorting again.
+#[tokio::test]
+async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
+    let (db, _tmp) = crate::tests::library().await;
+    let plan = |statement: String| {
+        let db = db.clone();
+        async move {
+            db.read(move |sql| {
+                Ok(sql.query(
+                    &format!("EXPLAIN QUERY PLAN {statement}"),
+                    params![search_pattern("1"), 50],
+                    |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
+                )?)
+            })
+            .await
+            .unwrap()
+        }
+    };
+    let sorts = |steps: &[(i64, String)], own: bool| {
+        steps.iter().any(|(parent, detail)| {
+            (!own || *parent == 0)
+                && detail.starts_with("USE TEMP B-TREE FOR")
+                && detail.ends_with("ORDER BY")
+        })
+    };
+    for (kind, statement) in
+        [("track", first_tracks_found_sql()), ("work", first_works_found_sql())]
+    {
+        let found = first_entries_found_sql(kind);
+        assert!(!found.contains("bae_name_key"), "{found}");
+        let steps = plan(found).await;
+        let index = format!("USING COVERING INDEX idx_{kind}_search_entry_title");
+        assert!(steps.iter().any(|(_, detail)| detail.contains(&index)), "{steps:?}");
+        assert!(!sorts(&steps, false), "{kind}: {steps:?}");
+
+        let steps = plan(statement).await;
+        assert!(steps.iter().any(|(_, detail)| detail.contains(&index)), "{steps:?}");
+        assert!(!sorts(&steps, true), "{kind}: {steps:?}");
+    }
+}

@@ -3,11 +3,14 @@
 -- `bae_fold_case` folds it, which is how the query is folded too, indexed by
 -- its runs of three characters, so a query of three or more finds its rows
 -- without reading every title; a shorter one reads the whole table. Each FTS5
--- row also carries, unindexed, the key of the row it searches and what that
--- kind of result is ordered by, so a search orders its matches without
--- reading the rows they stand for. An FTS5 row is found by an integer, which
--- each `_entry` table pairs with the searched row's key for the triggers that
--- keep it: SQLite's own rowid of a synced row is no part of it.
+-- row also carries, unindexed, the key of the row it searches. An FTS5 row is
+-- found by an integer, which each `_entry` table pairs with the searched
+-- row's key for the triggers that keep it: SQLite's own rowid of a synced row
+-- is no part of it. A track's and a work's entry also holds its title's sort
+-- key in the device's language, with an index in the order a search lists
+-- them, so a search reads the tracks or works it finds in order and stops at
+-- its limit, computing no key; the language change that writes every name
+-- key again writes these too (`name_keys.sql`).
 
 -- Album titles.
 CREATE TABLE IF NOT EXISTS album_search_entry (
@@ -43,8 +46,11 @@ END;
 CREATE TABLE IF NOT EXISTS track_search_entry (
     entry INTEGER PRIMARY KEY,
     track_id TEXT NOT NULL,
+    title_sort_key BLOB NOT NULL,
     UNIQUE (track_id)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_track_search_entry_title ON track_search_entry (title_sort_key, track_id);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS track_search USING fts5(
     title, track_id UNINDEXED,
@@ -53,13 +59,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS track_search USING fts5(
 
 CREATE TRIGGER IF NOT EXISTS track_search_added AFTER INSERT ON tracks
 BEGIN
-    INSERT INTO track_search_entry (track_id) VALUES (NEW.id);
+    INSERT INTO track_search_entry (track_id, title_sort_key)
+    VALUES (NEW.id, bae_name_key(NEW.title, (SELECT language FROM name_sort)));
     INSERT INTO track_search (rowid, title, track_id)
     VALUES ((SELECT entry FROM track_search_entry WHERE track_id = NEW.id), bae_fold_case(NEW.title), NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS track_search_changed AFTER UPDATE OF title ON tracks
 BEGIN
+    UPDATE track_search_entry SET title_sort_key = bae_name_key(NEW.title, (SELECT language FROM name_sort))
+    WHERE track_id = NEW.id;
     UPDATE track_search SET title = bae_fold_case(NEW.title) WHERE rowid = (SELECT entry FROM track_search_entry WHERE track_id = NEW.id);
 END;
 
@@ -73,8 +82,11 @@ END;
 CREATE TABLE IF NOT EXISTS work_search_entry (
     entry INTEGER PRIMARY KEY,
     work_id TEXT NOT NULL,
+    title_sort_key BLOB NOT NULL,
     UNIQUE (work_id)
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_work_search_entry_title ON work_search_entry (title_sort_key, work_id);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS work_search USING fts5(
     title, work_id UNINDEXED,
@@ -83,13 +95,16 @@ CREATE VIRTUAL TABLE IF NOT EXISTS work_search USING fts5(
 
 CREATE TRIGGER IF NOT EXISTS work_search_added AFTER INSERT ON works
 BEGIN
-    INSERT INTO work_search_entry (work_id) VALUES (NEW.id);
+    INSERT INTO work_search_entry (work_id, title_sort_key)
+    VALUES (NEW.id, bae_name_key(NEW.title, (SELECT language FROM name_sort)));
     INSERT INTO work_search (rowid, title, work_id)
     VALUES ((SELECT entry FROM work_search_entry WHERE work_id = NEW.id), bae_fold_case(NEW.title), NEW.id);
 END;
 
 CREATE TRIGGER IF NOT EXISTS work_search_changed AFTER UPDATE OF title ON works
 BEGIN
+    UPDATE work_search_entry SET title_sort_key = bae_name_key(NEW.title, (SELECT language FROM name_sort))
+    WHERE work_id = NEW.id;
     UPDATE work_search SET title = bae_fold_case(NEW.title) WHERE rowid = (SELECT entry FROM work_search_entry WHERE work_id = NEW.id);
 END;
 

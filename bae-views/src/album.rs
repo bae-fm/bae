@@ -84,7 +84,8 @@ impl LibraryViews {
         self.store.subscribe(move |sql| {
             Ok(sql.query_row(
                 &format!(
-                    "SELECT COUNT(*) AS count {TRACK_HIT_FROM} WHERE {}",
+                    "SELECT COUNT(*) AS count {} WHERE {}",
+                    TRACK_HIT_FROM.as_str(),
                     album_track_filter()
                 ),
                 rusqlite::named_params! { ":album_id": album_id },
@@ -459,15 +460,20 @@ static TRACK_HIT_COLUMNS: std::sync::LazyLock<String> = std::sync::LazyLock::new
     )
 });
 
-/// The tables a track hit reads: the track `t`, its release `r` and the
-/// release's album `a`.
-const TRACK_HIT_FROM: &str = "FROM tracks t \
-     JOIN releases r ON t.release_id = r.id \
+/// The tables a track hit reads past its track `t`: the track's release `r`
+/// and the release's album `a`.
+const TRACK_HIT_JOINS: &str = "JOIN releases r ON t.release_id = r.id \
      JOIN albums a ON r.album_id = a.id";
 
+/// The tables a track hit reads: the track `t`, its release `r` and the
+/// release's album `a`.
+static TRACK_HIT_FROM: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| format!("FROM tracks t {TRACK_HIT_JOINS}"));
+
 /// A track hit's statement up to its WHERE clause.
-static TRACK_HIT_SELECT: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| format!("SELECT {} {TRACK_HIT_FROM}", TRACK_HIT_COLUMNS.as_str()));
+static TRACK_HIT_SELECT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    format!("SELECT {} {}", TRACK_HIT_COLUMNS.as_str(), TRACK_HIT_FROM.as_str())
+});
 
 fn track_hit_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbTrackSearchResult> {
     Ok(DbTrackSearchResult {
@@ -512,26 +518,8 @@ fn search_library_on(
 ) -> Result<DbLibrarySearchResults, DbError> {
     // Each section's statement counts its own rows beside them.
     let (albums, album_count) = first_search_albums_on(sql, pattern, limit as u64)?;
-    let (tracks, track_count) = counted_rows(
-        sql,
-        &format!(
-            r#"
-            {select}
-            WHERE t.id IN (
-                SELECT found.id FROM tracks found
-                WHERE found.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
-                ORDER BY {sort_title_key}, found.id
-                LIMIT ?2
-            )
-            ORDER BY {title_key}, t.id
-            "#,
-            select = TRACK_HIT_SELECT.as_str(),
-            sort_title_key = crate::sort_key_sql("found.title"),
-            title_key = crate::sort_key_sql("t.title"),
-        ),
-        params![pattern, limit],
-        track_hit_row,
-    )?;
+    let (tracks, track_count) =
+        counted_rows(sql, &first_tracks_found_sql(), params![pattern, limit], track_hit_row)?;
     let (artists, artist_count) = counted_rows(
         sql,
         &artist_listing_query(
@@ -552,23 +540,8 @@ fn search_library_on(
         params![pattern, limit],
         row_to_composer_summary,
     )?;
-    let (works, work_count) = counted_rows(
-        sql,
-        &work_summary_query(
-            Some(&format!(
-                "WHERE w.id IN (
-                    SELECT found.id FROM works found
-                    WHERE found.id IN (SELECT work_id FROM work_search WHERE title GLOB ?1)
-                    ORDER BY {}, found.id
-                    LIMIT ?2
-                )",
-                crate::sort_key_sql("found.title"),
-            )),
-            Some(&format!("ORDER BY {}, w.id", crate::sort_key_sql("w.title"))),
-        ),
-        params![pattern, limit],
-        row_to_work_summary,
-    )?;
+    let (works, work_count) =
+        counted_rows(sql, &first_works_found_sql(), params![pattern, limit], row_to_work_summary)?;
     // This query checks whether any album, track, artist, composer or work
     // matches, through the statements that list each kind, and stops at the
     // first match.
@@ -607,6 +580,56 @@ fn search_library_on(
     Ok(DbLibrarySearchResults { albums, artists, tracks, composers, works, found, section_counts })
 }
 
+/// Whether the search entry `entry` of a `kind` (`track` or `work`) holds a
+/// title the search pattern `pattern` (a SQL parameter) finds.
+fn entries_found_sql(kind: &str, pattern: &str) -> String {
+    format!("entry.entry IN (SELECT rowid FROM {kind}_search WHERE title GLOB {pattern})")
+}
+
+/// The first `limit` (`?2`) search entries of a `kind` (`track` or `work`)
+/// whose title holds the search pattern `?1`, in title order, ties going by
+/// id, as `{kind}_id` and `title_sort_key`. The read walks the entries' title
+/// index, tests each entry against the titles the search finds, and stops at
+/// the `limit`th; `INDEXED BY` holds it to that index, because left to choose,
+/// SQLite reads the entries the search finds and sorts them all.
+fn first_entries_found_sql(kind: &str) -> String {
+    format!(
+        "SELECT entry.{kind}_id, entry.title_sort_key \
+         FROM {kind}_search_entry entry INDEXED BY idx_{kind}_search_entry_title \
+         WHERE {found} \
+         ORDER BY entry.title_sort_key, entry.{kind}_id LIMIT ?2",
+        found = entries_found_sql(kind, "?1"),
+    )
+}
+
+/// The track hits of the first `?2` tracks whose title holds the search
+/// pattern `?1`, in title order, ties going by id. The statement reads each
+/// hit's release, album, credits and cover only for those tracks.
+fn first_tracks_found_sql() -> String {
+    format!(
+        "SELECT {columns} \
+         FROM ({found}) found \
+         CROSS JOIN tracks t ON t.id = found.track_id \
+         {TRACK_HIT_JOINS} \
+         ORDER BY found.title_sort_key, found.track_id",
+        columns = TRACK_HIT_COLUMNS.as_str(),
+        found = first_entries_found_sql("track"),
+    )
+}
+
+/// The work summaries of the first `?2` works whose title holds the search
+/// pattern `?1`, in title order, ties going by id.
+fn first_works_found_sql() -> String {
+    format!(
+        "SELECT {columns} \
+         FROM ({found}) found \
+         CROSS JOIN works w ON w.id = found.work_id \
+         ORDER BY found.title_sort_key, found.work_id",
+        columns = work_summary_columns(),
+        found = first_entries_found_sql("work"),
+    )
+}
+
 /// The first track `pattern` finds, and failing that the first track of the
 /// first album it finds that has a track: one row, whichever kind of hit
 /// ranks first. A spoken "play" of a search plays it.
@@ -620,9 +643,10 @@ fn top_playable_on(
                 r#"
                 SELECT release_id, track_id FROM (
                     SELECT t.release_id AS release_id, t.id AS track_id, 0 AS kind,
-                           {track_key} AS found_key, t.id AS tie
-                    FROM tracks t
-                    WHERE t.id IN (SELECT track_id FROM track_search WHERE title GLOB ?1)
+                           entry.title_sort_key AS found_key, t.id AS tie
+                    FROM track_search_entry entry
+                    JOIN tracks t ON t.id = entry.track_id
+                    WHERE {tracks_found}
                     UNION ALL
                     SELECT a.release_id, (SELECT id FROM tracks
                                           WHERE release_id = a.release_id
@@ -634,7 +658,7 @@ fn top_playable_on(
                 WHERE track_id IS NOT NULL
                 ORDER BY kind, found_key, tie LIMIT 1
                 "#,
-                track_key = crate::sort_key_sql("t.title"),
+                tracks_found = entries_found_sql("track", "?1"),
                 album_key = crate::sort_key_sql("a.title"),
                 primary_release = album_primary_release_sql(),
                 album_matches = album_matches_sql("a.id", "?1"),
@@ -773,11 +797,12 @@ fn album_track_filter() -> String {
 /// `order`, each with its key.
 fn album_track_statement(order: &ListOrder, seek: &Seek) -> String {
     format!(
-        "SELECT {columns}, {keys} {TRACK_HIT_FROM}
+        "SELECT {columns}, {keys} {from}
          WHERE {filter} AND {condition}
          ORDER BY {ordering} {limit}",
         columns = TRACK_HIT_COLUMNS.as_str(),
         keys = order.key_columns(),
+        from = TRACK_HIT_FROM.as_str(),
         filter = album_track_filter(),
         condition = order.condition(seek),
         ordering = order.ordering(seek),
