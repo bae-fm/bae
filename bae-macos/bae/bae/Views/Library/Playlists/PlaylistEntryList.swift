@@ -26,10 +26,6 @@ struct PlaylistEntryList: View {
     private var rowFrames: [String: CGRect] = [:]
 
     private static let space = "playlistEntries"
-    /// How faint the dragged entry's own row is, and how faint the copy
-    /// under the pointer is, as the board draws them.
-    private static let draggedRowOpacity = 0.45
-    private static let copyOpacity = 0.75
 
     private var canChange: Bool { detail.summary.yours }
 
@@ -41,14 +37,12 @@ struct PlaylistEntryList: View {
                 PlaylistEntryRow(
                     entry: entry,
                     number: held == nil ? entry.number : nil,
+                    lift: drag?.entry.positionId == entry.positionId
+                        ? .lifted : .resting,
                     play: { play(entry) },
                     playNext: { playNext(entry) },
                     addToQueue: { addToQueue(entry) },
                     remove: canChange ? { remove(entry) } : nil
-                )
-                .opacity(
-                    drag?.entry.positionId == entry.positionId
-                        ? Self.draggedRowOpacity : 1
                 )
                 .background(
                     GeometryReader { proxy in
@@ -135,20 +129,11 @@ struct PlaylistEntryList: View {
         PlaylistEntryRow(
             entry: drag.entry,
             number: drag.entry.number,
+            lift: .dragging,
             play: {},
             playNext: {},
             addToQueue: {},
             remove: nil
-        )
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                .fill(Theme.surfaceElevated)
-        )
-        .opacity(Self.copyOpacity)
-        .shadow(
-            color: Theme.shadow,
-            radius: ThemeSpace.group,
-            y: ThemeSpace.compact
         )
         .offset(y: drag.pointerY - drag.grab)
         .allowsHitTesting(false)
@@ -222,6 +207,14 @@ private struct PlaylistEntryFramesKey: PreferenceKey {
     }
 }
 
+/// Where an entry's row is in the owner's drag: at rest, left faint in its
+/// place while the owner drags it, or the copy under the pointer.
+private enum Lift {
+    case resting
+    case lifted
+    case dragging
+}
+
 /// One entry of a playlist: double-clicking plays the playlist from it, and
 /// its menu plays it, queues it, and takes it out of the playlist when
 /// `remove` is given.
@@ -229,6 +222,8 @@ private struct PlaylistEntryRow: View {
     let entry: BridgePlaylistEntryRow
     /// The entry's number in the playlist, or nil to draw none.
     let number: UInt64?
+    /// Where the row is in the owner's drag of an entry.
+    let lift: Lift
     let play: () -> Void
     let playNext: () -> Void
     let addToQueue: () -> Void
@@ -240,12 +235,16 @@ private struct PlaylistEntryRow: View {
     var body: some View {
         MacListRow(
             lead: number.map { String($0) } ?? "",
+            hanging: true,
+            leadWidth: MacPlaylistPage.numberWidth,
             cover: entry.cover,
+            coverSize: 40,
             title: entry.title,
-            subtitle: FactList.joined([entry.artistLine.text, entry.albumTitle]
-            ),
+            subtitle: entry.artistLine.text,
             duration: DurationClock.label(entry.durationClock),
-            hover: hovering
+            hover: hovering,
+            lifted: lift == .lifted,
+            dragging: lift == .dragging
         )
         .onHover { hovering = $0 }
         .onTapGesture(count: 2, perform: play)

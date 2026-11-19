@@ -1,13 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// A playlist's page: its picture, name and owner over Play, then its tracks
-/// in order.
-struct PlaylistDetailPane: View {
+/// A playlist's page inside the side pane's Playlists tab: its picture beside
+/// its name, owner and facts over Play and its ⋯ menu, then its tracks in
+/// order.
+struct MacPlaylistPage: View {
+    /// The playlist as its read last delivered it; nil until the read of the
+    /// open playlist delivers it.
     let detail: BridgePlaylistDetail?
 
-    @Environment(LibraryBrowseSession.self)
-    private var session
     @Environment(Playback.self)
     private var playback
     @Environment(Queue.self)
@@ -22,20 +23,12 @@ struct PlaylistDetailPane: View {
     @State
     private var deleting: BridgePlaylistSummary?
 
-    private static var pictureSize: CGFloat { 72 }
+    private static var pictureSize: CGFloat { 103 }
+    /// The width of the column the entries' numbers hang in, left of the
+    /// picture's edge.
+    static let numberWidth: CGFloat = 20
 
     var body: some View {
-        if detail == nil, session.selectedPlaylistId == nil {
-            // Nothing chosen: the placeholder fills the pane, centred.
-            PlaceholderTitle("Playlists")
-                .background(Theme.surface)
-        }
-        else {
-            page
-        }
-    }
-
-    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
@@ -55,14 +48,21 @@ struct PlaylistDetailPane: View {
                         move: { await move($0, to: $1, in: detail.summary) }
                     )
                 }
-                // A selected playlist's read is local: nothing shows until it
+                // The open playlist's read is local: nothing shows until it
                 // lands.
             }
-            .padding(ThemeSpace.section)
+            .padding(.top, ThemeSpace.group)
+            .padding(.bottom, ThemeSpace.section)
+            // The margin holds the entries' numbers, which hang left of the
+            // picture's edge.
+            .padding(
+                .horizontal,
+                ThemeSpace.related
+                    + MacListRow.hang(leadWidth: Self.numberWidth)
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .reportsHeaderScroll(id: "playlistDetail")
-        .background(Theme.surface)
+        .scrollIndicators(.never)
         .sheet(item: $editing) { sheet in
             EditPlaylistSheet(
                 // While the sheet closes, it shows the state it had before
@@ -82,15 +82,18 @@ struct PlaylistDetailPane: View {
         }
     }
 
+    /// The picture beside a column of the name, the owner, the count and
+    /// length, and Play with the ⋯ menu, as an album's page lays its header
+    /// out.
     private func header(_ summary: BridgePlaylistSummary) -> some View {
-        HStack(spacing: ThemeSpace.edge) {
+        HStack(alignment: .top, spacing: ThemeSpace.edge) {
             PlaylistPicture(cover: summary.cover, size: Self.pictureSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(summary.name)
                     .themeText(.title)
                     .lineLimit(2)
-                HStack(spacing: ThemeSpace.inline) {
+                HStack(spacing: ThemeSpace.compact) {
                     Avatar(
                         initials: summary.owner.initials,
                         picture: summary.owner.avatarVersion.map {
@@ -98,31 +101,59 @@ struct PlaylistDetailPane: View {
                         },
                         size: 16
                     )
-                    Text(
-                        FactList.joined([
-                            summary.owner.name,
-                            summary.trackCount.localizedLine,
-                            summary.totalDuration?.text,
-                        ]) + " " + FactList.glyph
-                    )
-                    StatusChip(verbatim: summary.sharing.label)
+                    Text(verbatim: summary.owner.name)
+                        .themeText(.strong)
+                        .lineLimit(1)
                 }
-                .themeText(.detail)
                 .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: ThemeSpace.related)
-            Button("Play") { playback.playPlaylist(summary.id, nil, false) }
-                .buttonStyle(PrimaryButtonStyle())
-            Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
-            if summary.yours {
-                MacMoreMenu {
-                    PlaylistOptionsMenu(
-                        onEdit: { editing = EditPlaylistSheetState(summary) },
-                        onDelete: { deleting = summary }
-                    )
+                facts(summary)
+                    .padding(.top, ThemeSpace.inline)
+                HStack(spacing: ThemeSpace.related) {
+                    Button("Play") {
+                        playback.playPlaylist(summary.id, nil, false)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    MacMoreMenu(boxed: true, label: Text("Playlist options")) {
+                        PlaylistOptionsMenu(
+                            onShuffle: {
+                                playback.playPlaylist(summary.id, nil, true)
+                            },
+                            onEdit: summary.yours
+                                ? { editing = EditPlaylistSheetState(summary) }
+                                : nil,
+                            onDelete: summary.yours
+                                ? { deleting = summary } : nil
+                        )
+                    }
                 }
+                .padding(.top, ThemeSpace.line)
             }
         }
+    }
+
+    /// The count and length; on the person's own playlist, who sees it as a
+    /// glyph after them. A playlist someone else made says nothing about
+    /// sharing, since it is shared to be seen at all.
+    private func facts(_ summary: BridgePlaylistSummary) -> some View {
+        HStack(spacing: ThemeSpace.compact) {
+            Text(
+                FactList.joined([
+                    summary.trackCount.localizedLine,
+                    summary.totalDuration?.text,
+                ])
+            )
+            .themeText(.detail)
+            .lineLimit(1)
+            if summary.yours {
+                Image(
+                    systemName: summary.sharing == .household
+                        ? "person.2.fill" : "lock.fill"
+                )
+                .font(.system(size: 10))
+                .accessibilityLabel(Text(verbatim: summary.sharing.label))
+            }
+        }
+        .foregroundStyle(.tertiary)
     }
 
     /// Save the name and who sees `sheet`'s playlist in one write; when the
@@ -144,16 +175,15 @@ struct PlaylistDetailPane: View {
         }
     }
 
-    /// Delete `playlist` and clear the selection if it names that playlist.
-    /// When the delete fails, show the error.
+    /// Delete `playlist` and go back to the list when it is open. When the
+    /// delete fails, show the error.
     private func delete(_ playlist: BridgePlaylistSummary) {
         let library = library
         let uiStore = uiStore
-        let session = session
         Task {
             do {
                 try await library.playlistWrites.delete(playlist.id)
-                session.deselectPlaylist(playlist.id)
+                uiStore.closePlaylist(playlist.id)
             }
             catch {
                 uiStore.showError(error)

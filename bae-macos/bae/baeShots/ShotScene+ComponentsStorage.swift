@@ -171,23 +171,51 @@ extension ShotScene {
         }
     ]
 
-    /// `MacListRow`, a track on a playlist's page.
+    /// `MacListRow`, a play or a playlist's track: at rest, left faint and
+    /// raised while the owner drags it, and hanging its number in the margin
+    /// as a playlist's page in the side pane draws it.
     private static let listRowScenes: [ShotScene] = [
+        listRow("mac.component.list-row.default"),
+        listRow("mac.component.list-row.lifted", lifted: true),
+        listRow("mac.component.list-row.dragging", dragging: true),
         component(
-            "mac.component.list-row.default",
+            "mac.component.list-row.hanging",
             height: 70,
             images: coverStore()
         ) {
+            MacListRow(
+                lead: "1",
+                hanging: true,
+                cover: cover("Low Tide Hours"),
+                coverSize: 40,
+                title: "Harbor Lights",
+                subtitle: "Mara Quill",
+                duration: "4:32"
+            )
+            .padding(.leading, MacListRow.hang(leadWidth: 20))
+            .frame(width: 380, alignment: .leading)
+        },
+    ]
+
+    private static func listRow(
+        _ id: String,
+        lifted: Bool = false,
+        dragging: Bool = false
+    ) -> ShotScene {
+        component(id, height: 70, images: coverStore()) {
             MacListRow(
                 lead: "21:04",
                 cover: cover("Low Tide Hours"),
                 title: "Harbor Lights",
                 subtitle: "Mara Quill · Low Tide Hours",
-                duration: "4:32"
+                who: MacListRow.Who(name: "Mara", initials: "M"),
+                duration: "4:32",
+                lifted: lifted,
+                dragging: dragging
             )
             .frame(width: 380, alignment: .leading)
         }
-    ]
+    }
 
     /// `MacScanCode`, the QR code of a short code with the buttons that copy
     /// and share it.

@@ -1,15 +1,21 @@
 import BaeKit
 
-/// The menu of the person's own playlist on its page: edit the playlist, or
-/// delete it.
+/// The menu of a playlist's page: Shuffle, then, on the person's own
+/// playlist, edit it or delete it.
 struct PlaylistOptionsMenu: MacMenuPart {
-    let onEdit: () -> Void
-    let onDelete: () -> Void
+    let onShuffle: () -> Void
+    /// Nil on a playlist someone else made, which the person cannot change.
+    let onEdit: (() -> Void)?
+    let onDelete: (() -> Void)?
 
     @MacMenuBuilder
     var entries: [MacMenuEntry] {
-        MacMenuItem("Edit playlist…") { onEdit() }
-        MacMenuDivider()
-        MacMenuItem("Delete playlist…") { onDelete() }
+        MacMenuItem("Shuffle") { onShuffle() }
+        if let onEdit {
+            MacMenuItem("Edit playlist…") { onEdit() }
+        }
+        if let onDelete {
+            MacMenuItem("Delete playlist…") { onDelete() }
+        }
     }
 }

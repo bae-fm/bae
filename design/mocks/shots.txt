@@ -226,6 +226,14 @@ mac.playback.queue.dropping
 mac.playback.queue.nothing-up-next
 mac.playback.queue.tail-failed
 mac.playback.queue.track-removed
+mac.playback.side-playlists
+mac.playlists.delete
+mac.playlists.edit
+mac.playlists.list
+mac.playlists.new-playlist
+mac.playlists.new-playlist.everyone
+mac.playlists.options
+mac.playlists.track-menu
 mac.search.results
 mac.search.results.none
 mac.settings.about

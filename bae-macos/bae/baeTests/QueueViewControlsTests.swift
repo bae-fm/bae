@@ -69,34 +69,40 @@ struct QueueViewControlsTests {
         store.apply(nowPlaying)
         try await SnapshotTestSupport.withHostedWindow(
             MacQueuePanel(
-                manual: store.manualQueue,
-                upNextCount: store.upNextCount,
-                isEmpty: store.queueIsEmpty,
-                context: store.queueContext,
-                shuffled: store.shuffled,
-                upcoming: QueueUpcoming(store: store, queue: queue),
-                position: store.trackPosition(
-                    forTrack: store.nowPlaying.trackId
-                ),
-                onShowUpcoming: { await store.showUpcoming(queue: queue) },
-                isActive: store.nowPlaying.isActive,
-                nowPlayingTitle: store.nowPlaying.display?.title,
-                nowPlayingArtist: store.nowPlaying.display?.library?.artistLine
-                    .text,
-                nowPlayingCover: nil,
-                isPlaying: store.nowPlaying.isPlaying,
-                onClose: { recorder.closeCount += 1 },
-                onGoToNowPlaying: { recorder.navigateCount += 1 },
-                onPlayPause: { recorder.playPauseCount += 1 },
-                onClearUpNext: {},
-                onClearPlayingFrom: {},
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-                onReorder: { _, _, _ in true },
-                onReorderFailed: { _ in },
-                onInsertTracks: { _, _ in },
-                onSetShuffle: { _ in }
-            )
+                tab: .queue,
+                onSelectTab: { _ in },
+                onClose: { recorder.closeCount += 1 }
+            ) {
+                QueueTabContent(
+                    manual: store.manualQueue,
+                    upNextCount: store.upNextCount,
+                    isEmpty: store.queueIsEmpty,
+                    context: store.queueContext,
+                    shuffled: store.shuffled,
+                    upcoming: QueueUpcoming(store: store, queue: queue),
+                    position: store.trackPosition(
+                        forTrack: store.nowPlaying.trackId
+                    ),
+                    onShowUpcoming: { await store.showUpcoming(queue: queue) },
+                    isActive: store.nowPlaying.isActive,
+                    nowPlayingTitle: store.nowPlaying.display?.title,
+                    nowPlayingArtist: store.nowPlaying.display?.library?
+                        .artistLine
+                        .text,
+                    nowPlayingCover: nil,
+                    isPlaying: store.nowPlaying.isPlaying,
+                    onGoToNowPlaying: { recorder.navigateCount += 1 },
+                    onPlayPause: { recorder.playPauseCount += 1 },
+                    onClearUpNext: {},
+                    onClearPlayingFrom: {},
+                    onSkipTo: { _ in },
+                    onRemove: { _ in },
+                    onReorder: { _, _, _ in true },
+                    onReorderFailed: { _ in },
+                    onInsertTracks: { _, _ in },
+                    onSetShuffle: { _ in }
+                )
+            }
             .environment(ImageStore.stub()),
             size: paneSize
         ) { window, host in
@@ -185,12 +191,12 @@ struct QueuePresentationStateTests {
     func presentationCommandIsAbsolute() {
         let store = UiStore()
 
-        store.setQueuePresented(true)
-        store.setQueuePresented(true)
-        #expect(store.showQueue)
+        store.setSidePanePresented(true)
+        store.setSidePanePresented(true)
+        #expect(store.showSidePane)
 
-        store.setQueuePresented(false)
-        store.setQueuePresented(false)
-        #expect(!store.showQueue)
+        store.setSidePanePresented(false)
+        store.setSidePanePresented(false)
+        #expect(!store.showSidePane)
     }
 }

@@ -427,55 +427,56 @@ extension ShotScene {
                     duration: 341_000
                 )
             ]
-            MacQueuePanel(
-                manual: [
-                    queueEntry(
-                        "Margins",
-                        album: "Northbound",
-                        duration: 295_000
-                    )
-                ],
-                upNextCount: 1,
-                isEmpty: false,
-                context: QueuePlaybackContext(
-                    bridge: BridgePlaybackContext(
-                        kind: .release,
-                        sourceTitle: "Low Tide Hours"
-                    )
-                ),
-                shuffled: false,
-                upcoming: QueueUpcoming(
-                    total: upcoming.count,
-                    itemAt: {
-                        upcoming.indices.contains($0) ? upcoming[$0] : nil
-                    },
-                    epoch: nil,
-                    holdRow: { _ in },
-                    failure: nil,
-                    onRetry: {}
-                ),
-                position: PreviewData.trackPosition(
-                    positionMs: 102_000,
-                    durationMs: 303_000
-                ),
-                onShowUpcoming: {},
-                isActive: true,
-                nowPlayingTitle: "Low Tide Hours",
-                nowPlayingArtist: "Mara Quill",
-                nowPlayingCover: .libraryImage(cover("Low Tide Hours")),
-                isPlaying: true,
-                onClose: {},
-                onGoToNowPlaying: {},
-                onPlayPause: {},
-                onClearUpNext: {},
-                onClearPlayingFrom: {},
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-                onReorder: { _, _, _ in true },
-                onReorderFailed: { _ in },
-                onInsertTracks: { _, _ in },
-                onSetShuffle: { _ in }
-            )
+            MacQueuePanel(tab: .queue, onSelectTab: { _ in }, onClose: {}) {
+                QueueTabContent(
+                    manual: [
+                        queueEntry(
+                            "Margins",
+                            album: "Northbound",
+                            duration: 295_000
+                        )
+                    ],
+                    upNextCount: 1,
+                    isEmpty: false,
+                    context: QueuePlaybackContext(
+                        bridge: BridgePlaybackContext(
+                            kind: .release,
+                            sourceTitle: "Low Tide Hours"
+                        )
+                    ),
+                    shuffled: false,
+                    upcoming: QueueUpcoming(
+                        total: upcoming.count,
+                        itemAt: {
+                            upcoming.indices.contains($0) ? upcoming[$0] : nil
+                        },
+                        epoch: nil,
+                        holdRow: { _ in },
+                        failure: nil,
+                        onRetry: {}
+                    ),
+                    position: PreviewData.trackPosition(
+                        positionMs: 102_000,
+                        durationMs: 303_000
+                    ),
+                    onShowUpcoming: {},
+                    isActive: true,
+                    nowPlayingTitle: "Low Tide Hours",
+                    nowPlayingArtist: "Mara Quill",
+                    nowPlayingCover: .libraryImage(cover("Low Tide Hours")),
+                    isPlaying: true,
+                    onGoToNowPlaying: {},
+                    onPlayPause: {},
+                    onClearUpNext: {},
+                    onClearPlayingFrom: {},
+                    onSkipTo: { _ in },
+                    onRemove: { _ in },
+                    onReorder: { _, _, _ in true },
+                    onReorderFailed: { _ in },
+                    onInsertTracks: { _, _ in },
+                    onSetShuffle: { _ in }
+                )
+            }
         }
     ]
 }

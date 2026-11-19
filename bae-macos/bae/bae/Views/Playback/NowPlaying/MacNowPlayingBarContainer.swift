@@ -47,7 +47,7 @@ struct MacNowPlayingBarContainer: View {
             settings: playbackStore.settings,
             receiverWithoutVolume: castStore.receiverWithoutVolume,
             shuffled: playbackStore.shuffled,
-            showQueue: uiStore.showQueue,
+            showQueue: uiStore.showSidePane,
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
@@ -81,7 +81,7 @@ struct MacNowPlayingBarContainer: View {
             },
             onSetMuted: { playback.setMuted($0) },
             onSetShuffle: { queue.setShuffle($0) },
-            onSetQueuePresented: { uiStore.setQueuePresented($0) },
+            onSetQueuePresented: { uiStore.setSidePanePresented($0) },
             onSetRepeatMode: { playback.setRepeatMode($0) },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {

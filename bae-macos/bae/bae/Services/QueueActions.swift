@@ -73,17 +73,7 @@ final class QueueActions {
         then apply: @escaping ([String]) -> Void
     ) {
         run(apply) { library in
-            var ids: [String] = []
-            for payload in dropped {
-                if let albumIds = AlbumDragPayload.albums(in: payload) {
-                    ids += try await order.albums(albumIds, in: library)
-                        .map(\.id)
-                }
-                else {
-                    ids.append(payload)
-                }
-            }
-            return try await library.resolveToTrackIds(ids)
+            try await DroppedTracks.trackIds(dropped, order: order, in: library)
         }
     }
 
@@ -106,6 +96,30 @@ final class QueueActions {
                 uiStore.showError(error)
             }
         }
+    }
+}
+
+/// What a drop of tracks or albums carries, read as tracks.
+enum DroppedTracks {
+    /// The tracks `dropped` names: each string an album drag's payload,
+    /// whose albums' tracks go in the grid's order under `order`, or a
+    /// track's id.
+    @MainActor
+    static func trackIds(
+        _ dropped: [String],
+        order: AlbumGridOrder,
+        in library: Library
+    ) async throws -> [String] {
+        var ids: [String] = []
+        for payload in dropped {
+            if let albumIds = AlbumDragPayload.albums(in: payload) {
+                ids += try await order.albums(albumIds, in: library).map(\.id)
+            }
+            else {
+                ids.append(payload)
+            }
+        }
+        return try await library.resolveToTrackIds(ids)
     }
 }
 

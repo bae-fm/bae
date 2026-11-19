@@ -11,18 +11,7 @@ struct SettingsPageHeader: View {
 
     var body: some View {
         SettingsPaneHeading {
-            Button(action: onBack) {
-                Image(systemName: "chevron.backward")
-                    .themeIcon(.small)
-            }
-            .buttonStyle(
-                BoxedIconButtonStyle(size: .back)
-                    .accentFocus(
-                        cornerRadius: BoxedIconButtonStyle.Size.back
-                            .cornerRadius
-                    )
-            )
-            .accessibilityLabel(Text("Back to \(backTitle)"))
+            MacBackButton(to: backTitle, action: onBack)
             Text(verbatim: title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
