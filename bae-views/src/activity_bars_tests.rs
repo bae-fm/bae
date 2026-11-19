@@ -20,7 +20,7 @@ async fn upload_all_but_the_late_file(
     store: &bae_store::Store,
     originals: &bae_util::test_files::TestFolder,
 ) {
-    std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
+    originals.remove(FILE_LATE);
     store.set_uploads_paused(false).await.unwrap();
     store.retry_uploads_now().await.unwrap();
     store.set_uploads_paused(true).await.unwrap();

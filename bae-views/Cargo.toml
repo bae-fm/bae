@@ -70,7 +70,6 @@ bae-transfers = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 bae-types = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
-tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]

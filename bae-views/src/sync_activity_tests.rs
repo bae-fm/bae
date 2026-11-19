@@ -373,7 +373,7 @@ pub(crate) fn run_on_library_with_storage(
     test: impl AsyncFnOnce(&bae_store::Store, &bae_util::test_files::TestFolder) + Send + 'static,
 ) {
     bae_store::test_devices::on_device_runtime(async move || {
-        let dir = tempfile::TempDir::new().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let sources = bae_store::TestSources::system();
         let storage = std::sync::Arc::new(
             coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
@@ -469,7 +469,7 @@ fn uploading_counts_releases_and_no_cover() {
         write_releases_with_files(store, originals).await;
         queue_upload(store, RELEASE_EARLY).await;
         queue_upload(store, RELEASE_LATE).await;
-        std::fs::remove_file(originals.join(FILE_LATE)).unwrap();
+        originals.remove(FILE_LATE);
 
         store.set_uploads_paused(false).await.unwrap();
         store.retry_uploads_now().await.unwrap();
