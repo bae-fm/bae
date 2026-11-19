@@ -33,9 +33,9 @@ struct ReleaseEditorWaitTests {
 
             session.apply(MappingFixtures.link)
             try await Wait.until { session.isBusy }
-            try await SnapshotTestSupport.settle(host)
-
-            #expect(showsStep(host))
+            // The step reaches the line through its subscription, after
+            // the apply starts, so the test waits for the line to draw it.
+            try await Wait.untilLaidOut(host) { showsStep(host) }
             session.cancelTasks()
         }
     }
