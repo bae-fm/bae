@@ -11,14 +11,7 @@ import Testing
 struct MacMenuAccessibilityTests {
     @Test("a point on a line answers with that line, which makes it hittable")
     func aPointOnALineIsTheLine() throws {
-        let window = NSWindow(
-            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.animationBehavior = .none
-        window.makeKeyAndOrderFront(nil)
+        let window = Self.openWindow()
         let session = try #require(
             MacMenuSession.present(
                 [
@@ -61,14 +54,7 @@ struct MacMenuAccessibilityTests {
 
     @Test("each line is where the menu draws it, the first on top")
     func eachLineIsWhereTheMenuDrawsIt() throws {
-        let window = NSWindow(
-            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.animationBehavior = .none
-        window.makeKeyAndOrderFront(nil)
+        let window = Self.openWindow()
         let session = try #require(
             MacMenuSession.present(
                 [
@@ -154,6 +140,22 @@ struct MacMenuAccessibilityTests {
             #expect(menu != nil, "pressing the pop-up opens no menu")
             HostedMenus.close()
         }
+    }
+
+    /// A titled window shown on screen for a menu to open over. The test
+    /// closes it and then lets it go: a window that released itself on
+    /// close would be released a second time, which crashes the test host.
+    private static func openWindow() -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.animationBehavior = .none
+        window.makeKeyAndOrderFront(nil)
+        return window
     }
 
     /// The roles the accessibility API gives a pop-up and a pull-down.
