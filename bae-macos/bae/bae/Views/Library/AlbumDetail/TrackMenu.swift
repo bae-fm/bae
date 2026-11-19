@@ -15,9 +15,8 @@ struct TrackMenu: MacMenuPart {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
-    /// Rate the track with these stars, or clear its rating with none; `nil`
-    /// for a person who can't rate, whose menu has no Rate.
-    let onRate: ((BridgeStars?) -> Void)?
+    /// Rate the track with these stars, or clear its rating with none.
+    let onRate: (BridgeStars?) -> Void
     /// The playlists the menu can add the tracks to.
     let playlists: TrackPlaylistChoices
 
@@ -42,9 +41,7 @@ struct TrackMenu: MacMenuPart {
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuDivider()
-            if let onRate {
-                TrackRateMenu(stars: track.myStars, onRate: onRate)
-            }
+            TrackRateMenu(stars: track.myStars, onRate: onRate)
             playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }

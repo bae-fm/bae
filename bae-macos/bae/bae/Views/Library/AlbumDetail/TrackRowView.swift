@@ -111,9 +111,8 @@ struct TrackRowView: View {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
-    /// Rate the track with these stars, or clear its rating with none; `nil`
-    /// for a person who can't rate, whose menu has no Rate.
-    var onRate: ((BridgeStars?) -> Void)?
+    /// Rate the track with these stars, or clear its rating with none.
+    let onRate: (BridgeStars?) -> Void
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
     /// What the menu does with several picked tracks, or `nil` where the

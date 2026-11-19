@@ -39,6 +39,7 @@ impl People {
 
     /// The person using this device, once their registration has applied:
     /// their membership, and their profile, which the same registration wrote.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn own_person(&self) -> Result<Option<Person>, DbError> {
         Ok(self.inner.store.read(|sql| Ok(people_on(&sql, &own_person_sql(), [])?)).await?.pop())
     }
