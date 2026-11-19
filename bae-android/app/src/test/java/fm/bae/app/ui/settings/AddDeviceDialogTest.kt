@@ -128,13 +128,14 @@ class AddDeviceDialogTest {
         compose.waitForIdle()
         checkNotNull(handle.subscription).pulls.deliver(BridgeAddDeviceStatus.Forgotten)
         compose.waitForIdle()
-        compose.onNodeWithText("This code has ended. Close this and choose Add device again for a new one.").assertIsDisplayed()
+        compose.onNodeWithText("This code has ended").assertIsDisplayed()
+        compose.onNodeWithText("Choose Add device again for a new one.").assertIsDisplayed()
     }
 
-    /** The dialog stays open on [line], with Done, when the pairing ends as [end]. */
+    /** The dialog stays open on [lines], with Done, when the pairing ends as [end]. */
     private fun assertSays(
         end: BridgeAddDeviceEnd,
-        line: String,
+        vararg lines: String,
     ) {
         val handle = PairingHandle()
         compose.setContent {
@@ -147,7 +148,7 @@ class AddDeviceDialogTest {
         compose.waitForIdle()
         checkNotNull(handle.subscription).pulls.deliver(BridgeAddDeviceStatus.Ended(end))
         compose.waitForIdle()
-        compose.onNodeWithText(line).assertIsDisplayed()
+        lines.forEach { compose.onNodeWithText(it).assertIsDisplayed() }
         compose.onNodeWithText("Done").assertIsDisplayed()
     }
 
@@ -155,7 +156,8 @@ class AddDeviceDialogTest {
     fun anExpiredPairingSaysSoInsteadOfClosing() =
         assertSays(
             BridgeAddDeviceEnd.Expired,
-            "This code has ended. Close this and choose Add device again for a new one.",
+            "This code has ended",
+            "Choose Add device again for a new one.",
         )
 
     @Test
