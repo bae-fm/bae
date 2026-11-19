@@ -121,9 +121,7 @@ struct SyncFixButton: View {
         case .signIn(let provider):
             String(localized: "Sign in to \(provider.displayName)…")
         case .enterAccessKey:
-            // S3 goes by its short name in a sentence, the same in every
-            // language, as the other providers go by theirs.
-            String(localized: "Sign in to \("S3")…")
+            String(localized: "Sign in to S3…")
         case .openSystemSettings:
             String(localized: "Open System Settings…")
         case .resetDevice:
