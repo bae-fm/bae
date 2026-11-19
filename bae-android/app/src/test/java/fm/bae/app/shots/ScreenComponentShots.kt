@@ -29,18 +29,18 @@ import org.junit.Test
 class ScreenComponentShots : BoardShot() {
     @Test
     fun androidComponentScreenDefault() =
-        component("android.component.screen.default", wide = true) {
+        component("android.component.screen.back", wide = true) {
             AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
                 Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
             }
         }
 
     @Test
-    fun androidComponentLibraryScreenDefault() = shot("android.component.library-screen.default") { ScreenScene { PlayingLibraryScreen() } }
+    fun androidComponentLibraryScreenDefault() = shot("android.component.library-screen.top") { ScreenScene { PlayingLibraryScreen() } }
 
     @Test
     fun androidComponentDetailScreenDefault() =
-        component("android.component.detail-screen.default", wide = true) {
+        component("android.component.detail-screen.resting", wide = true) {
             Images {
                 AndroidDetailScreen(
                     onBack = {},

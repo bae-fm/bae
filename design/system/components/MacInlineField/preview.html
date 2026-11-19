@@ -1,0 +1,23 @@
+<!-- @dsCard group="macOS import" height=340 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacInlineField</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Value', box(260, h(B.MacInlineField, { label: 'Label', value: 'Harbor Records', placeholder: '—' }))),
+    N('Empty', box(260, h(B.MacInlineField, { label: 'Label', placeholder: '—' }))),
+    N('Long value', box(260, h(B.MacInlineField, { label: 'Label', value: 'Harbor Records and the Northern Sound Company', placeholder: '—' }))),
+    N('Large', box(260, h(B.MacInlineField, { label: 'Album title', value: 'Low Tide Hours', placeholder: 'Album title', large: true }))),
+    N('Large empty', box(260, h(B.MacInlineField, { label: 'Album title', placeholder: 'Album title', large: true }))),
+    N('Quiet', box(260, h(B.MacInlineField, { label: 'Album year', value: '1992', placeholder: 'Album year', quiet: true }))),
+    N('Quiet empty', box(260, h(B.MacInlineField, { label: 'Album year', placeholder: 'Album year', quiet: true })))));
+</script>
+</body>
+</html>

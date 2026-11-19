@@ -1,0 +1,15 @@
+<!-- @dsCard group="Android" height=702 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidSyncStatus</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Status', h(B.AndroidSyncStatus, { status: 'Signed out of S3', tone: 'warning' })), W('No tone', h(B.AndroidSyncStatus, { status: 'Signed out of S3' })), W('Cause', h(B.AndroidSyncStatus, { status: 'Signed out of S3', tone: 'warning', cause: 'Your changes stay on this device.' })), W('Remedy', h(B.AndroidSyncStatus, { status: 'Signed out of S3', tone: 'warning', cause: 'Your changes stay on this device.', remedy: 'bae syncs them once you sign in.' })), W('Fix', h(B.AndroidSyncStatus, { status: 'Signed out of S3', tone: 'warning', fix: 'Sign in to S3' })), W('Last synced', h(B.AndroidSyncStatus, { status: 'Signed out of S3', tone: 'warning', lastSynced: '3 days ago' }))));
+</script>
+</body>
+</html>

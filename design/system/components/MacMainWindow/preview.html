@@ -1,15 +1,18 @@
-<!-- @dsCard group="macOS library" height=800 -->
+<!-- @dsCard group="macOS library" height=1700 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacMainWindow</title></head>
-<body class="bae-preview bae-mac" style="padding: 0;">
+<body class="bae-preview bae-mac" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacMainWindow, { width: 1100, height: 700, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, h(B.MacLibraryHeading, { view: 'Albums' }), h('div', { style: { padding: 16 } }, slot('The section’s content')))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Library', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, slot('The section’s content'))),
+    W('Import', h(B.MacMainWindow, Object.assign({ width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { section: 'Import' }), slot('The section’s content'))),
+    W('Nothing played', h(B.MacMainWindow, { width: 1100, height: 520 }, slot('The section’s content')))));
 </script>
 </body>
 </html>

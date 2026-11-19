@@ -1,0 +1,25 @@
+<!-- @dsCard group="macOS" height=370 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSearchField</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Search', h(B.MacSearchField, null)),
+    N('Search typed', h(B.MacSearchField, { value: 'Low Tide' })),
+    N('Search long', h(B.MacSearchField, { value: 'Low Tide Hours by Mara Quill and the harbor recordings' })),
+    N('Search focused', h(B.MacSearchField, { value: 'Low Tide', focused: true })),
+    N('Filter', h(B.MacSearchField, { kind: 'filter', label: 'Filter' })),
+    N('Filter typed', h(B.MacSearchField, { kind: 'filter', label: 'Filter', value: 'Low Tide' })),
+    N('Filter off', h(B.MacSearchField, { kind: 'filter', label: 'Filter', off: true })),
+    N('Inline', box(300, h(B.MacSearchField, { kind: 'inline', label: 'Filter' }))),
+    N('Inline typed', box(300, h(B.MacSearchField, { kind: 'inline', label: 'Filter', value: 'Low Tide' })))));
+</script>
+</body>
+</html>

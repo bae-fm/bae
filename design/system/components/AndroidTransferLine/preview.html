@@ -1,0 +1,20 @@
+<!-- @dsCard group="Android" height=420 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidTransferLine</title></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Syncing', h(B.AndroidTransferLine, { label: 'Syncing changes' })),
+    W('Uploading', h(B.AndroidTransferLine, { label: 'Uploading', count: '1 of 2 releases', progress: 0.43 })),
+    W('Pinning', h(B.AndroidTransferLine, { label: 'Pinning', count: '1 of 3 releases', progress: 0.3, pausable: true, opens: true })),
+    W('Waiting', h(B.AndroidTransferLine, { label: 'Pinning', count: 'Waiting for network', progress: 0.3, pausable: true, opens: true })),
+    W('Paused', h(B.AndroidTransferLine, { label: 'Pinning', count: 'Paused', progress: 0.3, pausable: true, paused: true, opens: true }))));
+</script>
+</body>
+</html>

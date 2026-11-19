@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS import" height=260 -->
+<!-- @dsCard group="macOS import" height=400 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportImages</title></head>
@@ -8,8 +8,11 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(B.MacImportImages, { images: 'Low Tide Hours|cover.jpg,Low Tide Hours back|back.jpg,Low Tide Hours disc|disc.jpg' }));
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Several', h(B.MacImportImages, { images: 'Low Tide Hours|cover.jpg,Low Tide Hours back|back.jpg,Low Tide Hours disc|disc.jpg' })),
+    W('One', h(B.MacImportImages, { images: 'Low Tide Hours|cover.jpg' }))));
 </script>
 </body>
 </html>

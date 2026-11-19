@@ -1,5 +1,5 @@
 # MacStorageWindow
 
-The Storage Manager window: title, All / Local / Cloud, the Filter field, the Inspector toggle; the release list (first child) and, with `inspector`, the inspector (the other children). With `disabled` (no library open), the window passes `off` to the segmented control and the Inspector button and dims its own Filter field: each control draws its own off state.
+The Storage Manager window, with its own frame and traffic lights: the toolbar (`MacStorageToolbar`: title, All / Local / Cloud, the Filter field, the Inspector toggle), then the release list and, with `inspector`, the inspector. The list is the `MacTable` child with the `MacStorageFooter` child under it; the other children are the inspector's. With no library open, the first child is the list alone. With `disabled` (no library open), the toolbar passes `off` to the segmented control, the Filter field and the Inspector button: each control draws its own off state. `empty`: the filter matches nothing, and the window says No matches over the table as a `MacContentUnavailable`.
 
-**In the code:** macOS: `StorageManagerView` (`Views/Storage/StorageManagerView.swift`).
+**In the code:** macOS: `StorageManagerView` (`Views/Storage/StorageManagerView.swift`), which lays `ContentUnavailableView` over `StorageTableView` while a search finds no rows.

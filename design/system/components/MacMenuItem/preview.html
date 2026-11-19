@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS" height=200 -->
+<!-- @dsCard group="macOS" height=620 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacMenuItem</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Plain', h(B.MacMenu, null, h(B.MacMenuItem, null, 'Only me'))), N('Checked', h(B.MacMenu, null, h(B.MacMenuItem, { checked: true }, 'Only me'))), N('Highlighted', h(B.MacMenu, null, h(B.MacMenuItem, { highlighted: true }, 'Only me')))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Plain', h(B.MacMenu, null, h(B.MacMenuItem, null, 'Only me'))), N('Checked', h(B.MacMenu, null, h(B.MacMenuItem, { checked: true }, 'Only me'))), N('Highlighted', h(B.MacMenu, null, h(B.MacMenuItem, { highlighted: true }, 'Only me'))), N('Off', h(B.MacMenu, null, h(B.MacMenuItem, { off: true }, 'Only me'))), N('Heading', h(B.MacMenu, null, h(B.MacMenuItem, { heading: true }, 'Folders'), h(B.MacMenuItem, null, 'Music'))), N('Divider', h(B.MacMenu, null, h(B.MacMenuItem, null, 'Refresh'), h(B.MacMenuItem, { divider: true }), h(B.MacMenuItem, null, 'Remove folder'))), N('Submenu', h(B.MacMenu, null, h(B.MacMenuItem, { submenu: true }, 'Music'))), N('Submenu with a problem', h(B.MacMenu, null, h(B.MacMenuItem, { submenu: true, accessory: 'problem', help: 'bae reached the system’s limit on watched folders at Downloads/Albums/2024.' }, 'Downloads'))), N('Submenu highlighted', h(B.MacMenu, null, h(B.MacMenuItem, { submenu: true, accessory: 'problem', highlighted: true }, 'Downloads'))), N('Submenu scanning', h(B.MacMenu, null, h(B.MacMenuItem, { submenu: true, accessory: 'scanning' }, 'Music'))), N('Submenu on the network', h(B.MacMenu, null, h(B.MacMenuItem, { submenu: true, accessory: 'network', help: 'bae checks this folder for changes every 5 minutes.' }, 'Shared Music')))));
 </script>
 </body>
 </html>

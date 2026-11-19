@@ -1,0 +1,22 @@
+<!-- @dsCard group="macOS import" height=260 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacIdentifierChip</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Filled', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2' })),
+    N('Outlined', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', state: 'outlined' })),
+    N('Struck', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', state: 'struck' })),
+    N('Dash', h(B.MacIdentifierChip, { label: 'Barcode', state: 'dash' })),
+    N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', sources: 'MusicBrainz=2,Discogs=0' })),
+    N('Searching', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', sources: 'MusicBrainz=2,Discogs=…' }))));
+</script>
+</body>
+</html>

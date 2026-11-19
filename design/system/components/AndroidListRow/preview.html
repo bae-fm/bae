@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android library" height=130 -->
+<!-- @dsCard group="Android library" height=410 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidListRow</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,12 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.AndroidListRow, { title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', who: 'Mara', trailing: '21:04' })));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Resting', h(B.AndroidListRow, { title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', trailing: '4:32' })),
+    W('Who', h(B.AndroidListRow, Object.assign({ title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', trailing: '4:32' }, { who: 'Ana' }))),
+    W('Selected', h(B.AndroidListRow, Object.assign({ title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', trailing: '4:32' }, { selected: true }))),
+    W('Menu', h(B.AndroidListRow, Object.assign({ title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', trailing: '4:32' }, { menu: 'Track options' }))),
+    W('Dragging', h(B.AndroidListRow, Object.assign({ title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', trailing: '4:32' }, { menu: 'Track options', dragging: true })))));
 </script>
 </body>
 </html>

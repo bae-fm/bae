@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android" height=320 -->
+<!-- @dsCard group="Android" height=1300 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidActivity</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,13 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.AndroidActivity, { syncing: true, uploads: '1 of 2 releases', uploadProgress: 0.43, pins: '1 of 3 releases', pinProgress: 0.3 })));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Up to date', h(B.AndroidActivity, null)),
+    W('Transfers', h(B.AndroidActivity, { syncing: true, uploads: '1 of 2 releases', uploadProgress: 0.43, pins: '1 of 3 releases', pinProgress: 0.3 })),
+    W('Pinning paused', h(B.AndroidActivity, { pins: '1 of 3 releases', downloadsWait: 'Paused' })),
+    W('Status unknown', h(B.AndroidActivity, { error: 'bae couldn’t read the sync status.' })),
+    W('Sync needs you', h(B.AndroidActivity, { attention: 'Sync can’t send a change.', record: 'Low Tide Hours', reason: 'The cloud refused the change: the record is too large.' })),
+    W('A screen’s problem', h(B.AndroidActivity, null, h(B.AndroidNotice, { quiet: true, dismiss: true, tone: 'danger', title: 'Could not pin Glass Harbor', secondary: 'Details' })))));
 </script>
 </body>
 </html>

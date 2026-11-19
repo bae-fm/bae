@@ -1,0 +1,24 @@
+<!-- @dsCard group="macOS import" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacAlbumArtistField</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Library artist', h(B.MacAlbumArtistField, { artist: 'Mara Quill', chip: 'Library' })),
+    N('New artist', h(B.MacAlbumArtistField, { artist: 'Mara Quill', chip: 'New' })),
+    N('No chip', h(B.MacAlbumArtistField, { artist: 'Mara Quill' })),
+    N('No artist', h(B.MacAlbumArtistField, null)),
+    N('Secondary', h(B.MacAlbumArtistField, { artist: 'Mara Quill', chip: 'Library', secondary: true })),
+    W('Column', box(240, h(B.MacAlbumArtistField, { artist: 'Mara Quill', column: true }))),
+    W('Inherited', box(240, h(B.MacAlbumArtistField, { inherited: true, column: true }))),
+    W('Column with no artist', box(240, h(B.MacAlbumArtistField, { placeholder: 'Artist', column: true })))));
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS import" height=620 -->
+<!-- @dsCard group="macOS import" height=1900 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportBulk</title></head>
@@ -8,8 +8,12 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacImportBulk, { count: 5, ready: 2 })));
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Several', h(B.MacImportBulk, { count: 5, ready: 2 })),
+    W('To the cloud', h(B.MacImportBulk, { count: 5, ready: 2, cloud: true, to: 'Cloud' })),
+    W('Running', h(B.MacImportBulk, { count: 5, ready: 2, running: 'Identify selected (5)' }))));
 </script>
 </body>
 </html>

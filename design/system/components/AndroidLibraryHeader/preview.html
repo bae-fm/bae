@@ -1,0 +1,22 @@
+<!-- @dsCard group="Android library" height=760 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidLibraryHeader</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Top', h(B.AndroidLibraryHeader, { view: 'Albums' })),
+    W('Scrolled', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { collapsed: true }))),
+    W('Searching', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { searching: true }))),
+    W('Moving', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { sync: 'moving' }))),
+    W('Attention', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { sync: 'attention' }))),
+    W('Paused', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { sync: 'paused' }))),
+    W('Picture', h(B.AndroidLibraryHeader, Object.assign({ view: 'Albums' }, { avatarImage: 'Ana' })))));
+</script>
+</body>
+</html>

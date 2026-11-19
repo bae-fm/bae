@@ -1,0 +1,19 @@
+<!-- @dsCard group="macOS import" height=940 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacImportWindow</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+  function win(c) { return h('div', { style: { width: 1000, height: 420, display: 'flex', flexDirection: 'column' } }, c); }
+  function sidebar(sel) { return h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2' }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', record: true, cover: 'Low Tide Hours', selected: sel }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Folder picked', win(h(B.MacImportWindow, null, sidebar(true), h(B.MacImportFolderLine, { folder: 'Mara Quill - Low Tide Hours (1992)' }), h(B.MacReleaseFiles, { files: '01 Northbound.flac|33 MB|audio,rip.log|4 KB,cover.jpg|1.1 MB' })))),
+    W('No selection', win(h(B.MacImportWindow, { noSelection: true }, sidebar(false))))));
+</script>
+</body>
+</html>

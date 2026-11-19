@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS library" height=330 -->
+<!-- @dsCard group="macOS library" height=556 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacTrackRow</title></head>
@@ -9,7 +9,12 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacTrackRow, { position: '1', title: 'Harbor Lights', duration: '4:32' })), W('Hover', h(B.MacTrackRow, { position: '2', title: 'The Long Way Home', duration: '5:12', hover: true })), W('Current', h(B.MacTrackRow, { position: '3', title: 'Second Floor', duration: '3:45', current: true, playing: true })), W('Compilation', h(B.MacTrackRow, { position: '4', title: 'Low Tide Hours', artist: 'Mara Quill', duration: '5:03' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Resting', h(B.MacTrackRow, { position: '4', title: 'Low Tide Hours', duration: '5:03' })),
+    W('Hover', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { hover: true }))),
+    W('Current', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { current: true, playing: true }))),
+    W('Hover on current', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { current: true, playing: true, hover: true }))),
+    W('Compilation', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { artist: 'Mara Quill' }))), W('Picked', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { picked: true }))), W('Picked and current', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { picked: true, current: true }))), W('Rated', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { rating: 4 }))), W('Not rated, in a rated list', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { rating: 0 }))), W('Rated and hover', h(B.MacTrackRow, Object.assign({ position: '4', title: 'Low Tide Hours', duration: '5:03' }, { rating: 4, hover: true })))));
 </script>
 </body>
 </html>

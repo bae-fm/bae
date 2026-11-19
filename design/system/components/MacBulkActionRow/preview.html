@@ -1,0 +1,20 @@
+<!-- @dsCard group="macOS import" height=250 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacBulkActionRow</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Applies', box(440, h(B.MacBulkActionRow, { icon: 'refresh', label: 'Identify selected', count: 5 }))),
+    W('Strong', box(440, h(B.MacBulkActionRow, { icon: 'saveAs', label: 'Import', count: 3, strong: true }))),
+    W('Applies to none', box(440, h(B.MacBulkActionRow, { icon: 'xcircle', label: 'Stop identifying selected', count: 0 }))),
+    W('With destination', box(440, h(B.MacBulkActionRow, { icon: 'saveAs', label: 'Import', count: 3, strong: true }, h(B.MacImportDestination, { to: 'This Mac' }))))));
+</script>
+</body>
+</html>

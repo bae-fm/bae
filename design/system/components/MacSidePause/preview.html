@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS library" height=360 -->
+<!-- @dsCard group="macOS library" height=1480 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacSidePause</title></head>
@@ -9,7 +9,11 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { position: 'relative', height: 340 } }, h(B.MacSidePause, { label: 'A', countdown: 12 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Counting down', h('div', { style: { position: 'relative', height: 340 } }, h(B.MacSidePause, { label: 'A', countdown: 12 }))),
+    W('Paused', h('div', { style: { position: 'relative', height: 340 } }, h(B.MacSidePause, { label: 'A' }))),
+    W('Box cleared', h('div', { style: { position: 'relative', height: 340 } }, h(B.MacSidePause, { label: 'A', unchecked: true }))),
+    W('Disc', h('div', { style: { position: 'relative', height: 340 } }, h(B.MacSidePause, { kind: 'disc', label: '2', countdown: 12 })))));
 </script>
 </body>
 </html>

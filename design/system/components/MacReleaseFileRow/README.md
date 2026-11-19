@@ -1,0 +1,8 @@
+# MacReleaseFileRow
+
+One file of a release: its name in mono, then its size at the right (`name`, `size`).
+
+- `kind`: `opens` (the default) is a document, a track sheet or an image, a button named by its file that opens it. `audio` is a track that plays, with its Play button before the size. `other` is a file that opens nothing.
+- `damaged`: why the file is damaged, after its name in the warning colour with the warning glyph. A damaged file opens nothing.
+
+**In the code:** macOS: drawn in `ReleaseFilesView` (`bae-macos/bae/bae/Views/Import/Mapping/ReleaseFilesView.swift`)

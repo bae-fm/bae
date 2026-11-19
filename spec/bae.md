@@ -1975,10 +1975,11 @@ Ana clicks Import. bae:
    takes its id from its group (§2.6). The pane shows which: "New album", the
    album the records name, or the one picked, as a pop-up under the identity
    (an album's line is its title and its artists, or its title alone for an
-   album that credits no one), whose items are that album,
-   New album (a new album even where the records name one the library holds),
-   Choose another album…, which searches the library's albums, and after a
-   pick the release's own album again; a picked album deleted meanwhile (§2.1)
+   album that credits no one), whose items are that album first, then New
+   album while that album is one the library holds (a new album even where
+   the records name one the library holds), the release's own album again
+   after a pick, and last Choose another album…, which searches the library's
+   albums; a picked album deleted meanwhile (§2.1)
    is no longer picked, and the import files under the album the records name
    or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
@@ -4072,7 +4073,7 @@ upload line shows Paused while sync isn't running too. On the desktop each
 queue's line ends in Pause, or Resume while the person paused that queue;
 pinning and moving to This Mac are one queue, as in Transfers settings, so
 their lines pause and resume together. Under the
-lines, *Open Storage Manager* opens the Storage manager. On the phones the
+lines, *Open storage manager* opens the Storage manager. On the phones the
 Pinning line ends in Pause or Resume too, and opens the Pinning screen. With
 nothing to show it says everything is up to date. The panel doesn't offer *Retry
 now*: the Sync page's fix does.

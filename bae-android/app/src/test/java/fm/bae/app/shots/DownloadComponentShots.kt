@@ -20,37 +20,37 @@ import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 class DownloadComponentShots : BoardShot() {
     @Test
     fun androidComponentDownloadControlAvailable() =
-        component("android.component.download-control.available") { Control(BridgeReleaseDownloadStatus.Available) }
+        component("android.component.pin-control.available") { Control(BridgeReleaseDownloadStatus.Available) }
 
     @Test
     fun androidComponentDownloadControlQueued() =
-        component("android.component.download-control.queued") { Control(BridgeReleaseDownloadStatus.Queued) }
+        component("android.component.pin-control.queued") { Control(BridgeReleaseDownloadStatus.Queued) }
 
     @Test
     fun androidComponentDownloadControlDownloading() =
-        component("android.component.download-control.downloading", wide = true) {
+        component("android.component.pin-control.pinning", wide = true) {
             Control(BridgeReleaseDownloadStatus.Downloading)
         }
 
     @Test
     fun androidComponentDownloadControlFailed() =
-        component("android.component.download-control.failed", wide = true) {
+        component("android.component.pin-control.failed", wide = true) {
             Control(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
         }
 
     @Test
     fun androidComponentDownloadControlDownloaded() =
-        component("android.component.download-control.downloaded") { Control(BridgeReleaseDownloadStatus.Downloaded) }
+        component("android.component.pin-control.pinned") { Control(BridgeReleaseDownloadStatus.Downloaded) }
 
     @Test
     fun androidComponentDownloadControlElsewhere() =
-        component("android.component.download-control.elsewhere") {
+        component("android.component.pin-control.elsewhere") {
             UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
         }
 
     @Test
     fun androidComponentDownloadRowDefault() =
-        component("android.component.download-row.default", wide = true) {
+        component("android.component.pinning-row.pinning", wide = true) {
             val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
             Column {
                 listOf(
@@ -65,7 +65,7 @@ class DownloadComponentShots : BoardShot() {
 
     @Test
     fun androidComponentDownloadsBarDefault() =
-        component("android.component.downloads-bar.default", wide = true) {
+        component("android.component.pinning-bar.failed", wide = true) {
             AndroidDownloadsBar(
                 paused = false,
                 hasDownloads = true,

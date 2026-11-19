@@ -4,6 +4,7 @@
 .bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
 .bae-a-topbar h1 { margin: 0; padding-left: 12px; font: 400 22px/28px var(--font-android); }
 .bae-a-topbar h1.bae-a-topbar-title-after-back { padding-left: 0; }
+.bae-a-topbar-more { margin-left: auto; }
 .bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
 .bae-a-keyboard { flex: none; display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 0; background: var(--surface); }
 .bae-a-keys-row { display: flex; gap: 6px; }
@@ -52,6 +53,7 @@
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
 .bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+.bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
 .bae-a-btn-filled { background: var(--accent-selection); color: var(--on-fill); }
 .bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
@@ -111,6 +113,7 @@
 .bae-a-dialog-actions { margin-top: var(--space-related); display: flex; justify-content: flex-end; gap: var(--space-related); }
 
 .bae-a-note { padding: var(--space-related) var(--space-page) 0; font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+.bae-a-divider { height: 1px; flex: none; background: var(--hairline); }
 .bae-a-cu { height: 100%; box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .bae-a-cu-title { font: 400 14px var(--font-android); color: var(--text-secondary); }
 .bae-a-cu-actions { display: flex; gap: 8px; margin-top: 12px; }
@@ -124,4 +127,5 @@
 .bae-progress-android .bae-progress-fill { border-radius: 2px; box-shadow: 4px 0 0 var(--bae-gap-bg); z-index: 1; }
 .bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
 .bae-a-iconbtn-off { opacity: 0.38; }
+.bae-a-iconbtn.bae-a-iconbtn-onfill { color: var(--on-fill); }
 .bae-a-topbar-menu { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 0 var(--space-related); min-height: 48px; border: 0; background: none; font: 500 14px/20px var(--font-android); color: var(--text-primary); fill: currentColor; cursor: pointer; }

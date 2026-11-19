@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeActivityLine
 class ActivityComponentShots : BoardShot() {
     @Test
     fun androidComponentActivityDefault() =
-        component("android.component.activity.default", wide = true) {
+        component("android.component.activity.transfers", wide = true) {
             val store =
                 remember {
                     SyncActivityStore(

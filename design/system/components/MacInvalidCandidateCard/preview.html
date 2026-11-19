@@ -1,0 +1,18 @@
+<!-- @dsCard group="macOS import" height=560 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacInvalidCandidateCard</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Tagged', box(720, h(B.MacInvalidCandidateCard, { reason: '2 audio files are damaged', title: 'Low Tide Hours', artist: 'Mara Quill', cover: 'Low Tide Hours' }))),
+    W('No tags', box(720, h(B.MacInvalidCandidateCard, { reason: '2 audio files are damaged', folder: '2024-rips/untitled 07' })))));
+</script>
+</body>
+</html>

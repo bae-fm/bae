@@ -1,6 +1,6 @@
 # AndroidFullPlayer
 
-The full player, in a sheet over the library: Collapse, the cover, title, artists, seek bar, previous / play / next, repeat, volume. The upcoming queue continues under it.
+The full player, in a sheet over the library: Collapse, the cover, title, artists, seek bar, previous / play / next (`AndroidTransport`, `large`), repeat, and mute beside the volume bar (`AndroidVolumeSlider`, at `volume`). The upcoming queue continues under it.
 
 `noVolume` (the receiver's name), as the Mac bar's: casting to a receiver that takes no volume from bae, the volume row is "Volume is set on Living Room" in place of mute and the slider.
 

@@ -75,7 +75,7 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentFullPlayerDefault() =
-        shot("android.component.full-player.default") {
+        shot("android.component.full-player.playing") {
             ScreenScene {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -140,11 +140,11 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentQueueLabelUpNext() =
-        component("android.component.queue-label.up-next", wide = true) { AndroidQueueLabel("Up next", "Clear up next", {}) }
+        component("android.component.queue-section.up-next", wide = true) { AndroidQueueLabel("Up next", "Clear up next", {}) }
 
     @Test
     fun androidComponentQueueLabelPlayingFrom() =
-        component("android.component.queue-label.playing-from", wide = true) {
+        component("android.component.queue-section.playing-from", wide = true) {
             AndroidQueueLabel("Playing from", "Clear playing from", {}, shuffled = false)
         }
 }

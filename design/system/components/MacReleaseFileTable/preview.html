@@ -1,0 +1,18 @@
+<!-- @dsCard group="macOS storage" height=540 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacReleaseFileTable</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Files', h(B.MacReleaseFileTable, { files: '01 Harbor Lights.flac|FLAC 16/44.1|34.1 MB|audio/flac; 02 The Long Way Home.flac|FLAC 16/44.1|38.9 MB|audio/flac; cover.jpg||1.2 MB|image/jpeg; Low Tide Hours.cue||2 KB|application/x-cue; Low Tide Hours.log||6 KB|text/plain' })),
+    W('Sorted by size', h(B.MacReleaseFileTable, { files: '02 The Long Way Home.flac|FLAC 16/44.1|38.9 MB|audio/flac; 01 Harbor Lights.flac|FLAC 16/44.1|34.1 MB|audio/flac; cover.jpg||1.2 MB|image/jpeg; Low Tide Hours.log||6 KB|text/plain; Low Tide Hours.cue||2 KB|application/x-cue', sort: 'Size:down' })),
+    W('Long name', h(B.MacReleaseFileTable, { files: '01 Harbor Lights (Recorded Live at the Harbor Hall, Second Night).flac|FLAC 24/96|98.4 MB|audio/flac' }))));
+</script>
+</body>
+</html>

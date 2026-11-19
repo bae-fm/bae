@@ -1,0 +1,16 @@
+<!-- @dsCard group="Android library" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidReleaseFiles</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Three files', h(B.AndroidReleaseFiles, { files: 'Low Tide Hours.cue|Cue sheet; Low Tide Hours.log|Rip log; booklet.pdf|PDF document' })),
+    W('One file', h(B.AndroidReleaseFiles, { files: 'Low Tide Hours.log|Rip log' })),
+    W('Long name', h(B.AndroidReleaseFiles, { files: 'Songs for the Slow Orchards, Recorded Live at the Harbor Hall.cue|Cue sheet' }))));
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 # MacSheetFooter
 
-Secondary buttons, then the one primary button, at the right: a sheet's last row, and the button under a list that adds to it (“Add library…”, “Invite…”, “Add device…”, “Add format…”), as System Settings puts “Add Account…”. `split` puts the first button on the left, for an action beside the flow: "New folder…", "Use my key instead".
+Secondary buttons, then the one primary button, at the right: a sheet's last row, and the button under a list that adds to it (“Add library…”, “Invite…”, “Add device…”, “Add format…”), as System Settings puts “Add Account…”. `split` puts the first button on the left, for an action beside the flow: "Use my key instead". A number puts that many of the first buttons on the left together: a Dropbox or OneDrive folder choice's New folder… and Look again.
 
 **In the code:** macOS: `MacSheetFooter` (`Views/Components/MacSheetFooter.swift`).

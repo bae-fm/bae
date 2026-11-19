@@ -134,7 +134,7 @@ extension ShotScene {
     /// `MacCastPopover`, the cast button's popover, over a receiver
     /// cast to with a short name and with a long one.
     private static let castPopoverScenes: [ShotScene] = [
-        component("mac.component.cast-popover.default", height: 560) {
+        component("mac.component.cast-popover.casting", height: 560) {
             VStack(alignment: .leading, spacing: 20) {
                 MacCastPopover(
                     receivers: BridgeCastReceiverList(
@@ -174,7 +174,7 @@ extension ShotScene {
     /// `MacListRow`, a track on a playlist's page.
     private static let listRowScenes: [ShotScene] = [
         component(
-            "mac.component.list-row.default",
+            "mac.component.list-row.resting",
             height: 70,
             images: coverStore()
         ) {
@@ -274,7 +274,7 @@ extension ShotScene {
     /// each state the band draws.
     private static let storageBandScenes: [ShotScene] = [
         storageBand(
-            "mac.component.storage-band.resting",
+            "mac.component.storage-band.in-cloud",
             actions: [.pin, .moveToThisDevice],
             height: 120
         ),
@@ -302,7 +302,7 @@ extension ShotScene {
             height: 90
         ),
         storageBand(
-            "mac.component.storage-band.download-failed",
+            "mac.component.storage-band.pin-failed",
             actions: [.pin, .moveToThisDevice],
             download: .failed(error: "The network connection was lost."),
             height: 190

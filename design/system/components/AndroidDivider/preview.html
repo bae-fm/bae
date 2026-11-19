@@ -1,0 +1,14 @@
+<!-- @dsCard group="Android" height=110 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidDivider</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Divider', h('div', null, h('div', { className: 'bae-a-fineline', style: { padding: '8px 0' } }, 'Above'), h(B.AndroidDivider), h('div', { className: 'bae-a-fineline', style: { padding: '8px 0' } }, 'Below')))));
+</script>
+</body>
+</html>

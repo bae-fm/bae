@@ -6,10 +6,13 @@
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Two catalogs', h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs' })),
-    W('Wrapped', h('div', { style: { width: 300 } }, h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs,AllMusic,Apple Music,Bandcamp,Deezer,Genius' })))));
+    W('Wrapped', box(300, h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs,AllMusic,Apple Music,Bandcamp,Deezer,Genius' })))));
 </script>
 </body>
 </html>

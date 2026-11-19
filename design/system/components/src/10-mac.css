@@ -1,7 +1,8 @@
 /* ---- macOS ---- */
 
 .bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
-.bae-m-window-plain { flex-direction: column; }
+.bae-m-window-column { flex-direction: column; }
+.bae-m-window-front { box-shadow: inset 0 0 0 1px var(--hairline), 0 20px 60px var(--shadow); }
 .bae-m-alert { box-sizing: border-box; width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
 .bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
@@ -10,6 +11,7 @@
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
 .bae-m-sidebar { width: 190px; flex: none; margin: 8px 0 8px 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: 32px 8px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
 .bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: var(--space-related); }
+.bae-m-lights-inset { top: 22px; left: 22px; }
 .bae-m-lights span { width: 12px; height: 12px; border-radius: 6px; background: #FF5F57; }
 .bae-m-lights span + span { background: #FEBC2E; }
 .bae-m-lights span + span + span { background: #28C840; }
@@ -17,7 +19,6 @@
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
-.bae-m-main-scroll { flex: 1; min-height: 0; overflow: hidden; margin-top: 4px; }
 .bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
 .bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
 .bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
@@ -27,8 +28,7 @@
 .bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-secondary); }
 
 .bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
-.bae-m-box-elevated { background: var(--elevated); box-shadow: 0 var(--space-compact) var(--space-group) var(--shadow); }
-.bae-m-box > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
+.bae-m-box > .bae-divider, .bae-m-box > .sc-host-x > .bae-divider { margin: 0 var(--space-group); opacity: 0.6; }
 /* MacItem: the row piece. The leading column is size-lead wide and as tall as the first line, so its icon centres on that line. */
 .bae-m-item { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-m-item-lead { flex: none; width: var(--size-lead); height: 1lh; display: flex; align-items: center; justify-content: center; }
@@ -61,7 +61,6 @@
 .bae-m-pin-cell { box-sizing: border-box; width: 40px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color: var(--text-primary); font: 500 22px/28px var(--font-mono); font-variant-numeric: tabular-nums; }
 .bae-m-pin-cell-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-pin-cell-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
-.bae-m-pin .bae-m-pin-note { padding-left: 0; }
 .bae-m-copytext { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); vertical-align: top; }
 .bae-m-copytext-text { user-select: text; }
 .bae-m-row-notelist { margin: 2px 0 0; padding-left: 16px; }
@@ -81,7 +80,8 @@
 .bae-m-btn-large { height: 28px; padding: 0 14px; border-radius: 999px; line-height: 28px; }
 .bae-m-btn-secondary { background: var(--control); color: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 .bae-m-btn-primary { background: var(--accent-selection); color: var(--on-fill); }
-.bae-m-btn-borderless { background: none; color: var(--text-primary); }
+.bae-m-btn-borderless { background: none; color: var(--accent); }
+.bae-m-btn.bae-m-btn-neutral { color: var(--text-primary); }
 /* muted: the label in secondary text, for buttons under quiet words (a failed view's centred notice). */
 .bae-m-btn.bae-m-btn-muted { color: var(--text-secondary); }
 .bae-m-btn-destructive { color: var(--danger); }
@@ -107,7 +107,7 @@
 .bae-m-input:focus, .bae-m-input-focused { background: var(--field-hover); box-shadow: inset 0 0 0 1px var(--field-edge), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-input-error, .bae-m-input-error:focus { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
 .bae-m-field-note { padding-left: 10px; font: 400 11.5px/15px var(--font-sans); color: color-mix(in srgb, var(--text-secondary) 50%, var(--text-tertiary)); }
-.bae-m-field-note-error { color: var(--danger); }
+.bae-m-errorline { font: 400 11.5px/15px var(--font-sans); color: var(--danger); }
 
 .bae-m-radio { align-items: flex-start; gap: 10px; padding-top: 10px; padding-bottom: 10px; cursor: pointer; }
 .bae-m-radio-dot { width: 14px; height: 14px; flex: none; margin-top: 1px; box-sizing: border-box; border-radius: 7px; border: 1.5px solid var(--text-tertiary); }
@@ -144,10 +144,11 @@
 .bae-m-sheet-body { padding: 12px var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: 10px; }
 .bae-m-sheet-message { font: 400 13px/18px var(--font-sans); color: var(--text-secondary); text-wrap: pretty; }
 .bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
-.bae-m-sheet-footer-lead { margin-right: auto; display: flex; }
+.bae-m-sheet-footer-lead { margin-right: auto; display: flex; gap: var(--space-related); }
 
 .bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 14px/20px var(--font-android); }
 .bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
+.bae-m-progress .bae-progress-track { height: 4px; }
 .bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
 .bae-m-pane-on .bae-chip { background: color-mix(in srgb, var(--on-fill) 18%, transparent); color: var(--on-fill); }
 .bae-m-popupbutton-open { position: relative; display: inline-flex; }
@@ -164,3 +165,10 @@
 .bae-m-formfield > .bae-m-field, .bae-m-formfield > .sc-host-x > .bae-m-field { align-self: stretch; }
 .bae-m-formfield-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-formfield-note { font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
+.bae-m-menu-heading { display: flex; align-items: center; height: 22px; padding-left: var(--space-related); font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-menu-trail { margin-left: auto; padding-left: var(--space-edge); display: inline-flex; align-items: center; gap: var(--space-compact); }
+.bae-m-menu-accessory { display: inline-flex; color: var(--text-secondary); }
+.bae-m-menu-accessory-problem { color: var(--danger); }
+.bae-m-menu-item-on .bae-m-menu-accessory { color: var(--on-fill); }
+.bae-m-qrscan { height: 300px; box-sizing: border-box; padding: var(--space-edge); border-radius: var(--radius-card); background: var(--well); display: flex; align-items: center; justify-content: center; text-align: center; font: 400 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-qrscan-camera { background: var(--backdrop); }

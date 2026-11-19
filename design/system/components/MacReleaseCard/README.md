@@ -1,5 +1,5 @@
 # MacReleaseCard
 
-A found album: cover, title, artist · label, a link per catalog that has answered (`sources`, none until one has); its pressings under it on a rule.
+A found album: its cover, its title over the artist and label, and a link per catalog that has answered (`sources`, none until one has). `MacReleaseGroup` draws it over the album's pressings.
 
-**In the code:** macOS: `ReleaseGroupCard` (`Views/Import/Search/`).
+**In the code:** macOS: `ReleaseGroupCard` (`Views/Import/Search/ReleaseGroupCard.swift`).

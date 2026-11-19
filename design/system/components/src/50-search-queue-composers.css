@@ -1,0 +1,7 @@
+/* The full player's volume bar: the level (--level) in the accent, a 6dp gap, the rest in the accent's tint ending in a dot, and the handle at the level. */
+.bae-a-volume { position: relative; flex: 1; height: 16px; margin: 0 8px; }
+.bae-a-volume::before { content: ''; position: absolute; top: 0; bottom: 0; left: calc(var(--level) + 6px); right: 0; border-radius: 2px 8px 8px 2px; background: var(--accent-tint-strong); }
+.bae-a-volume::after { content: ''; position: absolute; top: 6px; right: 6px; width: 4px; height: 4px; border-radius: 2px; background: var(--accent); }
+.bae-a-volume > div { position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--level) - 6px); border-radius: 8px 2px 2px 8px; background: var(--accent); }
+.bae-a-volume > span { position: absolute; top: 50%; left: var(--level); width: 4px; height: 44px; margin: -22px 0 0 -2px; border-radius: 2px; background: var(--accent); }
+.bae-a-fullplayer > .bae-a-transport-large, .bae-a-fullplayer > .sc-host-x > .bae-a-transport-large { margin-top: 16px; }

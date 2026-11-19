@@ -1,0 +1,21 @@
+<!-- @dsCard group="macOS" height=1409 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacCloudHome</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('S3', h(B.MacCloudHome, { keyId: 'AKIA4EXAMPLEOLD' })),
+    W('S3, key replaced', h(B.MacCloudHome, { keyId: 'AKIA4EXAMPLENEW', oldKey: 'AKIA4EXAMPLEOLD' })),
+    W('Dropbox', h(B.MacCloudHome, { provider: 'dropbox', account: 'mara.quill@example.com', folder: 'Music' })),
+    W('OneDrive', h(B.MacCloudHome, { provider: 'onedrive', account: 'mara.quill@example.com', folder: 'Music Library' })),
+    W('Dropbox, folder unknown', h(B.MacCloudHome, { provider: 'dropbox' })),
+    W('iCloud', h(B.MacCloudHome, { provider: 'icloud' })),
+    W('Bare, in a box', h(B.MacBox, null, h(B.MacRow, { label: 'Status', value: 'Synced', tone: 'success' }), h(B.MacCloudHome, { provider: 'dropbox', account: 'mara.quill@example.com', folder: 'Music', bare: true })))));
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!-- @dsCard group="macOS" height=200 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacPlaceholderLine</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Line', h(B.MacPlaceholderLine, { width: 140, height: 12 })),
+    N('Short line', h(B.MacPlaceholderLine, { width: 90, height: 10 })),
+    N('Table cell', h(B.MacPlaceholderLine, { width: 180, height: 14, radius: 3 })),
+    N('Picture', h(B.MacPlaceholderLine, { width: 44, height: 44, radius: 6 }))));
+</script>
+</body>
+</html>

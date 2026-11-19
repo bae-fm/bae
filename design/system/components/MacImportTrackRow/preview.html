@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS import" height=160 -->
+<!-- @dsCard group="macOS import" height=600 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportTrackRow</title></head>
@@ -8,8 +8,17 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '01 Harbor Lights.flac', position: '1', title: 'Harbor Lights', inherited: true, length: '4:32', playing: true }), h(B.MacImportTrackRow, { file: '03 Second Floor.flac', position: '3', title: 'Second Floor', inherited: true, length: '3:45', mismatch: true }))));
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Track', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', inherited: true, length: '5:20' })))),
+    W('Playing', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', inherited: true, length: '5:20', playing: true })))),
+    W('Own artist', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', artist: 'Odile Fen', length: '5:20' })))),
+    W('Own artist from the library', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', artist: 'Odile Fen', artistChip: 'Library', length: '5:20' })))),
+    W('No artist', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', length: '5:20' })))),
+    W('Untitled', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', inherited: true, length: '5:20' })))),
+    W('Length differs', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { file: '03 Salt Road.flac', position: '3', title: 'Salt Road', inherited: true, length: '5:20', listed: '5:27' })))),
+    W('CUE track', box(820, h(B.MacImportTable, null, h(B.MacImportTrackRow, { start: '8:49', position: '3', title: 'Salt Road', inherited: true, length: '5:20' }))))));
 </script>
 </body>
 </html>

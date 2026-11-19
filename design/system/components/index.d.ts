@@ -3,7 +3,7 @@ import type * as React from 'react';
 // ---- macOS ----
 
 /** The Settings window: the pane list on the left, the pane on the right. title heads the pane; back names the pane a Back button returns to. status puts a short status beside statusPane in the pane list, in statusTone. A MacSheet with overlay inside covers the whole window. The window is 600 pt tall; a pane taller than that runs under its bottom edge, and scroll (px) draws it scrolled that far, and the heading stays in place. */
-export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Import' | 'Formats' | 'Casting' | 'Subsonic' | 'Automation' | 'About'; title?: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; scroll?: number; children?: React.ReactNode }
+export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Casting' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
 /** A plain macOS window with traffic lights and no sidebar (the welcome window). A MacAlert inside covers it. */
@@ -29,7 +29,7 @@ export interface MacSectionProps { title?: string; children?: React.ReactNode }
 export declare function MacSection(props: MacSectionProps): React.ReactElement;
 
 /** A rounded group of rows; draws a hairline between its children. empty is the sentence shown when it has none. */
-export interface MacBoxProps { elevated?: boolean; empty?: string; children?: React.ReactNode }
+export interface MacBoxProps { empty?: string; children?: React.ReactNode }
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
@@ -55,7 +55,7 @@ export interface MacFieldRowProps { label?: string; labelWidth?: number; alignTe
 export declare function MacFieldRow(props: MacFieldRowProps): React.ReactElement;
 
 /** size alert is the button of a MacAlert; tinted is a secondary button on a filled notice. kind: primary is the one action a screen is for; secondary is everything else; borderless is words with no chrome, for an action at the end of a row; icon is a glyph-only button (label is its accessible name); beside words, label names a button whose words do not say what it does. destructive colors the words danger. */
-export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; tinted?: boolean; off?: boolean; /** It opens a menu, as Add library… does: read as a pop-up button. */ menu?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface MacButtonProps { kind?: 'primary' | 'secondary' | 'borderless' | 'icon'; icon?: 'copy' | 'check'; size?: 'small' | 'regular' | 'large' | 'alert'; label?: string; destructive?: boolean; muted?: boolean; neutral?: boolean; tinted?: boolean; off?: boolean; /** It opens a menu, as Add library… does: read as a pop-up button. */ menu?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function MacButton(props: MacButtonProps): React.ReactElement;
 
 /** A text field with its label on the left (labelWidth px), or the label as a placeholder (labelHidden). note is a grey line under it; error a red one, shown when state is error. Leave out label when a MacFieldRow holds the field and gives the label. Children sit after the field. */
@@ -85,7 +85,7 @@ export interface MacMenuProps { children?: React.ReactNode }
 export declare function MacMenu(props: MacMenuProps): React.ReactElement;
 
 /** One choice in a MacMenu: checked marks the current choice, highlighted the one under the pointer. */
-export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode; /** Can't be chosen now: greyed, as NSMenu disables an item. */ off?: boolean }
+export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode; /** Can't be chosen now: greyed, as NSMenu disables an item. */ off?: boolean; /** Heads the group below. */ heading?: boolean; /** A › opens more items. */ submenu?: boolean; /** On a submenu, the glyph before the ›. */ accessory?: 'problem' | 'scanning' | 'network'; /** The accessory's hover text. */ help?: string }
 export declare function MacMenuItem(props: MacMenuItemProps): React.ReactElement;
 
 /** A ▸ label that shows its children when opened. open sets how it starts. */
@@ -97,11 +97,11 @@ export interface MacSheetProps { title?: string; message?: string; overlay?: boo
 export declare function MacSheet(props: MacSheetProps): React.ReactElement;
 
 /** A sheet's buttons, on the right. split puts the first child on the left. */
-export interface MacSheetFooterProps { split?: boolean; children?: React.ReactNode }
+export interface MacSheetFooterProps { split?: boolean | number; children?: React.ReactNode }
 export declare function MacSheetFooter(props: MacSheetFooterProps): React.ReactElement;
 
 /** A step that waits: its words over a bar. Without value the bar moves; with value (0 to 1) it fills. */
-export interface MacProgressProps { label?: string; value?: number }
+export interface MacProgressProps { label?: string; name?: string; value?: number | string }
 export declare function MacProgress(props: MacProgressProps): React.ReactElement;
 export interface MacSpinnerProps { label?: string; size?: number }
 export declare function MacSpinner(props: MacSpinnerProps): React.ReactElement;
@@ -145,11 +145,11 @@ export interface MacReleaseFilesProps { /** "name|size[|kind]", comma-separated;
 export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
 export interface AndroidKeyboardProps {}
 export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;
-export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
+export interface AndroidButtonProps { kind?: 'filled' | 'tonal' | 'outlined' | 'text'; label?: string; large?: boolean; icon?: string; alignTo?: 'text' | 'field'; destructive?: boolean; neutral?: boolean; off?: boolean; onClick?: () => void; children?: React.ReactNode }
 export declare function AndroidButton(props: AndroidButtonProps): React.ReactElement;
 
 /** A 48 dp glyph button: a Material Symbol by name (back, close, more, search, …). label is its accessible name. tone colours the glyph (secondary text, the accent, or the warning); box sets the touch box's side when it isn't 48. */
-export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning'; box?: 40 | 56; className?: string; /** It opens a menu: read as a menu button. */ menu?: boolean; /** Dimmed and disabled while its action can't run. */ off?: boolean }
+export interface AndroidIconButtonProps { icon: string; label?: string; size?: number; tonal?: boolean; tone?: 'muted' | 'accent' | 'warning' | 'onfill'; box?: 40 | 56; className?: string; /** It opens a menu: read as a menu button. */ menu?: boolean; /** Dimmed and disabled while its action can't run. */ off?: boolean }
 export declare function AndroidIconButton(props: AndroidIconButtonProps): React.ReactElement;
 
 /** An on/off switch; label is its accessible name. */
@@ -227,7 +227,7 @@ export declare function MacSeekBar(props: SeekBarProps): React.ReactElement;
 export declare function AndroidSeekBar(props: SeekBarProps): React.ReactElement;
 export interface MacPlayPauseProps { playing?: boolean; waiting?: boolean }
 export declare function MacPlayPause(props: MacPlayPauseProps): React.ReactElement;
-export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; size?: number; /** It opens a menu: read as a menu button, `active` while the menu is open. */ menu?: boolean; /** Dimmed and disabled while it can't be used. */ off?: boolean }
+export interface MacIconButtonProps { icon: string; label?: string; active?: boolean; faint?: boolean; small?: boolean; boxed?: boolean; /** Round on a dark fill, for a place on a cover. */ overlay?: boolean; size?: number; /** It opens a menu: read as a menu button, `active` while the menu is open. */ menu?: boolean; /** Dimmed and disabled while it can't be used. */ off?: boolean }
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
@@ -235,7 +235,7 @@ export interface MacAlbumGridProps { columns?: number; children?: React.ReactNod
 export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
 export interface MacAlbumTileProps { title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
 export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
-export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean }
+export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean; /** Among the tracks picked together. */ picked?: boolean; /** The stars' slot after the row: 1 to 5, or 0 for an empty slot. */ rating?: number | string }
 export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
@@ -258,23 +258,23 @@ export declare function AndroidPlayPause(props: AndroidPlayPauseProps): React.Re
 export declare function AndroidAlbumGrid(props: { children?: React.ReactNode }): React.ReactElement;
 export interface AndroidAlbumTileProps { title: string; line?: string; noCover?: boolean }
 export declare function AndroidAlbumTile(props: AndroidAlbumTileProps): React.ReactElement;
-export interface AndroidArtistHeadingProps { name: string; count?: string; pinned?: boolean; noImage?: boolean }
-export declare function AndroidArtistHeading(props: AndroidArtistHeadingProps): React.ReactElement;
-export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean }
+export interface AndroidArtistGroupHeadingProps { name: string; count?: string; pinned?: boolean; noImage?: boolean }
+export declare function AndroidArtistGroupHeading(props: AndroidArtistGroupHeadingProps): React.ReactElement;
+export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; /** The work the track records and its composer, on a line under the row. */ work?: string }
 export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.ReactElement;
 export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; pressing?: string; labels?: string; noCover?: boolean }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
-export interface AndroidDownloadControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
-export declare function AndroidDownloadControl(props: AndroidDownloadControlProps): React.ReactElement;
+export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
+export declare function AndroidPinControl(props: AndroidPinControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
-export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; coverSize?: number; children?: React.ReactNode }
+export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; /** Who else rated it. */ ratingWho?: string; children?: React.ReactNode }
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
 export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
 export declare function MacRecordLinks(props: { records: string }): React.ReactElement;
 /** A row's ⋯ / ⋮ button with the row's actions in its menu; `open` draws the menu, `items` its entries ("-" for a line). */
-export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string; off?: boolean; label?: string; /** macOS: draws the button on a control's fill, beside a page's Play. */ boxed?: boolean }
+export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string; off?: boolean; label?: string; /** macOS: draws the button on a control's fill, beside a page's Play. */ boxed?: boolean; /** macOS: round on a dark fill, for a place on a cover. */ overlay?: boolean }
 export declare function MacMoreMenu(props: MoreMenuProps): React.ReactElement;
 export declare function AndroidMoreMenu(props: MoreMenuProps): React.ReactElement;
 /** The close control of a docked pane and of an open album. */
@@ -284,7 +284,7 @@ export declare function MacTrackColumns(props: { children?: React.ReactNode }): 
 export declare function MacBrowseSplit(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacArtistAlbumTileProps { title: string; year?: string; noCover?: boolean }
 export declare function MacArtistAlbumTile(props: MacArtistAlbumTileProps): React.ReactElement;
-export interface MacSortCriteriaProps { criteria?: string; full?: boolean }
+export interface MacSortCriteriaProps { criteria?: string; fields?: string }
 export declare function MacSortCriteria(props: MacSortCriteriaProps): React.ReactElement;
 export interface MacCheckboxProps { label: string; on?: boolean }
 export declare function MacCheckbox(props: MacCheckboxProps): React.ReactElement;
@@ -293,7 +293,7 @@ export interface AndroidMenuProps { top?: number; left?: number; right?: number;
 export declare function AndroidMenu(props: AndroidMenuProps): React.ReactElement;
 export interface AndroidMenuItemProps { selected?: boolean; check?: boolean; heading?: boolean; divider?: boolean; pressed?: boolean; children?: React.ReactNode }
 export declare function AndroidMenuItem(props: AndroidMenuItemProps): React.ReactElement;
-export interface MacSearchCardProps { top?: number; right?: number; empty?: string; children?: React.ReactNode }
+export interface MacSearchCardProps { top?: number; right?: number; empty?: boolean; children?: React.ReactNode }
 export declare function MacSearchCard(props: MacSearchCardProps): React.ReactElement;
 export declare function MacSearchSection(props: { title: string }): React.ReactElement;
 /** part (Android) indents a work under its group's heading work; inset (Android) is the composer and work pages' rows today, whose text carries a second 16dp padding inside the row's own. */
@@ -304,12 +304,10 @@ export declare function AndroidSearchSection(props: { title: string }): React.Re
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
-export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
+export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; whose?: string; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
 export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean; menu?: string; wide?: boolean; hang?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
-/** A choice that applies to a whole list: its current value in the accent with a ⌄, opening a menu of the choices (History's whose plays). */
-export declare function MacInlineMenu(props: { action?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacQueuePlaceholderRow(props: {}): React.ReactElement;
 export declare function AndroidQueuePlaceholderRow(): React.ReactElement;
 export declare function MacQueueInsertLine(props: {}): React.ReactElement;
@@ -320,11 +318,11 @@ export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactE
 export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean }
 export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
 export declare function AndroidSheet(props: { top?: number; title?: string; children?: React.ReactNode }): React.ReactElement;
-export interface AndroidQueueLabelProps { title: string; clear?: boolean; shuffle?: boolean }
-export declare function AndroidQueueLabel(props: AndroidQueueLabelProps): React.ReactElement;
+export interface AndroidQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
+export declare function AndroidQueueSection(props: AndroidQueueSectionProps): React.ReactElement;
 export interface AndroidQueueRowProps { title: string; artist?: string; album?: string; duration?: string; current?: boolean; dragging?: boolean }
 export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;
-export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean }
+export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; noCover?: boolean; noVolume?: string; volume?: number | string }
 export declare function AndroidFullPlayer(props: AndroidFullPlayerProps): React.ReactElement;
 export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; menuOpen?: boolean; waiting?: string }
 export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
@@ -337,12 +335,12 @@ export declare function MacWorkDetail(props: { title: string; children?: React.R
 export declare function MacHairline(props: {}): React.ReactElement;
 export declare function MacContentUnavailable(props: { title: string; description?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function Sym(props: { name: string; size?: number; weight?: number }): React.ReactElement;
-export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; disabled?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacTable(props: { columns: string; empty?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function MacTableRow(props: { selected?: boolean; placeholder?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function MacStorageWindow(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; disabled?: boolean; empty?: boolean; width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
+export declare function MacTable(props: { columns: string; rows?: string; selected?: number | string; loading?: number }): React.ReactElement;
+export declare function MacStorageCell(props: { value?: string; numeric?: boolean; state?: string; progress?: number | string }): React.ReactElement;
 export declare function MacReleaseCell(props: { title: string }): React.ReactElement;
 export declare function MacStorageChip(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'pinning' | 'detaching' | 'downloadFailed' | 'moveFailed' | 'moveToThisDeviceFailed' | 'queued' | 'uploadQueued' | 'uploadBlocked' | 'moveToThisDeviceQueued'; progress?: number; file?: string; long?: boolean }): React.ReactElement;
-export declare function MacDownloadRow(props: { kind?: 'pin' | 'moveToThisDevice'; title?: string; detail?: string; ago?: string }): React.ReactElement;
+export declare function MacFailedTransferRow(props: { kind?: 'pin' | 'moveToThisDevice'; title?: string; detail?: string; ago?: string }): React.ReactElement;
 /** What bae keeps on this device, heading Settings → Storage: the total, one bar split by kind, a legend line per kind. parts: "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour. */
 export interface StorageUsageProps { total?: string; of?: string; parts?: string }
 export declare function MacStorageUsage(props: StorageUsageProps): React.ReactElement;
@@ -358,12 +356,12 @@ export declare function MacErrorDetails(props: { details: string }): React.React
 /** MacErrorDetails on Android: a copy icon button at the corner; in an AndroidDialog. */
 export declare function AndroidErrorDetails(props: { details: string }): React.ReactElement;
 export declare function MacPopover(props: { width?: number; top?: number; right?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; movingToThisDevice?: string; moveToThisDeviceProgress?: number; downloadsWait?: string }): React.ReactElement;
+export declare function MacActivity(props: { children?: React.ReactNode; attention?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; movingToThisDevice?: string; moveToThisDeviceProgress?: number; downloadsWait?: string }): React.ReactElement;
 export declare function AndroidNotice(props: NoticeProps): React.ReactElement;
 export declare function AndroidActivity(props: { children?: React.ReactNode; attention?: string; record?: string; reason?: string; error?: string; syncing?: boolean; uploads?: string; uploadProgress?: number; uploadsWait?: string; pins?: string; pinProgress?: number; downloadsWait?: string }): React.ReactElement;
-export declare function AndroidSegmentedButtons(props: { options: string; selected?: string; /** What the choice is, over the buttons. */ label?: string }): React.ReactElement;
-export declare function AndroidDownloadsBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
-export declare function AndroidDownloadRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string }): React.ReactElement;
+export declare function AndroidSegmentedControl(props: { options: string; selected?: string; /** What the choice is, over the buttons. */ label?: string; /** What the chosen option means, under the buttons. */ helper?: string }): React.ReactElement;
+export declare function AndroidPinningBar(props: { failed?: boolean; paused?: boolean; idle?: boolean }): React.ReactElement;
+export declare function AndroidPinningRow(props: { title?: string; detail?: string; state?: 'queued' | 'active' | 'failed'; progress?: number; bytes?: string }): React.ReactElement;
 export declare function AndroidSnackbar(props: { message: string; action?: string; close?: boolean }): React.ReactElement;
 export declare function MacImportSidebar(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string; filter?: string; narrowed?: string; identifying?: number; importing?: boolean; scanning?: boolean; filtered?: boolean; empty?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportGroupHeader(props: { name: string; closed?: boolean }): React.ReactElement;
@@ -371,24 +369,30 @@ export declare function MacImportRow(props: { title?: string; artist?: string; f
 export declare function MacImportFolderLine(props: { tab?: string; folder: string }): React.ReactElement;
 /** Where an import goes: This Mac or Cloud. One stored choice, wherever it shows. */
 export declare function MacImportDestination(props: { to: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
-export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumOpen?: boolean; albumItems?: string; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; /** A skipped folder's card, read-only, stating why bae can't import it. */ reason?: string; folder?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean; editor?: boolean; changed?: boolean }): React.ReactElement;
+export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean }): React.ReactElement;
+/** A library release's editor card: Identify, Cancel once something changed, Save; the release's identity and fields; the records with no Unlink. */
+export declare function MacReleaseEditorCard(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; changed?: boolean }): React.ReactElement;
+/** A skipped folder's card, read-only: why bae can't import it, then its cover and what its tags call the release, or its folder's name. */
+export declare function MacInvalidCandidateCard(props: { reason: string; cover?: string; title?: string; artist?: string; folder?: string }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
-export declare function MacImportTrackRow(props: { file: string; entry?: boolean; position?: string; title?: string; artist?: string; inherited?: boolean; length?: string; mismatch?: boolean; playing?: boolean }): React.ReactElement;
+export declare function MacImportTrackRow(props: { file?: string; start?: string; position?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; inherited?: boolean; length?: string; listed?: string; playing?: boolean }): React.ReactElement;
 export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean; file?: string }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
-export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
+export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
+/** A found album with its pressings on a rule under it. */
+export declare function MacReleaseGroup(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; note?: string; /** The notes the folder's records carry, shown on the Notes badge's hover. */ notes?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
-export declare function MacLightbox(props: { title?: string; label?: string; source?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
+export declare function MacLightbox(props: { title?: string; label?: string; source?: string; images?: string; selected?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
 export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; wide?: boolean; hanging?: boolean; leadWidth?: number; lifted?: boolean; dragging?: boolean }): React.ReactElement;
-export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;
+export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean; /** The copy under the finger while the owner drags the row to a new place: raised over the rows. */ dragging?: boolean; /** Ends the row in ⋮; a text value labels the button. */ menu?: boolean | string }): React.ReactElement;
 
 // ---- Logo and app icons ----
 
@@ -401,3 +405,203 @@ export declare function AppIcon(props: { platform?: 'macos' | 'ios' | 'android' 
 
 /** The sheep on the empty Import screen. Every few seconds it plays one moment from a fixed sequence, then rests: it gobbles a line of releases from the left or the right, catches one falling from above, breathes one in, bops to its music, or rolls on the spot. size is the sheep's width. still holds the pose it shows when the person has asked for reduced motion. */
 export declare function ImportSheep(props: { size?: number; still?: boolean }): React.ReactElement;
+// ---- Pieces that several screens share ----
+
+/** The welcome window's first choices when this Mac has no library: Create new library…, Scan code and Enter code. */
+export declare function MacWelcomeActions(props: {}): React.ReactElement;
+/** The welcome screen's first choices when this device has no library: Scan code and Enter code. */
+export declare function AndroidWelcomeActions(props: {}): React.ReactElement;
+
+/** The libraries on this Mac, as the welcome window lists them, with Add library… under them. state: '' (both open), removing (bae is leaving the first), open-failed (the first could not open), unreadable or damaged-join (a third row bae cannot read). */
+export interface MacWelcomeLibrariesProps { state?: '' | 'removing' | 'open-failed' | 'unreadable' | 'damaged-join' }
+export declare function MacWelcomeLibraries(props: MacWelcomeLibrariesProps): React.ReactElement;
+/** The libraries on this device, as the welcome screen lists them, with Add library as the card's last row. */
+export interface AndroidWelcomeLibrariesProps { state?: '' | 'removing' | 'unreadable' | 'damaged-join' }
+export declare function AndroidWelcomeLibraries(props: AndroidWelcomeLibrariesProps): React.ReactElement;
+
+/** The welcome window's content: the logo over "Your music, everywhere", then MacWelcomeLibraries (state) and children under them. empty: no library yet, so a larger logo sits over MacWelcomeActions. */
+export interface MacWelcomeHomeProps { empty?: boolean; state?: MacWelcomeLibrariesProps['state']; children?: React.ReactNode }
+export declare function MacWelcomeHome(props: MacWelcomeHomeProps): React.ReactElement;
+/** The welcome screen's content, as MacWelcomeHome's; empty puts AndroidWelcomeActions at the bottom. */
+export interface AndroidWelcomeHomeProps { empty?: boolean; state?: AndroidWelcomeLibrariesProps['state']; children?: React.ReactNode }
+export declare function AndroidWelcomeHome(props: AndroidWelcomeHomeProps): React.ReactElement;
+
+/** The library's restore code in Settings, hidden but for its ends until shown, with Show or Hide, Print… and Copy. s3 adds that an S3 library also needs its key. */
+export interface RestoreCodeProps { shown?: boolean | 'true'; s3?: boolean | 'true' }
+export declare function MacRestoreCode(props: RestoreCodeProps): React.ReactElement;
+export declare function AndroidRestoreCode(props: RestoreCodeProps): React.ReactElement;
+
+/** An S3 library's cloud home in Settings: provider, endpoint, region, bucket and the access key ID with Replace key. oldKey: the key just replaced, which a notice asks the person to delete. */
+export interface CloudHomeProps { keyId?: string; oldKey?: string }
+export declare function MacCloudHome(props: CloudHomeProps & { provider?: 's3' | 'dropbox' | 'onedrive' | 'icloud'; endpoint?: string; region?: string; bucket?: string; account?: string; folder?: string; bare?: boolean }): React.ReactElement;
+export declare function AndroidCloudHome(props: CloudHomeProps): React.ReactElement;
+
+/** The two fields of an S3 access key. focus names the focused field (secret by default); refused shows that S3 storage turned the key down. */
+export interface S3KeyFieldsProps { keyId?: string; secret?: string; refused?: boolean | 'true'; focus?: 'id' | 'secret' }
+export declare function MacS3KeyFields(props: S3KeyFieldsProps): React.ReactElement;
+export declare function AndroidS3KeyFields(props: S3KeyFieldsProps): React.ReactElement;
+
+/** The S3 storage form for a new library, with Cancel and Set up. error says what S3 storage refused, where it refused it. */
+export interface MacS3FormProps { error?: 'none' | 'key' | 'denied' | 'region' | 'bucket' | 'occupied' }
+export declare function MacS3Form(props: MacS3FormProps): React.ReactElement;
+
+/** The folder picker for a Dropbox or OneDrive library, with New folder…, Look again, Cancel and Set up. */
+export interface MacFolderPickerProps { provider?: 'dropbox' | 'onedrive'; state?: 'list' | 'naming' | 'made' | 'notEmpty' | 'empty' }
+export declare function MacFolderPicker(props: MacFolderPickerProps): React.ReactElement;
+
+/** The invite form's fields: the account email, or on S3 the key the person joins with, then their role and how long the invite lasts. */
+export interface MacInviteFieldsProps { storage?: 'dropbox' | 'onedrive' | 'icloud' | 's3'; keyOwner?: 'theirs' | 'mine' }
+export declare function MacInviteFields(props: MacInviteFieldsProps): React.ReactElement;
+export interface AndroidInviteFieldsProps { storage?: 'dropbox' | 'onedrive' | 's3'; keyOwner?: 'theirs' | 'mine' }
+export declare function AndroidInviteFields(props: AndroidInviteFieldsProps): React.ReactElement;
+
+/** How the library syncs: the status in its tone, what caused it and what to do (cause, remedy), a button that does it (fix), and when this device last synced. */
+export interface SyncStatusProps { status: string; tone?: '' | 'success' | 'warning' | 'danger'; cause?: string; remedy?: string; fix?: string; lastSynced?: string }
+export declare function MacSyncStatus(props: Omit<SyncStatusProps, 'remedy'> & { countdown?: string }): React.ReactElement;
+export declare function AndroidSyncStatus(props: SyncStatusProps): React.ReactElement;
+
+/** The Save as panel's Format line: "Format:" and the format pop-up; value, open, items and chosen are MacPopUpButton's. */
+export interface MacSavePanelFormatProps { value: string; open?: boolean; items?: string; chosen?: string }
+export declare function MacSavePanelFormat(props: MacSavePanelFormatProps): React.ReactElement;
+/** A search or filter field: the magnifier, then the text. kind search is the title bar's rounded field, filter a toolbar's 160pt field, inline a field with no box that fills the rest of its row. label names it and shows while it is empty. off dims a field that has nothing to filter. */
+export declare function MacSearchField(props: { kind?: 'search' | 'filter' | 'inline'; label?: string; value?: string; focused?: boolean; off?: boolean }): React.ReactElement;
+/** A ring that fills clockwise from the top with value, from 0 to 1: accent, or activity and pinning for a file's transfer. label names it for VoiceOver. */
+export declare function MacProgressRing(props: { value: number | string; tone?: 'activity' | 'pinning'; label?: string }): React.ReactElement;
+/** Found, Imported and Skipped, each a tab with its count; tab is the open one. */
+export declare function MacImportTabs(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string }): React.ReactElement;
+/** The import list's filter row: the Filter field, the narrowed count, the identifying ring, importing, scanning and the ⋯ menu with its filter dot. */
+export declare function MacImportFilterRow(props: { filter?: string; narrowed?: string; identifying?: number | string; importing?: boolean; scanning?: boolean; filtered?: boolean }): React.ReactElement;
+/** The release a folder holds, beside its cover in the import pane: title (or the placeholder), artist, facts line, audio line. */
+export declare function MacImportReleaseSummary(props: { title?: string; placeholder?: boolean; artist?: string; facts?: string; audio?: string }): React.ReactElement;
+/** A way to answer a folder that waits on you: a small button over the line saying what it does. */
+export declare function MacAnswerAction(props: { title: string; subtitle: string; off?: boolean }): React.ReactElement;
+/** A catalog a typed search still waits on: searching, or failed with Retry. */
+export declare function MacSearchSourceLine(props: { catalog?: string; failed?: boolean; reason?: string }): React.ReactElement;
+/** The Import section before any folder is added: the sheep, the line, Import folder… and, without a Discogs key, Add Discogs key…. */
+export declare function MacImportEmptyState(props: { discogs?: boolean }): React.ReactElement;
+/** The Import window's content: the list column (the first child) beside the pane (the other children). noSelection draws the pane's Select a folder state instead. */
+export declare function MacImportWindow(props: { noSelection?: boolean; children?: React.ReactNode }): React.ReactElement;
+/** A field drawn as its value until the pointer is over it or it has focus. large sets it in the album title's size; quiet draws its value in the tertiary colour. */
+export declare function MacInlineField(props: { label: string; value?: string; placeholder?: string; large?: boolean; quiet?: boolean }): React.ReactElement;
+/** A ruled heading over a part of a form: Release, Images, Files, Credits. */
+export declare function MacFormHeading(props: { children?: React.ReactNode }): React.ReactElement;
+/** The draft's top row: Identify with Automatic, Search and the Metadata menu, then where the import goes and Import or Retry import; in a library release's editor, Save with Cancel once something changed. */
+export declare function MacIdentifyBar(props: { editor?: boolean; changed?: boolean; blank?: boolean; retry?: boolean; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
+/** An artist field: a button showing the artists and their Library or New chip, drawn as its value until the pointer is over it. */
+export declare function MacAlbumArtistField(props: { artist?: string; chip?: 'Library' | 'New'; placeholder?: string; inherited?: boolean; secondary?: boolean; column?: boolean }): React.ReactElement;
+/** The Album pop-up showing the album as it stands; open draws its menu: that album, New album, Use the release's album, Choose another album. */
+export declare function MacAlbumPicker(props: { album: string; inLibrary?: boolean; picked?: boolean; open?: boolean }): React.ReactElement;
+/** The release's cover beside its album title, album artist and album year, then its children: the audio line and the album picker. */
+export declare function MacReleaseIdentity(props: { cover?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; year?: string; children?: React.ReactNode }): React.ReactElement;
+/** The release's fields under a Release heading: Year, Media, Label with catalog number, Country, Barcode, Status, Packaging and Details. */
+export declare function MacReleaseFields(props: { year?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string }): React.ReactElement;
+/** One file of a release: name and size; kind opens (a button that opens it), audio (with Play) or other; damaged says why the file is damaged. */
+export declare function MacReleaseFileRow(props: { name: string; size?: string; kind?: 'opens' | 'audio' | 'other'; damaged?: string }): React.ReactElement;
+/** One identifier the files state: label and value, or a dash, with the catalogs searched for it ("MusicBrainz=2,Discogs=0"). */
+export declare function MacIdentifierChip(props: { label: string; value?: string; state?: 'filled' | 'outlined' | 'struck' | 'dash'; sources?: string }): React.ReactElement;
+/** A pressing fact, each record's value followed by its catalog when the records differ ("1992:MusicBrainz|1993:Discogs"). */
+export declare function MacSourcedValue(props: { value: string }): React.ReactElement;
+/** One bulk action with how many selected folders it applies to; a child sits before the count. */
+export declare function MacBulkActionRow(props: { icon: string; label: string; count?: number; strong?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function MacTransport(props: { playing?: boolean; waiting?: boolean; shuffle?: boolean; repeat?: boolean }): React.ReactElement;
+export declare function MacVolumeSlider(props: { volume?: number; /** The receiver that sets the volume, when it takes none from bae. */ noVolume?: string }): React.ReactElement;
+export declare function MacSectionTabs(props: { section?: 'Library' | 'Import' }): React.ReactElement;
+export declare function MacActivityButton(props: { state?: 'moving' | 'attention' | 'paused' }): React.ReactElement | null;
+export declare function MacAvatarButton(props: { name?: string; image?: string }): React.ReactElement;
+export interface MacTitleBarProps { section?: 'Library' | 'Import'; search?: string; searchFocused?: boolean; sync?: 'moving' | 'attention' | 'paused'; avatar?: string; avatarImage?: string }
+export declare function MacTitleBar(props: MacTitleBarProps): React.ReactElement;
+export declare function MacTrackLead(props: { position?: string; hover?: boolean; current?: boolean; playing?: boolean }): React.ReactElement;
+export declare function MacReleasePicker(props: { releases?: string; selected?: string }): React.ReactElement | null;
+export declare function MacAlbumRating(props: { value?: number | string; who?: string }): React.ReactElement;
+export interface MacAlbumHeaderProps { title: string; artist?: string; year?: string; releases?: string; release?: string; pressing?: string; labels?: string; unplayable?: string; options?: string; optionsOpen?: boolean; highlighted?: string; rating?: number | string; ratingWho?: string }
+export declare function MacAlbumHeader(props: MacAlbumHeaderProps): React.ReactElement;
+export declare function MacAlbumCredits(props: { /** "Role: name" pairs separated by semicolons. */ credits: string }): React.ReactElement;
+export declare function MacAlbumWorks(props: { /** "number|title|composer" entries separated by semicolons. */ works: string }): React.ReactElement;
+export declare function MacSortPill(props: { field: string; direction?: 'up' | 'down'; removable?: boolean }): React.ReactElement;
+export declare function MacPersonTag(props: { name: string; /** A playlist header's owner line. */ strong?: boolean }): React.ReactElement;
+export declare function MacPlaylistHeader(props: Omit<MacPlaylistPageProps, 'children'>): React.ReactElement;
+export declare function MacArtistAlbumGrid(props: { children?: React.ReactNode }): React.ReactElement;
+export declare function MacArtistOtherNames(props: { value?: string }): React.ReactElement;
+export declare function MacCoverTile(props: { name: string; image?: string; selected?: boolean }): React.ReactElement;
+export declare function MacCoverPreview(props: { name: string; image?: string; source?: string; position?: number; count: number }): React.ReactElement;
+export declare function MacThumbnailStrip(props: { images: string; selected?: string }): React.ReactElement;
+export declare function MacStorageState(props: { state?: 'local' | 'pinned' | 'cloud' }): React.ReactElement;
+export interface AndroidLibraryHeaderProps { view?: string; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention' | 'paused'; avatar?: string; avatarImage?: string }
+export declare function AndroidLibraryHeader(props: AndroidLibraryHeaderProps): React.ReactElement;
+export declare function AndroidSearchBar(props: { search?: string }): React.ReactElement;
+export declare function AndroidActivityButton(props: { state?: 'moving' | 'attention' | 'paused' }): React.ReactElement | null;
+export declare function AndroidTransport(props: { playing?: boolean; waiting?: boolean; /** The full player's. */ large?: boolean }): React.ReactElement;
+export declare function AndroidNowPlayingTrack(props: { title: string; artist?: string; album?: string; noCover?: boolean }): React.ReactElement;
+export declare function AndroidTrackLead(props: { position?: string; current?: boolean; playing?: boolean }): React.ReactElement;
+/** A grey bar where text or a picture will be while it loads. */
+export declare function MacPlaceholderLine(props: { width: number | string; height: number | string; radius?: number | string; fixed?: boolean }): React.ReactElement;
+/** The Settings window's list of panes, with the traffic lights inside it. */
+export declare function MacSettingsSidebar(props: { pane?: string; status?: string; statusPane?: string; statusTone?: string }): React.ReactElement;
+/** A Settings pane's heading, with the back button on a page inside a pane. */
+export declare function MacPageHeading(props: { title: string; back?: string }): React.ReactElement;
+/** One value of a file name pattern, as macOS's token field draws it. */
+export declare function MacToken(props: { children?: React.ReactNode }): React.ReactElement;
+/** A red line under a field that says what is wrong. */
+export declare function MacErrorLine(props: { children?: React.ReactNode }): React.ReactElement;
+/** A transfer in the Activity panel: label, count or hold, Pause or Resume, bar. */
+export declare function MacTransferLine(props: { label: string; count?: string; progress?: number | string; pausable?: boolean; paused?: boolean }): React.ReactElement;
+/** A transfer in Android's Activity sheet. */
+export declare function AndroidTransferLine(props: { label: string; count?: string; progress?: number | string; pausable?: boolean; paused?: boolean; opens?: boolean }): React.ReactElement;
+/** A release's files in its Storage sheet: "name|audio|size|kind" per file, separated by semicolons. */
+export declare function MacReleaseFileTable(props: { files: string; sort?: string }): React.ReactElement;
+/** Label and value pairs in two columns. */
+export declare function MacFactsGrid(props: { facts: string | [string, string | undefined][]; numeric?: string; wide?: boolean }): React.ReactElement;
+/** One transfer queue's rate or hold under the Storage Manager's list, with Pause or Resume. */
+export declare function MacQueueRate(props: { kind: 'uploads' | 'pins' | 'exports'; rate?: string; wait?: string }): React.ReactElement;
+/** The Storage Manager's toolbar. */
+export declare function MacStorageToolbar(props: { filter?: 'All' | 'Local' | 'Cloud'; search?: string; inspector?: boolean; disabled?: boolean }): React.ReactElement;
+/** One kind in a storage legend: dot, label, size. */
+export declare function MacUsageKey(props: { label: string; size: string }): React.ReactElement;
+/** One kind in a storage legend on Android. */
+export declare function AndroidUsageKey(props: { label: string; size: string }): React.ReactElement;
+export interface AndroidTopBarProps { title?: string; back?: boolean; backLabel?: string; menu?: string; more?: string }
+export declare function AndroidTopBar(props: AndroidTopBarProps): React.ReactElement;
+export interface MacSidePaneHeaderProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string }
+export declare function MacSidePaneHeader(props: MacSidePaneHeaderProps): React.ReactElement;
+export interface MacCastConnectingLineProps { name: string }
+export declare function MacCastConnectingLine(props: MacCastConnectingLineProps): React.ReactElement;
+export interface AndroidVolumeSliderProps { value?: number | string }
+export declare function AndroidVolumeSlider(props: AndroidVolumeSliderProps): React.ReactElement;
+export interface AndroidPlaceholderLineProps { width: number | string; height: number | string; radius?: number | string; fixed?: boolean }
+export declare function AndroidPlaceholderLine(props: AndroidPlaceholderLineProps): React.ReactElement;
+export interface AndroidAlbumRatingProps { value?: number | string; raters?: string }
+export declare function AndroidAlbumRating(props: AndroidAlbumRatingProps): React.ReactElement;
+export interface AndroidPageActionsProps { short?: boolean }
+export declare function AndroidPageActions(props: AndroidPageActionsProps): React.ReactElement;
+export interface AndroidAlbumCreditsProps { credits: string }
+export declare function AndroidAlbumCredits(props: AndroidAlbumCreditsProps): React.ReactElement;
+export interface AndroidArtistOtherNamesProps { names: string }
+export declare function AndroidArtistOtherNames(props: AndroidArtistOtherNamesProps): React.ReactElement;
+export interface AndroidPlaylistHeaderProps { name: string; facts?: string; covers?: string }
+export declare function AndroidPlaylistHeader(props: AndroidPlaylistHeaderProps): React.ReactElement;
+export interface AndroidPinsAtOnceProps { selected?: number | string; limit?: number | string }
+export declare function AndroidPinsAtOnce(props: AndroidPinsAtOnceProps): React.ReactElement;
+export interface AndroidReleasePickerProps { releases: string; selected?: string }
+export declare function AndroidReleasePicker(props: AndroidReleasePickerProps): React.ReactElement;
+export interface AndroidLightboxProps { title?: string; label?: string; page?: number | string; count?: number | string; loading?: boolean }
+export declare function AndroidLightbox(props: AndroidLightboxProps): React.ReactElement;
+export interface AndroidGalleryCaptionProps { label?: string; page?: number | string; count?: number | string }
+export declare function AndroidGalleryCaption(props: AndroidGalleryCaptionProps): React.ReactElement;
+export interface AndroidSidePauseProps { kind?: 'side' | 'disc'; label?: string; countdown?: number | string; unchecked?: boolean }
+export declare function AndroidSidePause(props: AndroidSidePauseProps): React.ReactElement;
+export interface AndroidErrorLineProps { children?: React.ReactNode }
+export declare function AndroidErrorLine(props: AndroidErrorLineProps): React.ReactElement;
+export interface AndroidItemProps { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }
+export declare function AndroidItem(props: AndroidItemProps): React.ReactElement;
+export interface AndroidRecordLinksProps { records: string }
+export declare function AndroidRecordLinks(props: AndroidRecordLinksProps): React.ReactElement;
+export interface AndroidUnplayableLineProps { children?: React.ReactNode }
+export declare function AndroidUnplayableLine(props: AndroidUnplayableLineProps): React.ReactElement;
+/** Material's HorizontalDivider: a 1dp line across the screen or list. */
+export declare function AndroidDivider(): React.ReactElement;
+/** The album page's Files: the files no track plays from, under the Files eyebrow (files: "name|kind" entries separated by semicolons). */
+export declare function AndroidReleaseFiles(props: { files: string }): React.ReactElement;
+/** The camera screen that scans a restore code or an invite: the camera's picture, and at its foot the instructions over Cancel. */
+export declare function AndroidQRScanner(props: { instructions?: string; width?: number | string; height?: number | string }): React.ReactElement;
+/** The camera's picture in the Scan a code sheet: starting, camera access off, no camera, or the picture. */
+export declare function MacQRScanner(props: { state?: 'starting' | 'denied' | 'unavailable' | 'camera' }): React.ReactElement;

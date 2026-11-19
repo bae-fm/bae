@@ -39,39 +39,92 @@
   }
   function list(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
 
+  // A grey bar where text or a picture will be while it loads: `width` and `height` in points, `radius` for a picture's corners (a bar's corners otherwise).
+  // A grey bar where text or a picture will be: both platforms draw it alike, in their own units.
+  function placeholderLine(props) {
+    var st = { width: Number(props.width), height: Number(props.height) };
+    if (props.radius != null) st.borderRadius = Number(props.radius);
+    if (props.fixed) st.flex = 'none';
+    return h('div', { className: 'bae-ph', style: st });
+  }
+  function MacPlaceholderLine(props) { return placeholderLine(props); }
+
   // ---- Storage Manager (macOS) ----
-  // The window: title, Filter field, All / Local / Cloud, the Inspector toggle, then the release list and the inspector. `disabled` dims the controls, which do nothing while no library is open.
+  // The Storage Manager's toolbar, past the traffic lights: the window's title, All / Local / Cloud (`filter`, All unless given), the Filter field (`search`, the text typed) and the Inspector toggle (`inspector`, on while the inspector shows). `disabled` (no library open): the filter, the search field and the inspector button are off, each drawn by its own off state.
+  function MacStorageToolbar(props) {
+    return h('header', { className: 'bae-m-storewin-bar' },
+      h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
+      h('span', { style: { flex: 1 } }),
+      h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
+      h('span', { style: { flex: 1 } }),
+      h(MacSearchField, { kind: 'filter', label: 'Filter', value: props.search, off: props.disabled }),
+      h(MacIconButton, { icon: 'sidebar', size: 15, label: 'Inspector', active: props.inspector, off: props.disabled }));
+  }
+  // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's. `empty`: the filter matches nothing, and the window says No matches over the table.
   function MacStorageWindow(props) {
     var k = kids(props.children);
-    // `disabled` (no library open): the filter, the search field and the inspector button are off, each drawn by its own off state.
-    return h('div', { className: 'bae-m-window bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } },
-      h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
-      h('header', { className: 'bae-m-storewin-bar' },
-        h('span', { className: 'bae-m-storewin-title' }, 'Storage Manager'),
-        h('span', { style: { flex: 1 } }),
-        h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
-        h('span', { style: { flex: 1 } }),
-        h('span', { className: cx('bae-m-storewin-filter', props.disabled && 'bae-off'), 'aria-disabled': props.disabled ? true : null }, h(Glyph, { set: 'mac', name: 'search', size: 12 }), h('span', { className: props.search ? null : 'bae-m-search-prompt' }, props.search || 'Filter')),
-        h(MacIconButton, { icon: 'sidebar', size: 15, label: 'Inspector', active: props.inspector, off: props.disabled })),
+    var isType = function (c, t) { var p = inner(c); return p && p.type === t; };
+    var table = k.filter(function (c) { return isType(c, MacTable); });
+    var list = table.length
+      ? [h('div', { key: 't', className: 'bae-m-storewin-table' }, table, props.empty ? h('div', { className: 'bae-m-storewin-empty' }, h(MacContentUnavailable, { title: 'No matches' })) : null)].concat(k.filter(function (c) { return isType(c, MacStorageFooter); }))
+      : k.slice(0, 1);
+    var rest = table.length ? k.filter(function (c) { return !isType(c, MacTable) && !isType(c, MacStorageFooter); }) : k.slice(1);
+    return h('div', { className: 'bae-m-storewin', style: { width: Number(props.width || 1100), height: Number(props.height || 660) } }, macLights(),
+      h(MacStorageToolbar, { filter: props.filter, search: props.search, inspector: props.inspector, disabled: props.disabled }),
       h('div', { className: 'bae-m-storewin-body' },
-        h('div', { className: 'bae-m-storewin-list' }, k[0]),
-        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, k.slice(1)) : null));
+        h('div', { className: 'bae-m-storewin-list' }, list),
+        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, rest) : null));
   }
-  // An AppKit table: columns "Title:width[:right][:up|:down]", rows as MacTableRow.
+  // A table's columns: "Title:width[:right][:up|:down]", the first taking the room the others leave; `up` or `down` marks the column the table sorts by.
   function cols(s) { return list(s).map(function (c) { var p = c.split(':'); return { title: p[0], w: Number(p[1] || 100), right: p.indexOf('right') > 1, sort: p.indexOf('up') > 1 ? 'up' : p.indexOf('down') > 1 ? 'down' : null }; }); }
+  // Entries: one row a ";"-separated entry, one cell a "|"-separated field.
+  function entries(s) { return String(s || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean).map(function (r) { return r.split('|').map(function (x) { return x.trim(); }); }); }
+  function tableHead(cs) {
+    return h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h('span', { key: i, className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 8, className: 'bae-muted' }) : null); }));
+  }
+  function tableTemplate(cs) { return cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' '); }
+  // The Storage Manager's release table, AppKit's NSTableView: the header (`columns`), then one row a release, every other row on the hover fill, the `selected` rows (their numbers, from 1, separated by commas) in the accent's tint. `rows` holds the releases, one entry a row with a field a column in the columns' order: the release's title, its artist, media, storage (a MacStorageChip state, and its progress for a state that moves: "uploading 0.62"), files, size and date added. The Release column draws MacReleaseCell and every other column MacStorageCell. `loading`: that many rows still on their way after the given ones, each a placeholder bar in its Release column.
   function MacTable(props) {
     var cs = cols(props.columns);
-    var tmpl = cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' ');
-    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tmpl } },
-      h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h('span', { key: i, className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 8, className: 'bae-muted' }) : null); })),
-      h('div', { className: 'bae-m-table-body' }, kids(props.children).map(function (r, i) { return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') }, r); })),
-      props.empty ? h('div', { className: 'bae-m-table-empty' }, h('div', { className: 'bae-m-cu-title' }, props.empty)) : null);
+    var sel = list(props.selected).map(Number);
+    var cell = function (c, v) {
+      if (c.title === 'Release') return h(MacReleaseCell, { title: v });
+      if (c.title === 'Storage') { var st = String(v || '').split(' '); return h(MacStorageCell, { state: st[0], progress: st[1] }); }
+      return h(MacStorageCell, { value: v, numeric: c.title === 'Files' || c.title === 'Size' });
+    };
+    var rows = entries(props.rows).map(function (r, i) {
+      return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') },
+        h('div', { className: cx('bae-m-table-row', sel.indexOf(i + 1) >= 0 && 'bae-m-table-selected') }, cs.map(function (c, j) { return h('span', { key: j, className: 'bae-m-table-td' }, cell(c, r[j])); })));
+    });
+    for (var n = 0; n < Number(props.loading || 0); n++) {
+      var k = rows.length;
+      rows.push(h('div', { key: k, className: cx('bae-m-table-tr', k % 2 && 'bae-m-table-alt') },
+        h('div', { className: 'bae-m-table-row' }, h('span', { className: 'bae-m-table-td' }, h(MacPlaceholderLine, { width: 180, height: 14, radius: 3 })))));
+    }
+    return h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows));
   }
-  function MacTableRow(props) {
-    if (props.placeholder) return h('div', { className: 'bae-m-table-row' }, h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ph', style: { width: 180, height: 14, borderRadius: 3 } })));
-    return h('div', { className: cx('bae-m-table-row', props.selected && 'bae-m-table-selected') }, kids(props.children).map(function (c, i) { return h('span', { key: i, className: 'bae-m-table-td' }, c); }));
-  }
+  // The Release column's cell: the release's 24pt cover beside its title.
   function MacReleaseCell(props) { return h('span', { className: 'bae-m-relcell' }, h(Artwork, { title: props.title, size: 24, radius: 4 }), h('span', { className: 'bae-ellipsis' }, props.title)); }
+  // Every other column's cell in the Storage Manager's table: its text (`value`: the artist, the media, the date added), a number at the column's end in tabular figures (`numeric`: files, size), or the storage column's MacStorageChip (`state`, with `progress` for a state that moves).
+  function MacStorageCell(props) {
+    if (props.state) return h(MacStorageChip, { state: props.state, progress: props.progress });
+    return h('span', { className: props.numeric ? 'bae-num bae-m-storecell-num' : null }, props.value);
+  }
+  // A release's files in its Storage sheet, SwiftUI's Table: the Files heading over the columns Name, Audio, Size and Kind, the file name in the text colour, its audio format (empty for a file that isn't audio) and size in secondary text, its kind in tertiary. Name, Size and Kind sort the table, Audio doesn't; `sort` is the column it sorts by and its direction (Name:up unless given), marked in its header. `files` lists them, one "name|audio|size|kind" each, separated by semicolons.
+  function MacReleaseFileTable(props) {
+    var sort = String(props.sort || 'Name:up').split(':');
+    var cs = cols('Name:200,Audio:120,Size:80,Kind:130').map(function (c) { if (c.title === sort[0]) c.sort = sort[1] || 'up'; return c; });
+    var rows = entries(props.files).map(function (f, i) {
+      return h('div', { key: i, className: cx('bae-m-table-tr', i % 2 && 'bae-m-table-alt') },
+        h('div', { className: 'bae-m-table-row' },
+          h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-ellipsis' }, f[0])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted' }, f[1] || '')),
+          h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-num' }, f[2])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-m-tertiary' }, f[3]))));
+    });
+    return h(React.Fragment, null,
+      h('div', { style: { padding: '8px 16px 0' } }, h(MacEyebrow, null, 'Files')),
+      h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
+        h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows))));
+  }
   // The Storage column, as MacStorageChip draws it: one word, with no icon. Every state that stands still is a plain word: Local, Pinned and Cloud at rest, Queued, and Waiting and Error in their tone's colour. Only the states with progress (Uploading, Pinning, Moving) are filled chips. Moving: Uploading, Pinning and Moving (to This Mac) fill with `progress`. A pin, upload or move to This Mac waiting its turn shows the chip Queued (`queued`, `uploadQueued`, `moveToThisDeviceQueued`). An upload held by a missing original shows the chip Waiting, in warning (`uploadBlocked`). A pin, move or move to This Mac that failed shows the chip Error, in danger (`downloadFailed`, `moveFailed`, `moveToThisDeviceFailed`). The inspector says what is queued or moving, what failed, and what an upload waits for. Nothing says how many wait ahead or what holds the queue back. `long`, for a release's Storage sheet (MacStorageBand), names what a waiting or moving change does, as everywhere but the column: Queued to upload, Queued to pin, Queued to move to This Mac, Moving to This Mac….
   function MacStorageChip(props) {
     var s = props.state || 'cloud';
@@ -88,7 +141,7 @@
   }
 
   // A release's transfer that stopped, at the top of the inspector: the kind's icon, title and detail, the cancel mark; under them what happened (`notice`, with `subtitle`) and its buttons. A pin (`pin`) or a move to This Mac (`moveToThisDevice`) that failed shows the notice Could not pin or Could not move to This Mac, with Details and Retry; a move to the cloud (`upload`) names its file in `subtitle` and gives its own `tone` and `action`.
-  function MacDownloadRow(props) {
+  function MacFailedTransferRow(props) {
     var kind = props.kind || 'pin';
     var icon = { moveToThisDevice: 'folder', upload: 'up', pin: 'pin' }[kind];
     var notice = props.notice || (kind === 'moveToThisDevice' ? 'Could not move to This Mac' : 'Could not pin');
@@ -98,15 +151,23 @@
       h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }
 
-  // Under the list: how many releases, the total, then per queue with work its rate, or in its place what holds the whole queue back (`uploadsWait`, `pinsWait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause, or Resume while the person has paused it (`Paused`).
+  // One transfer queue under the Storage Manager's list (`kind`: uploads, pins or exports): its arrow, then its rate (`rate`) or in its place what holds the whole queue back (`wait`: Paused, Waiting for network, Waiting for Wi-Fi, Retrying at 6:40 PM), and Pause, or Resume while the person has paused it (`wait` Paused).
+  var QUEUE_PAUSE = { uploads: 'Pause uploads', pins: 'Pause downloads', exports: 'Pause exports' };
+  function MacQueueRate(props) {
+    var kind = props.kind || 'uploads', wait = props.wait, paused = wait === 'Paused', label = QUEUE_PAUSE[kind];
+    return h('span', { className: 'bae-m-storefoot-q' },
+      h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }),
+      wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num' }, props.rate) : null,
+      h('span', { title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 })));
+  }
+  // Under the list: how many releases, the total, then each queue with work (`uploads`, `pins`, `exports`: its rate) as MacQueueRate, with what holds it back (`uploadsWait`, `pinsWait`, `exportsWait`).
   function MacStorageFooter(props) {
-    var q = function (kind, rate, label) { var wait = props[kind + 'Wait'], paused = wait === 'Paused'; return h('span', { className: 'bae-m-storefoot-q' }, h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }), wait ? h('span', null, wait) : rate ? h('span', { className: 'bae-num' }, rate) : null, h('span', { title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 }))); };
     return h('div', { className: 'bae-m-storefoot' },
       h('span', null, props.releases || '8 releases', props.total ? ' · Total: ' + props.total : ''),
       h('span', { style: { flex: 1 } }),
-      props.uploads ? q('uploads', props.uploads, 'Pause uploads') : null,
-      props.pins ? q('pins', props.pins, 'Pause downloads') : null,
-      props.exports ? q('exports', props.exports, 'Pause exports') : null);
+      props.uploads ? h(MacQueueRate, { kind: 'uploads', rate: props.uploads, wait: props.uploadsWait }) : null,
+      props.pins ? h(MacQueueRate, { kind: 'pins', rate: props.pins, wait: props.pinsWait }) : null,
+      props.exports ? h(MacQueueRate, { kind: 'exports', rate: props.exports, wait: props.exportsWait }) : null);
   }
   // A release's upload or pin in the inspector: the counts line with Cancel, then bytes, rate and a bar.
   function MacTransferSummary(props) {
@@ -118,28 +179,38 @@
         h('span', { style: { flex: 1 } }), props.cancel === false ? null : h(MacButton, { size: 'small' }, 'Cancel')),
       props.bytes ? h(MacTransferReadout, { kind: kind, bytes: props.bytes, rate: props.rate, progress: props.progress }) : null);
   }
+  // A transfer's bytes and rate over its 4pt bar, AppKit's own view, since both change many times a second: the bytes moved (`bytes`) at the start and the rate (`rate`, or for a move to This Mac the current file's bytes) at the end, in secondary tabular figures, then the bar filled to `progress` in the upload's colour, or the pin's (`kind: 'pin'`).
   function MacTransferReadout(props) {
+    var pin = props.kind === 'pin';
     return h('div', { className: 'bae-m-readout' },
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
-      h('div', { className: 'bae-m-bar' }, h('div', { className: props.kind === 'pin' ? 'bae-pinning-bg' : 'bae-activity-bg', style: { width: (Number(props.progress || 0.3) * 100) + '%' } })));
+      h('div', { className: cx('bae-m-readout-bar', pin ? 'bae-m-readout-pin' : 'bae-m-readout-up') }, h(ProgressBar, { value: Number(props.progress || 0.3), label: pin ? 'Pinning' : 'Uploading' })));
   }
   // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size.
   function MacFileRow(props) {
     var s = props.state || 'rest';
-    var p = Number(props.progress || 0.4), C = 2 * Math.PI * 6;
     var bang = function (tone) { return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', style: { color: 'var(--' + tone + ')' } }, h('circle', { cx: 8, cy: 8, r: 6.5, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }), h('path', { d: 'M8 4.6v4.2M8 11.2v.1', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round' })); };
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
       s === 'queued' ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
-      h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: s === 'pinning' ? 'bae-pinning' : 'bae-activity' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline)', strokeWidth: 2 }), h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeDasharray: (C * p) + ' ' + C, transform: 'rotate(-90 8 8)' }));
+      h(MacProgressRing, { tone: s === 'pinning' ? 'pinning' : 'activity', value: props.progress || 0.4 });
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
       h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
         h('div', { className: cx('bae-ellipsis', s === 'queued' && 'bae-muted', s === 'sending' && 'bae-activity', s === 'pinning' && 'bae-pinning') }, props.name)));
   }
+  // Label and value pairs in two columns, the labels in secondary text: a file's facts, a release's fields, an album's credits. `facts` is a list of [label, value] pairs, or text with one "Label: value" a pair, separated by semicolons; a pair with no value is left out. `numeric` names the labels whose values are numbers, drawn in tabular figures (Size).
+  function MacFactsGrid(props) {
+    var facts = typeof props.facts === 'string'
+      ? props.facts.split(';').map(function (x) { var i = x.indexOf(':'); return [x.slice(0, i).trim(), x.slice(i + 1).trim()]; }).filter(function (f) { return f[0]; })
+      : props.facts || [];
+    var numeric = list(props.numeric);
+    return h('div', { className: cx('bae-m-filedet-grid', props.wide && 'bae-m-filedet-grid-wide') }, facts.filter(function (f) { return f[1]; }).map(function (f) {
+      return [h('span', { key: f[0] + 'l', className: 'bae-muted' }, f[0]), h('span', { key: f[0] + 'v', className: numeric.indexOf(f[0]) >= 0 ? 'bae-num' : null }, f[1])];
+    }));
+  }
   function MacFileDetails(props) {
-    var row = function (l, v) { return v ? [h('span', { key: l + 'l', className: 'bae-muted' }, l), h('span', { key: l + 'v', className: l === 'Size' ? 'bae-num' : null }, v)] : null; };
     return h('div', { className: 'bae-m-filedet' },
       h('div', { className: 'bae-m-filedet-head' }, h('span', { className: 'bae-ellipsis' }, props.name), h('span', { className: 'bae-muted', title: 'Close file details' }, h(Sym, { name: 'xcircle', size: 15 }))),
-      h('div', { className: 'bae-m-filedet-grid' }, row('Folder', props.folder), row('Kind', props.kind), row('Format', props.format), row('Size', props.size)));
+      h(MacFactsGrid, { facts: [['Folder', props.folder], ['Kind', props.kind], ['Format', props.format], ['Size', props.size]], numeric: 'Size' }));
   }
   // An error's causes, one a line, in an inset panel with Copy in its corner, in an alert (`MacAlert`'s `details`).
   function MacErrorDetails(props) {
@@ -178,35 +249,37 @@
   function MacPopover(props) {
     return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), h('div', { className: 'bae-m-popover-body' }, props.children));
   }
-  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs Attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem itself stays on the screen where the person fixes it): the caller's own (children), bae couldn't read sync's status (`error`), and sync's own (signed out, a record it can't send) with Open Sync Settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. When nothing needs attention and nothing transfers, the panel says Everything is up to date.
+  // A transfer in the Activity panel: what it does (`label`), how far it has got (`count`: done of total, or what holds the queue), then a bar filled to `progress` (none: a moving bar, as syncing draws, which counts nothing). `pausable` ends the line in Pause, or Resume while `paused`; pinning and moving to This Mac are one queue, so both lines' buttons act on it together.
+  function MacTransferLine(props) {
+    return h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
+      h('div', { className: 'bae-m-actxfer' }, h('span', null, props.label), h('span', { className: 'bae-m-actxfer-end' }, props.count ? h('span', { className: 'bae-muted bae-num' }, props.count) : null,
+        props.pausable ? h(MacIconButton, { icon: props.paused ? 'play' : 'pause', size: 13, small: true, boxed: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
+      h(MacProgress, { name: props.label, value: props.progress }));
+  }
+  // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem itself stays on the screen where the person fixes it): the caller's own (children), Could not read sync status (`error`, its title), and sync's own failure (`attention`, the error's title: signed out, a record it can't send) with Open sync settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. When nothing needs attention and nothing transfers, the panel says Everything is up to date.
   function MacActivity(props) {
     var sec = function (title, body) { return h(MacSection, { title: title }, h(MacBox, null, body)); };
     // Every row of the panel's boxes has the same inset; a row in the problems' box without a glyph starts on the problems' text edge (MacItem's empty leading column). Transfers is its own box, so its lines start at the box's inset.
     var problemsListed = !!(kids(props.children).length || props.error || props.attention);
     var edge = function (body) { return problemsListed ? h(MacItem, null, body) : body; };
     var row = function (key, body) { return h('div', { key: key, className: 'bae-m-actrow' }, body); };
-    var line = function (key, text, sub) { return row(key, h('div', { className: 'bae-m-actline' }, edge(h('div', null, h('div', null, text), sub ? h('div', { className: 'bae-m-actrow-sub' }, sub) : null)))); };
-    // A transfer: what it does, then how far (done of total, or what holds the queue), then a bar; syncing has no count, so its bar moves.
-    // `held` is the queue's pause state: a queue's line ends in Pause, or Resume while paused; pinning and moving to This Mac are one queue, so both lines' buttons act on it together.
+    // `held` is the queue's pause state; syncing has none.
     var xfer = function (key, label, count, progress, held) {
-      return row(key, h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
-        h('div', { className: 'bae-m-actxfer' }, h('span', null, label), h('span', { className: 'bae-m-actxfer-end' }, count ? h('span', { className: 'bae-muted bae-num' }, count) : null,
-          held != null ? h(MacIconButton, { icon: held ? 'play' : 'pause', size: 13, small: true, boxed: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h(ProgressBar, { value: progress == null ? null : Number(progress), className: 'bae-m-actxfer-bar', label: label })));
+      return row(key, h(MacTransferLine, { label: label, count: count, progress: progress, pausable: held != null, paused: held }));
     };
     var out = [];
     var problems = kids(props.children).map(function (p, i) { return row('c' + i, p); }).concat([
       props.error ? row('e', h(MacNotice, { quiet: true, dismiss: true, tone: 'danger', title: props.error })) : null,
-      props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open Sync Settings', buttons: 'below' })) : null,
-      props.attention && props.record ? line('r', h('span', { className: 'bae-strong' }, props.record), props.reason) : null].filter(Boolean));
-    if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs Attention', problems)));
+      props.attention ? row('f', h(MacNotice, { quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' })) : null,
+      ].filter(Boolean));
+    if (problems.length) out.push(h(React.Fragment, { key: 'a' }, sec('Needs attention', problems)));
     if (props.syncing || props.uploads || props.pins || props.movingToThisDevice) out.push(h(React.Fragment, { key: 't' }, sec('Transfers', [
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
       props.uploads ? xfer('u', 'Uploading', props.uploadsWait || props.uploads, props.uploadProgress != null ? props.uploadProgress : 0.4, props.uploadsWait === 'Paused') : null,
       props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, props.downloadsWait === 'Paused') : null,
       props.movingToThisDevice ? xfer('m', 'Moving to This Mac', props.downloadsWait || props.movingToThisDevice, props.moveToThisDeviceProgress != null ? props.moveToThisDeviceProgress : 0.2, props.downloadsWait === 'Paused') : null].filter(Boolean))));
-    // Under Transfers, Open Storage Manager for the detail.
-    if (props.uploads || props.pins || props.movingToThisDevice) out.push(h('div', { key: 'k', className: 'bae-m-actfoot' }, h(MacButton, { size: 'small' }, 'Open Storage Manager')));
+    // Under Transfers, Open storage manager for the detail.
+    if (props.uploads || props.pins || props.movingToThisDevice) out.push(h('div', { key: 'k', className: 'bae-m-actfoot' }, h(MacButton, { size: 'small' }, 'Open storage manager')));
     if (!out.length) out.push(h(React.Fragment, { key: 'i' }, sec(null, row('i', h('div', { className: 'bae-m-actline bae-muted' }, 'Everything is up to date.')))));
     return h('div', { className: 'bae-m-actlist' }, out);
   }
@@ -242,17 +315,21 @@
     return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
   }
 
+  // A transfer in the Activity sheet, as MacTransferLine on Mac: `label`, `count`, a bar filled to `progress` (none: a moving bar). `pausable` ends the line in a tonal Pause, or Resume while `paused`; a phone never uploads release files, so Uploading has none. `opens`: the line opens a screen when tapped (Pinning opens the Pinning screen).
+  function AndroidTransferLine(props) {
+    return h('div', { className: cx('bae-a-actxfer', props.opens && 'bae-a-act-tap') },
+      h('div', { className: 'bae-a-actxfer-line' }, h('span', null, props.label), h('span', { className: 'bae-a-actxfer-end' }, props.count ? h('span', { className: 'bae-muted' }, props.count) : null,
+        props.pausable ? h(AndroidIconButton, { icon: props.paused ? 'play' : 'pause', size: 18, tonal: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
+      h(AndroidProgress, { name: props.label, value: props.progress }));
+  }
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
   function AndroidActivity(props) {
     var problems = props.children || props.error || props.attention;
     // Only the problems' rows start their words on the text edge, past the glyphs; the title, the Needs Attention label and the transfers sit at the sheet's edge.
     var t = function (s, c) { return h('div', { className: c || 'bae-a-act-line' }, s); };
-    // `held` as on Mac: the pinning line ends in a tonal Pause, or Resume while paused. A phone never uploads release files, so Uploading has none.
+    // `held` as on Mac: only the pinning line has Pause or Resume.
     var xfer = function (key, label, count, progress, tap, held) {
-      return h('div', { key: key, className: cx('bae-a-actxfer', tap && 'bae-a-act-tap') },
-        h('div', { className: 'bae-a-actxfer-line' }, h('span', null, label), h('span', { className: 'bae-a-actxfer-end' }, count ? h('span', { className: 'bae-muted' }, count) : null,
-          held != null ? h(AndroidIconButton, { icon: held ? 'play' : 'pause', size: 18, tonal: true, label: held ? 'Resume' : 'Pause' }) : null)),
-        h(ProgressBar, { android: true, value: progress == null ? null : Number(progress), label: label }));
+      return h(AndroidTransferLine, { key: key, label: label, count: count, progress: progress, opens: tap, pausable: held != null, paused: held });
     };
     return h('div', { className: 'bae-a-act' },
       h('div', { className: 'bae-a-act-title' }, 'Activity'),
@@ -269,37 +346,51 @@
       props.pins ? xfer('p', 'Pinning', props.downloadsWait || props.pins, props.pinProgress != null ? props.pinProgress : 0.3, true, props.downloadsWait === 'Paused') : null,
       !(problems || props.syncing || props.uploads || props.pins) ? t('Everything is up to date.', 'bae-a-act-sub') : null);
   }
-  function AndroidSegmentedButtons(props) {
+  function AndroidSegmentedControl(props) {
     var o = list(props.options);
     var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup', 'aria-label': props.label || null }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
-    // `label`: what the choice is, in the secondary text over the buttons, as a form names it.
-    return props.label ? h('div', { className: 'bae-a-seg-field' }, h('div', { className: 'bae-a-seg-label', 'aria-hidden': true }, props.label), seg) : seg;
+    // `label`: what the choice is, in the secondary text over the buttons, as a form names it. `helper`: what the chosen option means, in smaller secondary text under them.
+    if (!props.label && !props.helper) return seg;
+    return h('div', { className: 'bae-a-seg-field' },
+      props.label ? h('div', { className: 'bae-a-seg-label', 'aria-hidden': true }, props.label) : null,
+      seg,
+      props.helper ? h('div', { className: 'bae-a-seg-helper' }, props.helper) : null);
   }
 
   // What bae keeps on this device, as Settings → Storage heads it: the total, one bar split by kind, and a legend line per kind with its size. `parts` is "Label:size:share,…" in the kinds' fixed order; each kind keeps its colour whatever its size or whichever kinds are shown: Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else the neutral; in that order no two neighbours are hard to tell apart. The legend names every kind, so no colour stands alone.
   var USAGE_KIND = { 'Pinned': 1, 'Cache': 2, 'Library': 3, 'From before the reset': 4 };
+  function storageParts(props) {
+    return list(props.parts || 'Pinned:6.1 GB:0.72,Cache:1.8 GB:0.21,Images:420 MB:0.05,Library:180 MB:0.02').map(function (r) { var a = r.split(':'); return { label: a[0], size: a[1], share: Number(a[2]) }; });
+  }
+  // One kind in the storage legend: its colour's dot, its name (`label`, which picks the colour) and its size.
+  function usageKey(p) {
+    return function (props) {
+      return h('span', { className: 'bae-usage-key bae-usage-key-' + p }, h('span', { className: 'bae-usage-dot bae-usage-seg-' + (USAGE_KIND[props.label] || 5), 'aria-hidden': true }), h('span', null, props.label), h('span', { className: 'bae-usage-size' }, props.size));
+    };
+  }
+  var MacUsageKey = usageKey('m');
+  var AndroidUsageKey = usageKey('a');
   function storageUsage(props, p) {
-    var parts = list(props.parts || 'Pinned:6.1 GB:0.72,Cache:1.8 GB:0.21,Images:420 MB:0.05,Library:180 MB:0.02').map(function (r) { var a = r.split(':'); return { label: a[0], size: a[1], share: Number(a[2]) }; });
+    var parts = storageParts(props);
+    var Key = p === 'm' ? MacUsageKey : AndroidUsageKey;
     return h('div', { className: 'bae-usage bae-usage-' + p },
       h('div', { className: 'bae-usage-total' }, h('span', { className: 'bae-usage-num' }, props.total || '8.5 GB'), h('span', { className: 'bae-usage-of' }, props.of || (p === 'm' ? 'on this Mac' : 'on this phone'))),
       h('div', { className: 'bae-usage-bar', role: 'img', 'aria-label': parts.map(function (x) { return x.label + ' ' + x.size; }).join(', ') },
         parts.map(function (x, i) { return h('span', { key: i, className: 'bae-usage-seg bae-usage-seg-' + (USAGE_KIND[x.label] || 5), style: { flexGrow: x.share } }); })),
-      h('div', { className: 'bae-usage-legend' }, parts.map(function (x, i) {
-        return h('span', { key: i, className: 'bae-usage-key' }, h('span', { className: 'bae-usage-dot bae-usage-seg-' + (USAGE_KIND[x.label] || 5), 'aria-hidden': true }), h('span', null, x.label), h('span', { className: 'bae-usage-size' }, x.size));
-      })));
+      h('div', { className: 'bae-usage-legend' }, parts.map(function (x, i) { return h(Key, { key: i, label: x.label, size: x.size }); })));
   }
   function MacStorageUsage(props) { return storageUsage(props, 'm'); }
   function AndroidStorageUsage(props) { return storageUsage(props, 'a'); }
   // The Pinning screen's bar: Back, the title, Retry and Pause or Resume.
-  function AndroidDownloadsBar(props) {
+  function AndroidPinningBar(props) {
     return h('header', { className: 'bae-a-dlbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }), h('span', { className: 'bae-a-dlbar-title' }, 'Pinning'),
       h(AndroidButton, { kind: 'text', off: !props.failed }, 'Retry'), h(AndroidButton, { kind: 'text', off: !!props.idle }, props.paused ? 'Resume' : 'Pause'));
   }
   // One entry of the Pinning screen: the release's name with Cancel (×) on its line, its files and size, then its state: Queued to pin, a bar with bytes, or Couldn’t pin with Details and Retry. A release since removed from the library is named in secondary text, so it doesn't read as a title.
-  function AndroidDownloadRow(props) {
+  function AndroidPinningRow(props) {
     var s = props.state || 'queued';
     var state = s === 'queued' ? h('div', { className: 'bae-a-librow-sub' }, 'Queued to pin')
-      : s === 'active' ? h('div', null, h('div', { className: 'bae-a-dlbar-track' }, h('div', { style: { width: (Number(props.progress || 0.4) * 100) + '%' } })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB'))
+      : s === 'active' ? h('div', null, h('div', { className: 'bae-a-pinrow-bar' }, h(AndroidProgress, { name: 'Pinning', value: props.progress || 0.4 })), h('div', { className: 'bae-a-fine bae-muted' }, props.bytes || '120 MB of 300 MB'))
       : h(AndroidNotice, { quiet: true, tone: 'danger', title: 'Could not pin', secondary: 'Details', action: 'Retry' });
     return h('div', { className: 'bae-a-dlrow2' },
       h('div', { className: 'bae-a-dlrow2-head' },

@@ -2,10 +2,21 @@
 
   var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Storage', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
 
+  // The traffic lights at a window's top left: close, minimize, zoom.
+  // `inset`: over an inset sidebar, which sits 8pt in from the window's edge, so the lights keep their place on the sidebar's corner.
+  function macLights(inset) { return h('div', { className: cx('bae-m-lights', inset && 'bae-m-lights-inset'), 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)); }
+
+  // The welcome window: the rounded window, 690 by 600 unless given, its traffic lights at the top left, its screens stacked inside.
   function MacWelcomeWindow(props) {
-    return h('div', { className: 'bae-m-window bae-m-window-plain', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
-      h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
-      props.children);
+    return h('div', { className: 'bae-m-window bae-m-window-column', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
+      macLights(), props.children);
+  }
+
+  // The camera's picture in the Scan a code sheet, 300pt tall with a card's corners. `state`: `starting` (the default) while the camera opens, `denied` when camera access is off, `unavailable` with no camera, `camera` once its picture shows. Until the picture shows, the area says why in secondary text on the well.
+  function MacQRScanner(props) {
+    var state = props.state || 'starting';
+    var words = { starting: 'Starting camera…', denied: 'Camera access is off. Enable it in System Settings, or paste the code below.', unavailable: 'No camera available. Paste the code below instead.' }[state];
+    return h('div', { className: cx('bae-m-qrscan', state === 'camera' && 'bae-m-qrscan-camera'), role: state === 'camera' ? 'img' : null, 'aria-label': state === 'camera' ? 'Camera' : null }, words ? h('span', null, words) : null);
   }
 
   // A window that walks through one step of joining or adding a device, centred in the window: a headline, an optional line under it, then the step's own content and its buttons (MacStepActions), a section apart. The buttons follow what they act on rather than sitting at the window's foot. The welcome window has no title bar text, so the headline is the only place that says where you are.
@@ -41,23 +52,32 @@
       h('svg', { width: 10, height: 10, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z' })));
   }
 
+  // The Settings window's list of panes, on its inset panel; the window's traffic lights sit over its top. `pane` is the open pane, marked current as the app's sidebar marks its row selected; `status` puts a chip in `statusTone` (warning unless given) on `statusPane`.
+  function MacSettingsSidebar(props) {
+    return h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
+      PANES.map(function (p) {
+        var flagged = props.status && p === props.statusPane;
+        return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on'), 'aria-current': p === props.pane ? 'page' : null },
+          h('span', null, p),
+          flagged ? h(StatusChip, { tone: props.statusTone || 'warning' }, props.status) : null);
+      }));
+  }
+
+  // A Settings pane's heading, with the back button before it on a page inside a pane (`back`, where the button goes back to).
+  function MacPageHeading(props) {
+    return h('div', { className: 'bae-m-heading' },
+      props.back ? h(MacBackButton, { to: props.back }) : null,
+      h('h1', null, props.title));
+  }
+
+  // The Settings window, 690 by 600 unless given: its traffic lights over the panes' sidebar, beside the open pane under its heading (`title`, with `back` on a page inside a pane). `front`: the window stands in front of another window, so it casts the shadow macOS draws under a front window.
   function MacSettingsWindow(props) {
-    return h('div', { className: 'bae-m-window', style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
-      h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
-        h('div', { className: 'bae-m-lights', 'aria-hidden': true }, h('span', null), h('span', null), h('span', null)),
-        PANES.map(function (p) {
-          var flagged = props.status && p === props.statusPane;
-          // The open pane is marked current, as the app's sidebar marks its row selected.
-          return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on'), 'aria-current': p === props.pane ? 'page' : null },
-            h('span', null, p),
-            flagged ? h(StatusChip, { tone: props.statusTone || 'warning' }, props.status) : null);
-        })),
+    return h('div', { className: cx('bae-m-window', props.front && 'bae-m-window-front'), style: { width: Number(props.width || 690), height: Number(props.height || 600) } },
+      h(MacSettingsSidebar, { pane: props.pane, status: props.status, statusPane: props.statusPane, statusTone: props.statusTone }),
+      macLights(true),
       h('main', { className: 'bae-m-main' },
-        props.title ? h('div', { className: 'bae-m-heading' },
-          props.back ? h(MacBackButton, { to: props.back }) : null,
-          h('h1', null, props.title)) : null,
-        // `scroll`: the pane scrolled this many px, as a scrolled pane draws: the heading stays, the content runs under it from that offset and the window's bottom edge cuts it off.
-        props.scroll ? h('div', { className: 'bae-m-main-scroll' }, h('div', { style: { transform: 'translateY(-' + Number(props.scroll) + 'px)' } }, props.children)) : props.children));
+        h(MacPageHeading, { title: props.title, back: props.back }),
+        props.children));
   }
 
   function MacSection(props) {
@@ -70,7 +90,7 @@
     var list = kids(props.children);
     var out = divided(list);
     if (props.empty && list.length === 0) out.push(h('div', { key: 'e', className: 'bae-m-box-empty' }, props.empty));
-    return h('div', { className: cx('bae-m-box', props.elevated && 'bae-m-box-elevated', props.className) }, out);
+    return h('div', { className: cx('bae-m-box', props.className) }, out);
   }
 
   // What belongs to the row above it and is more than one setting: a field with its explanation under a switch, say. It joins that row as a nested row does, with no line between them, its text in secondary on the rows' left edge.
@@ -100,7 +120,7 @@
     }
     return h('div', { className: cx('bae-m-pin', state === 'off' && 'bae-off') },
       h('div', { role: 'textbox', 'aria-label': props.label || 'PIN', 'aria-disabled': state === 'off' ? true : null, className: 'bae-m-pin-cells' }, cells),
-      isError && props.error ? h('div', { className: 'bae-m-field-note bae-m-field-note-error bae-m-pin-note' }, props.error) : null);
+      isError && props.error ? h(MacErrorLine, null, props.error) : null);
   }
 
   // Text someone may want to paste elsewhere (an address, an id): selectable, with a copy button after it that shows while the pointer is over the text or the button has focus. `after`: words that follow the text but aren't copied (“(Wi-Fi)”), before the button. `hover` draws that state.
@@ -151,7 +171,7 @@
       // `menu`: the button opens a menu (SwiftUI's `Menu` styled as a button), which macOS reads as a pop-up button.
       'aria-haspopup': props.menu ? 'menu' : null,
       onClick: props.onClick,
-      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted', props.tinted && 'bae-m-btn-tinted')
+      className: cx('bae-m-btn', 'bae-m-btn-' + kind, props.size && props.size !== 'regular' && 'bae-m-btn-' + props.size, props.destructive && 'bae-m-btn-destructive', props.muted && 'bae-m-btn-muted', props.neutral && 'bae-m-btn-neutral', props.tinted && 'bae-m-btn-tinted')
     };
     if (kind === 'icon') {
       var icon = props.icon || 'copy';
@@ -203,7 +223,7 @@
         bare ? null : h('span', { className: 'bae-m-field-label', style: auto ? null : { width: lw } }, props.label),
         input,
         props.children),
-      line ? h('div', { className: cx('bae-m-field-note', isError && 'bae-m-field-note-error'), style: auto ? null : { marginLeft: bare ? 0 : lw + 12 } }, line) : null);
+      line ? h('div', { className: 'bae-m-field-note', style: auto ? null : { marginLeft: bare ? 0 : lw + 12 } }, isError ? h(MacErrorLine, null, line) : line) : null);
   }
 
   function MacRadio(props) {
@@ -266,15 +286,16 @@
     return h('div', { className: 'bae-m-scrim' }, panel);
   }
 
-  // split sets the first child apart on the left, in its own box so a wrapper around it can't swallow the spacing.
+  // `split` sets the first child apart on the left, or the first `split` children when it is a number, in their own box so a wrapper around them can't swallow the spacing.
   function MacSheetFooter(props) {
     var list = kids(props.children);
-    if (!props.split || list.length < 2) return h('div', { className: 'bae-m-sheet-footer' }, list);
+    var lead = props.split === true || props.split === 'true' ? 1 : Number(props.split) || 0;
+    if (!lead || list.length <= lead) return h('div', { className: 'bae-m-sheet-footer' }, list);
     return h('div', { className: 'bae-m-sheet-footer' },
-      h('div', { className: 'bae-m-sheet-footer-lead' }, list[0]), list.slice(1));
+      h('div', { className: 'bae-m-sheet-footer-lead' }, list.slice(0, lead)), list.slice(lead));
   }
 
-  // A labelled bar: `label` shows above it and names it; `name` names a bar whose words sit elsewhere, without showing them.
+  // A labelled bar: `label` shows above it and names it; `name` names a bar whose words sit elsewhere, without showing them. The Mac's bar is 4pt.
   function Progress(prefix) {
     return function (props) {
       // A board passes value as text ("0.45"), so a number in any form is a known amount; no value is a wait of no known length, a moving bar.
@@ -312,6 +333,12 @@
     return h('div', { className: 'bae-m-note' }, props.children);
   }
 
+  // One value of a file name pattern, as macOS's token field draws it: the system's blue, its words in the field's font, small corners, no ×.
+  function MacToken(props) { return h('span', { className: 'bae-m-token' }, props.children); }
+
+  // A red line under a field that says what is wrong with what the person typed, on the field's leading edge.
+  function MacErrorLine(props) { return h('div', { className: 'bae-m-errorline' }, props.children); }
+
   // How Save as… names each track's file, one pattern for every format: the pattern's values as macOS's own tokens, with the text typed between them, a preview of a name it makes right under the field, as its help line, and the values it can add. `pattern`: the text, with each value in brackets ("[Artist] - [Album]"); `add`: comma-separated; `preview`: the name it shows; `error`: why the typed text makes no name, in the preview's place.
   function MacFileNameField(props) {
     var split = function (s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); };
@@ -319,8 +346,8 @@
     // `label` sits above the field, at the row's leading edge where a MacRow's title sits, so the field runs the box's full width.
     return h('div', { className: 'bae-m-filename' },
       props.label == null ? null : h('span', { className: 'bae-m-filename-label' }, props.label),
-      h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h('span', { key: i, className: 'bae-m-token' }, t.slice(1, -1)) : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
-      props.error ? h('div', { className: 'bae-m-field-note bae-m-field-note-error' }, props.error)
+      h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h(MacToken, { key: i }, t.slice(1, -1)) : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
+      props.error ? h(MacErrorLine, null, props.error)
         : props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null,
       h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('span', { key: t, className: 'bae-m-tokenadd' }, t); })));
   }
@@ -353,9 +380,18 @@
   }
 
   // `divider`: a line between groups of items, as NSMenu's separator item. `off`: an item that can't be chosen now, greyed, as NSMenu disables one.
+  // One line of a MacMenu: an item (checked, highlighted, off), a `heading` over a group of items, a `divider`, or a `submenu`, whose › opens more items and which may carry an `accessory` before the ›: `problem` (a red ! in a circle, for a folder whose scan failed or that bae is not watching), `scanning` (a spinner) or `network` (a globe), with `help` as its hover text.
   function MacMenuItem(props) {
     if (props.divider) return h('div', { className: 'bae-m-menu-sep', role: 'separator' });
-    return h('div', { className: cx('bae-m-menu-item', props.highlighted && !props.off && 'bae-m-menu-item-on', props.off && 'bae-m-menu-item-off'), role: 'menuitemradio', 'aria-checked': !!props.checked, 'aria-disabled': props.off ? true : null },
+    if (props.heading) return h('div', { className: 'bae-m-menu-heading', role: 'presentation' }, props.children);
+    var on = props.highlighted && !props.off;
+    var accessory = props.submenu && props.accessory ? h('span', { className: cx('bae-m-menu-accessory', !on && props.accessory === 'problem' && 'bae-m-menu-accessory-problem') },
+      props.accessory === 'problem' ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' }, h('circle', { cx: 12, cy: 12, r: 9.5 }), h('path', { d: 'M12 7v6M12 16.6v.4' }))
+        : props.accessory === 'scanning' ? h(MacSpinner, { size: 11 })
+        : h(Sym, { name: 'globe', size: 11 })) : null;
+    return h('div', { className: cx('bae-m-menu-item', on && 'bae-m-menu-item-on', props.off && 'bae-m-menu-item-off'), role: props.submenu ? 'menuitem' : 'menuitemradio', 'aria-checked': props.submenu ? null : !!props.checked, 'aria-haspopup': props.submenu ? 'menu' : null, 'aria-disabled': props.off ? true : null, title: props.help || null },
       h('span', { className: 'bae-m-menu-check', 'aria-hidden': true }, props.checked ? h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M5 12.5l4.5 4.5L19 7.5' })) : null),
-      props.children);
+      props.children,
+      props.submenu ? h('span', { className: 'bae-m-menu-trail' }, accessory,
+        h('svg', { width: 9, height: 9, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 3.2, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: 'M9 5l7 7-7 7' }))) : null);
   }

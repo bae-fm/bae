@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS import" height=260 -->
+<!-- @dsCard group="macOS import" height=240 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacReleaseCard</title></head>
@@ -9,7 +9,10 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacReleaseCard, { title: 'Low Tide Hours', artist: 'Mara Quill', label: 'Harbor Records', sources: 'MusicBrainz,Discogs' }, h(B.MacPressingRow, { year: '1992', labels: 'Harbor Records', catalog: 'HR-1042', badges: 'Disc ID,Barcode', summary: 'CD · US', sources: 'MusicBrainz · Discogs', selected: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Two catalogs', h(B.MacReleaseCard, { title: 'Low Tide Hours', artist: 'Mara Quill', label: 'Harbor Records', sources: 'MusicBrainz,Discogs' })),
+    W('No catalog yet', h(B.MacReleaseCard, { title: 'Low Tide Hours', artist: 'Mara Quill', label: 'Harbor Records' })),
+    W('Long title', h(B.MacReleaseCard, { title: 'Low Tide Hours / Low Tide Hours (Remastered)', artist: 'Mara Quill', label: 'Harbor Records', sources: 'MusicBrainz' }))));
 </script>
 </body>
 </html>

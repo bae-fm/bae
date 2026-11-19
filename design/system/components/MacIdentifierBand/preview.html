@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS import" height=110 -->
+<!-- @dsCard group="macOS import" height=270 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacIdentifierBand</title></head>
@@ -8,8 +8,15 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC||dash' })));
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC||dash' })),
+    W('Searching', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=…,Barcode|0 41234 56789 2|filled|Discogs=…,ISRC||dash' })),
+    W('Nothing found', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=0,Barcode|0 41234 56789 2|filled|MusicBrainz=0+Discogs=0,ISRC||dash' })),
+    W('Left out', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|outlined,Barcode|0 41234 56789 2|outlined,Catalog #|HR-1042|filled|MusicBrainz=1+Discogs=1' })),
+    W('Struck', h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Catalog #|HR-1042 · HR-1042-2|struck' })),
+    W('Wrapped', box(300, h(B.MacIdentifierBand, { chips: 'Disc ID|v8n2Kq1Z…|filled|MusicBrainz=2,Barcode|0 41234 56789 2|filled|Discogs=1,ISRC||dash' })))));
 </script>
 </body>
 </html>

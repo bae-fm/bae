@@ -10,14 +10,19 @@
     return { content: content, over: over };
   }
 
+  // A screen's bar, 64dp on the page's own colour: the back button (`back`), the title, and `menu`, a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
+  function AndroidTopBar(props) {
+    return h('header', { className: 'bae-a-topbar' },
+      props.back ? h(AndroidIconButton, { icon: 'back', label: props.backLabel || 'Back' }) : null,
+      props.title ? h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title) : null,
+      props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 20 })) : null,
+      props.more ? h('span', { className: 'bae-a-topbar-more' }, h(AndroidIconButton, { icon: 'more', label: props.more })) : null);
+  }
+
   function AndroidScreen(props) {
     var split = splitOverlays(props.children);
     var top = [
-      props.title ? h('header', { key: 'top', className: 'bae-a-topbar' },
-        props.back ? h(AndroidIconButton, { icon: 'back', label: 'Back' }) : null,
-        h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title),
-        // `menu`: a choice that applies to the whole screen (History's whose plays), at the bar's end, opening a menu of its choices.
-        props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 20 })) : null) : null,
+      props.title ? h(AndroidTopBar, { key: 'top', title: props.title, back: props.back, menu: props.menu }) : null,
       h('main', { key: 'main', className: 'bae-a-main' }, split.content),
       split.over.length ? h(React.Fragment, { key: 'over' }, split.over) : null];
     // keyboard: a field has focus, so the keyboard is up and the screen, a dialog over it included, fits in the space above it.
@@ -86,11 +91,13 @@
   function AndroidButton(props) {
     var kind = props.kind || 'filled';
     return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick,
-      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
+      className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.icon && 'bae-a-btn-icon', props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
+      // `icon`: a glyph before the words, as the album page's Pin and Unpin.
+      props.icon ? h(Glyph, { name: props.icon, size: 20 }) : null,
       props.children != null ? props.children : props.label);
   }
 
-  // `tonal` is the small disc on the accent tint; `tone` colours the glyph (muted: secondary text, accent, warning); `box` is the touch box's side in px when it isn't Material's 48. `className` is only for the caller's layout.
+  // `tonal` is the small disc on the accent tint; `tone` colours the glyph (muted: secondary text, accent, warning, onfill: the text on the gallery's backdrop); `box` is the touch box's side in px when it isn't Material's 48. `className` is only for the caller's layout.
   function AndroidIconButton(props) {
     return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.tone && 'bae-a-iconbtn-' + props.tone, props.box && 'bae-a-iconbtn-box-' + props.box, props.off && 'bae-a-iconbtn-off', props.className), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null, disabled: props.off ? true : null },
       h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
@@ -170,6 +177,9 @@
   function AndroidNote(props) {
     return h('div', { className: 'bae-a-note' }, props.children);
   }
+
+  // Material's HorizontalDivider: a 1dp line across the screen or list that separates what's above from what's below.
+  function AndroidDivider() { return h('div', { className: 'bae-a-divider', role: 'separator' }); }
 
   // An empty or unavailable screen's one sentence, centred in what's left of the screen, in secondary text, with no glyph above it ("No albums yet"). The children are its actions, under it.
   function AndroidContentUnavailable(props) {

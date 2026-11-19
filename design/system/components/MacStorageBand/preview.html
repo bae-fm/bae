@@ -1,15 +1,28 @@
-<!-- @dsCard group="macOS" height=1100 -->
+<!-- @dsCard group="macOS" height=1400 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacStorageBand</title></head>
-<body class="bae-preview bae-mac" style="padding: 0;">
+<body class="bae-preview bae-mac" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacStorageBand, { state: 'cloud' })), W('Uploading', h(B.MacStorageBand, { state: 'uploading' })), W('Files waiting', h(B.MacStorageBand, { state: 'waiting' })), W('Pin queued', h(B.MacStorageBand, { download: 'queued' })), W('Pinning', h(B.MacStorageBand, { download: 'downloading' })), W('Download failed', h(B.MacStorageBand, { download: 'failed' })), W('Queued to move to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'queued' })), W('Moving to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'moving' })), W('Could not move to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'failed' }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('In cloud', h(B.MacStorageBand, { state: 'cloud' })),
+    W('Local', h(B.MacStorageBand, { state: 'local' })),
+    W('Pinned', h(B.MacStorageBand, { state: 'pinned' })),
+    W('Uploading', h(B.MacStorageBand, { state: 'uploading', progress: 0.4 })),
+    W('Files waiting', h(B.MacStorageBand, { state: 'waiting' })),
+    W('Original missing', h(B.MacStorageBand, { state: 'waiting', missing: 'disc 2.flac' })),
+    W('Pin queued', h(B.MacStorageBand, { download: 'queued' })),
+    W('Pinning', h(B.MacStorageBand, { download: 'downloading', progress: 0.4 })),
+    W('Pin failed', h(B.MacStorageBand, { download: 'failed' })),
+    W('Queued to move to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'queued' })),
+    W('Moving to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'moving', progress: 0.4 })),
+    W('Could not move to This Mac', h(B.MacStorageBand, { moveToThisDevice: 'failed' })),
+    W('Why', h(B.MacStorageBand, { state: 'cloud', why: 'This Mac can’t play FLAC files over 24 bits.' }))));
 </script>
 </body>
 </html>

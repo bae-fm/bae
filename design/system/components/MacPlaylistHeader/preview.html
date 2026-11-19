@@ -1,0 +1,19 @@
+<!-- @dsCard group="macOS library" height=680 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacPlaylistHeader</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Only me', h(B.MacPlaylistHeader, Object.assign({ name: 'Harbor evenings', owner: 'Ana', covers: 'Low Tide Hours, Paper Lanterns, Glass Harbor, Copper Sky', count: '12 tracks', length: '54 min' }, { options: 'Edit playlist…,Delete playlist…', sharing: 'Only me' }))),
+    W('Everyone', h(B.MacPlaylistHeader, Object.assign({ name: 'Harbor evenings', owner: 'Ana', covers: 'Low Tide Hours, Paper Lanterns, Glass Harbor, Copper Sky', count: '12 tracks', length: '54 min' }, { options: 'Edit playlist…,Delete playlist…', sharing: 'Everyone' }))),
+    W('No options', h(B.MacPlaylistHeader, { name: 'Harbor evenings', owner: 'Ana', covers: 'Low Tide Hours, Paper Lanterns, Glass Harbor, Copper Sky', count: '12 tracks', length: '54 min' })),
+    W('Options open', h('div', { style: { height: 230 } }, h(B.MacPlaylistHeader, Object.assign({ name: 'Harbor evenings', owner: 'Ana', covers: 'Low Tide Hours, Paper Lanterns, Glass Harbor, Copper Sky', count: '12 tracks', length: '54 min' }, { options: 'Edit playlist…,Delete playlist…', sharing: 'Only me', optionsOpen: true, highlighted: 'Shuffle' }))))));
+</script>
+</body>
+</html>

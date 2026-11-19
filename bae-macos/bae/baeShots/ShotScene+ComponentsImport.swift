@@ -30,7 +30,7 @@ extension ShotScene {
             .frame(width: 380, height: 40)
         },
         component(
-            "mac.component.identifier-band.default",
+            "mac.component.identifier-band.found",
             width: 596,
             height: 100
         ) {

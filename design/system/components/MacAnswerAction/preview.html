@@ -1,0 +1,16 @@
+<!-- @dsCard group="macOS import" height=220 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacAnswerAction</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('None of these', h(B.MacAnswerAction, { title: 'None of these', subtitle: 'Keep my info; it is not in the catalogs' })), W('Keep my info', h(B.MacAnswerAction, { title: 'Keep my info', subtitle: 'Keep my info; it is not in the catalogs' })), W('Not sure', h(B.MacAnswerAction, { title: 'Not sure', subtitle: 'Use what these releases share; leave the rest as is' })), W('While importing', h(B.MacAnswerAction, { title: 'None of these', subtitle: 'Keep my info; it is not in the catalogs', off: true }))));
+</script>
+</body>
+</html>

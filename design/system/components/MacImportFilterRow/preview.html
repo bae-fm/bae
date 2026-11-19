@@ -1,0 +1,23 @@
+<!-- @dsCard group="macOS import" height=360 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacImportFilterRow</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Resting', box(420, h(B.MacImportFilterRow, null))),
+    W('Typed', box(420, h(B.MacImportFilterRow, { filter: 'tide', narrowed: '2 of 14', filtered: true }))),
+    W('Identifying', box(420, h(B.MacImportFilterRow, { identifying: 0.4 }))),
+    W('Importing', box(420, h(B.MacImportFilterRow, { importing: true }))),
+    W('Scanning', box(420, h(B.MacImportFilterRow, { scanning: true }))),
+    W('Filtered', box(420, h(B.MacImportFilterRow, { filtered: true }))),
+    W('All at once', box(420, h(B.MacImportFilterRow, { filter: 'tide', narrowed: '2 of 14', identifying: 0.4, importing: true, scanning: true, filtered: true })))));
+</script>
+</body>
+</html>

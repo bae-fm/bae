@@ -1,15 +1,22 @@
-<!-- @dsCard group="macOS import" height=420 -->
+<!-- @dsCard group="macOS import" height=2300 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportSidebar</title></head>
-<body class="bae-preview bae-mac" style="padding: 0;">
+<body class="bae-preview bae-mac" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { height: 360, display: 'flex' } }, h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', identifying: 0.4 }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true })))));
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+  function col(c) { return h('div', { style: { height: 360, display: 'flex' } }, c); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Found', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2' }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
+    W('Imported open', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', tab: 'Imported' }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
+    W('Skipped open', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', tab: 'Skipped' }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
+    W('Filtered', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', filter: 'tide', narrowed: '1 of 14', filtered: true }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' })))),
+    W('Busy', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', identifying: 0.4, importing: true, scanning: true }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
+    W('Empty', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', filter: 'harbor', narrowed: '0 of 14', filtered: true, empty: 'No matches' })))));
 </script>
 </body>
 </html>

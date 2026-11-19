@@ -1,0 +1,17 @@
+<!-- @dsCard group="macOS library" height=449 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSavePanelFormat</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  // The room an open menu takes above and below its row.
+  function room(c, above, below) { return h('div', { style: { paddingTop: above, paddingBottom: below } }, c); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Closed', h(B.MacSavePanelFormat, { value: 'FLAC' })), W('Open', room(h(B.MacSavePanelFormat, { value: 'FLAC', open: true, items: 'FLAC,MP3,Phone,-,Edit formats…' }), 0, 120)), W('New format chosen', room(h(B.MacSavePanelFormat, { value: 'FLAC', open: true, items: 'FLAC,MP3,Phone,FLAC (2),-,Edit formats…', chosen: 'FLAC (2)' }), 80, 70))));
+</script>
+</body>
+</html>

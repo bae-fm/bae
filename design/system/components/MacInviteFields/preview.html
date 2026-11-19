@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=853 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacInviteFields</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('S3, their key', h(B.MacInviteFields, null)), W('S3, my key', h(B.MacInviteFields, { keyOwner: 'mine' })), W('Dropbox', h(B.MacInviteFields, { storage: 'dropbox' })), W('OneDrive', h(B.MacInviteFields, { storage: 'onedrive' })), W('iCloud', h(B.MacInviteFields, { storage: 'icloud' }))));
+</script>
+</body>
+</html>

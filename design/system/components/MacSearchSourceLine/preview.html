@@ -1,0 +1,16 @@
+<!-- @dsCard group="macOS import" height=124 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSearchSourceLine</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Searching', h(B.MacSearchSourceLine, { catalog: 'Discogs' })), W('Failed', h(B.MacSearchSourceLine, { catalog: 'Discogs', failed: true, reason: 'Discogs did not answer in time.' })), W('Another catalog', h(B.MacSearchSourceLine, { catalog: 'MusicBrainz' }))));
+</script>
+</body>
+</html>

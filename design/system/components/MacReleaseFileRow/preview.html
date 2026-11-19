@@ -1,0 +1,21 @@
+<!-- @dsCard group="macOS import" height=290 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacReleaseFileRow</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Opens', box(480, h(B.MacReleaseFileRow, { name: 'rip.log', size: '4 KB' }))),
+    W('Audio', box(480, h(B.MacReleaseFileRow, { name: '01 Northbound.flac', size: '33 MB', kind: 'audio' }))),
+    W('Other', box(480, h(B.MacReleaseFileRow, { name: '.DS_Store', size: '6 KB', kind: 'other' }))),
+    W('Damaged', box(480, h(B.MacReleaseFileRow, { name: '02 Margins.flac', size: '31.8 MB', damaged: 'Cannot decode' }))),
+    W('Long name', box(480, h(B.MacReleaseFileRow, { name: 'Mara Quill - Low Tide Hours - 1992 - EAC rip log with the drive offset and every read.log', size: '4 KB' })))));
+</script>
+</body>
+</html>

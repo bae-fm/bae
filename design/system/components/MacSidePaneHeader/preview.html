@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS library" height=250 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacSidePaneHeader</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Queue', h(B.MacSidePaneHeader, { tab: 'Queue' })), W('Playlists', h(B.MacSidePaneHeader, { tab: 'Playlists' })), W('Playlist open', h(B.MacSidePaneHeader, { tab: 'Playlists', back: 'Playlists' })), W('History', h(B.MacSidePaneHeader, { tab: 'History' }))));
+</script>
+</body>
+</html>

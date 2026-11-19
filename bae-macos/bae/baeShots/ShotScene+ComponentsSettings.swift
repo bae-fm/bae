@@ -200,9 +200,9 @@ extension ShotScene {
 
     /// `DownloadRow` after a pin or a move-to-this-device failed.
     private static let downloadRowScenes: [ShotScene] = [
-        downloadRow("mac.component.download-row.pin", kind: .pin),
+        downloadRow("mac.component.failed-transfer-row.pin", kind: .pin),
         downloadRow(
-            "mac.component.download-row.move-to-this-mac",
+            "mac.component.failed-transfer-row.move-to-this-mac",
             kind: .moveToThisDevice
         ),
     ]

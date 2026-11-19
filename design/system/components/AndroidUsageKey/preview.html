@@ -1,0 +1,20 @@
+<!-- @dsCard group="Android" height=240 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AndroidUsageKey</title></head>
+<body class="bae-preview bae-preview-android" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Pinned', h(B.AndroidUsageKey, { label: 'Pinned', size: '6.1 GB' })),
+    N('Cache', h(B.AndroidUsageKey, { label: 'Cache', size: '1.8 GB' })),
+    N('Library', h(B.AndroidUsageKey, { label: 'Library', size: '420 MB' })),
+    N('From before the reset', h(B.AndroidUsageKey, { label: 'From before the reset', size: '960 MB' })),
+    N('Other kind', h(B.AndroidUsageKey, { label: 'Images', size: '420 MB' }))));
+</script>
+</body>
+</html>

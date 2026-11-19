@@ -1,7 +1,8 @@
   // ---- Search ----
+  // Search's results, in a card hanging under the field: the children, or with `empty` (the search found nothing) No matches.
   function MacSearchCard(props) {
     var style = { position: 'absolute', top: Number(props.top != null ? props.top : 60), right: Number(props.right != null ? props.right : 56), width: 440, zIndex: 6 };
-    return h('div', { className: 'bae-m-searchcard', style: style }, props.empty ? h('div', { className: 'bae-m-searchcard-empty' }, props.empty) : props.children);
+    return h('div', { className: 'bae-m-searchcard', style: style }, props.empty ? h(MacContentUnavailable, { title: 'No matches' }) : props.children);
   }
   function MacSearchSection(props) { return h('div', { className: 'bae-m-searchsection' }, props.title); }
   // One row of a library list on the Mac: Search's results, the artist and composer lists, the composer and work pages' rows.
@@ -11,8 +12,8 @@
   function MacLibraryRow(props) {
     var ml = (props.bleed && !props.credit ? -8 : 0) + (props.part ? 16 : 0);
     var style = { marginTop: props.top ? Number(props.top) : null, marginLeft: ml || null };
-    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h('div', { className: 'bae-ph', style: { width: 44, height: 44, borderRadius: 6, flex: 'none' } }),
-      h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-ph', style: { width: 140, height: 11 } }), h('div', { className: 'bae-ph', style: { width: 80, height: 10 } })));
+    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h(MacPlaceholderLine, { width: 44, height: 44, radius: 6, fixed: true }),
+      h('div', { className: 'bae-m-librow-text' }, h(MacPlaceholderLine, { width: 140, height: 11 }), h(MacPlaceholderLine, { width: 80, height: 10 })));
     // `dropping`: tracks dragged over the row land in it when let go (a playlist in the side pane).
     return h('div', { className: cx('bae-m-librow', props.dropping && 'bae-m-librow-drop', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
       props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 44 }) : h(Artwork, { title: props.art || props.title, size: 44, radius: 6, missing: props.missing }),
@@ -32,23 +33,34 @@
   // The side pane: Queue, Playlists or History (`tab`), switched by its tabs. Playlists lists the playlists, each a place to drop tracks, or shows the one open (`MacPlaylistPage` as its child); History lists plays, newest first, filtered by whose. Only the queue shows what's playing.
   function MacQueuePanel(props) {
     var tab = props.tab || 'Queue';
-    // The head: the tabs centred, close at the end; on Playlists, + at the start makes a new playlist, and while a playlist is open (`back`, where the button goes back to) the back button takes its place.
-    var head = h('div', { className: 'bae-m-queue-head bae-m-pane-head' },
-      tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, props.back ? h(MacBackButton, { to: props.back }) : h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
-      h(MacSegmentedControl, { options: 'Queue,Playlists,History', selected: tab }), h('span', { className: 'bae-m-pane-close' }, h(MacCloseButton)));
+    var head = h(MacSidePaneHeader, { tab: tab, back: props.back });
     // `hang`: the width of a leading column the rows hang into the margin (History's times), which the body leaves room for, so the headings and the rows' covers share one edge.
+    // `empty` on History: no plays from whoever `whose` names (Everyone unless given), with the whose choice under the line to pick someone else.
+    if (tab === 'History' && props.empty) {
+      var whose = props.whose || 'Everyone';
+      return h('aside', { className: 'bae-m-queue' }, head, h(MacContentUnavailable, { title: whose === 'Everyone' ? 'No plays yet' : 'No plays from ' + whose }, wholeListChoice(whose, true)));
+    }
     if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body', style: props.hang ? { paddingLeft: 8 + Number(props.hang) + 10 } : null }, props.children));
     return h('aside', { className: 'bae-m-queue' },
       head,
       props.title ? h('div', { className: 'bae-m-queue-np' },
-        h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
-        h('div', { className: 'bae-m-queue-np-text' },
-          h('div', { className: 'bae-m-queue-np-eyebrow' }, 'Now playing'),
-          h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
-          h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar' }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || ''))),
+        // The playing track, the queue's own: its cover lined up with the text's top, Now playing over the title and artist, then the position strip.
+        h('div', { className: 'bae-m-nptrack bae-m-nptrack-top' },
+          h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
+          h('div', { className: 'bae-m-np-text' },
+            h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
+            h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
+            h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar' }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')))),
         h('span', { className: 'bae-m-queue-np-play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 13 }))) : null,
-      props.empty ? h('div', { className: 'bae-m-queue-empty' }, h('div', { className: 'bae-m-cu-title' }, 'Queue is empty'), h('div', { className: 'bae-m-cu-desc' }, 'Drag tracks here or play an album'))
+      props.empty ? h(MacContentUnavailable, { title: 'Queue is empty', description: 'Drag tracks here or play an album' })
         : h('div', { className: 'bae-m-queue-body' }, props.children));
+  }
+  // The side pane's head: the tabs (Queue, Playlists, History; `tab` is the one shown) centred, close at the end; on Playlists, + at the start makes a new playlist, and while a playlist is open (`back`, where the button goes back to) the back button takes its place.
+  function MacSidePaneHeader(props) {
+    var tab = props.tab || 'Queue';
+    return h('div', { className: 'bae-m-queue-head bae-m-pane-head' },
+      tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, props.back ? h(MacBackButton, { to: props.back }) : h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
+      h(MacSegmentedControl, { options: 'Queue,Playlists,History', selected: tab }), h('span', { className: 'bae-m-pane-close' }, h(MacCloseButton)));
   }
   // `wide`: more room at the end, for a list whose rows end in a person (History).
   function MacQueueSection(props) {
@@ -57,17 +69,16 @@
       h('span', { className: 'bae-m-queue-section-title' }, props.title),
       props.clear ? h('span', { className: 'bae-m-queue-clear' }, 'Clear') : null,
       // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.
-      props.menu ? h(MacInlineMenu, null, props.menu) : null,
+      props.menu ? wholeListChoice(props.menu) : null,
       props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 11 })) : null);
   }
-  // A choice that applies to a whole list, shown as its current value in the accent with a ⌄, opening a menu of the choices: History's whose plays, at the end of the first day's heading, or under the empty History's line.
-  // `action`: the menu as an empty state's action, in body text under its line, rather than a heading's small text.
-  function MacInlineMenu(props) {
-    return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', props.action && 'bae-m-queue-menu-action') }, props.children, h(Glyph, { set: 'mac', name: 'down', size: props.action ? 11 : 9 }));
+  // A choice that applies to a whole list (History's whose plays), shown as its current value in the accent with a ⌄, opening a menu of the choices. `big`: under an empty list's line, in body text, rather than a heading's small text.
+  function wholeListChoice(value, big) {
+    return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', big && 'bae-m-queue-menu-action') }, value, h(Glyph, { set: 'mac', name: 'down', size: big ? 11 : 9 }));
   }
   function MacQueuePlaceholderRow() {
-    return h('div', { className: 'bae-m-qrow' }, h('div', { className: 'bae-ph', style: { width: 48, height: 48, borderRadius: 6 } }),
-      h('div', { className: 'bae-m-qrow-text', style: { gap: 4 } }, h('div', { className: 'bae-ph', style: { width: 140, height: 12 } }), h('div', { className: 'bae-ph', style: { width: 90, height: 10 } }), h('div', { className: 'bae-ph', style: { width: 120, height: 10 } })));
+    return h('div', { className: 'bae-m-qrow' }, h(MacPlaceholderLine, { width: 48, height: 48, radius: 6 }),
+      h('div', { className: 'bae-m-qrow-text', style: { gap: 4 } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 }), h(MacPlaceholderLine, { width: 120, height: 10 })));
   }
   function MacQueueInsertLine() { return h('div', { className: 'bae-m-queue-insert' }); }
 
@@ -86,22 +97,27 @@
   var CAST_KIND = { cast: 'Chromecast', airplay: 'AirPlay', upnp: 'UPnP' };
   function MacCastRow(props) {
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', size: 'small' }, 'Disconnect') : null },
+    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', neutral: true, size: 'small' }, 'Disconnect') : null },
       h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast']))));
   }
+  // The cast popover's line while bae connects to a receiver (`name`): a spinner and Connecting to … .
+  function MacCastConnectingLine(props) {
+    return h('div', { className: 'bae-m-castpop-wait' }, h(MacSpinner, { size: 14 }), 'Connecting to ' + props.name + '…');
+  }
+  // The Cast button's popover: while bae connects (`connecting`, the receiver's name) the connecting line and a hairline, then the receivers (`devices`, "Name:kind" entries, `casting` the one playing), or No Cast devices found when there are none.
   function MacCastPopover(props) {
     var devices = String(props.devices || '').split(',').filter(Boolean).map(function (d) { var p = d.trim().split(':'); return { name: p[0], kind: p[1] || 'cast' }; });
     return h('div', { className: 'bae-m-castpop', style: { position: 'absolute', right: Number(props.right != null ? props.right : 120), bottom: Number(props.bottom != null ? props.bottom : 92) } },
-      props.connecting ? h('div', { className: 'bae-m-castpop-wait' }, h(MacSpinner, { size: 14 }), 'Connecting to ' + props.connecting + '…') : null,
+      props.connecting ? [h(MacCastConnectingLine, { key: 'c', name: props.connecting }), h(MacHairline, { key: 'h' })] : null,
       devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting }); })
-        : (props.connecting || props.casting ? null : h('div', { className: 'bae-muted' }, 'No Cast devices found')));
+        : h('div', { className: 'bae-m-castpop-none' }, 'No Cast devices found'));
   }
 
   // ---- Queue and playback (Android) ----
   function AndroidSheet(props) {
     return h('div', { className: 'bae-a-scrim' }, h('div', { className: 'bae-a-sheet', style: props.top != null ? { top: Number(props.top) } : null }, h('div', { className: 'bae-a-sheet-handle', role: 'button', 'aria-label': 'Drag handle' }), props.title ? h('h2', { className: 'bae-a-sheet-title' }, props.title) : null, h('div', { className: 'bae-a-sheet-body' }, props.children)));
   }
-  function AndroidQueueLabel(props) {
+  function AndroidQueueSection(props) {
     return h('div', { className: 'bae-a-queuelabel' }, h('span', { className: 'bae-a-eyebrow', style: { paddingTop: 0, flex: 1 } }, props.title),
       props.clear ? h(AndroidButton, { kind: 'text' }, 'Clear') : null,
       props.shuffle != null ? h(AndroidIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', size: 20, tone: props.shuffle ? 'accent' : 'muted' }) : null);
@@ -111,10 +127,12 @@
       h('div', { className: 'bae-a-qrow-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), h('div', { className: 'bae-a-track-artist' }, props.artist), props.current ? null : h('div', { className: 'bae-a-track-artist' }, props.album)),
       props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 20, className: 'bae-muted' })]);
   }
+  // A grey bar where text or a picture will be while it loads, as MacPlaceholderLine: `width` and `height` in dp, `radius` for a picture's corners (a bar's corners otherwise), `fixed` keeps its width in a row.
+  function AndroidPlaceholderLine(props) { return placeholderLine(props); }
   // A queued track not loaded yet: the cover's tile and a bar for each of the row's three lines.
   function AndroidQueuePlaceholderRow() {
-    return h('div', { className: 'bae-a-qrow' }, h('div', { className: 'bae-ph', style: { width: 48, height: 48, borderRadius: 6, flex: 'none' } }),
-      h('div', { className: 'bae-a-qrow-text', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, h('div', { className: 'bae-ph', style: { width: 160, height: 12 } }), h('div', { className: 'bae-ph', style: { width: 100, height: 10 } }), h('div', { className: 'bae-ph', style: { width: 120, height: 10 } })));
+    return h('div', { className: 'bae-a-qrow' }, h(AndroidPlaceholderLine, { width: 48, height: 48, radius: 6, fixed: true }),
+      h('div', { className: 'bae-a-qrow-text', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, h(AndroidPlaceholderLine, { width: 160, height: 12 }), h(AndroidPlaceholderLine, { width: 100, height: 10 }), h(AndroidPlaceholderLine, { width: 120, height: 10 })));
   }
   function AndroidFullPlayer(props) {
     return h('div', { className: 'bae-a-fullplayer' },
@@ -122,11 +140,16 @@
       h(Artwork, { title: props.album || props.title, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-fp-title' }, props.title), h('div', { className: 'bae-a-fp-artist' }, props.artist),
       h(AndroidSeekBar, { large: true, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }),
-      h('div', { className: 'bae-a-fp-transport' }, h(AndroidIconButton, { box: 56, icon: 'previous', size: 36, label: 'Previous' }), h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: 48 }), h(AndroidIconButton, { box: 56, icon: 'next', size: 36, label: 'Next' })),
+      h(AndroidTransport, { large: true, playing: props.playing, waiting: props.waiting }),
       h('div', { className: 'bae-a-fp-repeat' }, h(AndroidIconButton, { icon: 'repeat', label: 'Repeat mode', tone: props.repeat ? 'accent' : 'muted' })),
       // `noVolume`, as the Mac bar's: a receiver that takes no volume from bae shows where its volume is set in place of the slider.
       props.noVolume ? h('div', { className: 'bae-a-fp-volume bae-a-fp-novolume' }, 'Volume is set on ' + props.noVolume)
-        : h('div', { className: 'bae-a-fp-volume' }, h(AndroidIconButton, { icon: 'nowplaying', label: 'Mute', tone: 'muted' }), h('div', { className: 'bae-a-fp-slider' }, h('div', { style: { width: '70%' } }), h('span', { style: { left: '70%' } }))));
+        : h('div', { className: 'bae-a-fp-volume' }, h(AndroidIconButton, { icon: 'nowplaying', label: 'Mute', tone: 'muted' }), h(AndroidVolumeSlider, { value: props.volume })));
+  }
+  // The full player's volume bar, drawn as its seek line is: the level (`value`, 0 to 1, 0.7 unless given) filled in the accent, a gap, then the rest in the accent's tint, with the handle at the level.
+  function AndroidVolumeSlider(props) {
+    var pct = (props.value != null && props.value !== '' ? Number(props.value) : 0.7) * 100 + '%';
+    return h('div', { className: 'bae-a-volume', role: 'slider', 'aria-label': 'Volume', 'aria-valuenow': Math.round(parseFloat(pct)), style: { '--level': pct } }, h('div'), h('span'));
   }
   function AndroidCastRow(props) {
     if (props.waiting) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 14 } }, props.waiting));

@@ -1,4 +1,4 @@
-<!-- @dsCard group="Android library" height=780 -->
+<!-- @dsCard group="Android library" height=5600 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidFullPlayer</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,14 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' })));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Playing', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true })),
+    W('Paused', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' })),
+    W('Waiting', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true, waiting: true })),
+    W('Repeat on', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true, repeat: true })),
+    W('No cover', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true, noCover: true })),
+    W('Low volume', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true, volume: 0.2 })),
+    W('Volume on the receiver', h(B.AndroidFullPlayer, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', playing: true, noVolume: 'Living Room' }))));
 </script>
 </body>
 </html>

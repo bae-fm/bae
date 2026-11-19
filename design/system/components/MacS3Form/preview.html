@@ -1,0 +1,15 @@
+<!-- @dsCard group="macOS" height=2299 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacS3Form</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('None', h(B.MacS3Form, null)), W('Key', h(B.MacS3Form, { error: 'key' })), W('Denied', h(B.MacS3Form, { error: 'denied' })), W('Region', h(B.MacS3Form, { error: 'region' })), W('Bucket', h(B.MacS3Form, { error: 'bucket' })), W('Occupied', h(B.MacS3Form, { error: 'occupied' }))));
+</script>
+</body>
+</html>

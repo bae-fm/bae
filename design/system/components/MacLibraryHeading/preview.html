@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS library" height=260 -->
+<!-- @dsCard group="macOS library" height=300 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacLibraryHeading</title></head>
@@ -9,7 +9,10 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Top', h(B.MacLibraryHeading, { view: 'Albums' })), W('Scrolled', h(B.MacLibraryHeading, { view: 'Albums', collapsed: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Top', h(B.MacLibraryHeading, { view: 'Albums' })),
+    W('Scrolled', h(B.MacLibraryHeading, { view: 'Albums', collapsed: true })),
+    W('Controls', h(B.MacLibraryHeading, { view: 'Albums', collapsed: true }, slot('Group and sort')))));
 </script>
 </body>
 </html>

@@ -1,15 +1,18 @@
-<!-- @dsCard group="macOS storage" height=70 -->
+<!-- @dsCard group="macOS storage" height=200 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacStorageFooter</title></head>
-<body class="bae-preview bae-mac" style="padding: 0;">
+<body class="bae-preview bae-mac" style="">
 <div id="root" style="display: contents"></div>
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB', uploads: '6.4 MB/s', pins: '3.1 MB/s' })));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Releases only', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB' })),
+    W('Queues moving', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB', uploads: '6.4 MB/s', pins: '3.1 MB/s', exports: '42%' })),
+    W('Queues held', h(B.MacStorageFooter, { releases: '12 releases', total: '4.4 GB', uploads: '6.4 MB/s', uploadsWait: 'Waiting for network', pins: '3.1 MB/s', pinsWait: 'Paused' }))));
 </script>
 </body>
 </html>

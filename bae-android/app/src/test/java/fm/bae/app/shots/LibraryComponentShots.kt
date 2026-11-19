@@ -75,13 +75,13 @@ class LibraryComponentShots : BoardShot() {
 
     @Test
     fun androidComponentArtistHeadingTop() =
-        component("android.component.artist-heading.top", wide = true) {
+        component("android.component.artist-group-heading.top", wide = true) {
             Images { AndroidArtistHeading(section, pinned = false, gridPadding = 16.dp, onClick = {}) }
         }
 
     @Test
     fun androidComponentArtistHeadingPinned() =
-        component("android.component.artist-heading.pinned", wide = true) {
+        component("android.component.artist-group-heading.pinned", wide = true) {
             Images { AndroidArtistHeading(section, pinned = true, gridPadding = 16.dp, onClick = {}) }
         }
 

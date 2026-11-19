@@ -35,7 +35,7 @@ extension ShotScene {
     /// the fourth selected; and `ArtistAlbumCard`.
     private static let albumTileScenes: [ShotScene] = [
         component(
-            "mac.component.album-tile.default",
+            "mac.component.album-tile.resting",
             width: 720,
             height: 270,
             images: coverStore()
@@ -150,7 +150,7 @@ extension ShotScene {
 
     /// `StorageInspectorFileRow` and `StorageFileDetails`.
     private static let fileScenes: [ShotScene] = [
-        component("mac.component.file-row.default", height: 150) {
+        component("mac.component.file-row.at-rest", height: 150) {
             VStack(spacing: 0) {
                 StorageInspectorFileRow(
                     row: inspectorFile(
@@ -187,7 +187,7 @@ extension ShotScene {
             .frame(width: 380, alignment: .leading)
             .environment(OutboxStore(uploadsPaused: false))
         },
-        component("mac.component.file-details.default", height: 220) {
+        component("mac.component.file-details.other-file", height: 220) {
             StorageFileDetails(
                 file: BridgeFile(
                     id: "file-log",

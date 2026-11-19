@@ -1,0 +1,22 @@
+<!-- @dsCard group="macOS import" height=330 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacIdentifyBar</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Import', box(640, h(B.MacIdentifyBar, null))),
+    W('Import to the cloud', box(640, h(B.MacIdentifyBar, { cloud: true, to: 'Cloud' }))),
+    W('Retry', box(640, h(B.MacIdentifyBar, { retry: true }))),
+    W('Nothing to import', box(640, h(B.MacIdentifyBar, { blank: true }))),
+    W('Editor', box(640, h(B.MacIdentifyBar, { editor: true }))),
+    W('Editor changed', box(640, h(B.MacIdentifyBar, { editor: true, changed: true })))));
+</script>
+</body>
+</html>

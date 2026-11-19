@@ -1,4 +1,4 @@
-<!-- @dsCard group="macOS library" height=640 -->
+<!-- @dsCard group="macOS library" height=5600 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacQueuePanel</title></head>
@@ -9,7 +9,14 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, elapsed: '1:42' }, h(B.MacQueueSection, { title: 'Up next', clear: true }), h(B.MacQueueRow, { title: 'Margins', artist: 'Mara Quill', album: 'Northbound', duration: '4:55' }), h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: true, shuffle: false }), h(B.MacQueueRow, { title: 'Tin Roof', artist: 'Mara Quill', album: 'Low Tide Hours', duration: '5:41' })))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Playing', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, elapsed: '1:42' }, h(B.MacQueueSection, { title: 'Up next', clear: true }), h(B.MacQueueRow, { title: 'Margins', artist: 'Mara Quill', album: 'Northbound', duration: '4:55' }), h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: true, shuffle: false }), h(B.MacQueueRow, { title: 'Tin Roof', artist: 'Mara Quill', album: 'Low Tide Hours', duration: '5:41' })))),
+    W('Paused', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { title: 'Low Tide Hours', artist: 'Mara Quill', position: 0.35, elapsed: '1:42' }, h(B.MacQueueSection, { title: 'Up next', clear: true }), h(B.MacQueueRow, { title: 'Margins', artist: 'Mara Quill', album: 'Northbound', duration: '4:55' }), h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: true, shuffle: false }), h(B.MacQueueRow, { title: 'Tin Roof', artist: 'Mara Quill', album: 'Low Tide Hours', duration: '5:41' })))),
+    W('No cover', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, noCover: true, position: 0.35, elapsed: '1:42' }, h(B.MacQueueSection, { title: 'Up next', clear: true }), h(B.MacQueueRow, { title: 'Margins', artist: 'Mara Quill', album: 'Northbound', duration: '4:55' }), h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: true, shuffle: false }), h(B.MacQueueRow, { title: 'Tin Roof', artist: 'Mara Quill', album: 'Low Tide Hours', duration: '5:41' })))),
+    W('Empty', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { empty: true }))),
+    W('Playlists', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'Playlists' }, h(B.MacLibraryRow, { title: 'Late night', subtitle: 'Ana · 12 tracks', covers: 'Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns' }), h(B.MacLibraryRow, { title: 'Sunday mornings', subtitle: 'Ben · 1 track', covers: 'Copper Sky' })))),
+    W('Playlist open', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'Playlists', back: 'Playlists' }, slot('The open playlist’s page')))),
+    W('History', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', hang: 40 }, h(B.MacQueueSection, { title: 'Today', hang: true, wide: true, menu: 'Everyone' }), slot('The day’s plays')))), W('History empty', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true }))), W('History empty for a person', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true, whose: 'Ben' })))));
 </script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 # MacSortCriteria
 
-The sort beside the library heading: one pill per criterion (`criteria`, "Field:up" or "Field:down", comma separated), each a field menu and a direction; Remove when there are several; + to add a field not used yet (left out when `full`).
+The sort beside the library heading: one pill per criterion (`criteria`, "Field:up" or "Field:down", comma separated), each a field menu and a direction; Remove when there are several; + to add a field not used yet, which goes once every field of the list is in use (`fields`: the albums' Title, Artist, Year and Date added unless given).
+
+Each criterion is a `MacSortPill`.
 
 **In the code:** macOS: `MacSortCriteria` and `SortCriterionPill` (`Views/Library/Sort/`).

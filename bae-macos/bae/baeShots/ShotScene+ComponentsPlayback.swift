@@ -415,7 +415,7 @@ extension ShotScene {
     /// track up next and one playing from the album.
     private static let queuePanelScenes: [ShotScene] = [
         component(
-            "mac.component.queue-panel.default",
+            "mac.component.queue-panel.playing",
             width: 436,
             height: 616,
             images: coverStore()

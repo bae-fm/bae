@@ -1,0 +1,18 @@
+<!-- @dsCard group="macOS" height=560 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacCoverTile</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    N('Resting', h('div', { style: { width: 130 } }, h(B.MacCoverTile, { name: 'cover.jpg' }))),
+    N('Selected', h('div', { style: { width: 130 } }, h(B.MacCoverTile, { name: 'cover.jpg', selected: true }))),
+    N('Long name', h('div', { style: { width: 130 } }, h(B.MacCoverTile, { name: 'cover-front-scan-600dpi.jpg', image: 'cover.jpg' })))));
+</script>
+</body>
+</html>

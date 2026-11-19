@@ -1,0 +1,20 @@
+<!-- @dsCard group="macOS" height=420 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>MacTransferLine</title></head>
+<body class="bae-preview bae-mac" style="">
+<div id="root" style="display: contents"></div>
+<script>
+  var B = window.Bae, h = React.createElement;
+  function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
+    W('Syncing', h(B.MacTransferLine, { label: 'Syncing changes' })),
+    W('Uploading', h(B.MacTransferLine, { label: 'Uploading', count: '1 of 3 releases', progress: 0.4, pausable: true })),
+    W('Waiting', h(B.MacTransferLine, { label: 'Uploading', count: 'Waiting for Wi-Fi', progress: 0.4, pausable: true })),
+    W('Paused', h(B.MacTransferLine, { label: 'Pinning', count: 'Paused', progress: 0.3, pausable: true, paused: true })),
+    W('Moving to This Mac', h(B.MacTransferLine, { label: 'Moving to This Mac', count: '0 of 1 release', progress: 0.2, pausable: true }))));
+</script>
+</body>
+</html>
