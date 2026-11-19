@@ -51,6 +51,39 @@ use std::path::PathBuf;
 /// Reads the window `window` of the list `request` shows in one statement: the items
 /// of its range, each with its key, and each member of a group with its
 /// group's header.
+pub(super) fn read_window(
+    sql: &SqlReadContext<'_>,
+    request: &ImportListRequest,
+    window: &ListWindow,
+) -> Result<ImportWindow, DbError> {
+    let rows = window_query(request, window, |items, statement, named| {
+        items.query(sql, statement, named, |row| {
+            let item: String = row.get("item")?;
+            let ordered = items.led_key(row)?;
+            let stored = match item.as_str() {
+                "group" => StoredItem::Header(read_header(row)?),
+                _ => StoredItem::Release(Box::new(read_release(row)?)),
+            };
+            Ok((item, ordered, stored))
+        })
+    })?;
+    let Some(rows) = rows else {
+        return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
+    };
+    let mut read = Vec::new();
+    for (item, ordered, stored) in rows {
+        let shown = match stored {
+            StoredItem::Header(header) => ImportListItem::GroupHeader(group_header(header)?),
+            StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
+        };
+        read.push((shown, ordered));
+    }
+    Ok(ImportWindow { window: window.clone(), rows: read })
+}
+
+/// Runs `run` with the list's items, the statement reading the window
+/// `window` of the list `request` shows, and the values the statement binds;
+/// `None` for a window no part of the list has rows for.
 ///
 /// The range is the statement's first table. The statement numbers the
 /// range's items in the order the parts of its UNION return them, and reads
@@ -58,14 +91,14 @@ use std::path::PathBuf;
 /// further reference to it would expand the range's views again, and a
 /// range over a text filter's views would pass SQLite's limit on the
 /// cursors one statement opens.
-pub(super) fn read_window(
-    sql: &SqlReadContext<'_>,
+fn window_query<T>(
     request: &ImportListRequest,
     window: &ListWindow,
-) -> Result<ImportWindow, DbError> {
+    run: impl FnOnce(&Items, &str, &[(&str, &dyn ToSql)]) -> Result<T, DbError>,
+) -> Result<Option<T>, DbError> {
     let items = Items::new(request.clone());
     let Some(range) = items.range_statement(window)? else {
-        return Ok(ImportWindow { window: window.clone(), rows: Vec::new() });
+        return Ok(None);
     };
     let statement = format!(
         "WITH keyed AS ( \
@@ -80,24 +113,7 @@ pub(super) fn read_window(
     let mut named: Vec<(&str, &dyn ToSql)> =
         range_params.iter().map(|(name, value)| (name.as_str(), *value)).collect();
     named.push((":limit", &limit));
-    let rows = items.query(sql, &statement, &named, |row| {
-        let item: String = row.get("item")?;
-        let ordered = items.led_key(row)?;
-        let stored = match item.as_str() {
-            "group" => StoredItem::Header(read_header(row)?),
-            _ => StoredItem::Release(Box::new(read_release(row)?)),
-        };
-        Ok((item, ordered, stored))
-    })?;
-    let mut read = Vec::new();
-    for (item, ordered, stored) in rows {
-        let shown = match stored {
-            StoredItem::Header(header) => ImportListItem::GroupHeader(group_header(header)?),
-            StoredItem::Release(release) => release_item(*release, Item::of(&item)?)?,
-        };
-        read.push((shown, ordered));
-    }
-    Ok(ImportWindow { window: window.clone(), rows: read })
+    run(&items, &statement, &named).map(Some)
 }
 
 /// What one row of the window's statement holds, by its kind.
@@ -123,11 +139,12 @@ const HEADER_FOLDER: &str = "CASE w.item WHEN 'group' THEN w.key ELSE w.group_fo
 
 /// The header columns of the row of item `w`: its own for a header, its
 /// group's for a member, from the header's placement `hp`, and none for a
-/// release in no group. The entry count counts the placement rows under the
-/// group's folder that the pending filter keeps, unless a text filter is
-/// active, when it counts the matching rows instead. The placement's
-/// `combinable` column says whether bae offers to import the folder as one
-/// release (`import_list_recombine`).
+/// release in no group. The entry count is the group's members that the
+/// pending filter keeps, read from the group counts kept beside the placement
+/// (`import_list_group_count`), so a header walks none of its members; while
+/// a text filter is active, it counts the matching rows instead. The
+/// placement's `combinable` column says whether bae offers to import the
+/// folder as one release (`import_list_recombine`).
 fn header_columns(request: &ImportListRequest) -> String {
     let counted = match request.filters_text() {
         true => format!(
@@ -137,11 +154,10 @@ fn header_columns(request: &ImportListRequest) -> String {
             matching = request.matching(),
         ),
         false => format!(
-            "SELECT COUNT(*) FROM import_list_placement AS m \
-             WHERE m.watched_folder_path = w.watched_folder_path \
-               AND m.group_folder = {HEADER_FOLDER} AND m.item <> 'group' \
-               AND {kept}",
-            kept = request.entry_sql("m").unwrap_or_else(|| "1".to_string()),
+            "SELECT COALESCE(SUM(gc.count), 0) FROM import_list_group_count AS gc \
+             WHERE gc.watched_folder_path = w.watched_folder_path \
+               AND gc.group_folder = {HEADER_FOLDER} AND {kept}",
+            kept = request.entry_sql("gc").unwrap_or_else(|| "1".to_string()),
         ),
     };
     format!(
@@ -512,3 +528,7 @@ mod tests;
 #[cfg(test)]
 #[path = "row_kinds_tests.rs"]
 mod row_kinds_tests;
+
+#[cfg(test)]
+#[path = "header_counts_tests.rs"]
+mod header_counts_tests;

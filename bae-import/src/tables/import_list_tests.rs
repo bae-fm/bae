@@ -236,15 +236,21 @@ impl Library {
         );
         assert_eq!(
             self.stored_group_counts().await,
-            self.count_rows(
-                "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
-                        pending_entry, COUNT(*) \
-                 FROM import_list_placement WHERE item <> 'group' AND group_folder IS NOT NULL \
-                 GROUP BY watched_folder_path, group_folder, pending_entry ORDER BY 1, 2, 3",
-            )
-            .await,
+            self.placed_group_counts().await,
             "the group counts kept beside the placement"
         );
+    }
+
+    /// Each group's members in each filter entry, as a COUNT over the
+    /// placement says, in the order of [`Library::stored_group_counts`].
+    pub(crate) async fn placed_group_counts(&self) -> Vec<GroupCountRow> {
+        self.count_rows(
+            "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
+                    pending_entry, COUNT(*) \
+             FROM import_list_placement WHERE item <> 'group' AND group_folder IS NOT NULL \
+             GROUP BY watched_folder_path, group_folder, pending_entry ORDER BY 1, 2, 3",
+        )
+        .await
     }
 
     /// The group counts kept beside the placement as they stand, in order.
