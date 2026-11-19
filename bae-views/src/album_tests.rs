@@ -940,3 +940,30 @@ async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
         assert!(!sorts(&steps, true), "{kind}: {steps:?}");
     }
 }
+
+/// A spoken "play" reads the tracks and the albums a search finds in order
+/// from their stored title keys: each read walks its title index and sorts
+/// nothing.
+#[tokio::test]
+async fn a_spoken_play_reads_tracks_and_albums_from_the_stored_title_keys() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    for (statement, index) in [
+        (crate::album::top_track_statement(), "INDEX idx_track_search_entry_title"),
+        (crate::album::top_album_track_statement(), "INDEX idx_album_listing_title"),
+    ] {
+        let plan = db
+            .read(move |sql| {
+                sql.query(&format!("EXPLAIN QUERY PLAN {statement}"), ["Probe*"], |row| {
+                    row.get::<_, String>(3)
+                })
+                .map_err(DbError::from)
+            })
+            .await
+            .unwrap();
+        assert!(
+            plan.iter().any(|step| step.ends_with(index))
+                && !plan.iter().any(|step| step.contains("TEMP B-TREE")),
+            "the read comes from {index} with no sort: {plan:?}"
+        );
+    }
+}

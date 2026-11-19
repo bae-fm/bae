@@ -637,36 +637,48 @@ fn top_playable_on(
     sql: &SqlReadContext<'_>,
     pattern: &str,
 ) -> Result<Option<DbTopPlayable>, DbError> {
-    Ok(sql
-        .query_row(
-            &format!(
-                r#"
-                SELECT release_id, track_id FROM (
-                    SELECT t.release_id AS release_id, t.id AS track_id, 0 AS kind,
-                           entry.title_sort_key AS found_key, t.id AS tie
-                    FROM track_search_entry entry
-                    JOIN tracks t ON t.id = entry.track_id
-                    WHERE {tracks_found}
-                    UNION ALL
-                    SELECT a.release_id, (SELECT id FROM tracks
-                                          WHERE release_id = a.release_id
-                                          ORDER BY position, id LIMIT 1),
-                           1, {album_key}, a.id
-                    FROM (SELECT a.id, a.title, {primary_release} AS release_id
-                          FROM albums a WHERE {album_matches}) a
-                )
-                WHERE track_id IS NOT NULL
-                ORDER BY kind, found_key, tie LIMIT 1
-                "#,
-                tracks_found = entries_found_sql("track", "?1"),
-                album_key = crate::sort_key_sql("a.title"),
-                primary_release = album_primary_release_sql(),
-                album_matches = album_matches_sql("a.id", "?1"),
-            ),
-            params![pattern],
-            |row| Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? }),
-        )
-        .optional()?)
+    let read = |statement: String| {
+        sql.query_row(&statement, params![pattern], |row| {
+            Ok(DbTopPlayable { release_id: row.get(0)?, track_id: row.get(1)? })
+        })
+        .optional()
+    };
+    match read(top_track_statement())? {
+        Some(top) => Ok(Some(top)),
+        None => Ok(read(top_album_track_statement())?),
+    }
+}
+
+/// The statement that reads the first track `?1` finds, in the order of the
+/// track entries' stored title key, ties going by id.
+fn top_track_statement() -> String {
+    format!(
+        "SELECT t.release_id, t.id \
+         FROM track_search_entry entry INDEXED BY idx_track_search_entry_title \
+         CROSS JOIN tracks t ON t.id = entry.track_id \
+         WHERE {found} \
+         ORDER BY entry.title_sort_key, entry.track_id LIMIT 1",
+        found = entries_found_sql("track", "?1"),
+    )
+}
+
+/// The statement that reads the first track of the first album `?1` finds
+/// that has one: the albums in order of their stored title key, ties going
+/// by id, each with its main release's first track. `INDEXED BY` holds the
+/// read to the title index, because left to choose, SQLite reads the albums
+/// the search finds and sorts them all.
+fn top_album_track_statement() -> String {
+    format!(
+        "SELECT {primary_release} AS release_id, \
+                (SELECT id FROM tracks WHERE release_id = {primary_release} \
+                 ORDER BY position, id LIMIT 1) AS track_id \
+         FROM album_listing listing INDEXED BY idx_album_listing_title \
+         CROSS JOIN albums a ON a.id = listing.album_id \
+         WHERE {album_matches} AND track_id IS NOT NULL \
+         ORDER BY listing.title_sort_key, listing.album_id LIMIT 1",
+        primary_release = album_primary_release_sql(),
+        album_matches = album_matches_sql("a.id", "?1"),
+    )
 }
 
 /// The album `album_id`'s detail, showing the release `chosen_release_id`
