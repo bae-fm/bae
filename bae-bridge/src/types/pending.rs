@@ -173,6 +173,7 @@ pub(crate) fn subject_message(subject: bae_sync_status::PendingSubjectName) -> B
             O::AddCircleMember => "core.pending.operation.add_circle_member",
             O::DeleteCircle => "core.pending.operation.delete_circle",
             O::Invite => "core.pending.operation.invite",
+            O::ApproveJoin => "core.pending.operation.approve_join",
             O::RevokeAccess => "core.pending.operation.revoke_access",
             O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
             O::StorageSetup => "core.pending.operation.storage_setup",

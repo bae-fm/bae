@@ -702,6 +702,7 @@ fn pending_subject_messages() -> Vec<BridgeMessage> {
         O::AddCircleMember,
         O::DeleteCircle,
         O::Invite,
+        O::ApproveJoin,
         O::RevokeAccess,
         O::ReplaceMemberKeys,
         O::StorageSetup,

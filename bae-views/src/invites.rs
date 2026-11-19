@@ -75,13 +75,14 @@ macro_rules! open_invite_rows {
 
 /// Every row of People's invites in the order coven started their operations:
 /// this device's open invites, and each invite whose operation ended with a
-/// sharing refusal nobody has dismissed.
+/// sharing refusal nobody has dismissed: `coven_operations` lists an invite
+/// only once a sharing refusal ends it.
 const INVITE_ROWS: &str = concat!(
     open_invite_rows!(),
     "UNION ALL \
      SELECT o.operation, 'refused', NULL, NULL, NULL, NULL, NULL, o.outcome \
      FROM coven_operations AS o \
-     WHERE o.kind = 'Invite' AND o.outcome_kind = 'sharing_refused' \
+     WHERE o.kind = 'Invite' \
      ORDER BY operation"
 );
 
@@ -132,22 +133,15 @@ fn open_invite(row: &rusqlite::Row<'_>) -> rusqlite::Result<OpenInvite> {
 fn invite_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<InviteEntry> {
     match row.get::<_, String>("kind")?.as_str() {
         "open" => Ok(InviteEntry::Open(open_invite(row)?)),
-        _ => match row.get::<_, coven::InviteOutcome>("outcome")? {
-            coven::InviteOutcome::SharingRefused { account, refusal } => {
-                Ok(InviteEntry::Refused(RefusedInvite {
-                    operation: coven::OperationId(row.get("operation")?),
-                    address: account,
-                    refusal,
-                }))
-            }
-            other => Err(conversion(
-                format!(
-                    "a refused invite's operation ended with {other:?}, which is not a sharing \
-                     refusal"
-                )
-                .into(),
-            )),
-        },
+        _ => {
+            let coven::InviteOutcome::SharingRefused { account, refusal } =
+                row.get::<_, coven::InviteOutcome>("outcome")?;
+            Ok(InviteEntry::Refused(RefusedInvite {
+                operation: coven::OperationId(row.get("operation")?),
+                address: account,
+                refusal,
+            }))
+        }
     }
 }
 

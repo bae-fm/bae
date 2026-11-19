@@ -208,7 +208,7 @@ impl FailedDatabaseCall for coven::CovenError {
             E::Key(_)
             | E::Sync(_)
             | E::Migration(_)
-            | E::CovenMigration(_)
+            | E::CovenSchema(_)
             | E::Settings(_)
             | E::File(_)
             | E::MissingConfiguration { .. }

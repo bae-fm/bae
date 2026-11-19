@@ -8,7 +8,6 @@ use crate::admin_change::{
     AdminChange, AdminChangeDismissError, AdminChangeKind, AdminChangePlace, AdminChangeState,
     AdminChanges,
 };
-use rusqlite::OptionalExtension;
 
 /// What an admin change changes, as its `admin_operations` row holds it.
 pub(super) enum AdminTarget {
@@ -24,7 +23,7 @@ pub(super) enum AdminTarget {
 /// The operation kinds some place shows. A change whose operation coven lists
 /// with another kind is no admin change bae makes.
 const PLACED_KINDS: &str =
-    "'RenameStore', 'SetRole', 'RemoveMember', 'RemoveDevice', 'Invite', 'ReplaceMemberKeys'";
+    "'RenameStore', 'SetRole', 'RemoveMember', 'RemoveDevice', 'ApproveJoin', 'ReplaceMemberKeys'";
 
 /// Each admin change this device asked for, with its operation as coven
 /// lists it. `coven_operations` lists a change's operation until the write
@@ -63,7 +62,7 @@ pub(super) fn shown_in(place: &AdminChangePlace) -> String {
         AdminChangePlace::Library => "o.kind = 'RenameStore'",
         AdminChangePlace::Person(_) => "o.kind = 'SetRole' AND a.member = ?1",
         AdminChangePlace::People => {
-            "o.kind IN ('RemoveMember', 'RemoveDevice', 'Invite', 'ReplaceMemberKeys')"
+            "o.kind IN ('RemoveMember', 'RemoveDevice', 'ApproveJoin', 'ReplaceMemberKeys')"
         }
     };
     format!("(o.kind NOT IN ({PLACED_KINDS}) OR ({kinds}))")
@@ -115,7 +114,7 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
         coven::OperationKind::RemoveMember => {
             AdminChangeKind::RemovePerson { member: member()?, person: row.get(7)? }
         }
-        coven::OperationKind::Invite | coven::OperationKind::ReplaceMemberKeys => {
+        coven::OperationKind::ApproveJoin | coven::OperationKind::ReplaceMemberKeys => {
             AdminChangeKind::Approve {
                 member: member()?,
                 person: match row.get::<_, Option<String>>(6)? {
@@ -144,19 +143,8 @@ fn admin_change_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<AdminChange> {
         coven::OperationKind::ReplaceMemberKeys => {
             row.get::<_, Option<coven::FreshChangeOutcome>>(2)?.map(fresh_change_outcome)
         }
-        coven::OperationKind::Invite => row
-            .get::<_, Option<coven::InviteOutcome>>(2)?
-            .map(binding_outcome)
-            .transpose()
-            .map_err(|outcome| {
-                bae_store::read::column_conversion_error(
-                    row,
-                    2,
-                    format!("an approval that ended {outcome:?}"),
-                )
-            })?,
-        // RenameStore, SetRole, RemoveMember and RemoveDevice, the other
-        // kinds the match above reads.
+        // RenameStore, SetRole, RemoveMember, RemoveDevice and ApproveJoin,
+        // the other kinds the match above reads.
         _ => row.get::<_, Option<coven::ChangeOutcome>>(2)?,
     };
     let state = match outcome {
@@ -177,21 +165,6 @@ fn fresh_change_outcome(outcome: coven::FreshChangeOutcome) -> coven::ChangeOutc
         coven::FreshChangeOutcome::Landed(slot) => coven::ChangeOutcome::Landed(slot),
         coven::FreshChangeOutcome::Rejected(reason) => coven::ChangeOutcome::Rejected(reason),
         coven::FreshChangeOutcome::Stopped(stop) => coven::ChangeOutcome::Stopped(stop),
-    }
-}
-
-/// How an approval's binding ended, as an admin change ends; the outcome
-/// itself when it is a sharing refusal, which ends the invite this device
-/// records as no admin change.
-fn binding_outcome(
-    outcome: coven::InviteOutcome,
-) -> Result<coven::ChangeOutcome, coven::InviteOutcome> {
-    match outcome {
-        coven::InviteOutcome::Landed(slot) => Ok(coven::ChangeOutcome::Landed(slot)),
-        coven::InviteOutcome::Satisfied => Ok(coven::ChangeOutcome::Satisfied),
-        coven::InviteOutcome::Rejected(reason) => Ok(coven::ChangeOutcome::Rejected(reason)),
-        coven::InviteOutcome::Stopped(stop) => Ok(coven::ChangeOutcome::Stopped(stop)),
-        refused @ coven::InviteOutcome::SharingRefused { .. } => Err(refused),
     }
 }
 
@@ -335,9 +308,10 @@ impl Membership {
 
 impl Membership {
     /// Dismiss an invite a sharing refusal ended: coven's operation outcome
-    /// is acknowledged, so the notice leaves the list in that write. Any other
-    /// operation, an invite's or not, is refused with
-    /// `NotRefusedInvite`, as is one dismissed already.
+    /// is acknowledged, so the notice leaves the list in that write.
+    /// `coven_operations` lists an invite only once a sharing refusal ends
+    /// it, so any other operation is refused with `NotRefusedInvite`, as is
+    /// one dismissed already.
     pub async fn dismiss_refused_invite(
         &self,
         operation: coven::OperationId,
@@ -345,21 +319,16 @@ impl Membership {
         let acknowledged = self
             .store
             .call(move |sql| {
-                let outcome = sql
-                    .query_row(
-                        "SELECT outcome FROM coven_operations \
-                         WHERE operation = ?1 AND kind = 'Invite'",
-                        [operation.0],
-                        |row| row.get::<_, Option<coven::InviteOutcome>>(0),
-                    )
-                    .optional()?;
-                match outcome.flatten() {
-                    Some(coven::InviteOutcome::SharingRefused { .. }) => {
-                        sql.acknowledge_operation(operation)?;
-                        Ok(true)
-                    }
-                    _ => Ok(false),
+                let refused = sql.query_row(
+                    "SELECT EXISTS (SELECT 1 FROM coven_operations \
+                     WHERE operation = ?1 AND kind = 'Invite')",
+                    [operation.0],
+                    |row| row.get::<_, bool>(0),
+                )?;
+                if refused {
+                    sql.acknowledge_operation(operation)?;
                 }
+                Ok(refused)
             })
             .await?;
         match acknowledged {

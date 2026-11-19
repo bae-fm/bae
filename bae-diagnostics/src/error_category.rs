@@ -414,7 +414,7 @@ fn write_category(error: &coven::CovenError) -> C {
         E::Sync(error) => sync_category(error),
         E::Database(_)
         | E::Migration(_)
-        | E::CovenMigration(_)
+        | E::CovenSchema(_)
         | E::Settings(_)
         | E::File(_)
         | E::Lock(_)
