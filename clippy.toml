@@ -47,4 +47,19 @@ disallowed-methods = [
     # takes the clock and the ids together. Tests take theirs through
     # bae_store::test_devices.
     { path = "coven::Coven::builder", reason = "use bae_store::store_builder, which sets the clock and the ids together" },
+    # coven::Coven::new builds the installation over the OS keychain, where
+    # keys, credentials and saved restore codes live: the person's login
+    # keychain, iCloud Keychain (which reaches every device on their Apple
+    # account) or their phone's Block Store. The one place bae calls it is
+    # bae-app-dir's AppDir::coven, which the apps' host starts over. Code that
+    # only needs an installation takes Coven::in_memory; a bridge host for a
+    # test is BridgeHost::with_test_keyring. BridgeHost::new, the host the apps
+    # start over that keychain, is not listed: uniffi's scaffolding calls it
+    # in generated code that no mark can cover, so scripts/check-test-keychain.py
+    # keeps that name.
+    { path = "coven::Coven::new", reason = "use AppDir::coven in production and coven::Coven::in_memory in tests: Coven::new reaches the person's own keychain" },
+    # The person's home holds ~/.bae, their libraries. bae's directory is an
+    # AppDir the app is handed, and a test puts its own under a temporary
+    # folder.
+    { path = "dirs::home_dir", reason = "take an AppDir: the person's home holds their own libraries" },
 ]

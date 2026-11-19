@@ -115,6 +115,10 @@ impl AppDir {
     /// process runs. coven reports its bugs in work nobody waits for to
     /// `bugs`, the app's crash reporter, and opens the person's files within
     /// `files`, the installation's budget of open files.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "keychain: this is the one place bae builds an installation over the person's own keychain"
+    )]
     pub fn coven(
         &self,
         bugs: coven::task::BugSinkRef,

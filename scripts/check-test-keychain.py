@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Refuse test code that reaches the person's own keychain or bae directory.
+"""Refuse test code that reaches the person's own keychain through a host.
 
-`Coven::new` builds coven's installation over the OS keychain, where it keeps
-keys, credentials and saved restore codes: the person's login keychain,
-iCloud Keychain (which reaches every device on their Apple account) or their
-phone's Block Store. `BridgeHost::new` is the host the apps start over it. A
-test, a bench, an example or a test helper keeps its keys in an in-memory
-keychain instead (`Coven::in_memory`, `BridgeHost::with_test_keyring`). `dirs::home_dir` is the person's own home, whose
-`~/.bae` holds their libraries; test code puts its bae directory under a
-temporary one. This check refuses each of those names in test code:
+`BridgeHost::new` is the host the apps start over coven's installation, which
+keeps keys, credentials and saved restore codes in the OS keychain: the
+person's login keychain, iCloud Keychain (which reaches every device on their
+Apple account) or their phone's Block Store. A test, a bench, an example or a
+test helper keeps its keys in an in-memory keychain instead
+(`BridgeHost::with_test_keyring`). Clippy holds the other two ways to the
+keychain and the home, `coven::Coven::new` and `dirs::home_dir`
+(`clippy.toml`). This check refuses `BridgeHost::new` in test code:
 
 - Rust: the code of every workspace `test`, `bench` and `example` target;
   code under a `cfg` that holds only in a test build, one that needs `test`
@@ -38,13 +38,11 @@ from pathlib import Path
 from rust_modules import reached_files
 from source_tokens import Token, tokenize
 
-# The Rust names that reach the person's keychain or home: two tokens around
-# `::`.
-RUST_NAMES = {
-    ("Coven", "new"),
-    ("BridgeHost", "new"),
-    ("dirs", "home_dir"),
-}
+# The Rust name that reaches the person's keychain: two tokens around `::`.
+# Clippy disallows `Coven::new` and `dirs::home_dir` (clippy.toml), but not
+# this one: uniffi's scaffolding calls `BridgeHost::new` in generated code that
+# no `#[expect]` covers.
+RUST_NAMES = {("BridgeHost", "new")}
 # What a fake host is made from in each app's bindings: no keychain behind it.
 SWIFT_HANDLE_LABELS = {"unsafeFromHandle", "noHandle"}
 KOTLIN_HANDLE_ARGUMENTS = {"NoHandle"}
@@ -252,9 +250,7 @@ def main() -> int:
     if violations:
         print(
             "Test code keeps its keys in an in-memory keychain "
-            "(Coven::in_memory, BridgeHost::with_test_keyring) and its bae "
-            "directory under a temporary home, never the person's own "
-            "keychain or home.",
+            "(BridgeHost::with_test_keyring), never the person's own keychain.",
             file=sys.stderr,
         )
     return 1 if violations else 0
