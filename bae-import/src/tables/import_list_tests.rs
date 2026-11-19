@@ -221,7 +221,9 @@ impl Library {
 
     /// Check the counts kept beside the placement (`import_list_count`) hold,
     /// for each tab, item and filter entry, what a COUNT over every placement
-    /// row says, and hold nothing else.
+    /// row says, and hold nothing else; and that the group counts
+    /// (`import_list_group_count`) hold, for each group and filter entry, what
+    /// a COUNT over the group's members says, and hold nothing else.
     pub(crate) async fn counted(&self) {
         assert_eq!(
             self.stored_counts().await,
@@ -232,6 +234,40 @@ impl Library {
             .await,
             "the counts kept beside the placement"
         );
+        assert_eq!(
+            self.stored_group_counts().await,
+            self.group_count_rows(
+                "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
+                        pending_entry, COUNT(*) \
+                 FROM import_list_placement WHERE item <> 'group' AND group_folder IS NOT NULL \
+                 GROUP BY watched_folder_path, group_folder, pending_entry ORDER BY 1, 2, 3",
+            )
+            .await,
+            "the group counts kept beside the placement"
+        );
+    }
+
+    /// The group counts kept beside the placement as they stand, in order.
+    pub(crate) async fn stored_group_counts(&self) -> Vec<GroupCountRow> {
+        self.group_count_rows(
+            "SELECT coven_path_text(watched_folder_path), coven_path_text(group_folder), \
+                    pending_entry, count \
+             FROM import_list_group_count ORDER BY 1, 2, 3",
+        )
+        .await
+    }
+
+    /// The rows `statement` selects, each a watched folder, a group, a filter
+    /// entry and a count.
+    async fn group_count_rows(&self, statement: &'static str) -> Vec<GroupCountRow> {
+        self.db
+            .read(move |sql| {
+                Ok(sql.query(statement, [], |row| {
+                    Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+                })?)
+            })
+            .await
+            .unwrap()
     }
 
     /// The counts kept beside the placement as they stand, in order.
@@ -372,6 +408,10 @@ impl Library {
 /// One count of the placement's rows: their tab, their item, their entry of
 /// Found's filter when they have one, and how many there are.
 pub(crate) type CountRow = (String, String, Option<String>, i64);
+
+/// One count of a group's members: the group's watched folder and folder,
+/// their entry of Found's filter, and how many there are.
+pub(crate) type GroupCountRow = (String, String, String, i64);
 
 /// `tab` in the default order, unfiltered.
 pub(crate) fn view(tab: TriageTab) -> ImportListView {

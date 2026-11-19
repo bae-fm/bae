@@ -625,10 +625,10 @@ async fn the_list_count_carries_the_tab_counts() {
 
 /// The tab counts, the filter entries and whether Found has groups are read
 /// from the counts kept beside the placement alone. A list's count reads its
-/// tab's and its entry's counts there too: Imported's and Skipped's read no
-/// placement row, and Found's reads only the members of the groups it folds,
-/// by their group. Under an entry, the folded members and the headers of the
-/// groups holding the entry's releases are still read from the placement.
+/// tab's and its entry's counts there too, and reads no placement row: Found's
+/// reads the members of the groups it folds from the group counts, and, under
+/// an entry, the groups holding the entry's releases too, searching them by
+/// the entry rather than reading every group's.
 #[tokio::test]
 async fn the_counts_are_read_from_the_kept_counts() {
     let lib = Library::new().await;
@@ -637,14 +637,22 @@ async fn the_counts_are_read_from_the_kept_counts() {
         let request = ImportListRequest::of(view);
         (super::count_statement(&request), request)
     };
+    let folding_every_group = |view: ImportListView| {
+        let request =
+            ImportListRequest { view, folds: ImportListFolds::AllBut(Default::default()) };
+        (super::count_statement(&request), request)
+    };
+    let needs_you = under(TriageTab::Pending, PendingFilter::NeedsYou);
     let statements = [
         ("the tab counts", (super::TAB_COUNTS.to_string(), found.clone())),
         ("the filter entries", (super::filter_entries_sql(), found.clone())),
         ("whether Found has groups", (super::HAS_GROUPS.to_string(), found.clone())),
-        ("Found's count", counting(view(TriageTab::Pending))),
         ("Imported's count", counting(view(TriageTab::Done))),
         ("Skipped's count", counting(view(TriageTab::Skipped))),
-        ("Needs You's count", counting(under(TriageTab::Pending, PendingFilter::NeedsYou))),
+        ("Found's count", counting(view(TriageTab::Pending))),
+        ("Found's count folding every group", folding_every_group(view(TriageTab::Pending))),
+        ("Needs You's count", counting(needs_you.clone())),
+        ("Needs You's count folding every group", folding_every_group(needs_you)),
     ];
     let plans = lib
         .db
@@ -665,7 +673,8 @@ async fn the_counts_are_read_from_the_kept_counts() {
         .await
         .unwrap();
     // A step reading the placement, under its own name or as `p`, `h` or
-    // `m`; a step reading the kept counts, as `c`.
+    // `m`; a step reading the kept counts, as `c`, or the group counts, as
+    // `g`.
     let reads = |step: &str, tables: &[&str]| {
         (step.starts_with("SCAN") || step.starts_with("SEARCH"))
             && step.split_whitespace().nth(1).is_some_and(|table| tables.contains(&table))
@@ -680,28 +689,30 @@ async fn the_counts_are_read_from_the_kept_counts() {
     }
     for (what, plan) in &plans[3..] {
         assert!(
-            plan.iter().any(|step| reads(step, &["c"])),
-            "{what} reads its tab's count from the kept counts: {plan:?}"
+            plan.iter().any(|step| reads(step, &["c"]))
+                && !plan.iter().any(|step| reads(step, &placement)),
+            "{what} reads its tab's count from the kept counts and reads no placement row: \
+             {plan:?}"
         );
     }
-    for (what, plan) in &plans[4..6] {
+    for (what, plan) in &plans[5..] {
         assert!(
-            !plan.iter().any(|step| reads(step, &placement)),
-            "{what} reads no placement row: {plan:?}"
+            plan.iter().any(|step| reads(step, &["g"])),
+            "{what} reads the folded groups' members from the group counts: {plan:?}"
         );
     }
-    let (what, plan) = &plans[3];
-    assert!(
-        plan.iter()
-            .filter(|step| reads(step, &placement))
-            .all(|step| step.starts_with("SEARCH") && step.contains("group_folder=?")),
-        "{what} reads the placement only for the folded groups' members: {plan:?}"
-    );
-    let (what, plan) = &plans[6];
-    assert_eq!(
-        plan.iter().filter(|step| reads(step, &["c"])).count(),
-        2,
-        "{what} reads the entry's count from the kept counts, as the releases it keeps and \
-         the releases it shows: {plan:?}"
-    );
+    for (what, plan) in &plans[7..] {
+        assert_eq!(
+            plan.iter().filter(|step| reads(step, &["c"])).count(),
+            2,
+            "{what} reads the entry's count from the kept counts, as the releases it keeps \
+             and the releases it shows: {plan:?}"
+        );
+        assert!(
+            plan.iter()
+                .filter(|step| reads(step, &["g"]))
+                .all(|step| step.starts_with("SEARCH") && step.contains("pending_entry=?")),
+            "{what} reads only the group counts of its entry: {plan:?}"
+        );
+    }
 }

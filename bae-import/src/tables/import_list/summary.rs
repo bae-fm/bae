@@ -171,9 +171,12 @@ pub(super) fn search_counts(request: &ImportListRequest) -> String {
 }
 
 /// The statement counting how many items a list that searches for nothing
-/// holds: the releases its filter entry keeps, which the counts hold, less
-/// those under the groups it folds shut, plus the header of each group
-/// holding a kept release.
+/// holds, from the counts kept beside the placement alone: the releases its
+/// filter entry keeps, less those under the groups it folds shut, plus the
+/// header of each group holding a kept release. The group counts
+/// (`import_list_group_count`) hold each group's members in each entry, so
+/// they give the folded members and, under an entry, the groups holding one
+/// of its releases; with no entry, every group's header counts.
 fn kept_items(request: &ImportListRequest) -> String {
     let pending = request.view.tab == TriageTab::Pending;
     let kept = match request.entry_sql("c") {
@@ -185,25 +188,19 @@ fn kept_items(request: &ImportListRequest) -> String {
     };
     let folded = match pending {
         true => format!(
-            "SELECT COUNT(*) FROM import_list_placement AS p \
-             WHERE p.item <> 'group' AND p.group_folder IS NOT NULL \
-               AND {folds} AND {entry}",
-            folds = request.folds_sql("p.watched_folder_path", "p.group_folder"),
-            entry = request.entry_sql("p").unwrap_or_else(|| "1".to_string()),
+            "SELECT COALESCE(SUM(g.count), 0) FROM import_list_group_count AS g \
+             WHERE {folds} AND {entry}",
+            folds = request.folds_sql("g.watched_folder_path", "g.group_folder"),
+            entry = request.entry_sql("g").unwrap_or_else(|| "1".to_string()),
         ),
         false => "SELECT 0".to_string(),
     };
-    let headers = match (pending, request.entry_sql("m")) {
+    let headers = match (pending, request.entry_sql("g")) {
         (false, _) => "SELECT 0".to_string(),
         (true, None) => counted("c.tab = 'pending' AND c.item = 'group'"),
-        (true, Some(entry)) => format!(
-            "SELECT COUNT(*) FROM import_list_placement AS h \
-             WHERE h.tab = 'pending' AND h.item = 'group' \
-               AND EXISTS (SELECT 1 FROM import_list_placement AS m \
-                           WHERE m.watched_folder_path = h.watched_folder_path \
-                             AND m.group_folder = h.key AND m.item <> 'group' \
-                             AND {entry})"
-        ),
+        (true, Some(entry)) => {
+            format!("SELECT COUNT(*) FROM import_list_group_count AS g WHERE {entry}")
+        }
     };
     format!("SELECT ({kept}) - ({folded}) + ({headers})")
 }

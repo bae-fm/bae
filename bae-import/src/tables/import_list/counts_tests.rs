@@ -24,6 +24,19 @@ impl Library {
         self.run(write).await;
         self.counts().await
     }
+
+    /// Run `write` alone, check the counts against a COUNT over the
+    /// placement ([`Library::run`]), and return the group counts, one
+    /// readable line each: the group's folder, the filter entry and the
+    /// count. Every group here is under the one watched folder.
+    async fn group_counts_after(&self, write: Write) -> Vec<String> {
+        self.run(write).await;
+        self.stored_group_counts()
+            .await
+            .into_iter()
+            .map(|(_root, group, entry, count)| format!("{group} {entry} {count}"))
+            .collect()
+    }
 }
 
 /// Every kind of write that moves a placement row moves its count with it:
@@ -145,5 +158,64 @@ async fn each_write_moves_the_counts_of_the_rows_it_moves() {
     assert!(
         lib.counts_after(lib.unwatch()).await.is_empty(),
         "a list with no watched folder counts nothing"
+    );
+}
+
+/// Every kind of write that moves a group's member moves its group count with
+/// it: members found below a folder, and a release at a folder once another
+/// is found below it; a member's lookup ending; a skip and its undoing;
+/// members combined into one release and kept apart again; an import
+/// finishing; a pass that no longer finds a member; and the watched folder
+/// removed. After each, the group counts hold what a COUNT over the members
+/// says.
+#[tokio::test]
+async fn each_write_moves_the_group_counts_of_the_members_it_moves() {
+    let lib = Library::new().await;
+    assert_eq!(
+        lib.group_counts_after(lib.scan("Box/Disc 1") + lib.scan("Box/Disc 2") + lib.scan("Solo"))
+            .await,
+        ["Box not_looked_up 2"],
+        "a release outside every group counts in no group"
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.scan("Solo/Bonus")).await,
+        ["Box not_looked_up 2", "Solo not_looked_up 2"],
+        "a release found below another puts both in the other's group"
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.verdict("Box/Disc 1", "failed", Some(11))).await,
+        ["Box needs_you 1", "Box not_looked_up 1", "Solo not_looked_up 2"]
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.skip("Box/Disc 2")).await,
+        ["Box needs_you 1", "Solo not_looked_up 2"],
+        "a skipped release leaves Found and its group"
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.set_skipped("Box/Disc 2", false)).await,
+        ["Box needs_you 1", "Box not_looked_up 1", "Solo not_looked_up 2"]
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.combine(&["Box/Disc 1", "Box/Disc 2"], "Box")).await,
+        ["Box not_looked_up 1", "Solo not_looked_up 2"],
+        "the combined release takes its two members' place in their group"
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.separate("Box")).await,
+        ["Box needs_you 1", "Box not_looked_up 1", "Solo not_looked_up 2"]
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.imported("Box/Disc 2", "2026-01-02T00:00:00Z")).await,
+        ["Box needs_you 1", "Solo not_looked_up 2"],
+        "an imported release leaves Found and its group"
+    );
+    assert_eq!(
+        lib.group_counts_after(lib.unscan("Solo/Bonus")).await,
+        ["Box needs_you 1"],
+        "a release with nothing found below it any more is in no group"
+    );
+    assert!(
+        lib.group_counts_after(lib.unwatch()).await.is_empty(),
+        "a list with no watched folder counts no group"
     );
 }
