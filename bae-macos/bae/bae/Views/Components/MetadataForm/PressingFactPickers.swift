@@ -47,6 +47,7 @@ struct ReleaseAreaPicker: View {
             FactMenuLabel(text: area?.text)
         }
         .fixedSize()
+        .accessibilityValue(Text(verbatim: FactMenuLabel.shown(area?.text)))
     }
 
     private func choose(_ area: BridgeReleaseArea?) {
@@ -170,6 +171,9 @@ struct ReleaseStatusPicker: View {
             FactMenuLabel(text: status.map(Self.text))
         }
         .fixedSize()
+        .accessibilityValue(
+            Text(verbatim: FactMenuLabel.shown(status.map(Self.text)))
+        )
     }
 
     static func text(_ status: BridgeReleaseStatus) -> String {
@@ -201,6 +205,9 @@ struct PackagingPicker: View {
             FactMenuLabel(text: packaging.map(Self.text))
         }
         .fixedSize()
+        .accessibilityValue(
+            Text(verbatim: FactMenuLabel.shown(packaging.map(Self.text)))
+        )
     }
 
     static func text(_ packaging: BridgePackaging) -> String {
@@ -264,12 +271,17 @@ private struct FactMenuLabel: View {
     let text: String?
     var systemImage: String?
 
+    /// The words the face shows: the value, or the form's dash.
+    static func shown(_ text: String?) -> String {
+        text ?? "\u{2014}"
+    }
+
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             if let systemImage {
                 Image(systemName: systemImage)
             }
-            Text(text ?? "\u{2014}")
+            Text(Self.shown(text))
         }
         .themeText(.body)
         .foregroundStyle(text == nil ? .tertiary : .primary)

@@ -58,13 +58,6 @@ struct ImportMappingPane: View {
                 )
                 banners
                 metadataSourceSection
-                if let detail = candidate.detail, let draft = candidate.draft {
-                    DraftAlbumRow(
-                        album: draft.album,
-                        canEdit: detail.actionable,
-                        actions: albumActions
-                    )
-                }
                 if candidate.detail != nil {
                     if !mapping.images.isEmpty {
                         imagesSection
@@ -114,6 +107,7 @@ struct ImportMappingPane: View {
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editActions: editActions,
+            albumActions: albumActions,
             editingCommands: editingCommands,
             endEditing: endEditing,
             commit: commitControls,

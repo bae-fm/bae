@@ -12,6 +12,7 @@ struct ImportMetadataSourceSection: View {
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
     let editActions: ReleaseFieldWriter
+    let albumActions: DraftAlbumActions
     let editingCommands: EditingCommitCommands
     let endEditing: @MainActor () async -> Void
     let commit: ImportCommitControls?
@@ -59,6 +60,10 @@ struct ImportMetadataSourceSection: View {
                 albumArtistStanding: candidate.draft?.albumArtistStanding,
                 records: candidate.records,
                 releaseLink: candidate.releaseLink,
+                // A blank draft files under nothing yet.
+                album: candidate.metadataDraftIsBlank
+                    ? nil : candidate.draft?.album,
+                albumActions: albumActions,
                 editActions: editActions,
                 editingCommands: editingCommands,
                 commit: commit,

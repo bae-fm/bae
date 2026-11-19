@@ -99,6 +99,10 @@ struct MacImportDraft: View {
     /// What the candidate is linked to: an album link says its pressing is
     /// unknown beside the album's records.
     let releaseLink: BridgeReleaseLink?
+    /// The album the release files under, which the identity column ends
+    /// with; `nil` while the draft is blank and files under nothing yet.
+    let album: BridgeDraftAlbum?
+    let albumActions: DraftAlbumActions
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -155,7 +159,15 @@ struct MacImportDraft: View {
                             )
                         }
                     },
-                    albumRow: {}
+                    albumRow: {
+                        if let album {
+                            DraftAlbumRow(
+                                album: album,
+                                canEdit: actionable,
+                                actions: albumActions
+                            )
+                        }
+                    }
                 )
                 .disabled(!actionable)
                 // The catalogs that describe the linked release end the card,
@@ -265,8 +277,9 @@ struct MacImportDraft: View {
     }
 }
 
-/// The card's cover, or an empty well that invites dropping or picking one,
-/// or says there is none.
+/// The card's cover, or a plain tile where the draft has none. A click opens
+/// the cover picker when there is artwork to pick from, and a folder image
+/// dropped on it becomes the cover.
 struct ImportCoverWell: View {
     let coverContent: ImageContent?
     /// Whether the release or the folder has any artwork to pick from.
@@ -280,87 +293,32 @@ struct ImportCoverWell: View {
 
     @State
     private var dropTargeted = false
-    @State
-    private var hovering = false
 
     var body: some View {
-        Group {
-            if let coverContent {
-                ImageView(content: coverContent, pointSize: Self.coverSize)
+        ImageView(content: coverContent, pointSize: Self.coverSize)
+            .frame(width: Self.coverSize, height: Self.coverSize)
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if hasCoverOptions {
+                    onEditCover()
+                }
             }
-            else {
-                artworkWell
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    .stroke(
+                        Theme.accent,
+                        lineWidth: dropTargeted ? 3 : 0
+                    )
             }
-        }
-        .frame(width: Self.coverSize, height: Self.coverSize)
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-        .overlay(alignment: .topTrailing) {
-            if coverContent != nil, hasCoverOptions {
-                Image(systemName: "pencil")
-                    .themeIcon(.badge)
-                    .foregroundStyle(Theme.onFill)
-                    .padding(ThemeSpace.line)
-                    .background(Theme.scrim)
-                    .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
-                    .padding(ThemeSpace.inline)
+            .dropDestination(for: String.self) { fileIds, _ in
+                guard let onDropImage, let fileId = fileIds.first else {
+                    return false
+                }
+                onDropImage(fileId)
+                return true
+            } isTargeted: {
+                dropTargeted = $0
             }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if hasCoverOptions {
-                onEditCover()
-            }
-        }
-        .onHover { hovering = $0 }
-        .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                .stroke(
-                    Theme.accent,
-                    lineWidth: dropTargeted ? 3 : 0
-                )
-        }
-        .dropDestination(for: String.self) { fileIds, _ in
-            guard let onDropImage, let fileId = fileIds.first else {
-                return false
-            }
-            onDropImage(fileId)
-            return true
-        } isTargeted: {
-            dropTargeted = $0
-        }
-    }
-
-    private var artworkWell: some View {
-        let inviting = hasCoverOptions && hovering
-        return VStack(spacing: ThemeSpace.inline) {
-            if hasCoverOptions {
-                Text("Add artwork")
-                    .themeText(.strong)
-                Text("Drag an image here, or click to choose")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            else {
-                Text("No artwork")
-                    .themeText(.strong)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        // The hint wraps to two lines in the width the cover leaves it.
-        .padding(ThemeSpace.related)
-        .frame(width: Self.coverSize, height: Self.coverSize)
-        .background(
-            inviting ? Theme.accentSoft : Theme.hover
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                .foregroundStyle(
-                    inviting
-                        ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(Theme.hairlineStrong)
-                )
-        }
     }
 }

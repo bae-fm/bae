@@ -130,6 +130,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
             CommittedTextField(
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
+                name: String(localized: "Album title"),
                 chrome: .inline,
                 font: ThemeText.title.nsFont,
                 editingCommands: editingCommands,
@@ -151,6 +152,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
             CommittedTextField(
                 placeholder: String(localized: "Album year"),
                 value: values.albumYear,
+                name: String(localized: "Album year"),
                 chrome: .inline,
                 font: ThemeText.body.nsFont,
                 textColor: .tertiaryLabelColor,
@@ -212,6 +214,7 @@ struct ReleasePressingFieldsGrid: View {
                         area: values.pressing.facts.area,
                         write: writer.setPressingFact
                     )
+                    .accessibilityLabel(String(localized: "Country"))
                 }
                 barcodeRows
                 GridRow {
@@ -220,6 +223,7 @@ struct ReleasePressingFieldsGrid: View {
                         status: values.pressing.facts.status,
                         write: writer.setPressingFact
                     )
+                    .accessibilityLabel(String(localized: "Status"))
                 }
                 GridRow {
                     rowLabel(String(localized: "Packaging"))
@@ -227,6 +231,7 @@ struct ReleasePressingFieldsGrid: View {
                         packaging: values.pressing.facts.packaging,
                         write: writer.setPressingFact
                     )
+                    .accessibilityLabel(String(localized: "Packaging"))
                 }
                 GridRow {
                     rowLabel(String(localized: "Details"))
@@ -252,8 +257,7 @@ struct ReleasePressingFieldsGrid: View {
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.name,
-                        placeholder: "\u{2014}",
-                        role: .emptyMark,
+                        name: String(localized: "Label"),
                         monospaced: false
                     ) { name in
                         var next = rows
@@ -262,8 +266,7 @@ struct ReleasePressingFieldsGrid: View {
                     }
                     valueText(
                         row.catalogNumber,
-                        placeholder: String(localized: "Catalog #"),
-                        role: .hint,
+                        name: String(localized: "Catalog number"),
                         monospaced: true
                     ) { number in
                         var next = rows
@@ -321,8 +324,7 @@ struct ReleasePressingFieldsGrid: View {
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row,
-                        placeholder: "\u{2014}",
-                        role: .emptyMark,
+                        name: String(localized: "Barcode"),
                         monospaced: true
                     ) { barcode in
                         var next = rows
@@ -359,21 +361,23 @@ struct ReleasePressingFieldsGrid: View {
         }
     }
 
-    /// A field as wide as its value, or `emptyValueWidth` when empty.
+    /// A field as wide as its value, or `emptyValueWidth` when empty, when
+    /// it shows the form's dash. `name` is what assistive technology calls
+    /// it.
     private func valueText(
         _ text: String,
-        placeholder: String,
-        role: CommittedTextField.PlaceholderRole,
+        name: String,
         monospaced: Bool,
         onCommit: @escaping @MainActor (String) async -> Void
     ) -> some View {
         CommittedTextField(
-            placeholder: placeholder,
+            placeholder: "\u{2014}",
             value: text,
+            name: name,
             monospaced: monospaced,
             chrome: .inline,
             font: ThemeText.body.nsFont,
-            placeholderRole: role,
+            placeholderRole: .emptyMark,
             editingCommands: editingCommands,
             onCommit: onCommit,
         )
@@ -404,8 +408,7 @@ struct ReleasePressingFieldsGrid: View {
         rowLabel(label)
         valueText(
             text,
-            placeholder: "\u{2014}",
-            role: .emptyMark,
+            name: label,
             monospaced: monospaced
         ) { await writer.setField(field, $0) }
     }
@@ -561,6 +564,7 @@ struct ArtistAssignmentsField: View {
         }
         .buttonStyle(.accentPlain)
         .focusable()
+        .accessibilityLabel(Text(verbatim: accessibleName))
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
                 assignments: assignments,
@@ -576,6 +580,21 @@ struct ArtistAssignmentsField: View {
             .frame(width: 320)
             .padding(ThemeSpace.group)
         }
+    }
+
+    /// What assistive technology calls the field: the words it shows, its
+    /// names then their badge.
+    private var accessibleName: String {
+        if inheritsAlbumArtists { return String(localized: "Album artist") }
+        guard
+            let summary = ArtistAssignmentsSummary(
+                assignments: assignments,
+                standing: standing?.field
+            )
+        else { return placeholder }
+        return [summary.names, summary.identityLabel]
+            .compactMap { $0 }
+            .joined(separator: " ")
     }
 
     @ViewBuilder

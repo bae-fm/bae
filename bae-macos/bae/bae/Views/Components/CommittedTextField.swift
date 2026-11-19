@@ -49,6 +49,9 @@ struct CommittedTextField: View {
     let placeholder: String
     /// The stored value. Re-seeds the draft whenever the field is not focused.
     let value: String
+    /// What assistive technology calls the field, such as the row it sits
+    /// in; `nil` leaves it to the placeholder.
+    var name: String?
     var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
     var fillsWidth = false
@@ -158,6 +161,7 @@ struct CommittedTextField: View {
                     focused: $focused,
                     placeholder: placeholder,
                     placeholderRole: placeholderRole,
+                    name: name,
                     font: valueFont,
                     placeholderFont: font,
                     textColor: textColor,
@@ -203,6 +207,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
     var focused: Bool
     let placeholder: String
     let placeholderRole: CommittedTextField.PlaceholderRole
+    let name: String?
     let font: NSFont
     let placeholderFont: NSFont
     let textColor: NSColor
@@ -250,6 +255,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
         field.font = font
         field.textColor = textColor
         field.isEnabled = context.environment.isEnabled
+        field.setAccessibilityLabel(name)
         switch placeholderRole {
         case .hint:
             field.placeholderString = placeholder

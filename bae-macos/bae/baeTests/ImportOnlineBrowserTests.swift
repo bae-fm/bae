@@ -31,6 +31,10 @@ struct ImportOnlineBrowserTests {
             coverContent: nil,
             hasCoverOptions: false,
             editActions: ReleaseFieldWriter { _, _ in },
+            albumActions: DraftAlbumActions(
+                pick: { _ in },
+                search: { _ in [] }
+            ),
             editingCommands: EditingCommitCommands(),
             endEditing: {},
             commit: nil,

@@ -368,9 +368,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     /// A blank draft keeps its title and album year beside the cover and the
-    /// release's text fields — year, one blank label row, barcode — below it.
-    /// The label row's catalog number is hinted "Catalog #" rather than a
-    /// dash, so it is told apart from the label name beside it.
+    /// release's text fields below it: year, one blank label row (its name
+    /// and catalog number), barcode, each showing the form's dash and named
+    /// for its row.
     func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
@@ -397,6 +397,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 let field = try XCTUnwrap(
                     fields.first { $0.placeholderString == placeholder }
                 )
+                XCTAssertEqual(field.accessibilityLabel(), placeholder)
                 let frame = field.convert(field.bounds, to: host)
                 XCTAssertGreaterThanOrEqual(frame.minX, cover.maxX)
                 XCTAssertLessThan(frame.minY, cover.maxY)
@@ -407,13 +408,16 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             let dashed = fields.filter {
                 $0.placeholderAttributedString?.string == "\u{2014}"
             }
-            XCTAssertEqual(dashed.count, 3)
-            let catalog = try XCTUnwrap(
-                fields.first {
-                    $0.placeholderString == String(localized: "Catalog #")
-                }
+            XCTAssertEqual(
+                Set(dashed.compactMap { $0.accessibilityLabel() }),
+                [
+                    String(localized: "Year"),
+                    String(localized: "Label"),
+                    String(localized: "Catalog number"),
+                    String(localized: "Barcode"),
+                ]
             )
-            for field in dashed + [catalog] {
+            for field in dashed {
                 let frame = field.convert(field.bounds, to: host)
                 XCTAssertTrue(
                     host.isFlipped
@@ -516,6 +520,11 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             albumArtistStanding: nil,
             records: [],
             releaseLink: nil,
+            album: nil,
+            albumActions: DraftAlbumActions(
+                pick: { _ in },
+                search: { _ in [] }
+            ),
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,
