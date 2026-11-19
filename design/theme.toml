@@ -371,6 +371,13 @@ weight = "regular"
 macos = 11
 ios = "caption"
 
+# A short word in a table cell, such as a release's storage state in Storage's
+# column: regular 11, as the design system's `cell` role sets it.
+[text.cell]
+weight = "regular"
+macos = 11
+ios = "caption"
+
 [text.fine]
 weight = "regular"
 macos = 10
