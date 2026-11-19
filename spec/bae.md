@@ -138,7 +138,9 @@ This section describes the library's model; Appendix A lists its tables.
 
 An *album* groups releases. A *release* is one pressing whose audio the library
 holds: a particular CD, LP or download, with its own year, labels, catalog
-numbers, barcodes, country, media, status and packaging. A pressing can be
+numbers, barcodes, country, media, status and packaging. bae stores the
+country as its ISO 3166-1 code (Appendix H), and the apps show the country's
+name in the device's language wherever they print it. A pressing can be
 printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
 barcode, each removable, with a row to add another, as it does labels. Its
@@ -1683,7 +1685,7 @@ row still applies its lead record alone. An album's card lists every title,
 every artist and every label its records state, each once, `Low Tide Hours /
 Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
 case, accents or punctuation are one. The summary line of an import pressing row
-lists the format, then the country, `CD · US`; the library's release summary
+lists the format, then the country, `CD · United States`; the library's release summary
 keeps the country first. A row whose lead record names a pressing the library
 already holds shows dimmed and marked In library, on every list of cards (a
 verdict's, a ledger cell's, a typed search's), and the mark comes and goes as
