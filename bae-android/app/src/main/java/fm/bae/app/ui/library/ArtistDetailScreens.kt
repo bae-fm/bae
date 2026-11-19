@@ -94,20 +94,11 @@ private fun ArtistDetailContent(
         }
         if (detail.creditNameCount > 0u) {
             item {
-                Column(
+                AndroidArtistOtherNames(
+                    names = detail.creditNames.map { it.credit.name },
                     modifier =
                         Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.related),
-                ) {
-                    AndroidEyebrow(
-                        text = stringResource(R.string.artist_also_credited_as),
-                        modifier = Modifier.padding(bottom = ThemeSpace.inline),
-                    )
-                    Text(
-                        text = detail.creditNames.joinToString(" · ") { it.credit.name },
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                )
             }
         }
         if (detail.albumCount > 0u) {
@@ -122,5 +113,24 @@ private fun ArtistDetailContent(
                 )
             }
         }
+    }
+}
+
+/** The other names the artist's credits print, under the Also credited as heading. */
+@Composable
+internal fun AndroidArtistOtherNames(
+    names: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        AndroidEyebrow(
+            text = stringResource(R.string.artist_also_credited_as),
+            modifier = Modifier.padding(bottom = ThemeSpace.inline),
+        )
+        Text(
+            text = names.joinToString(" · "),
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

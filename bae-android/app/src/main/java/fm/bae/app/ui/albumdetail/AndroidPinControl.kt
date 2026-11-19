@@ -3,10 +3,8 @@ package fm.bae.app.ui.albumdetail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
@@ -128,7 +126,7 @@ internal fun AndroidPinControl(
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
-            DownloadActionButton(stringResource(R.string.pin), pinGlyph(), onDownload)
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = pinGlyph()) { Text(stringResource(R.string.pin)) }
         }
 
         BridgeReleaseDownloadStatus.Queued -> {
@@ -137,7 +135,11 @@ internal fun AndroidPinControl(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PinQueuedText()
-                DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
+                AndroidButton(
+                    kind = ButtonKind.OUTLINED,
+                    onClick = onCancel,
+                    icon = Icons.Filled.Close,
+                ) { Text(stringResource(R.string.cancel)) }
             }
         }
 
@@ -148,7 +150,11 @@ internal fun AndroidPinControl(
                 modifier = Modifier.fillMaxWidth(),
                 stopDot = true,
             )
-            DownloadActionButton(stringResource(R.string.pin_cancel), Icons.Filled.Close, onCancel)
+            AndroidButton(
+                kind = ButtonKind.OUTLINED,
+                onClick = onCancel,
+                icon = Icons.Filled.Close,
+            ) { Text(stringResource(R.string.pin_cancel)) }
         }
 
         is BridgeReleaseDownloadStatus.Failed -> {
@@ -174,7 +180,7 @@ private fun DownloadFailedControl(
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
         look = NoticeLook.QUIET,
     )
-    DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = Icons.Filled.Close) { Text(stringResource(R.string.cancel)) }
 }
 
 @Composable
@@ -216,9 +222,11 @@ private fun DownloadedControl(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            DownloadActionButton(stringResource(R.string.unpin), ImageVector.vectorResource(R.drawable.ic_keep_off)) {
-                if (asksBeforeUnpinning) asking = true else onUnpin(false)
-            }
+            AndroidButton(
+                kind = ButtonKind.OUTLINED,
+                onClick = { if (asksBeforeUnpinning) asking = true else onUnpin(false) },
+                icon = ImageVector.vectorResource(R.drawable.ic_keep_off),
+            ) { Text(stringResource(R.string.unpin)) }
         }
     }
 }
@@ -255,20 +263,6 @@ internal fun UnpinDialog(
             }
         },
     )
-}
-
-/** The bordered button every download action uses. */
-@Composable
-private fun DownloadActionButton(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-) {
-    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onClick) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
-        Spacer(modifier = Modifier.width(ThemeSpace.related))
-        Text(text)
-    }
 }
 
 /** The Pin glyph, the board's `keep` symbol. */

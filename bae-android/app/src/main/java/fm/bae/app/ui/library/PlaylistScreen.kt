@@ -32,12 +32,12 @@ import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.answer
 import fm.bae.app.displayError
 import fm.bae.app.factsLine
+import fm.bae.app.ui.albumdetail.AndroidPageActions
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.PlaylistPicture
@@ -107,10 +107,8 @@ internal fun PlaylistScreen(
 
                 // The playlist was deleted, here or on another device.
                 query is LiveQueryState.Answered -> {
-                    Text(
-                        text = stringResource(R.string.playlist_not_in_library),
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    AndroidContentUnavailable(
+                        message = stringResource(R.string.playlist_not_in_library),
                         modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                     )
                 }
@@ -186,44 +184,55 @@ internal fun PlaylistContent(
         }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PlaylistPicture(
-                    cover = summary.cover,
-                    cornerRadius = ThemeRadius.cover,
-                    modifier = Modifier.size(HEADER_PICTURE_SIZE),
-                )
-                Column {
-                    Text(text = summary.name, style = ThemeText.title.style)
-                    Text(
-                        text =
-                            context.factsLine(
-                                listOf(
-                                    summary.owner.name,
-                                    context.coreString(summary.trackCount),
-                                    stringResource(summary.sharing.labelRes()),
-                                ),
-                            ),
-                        style = ThemeText.detail.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        item {
-            Row(
-                modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related),
-                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                AndroidButton(onClick = { actions.onPlay(null, false) }) { Text(stringResource(R.string.play)) }
-                AndroidButton(kind = ButtonKind.OUTLINED, onClick = { actions.onPlay(null, true) }) {
-                    Text(stringResource(R.string.shuffle))
-                }
-            }
+            AndroidPlaylistHeader(
+                summary = summary,
+                onPlay = { actions.onPlay(null, false) },
+                onShuffle = { actions.onPlay(null, true) },
+            )
         }
         playlistEntries(detail, actions, reorder, reorderState, context)
+    }
+}
+
+/** A playlist page's head: its picture, name and facts, then Play and Shuffle. */
+@Composable
+internal fun AndroidPlaylistHeader(
+    summary: BridgePlaylistSummary,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit,
+) {
+    val context = LocalContext.current
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlaylistPicture(
+                cover = summary.cover,
+                cornerRadius = ThemeRadius.cover,
+                modifier = Modifier.size(HEADER_PICTURE_SIZE),
+            )
+            Column {
+                Text(text = summary.name, style = ThemeText.title.style)
+                Text(
+                    text =
+                        context.factsLine(
+                            listOf(
+                                summary.owner.name,
+                                context.coreString(summary.trackCount),
+                                stringResource(summary.sharing.labelRes()),
+                            ),
+                        ),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        AndroidPageActions(
+            onPlay = onPlay,
+            onShuffle = onShuffle,
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related),
+        )
     }
 }

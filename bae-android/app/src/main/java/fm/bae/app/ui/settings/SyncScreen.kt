@@ -297,7 +297,7 @@ internal fun AndroidSettingsSync(
                     )
                 }
                 item {
-                    RestoreCodeSectionContent(
+                    AndroidRestoreCode(
                         needsS3Key = place is BridgeStorageLocation.S3,
                         state = restoreCode,
                         onShow = onShowRestoreCode,

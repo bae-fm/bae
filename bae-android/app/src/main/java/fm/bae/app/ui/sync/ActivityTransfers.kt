@@ -40,13 +40,13 @@ internal fun LazyListScope.transferRows(
     item { AndroidEyebrow(LocalContext.current.coreString("core.activity.transfers")) }
     if (activity.syncing) {
         item {
-            TransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)
+            AndroidTransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)
         }
     }
     activity.uploads?.let { uploads ->
         item {
             val context = LocalContext.current
-            TransferLine(
+            AndroidTransferLine(
                 title = context.coreString("core.activity.uploading"),
                 count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
                 share = bar(BridgeActivityLine.UPLOADS),
@@ -57,7 +57,7 @@ internal fun LazyListScope.transferRows(
         item {
             val context = LocalContext.current
             val paused = pins.paused
-            TransferLine(
+            AndroidTransferLine(
                 title = context.coreString("core.activity.pinning"),
                 count = words.pinsWait ?: context.releasesDoneText(pins.batch),
                 share = bar(BridgeActivityLine.PINS),
@@ -74,7 +74,7 @@ internal fun LazyListScope.transferRows(
  * when there is none.
  */
 @Composable
-private fun TransferLine(
+internal fun AndroidTransferLine(
     title: String,
     count: String?,
     share: LatestSource<Double>?,

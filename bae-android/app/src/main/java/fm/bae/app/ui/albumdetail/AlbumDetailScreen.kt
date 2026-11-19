@@ -47,10 +47,9 @@ import fm.bae.app.text
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.Artwork
-import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.StatusChip
@@ -201,10 +200,8 @@ private fun BoxScope.AlbumDetailPlaceholderBox(
         }
 
         AlbumDetailPlaceholder.NotInLibrary -> {
-            Text(
-                text = stringResource(R.string.album_not_in_library),
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AndroidContentUnavailable(
+                message = stringResource(R.string.album_not_in_library),
                 modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
             )
         }
@@ -329,23 +326,7 @@ internal fun AlbumDetailContent(
         block { AndroidAlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
 
         if (detail.showsReleaseChoices) {
-            block {
-                Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    detail.releases.forEachIndexed { index, rel ->
-                        val chosen = index == detail.shownReleaseIndex.toInt()
-                        StatusChip(
-                            text = rel.name.text(context),
-                            tone = if (chosen) StatusTone.ACCENT else StatusTone.NEUTRAL,
-                            modifier =
-                                Modifier.selectable(
-                                    selected = chosen,
-                                    onClick = { callbacks.onSelectRelease(rel.id) },
-                                    role = Role.RadioButton,
-                                ),
-                        )
-                    }
-                }
-            }
+            block { AndroidReleasePicker(detail, onSelect = callbacks.onSelectRelease) }
         }
 
         if (shown.hasRecords) {
@@ -353,9 +334,16 @@ internal fun AlbumDetailContent(
         }
 
         block { releaseDownloadControl(shown) }
-        block { AlbumActionButtons(callbacks) }
+        block {
+            AndroidPageActions(
+                onPlay = callbacks.onPlayRelease,
+                onShuffle = callbacks.onShuffleRelease,
+                onPlayNext = callbacks.onPlayReleaseNext,
+                onAddToQueue = callbacks.onAddReleaseToQueue,
+            )
+        }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
-        albumCredits(shown, context)
+        albumCredits(shown)
         albumFiles(shown, context)
     }
 }
@@ -418,29 +406,31 @@ internal fun AndroidAlbumHeader(
     }
 }
 
-@Composable
-private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            AndroidButton(onClick = callbacks.onPlayRelease) {
-                Text(stringResource(R.string.play))
-            }
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onShuffleRelease) {
-                Text(stringResource(R.string.shuffle))
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onPlayReleaseNext) {
-                Text(stringResource(R.string.play_next))
-            }
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = callbacks.onAddReleaseToQueue) {
-                Text(stringResource(R.string.add_to_queue))
-            }
-        }
-    }
-}
-
 /** One block of the page: the board spaces them 8 dp apart, while the track rows below touch. */
 private fun LazyListScope.block(content: @Composable () -> Unit) {
     item { Box(modifier = Modifier.padding(bottom = ThemeSpace.related)) { content() } }
+}
+
+/** The album's releases as chips, the shown one in the accent; a tap shows that release. */
+@Composable
+internal fun AndroidReleasePicker(
+    detail: BridgeAlbumDetail,
+    onSelect: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        detail.releases.forEachIndexed { index, rel ->
+            val chosen = index == detail.shownReleaseIndex.toInt()
+            StatusChip(
+                text = rel.name.text(context),
+                tone = if (chosen) StatusTone.ACCENT else StatusTone.NEUTRAL,
+                modifier =
+                    Modifier.selectable(
+                        selected = chosen,
+                        onClick = { onSelect(rel.id) },
+                        role = Role.RadioButton,
+                    ),
+            )
+        }
+    }
 }

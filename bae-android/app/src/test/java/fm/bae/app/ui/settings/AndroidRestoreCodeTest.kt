@@ -1,6 +1,7 @@
 package fm.bae.app.ui.settings
 
 import android.app.Application
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -31,7 +32,7 @@ import uniffi.bae_bridge.BridgeRestoreCodeShare
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 @OptIn(ExperimentalCoroutinesApi::class)
-class RestoreCodeSectionTest {
+class AndroidRestoreCodeTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -40,7 +41,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
+                    OpenedRestoreCode(needsS3Key = false)
                 }
             }
         }
@@ -62,7 +63,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
+                    OpenedRestoreCode(needsS3Key = false)
                 }
             }
         }
@@ -79,7 +80,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = true, location = "S3", generate = { SHARE })
+                    OpenedRestoreCode(needsS3Key = true)
                 }
             }
         }
@@ -92,7 +93,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
+                    OpenedRestoreCode(needsS3Key = false)
                 }
             }
         }
@@ -105,7 +106,7 @@ class RestoreCodeSectionTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports()) {
-                    RestoreCodeSection(needsS3Key = false, location = "Dropbox", generate = { SHARE })
+                    OpenedRestoreCode(needsS3Key = false)
                 }
             }
         }
@@ -213,6 +214,19 @@ class RestoreCodeSectionTest {
         compose.onNodeWithText("Copy code").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Share").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(CODE).assertDoesNotExist()
+    }
+
+    /** The restore code over a reveal of its own, opened as the page opens it, making [SHARE]. */
+    @Composable
+    private fun OpenedRestoreCode(needsS3Key: Boolean) {
+        val reveal = rememberRestoreCodeReveal(enabled = true, generate = { SHARE })
+        AndroidRestoreCode(
+            needsS3Key = needsS3Key,
+            state = reveal.state,
+            onShow = reveal::show,
+            onHide = reveal::hide,
+            onPrint = {},
+        )
     }
 
     private companion object {

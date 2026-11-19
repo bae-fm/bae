@@ -2,10 +2,6 @@ package fm.bae.app.ui.library
 
 import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
@@ -28,7 +23,7 @@ import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.factsLine
-import fm.bae.app.ui.components.AndroidLibraryRow
+import fm.bae.app.ui.components.AndroidListRow
 import fm.bae.app.ui.components.TrackOptionsMenu
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -186,11 +181,14 @@ private fun ReorderableCollectionItemScope.PlaylistEntry(
     val latestReorder by rememberUpdatedState(reorder)
     val moveUp = stringResource(R.string.playlist_move_up)
     val moveDown = stringResource(R.string.playlist_move_down)
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    AndroidListRow(
+        title = entry.title,
+        subtitle = context.factsLine(listOf(context.creditLineText(entry.artistLine), entry.albumTitle)),
+        trailing = context.durationClockLabel(entry.durationClock),
+        art = entry.cover,
+        onClick = { actions.onPlay(entry.positionId, false) },
         modifier =
             Modifier
-                .fillMaxWidth()
                 .then(
                     if (lifted) {
                         Modifier
@@ -210,24 +208,16 @@ private fun ReorderableCollectionItemScope.PlaylistEntry(
                     } else {
                         Modifier
                     },
-                ).padding(end = ENTRY_MENU_END_PADDING),
-    ) {
-        Box(modifier = Modifier.weight(1f)) {
-            AndroidLibraryRow(
-                title = entry.title,
-                subtitle = context.factsLine(listOf(context.creditLineText(entry.artistLine), entry.albumTitle)),
-                trailing = context.durationClockLabel(entry.durationClock),
-                art = entry.cover,
-                onClick = { actions.onPlay(entry.positionId, false) },
+                ),
+        menu = {
+            TrackOptionsMenu(
+                onPlayNext = { actions.onPlayNext(entry.trackId) },
+                onAddToQueue = { actions.onAddToQueue(entry.trackId) },
+                onAddToPlaylist = actions.onAddToPlaylist?.let { add -> { add(entry.trackId) } },
+                onRemove = if (yours) ({ actions.onRemove(entry.positionId) }) else null,
             )
-        }
-        TrackOptionsMenu(
-            onPlayNext = { actions.onPlayNext(entry.trackId) },
-            onAddToQueue = { actions.onAddToQueue(entry.trackId) },
-            onAddToPlaylist = actions.onAddToPlaylist?.let { add -> { add(entry.trackId) } },
-            onRemove = if (yours) ({ actions.onRemove(entry.positionId) }) else null,
-        )
-    }
+        },
+    )
 }
 
 /**
@@ -261,4 +251,3 @@ private fun entryMoveAction(
     }
 
 private val LIFT_SHADOW = 6.dp
-private val ENTRY_MENU_END_PADDING = 4.dp

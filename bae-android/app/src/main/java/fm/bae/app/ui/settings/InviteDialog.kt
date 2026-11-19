@@ -114,9 +114,13 @@ internal class InviteAccessInput(
         }
 }
 
-/** The form's fields: the storage's access, the role and the invite's length, and any [error]. */
+/**
+ * The invite form's fields: the invited person's access to [storage] (the provider account they sign in
+ * with, or on S3 a key made for them, or this device's own), the role and the invite's length, and any
+ * [error].
+ */
 @Composable
-private fun InviteFormFields(
+internal fun AndroidInviteFields(
     storage: BridgeStorageLocation?,
     input: InviteAccessInput,
     error: DisplayError?,
@@ -126,7 +130,23 @@ private fun InviteFormFields(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.section),
     ) {
         // Where the library is stored is a local read; its fields show once it lands.
-        storage?.let { InviteAccessFields(it, input) }
+        if (storage != null) {
+            // The first field takes the focus as the form opens.
+            val first = remember { FocusRequester() }
+            LaunchedEffect(storage is BridgeStorageLocation.S3) { if (!input.usesOwnKey) first.requestFocus() }
+            if (storage is BridgeStorageLocation.S3) {
+                S3InviteFields(input, first)
+            } else {
+                AndroidTextField(
+                    value = input.email,
+                    onValueChange = { input.email = it.trim() },
+                    label = stringResource(storage.emailLabel()),
+                    helper = stringResource(storage.emailHelp()),
+                    modifier = Modifier.focusRequester(first),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
+                )
+            }
+        }
         InviteChoices(input)
         error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
     }
@@ -160,7 +180,7 @@ internal fun inviteFormParts(
 ): DialogParts =
     DialogParts(
         title = stringResource(R.string.invite_person_title),
-        content = { InviteFormFields(storage = storage, input = input, error = error) },
+        content = { AndroidInviteFields(storage = storage, input = input, error = error) },
         confirmButton = {
             val access = storage?.let(input::access)
             AndroidButton(
@@ -205,32 +225,6 @@ private fun BridgeInviteLifetime.labelRes(): Int =
         BridgeInviteLifetime.SEVEN_DAYS -> R.string.invite_lasts_7_days
         BridgeInviteLifetime.THIRTY_DAYS -> R.string.invite_lasts_30_days
     }
-
-/**
- * The fields for the invited person's access to [storage]: the provider
- * account they sign in with, or on S3 a key made for them, or this device's own.
- */
-@Composable
-private fun InviteAccessFields(
-    storage: BridgeStorageLocation,
-    input: InviteAccessInput,
-) {
-    // The first field takes the focus as the form opens.
-    val first = remember { FocusRequester() }
-    LaunchedEffect(storage is BridgeStorageLocation.S3) { if (!input.usesOwnKey) first.requestFocus() }
-    if (storage is BridgeStorageLocation.S3) {
-        S3InviteFields(input, first)
-    } else {
-        AndroidTextField(
-            value = input.email,
-            onValueChange = { input.email = it.trim() },
-            label = stringResource(storage.emailLabel()),
-            helper = stringResource(storage.emailHelp()),
-            modifier = Modifier.focusRequester(first),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false),
-        )
-    }
-}
 
 /** What the invited person's address is called, by the provider whose account it is. */
 private fun BridgeStorageLocation.emailLabel(): Int =

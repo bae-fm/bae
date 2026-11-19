@@ -2,12 +2,16 @@ package fm.bae.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
@@ -15,10 +19,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.LocalPrimaryFill
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 
 /** How loud a button is: [FILLED] is the action a screen is for, [OUTLINED] sits beside it, [TONAL] stands alone. */
 enum class ButtonKind { FILLED, TONAL, OUTLINED, TEXT }
@@ -36,7 +43,7 @@ enum class ButtonAlign { TEXT, FIELD }
  * Material's button of the [kind] given, with the shared primary fill for a filled one and no added
  * elevation. A [ButtonTone.DESTRUCTIVE] button is the danger colour, and the [ButtonTone.NEUTRAL] one
  * beside it (Cancel, Keep) the screen's text colour, so the accent and the danger colour never sit side
- * by side. [large] is the welcome screen's size. [alignTo] moves a text button's words over the text
+ * by side. [icon] leads the words, as the album page's pin control draws it. [large] is the welcome screen's size. [alignTo] moves a text button's words over the text
  * or field above it, cancelling the button's own 12dp side padding.
  */
 @Composable
@@ -48,6 +55,7 @@ fun AndroidButton(
     large: Boolean = false,
     alignTo: ButtonAlign? = null,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val aligned =
@@ -57,7 +65,7 @@ fun AndroidButton(
             ButtonAlign.FIELD -> modifier.offset(x = FIELD_TEXT_INSET - TEXT_BUTTON_PADDING)
         }
     val sized = if (large) aligned.height(LARGE_HEIGHT) else aligned
-    val labelled = labelled(large, content)
+    val labelled = labelled(large, withIcon(icon, content))
     val toneColor = tone.color()
     when (kind) {
         ButtonKind.FILLED -> {
@@ -125,6 +133,21 @@ private fun ButtonTone.color(): Color? =
         ButtonTone.DEFAULT -> null
         ButtonTone.DESTRUCTIVE -> MaterialTheme.colorScheme.error
         ButtonTone.NEUTRAL -> MaterialTheme.colorScheme.onSurface
+    }
+
+/** The button's label [content], after the [icon] and a gap when there is one. */
+private fun withIcon(
+    icon: ImageVector?,
+    content: @Composable RowScope.() -> Unit,
+): @Composable RowScope.() -> Unit =
+    if (icon == null) {
+        content
+    } else {
+        {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+            Spacer(modifier = Modifier.width(ThemeSpace.related))
+            content()
+        }
     }
 
 /** The button's label [content], in the large button's 15sp where it is [large] (the others' are 14). */

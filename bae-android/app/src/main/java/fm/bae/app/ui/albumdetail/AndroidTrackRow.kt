@@ -17,15 +17,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.factsLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.TrackOptionsMenu
+import uniffi.bae_bridge.BridgeTrackWork
 
 /** The position column's least width, which the now-playing icon in the
  *  number's place also fits. */
@@ -64,8 +67,27 @@ internal data class TrackRowCallbacks(
     val onAddToPlaylist: (() -> Unit)? = null,
 )
 
+/**
+ * A track's row: its lead, title and artists, length and ⋮, then a line for each of the [works] it
+ * performs, lined up with the title, which [onSelectWork] opens.
+ */
 @Composable
 internal fun AndroidTrackRow(
+    data: TrackRowData,
+    callbacks: TrackRowCallbacks,
+    positionColumnWidth: Dp,
+    works: List<BridgeTrackWork> = emptyList(),
+    onSelectWork: (String) -> Unit = {},
+) {
+    Column {
+        TrackLine(data, callbacks, positionColumnWidth)
+        works.forEach { work -> TrackWorkLine(work, positionColumnWidth, onSelectWork) }
+    }
+}
+
+/** The row's line: lead, title and artists, length and ⋮. */
+@Composable
+private fun TrackLine(
     data: TrackRowData,
     callbacks: TrackRowCallbacks,
     positionColumnWidth: Dp,
@@ -114,8 +136,9 @@ internal fun AndroidTrackRow(
     }
 }
 
+/** A track row's lead: its number, or the accent speaker or play glyph on the current track. */
 @Composable
-private fun AndroidTrackLead(
+internal fun AndroidTrackLead(
     isCurrent: Boolean,
     isPlaying: Boolean,
     positionLabel: String,
@@ -141,4 +164,26 @@ private fun AndroidTrackLead(
             modifier = Modifier.width(width),
         )
     }
+}
+
+/**
+ * Shows a work the track performs under the track's row, lined up with the title: the work's title in the
+ * accent colour, then its composers. A tap opens the work.
+ */
+@Composable
+private fun TrackWorkLine(
+    work: BridgeTrackWork,
+    positionColumnWidth: Dp,
+    onSelectWork: (String) -> Unit,
+) {
+    val text = LocalContext.current.factsLine(listOf(work.title, work.composerNames))
+    Text(
+        text = text,
+        style = ThemeText.fine.style,
+        color = MaterialTheme.colorScheme.primary,
+        modifier =
+            Modifier
+                .clickable { onSelectWork(work.workId) }
+                .padding(start = positionColumnWidth, bottom = ThemeSpace.compact),
+    )
 }

@@ -144,43 +144,12 @@ internal fun rememberRestoreCodeReveal(
 }
 
 /**
- * The person's restore code, for when they lose every device: [reveal] holds it masked, with Show and Hide, Copy and
- * Print. Adding a device while one is at hand goes through Add device in People instead. [location] is where the
- * library is stored, for the printed page.
+ * The person's restore code, for when they lose every device, under its own heading: the code in its card,
+ * Show or Hide, Copy and Print under it, then the notes that say what it is for; a spinner while it is made,
+ * or why it couldn't be. Adding a device while one is at hand goes through Add device in People instead.
  */
 @Composable
-internal fun RestoreCodeSection(
-    reveal: RestoreCodeReveal,
-    needsS3Key: Boolean,
-    location: String,
-) {
-    val context = LocalContext.current
-    RestoreCodeBody(
-        needsS3Key = needsS3Key,
-        state = reveal.state,
-        onShow = reveal::show,
-        onHide = reveal::hide,
-        onPrint = { code -> printRestoreCode(context, RestoreCodePage.of(context, code, location)) },
-    )
-}
-
-/** The section over a reveal of its own, made when the section opens and dropped when it leaves the screen. */
-@Composable
-internal fun RestoreCodeSection(
-    needsS3Key: Boolean,
-    location: String,
-    generate: suspend () -> BridgeRestoreCodeShare,
-) {
-    RestoreCodeSection(
-        reveal = rememberRestoreCodeReveal(enabled = true, generate = generate),
-        needsS3Key = needsS3Key,
-        location = location,
-    )
-}
-
-/** The restore code under its own heading, as a page that holds other things shows it. */
-@Composable
-internal fun RestoreCodeSectionContent(
+internal fun AndroidRestoreCode(
     needsS3Key: Boolean,
     state: RestoreCodeState,
     onShow: () -> Unit,
@@ -192,44 +161,29 @@ internal fun RestoreCodeSectionContent(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         AndroidSection(text = stringResource(R.string.restore_code_title))
-        RestoreCodeBody(needsS3Key = needsS3Key, state = state, onShow = onShow, onHide = onHide, onPrint = onPrint)
-    }
-}
+        Column(modifier = Modifier.fillMaxWidth()) {
+            when (state) {
+                RestoreCodeState.Closed -> {
+                    Unit
+                }
 
-/**
- * What the restore code shows: the code in its card, Show or Hide, Copy and Print under it, then the notes that say
- * what it is for; a spinner while it is made, or why it couldn't be.
- */
-@Composable
-internal fun RestoreCodeBody(
-    needsS3Key: Boolean,
-    state: RestoreCodeState,
-    onShow: () -> Unit,
-    onHide: () -> Unit,
-    onPrint: (String) -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when (state) {
-            RestoreCodeState.Closed -> {
-                Unit
-            }
+                RestoreCodeState.Loading -> {
+                    AndroidSpinner(text = stringResource(R.string.restore_code_making))
+                }
 
-            RestoreCodeState.Loading -> {
-                AndroidSpinner(text = stringResource(R.string.restore_code_making))
-            }
+                is RestoreCodeState.Masked -> {
+                    CodeBox(share = state.share, shown = false, onToggle = onShow, onPrint = onPrint)
+                    Notes(needsS3Key)
+                }
 
-            is RestoreCodeState.Masked -> {
-                CodeBox(share = state.share, shown = false, onToggle = onShow, onPrint = onPrint)
-                Notes(needsS3Key)
-            }
+                is RestoreCodeState.Shown -> {
+                    CodeBox(share = state.share, shown = true, onToggle = onHide, onPrint = onPrint)
+                    Notes(needsS3Key)
+                }
 
-            is RestoreCodeState.Shown -> {
-                CodeBox(share = state.share, shown = true, onToggle = onHide, onPrint = onPrint)
-                Notes(needsS3Key)
-            }
-
-            is RestoreCodeState.Failed -> {
-                AndroidNotice(state.error)
+                is RestoreCodeState.Failed -> {
+                    AndroidNotice(state.error)
+                }
             }
         }
     }
