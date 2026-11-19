@@ -195,6 +195,21 @@
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
+  // A playlist's page in the window, in place of the library's view, while the side pane lists the playlists: its picture, name, a line of owner, count, length and who sees it, then Play, Shuffle, the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer) and × at the end, which closes the page back to the view. Its tracks follow as children.
+  function MacPlaylistPage(props) {
+    return h('section', { className: 'bae-m-plpage' },
+      h('div', { className: 'bae-m-plpage-head' },
+        h(PlaylistPicture, { covers: props.covers, size: 72, radius: 10 }),
+        h('div', { className: 'bae-m-plpage-text' },
+          h('h1', { className: 'bae-m-plpage-name' }, props.name),
+          h('div', { className: 'bae-m-plpage-line' }, h(Avatar, { name: props.owner, size: 16 }), [props.owner, props.count, props.length].join(' · ') + ' · ', h(StatusChip, null, props.sharing || 'Only me'))),
+        h(MacButton, { kind: 'primary' }, 'Play'),
+        h(MacButton, null, 'Shuffle'),
+        props.options ? h(MacMoreMenu, { label: 'Playlist options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null,
+        h('span', { className: 'bae-m-plpage-close' }, h(MacCloseButton, { label: 'Close playlist' }))),
+      h('div', { className: 'bae-m-plpage-tracks' }, props.children));
+  }
+
   function MacQueueRow(props) {
     return h('div', { className: cx('bae-m-qrow', props.hover && 'bae-m-qrow-hover') },
       h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }, props.hover ? h('span', { className: 'bae-m-qrow-play' }, h(Glyph, { set: 'mac', name: 'play', size: 11 })) : null),
