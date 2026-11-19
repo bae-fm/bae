@@ -202,7 +202,7 @@ impl AppDir {
             .map_err(|error| bae_util::fs::io_error_at(staged.path(), error))?;
         match staged.persist_noclobber(&path) {
             Ok(_) => {
-                removals::sync_directory(&self.path)
+                sync_directory(&self.path)
                     .map_err(|error| bae_util::fs::io_error_at(&self.path, error))?;
                 Ok(id)
             }
@@ -384,6 +384,31 @@ fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, AppDirEr
         // Keep the path in the error: "Access is denied" without the file it
         // was denied on is undiagnosable from a user report.
         Err(e) => Err(AppDirError::Io(bae_util::fs::io_error_at(path, e))),
+    }
+}
+
+/// Make the entries just created in `directory` durable. Unix makes a new
+/// entry durable only once its directory is synced, which std does by opening
+/// the directory as a file. std's `File::open` can't open a directory on
+/// Windows (access is denied); `OpenOptionsExt::custom_flags` with
+/// `FILE_FLAG_BACKUP_SEMANTICS` can, which bae doesn't do, so there the synced
+/// file is all bae syncs; coven syncs directories on Unix only as well.
+#[cfg_attr(
+    unix,
+    expect(
+        clippy::disallowed_methods,
+        reason = "file system: bae's own directory, which coven does not own"
+    )
+)]
+fn sync_directory(directory: &std::path::Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::fs::File::open(directory)?.sync_all()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = directory;
+        Ok(())
     }
 }
 
