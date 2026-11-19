@@ -623,38 +623,85 @@ async fn the_list_count_carries_the_tab_counts() {
     assert_eq!(skipped.tabs, crate::TriageTabCounts { pending: 0, done: 0, skipped: 1 });
 }
 
-/// The tab counts query and the filter entries query read only the
-/// placement's indexes, so no table stores the counts and neither query reads
-/// every placement row's table row.
+/// The tab counts, the filter entries and whether Found has groups are read
+/// from the counts kept beside the placement alone. A list's count reads its
+/// tab's and its entry's counts there too: Imported's and Skipped's read no
+/// placement row, and Found's reads only the members of the groups it folds,
+/// by their group. Under an entry, the folded members and the headers of the
+/// groups holding the entry's releases are still read from the placement.
 #[tokio::test]
-async fn the_counts_are_counted_off_the_placements_indexes() {
+async fn the_counts_are_read_from_the_kept_counts() {
     let lib = Library::new().await;
+    let found = ImportListRequest::of(view(TriageTab::Pending));
+    let counting = |view: ImportListView| {
+        let request = ImportListRequest::of(view);
+        (super::count_statement(&request), request)
+    };
+    let statements = [
+        ("the tab counts", (super::TAB_COUNTS.to_string(), found.clone())),
+        ("the filter entries", (super::filter_entries_sql(), found.clone())),
+        ("whether Found has groups", (super::HAS_GROUPS.to_string(), found.clone())),
+        ("Found's count", counting(view(TriageTab::Pending))),
+        ("Imported's count", counting(view(TriageTab::Done))),
+        ("Skipped's count", counting(view(TriageTab::Skipped))),
+        ("Needs You's count", counting(under(TriageTab::Pending, PendingFilter::NeedsYou))),
+    ];
     let plans = lib
         .db
-        .read(|sql| {
-            [super::TAB_COUNTS.to_string(), super::filter_entries_sql()]
+        .read(move |sql| {
+            statements
                 .into_iter()
-                .map(|statement| {
-                    Ok(sql
-                        .query(&format!("EXPLAIN QUERY PLAN {statement}"), [], |row| {
-                            row.get::<_, String>(3)
-                        })?
-                        .join(" | "))
+                .map(|(what, (statement, request))| {
+                    let plan = Items::new(request).query(
+                        &sql,
+                        &format!("EXPLAIN QUERY PLAN {statement}"),
+                        &[],
+                        |row| row.get::<_, String>(3),
+                    )?;
+                    Ok((what, plan))
                 })
                 .collect::<Result<Vec<_>, bae_store::DbError>>()
         })
         .await
         .unwrap();
+    // A step reading the placement, under its own name or as `p`, `h` or
+    // `m`; a step reading the kept counts, as `c`.
+    let reads = |step: &str, tables: &[&str]| {
+        (step.starts_with("SCAN") || step.starts_with("SEARCH"))
+            && step.split_whitespace().nth(1).is_some_and(|table| tables.contains(&table))
+    };
+    let placement = ["import_list_placement", "p", "h", "m"];
+    for (what, plan) in &plans[..3] {
+        assert!(
+            plan.iter().any(|step| reads(step, &["import_list_count"]))
+                && !plan.iter().any(|step| reads(step, &placement)),
+            "{what} read the kept counts alone: {plan:?}"
+        );
+    }
+    for (what, plan) in &plans[3..] {
+        assert!(
+            plan.iter().any(|step| reads(step, &["c"])),
+            "{what} reads its tab's count from the kept counts: {plan:?}"
+        );
+    }
+    for (what, plan) in &plans[4..6] {
+        assert!(
+            !plan.iter().any(|step| reads(step, &placement)),
+            "{what} reads no placement row: {plan:?}"
+        );
+    }
+    let (what, plan) = &plans[3];
     assert!(
-        plans[0].contains("USING COVERING INDEX import_list_placement_by_tab"),
-        "the tab counts walk the tab and item index: {}",
-        plans[0]
+        plan.iter()
+            .filter(|step| reads(step, &placement))
+            .all(|step| step.starts_with("SEARCH") && step.contains("group_folder=?")),
+        "{what} reads the placement only for the folded groups' members: {plan:?}"
     );
-    assert!(
-        plans[1].contains("USING INDEX import_list_placement_by_entry")
-            && !plans[1].contains("SCAN import_list_placement")
-            && !plans[1].contains("SCAN p"),
-        "the entry counts walk the entry index: {}",
-        plans[1]
+    let (what, plan) = &plans[6];
+    assert_eq!(
+        plan.iter().filter(|step| reads(step, &["c"])).count(),
+        2,
+        "{what} reads the entry's count from the kept counts, as the releases it keeps and \
+         the releases it shows: {plan:?}"
     );
 }

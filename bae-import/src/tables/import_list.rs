@@ -26,6 +26,7 @@ pub(crate) use artist_standings::{
     album_artist_standing_on, artist_field_standing_of_json, artist_standing_clauses,
     track_artist_standing_sql, CreditSource, FieldStandingJson,
 };
+mod counts;
 mod folder_images;
 mod follows_candidates;
 mod follows_groupings;
@@ -61,6 +62,7 @@ pub use folder_images::{
 pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     placement::SQL,
     groups::SQL,
+    counts::SQL,
     search::SQL,
     follows_scans::SQL,
     follows_groupings::SQL,

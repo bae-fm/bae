@@ -207,14 +207,49 @@ impl Library {
         counter.take().app_write_steps
     }
 
-    /// Run `write`, and check the search index kept beside the placement
-    /// still says what the placement holds: every write here moves placement
-    /// rows, and each must move the searched text with them.
+    /// Run `write`, and check the search index and the counts kept beside
+    /// the placement still say what the placement holds: every write here
+    /// moves placement rows, and each must move the searched text and the
+    /// counts with them.
     pub(crate) async fn run(&self, write: Write) {
         for step in write.0 {
             step.await;
         }
         self.searchable().await;
+        self.counted().await;
+    }
+
+    /// Check the counts kept beside the placement (`import_list_count`) hold,
+    /// for each tab, item and filter entry, what a COUNT over every placement
+    /// row says, and hold nothing else.
+    pub(crate) async fn counted(&self) {
+        let (kept, placed) = self
+            .db
+            .read(|sql| {
+                let rows = |statement: &str| {
+                    sql.query(statement, [], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, Option<String>>(2)?,
+                            row.get::<_, i64>(3)?,
+                        ))
+                    })
+                };
+                Ok((
+                    rows(
+                        "SELECT tab, item, pending_entry, count FROM import_list_count \
+                         ORDER BY tab, item, pending_entry",
+                    )?,
+                    rows(
+                        "SELECT tab, item, pending_entry, COUNT(*) FROM import_list_placement \
+                         GROUP BY tab, item, pending_entry ORDER BY tab, item, pending_entry",
+                    )?,
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(kept, placed, "the counts kept beside the placement");
     }
 
     /// Check the search index holds each release's folded shown text under

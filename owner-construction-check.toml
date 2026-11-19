@@ -1379,6 +1379,7 @@ owner = "ImportTables"
 homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_list/"]
 tables = [
     "import_list_placement",
+    "import_list_count",
     "import_list_search",
 ]
 

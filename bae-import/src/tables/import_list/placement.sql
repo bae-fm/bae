@@ -129,9 +129,7 @@ CREATE TABLE IF NOT EXISTS import_list_placement (
     CHECK (tab <> 'done' OR own_date IS NOT NULL)
 ) STRICT;
 
--- The list's counts use these two indexes to count each tab's rows by item
--- and Found's releases by filter entry. They count a group's members with the
--- folder index below.
+-- A tab's rows of one item, and Found's releases in one entry of its filter.
 CREATE INDEX IF NOT EXISTS import_list_placement_by_tab ON import_list_placement (tab, item);
 
 CREATE INDEX IF NOT EXISTS import_list_placement_by_entry

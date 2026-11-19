@@ -1215,6 +1215,10 @@ the list. A search shows its rows as they arrive, and its "N of M" and the
 list's length once it has counted them, with a placeholder in their place
 until then.
 
+The import list handles up to 100,000 folders. bae stores the tab bar's counts
+and the filter's counts, and changes them in the same write that places,
+moves or removes a row, so no write makes bae count the whole list again.
+
 Another tab, filter, search or order is a view the list has not read yet:
 until its first rows arrive, the list keeps drawing the rows it has, and
 shows neither *Nothing here yet* nor *No matches* for the new view (§9.2).
@@ -5922,6 +5926,7 @@ Beside them, keyed by the release an import made:
 | Table | Holds |
 |---|---|
 | `import_list_placement` | where each row of the import list sits (§3.2): one row per release the queue lists and one per header of a group on Found, with its tab, its state on Found and why it needs the person (how many pressings, what the folder's files say, how bae broke), the group listing it, the date and path it sorts by, the text it shows (an imported release's library album title and credits) and that text case folded for the search, and what its commands are decided from: whether it can be acted on, whether its last import failed, whether its draft would import, what its lookup came to, whether a grouping reads it; for a header, whether its folder is offered to be read as one release. Triggers write it in the same write that changes any table it comes from, so it never lags behind them. One index per order, holding Imported's and Skipped's rows and none of Found's, serves their windows. Found's are read in three partial ones per order — the headers and the rows outside every group, the headers alone, and each group's members — so a member sorts in its header's place and only the header holds its group's date, its newest member's |
+| `import_list_count` | how many rows of the placement each tab holds of each item (a release, a folder that failed validation, a group's header) and, on Found, how many releases each entry of the filter holds: what the tab bar, the filter and the list's count read (§3.2). Triggers on the placement change them in the write that places, moves or removes a row |
 | `import_list_search` | each release's shown title and artists, case folded as the search folds what is typed, in an FTS5 trigram index under its placement row's number, kept by triggers on the placement in the write that moves a row (§3.2) |
 
 ### A.8 Catalog releases

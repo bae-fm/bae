@@ -359,6 +359,16 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
             .collect::<Vec<_>>(),
         "the failed release is Found's import error"
     );
+    // Found's counts count it under Needs You with it.
+    let counts = |state: &mut StoreState| state.rows.remove("import_list_count").unwrap();
+    assert_eq!(counts(&mut before), ["pending | candidate | not_looked_up | Integer(2)"]);
+    assert_eq!(
+        counts(&mut after),
+        [
+            "pending | candidate | needs_you | Integer(1)",
+            "pending | candidate | not_looked_up | Integer(1)"
+        ]
+    );
     assert_eq!(after, before, "the failed import left nothing else behind");
     assert!(handle.candidate_runtime(&key).await.unwrap().is_none(), "nothing is running");
 

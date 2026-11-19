@@ -214,6 +214,7 @@ impl Library {
         let before = self.placed().await;
         change.await;
         self.searchable().await;
+        self.counted().await;
         let after = self.placed().await;
         before
             .keys()

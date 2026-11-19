@@ -1,10 +1,10 @@
 //! The reads a surface makes beside a list's windows: whether bae watches
 //! any folder and whether Found has groups; the tab counts and Found's filter
-//! entries, which COUNT queries over the placement return; and how many items
-//! the list holds and how many its filters keep (a search counts the rows its
-//! index finds). The module also holds the reads a surface makes of a list on
-//! its own: the view that reveals a candidate, where the list shows it, and
-//! which candidate bae identifies first.
+//! entries, which the counts kept beside the placement (`import_list_count`)
+//! hold; and how many items the list holds and how many its filters keep (a
+//! search counts the rows its index finds). The module also holds the reads
+//! a surface makes of a list on its own: the view that reveals a candidate,
+//! where the list shows it, and which candidate bae identifies first.
 
 use super::order::{sorted_terms, unit_join, uploading_cte};
 use super::*;
@@ -14,10 +14,18 @@ use crate::{CandidateKey, PendingFilterEntry, TriageTabCounts};
 
 /// Every tab's count: the releases and folders that failed validation it
 /// lists, which is every placement row but a group's header.
-pub(super) const TAB_COUNTS: &str = "SELECT COUNT(*) FILTER (WHERE tab = 'pending'), \
-                                 COUNT(*) FILTER (WHERE tab = 'done'), \
-                                 COUNT(*) FILTER (WHERE tab = 'skipped') \
-                          FROM import_list_placement WHERE item <> 'group'";
+pub(super) const TAB_COUNTS: &str =
+    "SELECT COALESCE(SUM(count) FILTER (WHERE tab = 'pending'), 0), \
+            COALESCE(SUM(count) FILTER (WHERE tab = 'done'), 0), \
+            COALESCE(SUM(count) FILTER (WHERE tab = 'skipped'), 0) \
+     FROM import_list_count WHERE item <> 'group'";
+
+/// The statement summing the counts kept beside the placement that `test`,
+/// over the count row aliased `c`, keeps: how many placement rows those
+/// counts hold.
+fn counted(test: &str) -> String {
+    format!("SELECT COALESCE(SUM(c.count), 0) FROM import_list_count AS c WHERE {test}")
+}
 
 /// Every tab's count: what the tab bar shows, whatever a list is narrowed by.
 pub(super) fn tab_counts_on(sql: &SqlReadContext<'_>) -> Result<TriageTabCounts, DbError> {
@@ -36,13 +44,12 @@ fn tab_counts((pending, done, skipped): (i64, i64, i64)) -> Result<TriageTabCoun
 }
 
 /// Whether Found has any group: a group's header is a placement row of its
-/// own.
+/// own, which the counts count.
+const HAS_GROUPS: &str =
+    "SELECT EXISTS (SELECT 1 FROM import_list_count WHERE tab = 'pending' AND item = 'group')";
+
 fn has_groups_on(sql: &SqlReadContext<'_>) -> Result<bool, DbError> {
-    Ok(sql.query_row(
-        "SELECT EXISTS (SELECT 1 FROM import_list_placement WHERE tab = 'pending' AND item = 'group')",
-        [],
-        |row| row.get(0),
-    )?)
+    Ok(sql.query_row(HAS_GROUPS, [], |row| row.get(0))?)
 }
 
 /// Every entry of Found's filter, in the menu's order, with how many of
@@ -61,8 +68,8 @@ pub(super) fn filter_entries_sql() -> String {
     format!(
         "WITH entries (position, entry) AS (VALUES {entries}), \
          held (entry, count) AS ( \
-             SELECT pending_entry, COUNT(*) FROM import_list_placement \
-             WHERE pending_entry IS NOT NULL GROUP BY pending_entry), \
+             SELECT pending_entry, count FROM import_list_count \
+             WHERE pending_entry IS NOT NULL), \
          counted (position, entry, count) AS ( \
              SELECT 0, '{all}', COALESCE(SUM(count), 0) FROM held \
              UNION ALL \
@@ -107,12 +114,8 @@ pub(super) fn count(
     request: &ImportListRequest,
 ) -> Result<ImportListCount, DbError> {
     let items = Items::new(request.clone());
-    let statement = format!(
-        "SELECT tabs.*, listed.items, listed.shown FROM ({TAB_COUNTS}) AS tabs, ({listed}) AS listed",
-        listed = listed(request),
-    );
     let (tabs, rows, shown) = items
-        .query(sql, &statement, &[], |row| {
+        .query(sql, &count_statement(request), &[], |row| {
             Ok((
                 (row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?),
                 row.get::<_, i64>(3)?,
@@ -131,6 +134,16 @@ pub(super) fn count(
         None => None,
     };
     Ok(ImportListCount { rows: to_u64(rows, "a list's item count")?, narrowed, tabs })
+}
+
+/// The statement [`count`] reads: every tab's count, then how many items the
+/// list `request` shows holds and how many of its tab's entries its
+/// narrowing keeps.
+fn count_statement(request: &ImportListRequest) -> String {
+    format!(
+        "SELECT tabs.*, listed.items, listed.shown FROM ({TAB_COUNTS}) AS tabs, ({listed}) AS listed",
+        listed = listed(request),
+    )
 }
 
 /// The statement counting how many releases a searching list's filters keep
@@ -158,17 +171,17 @@ pub(super) fn search_counts(request: &ImportListRequest) -> String {
 }
 
 /// The statement counting how many items a list that searches for nothing
-/// holds: the releases its filter entry keeps, less those under the groups it
-/// folds shut, plus the header of each group holding a kept release.
+/// holds: the releases its filter entry keeps, which the counts hold, less
+/// those under the groups it folds shut, plus the header of each group
+/// holding a kept release.
 fn kept_items(request: &ImportListRequest) -> String {
     let pending = request.view.tab == TriageTab::Pending;
-    let kept = match request.entry_sql("p") {
-        Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),
-        None => format!(
-            "SELECT COUNT(*) FROM import_list_placement AS p \
-             WHERE p.tab = {tab} AND p.item <> 'group'",
-            tab = tab_literal(request.view.tab),
-        ),
+    let kept = match request.entry_sql("c") {
+        Some(entry) => counted(&entry),
+        None => counted(&format!(
+            "c.tab = {tab} AND c.item <> 'group'",
+            tab = tab_literal(request.view.tab)
+        )),
     };
     let folded = match pending {
         true => format!(
@@ -182,9 +195,7 @@ fn kept_items(request: &ImportListRequest) -> String {
     };
     let headers = match (pending, request.entry_sql("m")) {
         (false, _) => "SELECT 0".to_string(),
-        (true, None) => "SELECT COUNT(*) FROM import_list_placement AS h \
-                         WHERE h.tab = 'pending' AND h.item = 'group'"
-            .to_string(),
+        (true, None) => counted("c.tab = 'pending' AND c.item = 'group'"),
         (true, Some(entry)) => format!(
             "SELECT COUNT(*) FROM import_list_placement AS h \
              WHERE h.tab = 'pending' AND h.item = 'group' \
@@ -208,8 +219,8 @@ fn listed(request: &ImportListRequest) -> String {
     }
     let items = kept_items(request);
     // Without a search, only Found's filter entry narrows the list.
-    let shown = match request.entry_sql("p") {
-        Some(entry) => format!("SELECT COUNT(*) FROM import_list_placement AS p WHERE {entry}"),
+    let shown = match request.entry_sql("c") {
+        Some(entry) => counted(&entry),
         None => "SELECT NULL".to_string(),
     };
     format!("SELECT ({items}) AS items, ({shown}) AS shown")
