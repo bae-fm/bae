@@ -244,11 +244,11 @@ pub struct RecordsTargetAlbum {
 
 /// The records a JSON array of `:records` holds, as `(position, catalog,
 /// kind, key, album_key)`.
-const RECORDS_OF_JSON: &str = "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
+pub const RECORDS_OF_JSON: &str = "SELECT key, value ->> 0, value ->> 1, value ->> 2, value ->> 3 \
      FROM json_each(:records)";
 
 /// `records` as the JSON array [`RECORDS_OF_JSON`] reads.
-fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String {
+pub fn records_json(records: &[bae_catalogs::records::ReleaseRecord]) -> String {
     use bae_catalogs::records::ReleaseRecord;
     serde_json::Value::from(
         records

@@ -102,18 +102,17 @@ impl ImportTables {
     }
 
     /// The draft of the form the request names, live: it reruns after each
-    /// write that changes what it read. With no form it reads nothing; with
-    /// one it reads `None` once the form's release is gone.
+    /// write that changes what it read. It reads nothing until a form is
+    /// set, and `None` once the form's release is gone.
     pub fn subscribe_release_edit_draft(
         &self,
-        initial: Option<ReleaseEditForm>,
     ) -> coven::ReconfigurableLiveQuery<
         Option<ReleaseEditForm>,
         Option<Option<ReleaseEditDraft>>,
         DbError,
     > {
         self.store
-            .subscribe_reconfigurable(initial, |form, sql| match form {
+            .subscribe_reconfigurable(None, |form, sql| match form {
                 None => Ok(None),
                 Some(form) => Ok(Some(release_edit_draft_rows_on(&sql, form)?)),
             })

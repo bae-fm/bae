@@ -54,7 +54,7 @@ impl LibraryManager {
     /// library, the album renamed, a cover picked, the release deleted.
     pub fn subscribe_release_edit_draft(&self) -> LiveReleaseEditDraft {
         bae_store::live_query::LiveRead::new(
-            self.until_closed(self.import_tables.subscribe_release_edit_draft(None)),
+            self.until_closed(self.import_tables.subscribe_release_edit_draft()),
             |_read, draft| draft,
         )
     }

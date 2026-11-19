@@ -69,15 +69,6 @@ struct PlaceJson<'a> {
     number: u32,
 }
 
-/// One record the apply read, as `:records` binds it.
-#[derive(serde::Serialize)]
-struct RecordJson<'a> {
-    catalog: &'static str,
-    kind: &'static str,
-    key: &'a str,
-    album_key: Option<&'a str>,
-}
-
 /// `value` as the JSON a statement binds.
 fn json(value: &impl serde::Serialize, what: &str) -> Result<String, DbError> {
     serde_json::to_string(value).map_err(|error| DbError::encode(what, error))
@@ -111,7 +102,6 @@ impl FormParams {
             .collect();
         let mut mediums = Vec::new();
         let mut places = Vec::new();
-        let mut records = Vec::new();
         if let Some(applied) = &form.applied {
             for (index, medium) in applied.draft.mediums.iter().enumerate() {
                 mediums.push(MediumJson {
@@ -128,23 +118,6 @@ impl FormParams {
                     number: track.place.number.get(),
                 });
             }
-            for record in &applied.records {
-                use bae_catalogs::records::ReleaseRecord;
-                records.push(match record {
-                    ReleaseRecord::Pressing { release, album_key } => RecordJson {
-                        catalog: release.catalog.as_str(),
-                        kind: "pressing",
-                        key: &release.key,
-                        album_key: album_key.as_deref(),
-                    },
-                    ReleaseRecord::Album { album } => RecordJson {
-                        catalog: album.catalog.as_str(),
-                        kind: "album",
-                        key: &album.key,
-                        album_key: None,
-                    },
-                });
-            }
         }
         let (pick_kind, pick_album) = match &form.album_pick {
             AlbumPick::Records => ("records", None),
@@ -159,7 +132,9 @@ impl FormParams {
             form_tracks: json(&form_tracks, "a release editor's tracks")?,
             mediums: json(&mediums, "a release editor's applied mediums")?,
             places: json(&places, "a release editor's applied track places")?,
-            records: json(&records, "a release editor's applied records")?,
+            records: bae_records::records::release_records::records_json(
+                form.applied.as_ref().map_or(&[], |applied| applied.records.as_slice()),
+            ),
             pick_kind,
             pick_album,
         })
@@ -186,12 +161,8 @@ fn release_edit_album_on(
     sql: &impl coven::SqlRead,
     form: &FormParams,
 ) -> Result<DraftAlbum, DbError> {
-    let target = bae_records::records::release_records::records_target_album_sql(
-        "SELECT CAST(j.key AS INTEGER), j.value ->> 'catalog', j.value ->> 'kind', \
-                j.value ->> 'key', j.value ->> 'album_key' \
-         FROM json_each(:records) AS j",
-        ":release",
-    );
+    use bae_records::records::release_records::{records_target_album_sql, RECORDS_OF_JSON};
+    let target = records_target_album_sql(RECORDS_OF_JSON, ":release");
     let row = sql.query_row(
         &format!(
             "WITH pick (kind, album_id) AS ( \
