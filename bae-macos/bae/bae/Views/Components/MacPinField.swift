@@ -1,6 +1,9 @@
 import AppKit
 import BaeKit
 import SwiftUI
+import os.log
+
+private let logger = Logger.bae("MacPinField")
 
 /// A PIN the person reads off a receiver's screen and types: one box per
 /// digit, each showing its digit as it is typed. While the field has focus,
@@ -160,10 +163,14 @@ private struct PinEditor: NSViewRepresentable {
 
         func controlTextDidChange(_ notification: Notification) {
             // Only the field this coordinator is the delegate of sends it.
+            // Anything else is a bug that leaves the field as it was.
             guard let field = notification.object as? NSTextField else {
-                preconditionFailure(
-                    "A PIN edit came from \(notification.object.debugDescription)"
-                )
+                let detail =
+                    "a PIN edit came from \(String(describing: notification.object))"
+                logger.error("\(detail)")
+                CoreBugReporter()
+                    .report(operation: "edit a PIN", detail: detail)
+                return
             }
             let typed = field.stringValue
             let kept = String(
