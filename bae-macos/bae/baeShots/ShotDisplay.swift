@@ -20,7 +20,8 @@ import ObjectiveC
 final class ShotDisplay {
     /// The display's size, in points.
     static let size = CGSize(width: 1_600, height: 1_200)
-    private static let scale = 2
+    /// The display draws at the scale every shot is captured at.
+    private static let scale = ShotRenderer.scale
 
     let id: CGDirectDisplayID
     /// The `CGVirtualDisplay`; the display lasts as long as this object.
