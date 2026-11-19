@@ -24,7 +24,7 @@ impl bae_audio::DecodedSink for FrameCount {
 fn verified_window_reads() -> (Vec<u64>, u64, u64) {
     bae_audio::init();
     let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
-    let bytes = std::fs::read(&path).unwrap();
+    let bytes = bae_util::test_files::read_fixture(&path);
     let start_sample = 20 * 44_100;
     let landing =
         bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())

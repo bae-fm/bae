@@ -11,9 +11,7 @@ use bae_audio::{
     decode_audio, decode_audio_to_sink, encode_i32, init, DecodeError, DecodedSink, EncodeFormat,
 };
 use bae_util::test_channels::HANG_GUARD;
-use std::io::Write;
 use std::sync::Arc;
-use tempfile::NamedTempFile;
 use tokio::time::timeout;
 
 /// The OS error kind and text of a decode that stopped on a source read, or
@@ -85,12 +83,11 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
 
     // Live fill: the decoder starts against an empty buffer and blocks on the
     // LocalReader's windows as they land.
-    let mut temp = tempfile::NamedTempFile::new().unwrap();
-    std::io::Write::write_all(&mut temp, &wav).unwrap();
-    std::io::Write::flush(&mut temp).unwrap();
+    let folder = bae_util::test_files::TestFolder::new();
+    let path = folder.write("track.wav", &wav);
     let buffer = create_sparse_buffer(wav.len() as u64);
     Box::new(LocalReader::new(
-        temp.path(),
+        path,
         bae_diagnostics::Diagnostics::noop(),
         bae_util::test_files::lease(),
     ))
@@ -139,9 +136,8 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
     // A directory is a source this platform can't read: it refuses the open
     // or the first read (EISDIR on Unix, access denied on Windows). Whatever
     // error std reports for it is the one the decode must name.
-    let dir = tempfile::tempdir().unwrap();
-    let expected = std::fs::File::open(dir.path())
-        .and_then(|mut file| std::io::Read::read(&mut file, &mut [0; 1]))
+    let dir = bae_util::test_files::TestFolder::new();
+    let expected = std::io::Read::read(&mut dir.open(dir.path()), &mut [0; 1])
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);
@@ -166,13 +162,12 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
 #[tokio::test]
 async fn test_local_file_reader_full_file() {
     // Create temp file with test data
-    let mut temp_file = NamedTempFile::new().unwrap();
+    let folder = bae_util::test_files::TestFolder::new();
     let test_data = b"Hello, this is test audio data for streaming!";
-    temp_file.write_all(test_data).unwrap();
-    temp_file.flush().unwrap();
+    let path = folder.write("track.bin", test_data);
 
     let reader = Box::new(LocalReader::new(
-        temp_file.path(),
+        path,
         bae_diagnostics::Diagnostics::noop(),
         bae_util::test_files::lease(),
     ));
@@ -192,12 +187,11 @@ async fn test_local_file_reader_full_file() {
 async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     let source_size = 8 * WINDOW;
     let data: Vec<u8> = (0..source_size).map(|i| (i % 251) as u8).collect();
-    let mut temp_file = NamedTempFile::new().unwrap();
-    temp_file.write_all(&data).unwrap();
-    temp_file.flush().unwrap();
+    let folder = bae_util::test_files::TestFolder::new();
+    let path = folder.write("track.bin", &data);
 
     let reader = Box::new(LocalReader::new(
-        temp_file.path(),
+        path,
         bae_diagnostics::Diagnostics::noop(),
         bae_util::test_files::lease(),
     ));
@@ -230,12 +224,10 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
 
 #[tokio::test]
 async fn test_local_file_reader_nonexistent_file() {
-    let mut temp_file = NamedTempFile::new().unwrap();
+    let folder = bae_util::test_files::TestFolder::new();
     let test_data = b"deleted before read";
-    temp_file.write_all(test_data).unwrap();
-    temp_file.flush().unwrap();
-    let path = temp_file.path().to_path_buf();
-    drop(temp_file);
+    let path = folder.write("track.bin", test_data);
+    folder.remove(&path);
 
     let reader = Box::new(LocalReader::new(
         path,
@@ -262,7 +254,7 @@ async fn test_local_file_reader_nonexistent_file() {
 
 #[tokio::test]
 async fn test_local_file_reader_read_error_reports_error() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
 
     let reader = Box::new(LocalReader::new(
         dir.path(),
@@ -293,9 +285,8 @@ async fn test_local_file_reader_read_error_reports_error() {
 /// held: the fill, parked with nothing demanded, wakes to the stop and exits.
 #[tokio::test]
 async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("track.flac");
-    std::fs::write(&path, vec![7u8; 1024]).unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = dir.write("track.flac", vec![7u8; 1024]);
     let buffer = create_sparse_buffer(1024);
     let fill = Box::new(LocalReader::new(
         &path,
@@ -319,10 +310,9 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
 /// closes.
 #[tokio::test]
 async fn a_local_reader_holds_its_place_until_its_fill_ends() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("Track.flac");
+    let dir = bae_util::test_files::TestFolder::new();
     let test_data = b"Hello, this is test audio data for streaming!";
-    std::fs::write(&path, test_data).unwrap();
+    let path = dir.write("Track.flac", test_data);
     let budget = coven::FileBudget::for_test();
     let watch = budget.watch();
     let lease = budget.lease(1).await.unwrap();

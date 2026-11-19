@@ -1,6 +1,7 @@
 use super::*;
 use crate::data_source::LocalReader;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use coven::{FileBudget, FileLease};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -15,14 +16,13 @@ struct Track {
     files: Vec<PathBuf>,
 }
 
-fn write_file(dir: &Path, name: &str) -> PathBuf {
-    let path = dir.join(name);
-    std::fs::write(&path, vec![name.len() as u8; FILE_BYTES]).unwrap();
-    path.canonicalize().unwrap()
+fn write_file(dir: &TestFolder, name: &str) -> PathBuf {
+    let path = dir.write(name, vec![name.len() as u8; FILE_BYTES]);
+    dir.canonicalize(path)
 }
 
 /// `count` tracks with a file each.
-fn file_per_track(dir: &Path, count: usize) -> Vec<Track> {
+fn file_per_track(dir: &TestFolder, count: usize) -> Vec<Track> {
     (0..count)
         .map(|n| {
             let name = format!("{n:02} Track.flac");
@@ -32,7 +32,7 @@ fn file_per_track(dir: &Path, count: usize) -> Vec<Track> {
 }
 
 /// `count` tracks all reading one image.
-fn cue_image(dir: &Path, image: &str, count: usize) -> Vec<Track> {
+fn cue_image(dir: &TestFolder, image: &str, count: usize) -> Vec<Track> {
     let path = write_file(dir, image);
     (0..count)
         .map(|n| Track { name: format!("{image} track {n}"), files: vec![path.clone()] })
@@ -126,8 +126,8 @@ async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: 
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn file_per_track_opens_at_most_one_file_at_parallelism_one() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 30);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 30);
     let expected: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
 
     let run = run(dir.path(), tracks, 1).await;
@@ -140,8 +140,8 @@ async fn file_per_track_opens_at_most_one_file_at_parallelism_one() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn file_per_track_opens_at_most_parallelism_files() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 30);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 30);
     let expected: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
 
     let run = run(dir.path(), tracks, 4).await;
@@ -155,8 +155,8 @@ async fn file_per_track_opens_at_most_parallelism_files() {
 /// once for the whole run.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn tracks_of_one_image_run_together_over_one_open_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = cue_image(dir.path(), "Album.flac", 20);
+    let dir = TestFolder::new();
+    let tracks = cue_image(&dir, "Album.flac", 20);
 
     let run = run(dir.path(), tracks, 4).await;
 
@@ -168,10 +168,10 @@ async fn tracks_of_one_image_run_together_over_one_open_file() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn images_and_files_per_track_together_stay_within_the_pass_places() {
-    let dir = tempfile::tempdir().unwrap();
-    let mut tracks = cue_image(dir.path(), "Disc 1.flac", 12);
-    tracks.extend(file_per_track(dir.path(), 12));
-    tracks.extend(cue_image(dir.path(), "Disc 3.flac", 12));
+    let dir = TestFolder::new();
+    let mut tracks = cue_image(&dir, "Disc 1.flac", 12);
+    tracks.extend(file_per_track(&dir, 12));
+    tracks.extend(cue_image(&dir, "Disc 3.flac", 12));
     let expected: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
 
     for parallelism in [1, 3] {
@@ -192,8 +192,8 @@ async fn images_and_files_per_track_together_stay_within_the_pass_places() {
 /// pass's places grow to the most files one track reads.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_track_reading_more_files_than_the_parallelism_takes_places_for_all_of_them() {
-    let dir = tempfile::tempdir().unwrap();
-    let mut tracks = file_per_track(dir.path(), 3);
+    let dir = TestFolder::new();
+    let mut tracks = file_per_track(&dir, 3);
     let pregap_track = Track {
         name: "pregap".to_string(),
         files: vec![tracks[1].files[0].clone(), tracks[2].files[0].clone()],
@@ -210,8 +210,8 @@ async fn a_track_reading_more_files_than_the_parallelism_takes_places_for_all_of
 /// file opens.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_track_reading_more_files_than_the_budget_holds_fails_the_pass_at_once() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 2);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 2);
     let both = Track {
         name: "both".to_string(),
         files: vec![tracks[0].files[0].clone(), tracks[1].files[0].clone()],
@@ -244,8 +244,8 @@ async fn a_track_reading_more_files_than_the_budget_holds_fails_the_pass_at_once
 /// comes back.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_pass_takes_its_places_from_the_budget_at_once() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 4);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 4);
     let budget = FileBudget::new(NonZeroUsize::new(2).unwrap());
     let held = budget.lease(1).await.unwrap();
     let waited = budget.watch().lease_waits_from_now(1);
@@ -271,8 +271,8 @@ async fn a_pass_takes_its_places_from_the_budget_at_once() {
 /// started, whatever order the tasks are scheduled in.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_failed_track_stops_the_run_and_closes_every_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 20);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 20);
     let started = Arc::new(Mutex::new(Vec::new()));
     let (failed_tx, failed_rx) = tokio::sync::watch::channel(false);
 
@@ -322,8 +322,8 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
 /// decoding on for a pass that no longer exists.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 1);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 1);
     let (reading_tx, reading) = tokio::sync::oneshot::channel();
     let (pass_dropped, pass_dropped_rx) = std::sync::mpsc::channel::<()>();
     let (next_read_tx, next_read) = tokio::sync::oneshot::channel();
@@ -376,8 +376,8 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
 /// the panic, and every file is closed, the panicked track's own included.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let tracks = file_per_track(dir.path(), 3);
+    let dir = TestFolder::new();
+    let tracks = file_per_track(&dir, 3);
 
     let result: Result<Vec<()>, String> = run_tracks_over_sources(
         tracks,
