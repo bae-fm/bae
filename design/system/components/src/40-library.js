@@ -195,20 +195,19 @@
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
-  // A playlist's page inside the side pane's Playlists tab, whose head shows the back button to the list (`MacQueuePanel`'s `back`). Its header is laid out as the album page's: the picture beside a column of the name (up to two lines), the owner on a line of their own, the facts line (count and length), then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer) under the text, at its start. `sharing`: on the person's own playlist, who sees it, as a lock (Only me) or people (Everyone) glyph at the facts line's end; a playlist someone else shared shows nothing about sharing. Its tracks follow as children, `MacListRow`s.
+  // A playlist's page inside the side pane's Playlists tab, whose head shows the back button to the list (`MacQueuePanel`'s `back`). Its header is laid out as the album page's: the picture beside a column of the name (up to two lines), the owner on a line of their own, the facts line (count and length), then Play and the ⋯ under the text, at its start. The ⋯ menu offers Shuffle to everyone, then the owner's `options`; `optionsOpen` draws it open, `highlighted` the item under the pointer. The picture is as tall as the text column. `sharing`: on the person's own playlist, who sees it, as a lock (Only me) or people (Everyone) glyph at the facts line's end; a playlist someone else shared shows nothing about sharing. Its tracks follow as children, `MacListRow`s.
   function MacPlaylistPage(props) {
     var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 12 })) : null;
     return h('section', { className: 'bae-m-plpage' },
       h('div', { className: 'bae-m-plpage-head' },
-        h(PlaylistPicture, { covers: props.covers, size: 72, radius: 10 }),
+        h(PlaylistPicture, { covers: props.covers, size: 104, radius: 10 }),
         h('div', { className: 'bae-m-plpage-text' },
           h('h1', { className: 'bae-m-plpage-name' }, props.name),
           h('div', { className: 'bae-m-plpage-owner' }, h(Avatar, { name: props.owner, size: 16 }), props.owner),
           h('div', { className: 'bae-m-plpage-facts' }, [props.count, props.length].join(' · '), shared),
           h('div', { className: 'bae-m-plpage-actions' },
             h(MacButton, { kind: 'primary' }, 'Play'),
-            h(MacButton, null, 'Shuffle'),
-            props.options ? h(MacMoreMenu, { label: 'Playlist options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null))),
+            h(MacMoreMenu, { label: 'Playlist options', items: ['Shuffle'].concat(props.options ? ['-'].concat(list(props.options)) : []).join(','), open: props.optionsOpen, highlighted: props.highlighted })))),
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }
 

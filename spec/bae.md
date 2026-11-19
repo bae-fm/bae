@@ -3060,7 +3060,7 @@ one made with a track the library lacks is not made. A playlist plays as a list
 of its tracks in its order (§7.1), from the entry picked, from the first, or
 shuffled; one with no entries plays nothing, and a picked entry the playlist
 no longer holds plays nothing, shuffled or not. On macOS a playlist's page has
-Play and Shuffle.
+Play, and Shuffle in its ⋯ menu.
 
 The Playlists list shows every playlist the person can see, by name: their
 own and the household ones others made, never another person's private ones
@@ -3085,9 +3085,10 @@ keeps the library's view. While a playlist is open, a back button (*Back to
 Playlists* to screen readers) takes the place of the + at the start of the
 pane's top and returns to the list. The page's header is laid out as an
 album page's: the playlist's picture beside its name, on up to two lines, then
-its owner on a line of their own, then its count and length, then Play,
-Shuffle and the owner's ⋯ under them, at the start of the line; then its
-tracks. On the person's own playlist the count and length end in who sees it,
+its owner on a line of their own, then its count and length, then Play and
+the ⋯ under them, at the start of the line; then its tracks. The picture is
+as tall as the column of text beside it. The ⋯ menu offers *Shuffle* to
+everyone. On the person's own playlist the count and length end in who sees it,
 a lock for *Only me* or two people for *Everyone*, which screen readers name;
 a playlist someone else shared says nothing about sharing, since it is shared
 to be seen at all. The pane's tabs stay switchable while a playlist is open, and the
@@ -3111,8 +3112,8 @@ end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
 A playlist's owner changes it from its page; no one else sees these controls.
-The page's options menu (the ⋯ button after Shuffle on macOS, the bar's menu on
-Android) offers *Edit playlist…*, which changes its name and who sees it, and
+The page's options menu (the ⋯ button after Play on macOS, the bar's menu on
+Android) offers the owner *Edit playlist…*, which changes its name and who sees it, and
 *Delete playlist…*, which asks first ("bae will delete this playlist from every
 device. Its tracks stay in the library.") and then deletes it on every device. Saving
 an edit writes the name and who sees it in one write, so a failure changes

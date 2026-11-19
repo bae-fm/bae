@@ -236,7 +236,7 @@ export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
 export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
-/** A playlist's page inside the side pane's Playlists tab (the pane's back button returns to the list), its header laid out as the album page's: the picture beside the name (two lines at most), the owner, the facts line (count, length), then Play, Shuffle and the owner's ⋯ (options) under the text. sharing: on the person's own playlist, who sees it, as a lock or people glyph; none on a playlist someone else shared. Its tracks (MacListRow) are its children. */
+/** A playlist's page inside the side pane's Playlists tab (the pane's back button returns to the list), its header laid out as the album page's: the picture beside the name (two lines at most), the owner, the facts line (count, length), then Play and the ⋯ under the text; the ⋯ menu offers Shuffle, then the owner's options. sharing: on the person's own playlist, who sees it, as a lock or people glyph; none on a playlist someone else shared. Its tracks (MacListRow) are its children. */
 export interface MacPlaylistPageProps { name: string; covers?: string; owner: string; count: string; length: string; sharing?: 'Only me' | 'Everyone'; options?: string; optionsOpen?: boolean; highlighted?: string; children?: React.ReactNode }
 export declare function MacPlaylistPage(props: MacPlaylistPageProps): React.ReactElement;
 /** The round back button before a page's heading, named Back to and where it goes (to). */
