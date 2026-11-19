@@ -4,4 +4,4 @@ A person's picture, round: the image they picked, or the initials of their name 
 
 The picture leads the person's rows in People and devices: the You section's Picture row, where they choose or remove it, and each person's row in the People list. A row draws it through its `avatar` (the person's name) and `avatarImage` (their picture): `MacRow` at 28 points, `AndroidRow` at 40.
 
-**In the code:** no app view draws a person's picture. BaeKit's ImageStore loads one through the bridge's `avatar(person)` (`ImageKey.avatar`, BaeKit/Sources/BaeKit/Services/ImageStore.swift:49), and no app calls `set_avatar`.
+**In the code:** macOS: `Avatar` (bae-macos/bae/bae/Views/Components/Avatar.swift) draws the picture, loaded through the bridge's `avatar(person)`, or the initials, and the playlist detail pane uses it for the playlist's owner (PlaylistDetailPane.swift:94); no app calls `set_avatar`. Android: none.
