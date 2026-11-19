@@ -41,16 +41,45 @@ fn held_sql(credit: &str) -> String {
     )
 }
 
-/// An answer's artists as the JSON array both the stored answer and the
-/// rule's are compared and stored as, from the rows `artists` names with the
-/// columns of an answer's artist, ordered by `position`.
-fn artists_json_sql(artists: &str, of: &str) -> String {
+/// An answer's artists as the JSON array that stored answers and the rule's
+/// are compared, stored and read as: the rows of `artists` that `of` picks,
+/// in `position` order, whose catalog ids are in the columns `musicbrainz`
+/// and `discogs`.
+fn answer_json_sql(artists: &str, musicbrainz: &str, discogs: &str, of: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
                      'artist_id', a.artist_id, 'name', a.name, 'sort_name', a.sort_name, \
-                     'musicbrainz_artist_id', a.musicbrainz_artist_id, \
-                     'discogs_artist_id', a.discogs_artist_id) ORDER BY a.position) \
+                     'musicbrainz_artist_id', a.{musicbrainz}, \
+                     'discogs_artist_id', a.{discogs}) ORDER BY a.position) \
           FROM {artists} AS a WHERE {of})"
+    )
+}
+
+/// The artists of the stored answer whose id the SQL expression `resolution`
+/// holds, as [`answer_json_sql`] gives them.
+pub(super) fn stored_answer_json_sql(resolution: &str) -> String {
+    answer_json_sql(
+        "import_credit_resolution_artist",
+        "musicbrainz_artist_id",
+        "discogs_artist_id",
+        &format!("a.resolution = {resolution}"),
+    )
+}
+
+/// The artists the rule names for the credit of the row `credit`, which has
+/// the columns `name_key`, `musicbrainz_artist_id` and `discogs_artist_id`,
+/// as [`answer_json_sql`] gives them, in a statement that puts
+/// `bae_records::credit_artist_clauses` after its WITH.
+pub(super) fn rule_answer_json_sql(credit: &str) -> String {
+    answer_json_sql(
+        "credit_artist",
+        "artist_musicbrainz_id",
+        "artist_discogs_id",
+        &format!(
+            "a.name_key = {credit}.name_key \
+             AND a.musicbrainz_artist_id IS {credit}.musicbrainz_artist_id \
+             AND a.discogs_artist_id IS {credit}.discogs_artist_id"
+        ),
     )
 }
 
@@ -96,16 +125,8 @@ fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> 
              WHERE r.id IS NULL OR {stored} IS NOT f.artists",
             held = held_sql("due"),
             rule = bae_records::credit_artist_clauses("due_credit"),
-            fresh = artists_json_sql(
-                "(SELECT position, artist_id, name, sort_name, \
-                         artist_musicbrainz_id AS musicbrainz_artist_id, \
-                         artist_discogs_id AS discogs_artist_id, name_key AS credit_key, \
-                         musicbrainz_artist_id AS credit_mb, discogs_artist_id AS credit_dg \
-                  FROM credit_artist)",
-                "a.credit_key = c.name_key AND a.credit_mb IS c.musicbrainz_artist_id \
-                 AND a.credit_dg IS c.discogs_artist_id",
-            ),
-            stored = artists_json_sql("import_credit_resolution_artist", "a.resolution = r.id"),
+            fresh = rule_answer_json_sql("c"),
+            stored = stored_answer_json_sql("r.id"),
         ),
         [],
         |row| {

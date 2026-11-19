@@ -135,29 +135,13 @@ impl CreditSource<'_> {
     /// library stores for its draft's credits (`credit_resolutions`); for a
     /// form, the rule's SQL over the form's credits in `raw`.
     fn answers(self) -> String {
-        // The answer's artists as a JSON array, from the rows of `artists`
-        // that `of` picks, whose artist ids are in `mb` and `dg`.
-        let answer = |artists: &str, mb: &str, dg: &str, of: &str| {
-            format!(
-                "(SELECT json_group_array(json_object( \
-                             'artist_id', a.artist_id, 'name', a.name, \
-                             'sort_name', a.sort_name, \
-                             'musicbrainz_artist_id', a.{mb}, 'discogs_artist_id', a.{dg}) \
-                         ORDER BY a.position) \
-                  FROM {artists} AS a WHERE {of})"
-            )
-        };
+        use crate::tables::credit_resolutions::{rule_answer_json_sql, stored_answer_json_sql};
         match self {
             Self::Candidate(_) => format!(
                 "credit_answer (name_key, mb, dg, artists) AS ( \
                      SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id, {} \
                      FROM import_credit_resolution AS r)",
-                answer(
-                    "import_credit_resolution_artist",
-                    "musicbrainz_artist_id",
-                    "discogs_artist_id",
-                    "a.resolution = r.id",
-                ),
+                stored_answer_json_sql("r.id"),
             ),
             Self::Form { .. } => format!(
                 "form_credit AS ( \
@@ -169,13 +153,7 @@ impl CreditSource<'_> {
                      SELECT c.name_key, c.musicbrainz_artist_id, c.discogs_artist_id, {answer} \
                      FROM form_credit AS c)",
                 rule = bae_records::credit_artist_clauses("form_credit"),
-                answer = answer(
-                    "credit_artist",
-                    "artist_musicbrainz_id",
-                    "artist_discogs_id",
-                    "a.name_key = c.name_key AND a.musicbrainz_artist_id IS c.musicbrainz_artist_id \
-                     AND a.discogs_artist_id IS c.discogs_artist_id",
-                ),
+                answer = rule_answer_json_sql("c"),
             ),
         }
     }
