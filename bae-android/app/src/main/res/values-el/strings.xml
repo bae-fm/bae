@@ -203,6 +203,8 @@
     <string name="members_title">Άτομα και συσκευές</string>
     <string name="people_people">Άτομα</string>
     <string name="people_role">Ρόλος</string>
+    <string name="people_picture">Εικόνα</string>
+    <string name="people_picture_remove">Αφαίρεση εικόνας</string>
     <string name="people_devices">Συσκευές</string>
     <string name="people_your_devices">Οι συσκευές σας</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

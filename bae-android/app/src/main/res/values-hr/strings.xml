@@ -203,6 +203,8 @@
     <string name="members_title">Osobe i uređaji</string>
     <string name="people_people">Osobe</string>
     <string name="people_role">Uloga</string>
+    <string name="people_picture">Slika</string>
+    <string name="people_picture_remove">Ukloni sliku</string>
     <string name="people_devices">Uređaji</string>
     <string name="people_your_devices">Vaši uređaji</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

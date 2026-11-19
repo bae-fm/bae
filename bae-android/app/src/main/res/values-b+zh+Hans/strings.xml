@@ -195,6 +195,8 @@
     <string name="members_title">成员和设备</string>
     <string name="people_people">人员</string>
     <string name="people_role">角色</string>
+    <string name="people_picture">图片</string>
+    <string name="people_picture_remove">移除图片</string>
     <string name="people_devices">设备</string>
     <string name="people_your_devices">你的设备</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

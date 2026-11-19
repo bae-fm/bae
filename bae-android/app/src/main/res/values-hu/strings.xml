@@ -203,6 +203,8 @@
     <string name="members_title">Személyek és eszközök</string>
     <string name="people_people">Személyek</string>
     <string name="people_role">Szerepkör</string>
+    <string name="people_picture">Kép</string>
+    <string name="people_picture_remove">Kép eltávolítása</string>
     <string name="people_devices">Eszközök</string>
     <string name="people_your_devices">Eszközeid</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

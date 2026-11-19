@@ -207,6 +207,8 @@
     <string name="members_title">Люди та пристрої</string>
     <string name="people_people">Люди</string>
     <string name="people_role">Роль</string>
+    <string name="people_picture">Зображення</string>
+    <string name="people_picture_remove">Вилучити зображення</string>
     <string name="people_devices">Пристрої</string>
     <string name="people_your_devices">Ваші пристрої</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

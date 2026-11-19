@@ -21,7 +21,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
+import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.RowIcon
+import fm.bae.app.ui.components.face
 import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInviteEntry
@@ -56,10 +58,15 @@ internal fun peoplePage(key: String): PeoplePage =
         else -> PeoplePage.People
     }
 
-/** What this person can do to themselves on the first page: rename, and choose who sees their plays. */
+/**
+ * What this person can do to themselves on the first page: rename, set or clear their picture, and choose who sees
+ * their plays. [setAvatar] reads the picture's bytes inside its action, so a failed read shows as a failed write
+ * does; null clears the picture. It returns once the write has, and shows its failure.
+ */
 internal class YouActions(
     val errors: ErrorDisplays,
     val rename: suspend (String) -> Unit,
+    val setAvatar: suspend (read: suspend () -> ByteArray?) -> Unit,
     val setHistory: (BridgeHistorySharing) -> Unit,
 )
 
@@ -156,8 +163,10 @@ private fun PeopleCard(
     AndroidCard {
         people.others.forEach { person ->
             val member = person.membership
+            val name = person.profile?.name ?: stringResource(R.string.members_unnamed)
             AndroidRow(
-                title = person.profile?.name ?: stringResource(R.string.members_unnamed),
+                title = name,
+                avatar = person.profile?.face() ?: AvatarFace(name, picture = null),
                 subtitle =
                     stringResource(
                         R.string.people_role_and_devices,
@@ -206,6 +215,7 @@ private fun YouCard(
     val profile = me?.profile
     AndroidCard {
         if (profile != null) {
+            PictureRows(you = you, profile = profile)
             AndroidRow(
                 title = stringResource(R.string.invite_name),
                 subtitle = profile.name,

@@ -22,6 +22,15 @@ class SettingsPeopleShots : BoardShot() {
             ScreenScene { PeoplePageScene(anaAndBen(), invites = listOf(invitation("another@example.com", waitingCode))) }
         }
 
+    /** People and devices as an admin sees it when Ana has a picture: Remove picture under her Picture row. */
+    @Test
+    fun androidSettingsPeoplePicture() =
+        shot("android.settings.people.picture") {
+            ScreenScene {
+                PeoplePageScene(anaAndBen(ana(picture = true)), invites = listOf(invitation("another@example.com", waitingCode)))
+            }
+        }
+
     /** People and devices as a member sees it: Ben is an admin, and nothing opens or invites. */
     @Test
     fun androidSettingsPeopleMember() =

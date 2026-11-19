@@ -199,6 +199,8 @@
     <string name="members_title">Personen en apparaten</string>
     <string name="people_people">Personen</string>
     <string name="people_role">Rol</string>
+    <string name="people_picture">Afbeelding</string>
+    <string name="people_picture_remove">Afbeelding verwijderen</string>
     <string name="people_devices">Apparaten</string>
     <string name="people_your_devices">Je apparaten</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

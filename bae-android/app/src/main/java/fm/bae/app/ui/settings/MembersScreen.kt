@@ -25,6 +25,7 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.RowIcon
@@ -360,6 +361,7 @@ internal fun InviteRow(
     if (joining != null) {
         AndroidRow(
             title = joining.name,
+            avatar = AvatarFace(joining.name, picture = null),
             subtitle = invite.label,
             tag = stringResource(R.string.members_joining),
         )
@@ -368,6 +370,7 @@ internal fun InviteRow(
     val held = invite.held
     AndroidRow(
         title = invite.label,
+        avatar = AvatarFace(invite.label, picture = null),
         tag = stringResource(R.string.members_invited),
         subtitle =
             when {

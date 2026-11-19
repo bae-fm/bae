@@ -1,6 +1,10 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.TestImages
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.settings.AndroidSettingsDevices
 import fm.bae.app.ui.settings.AndroidSettingsPeople
@@ -9,6 +13,7 @@ import fm.bae.app.ui.settings.InviteCallbacks
 import fm.bae.app.ui.settings.MemberCallbacks
 import fm.bae.app.ui.settings.NothingFails
 import fm.bae.app.ui.settings.YouActions
+import kotlinx.coroutines.Dispatchers
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangeKind
@@ -42,19 +47,24 @@ internal fun PeoplePageScene(
     invites: List<BridgeInvite> = emptyList(),
     refused: List<BridgeRefusedInvite> = emptyList(),
     offline: Boolean = false,
-) = AndroidSettingsPeople(
-    you = YouActions(NothingFails, {}, {}),
-    people = people,
-    selfIsAdmin = selfIsAdmin,
-    invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
-    adminChanges = null,
-    callbacks = memberCallbacks(),
-    inviteCallbacks = InviteCallbacks({}, {}),
-    offline = offline,
-    error = null,
-    onOpen = {},
-    onBack = {},
-)
+) = CompositionLocalProvider(LocalImageStore provides avatarStore()) {
+    AndroidSettingsPeople(
+        you = YouActions(NothingFails, {}, {}, {}),
+        people = people,
+        selfIsAdmin = selfIsAdmin,
+        invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
+        adminChanges = null,
+        callbacks = memberCallbacks(),
+        inviteCallbacks = InviteCallbacks({}, {}),
+        offline = offline,
+        error = null,
+        onOpen = {},
+        onBack = {},
+    )
+}
+
+/** The store that hands every avatar the same picture, as the boards' people all have one. */
+private fun avatarStore() = ImageStore(fetchAvatarBytes = { TestImages.png(64) }, dispatcher = Dispatchers.Unconfined)
 
 /** [person]'s page, as an admin sees it, with the [adminChanges] this phone asked for. */
 @Composable
@@ -107,7 +117,9 @@ internal fun ana(
             BridgeActiveDevice(2uL, "Laptop", isSelf = false, canRemove = true),
         ),
     formerDevices: List<BridgeFormerDevice> = emptyList(),
-): BridgePerson = person(ANA_ID, name, role, isSelf = true, devices = devices, history = history, formerDevices = formerDevices)
+    picture: Boolean = false,
+): BridgePerson =
+    person(ANA_ID, name, role, isSelf = true, devices = devices, history = history, formerDevices = formerDevices, picture = picture)
 
 /** The two devices Ana's Your devices page lists under Removed devices. */
 internal val removedDevices =
@@ -133,6 +145,7 @@ internal fun ben(role: BridgeMemberRole = BridgeMemberRole.MEMBER): BridgePerson
         role = role,
         isSelf = false,
         devices = listOf(BridgeActiveDevice(5uL, "Tablet", isSelf = false, canRemove = true)),
+        picture = true,
     )
 
 /** Ben on an S3 library, where a person is known by the access key they were given. */
@@ -147,6 +160,7 @@ private fun person(
     devices: List<BridgeActiveDevice>,
     history: BridgeHistorySharing = BridgeHistorySharing.PRIVATE,
     formerDevices: List<BridgeFormerDevice> = emptyList(),
+    picture: Boolean = false,
 ): BridgePerson {
     val member: BridgeMember =
         PreviewData.member(id = id, role = role, isSelf = isSelf).copy(
@@ -157,7 +171,9 @@ private fun person(
             formerDeviceCount = formerDevices.size.toUInt(),
         )
     val shown = PreviewData.person(member)
-    return shown.copy(profile = shown.profile?.copy(name = name, historySharing = history))
+    return shown.copy(
+        profile = shown.profile?.copy(name = name, historySharing = history, avatarVersion = if (picture) "1" else null),
+    )
 }
 
 /** Dan's code, for which his request hasn't arrived. */

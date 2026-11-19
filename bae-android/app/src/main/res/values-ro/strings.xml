@@ -208,6 +208,8 @@
     <string name="members_title">Persoane și dispozitive</string>
     <string name="people_people">Persoane</string>
     <string name="people_role">Rol</string>
+    <string name="people_picture">Imagine</string>
+    <string name="people_picture_remove">Elimină imaginea</string>
     <string name="people_devices">Dispozitive</string>
     <string name="people_your_devices">Dispozitivele tale</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

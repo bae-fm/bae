@@ -203,6 +203,8 @@
     <string name="members_title">Personer och enheter</string>
     <string name="people_people">Personer</string>
     <string name="people_role">Roll</string>
+    <string name="people_picture">Bild</string>
+    <string name="people_picture_remove">Ta bort bild</string>
     <string name="people_devices">Enheter</string>
     <string name="people_your_devices">Dina enheter</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

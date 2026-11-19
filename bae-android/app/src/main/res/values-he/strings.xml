@@ -203,6 +203,8 @@
     <string name="members_title">אנשים ומכשירים</string>
     <string name="people_people">אנשים</string>
     <string name="people_role">תפקיד</string>
+    <string name="people_picture">תמונה</string>
+    <string name="people_picture_remove">הסרת התמונה</string>
     <string name="people_devices">מכשירים</string>
     <string name="people_your_devices">המכשירים שלך</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

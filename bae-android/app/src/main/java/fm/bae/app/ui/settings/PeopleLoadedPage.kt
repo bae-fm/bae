@@ -138,6 +138,9 @@ internal fun youActions(session: OpenLibrary): YouActions =
     YouActions(
         errors = session.errors,
         rename = { name -> session.appHandle.renameProfile(name) },
+        setAvatar = { read ->
+            session.messages.performAndWait("set the avatar") { session.appHandle.setAvatar(read()) }
+        },
         setHistory = { chosen ->
             session.messages.perform("set history sharing to $chosen") { session.appHandle.setHistorySharing(chosen) }
         },

@@ -37,12 +37,20 @@ sealed interface ImageContent {
         val source: BridgeGallerySource,
     ) : ImageContent
 
+    /** A person's avatar at the version their profile names: a new picture is a new version, so a cached
+     *  decode never outlives the bytes it came from. */
+    data class Avatar(
+        val person: String,
+        val version: String,
+    ) : ImageContent
+
     /** Human-readable description for failure logs. */
     val description: String
         get() =
             when (this) {
                 is LibraryImage -> "library image: ${image.imageType} ${image.id}"
                 is ReleaseImage -> "release image: $releaseId"
+                is Avatar -> "avatar of: $person"
             }
 }
 
@@ -81,7 +89,7 @@ enum class ImageBucket {
 private val ImageContent.bucket: ImageBucket
     get() =
         when (this) {
-            is ImageContent.LibraryImage -> ImageBucket.LIBRARY_IMAGE
+            is ImageContent.LibraryImage, is ImageContent.Avatar -> ImageBucket.LIBRARY_IMAGE
             is ImageContent.ReleaseImage -> ImageBucket.RELEASE_IMAGE
         }
 
@@ -138,6 +146,8 @@ class ImageStore(
     private val fetchReleaseImageBytes:
         suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray =
         { _, _ -> throw ImageStoreUnavailable() },
+    /** Bytes of a person's avatar, or null when they have none. */
+    private val fetchAvatarBytes: suspend (person: String) -> ByteArray? = { null },
     decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
     byteBudgets: ImageByteBudgets = ImageByteBudgets(),
     /** Where fetches and decodes run. Injected so tests drive them on their own
@@ -147,6 +157,7 @@ class ImageStore(
     constructor(handle: AppHandleInterface) : this(
         fetchLibraryImageBytes = { handle.fetchLibraryImageBytes(it) },
         fetchReleaseImageBytes = { releaseId, source -> handle.fetchReleaseImageBytes(releaseId, source) },
+        fetchAvatarBytes = { handle.avatar(it) },
     )
 
     private val decoded = DecodedCaches(decodedBudgets)
@@ -236,6 +247,10 @@ class ImageStore(
             is ImageContent.ReleaseImage -> {
                 fetchReleaseImageBytes(content.releaseId, content.source)
             }
+
+            is ImageContent.Avatar -> {
+                fetchAvatarBytes(content.person)
+            }
         }
 
     /**
@@ -266,6 +281,11 @@ class ImageStore(
                     // never comes to name different bytes.
                     is BridgeGallerySource.ReleaseFile -> "file:${source.fileId}"
                 }
+            }
+
+            // A profile names a new avatar version whenever its bytes change.
+            is ImageContent.Avatar -> {
+                "avatar:${content.person}:${content.version}"
             }
         }
 

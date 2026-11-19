@@ -203,6 +203,8 @@
     <string name="members_title">Personas y dispositivos</string>
     <string name="people_people">Personas</string>
     <string name="people_role">Rol</string>
+    <string name="people_picture">Imagen</string>
+    <string name="people_picture_remove">Quitar imagen</string>
     <string name="people_devices">Dispositivos</string>
     <string name="people_your_devices">Tus dispositivos</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

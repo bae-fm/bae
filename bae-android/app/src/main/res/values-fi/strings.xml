@@ -203,6 +203,8 @@
     <string name="members_title">Ihmiset ja laitteet</string>
     <string name="people_people">Henkilöt</string>
     <string name="people_role">Rooli</string>
+    <string name="people_picture">Kuva</string>
+    <string name="people_picture_remove">Poista kuva</string>
     <string name="people_devices">Laitteet</string>
     <string name="people_your_devices">Laitteesi</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

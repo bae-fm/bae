@@ -195,6 +195,8 @@
     <string name="members_title">メンバーとデバイス</string>
     <string name="people_people">メンバー</string>
     <string name="people_role">役割</string>
+    <string name="people_picture">画像</string>
+    <string name="people_picture_remove">画像を削除</string>
     <string name="people_devices">デバイス</string>
     <string name="people_your_devices">あなたのデバイス</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

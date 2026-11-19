@@ -199,6 +199,8 @@
     <string name="members_title">Kişiler ve cihazlar</string>
     <string name="people_people">Kişiler</string>
     <string name="people_role">Rol</string>
+    <string name="people_picture">Resim</string>
+    <string name="people_picture_remove">Resmi kaldır</string>
     <string name="people_devices">Cihazlar</string>
     <string name="people_your_devices">Cihazlarınız</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

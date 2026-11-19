@@ -53,7 +53,8 @@ internal class RowSwitch(
  * One row of a list, in a [AndroidCard] or a sheet: the [title] with an optional [subtitle] under it,
  * whose [tone] colours it and puts a dot before it, and [trailing] content at the far end. [action]
  * makes the row itself the action ("Add device", last in its card), with [leadingIcon] before it when
- * it adds to the list; [icon] says what a tap does, and [tag] is a short chip after the title, a role or a state;
+ * it adds to the list; an [avatar] leads the row of a person, with their picture or initials;
+ * [icon] says what a tap does, and [tag] is a short chip after the title, a role or a state;
  * [selected] tints the row for the one choice made; a [value] is the title's value
  * at the row's far end, in the secondary colour. The [subtitle] wraps, read whole, as Material's supporting text does;
  * [subtitleContent] draws the line itself where its words change as the row runs. A [nested] row is a
@@ -74,6 +75,7 @@ internal fun AndroidRow(
     subtitleContent: (@Composable () -> Unit)? = null,
     tone: StatusTone? = null,
     leadingIcon: ImageVector? = null,
+    avatar: AvatarFace? = null,
     action: Boolean = false,
     destructive: Boolean = false,
     selected: Boolean = false,
@@ -109,6 +111,7 @@ internal fun AndroidRow(
                 modifier = Modifier.size(ThemeIcon.large),
             )
         }
+        avatar?.let { AndroidAvatar(face = it, size = AVATAR_SIZE) }
         Column(modifier = Modifier.weight(1f)) {
             Title(title, tag, action = action, destructive = destructive)
             subtitle?.let { Subtitle(it, tone) }
@@ -234,6 +237,7 @@ private val ONE_LINE_HEIGHT = 56.dp
 private val TWO_LINE_HEIGHT = 72.dp
 private val DOT = 8.dp
 private val EDIT_SIZE = 20.dp
+private val AVATAR_SIZE = 40.dp
 
 /** Material's alpha for a disabled control's content. */
 private const val DISABLED_ALPHA = 0.38f

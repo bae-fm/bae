@@ -199,6 +199,8 @@
     <string name="members_title">Хора и устройства</string>
     <string name="people_people">Хора</string>
     <string name="people_role">Роля</string>
+    <string name="people_picture">Снимка</string>
+    <string name="people_picture_remove">Премахване на снимката</string>
     <string name="people_devices">Устройства</string>
     <string name="people_your_devices">Вашите устройства</string>
     <!-- A person's row in People: their role, then how many devices they have. -->
