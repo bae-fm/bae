@@ -40,7 +40,7 @@ fn a_fixture_reads_from_the_repo() {
 }
 
 #[test]
-#[should_panic(expected = "is not a file in the repo")]
+#[should_panic(expected = "is not in the repo")]
 fn a_fixture_outside_the_repo_panics() {
     let folder = TestFolder::new();
     read_fixture(folder.write("file", b""));
