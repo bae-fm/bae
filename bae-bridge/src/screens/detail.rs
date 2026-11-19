@@ -5,15 +5,19 @@
 use crate::types::BridgeError;
 
 /// A macro rather than a generic: uniffi exports concrete objects and records,
-/// so each detail needs its own named types.
+/// so each detail needs its own named types. A detail that only some builds
+/// have takes its `#[cfg]` inside the braces, as `pulled_read!` does, and the
+/// macro puts it on each item it makes.
 macro_rules! detail_subscription {
     (
+        $(#[cfg($cfg:meta)])?
         object: $object:ident,
         built by $make:ident,
         snapshot: $snapshot:ident,
         value: $bridge_value:ty,
     ) => {
         detail_subscription! {
+            $(#[cfg($cfg)])?
             object: $object,
             built by $make,
             snapshot: $snapshot,
@@ -22,6 +26,7 @@ macro_rules! detail_subscription {
         }
     };
     (
+        $(#[cfg($cfg:meta)])?
         object: $object:ident,
         built by $make:ident,
         snapshot: $snapshot:ident,
@@ -29,6 +34,7 @@ macro_rules! detail_subscription {
         id: $id:ty = $core_id:ty,
     ) => {
         detail_subscription! {
+            $(#[cfg($cfg)])?
             object: $object,
             built by $make,
             snapshot: $snapshot,
@@ -38,6 +44,7 @@ macro_rules! detail_subscription {
         }
     };
     (
+        $(#[cfg($cfg:meta)])?
         object: $object:ident,
         built by $make:ident,
         snapshot: $snapshot:ident,
@@ -47,6 +54,7 @@ macro_rules! detail_subscription {
     ) => {
         /// One value a detail read delivered: the id it was read for, and that
         /// item's detail, or none once no such item exists.
+        $(#[cfg($cfg)])?
         #[derive(Debug, Clone, uniffi::Record)]
         pub struct $snapshot {
             pub id: Option<$id>,
@@ -54,6 +62,7 @@ macro_rules! detail_subscription {
         }
 
         pulled_read! {
+            $(#[cfg($cfg)])?
             /// A read that shows nothing until `set_id` names an item.
             $object: $read => $snapshot,
             converted by |snapshot: bae_library::DetailSnapshot<
@@ -66,6 +75,7 @@ macro_rules! detail_subscription {
             built by $make
         }
 
+        $(#[cfg($cfg)])?
         #[uniffi::export]
         impl $object {
             /// Show `id` from now on. A view that stops showing anything
@@ -125,8 +135,8 @@ impl DetailValue for crate::types::BridgeStorageInspector {
     type Core = bae_views::storage_inspector::StorageInspector;
 }
 
-#[cfg(desktop)]
 detail_subscription! {
+    #[cfg(desktop)]
     object: StorageInspectorSubscription,
     built by storage_inspector,
     snapshot: BridgeStorageInspectorSnapshot,
@@ -137,16 +147,16 @@ impl DetailValue for crate::types::BridgeFile {
     type Core = bae_views::album_detail::FileDetail;
 }
 
-#[cfg(desktop)]
 detail_subscription! {
+    #[cfg(desktop)]
     object: StorageFileSubscription,
     built by storage_file,
     snapshot: BridgeStorageFileSnapshot,
     value: crate::types::BridgeFile,
 }
 
-#[cfg(desktop)]
 detail_subscription! {
+    #[cfg(desktop)]
     object: InvalidCandidateSubscription,
     built by invalid_candidate,
     snapshot: BridgeInvalidCandidateSnapshot,
@@ -154,8 +164,8 @@ detail_subscription! {
     id: Vec<u8> = bae_import::CandidateKey,
 }
 
-#[cfg(desktop)]
 detail_subscription! {
+    #[cfg(desktop)]
     object: ImportCandidateSubscription,
     built by import_candidate,
     snapshot: BridgeImportCandidateSnapshot,

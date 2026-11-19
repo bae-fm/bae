@@ -67,18 +67,28 @@ live_query_read!(
 /// and `$make` builds it. Every value the read answers reaches the app. A
 /// screen that moves its read in place adds its own exported calls on
 /// `$object`.
+///
+/// A read that only some builds have takes its `#[cfg]` inside the braces,
+/// before its doc comment, and the macro puts it on each item it makes. A
+/// `#[cfg]` on the invocation would leave out the whole invocation, so the
+/// typed lints, which find what a `cfg` left out by its name, would not see
+/// that the build leaves out `$object` and would take a policy row naming it
+/// for a row that names nothing.
 macro_rules! pulled_read {
     (
-        $(#[$meta:meta])*
+        $(#[cfg($cfg:meta)])?
+        $(#[doc = $doc:literal])*
         $object:ident: $inner:ty => $bridge:ty, converted by $convert:expr, built by $make:ident
     ) => {
-        $(#[$meta])*
+        $(#[cfg($cfg)])?
+        $(#[doc = $doc])*
         #[derive(uniffi::Object)]
         pub struct $object {
             inner: $inner,
             runtime: crate::operation_runtime::OperationRuntime,
         }
 
+        $(#[cfg($cfg)])?
         pub(crate) fn $make(
             inner: $inner,
             runtime: crate::operation_runtime::OperationRuntime,
@@ -86,6 +96,7 @@ macro_rules! pulled_read {
             std::sync::Arc::new($object { inner, runtime })
         }
 
+        $(#[cfg($cfg)])?
         pulled_read_calls! { $object => $bridge, converted by $convert }
     };
 }
@@ -184,8 +195,8 @@ pulled_read! {
     built by playback_timeline
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// How far the identifications and imports in flight have got.
     ImportCountsSubscription:
         LiveValues<bae_import::ImportCounts> => crate::types::BridgeImportCounts,
@@ -193,8 +204,8 @@ pulled_read! {
     built by import_counts
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// The identify state one candidate's pane shows, and what it has in
     /// flight.
     CandidateRuntimeSubscription:
@@ -209,8 +220,8 @@ pulled_read! {
     built by candidate_runtime
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// The network read an apply of a catalog release waits on; `None` while
     /// it waits on none.
     CatalogApplyStepSubscription:
@@ -222,8 +233,8 @@ pulled_read! {
     built by catalog_apply_step
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// A release editor's draft, as the editor shows it for the form it set
     /// last; `None` once the form's release is gone. The subscription keeps
     /// one live query while the editor is open, and the editor sets each new
@@ -250,8 +261,8 @@ impl ReleaseEditDraftSubscription {
     }
 }
 
-#[cfg(feature = "cast")]
 pulled_read! {
+    #[cfg(feature = "cast")]
     /// The receivers the cast picker lists, the cast-to receiver apart from
     /// the rest, which are by name.
     CastReceiversSubscription:
@@ -261,8 +272,8 @@ pulled_read! {
     built by cast_receivers
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// The Subsonic server besides the settings: what it is doing, the
     /// networks to choose from, and whether a password is saved.
     SubsonicSubscription:
@@ -484,8 +495,8 @@ pulled_read! {
     built by library_name
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// Where each watched folder's scan stands, with an alert for each
     /// problem not among the alerts the app raised. The subscription keeps
     /// one live query while it is open, and the app sets the alerts it
@@ -513,8 +524,8 @@ impl FolderScansSubscription {
     }
 }
 
-#[cfg(desktop)]
 pulled_read! {
+    #[cfg(desktop)]
     /// The folders being scanned, each with how many folders its scan has
     /// stored.
     ScanningFoldersSubscription:
