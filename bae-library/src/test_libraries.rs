@@ -438,8 +438,11 @@ pub async fn setup_test_library_with(
     (library, temp_dir)
 }
 
-/// [`setup_test_library_with_album_dir`] whose library and installation open
-/// the person's files within `files`, a budget the test sizes and watches.
+/// [`setup_test_library_with`] with a folder for the album beside it, for a
+/// test that writes audio into a folder and imports that folder, whose library
+/// and installation open the person's files within `files`, a budget the test
+/// sizes and watches. The library's folder, the last of the three, owns the
+/// library's files, so it must outlive the library.
 pub async fn setup_test_library_with_album_dir_within(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
@@ -456,17 +459,6 @@ pub async fn setup_test_library_with_album_dir_within(
     )
     .await;
     (library, TestFolder::new(), temp_dir)
-}
-
-/// [`setup_test_library_with`] with a folder for the album beside it, for a
-/// test that writes audio into a folder and imports that folder. The library's
-/// folder, the last of the three, owns the library's files, so it must outlive
-/// the library.
-pub async fn setup_test_library_with_album_dir(
-    providers: bae_catalogs::providers::Providers,
-    http: bae_util::http::Http,
-) -> (TestLibrary, TestFolder, TestFolder) {
-    setup_test_library_with_album_dir_within(providers, http, coven::FileBudget::for_test()).await
 }
 
 /// Set up a fresh library through the production creation and open paths.
