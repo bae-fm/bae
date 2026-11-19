@@ -65,10 +65,8 @@ fn shift_jis_fallback() {
 /// the file opened.
 #[test]
 fn reading_a_text_file_gives_its_place_back() {
-    let dir = std::env::temp_dir().join(format!("bae-text-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("sheet.cue");
-    std::fs::write(&path, "TITLE \"One\"").unwrap();
+    let folder = crate::test_files::TestFolder::new();
+    let path = folder.write("sheet.cue", "TITLE \"One\"");
     let budget = coven::FileBudget::for_test();
     let watch = budget.watch();
     let lease = budget.lease_blocking(1).unwrap();
@@ -77,7 +75,6 @@ fn reading_a_text_file_gives_its_place_back() {
     assert_eq!(read.text, "TITLE \"One\"");
     assert_eq!(watch.holding(), 0);
 
-    assert!(read_text_file(&dir.join("absent.cue"), lease.place_blocking()).is_err());
+    assert!(read_text_file(&folder.join("absent.cue"), lease.place_blocking()).is_err());
     assert_eq!(watch.holding(), 0);
-    std::fs::remove_dir_all(&dir).unwrap();
 }

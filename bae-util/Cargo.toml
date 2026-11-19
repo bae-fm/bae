@@ -59,6 +59,8 @@ image = { workspace = true, features = ["jpeg", "png", "gif", "webp"] }
 # a camera photo takes follows the 600-pixel output; the image crate's decoder
 # has no scaled decode.
 jpeg-decoder = { workspace = true }
+# The temporary folder a test's `TestFolder` is (src/test_files.rs).
+tempfile = { workspace = true, optional = true }
 
 # The open-file limit (src/open_file_limit.rs) is a Unix resource limit.
 [target.'cfg(unix)'.dependencies]
@@ -76,6 +78,7 @@ tokio = { workspace = true, features = ["macros", "net", "io-util", "test-util"]
 # The budget of open files (`FileBudget::for_test`) the test places come from
 # (src/test_files.rs).
 coven = { workspace = true, features = ["test-utils"] }
+tempfile = { workspace = true }
 
 [features]
 default = []
@@ -83,9 +86,10 @@ default = []
 # as they are armed, and the local servers and canned errors tests answer
 # with), a local host that answers, records and holds a test's requests, and
 # coven's test budget of open files, which the helpers in src/test_files.rs
-# take their places from, for the tests of every crate that builds on this
-# one. Dev/test-only: a production build never enables it.
-test-utils = ["tokio/net", "tokio/io-util", "coven/test-utils"]
+# take their places from, and the temporary folder a test's files go in, for
+# the tests of every crate that builds on this one. Dev/test-only: a
+# production build never enables it.
+test-utils = ["tokio/net", "tokio/io-util", "coven/test-utils", "dep:tempfile"]
 
 [lints]
 workspace = true
