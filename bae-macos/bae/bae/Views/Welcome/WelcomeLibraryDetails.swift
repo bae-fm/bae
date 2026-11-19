@@ -45,7 +45,7 @@ struct WelcomeLibraryDetails: View {
             case .loading:
                 MacSpinner()
             case .failed(let failure):
-                Notice(error: failure)
+                MacNotice(error: failure)
             case .loaded(let status):
                 LabeledContent("Status") {
                     HStack(spacing: ThemeSpace.related) {
@@ -60,7 +60,7 @@ struct WelcomeLibraryDetails: View {
                     LabeledContent("Last synced", value: lastSynced.agoLine)
                 }
             }
-            CloudProviderConnectedSection(location: storage)
+            MacCloudHome(location: storage)
         }
         else {
             LabeledContent("Status", value: String(localized: "Not synced"))

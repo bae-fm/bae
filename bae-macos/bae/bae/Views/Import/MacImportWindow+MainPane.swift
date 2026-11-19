@@ -1,0 +1,280 @@
+import BaeKit
+import SwiftUI
+
+// MARK: - Candidate list and main pane
+
+extension MacImportWindow {
+    var candidateList: some View {
+        MacImportSidebarContainer(
+            importStore: importStore,
+            listSlot: listSlot,
+            onAddFolder: {
+                uiStore.setImportFolderPickerPresented(true)
+            },
+            onRemoveFolder: { path in removeWatchedFolder(path) },
+            onRefreshFolder: { folder in refreshWatchedFolder(folder) },
+            onCombineFolder: { key in combineFolder(key) },
+            onSeparate: { key in separateCandidate(key) },
+            onShowInLibrary: { release in
+                uiStore.navigateToAlbum(
+                    release.albumId,
+                    releaseId: release.releaseId
+                )
+            },
+            onPerform: requestCandidateAction,
+            onCancelAllIdentification: {
+                Task {
+                    do { try await importer.cancelAllIdentification() }
+                    catch { uiStore.showError(error) }
+                }
+            },
+            onCancelAllImports: { importer.cancelAllImports() }
+        )
+    }
+
+    // MARK: - Main pane
+
+    /// The mapping pane for the selected candidate: metadata source, mapping
+    /// table, and commit bar. What is in flight for it is read by the leaves
+    /// that draw it, so a progress step redraws those alone.
+    func mainPane(for candidate: Candidate) -> some View {
+        VStack(spacing: 0) {
+            if case .folder(_, .several(let parts)) = candidate.source {
+                ImportCombinedSourceView(
+                    parts: parts,
+                    canSeparate: candidate.live?.offers
+                        .contains { $0.action == .separate } == true,
+                    onSeparate: { separateSelectedCandidate() }
+                )
+            }
+            mappingPane(for: candidate)
+        }
+        .id(candidate.key)
+    }
+
+    @ViewBuilder
+    private func mappingPane(for candidate: Candidate) -> some View {
+        switch candidate.importStatus {
+        case .complete(let release):
+            let releaseEditor = releaseEditor
+            let mappingActions = mappingActions(for: candidate)
+            ScrollView {
+                ImportedReleasePane(
+                    candidate: candidate,
+                    releaseId: release.releaseId,
+                    albumId: release.albumId,
+                    editCommands: releaseEditor.editCommands(
+                        searchAlbums: importer.searchAlbums
+                    ),
+                    onViewInLibrary: { uiStore.navigateToAlbum($0) },
+                    onOpenImages: mappingActions.openImages,
+                    onPlayTrack: { trackId in
+                        playback.playRelease(
+                            release.releaseId,
+                            trackId,
+                            false
+                        )
+                    }
+                )
+                .id(release.releaseId)
+            }
+        case .importing(let step):
+            ImportingCandidatePane(
+                candidate: candidate,
+                step: step,
+                coverContent: candidate.cover?.imageContent
+            )
+        case .error, nil:
+            preparingMappingPane(for: candidate)
+        }
+    }
+
+    private func preparingMappingPane(for candidate: Candidate) -> some View {
+        ImportMappingPane(
+            candidate: candidate,
+            previewingTarget: importStore.previewState.active?.target,
+            isApplyingMetadata: importStore.isApplyingMetadata(
+                forKey: candidate.key
+            ),
+            libraryStatus: candidate.pickedLibraryStatus,
+            hasCoverOptions: hasCoverOptions(candidate),
+            coverContent: candidate.cover?.imageContent,
+            editActions: editActions(for: candidate),
+            editingCommands: editingCommands,
+            endEditing: commitAndEndEditing,
+            importDestination: importDestination,
+            mappingActions: mappingActions(for: candidate),
+            commitActions: commitActions(for: candidate),
+            albumActions: albumActions(for: candidate),
+            onMovePane: { movePane($0, for: candidate) },
+            onIdentify: { identify(candidate) },
+            onSearchForRelease: { searchForRelease(candidate) },
+            onResetToFileMetadata: {
+                ImportMappingFlow.resetToFileMetadata(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
+            onClearMetadata: {
+                ImportMappingFlow.clearMetadata(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
+            onUnlink: {
+                ImportMappingFlow.unlink(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
+            onEditCover: { presentCoverPicker(for: candidate) },
+            onDropCoverImage: { fileId in
+                selectCover(.releaseImage(fileId: fileId), for: candidate)
+            },
+            onNavigateToPlacement: { key in
+                uiStore.navigateToImportCandidate(key)
+            },
+        )
+        .animation(nil, value: importSelection.summary.single)
+    }
+
+    private func commitActions(for candidate: Candidate) -> ImportCommitActions
+    {
+        ImportCommitActions(
+            confirmImport: { commitConfirmedImport(candidate: candidate) },
+            viewInLibrary: { uiStore.navigateToAlbum($0) }
+        )
+    }
+
+    /// The album row's actions: pick a library album or a new album for this
+    /// candidate, or leave it to its release's album, and find albums to pick.
+    private func albumActions(for candidate: Candidate) -> DraftAlbumActions {
+        let key = candidate.key
+        return DraftAlbumActions(
+            pick: { pick in
+                Task {
+                    await saveCandidateEdit {
+                        try await importer.setCandidateAlbum(key, pick)
+                    }
+                }
+            },
+            search: { try await importer.searchAlbums($0) }
+        )
+    }
+
+    /// Where one album-level field's typed value goes: a row under this
+    /// candidate, written as the field is left.
+    private func editActions(for candidate: Candidate) -> ReleaseFieldWriter {
+        let key = candidate.key
+        return ReleaseFieldWriter(
+            setField: { field, value in
+                await saveCandidateEdit {
+                    try await importer.setCandidateEditField(key, field, value)
+                }
+            },
+            setLabels: { labels in
+                await saveCandidateEdit {
+                    try await importer.setCandidateLabels(key, labels)
+                }
+            },
+            setBarcodes: { barcodes in
+                await saveCandidateEdit {
+                    try await importer.setCandidateBarcodes(key, barcodes)
+                }
+            },
+            setPressingFact: { fact in
+                await saveCandidateEdit {
+                    try await importer.setCandidatePressingFact(key, fact)
+                }
+            },
+            setAlbumArtists: { assignments in
+                await saveCandidateEdit {
+                    try await importer.setCandidateAlbumArtists(
+                        key,
+                        assignments
+                    )
+                }
+            }
+        )
+    }
+
+    private func saveCandidateEdit(
+        _ save: @escaping @MainActor () async throws -> Void
+    ) async {
+        do {
+            try await save()
+        }
+        catch is CancellationError {}
+        catch {
+            if let failure = DisplayError(error)?
+                .rewording({
+                    String(localized: "Could not save that change: \($0)")
+                })
+            {
+                uiStore.showError(failure)
+            }
+        }
+    }
+
+    /// Whether the cover is worth opening a picker for: the linked pressing's
+    /// or album's remote art, or artwork found in the folder.
+    private func hasCoverOptions(_ candidate: Candidate) -> Bool {
+        candidate.releaseLink != nil || !candidate.files.coverFiles.isEmpty
+    }
+
+    private func presentCoverPicker(for candidate: Candidate) {
+        let key = candidate.key
+        // Make one lightbox load for the whole time the sheet is open,
+        // because SwiftUI builds the modal's view again each time the window
+        // updates.
+        let lightboxLoad = LightboxImageLoad()
+        uiStore.presentModal {
+            CoverPickerFrame {
+                CoverSheetView(
+                    owner: .candidate(candidateKey: key),
+                    selectedCover: candidate.cover?.selection,
+                    lightboxLoad: lightboxLoad,
+                    onFindRelease: {
+                        uiStore.dismissModal()
+                        movePane(.findOnline, for: candidate)
+                    },
+                    refreshCovers: {
+                        try await releaseEditor.refreshCandidateCovers(key)
+                    },
+                    onSelect: { selection in
+                        try await importer.setCandidateCover(key, selection)
+                    },
+                    onDone: { uiStore.dismissModal() },
+                )
+            }
+        }
+    }
+
+    private func selectCover(
+        _ selection: BridgeCoverSelection,
+        for candidate: Candidate
+    ) {
+        selectCover(selection, forKey: candidate.key)
+    }
+
+    private func selectCover(
+        _ selection: BridgeCoverSelection,
+        forKey key: Data
+    ) {
+        Task { @MainActor in
+            do {
+                try await importer.setCandidateCover(key, selection)
+            }
+            catch is CancellationError {}
+            catch {
+                if let failure = DisplayError(error)?
+                    .rewording({
+                        String(localized: "Could not change the cover: \($0)")
+                    })
+                {
+                    uiStore.showError(failure)
+                }
+            }
+        }
+    }
+}

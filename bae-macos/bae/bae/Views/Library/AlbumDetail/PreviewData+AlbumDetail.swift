@@ -2,10 +2,10 @@
     import BaeKit
     import SwiftUI
 
-    // Fixture support for `AlbumDetailView` and `AlbumExpansionContent`.
+    // Fixture support for `AlbumDetailView` and `MacAlbumPanel`.
     // Answers the detail view's album read from the shot albums, injects
     // the services the view tree pulls from the environment, and factors the
-    // `AlbumExpansionContent` no-op-callback boilerplate shared by its
+    // `MacAlbumPanel` no-op-callback boilerplate shared by its
     // shots into one builder.
 
     extension PreviewData {

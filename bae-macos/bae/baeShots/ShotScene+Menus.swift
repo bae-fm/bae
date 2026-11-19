@@ -92,7 +92,7 @@ extension ShotScene {
                     OverWindow.sheet(sheet, over: window)
                     MacMenuInPlace(
                         {
-                            MacPopUpMenu(
+                            MacMenu(
                                 SavePresetEditor.formatOptions,
                                 selection: PreviewData.savePresets[1].codec
                                     .format,

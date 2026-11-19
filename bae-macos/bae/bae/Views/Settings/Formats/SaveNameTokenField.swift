@@ -24,7 +24,7 @@ final class SaveNameText: NSObject {
 
 /// How the pane's Add row reaches the field it adds a chip to.
 @MainActor
-final class SaveNameFieldHandle<Piece: SaveNamePiece> {
+final class MacFileNameFieldHandle<Piece: SaveNamePiece> {
     fileprivate weak var field: SaveNameTokenField<Piece>.Coordinator?
 
     func append(_ value: Piece.Value) {
@@ -42,7 +42,7 @@ struct SaveNameTokenField<Piece: SaveNamePiece>: NSViewRepresentable {
 
     /// The stored pattern.
     let pieces: [Piece]
-    let handle: SaveNameFieldHandle<Piece>
+    let handle: MacFileNameFieldHandle<Piece>
     /// Whether the field is the one being typed in.
     @Binding
     var focused: Bool

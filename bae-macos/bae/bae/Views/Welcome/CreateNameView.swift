@@ -43,7 +43,7 @@ struct CreateNameView: View {
                         .frame(maxWidth: StepProgressLayout.width)
                 }
                 if let error = form.error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                         .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 MacStepActions {

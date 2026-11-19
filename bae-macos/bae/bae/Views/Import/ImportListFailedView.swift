@@ -10,7 +10,7 @@ struct ImportListFailedView: View {
     let onRetry: () -> Void
 
     var body: some View {
-        Notice(
+        MacNotice(
             title: String(localized: "The import list could not be read"),
             advice: nil,
             error: failure,

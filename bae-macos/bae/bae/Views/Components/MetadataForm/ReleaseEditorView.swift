@@ -89,7 +89,7 @@ struct ReleaseEditorView: View {
             })
                 ?? session.failure
             {
-                Notice(error: shown)
+                MacNotice(error: shown)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

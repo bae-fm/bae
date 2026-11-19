@@ -172,7 +172,7 @@ extension ShotScene {
             fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
         )
         return component(id, height: 90, images: images) {
-            QueueItemRow(
+            MacQueueRow(
                 item: BridgeQueueEntry(
                     entryId: "e-harbor-lights",
                     trackId: "t-harbor-lights",
@@ -200,7 +200,7 @@ extension ShotScene {
         }
     }
 
-    /// `QueueItemRow`, at rest and under the pointer.
+    /// `MacQueueRow`, at rest and under the pointer.
     private static let queueRowScenes: [ShotScene] = [
         queueRow("mac.component.queue-row.resting", hover: false),
         queueRow("mac.component.queue-row.hover", hover: true),

@@ -34,7 +34,7 @@ public struct ReleaseSummary: Identifiable, Sendable {
     public let totalSize: UInt64
     /// Reference to this release's own cover image (id + content version), or
     /// `nil` when none is cached. Keyed on the release id so each release
-    /// renders its own art; `ImageView` fetches the bytes by id and caches the
+    /// renders its own art; `Artwork` fetches the bytes by id and caches the
     /// decoded image under the version.
     public let cover: BridgeImageRef?
     /// What of the release waits in this device's upload queue; `nil` when

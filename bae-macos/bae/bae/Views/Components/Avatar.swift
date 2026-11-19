@@ -17,7 +17,7 @@ struct Avatar: View {
                 .font(.system(size: size * 0.4, weight: .semibold))
                 .foregroundStyle(Theme.accent)
             if let picture {
-                ImageView(
+                Artwork(
                     content: .avatar(
                         person: picture.person,
                         version: picture.version

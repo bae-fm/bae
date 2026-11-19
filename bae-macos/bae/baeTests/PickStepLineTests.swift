@@ -19,7 +19,7 @@ struct PickStepLineTests {
         )
         let size = NSSize(width: 620, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportSearchResultRow(
+            MacPressingRow(
                 pressing: pressing,
                 isImporting: false,
                 isSelected: false,

@@ -88,7 +88,7 @@ struct FindOnlineSectionHeader: View {
                     .themeIcon(.small)
                     .foregroundStyle(dimmed ? .quaternary : .tertiary)
                     .frame(width: ThemeIcon.small.size)
-                Eyebrow(section == .automatic ? "Automatic" : "Search")
+                MacEyebrow(section == .automatic ? "Automatic" : "Search")
                     .opacity(dimmed ? 0.55 : 1)
                 Spacer(minLength: ThemeSpace.related)
                 FindOnlineSectionGlyphView(glyph: glyph)

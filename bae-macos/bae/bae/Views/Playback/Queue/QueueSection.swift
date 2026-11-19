@@ -30,7 +30,7 @@ struct QueueSection: View {
     /// Every row's height, declared rather than measured because the lazy stack
     /// only estimates unbuilt rows and `QueueDragCoordinator` divides by it.
     static let rowHeight =
-        QueueItemRow.artworkSize + 2 * QueueItemRow.verticalInset + rowGap
+        MacQueueRow.artworkSize + 2 * MacQueueRow.verticalInset + rowGap
 
     /// `nil` hides the header label, for when only one list is visible.
     let title: String?
@@ -310,7 +310,7 @@ extension QueueSection {
             let isDragging = coordinator.isDragging
             // The row as a value, not an index lookup: after core echoes the
             // reorder, the old index belongs to another row.
-            QueueItemRow(
+            MacQueueRow(
                 item: floating.item,
                 isHovered: false,
                 onHoverChanged: { _ in },
@@ -341,7 +341,7 @@ extension QueueSection {
     private func queueRow(_ item: BridgeQueueEntry?, index: Int) -> some View {
         Group {
             if let item {
-                QueueItemRow(
+                MacQueueRow(
                     item: item,
                     // No hover during a drag: rows sliding under the pointer
                     // fire hover events.
@@ -405,7 +405,7 @@ extension QueueSection {
                 )
             }
             else {
-                QueuePlaceholderRow()
+                MacQueuePlaceholderRow()
             }
         }
     }

@@ -47,7 +47,7 @@ struct StorageTransferControls: View {
         case .download(let operation, nil):
             // A failed download: the row says why and offers its retry and
             // its cancel.
-            DownloadRow(
+            MacFailedTransferRow(
                 entry: .download(
                     operation,
                     transfer: operation.kind == .pin
@@ -109,7 +109,7 @@ struct StorageTransferControls: View {
         _ upload: BridgeReleaseUpload
     ) -> some View {
         if let missing = upload.missing {
-            DownloadRow(
+            MacFailedTransferRow(
                 entry: .uploadWaiting(
                     title: title,
                     fileCount: fileCount,

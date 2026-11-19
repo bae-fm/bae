@@ -1,0 +1,353 @@
+import AppKit
+import BaeKit
+import SwiftUI
+import VisionKit
+
+private let navButtonDiameter: CGFloat = 48
+
+/// An image the lightbox shows; the strip and the stage each draw it at their
+/// own size.
+protocol LightboxImage: Identifiable, Equatable {
+    var label: String { get }
+    var sourceLabel: String { get }
+    var image: ImageContent { get }
+}
+
+struct LightboxItem: LightboxImage {
+    let id: String
+    let label: String
+    let image: ImageContent
+
+    init(id: String, label: String, image: ImageContent) {
+        self.id = id
+        self.label = label
+        self.image = image
+    }
+
+    var sourceLabel: String { String(localized: "Release files") }
+}
+
+/// The images before and after the one a lightbox shows, wrapping around the
+/// ends.
+struct LightboxNeighbors<ID: Hashable>: Equatable {
+    let previous: ID
+    let next: ID
+}
+
+/// Where a lightbox stands among its images: the images its strip shows, the
+/// one it shows, and the ones before and after it, which a lone image lacks.
+/// Core works out the place, and whoever shows the lightbox passes it in.
+struct LightboxPlace<Item: LightboxImage>: Equatable {
+    let items: [Item]
+    let current: Item
+    let neighbors: LightboxNeighbors<Item.ID>?
+
+    /// Whether the lightbox moves between images.
+    var canCycle: Bool { neighbors != nil }
+}
+
+struct MacLightbox<Item: LightboxImage>: View {
+    let place: LightboxPlace<Item>
+    /// The current item's image as it loads, owned by whoever shows the
+    /// lightbox.
+    let load: LightboxImageLoad
+    /// Show the image `id` names.
+    let onSelect: (Item.ID) -> Void
+    let onDismiss: () -> Void
+    var onBrowseAll: (() -> Void)?
+
+    @Environment(ImageStore.self)
+    private var imageStore
+    @Environment(\.displayScale)
+    private var displayScale
+    @State
+    private var magnification: CGFloat = 1.0
+    @State
+    private var magnifyAnchor: UnitPoint = .center
+    /// How many times the person retried a failed load; part of the load's
+    /// identity, so a retry restarts it.
+    @State
+    private var attempt = 0
+    @FocusState
+    private var focused: Bool
+
+    var body: some View {
+        ZStack {
+            Theme.backdrop
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { onDismiss() }
+
+            VStack(spacing: 0) {
+                GeometryReader { geo in
+                    ZStack {
+                        imageContent
+                        if place.canCycle {
+                            cycleNavButtons
+                        }
+                        closeButtonOverlay
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .task(
+                        id: LightboxLoadRequest(
+                            image: place.current.image,
+                            attempt: attempt
+                        )
+                    ) {
+                        await load.load(
+                            place.current.image,
+                            from: imageStore,
+                            fitting: max(geo.size.width, geo.size.height),
+                            displayScale: displayScale
+                        )
+                    }
+                }
+
+                labelView
+
+                if place.canCycle {
+                    ThumbnailStrip(
+                        items: place.items,
+                        current: place.current.id,
+                        centered: true,
+                        onSelect: onSelect,
+                        stroke: { _, isActive in
+                            (
+                                isActive
+                                    ? Theme.onFill : Theme.onFillSecondary,
+                                isActive ? 2 : 1
+                            )
+                        }
+                    ) { item in
+                        Artwork(
+                            content: item.image,
+                            pointSize: ThumbnailStripLayout.thumbnailSize
+                        )
+                    }
+                    .padding(.bottom, ThemeSpace.group)
+                    .fadesWhenZoomed(at: magnification)
+                }
+            }
+            .allowsHitTesting(true)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onKeyPress(.escape) {
+            onDismiss()
+            return .handled
+        }
+        .onKeyPress(.leftArrow) {
+            goPrevious()
+            return .handled
+        }
+        .onKeyPress(.rightArrow) {
+            goNext()
+            return .handled
+        }
+        .onAppear { focused = true }
+        .onDisappear { load.close() }
+        .onChange(of: place.current.image) { _, _ in
+            magnification = 1.0
+        }
+    }
+
+    @ViewBuilder
+    private var imageContent: some View {
+        if let nsImage = load.fullResolution ?? load.phase.image {
+            loadedImageView(nsImage)
+        }
+        else if case .failed = load.phase {
+            loadFailedView
+        }
+        else {
+            ProgressView {
+                Text(
+                    "Loading the image…",
+                    comment:
+                        "Lightbox, while bae reads the image shown large, which can come from the library's cloud."
+                )
+                .themeText(.body)
+                .foregroundStyle(Theme.onFillSecondary)
+            }
+            .controlSize(.large)
+        }
+    }
+
+    private func loadedImageView(_ nsImage: NSImage) -> some View {
+        Image(nsImage: nsImage)
+            .resizable()
+            .scaledToFit()
+            .overlay {
+                if let analysis = load.phase.analysis {
+                    LiveTextOverlay(analysis: analysis)
+                }
+            }
+            .scaleEffect(magnification, anchor: magnifyAnchor)
+            .gesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        magnifyAnchor = value.startAnchor
+                        magnification = max(value.magnification, 1.0)
+                        if value.magnification > 1.01 {
+                            load.loadFullResolution(displayScale: displayScale)
+                        }
+                    }
+                    .onEnded { _ in
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            magnification = 1.0
+                        }
+                    },
+            )
+            .padding(.horizontal, ThemeSpace.page)
+            .padding(.top, ThemeSpace.page)
+            .padding(.bottom, ThemeSpace.edge)
+            .shadow(color: Theme.shadow, radius: 20)
+    }
+}
+
+// MARK: - Overlay chrome
+
+extension MacLightbox {
+    fileprivate func goPrevious() {
+        if let previous = place.neighbors?.previous { onSelect(previous) }
+    }
+
+    fileprivate func goNext() {
+        if let next = place.neighbors?.next { onSelect(next) }
+    }
+
+    fileprivate var labelView: some View {
+        VStack(spacing: 0) {
+            Text(verbatim: place.current.label)
+                .themeText(.body)
+                .foregroundStyle(Theme.onFill)
+                .lineLimit(2)
+            Text(verbatim: place.current.sourceLabel)
+                .themeText(.detail)
+                .foregroundStyle(Theme.onFillSecondary)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, ThemeSpace.section)
+        .padding(.vertical, ThemeSpace.related)
+        .fadesWhenZoomed(at: magnification)
+    }
+
+    fileprivate var cycleNavButtons: some View {
+        HStack {
+            circleIconButton(
+                systemName: "chevron.backward",
+                diameter: navButtonDiameter,
+                icon: .stageArrow,
+                action: goPrevious
+            )
+            Spacer()
+            circleIconButton(
+                systemName: "chevron.forward",
+                diameter: navButtonDiameter,
+                icon: .stageArrow,
+                action: goNext
+            )
+        }
+        .padding(.horizontal, ThemeSpace.edge)
+        .fadesWhenZoomed(at: magnification)
+    }
+
+    fileprivate var closeButtonOverlay: some View {
+        VStack {
+            HStack {
+                if let onBrowseAll {
+                    Button(action: onBrowseAll) {
+                        HStack(spacing: ThemeSpace.compact) {
+                            Image(systemName: "square.grid.2x2")
+                                .themeIcon(.stageBrowse)
+                            Text("Browse all images")
+                        }
+                    }
+                    .buttonStyle(.accentBorderless)
+                    .foregroundStyle(Theme.onFill)
+                    .padding(.vertical, ThemeSpace.compact)
+                    .padding(.horizontal, ThemeSpace.group)
+                    .background(Theme.scrim, in: Capsule())
+                    .padding(ThemeSpace.group)
+                }
+                Spacer()
+                circleIconButton(
+                    systemName: "xmark",
+                    diameter: 36,
+                    icon: .stageClose
+                ) {
+                    onDismiss()
+                }
+                .padding(ThemeSpace.group)
+            }
+            Spacer()
+        }
+        .fadesWhenZoomed(at: magnification)
+    }
+
+    fileprivate func circleIconButton(
+        systemName: String,
+        diameter: CGFloat,
+        icon: ThemeIcon,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Theme.scrim)
+                    .frame(width: diameter, height: diameter)
+                Image(systemName: systemName)
+                    .themeIcon(icon)
+                    .foregroundStyle(Theme.onFillSecondary)
+            }
+        }
+        .buttonStyle(.accentPlain)
+    }
+}
+
+extension MacLightbox {
+    /// The failed-load state, with a retry. The load keeps no error, so the
+    /// notice has no Details.
+    fileprivate var loadFailedView: some View {
+        MacNotice(
+            error: DisplayError(
+                line: String(localized: "Could not load the image")
+            ),
+            look: .centeredOnStage,
+            action: ErrorAction { attempt += 1 }
+        )
+    }
+}
+
+extension View {
+    fileprivate func fadesWhenZoomed(at magnification: CGFloat) -> some View {
+        opacity(magnification > 1.01 ? 0 : 1)
+    }
+}
+
+private struct LiveTextOverlay: NSViewRepresentable {
+    let analysis: ImageAnalysis
+
+    func makeNSView(context _: Context) -> ImageAnalysisOverlayView {
+        let overlayView = ImageAnalysisOverlayView()
+        overlayView.preferredInteractionTypes = .textSelection
+        overlayView.analysis = analysis
+        return overlayView
+    }
+
+    func updateNSView(
+        _ overlayView: ImageAnalysisOverlayView,
+        context _: Context
+    ) {
+        overlayView.analysis = analysis
+    }
+}
+
+// periphery:ignore - a `.task(id:)` identity: compared, never read.
+/// One load of the lightbox's image: which image, and which time of asking.
+private struct LightboxLoadRequest: Equatable {
+    let image: ImageContent
+    let attempt: Int
+}

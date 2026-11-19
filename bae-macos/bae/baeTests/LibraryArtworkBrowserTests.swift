@@ -78,7 +78,7 @@ struct LibraryArtworkBrowserTests {
         let lightbox = LightboxImageLoad()
         func view(_ version: String) throws -> some View {
             let cover = savedCover(version: version)
-            return LightboxView(
+            return MacLightbox(
                 place: LightboxPlace(
                     items: [cover],
                     current: cover,

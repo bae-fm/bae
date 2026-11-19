@@ -34,7 +34,7 @@ struct MacTrackRow: View {
             // Every leading-slot state stays in the layout, opacity-toggled,
             // so the row's size never changes.
             ZStack(alignment: .trailing) {
-                TrackPositionLabel(text: track.positionText)
+                MacTrackLead(text: track.positionText)
                     .foregroundStyle(.tertiary)
                     .opacity(!isCurrent && !hover ? 1 : 0)
 
@@ -227,7 +227,7 @@ struct TrackRowView: View {
 
 /// A track's position as the track list draws it, on one line: the rows show
 /// it, and the list measures every one to size the rows' number column.
-struct TrackPositionLabel: View {
+struct MacTrackLead: View {
     let text: String
 
     var body: some View {

@@ -98,7 +98,7 @@ struct AddDeviceSheetContent: View {
                 VStack(alignment: .leading, spacing: ThemeSpace.group) {
                     MacMatchCode(code: confirmation, dialog: true)
                     if let error {
-                        Notice(error: error)
+                        MacNotice(error: error)
                     }
                 }
             } footer: {
@@ -161,7 +161,7 @@ struct AddDeviceSheetContent: View {
             case .failure(let error):
                 // The presenter only records failures that have a line.
                 if let shown = DisplayError(error) {
-                    Notice(error: shown)
+                    MacNotice(error: shown)
                 }
             }
         }

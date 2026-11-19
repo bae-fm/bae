@@ -270,7 +270,7 @@ struct MacQueuePanel: View {
                 .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                // Not `Eyebrow`: this label is accent, not secondary.
+                // Not `MacEyebrow`: this label is accent, not secondary.
                 Text("Now playing")
                     .themeText(.eyebrow)
                     .foregroundStyle(Theme.accent)
@@ -330,6 +330,6 @@ struct MacQueuePanel: View {
     }
 
     private var nowPlayingArt: some View {
-        ImageView(content: nowPlayingCover, pointSize: ThemeSize.barArtwork)
+        Artwork(content: nowPlayingCover, pointSize: ThemeSize.barArtwork)
     }
 }

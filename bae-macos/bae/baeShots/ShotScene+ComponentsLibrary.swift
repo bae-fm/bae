@@ -10,13 +10,13 @@ extension ShotScene {
     static let libraryComponentScenes: [ShotScene] =
         headingScenes + albumTileScenes + fileScenes + storageChipScenes
 
-    /// `SectionHeader` and `Eyebrow`.
+    /// `MacSectionHeader` and `MacEyebrow`.
     private static let headingScenes: [ShotScene] = [
         component("mac.component.section-header.default", height: 70) {
-            SectionHeader(title: "Works").frame(width: 380, alignment: .leading)
+            MacSectionHeader(title: "Works").frame(width: 380, alignment: .leading)
         },
         component("mac.component.eyebrow.default", height: 50) {
-            Eyebrow(verbatim: "Side A")
+            MacEyebrow(verbatim: "Side A")
         },
     ]
 
@@ -32,7 +32,7 @@ extension ShotScene {
     }
 
     /// `MacAlbumTile` in a row of four, the first at rest, the third open,
-    /// the fourth selected; and `ArtistAlbumCard`.
+    /// the fourth selected; and `MacArtistAlbumTile`.
     private static let albumTileScenes: [ShotScene] = [
         component(
             "mac.component.album-tile.resting",
@@ -89,7 +89,7 @@ extension ShotScene {
         _ title: String,
         _ year: Int32
     ) -> some View {
-        ArtistAlbumCard(
+        MacArtistAlbumTile(
             album: BridgeAlbum(
                 id: title,
                 title: title,
@@ -148,11 +148,11 @@ extension ShotScene {
         )
     }
 
-    /// `StorageInspectorFileRow` and `StorageFileDetails`.
+    /// `MacFileRow` and `MacFileDetails`.
     private static let fileScenes: [ShotScene] = [
         component("mac.component.file-row.at-rest", height: 150) {
             VStack(spacing: 0) {
-                StorageInspectorFileRow(
+                MacFileRow(
                     row: inspectorFile(
                         "01 Harbor Lights.flac",
                         size: 34_100_000,
@@ -164,7 +164,7 @@ extension ShotScene {
                         )
                     )
                 )
-                StorageInspectorFileRow(
+                MacFileRow(
                     row: inspectorFile(
                         "02 The Long Way Home.flac",
                         size: 38_900_000,
@@ -176,7 +176,7 @@ extension ShotScene {
                         )
                     )
                 )
-                StorageInspectorFileRow(
+                MacFileRow(
                     row: inspectorFile(
                         "cover.jpg",
                         size: 1_200_000,
@@ -188,7 +188,7 @@ extension ShotScene {
             .environment(OutboxStore(uploadsPaused: false))
         },
         component("mac.component.file-details.other-file", height: 220) {
-            StorageFileDetails(
+            MacFileDetails(
                 file: BridgeFile(
                     id: "file-log",
                     originalFilename: "Field Recordings.log",

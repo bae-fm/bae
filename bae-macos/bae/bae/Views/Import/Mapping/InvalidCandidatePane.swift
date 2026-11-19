@@ -46,7 +46,7 @@ struct InvalidCandidatePane: View {
     private var card: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
         {
-            Notice(
+            MacNotice(
                 title: invalid.reason.localizedText,
                 advice: nil,
                 error: nil,
@@ -81,7 +81,7 @@ struct InvalidCandidatePane: View {
     /// gives its own files.
     private var files: some View {
         VStack(spacing: 0) {
-            Eyebrow(
+            MacEyebrow(
                 verbatim: localizedCoreString("ui.import.mapping.files_title")
             )
             .frame(maxWidth: .infinity, alignment: .leading)

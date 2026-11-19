@@ -25,7 +25,7 @@ struct NewPlaylistSheet: View {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 PlaylistFields(name: $state.name, sharing: $state.sharing)
                 if let error = state.error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {

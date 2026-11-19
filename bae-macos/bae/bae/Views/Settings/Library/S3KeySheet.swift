@@ -224,7 +224,7 @@ struct S3KeySheet: View {
                 )
             }
             else {
-                S3KeyFields(accessKey: $accessKey, secretKey: $secretKey) {
+                MacS3KeyFields(accessKey: $accessKey, secretKey: $secretKey) {
                     if case .fields(let failure?) = replacement.sheet {
                         failureNotice(failure)
                     }
@@ -250,11 +250,11 @@ struct S3KeySheet: View {
         }
     }
 
-    private func failureNotice(_ failure: S3KeyReplacement.Failure) -> Notice {
+    private func failureNotice(_ failure: S3KeyReplacement.Failure) -> MacNotice {
         let title = String(localized: "Could not use this key")
         switch failure {
         case .refused:
-            return Notice(
+            return MacNotice(
                 title: title,
                 advice: String(
                     localized: "S3 storage does not accept this access key."
@@ -263,7 +263,7 @@ struct S3KeySheet: View {
                 look: .quiet
             )
         case .failed(let error):
-            return Notice(
+            return MacNotice(
                 title: title,
                 advice: error.line,
                 error: error,

@@ -174,7 +174,7 @@ extension ShotScene {
         )
         uiStore.presentModal {
             CoverPickerFrame {
-                CoverGalleryView(
+                MacCoverGallery(
                     content: content,
                     remoteItems: .linked(content.remote?.items ?? []),
                     filter: .constant(.all),
@@ -195,8 +195,8 @@ extension ShotScene {
     private static var albumMenu: some View {
         MacMenuInPlace(
             {
-                MacPopUpMenu(
-                    DraftAlbumRow.albumOptions(editedRelease.draft.album),
+                MacMenu(
+                    MacAlbumPicker.albumOptions(editedRelease.draft.album),
                     selection: .standing,
                     select: { _ in }
                 )

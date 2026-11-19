@@ -22,7 +22,7 @@ struct MacListRow: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .frame(width: Self.leadWidth, alignment: .center)
-            ImageView(imageRef: cover, pointSize: Self.coverSize)
+            Artwork(imageRef: cover, pointSize: Self.coverSize)
                 .frame(width: Self.coverSize, height: Self.coverSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.bar))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {

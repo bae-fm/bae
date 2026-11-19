@@ -35,7 +35,7 @@ struct RestoreFileSheet: View {
                     .textSelection(.enabled)
             }
             if let error {
-                Notice(error: error)
+                MacNotice(error: error)
             }
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)

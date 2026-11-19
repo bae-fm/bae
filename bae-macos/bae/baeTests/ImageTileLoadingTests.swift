@@ -18,7 +18,7 @@ struct ImageTileLoadingTests {
         let side: CGFloat = 120
         let size = NSSize(width: side, height: side)
         try await SnapshotTestSupport.withHostedWindow(
-            ImageView(
+            Artwork(
                 content: .remote(
                     BridgeRemoteImageSet(
                         url: "https://images.example/front-original.png",

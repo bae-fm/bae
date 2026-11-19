@@ -12,7 +12,7 @@ struct FormerDevicesDisclosure: View {
     private var isExpanded = false
 
     var body: some View {
-        FormDisclosure(isExpanded: $isExpanded) {
+        MacDisclosure(isExpanded: $isExpanded) {
             ForEach(devices, id: \.id) { device in
                 HStack(spacing: ThemeSpace.related) {
                     Text(device.name)

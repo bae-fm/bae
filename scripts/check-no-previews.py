@@ -25,7 +25,7 @@ ALLOWED = {
     "bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryGridScenes.kt",
     "bae-macos/bae/bae/Views/Library/Grid/AlbumCardMenuItems.swift",
     "bae-macos/bae/bae/Views/Library/Grid/AlbumExpansionSlot.swift",
-    "bae-macos/bae/bae/Views/Library/Grid/AlbumGridView.swift",
+    "bae-macos/bae/bae/Views/Library/Grid/MacAlbumGrid.swift",
     "bae-macos/bae/bae/Views/Library/Grid/CardMenuButton.swift",
     "bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift",
 }

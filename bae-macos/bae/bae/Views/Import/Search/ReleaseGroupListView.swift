@@ -111,7 +111,7 @@ struct ReleaseGroupSection: View {
     /// Where a pressing row's text starts, from the card's leading edge.
     static let rowTextInset =
         ruleInset + ruleWidth + ruleGap
-        + ImportSearchResultRow.horizontalPadding
+        + MacPressingRow.horizontalPadding
 
     let group: ReleaseGroup
     /// Whether the rows a run's agreement set aside show beneath the offered
@@ -145,7 +145,7 @@ struct ReleaseGroupSection: View {
         let sections = shownSections
         if sections.contains(where: { !$0.rows.isEmpty }) {
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                ReleaseGroupCard(group: group)
+                MacReleaseCard(group: group)
                 pressings(sections)
             }
         }
@@ -168,7 +168,7 @@ struct ReleaseGroupSection: View {
                         AlbumSectionHeading(album: album)
                     }
                     ForEach(section.rows) { pressing in
-                        ImportSearchResultRow(
+                        MacPressingRow(
                             pressing: pressing,
                             isImporting: isImporting,
                             agreements: agreements[pressing.id],

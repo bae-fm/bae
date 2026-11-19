@@ -9,7 +9,7 @@ import Testing
 /// The grid hosted in a window beside a panel that springs in and out, as the
 /// queue does in `MacMainWindowContainer`, so a width change crosses a column count.
 @MainActor
-@Suite("AlbumGridView across a column change", .serialized)
+@Suite("MacAlbumGrid across a column change", .serialized)
 struct AlbumGridResizeTests {
     @Observable
     @MainActor
@@ -100,7 +100,7 @@ struct AlbumGridResizeTests {
 
         var body: some View {
             HStack(spacing: 0) {
-                AlbumGridView(
+                MacAlbumGrid(
                     list: list,
                     sortCriteria: [],
                     fullWidth: false,

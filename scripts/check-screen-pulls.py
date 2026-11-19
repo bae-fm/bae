@@ -128,7 +128,7 @@ OTHER_FOR_AWAITS: dict[tuple[str, str], str] = {
         "a stream that never yields, which holds the task until it is cancelled"
     ),
     (
-        "bae-macos/bae/bae/Views/Settings/Library/SyncStatusBlock.swift",
+        "bae-macos/bae/bae/Views/Settings/Library/MacSyncStatus.swift",
         "NotificationCenter",
     ): "the system's notifications, awaited for one",
 }

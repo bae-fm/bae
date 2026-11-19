@@ -9,7 +9,7 @@ struct PreviewOverlay: View {
     let isPlaying: Bool
 
     var body: some View {
-        ModalOverlay(
+        MacModal(
             onDismiss: {
                 previewAudio.previewStop()
             },

@@ -216,8 +216,8 @@ struct SyncSetupWizard: View {
         }
     #endif
 
-    private var s3Form: S3SetupForm {
-        S3SetupForm(leave: leave, onConnected: connected)
+    private var s3Form: MacS3Form {
+        MacS3Form(leave: leave, onConnected: connected)
     }
 
     /// The storage is connected: show the restore code before the sheet
@@ -264,7 +264,7 @@ private struct RestoreCodeStep: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                RestoreCodeSection(reveal: reveal)
+                MacRestoreCode(reveal: reveal)
             }
             .formStyle(.grouped)
 
@@ -379,7 +379,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
             }
             else {
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                         .padding(.horizontal, ThemeSpace.section)
                         .padding(.top, ThemeSpace.section)
                 }

@@ -226,7 +226,7 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    Notice(
+                    MacNotice(
                         title: String(localized: "Could not read your library"),
                         advice: nil,
                         error: error,
@@ -240,7 +240,7 @@ extension LibraryView {
                     LibraryEmptyState(title: "No albums")
                 }
                 else {
-                    AlbumGridView(
+                    MacAlbumGrid(
                         list: albumList,
                         sortCriteria: session.albums.sortCriteria,
                         groupByArtist: session.albumGrouping.byArtist,
@@ -282,7 +282,7 @@ extension LibraryView {
         Group {
             if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
-                    Notice(
+                    MacNotice(
                         title: String(localized: "Could not read your library"),
                         advice: nil,
                         error: error,
@@ -331,7 +331,7 @@ extension LibraryView {
         Group {
             if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
-                    Notice(
+                    MacNotice(
                         title: String(localized: "Could not read your library"),
                         advice: nil,
                         error: error,

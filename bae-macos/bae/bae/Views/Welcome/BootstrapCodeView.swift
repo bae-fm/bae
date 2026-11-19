@@ -71,7 +71,7 @@ struct BootstrapCodeView: View {
             .formStyle(.grouped)
             .disabled(form.isRunning)
             if let error = form.error {
-                Notice(error: error)
+                MacNotice(error: error)
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }
@@ -154,7 +154,7 @@ struct BootstrapCodeView: View {
                 CodeField(form: form)
                 Button("Scan") { showScanner = true }
                 if let decodeError = form.decodeError {
-                    Notice(error: decodeError)
+                    MacNotice(error: decodeError)
                 }
             }
         }

@@ -9,7 +9,7 @@ extension View {
 }
 
 /// The small capitalised label that names a section, a group or a column.
-public struct Eyebrow: View {
+public struct MacEyebrow: View {
     private let text: Text
 
     public init(_ text: Text) {

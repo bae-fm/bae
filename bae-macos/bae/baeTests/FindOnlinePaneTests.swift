@@ -240,7 +240,7 @@ struct FindOnlineDiscogsBarTests {
 struct FindOnlinePressingPickTests {
     /// A row is one pressing however many sources carry it, and what picking
     /// it claims is core's answer, not the row's — the pane hands core's pick
-    /// straight back through `ImportSearchResultRow.onSelect`.
+    /// straight back through `MacPressingRow.onSelect`.
     @Test("a row sends the pick core settled for it")
     func aRowSendsTheCorePick() throws {
         let bridge = PreviewData.exactPressings[1]
@@ -578,8 +578,8 @@ struct PickedRowTests {
     private func row(
         _ pressing: Pressing,
         loading: PickReading?
-    ) -> ImportSearchResultRow {
-        ImportSearchResultRow(
+    ) -> MacPressingRow {
+        MacPressingRow(
             pressing: pressing,
             isImporting: false,
             isSelected: false,

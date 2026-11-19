@@ -299,7 +299,7 @@ extension ShotScene {
                     AnyView(
                         MacMenuInPlace(
                             {
-                                MacPopUpMenu(
+                                MacMenu(
                                     BridgeHistorySharing.popUpOptions,
                                     selection: BridgeHistorySharing.private,
                                     select: { _ in }

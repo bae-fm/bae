@@ -25,7 +25,7 @@ struct QueueRow<Content: View, Below: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            RowItem {
+            MacItem {
                 Image(systemName: icon)
                     .font(.system(size: ThemeSize.lead))
                     .foregroundStyle(.secondary)

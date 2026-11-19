@@ -256,7 +256,7 @@ private struct ChipLook: ViewModifier {
 }
 
 /// A line saying something failed.
-public struct ErrorText: View {
+public struct MacErrorLine: View {
     private let text: Text
 
     /// A message already in the person's language; a literal takes the

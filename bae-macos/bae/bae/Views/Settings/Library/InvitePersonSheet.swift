@@ -155,7 +155,7 @@ struct InvitePersonForm: View {
                 fields
                 choices
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {

@@ -14,7 +14,7 @@ struct ImportListRowLayout<Meta: View, Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {
-            ImageView(
+            Artwork(
                 content: coverContent,
                 pointSize: MacImportRow.coverPointSize
             )

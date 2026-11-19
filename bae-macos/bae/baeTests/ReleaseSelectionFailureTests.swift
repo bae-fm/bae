@@ -219,8 +219,8 @@ extension ReleaseSelectionFailureTests {
         failure: ReleaseSelectionFailure? = nil,
         onRetryUnread: (() -> Void)? = nil,
         onSelect: @escaping (Pressing) -> Void
-    ) -> ImportSearchResultRow {
-        ImportSearchResultRow(
+    ) -> MacPressingRow {
+        MacPressingRow(
             pressing: pressing,
             isImporting: false,
             isSelected: false,

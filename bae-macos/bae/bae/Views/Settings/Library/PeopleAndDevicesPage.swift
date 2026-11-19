@@ -170,10 +170,10 @@ struct PeopleAndDevicesPage: View {
             )
             Form {
                 if let error = store.error {
-                    Section { Notice(error: error) }
+                    Section { MacNotice(error: error) }
                 }
                 if let actionError {
-                    Section { Notice(error: actionError) }
+                    Section { MacNotice(error: actionError) }
                 }
                 switch shown {
                 case .people:
@@ -816,7 +816,7 @@ private struct RenameProfileSheet: View {
                 }
                 .disabled(task != nil)
                 if let error {
-                    Notice(
+                    MacNotice(
                         title: String(localized: "Could not save the name."),
                         advice: nil,
                         error: error
@@ -870,7 +870,7 @@ private struct RefusedInviteRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(verbatim: refused.address)
                     .themeText(.rowTitle)
-                ErrorText(
+                MacErrorLine(
                     String(
                         localized:
                             "Could not invite: \(localizedCoreString(refused.reasonKey))"
@@ -919,7 +919,7 @@ private struct InviteRow: View {
                     action: onOpen
                 )
                 if let held = invite.held {
-                    ErrorText(localizedCoreString(held.reason.key))
+                    MacErrorLine(localizedCoreString(held.reason.key))
                 }
             }
         }
@@ -955,7 +955,7 @@ struct JoinRequestSheet: View {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 MacMatchCode(code: confirmation, dialog: true)
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {

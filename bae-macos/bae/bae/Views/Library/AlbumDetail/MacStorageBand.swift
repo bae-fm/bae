@@ -20,7 +20,7 @@ struct MacStorageBand: View {
                 pill
             }
             if let missing = release.summary.upload?.missing {
-                Notice(
+                MacNotice(
                     title: String(localized: "\(missing) is missing"),
                     advice: String(
                         localized: "Restore it to finish uploading."
@@ -84,14 +84,14 @@ struct MacStorageBand: View {
     @ViewBuilder
     private var failure: some View {
         if case .failed(let error) = release.downloadStatus {
-            Notice(
+            MacNotice(
                 title: String(localized: "Could not pin"),
                 advice: nil,
                 error: DisplayError(line: error)
             )
         }
         if case .failed(let error) = release.moveToThisDevice {
-            Notice(
+            MacNotice(
                 title: String(localized: "Could not move to This Mac"),
                 advice: nil,
                 error: DisplayError(line: error)

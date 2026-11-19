@@ -22,7 +22,7 @@ struct UndoneSetupLine: View {
         if let undone = status.snapshot?.undoneSetup,
             let error = DisplayError(undone.error)
         {
-            Notice(
+            MacNotice(
                 error: error,
                 action: ErrorAction("Dismiss", isDisabled: dismissTask != nil) {
                     dismiss(undone.operation)

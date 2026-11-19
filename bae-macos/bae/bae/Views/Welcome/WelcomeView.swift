@@ -111,10 +111,10 @@ struct WelcomeView: View {
     private var chooser: some View {
         VStack(spacing: 0) {
             if let resumeError {
-                Notice(error: resumeError)
+                MacNotice(error: resumeError)
                     .padding()
             }
-            WelcomeChooseView(
+            MacWelcomeHome(
                 loadError: loadError,
                 launchProblems: launchProblems,
                 canDeleteActiveLibrary: canDeleteActiveLibrary,

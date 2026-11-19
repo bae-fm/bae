@@ -247,7 +247,7 @@ private struct SyncSettingsPage: View {
         Form {
             Section {
                 UndoneSetupLine()
-                SyncStatusBlock(
+                MacSyncStatus(
                     location: configStore.storage,
                     actions: SyncFixActions(
                         onResetDevice: onResetDevice,
@@ -260,7 +260,7 @@ private struct SyncSettingsPage: View {
             }
             if let location = configStore.storage {
                 Section {
-                    CloudProviderConnectedSection(location: location)
+                    MacCloudHome(location: location)
                     if case .s3 = location,
                         case .s3AccessKey(let keyId) = configStore.config
                             .storageAccess
@@ -336,7 +336,7 @@ private struct LibraryRestoreCodeSection: View {
     let location: BridgeStorageLocation
 
     var body: some View {
-        RestoreCodeSection(
+        MacRestoreCode(
             reveal: reveal,
             onPrint: { code in
                 RestoreCodePrinting.print(
@@ -358,7 +358,7 @@ private struct S3KeyLineNotice: View {
     var body: some View {
         switch line {
         case .saved(let oldKey):
-            Notice(
+            MacNotice(
                 title: String(localized: "Saved the new S3 key."),
                 advice: oldKey.map { oldKey in
                     String(
@@ -371,7 +371,7 @@ private struct S3KeyLineNotice: View {
                 onDismiss: onDismiss
             )
         case .failed(let error):
-            Notice(
+            MacNotice(
                 title: String(localized: "Could not use this key"),
                 advice: error.line,
                 error: error,

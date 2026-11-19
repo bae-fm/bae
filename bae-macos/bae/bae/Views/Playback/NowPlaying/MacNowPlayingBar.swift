@@ -114,7 +114,7 @@ struct MacNowPlayingBar: View {
     }
 
     private var albumArt: some View {
-        ImageView(content: cover, pointSize: ThemeSize.barArtwork)
+        Artwork(content: cover, pointSize: ThemeSize.barArtwork)
     }
 
     // MARK: - Center: transport controls + progress
@@ -279,7 +279,7 @@ extension MacNowPlayingBar {
             case .controls(let settings):
                 muteButton(settings)
 
-                SlimSlider(
+                MacVolumeSlider(
                     value: settings.volume,
                     onDrag: onVolumeDrag,
                     onChange: onVolumeChange

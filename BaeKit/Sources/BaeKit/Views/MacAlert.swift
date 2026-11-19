@@ -77,7 +77,7 @@
     /// side by side at equal width with the default on the right; three or
     /// more stack with the default on top. Each button runs its action, then
     /// `finish`.
-    public struct MacAlertView: View {
+    public struct MacAlert: View {
         public static let width: CGFloat = 260
 
         let words: MacAlertWords
@@ -107,7 +107,7 @@
                     .fontWeight(.bold)
                     .fixedSize(horizontal: false, vertical: true)
                 if let warning = words.warning {
-                    Notice(
+                    MacNotice(
                         title: warning,
                         advice: nil,
                         error: nil,
@@ -315,7 +315,7 @@
 
         var body: some View {
             if let built = build() {
-                MacAlertView(built.0, buttons: built.1, finish: finish)
+                MacAlert(built.0, buttons: built.1, finish: finish)
                     .elevatedFace()
                     .padding(.top, Self.hangs)
                     .padding([.horizontal, .bottom], Self.shadowRoom)
@@ -683,7 +683,7 @@
         }
     }
 
-    extension MacAlertView {
+    extension MacAlert {
         /// The alert's face: elevated, 20 points rounded, with a shadow.
         public func elevatedFace() -> some View {
             background(Theme.surfaceElevated)

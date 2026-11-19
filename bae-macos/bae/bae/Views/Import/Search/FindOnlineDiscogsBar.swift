@@ -14,7 +14,7 @@ struct FindOnlineDiscogsBar: View {
     }
 
     var body: some View {
-        Notice(
+        MacNotice(
             title: String(localized: "Add \(discogs) to find more pressings"),
             advice: String(
                 localized:

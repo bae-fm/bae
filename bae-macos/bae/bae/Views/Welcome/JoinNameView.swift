@@ -36,7 +36,7 @@ struct JoinNameView: View {
                 }
                 .frame(width: 400)
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                         .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 MacStepActions {

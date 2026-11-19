@@ -62,7 +62,7 @@ struct ImportMappingPane: View {
                     if !mapping.images.isEmpty {
                         imagesSection
                     }
-                    ImportMappingTable(
+                    MacImportTable(
                         table: mapping,
                         previewingTarget: previewingTarget,
                         actions: mappingActions,

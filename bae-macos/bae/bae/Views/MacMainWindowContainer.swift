@@ -55,7 +55,7 @@ struct MacMainWindowContainer: View {
     var body: some View {
         ZStack {
             MacMainWindow(showQueue: uiStore.showQueue) {
-                TitleBar(
+                MacTitleBar(
                     searchText: $searchText,
                     onSearchFieldFrame: { searchFieldFrame = $0 }
                 )
@@ -66,7 +66,7 @@ struct MacMainWindowContainer: View {
                     LibraryView()
                 }
                 else {
-                    ImportView(endEditing: endEditing)
+                    MacImportWindow(endEditing: endEditing)
                 }
             } queuePanel: {
                 MacQueuePanelContainer(
@@ -94,7 +94,7 @@ struct MacMainWindowContainer: View {
 
             // Lightbox overlay
             if let lightbox = uiStore.lightbox, let place = lightbox.place {
-                LightboxView(
+                MacLightbox(
                     place: place,
                     load: lightboxLoad,
                     onSelect: { lightbox.focus($0) },
@@ -116,14 +116,14 @@ struct MacMainWindowContainer: View {
             ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
                 _,
                 builder in
-                ModalOverlay(onDismiss: { uiStore.dismissModal() }) {
+                MacModal(onDismiss: { uiStore.dismissModal() }) {
                     builder()
                 }
             }
 
             // Document viewer, over the modal it may have been opened from
             if let document = uiStore.document {
-                ModalOverlay(onDismiss: { uiStore.dismissDocument() }) {
+                MacModal(onDismiss: { uiStore.dismissDocument() }) {
                     DocumentViewerView(
                         name: document.name,
                         text: document.text,
@@ -140,7 +140,7 @@ struct MacMainWindowContainer: View {
                 // Hangs under the title bar, 4 points below it, with its
                 // trailing edge on the field's; the monitor below dismisses it
                 // and lets the click through.
-                SearchView(
+                MacSearchCard(
                     results: uiStore.searchResults,
                     onSelectAlbum: selectAlbum,
                     onSelectTrack: selectTrack,
@@ -153,10 +153,10 @@ struct MacMainWindowContainer: View {
                 } action: {
                     searchCardFrame = $0
                 }
-                .padding(.leading, rect.maxX - SearchView.width)
+                .padding(.leading, rect.maxX - MacSearchCard.width)
                 .padding(
                     .top,
-                    rect.midY + TitleBar.height / 2 + ThemeSpace.inline
+                    rect.midY + MacTitleBar.height / 2 + ThemeSpace.inline
                 )
                 .frame(
                     maxWidth: .infinity,

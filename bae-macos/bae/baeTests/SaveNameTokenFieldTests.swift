@@ -181,7 +181,7 @@ struct SaveNameTokenFieldTests {
 
 @Suite("Save as names in a window")
 @MainActor
-struct SaveNameFieldLayoutTests {
+struct MacFileNameFieldLayoutTests {
     /// Clicking into a name field settles: the layout it causes comes to
     /// rest, rather than invalidating the hosting view on every pass.
     @Test("clicking into a name field leaves the layout at rest")

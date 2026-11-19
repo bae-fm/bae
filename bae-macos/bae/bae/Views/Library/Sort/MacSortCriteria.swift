@@ -32,7 +32,7 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
         HStack(spacing: ThemeSpace.related) {
             ForEach($criteria, id: \.field) { $criterion in
                 let field = criterion.field
-                SortCriterionPill(
+                MacSortPill(
                     criterion: $criterion,
                     takenFields: usedFields.subtracting([field]),
                     canRemove: criteria.count > 1,

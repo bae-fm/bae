@@ -42,7 +42,7 @@ struct StorageContentsInspector: View {
     var body: some View {
         Group {
             if let error {
-                Notice(
+                MacNotice(
                     error: error,
                     look: .centered,
                     action: error.retryAction {
@@ -57,7 +57,7 @@ struct StorageContentsInspector: View {
                     fileList(inspector.files)
                     if let selectedFile {
                         Divider()
-                        StorageFileDetails(file: selectedFile) {
+                        MacFileDetails(file: selectedFile) {
                             selectedFileId = nil
                         }
                     }
@@ -95,7 +95,7 @@ struct StorageContentsInspector: View {
                     id: \.file.id,
                     selection: $selectedFileId
                 ) { row in
-                    StorageInspectorFileRow(row: row)
+                    MacFileRow(row: row)
                 }
                 .accessibilityIdentifier("storage-inspector-files")
             }

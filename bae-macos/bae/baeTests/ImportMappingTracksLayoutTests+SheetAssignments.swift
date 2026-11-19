@@ -182,7 +182,7 @@ extension ImportMappingTracksLayoutTests {
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
         try await SnapshotTestSupport.withHostedWindow(
-            ImportSheetCaptionRow(
+            MacImportSheetCaption(
                 sheet: sheet,
                 showsDiscMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())

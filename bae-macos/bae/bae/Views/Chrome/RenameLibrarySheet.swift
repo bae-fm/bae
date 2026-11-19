@@ -37,7 +37,7 @@ struct RenameLibrarySheet: View {
                     }
                 }
                 if let error = state.error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {

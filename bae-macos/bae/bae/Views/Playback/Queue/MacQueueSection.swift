@@ -22,7 +22,7 @@ struct MacQueueSection: View {
         if title != nil || onSetShuffle != nil || count > 0 {
             HStack(spacing: ThemeSpace.compact) {
                 if let title {
-                    Eyebrow(verbatim: title)
+                    MacEyebrow(verbatim: title)
                         .lineLimit(1)
                 }
                 Spacer()
@@ -37,7 +37,7 @@ struct MacQueueSection: View {
             // remove buttons.
             .padding(
                 .horizontal,
-                Self.rowInset + QueueItemRow.horizontalInset
+                Self.rowInset + MacQueueRow.horizontalInset
             )
             .padding(.top, ThemeSpace.group)
             .padding(.bottom, ThemeSpace.inline)

@@ -33,10 +33,10 @@ struct ComposerDetailPane: View {
                     let rows,
                     let loadedWorkDetail
                 ) = paneDetail {
-                    BrowseDetailHeader(summary: composerDetail.composer)
+                    MacDetailHeader(summary: composerDetail.composer)
                     if let rows {
                         if let error = rows.initialLoadError {
-                            Notice(
+                            MacNotice(
                                 title: String(
                                     localized: "Could not load this composer"
                                 ),
@@ -56,7 +56,7 @@ struct ComposerDetailPane: View {
                         Rectangle()
                             .fill(Theme.hairline)
                             .frame(height: 1)
-                        WorkDetailView(
+                        MacWorkDetail(
                             detail: loadedWorkDetail,
                             openWork: { workId in
                                 if case .composer(let artistId, _) =
@@ -78,7 +78,7 @@ struct ComposerDetailPane: View {
                     }
                 }
                 if case .work(let loadedWorkDetail) = paneDetail {
-                    WorkDetailView(
+                    MacWorkDetail(
                         detail: loadedWorkDetail,
                         openWork: { workId in
                             session.selectWork(workId)
@@ -130,7 +130,7 @@ struct ComposerDetailPane: View {
         if let row {
             VStack(alignment: .leading, spacing: 0) {
                 if let heading = row.heading {
-                    SectionHeader(title: headingTitle(heading))
+                    MacSectionHeader(title: headingTitle(heading))
                         .padding(.top, first ? 0 : ThemeSpace.section)
                         .padding(.bottom, ThemeSpace.section)
                 }

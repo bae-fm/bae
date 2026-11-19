@@ -49,7 +49,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     cover: { cover },
                     audioFacts: { sourceAudio },
                     albumRow: {
-                        DraftAlbumRow(
+                        MacAlbumPicker(
                             album: draft.album,
                             canEdit: true,
                             actions: session.albumActions
@@ -75,7 +75,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             }
             trackTable
             if let files = draft.files {
-                ReleaseFilesView(
+                MacReleaseFiles(
                     rows: files.map { .file(file: $0) },
                     onOpenDocument: onOpenDocument
                 )
@@ -88,7 +88,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         Button {
             onEditCover?()
         } label: {
-            ImageView(
+            Artwork(
                 imageRef: draft.cover,
                 pointSize: ReleaseMetadataLayout.coverSize
             )
@@ -166,7 +166,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     }
 
     private func sideHeader(_ text: String, index: Int) -> some View {
-        Eyebrow(verbatim: text)
+        MacEyebrow(verbatim: text)
             .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
             .frame(width: tableWidth, alignment: .leading)
             .padding(
@@ -178,9 +178,9 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
 
     private var headerRow: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            Eyebrow("Source")
+            MacEyebrow("Source")
                 .frame(width: columns.source, alignment: .leading)
-            Eyebrow("Track")
+            MacEyebrow("Track")
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
@@ -275,7 +275,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
     }
 
     private func eyebrow(_ key: String) -> some View {
-        Eyebrow(verbatim: localizedCoreString(key))
+        MacEyebrow(verbatim: localizedCoreString(key))
     }
 }
 

@@ -51,14 +51,14 @@ private struct TransferReadoutContainer: View {
     var body: some View {
         switch kind {
         case .upload:
-            TransferReadout(
+            MacTransferReadout(
                 stream: .upload(
                     outboxStore.uploadProgress(forRelease: releaseId)
                 ),
                 kind: .upload
             )
         case .pin:
-            TransferReadout(
+            MacTransferReadout(
                 stream: .pin(
                     downloadStore.downloadProgress(forRelease: releaseId)
                 ),

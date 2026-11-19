@@ -24,7 +24,7 @@ struct ArtistDetailPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
-                    BrowseDetailHeader(summary: detail.artist)
+                    MacDetailHeader(summary: detail.artist)
                     ArtistCreditNamesSection(
                         artistId: detail.artist.artistId,
                         names: detail.creditNames
@@ -40,7 +40,7 @@ struct ArtistDetailPane: View {
                         spacing: ThemeSpace.group
                     ) {
                         ForEach(detail.albums) { album in
-                            ArtistAlbumCard(album: album) {
+                            MacArtistAlbumTile(album: album) {
                                 uiStore.navigateToAlbum(album.id)
                             }
                         }

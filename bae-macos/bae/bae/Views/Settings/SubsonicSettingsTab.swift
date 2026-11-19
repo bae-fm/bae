@@ -76,7 +76,7 @@ struct SubsonicSettingsContent: View {
                     )
                 )
                 if let detail = failureDetail {
-                    Notice(
+                    MacNotice(
                         title: String(
                             localized: "Subsonic server could not start"
                         ),

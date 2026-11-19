@@ -47,7 +47,7 @@ struct ImportedReleasePane: View {
                 )
             }
             else if let loadError {
-                Notice(
+                MacNotice(
                     error: loadError,
                     look: .centered,
                     action: loadError.retryAction {
@@ -88,7 +88,7 @@ struct ImportedReleasePane: View {
     }
 
     private var importedLine: some View {
-        Notice(
+        MacNotice(
             title: String(localized: "Imported"),
             advice: nil,
             error: nil,
@@ -151,7 +151,7 @@ struct ImportingCandidatePane: View {
                     ImportProgressContainer(key: candidate.key, step: step)
                 }
                 HStack(alignment: .top, spacing: ThemeSpace.edge) {
-                    ImageView(content: coverContent, pointSize: Self.coverSize)
+                    Artwork(content: coverContent, pointSize: Self.coverSize)
                         .frame(width: Self.coverSize, height: Self.coverSize)
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)

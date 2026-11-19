@@ -183,14 +183,14 @@ struct DiscogsSettingsContent: View {
                 keyInput
             }
             if isInvalid {
-                Notice(
+                MacNotice(
                     title: String(localized: "Invalid key"),
                     advice: nil,
                     error: nil
                 )
             }
             if isEnabled, status == .unvalidated {
-                Notice(
+                MacNotice(
                     title: String(
                         localized: "bae has not checked your key yet"
                     ),
@@ -214,10 +214,10 @@ struct DiscogsSettingsContent: View {
                 )
             }
             if let saveError {
-                Notice(error: saveError)
+                MacNotice(error: saveError)
             }
             if let readError {
-                Notice(error: readError)
+                MacNotice(error: readError)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

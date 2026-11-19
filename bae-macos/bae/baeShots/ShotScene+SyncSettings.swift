@@ -239,7 +239,7 @@ extension ShotScene {
 }
 
 /// The Settings window around the Sync page of `fixture`'s library: the
-/// sidebar as `SettingsView` lists it, and the page `syncSettingsPagePreview`
+/// sidebar as `MacSettingsWindow` lists it, and the page `syncSettingsPagePreview`
 /// builds beside it.
 @MainActor
 private func syncSettingsWindow(

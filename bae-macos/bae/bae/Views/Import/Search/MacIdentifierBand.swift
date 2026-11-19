@@ -43,13 +43,13 @@ struct MacIdentifierBand: View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.discId)
         switch run.discId {
         case .reading:
-            IdentifierChip(label: label) { ChipWait(waitingOn: run.discId) }
+            MacIdentifierChip(label: label) { ChipWait(waitingOn: run.discId) }
         case .absent:
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help("No LOG or CUE in the folder")
         // The CUE's audio is at a rate no CD holds, so no Disc ID was read.
         case .notCdAudio(let sampleRateHz):
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help(
                     sampleRateHz.map { sampleRateHz in
                         String(
@@ -73,7 +73,7 @@ struct MacIdentifierBand: View {
             discIdButton(label: label, discId: disc.discId, lookup: nil)
         // Only Settings can switch on the catalog that answers Disc IDs.
         case .notAsked(reason: .noCatalog):
-            IdentifierChip(label: label, value: disc.discId) {
+            MacIdentifierChip(label: label, value: disc.discId) {
                 IdentifierDash()
             }
         case let lookup:
@@ -90,7 +90,7 @@ struct MacIdentifierBand: View {
         Button {
             onToggleLookup(.discId)
         } label: {
-            IdentifierChip(
+            MacIdentifierChip(
                 label: label,
                 value: discId,
                 style: lookup == nil ? .outlined : .filled
@@ -120,17 +120,17 @@ struct MacIdentifierBand: View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.barcode)
         switch run.barcode {
         case .absent:
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode source")
         case .noCodes:
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode on the artwork")
         case .rows(let rows):
             ForEach(rows, id: \.value) { row in
                 Button {
                     onToggleLookup(.barcode(row.value))
                 } label: {
-                    IdentifierChip(
+                    MacIdentifierChip(
                         label: label,
                         value: row.value,
                         style: row.excluded ? .outlined : .filled
@@ -162,14 +162,14 @@ struct MacIdentifierBand: View {
         let label = String(localized: "Catalog #")
         switch run.catalog {
         case .noneFound:
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help("None found")
         case .numbers(let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
                     onToggleCatalogAgreement(row.value)
                 } label: {
-                    IdentifierChip(
+                    MacIdentifierChip(
                         label: label,
                         value: row.value,
                         style: row.excluded ? .struck : .filled
@@ -200,17 +200,17 @@ struct MacIdentifierBand: View {
         let label = SignalBadgeStyle.label(for: SignalBadgeStyle.Signal.isrc)
         switch run.isrc {
         case .reading:
-            IdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
+            MacIdentifierChip(label: label) { ChipWait(waitingOn: run.isrc) }
         case .absent:
-            IdentifierChip(label: label) { IdentifierDash() }
+            MacIdentifierChip(label: label) { IdentifierDash() }
                 .help("No ISRC in the files’ tags")
         // Only Settings can switch on the catalog that answers ISRCs.
         case .read(let isrcs, .notAsked(reason: _)):
-            IdentifierChip(label: label, values: isrcs) {
+            MacIdentifierChip(label: label, values: isrcs) {
                 IdentifierDash()
             }
         case .read(let isrcs, let lookup):
-            IdentifierChip(label: label, values: isrcs) {
+            MacIdentifierChip(label: label, values: isrcs) {
                 ProviderCapsule(
                     source: .musicBrainz,
                     lookup: lookup,
@@ -238,7 +238,7 @@ struct MacIdentifierBand: View {
     private var catalogCandidatesChip: some View {
         let values = run.catalogCandidateValues
         if !values.isEmpty {
-            IdentifierChip(
+            MacIdentifierChip(
                 label: String(localized: "Catalog #"),
                 values: values,
                 style: .outlined,
@@ -350,7 +350,7 @@ private struct TitleSearchChip<Trailing: View>: View {
     var body: some View {
         Group {
             if showsFields {
-                IdentifierChip(label: String(localized: "Artist")) {
+                MacIdentifierChip(label: String(localized: "Artist")) {
                     field("Artist", text: $artistText, field: .artist)
                     IdentifierLabel(text: String(localized: "Title"))
                     field("Title", text: $albumText, field: .album)
@@ -358,7 +358,7 @@ private struct TitleSearchChip<Trailing: View>: View {
                 }
             }
             else {
-                IdentifierChip(label: String(localized: "Title search")) {
+                MacIdentifierChip(label: String(localized: "Title search")) {
                     Button {
                         isEditing = true
                         focused = .artist

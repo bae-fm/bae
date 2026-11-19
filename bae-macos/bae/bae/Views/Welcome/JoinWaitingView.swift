@@ -35,7 +35,7 @@ struct JoinWaitingView: View {
                         }
                     }
                     if let error {
-                        Notice(error: error)
+                        MacNotice(error: error)
                     }
                     if cancellable {
                         MacStepActions {

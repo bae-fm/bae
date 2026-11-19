@@ -130,7 +130,7 @@ struct MacImportDraft: View {
                 .disabled(!actionable)
             // What stops the import, in a notice under the row that offers it.
             if let folderCheck = commit?.folderCheck?.localizedText {
-                Notice(
+                MacNotice(
                     title: folderCheck,
                     advice: nil,
                     error: nil,
@@ -161,7 +161,7 @@ struct MacImportDraft: View {
                     },
                     albumRow: {
                         if let album {
-                            DraftAlbumRow(
+                            MacAlbumPicker(
                                 album: album,
                                 canEdit: actionable,
                                 actions: albumActions
@@ -295,7 +295,7 @@ struct ImportCoverWell: View {
     private var dropTargeted = false
 
     var body: some View {
-        ImageView(content: coverContent, pointSize: Self.coverSize)
+        Artwork(content: coverContent, pointSize: Self.coverSize)
             .frame(width: Self.coverSize, height: Self.coverSize)
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             .contentShape(Rectangle())

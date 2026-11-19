@@ -118,7 +118,7 @@ struct AutomationSettingsContent: View {
                 }
                 statusRow
                 if case .error(let error) = status {
-                    Notice(
+                    MacNotice(
                         title: error.mcpSummary,
                         advice: nil,
                         error: DisplayError(
@@ -134,7 +134,7 @@ struct AutomationSettingsContent: View {
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 case .error(let failure):
-                    Notice(error: failure)
+                    MacNotice(error: failure)
                 case nil:
                     EmptyView()
                 }

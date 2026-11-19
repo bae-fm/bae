@@ -32,7 +32,7 @@ struct CoverPickerEmptyStateTests {
     private func spinners(_ remoteItems: RemoteCoverItems) async throws -> Int {
         let size = NSSize(width: 960, height: 700)
         return try await SnapshotTestSupport.withHostedWindow(
-            CoverGalleryView(
+            MacCoverGallery(
                 content: CoverGalleryContent(
                     BridgeCoverGallery(
                         current: nil,

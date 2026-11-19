@@ -22,7 +22,7 @@ CHECK = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = CHECK
 SPEC.loader.exec_module(CHECK)
 
-GRID_SWIFT = "bae-macos/bae/bae/Views/Library/Grid/AlbumGridView.swift"
+GRID_SWIFT = "bae-macos/bae/bae/Views/Library/Grid/MacAlbumGrid.swift"
 GRID_KOTLIN = "bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryGrid.kt"
 
 

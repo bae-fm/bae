@@ -49,7 +49,7 @@ struct MacReleaseCell: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            ImageView(
+            Artwork(
                 imageRef: release.cover,
                 pointSize: Self.coverSize
             )

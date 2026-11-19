@@ -46,7 +46,7 @@ struct CoverSheetView: View {
     var body: some View {
         @Bindable
         var covers = covers
-        CoverGalleryView(
+        MacCoverGallery(
             content: covers.content,
             remoteItems: covers.lookup,
             filter: $covers.filter,

@@ -57,7 +57,7 @@
                         }
                     }
                     if let error = browser.error {
-                        Notice(error: error)
+                        MacNotice(error: error)
                     }
                 }
                 .padding()
@@ -106,7 +106,7 @@
                     }
                 },
                 fields: {
-                    FolderPicker(browser: browser)
+                    MacFolderPicker(browser: browser)
                     if let work = browser.working {
                         Section {
                             FolderBrowserWorkLine(
@@ -117,7 +117,7 @@
                     }
                     if let error = browser.error {
                         Section {
-                            Notice(error: error)
+                            MacNotice(error: error)
                         }
                     }
                 }

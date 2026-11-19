@@ -119,13 +119,13 @@ private struct CastReceiversSection: View {
     var body: some View {
         Section {
             if let connectingName {
-                CastConnectingLine(name: connectingName)
+                MacCastConnectingLine(name: connectingName)
             }
             if receivers.isEmpty {
                 MacSpinner("Looking for receivers…")
             }
             else {
-                CastReceiverRows(
+                MacCastRows(
                     place: .page,
                     receivers: receivers,
                     onCast: onCast,

@@ -1,0 +1,33 @@
+import BaeKit
+import SwiftUI
+
+/// A skeleton row shown while its queue entry loads.
+struct MacQueuePlaceholderRow: View {
+    /// The height of a detail line's bar.
+    private static let detailBarHeight: CGFloat = 10
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.group) {
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                .fill(Theme.placeholder)
+                .frame(
+                    width: MacQueueRow.artworkSize,
+                    height: MacQueueRow.artworkSize
+                )
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
+                    .fill(Theme.placeholder)
+                    .frame(width: 140, height: 12)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
+                    .fill(Theme.placeholder)
+                    .frame(width: 90, height: Self.detailBarHeight)
+                RoundedRectangle(cornerRadius: ThemeRadius.bar)
+                    .fill(Theme.placeholder)
+                    .frame(width: 120, height: Self.detailBarHeight)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, MacQueueRow.horizontalInset)
+        .padding(.vertical, MacQueueRow.verticalInset)
+    }
+}

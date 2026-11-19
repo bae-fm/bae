@@ -55,8 +55,8 @@ Text styles are roles as well: display, hero, title, heading, rowTitle, strong,
 body, detail, fine, chip, eyebrow and mono.
 Weight, letter spacing and monospacing are shared; each platform has its
 own size, and iOS names a Dynamic Type style so text follows the person's text
-size. Apple views set a role with `.themeText(_:)`, and the section labels on
-every platform are one `Eyebrow`.
+size. Apple views set a role with `.themeText(_:)`. A section label is one
+`MacEyebrow` on the Mac and one `AndroidEyebrow` on Android.
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,
 related, group, edge, section and page. Glyph sizes (badge, small, medium,
@@ -66,9 +66,9 @@ by its own convention.
 
 The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short
-labels on a tone's fill, a notice (`Notice` on both)
-for a message in a tone, `.card(elevated:)` on Apple, and `ErrorText` for a
-failure line. A failing sync cycle is one warning `ErrorNotice` in the Activity sheet on Android.
+labels on a tone's fill, a notice (`MacNotice` on the Mac, `AndroidNotice` on
+Android) for a message in a tone, `.card(elevated:)` on Apple, and
+`MacErrorLine` for a failure line on the Mac. A failing sync cycle is one warning `AndroidNotice` in the Activity sheet on Android.
 
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay

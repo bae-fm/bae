@@ -26,13 +26,13 @@ struct PlaylistsContent: View {
                     BrowseSplit {
                         list(listing)
                     } detail: {
-                        PlaylistDetailPane(detail: detail)
+                        MacPlaylistPage(detail: detail)
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
                 }
             }
             else if let error {
-                Notice(
+                MacNotice(
                     title: String(localized: "Could not read your library"),
                     advice: nil,
                     error: error,

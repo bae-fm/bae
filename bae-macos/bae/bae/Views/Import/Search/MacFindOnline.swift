@@ -173,7 +173,7 @@ struct MacFindOnline: View {
     @ViewBuilder
     private var errorLine: some View {
         if let error = state.error {
-            ErrorText(error)
+            MacErrorLine(error)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, ThemeSpace.group)
                 .padding(.vertical, ThemeSpace.compact)

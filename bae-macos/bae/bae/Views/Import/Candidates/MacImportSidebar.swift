@@ -29,7 +29,7 @@ struct MacImportSidebar<Trailing: View, Content: View>: View {
     var body: some View {
         ImportSidebarList {
             VStack(spacing: 0) {
-                TriageTabBar(activeTab: $activeTab, listSlot: listSlot)
+                MacImportTabs(activeTab: $activeTab, listSlot: listSlot)
                     .padding(ThemeSpace.related)
 
                 // Separates choosing the tab from filtering it.

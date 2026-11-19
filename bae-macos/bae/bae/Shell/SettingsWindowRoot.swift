@@ -9,7 +9,7 @@ struct SettingsWindowRoot: View {
     var body: some View {
         if let appService = appDelegate.appService {
             appService.installEnvironment(
-                SettingsView(
+                MacSettingsWindow(
                     checkForUpdatesViewModel: checkForUpdatesViewModel,
                     onResetDevice: {
                         appDelegate.presentDeviceReset(

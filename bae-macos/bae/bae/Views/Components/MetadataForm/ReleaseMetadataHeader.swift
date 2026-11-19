@@ -93,7 +93,7 @@ struct ReleaseMetadataHeader<
                     .clipShape(
                         RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                     )
-                ReleaseAlbumIdentityEditor(
+                MacReleaseIdentity(
                     values: values,
                     albumArtistStanding: albumArtistStanding,
                     writer: writer,
@@ -103,7 +103,7 @@ struct ReleaseMetadataHeader<
                     albumRow: albumRow
                 )
             }
-            ReleasePressingFieldsGrid(
+            MacReleaseFields(
                 values: values,
                 writer: writer,
                 editingCommands: editingCommands
@@ -114,7 +114,7 @@ struct ReleaseMetadataHeader<
 }
 
 /// The album identity drawn as a heading that is editable in place.
-struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
+struct MacReleaseIdentity<AudioFacts: View, AlbumRow: View>: View {
     let values: BridgeRawReleaseEdit
     let albumArtistStanding: BridgeArtistFieldStanding?
     let writer: ReleaseFieldWriter
@@ -136,7 +136,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumTitle, $0) },
             )
-            ArtistAssignmentsField(
+            MacAlbumArtistField(
                 assignments: values.albumArtistAssignments,
                 standing: albumArtistStanding,
                 placeholder: String(localized: "Album artist"),
@@ -170,7 +170,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View, AlbumRow: View>: View {
 }
 
 /// The editable release facts under a ruled Release header.
-struct ReleasePressingFieldsGrid: View {
+struct MacReleaseFields: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -185,7 +185,7 @@ struct ReleasePressingFieldsGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Release"))
+            MacFormHeading(title: String(localized: "Release"))
             Grid(
                 alignment: .leadingFirstTextBaseline,
                 horizontalSpacing: Self.labelGap
@@ -525,7 +525,7 @@ struct ArtistSearchResultLabel: View {
     }
 }
 
-struct ArtistAssignmentsField: View {
+struct MacAlbumArtistField: View {
     /// How wide the closed field draws: its value's width on a header line, the
     /// full column in a table.
     enum Width {
@@ -681,7 +681,7 @@ private struct ArtistAssignmentsEditor: View {
                     .disabled(trimmedQuery.isEmpty)
             }
             if let error = search?.error {
-                Notice(error: error)
+                MacNotice(error: error)
             }
             if let list = search?.list {
                 foundArtists(list)

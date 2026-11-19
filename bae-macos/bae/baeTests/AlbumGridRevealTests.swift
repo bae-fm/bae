@@ -10,7 +10,7 @@ import Testing
 /// The grid revealing an album, and a track in the album's detail, as Go to
 /// Now Playing and a track picked in search ask it to.
 @MainActor
-@Suite("AlbumGridView revealing a track", .serialized)
+@Suite("MacAlbumGrid revealing a track", .serialized)
 struct AlbumGridRevealTests {
     /// Measure the flash and frame together; separate callbacks can pair
     /// a new flash with a position from the previous layout.
@@ -105,7 +105,7 @@ struct AlbumGridRevealTests {
         var groupByArtist = false
 
         var body: some View {
-            AlbumGridView(
+            MacAlbumGrid(
                 list: list,
                 sortCriteria: [],
                 groupByArtist: groupByArtist,

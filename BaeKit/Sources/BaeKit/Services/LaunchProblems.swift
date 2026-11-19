@@ -43,7 +43,7 @@ public struct LaunchProblemNotices: View {
 
     public var body: some View {
         ForEach(problems.problems) { problem in
-            Notice(
+            MacNotice(
                 title: problem.title,
                 advice: problem.advice,
                 error: problem.error

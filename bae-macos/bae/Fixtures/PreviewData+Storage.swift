@@ -446,7 +446,7 @@ extension PreviewData {
     }
 
     /// A `Library` whose storage reads serve the fixture rows and nothing
-    /// else — enough for `StorageManagerView`'s own `rebuildList()` to
+    /// else — enough for `MacStorageWindow`'s own `rebuildList()` to
     /// populate the table — and whose inspector shows each row's release
     /// with its entry in `downloads`, `outputs` and `uploads`.
     /// The fixture's library, its reads answered off the main thread and

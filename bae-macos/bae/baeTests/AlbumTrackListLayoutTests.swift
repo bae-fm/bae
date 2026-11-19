@@ -48,7 +48,7 @@ struct AlbumTrackListLayoutTests {
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
         try await SnapshotTestSupport.withHostedWindow(
-            AlbumTrackListView(
+            MacTrackColumns(
                 release: release,
                 isCompilation: false,
                 currentTrackId: nil,

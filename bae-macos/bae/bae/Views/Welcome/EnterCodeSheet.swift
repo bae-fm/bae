@@ -35,10 +35,10 @@ struct EnterCodeSheet: View {
                 }
                 CodeField(form: form)
                 if let decodeError = form.decodeError {
-                    Notice(error: decodeError)
+                    MacNotice(error: decodeError)
                 }
                 if let error = form.error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {

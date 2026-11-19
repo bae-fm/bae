@@ -138,7 +138,7 @@ struct InviteCodeSheetContent: View {
                 case .code(let code, _): shown(code)
                 }
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         } footer: {
@@ -164,7 +164,7 @@ struct InviteCodeSheetContent: View {
     private var granting: some View {
         if let held = invite.held {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ErrorText(localizedCoreString(held.reason.key))
+                MacErrorLine(localizedCoreString(held.reason.key))
                 if let detail = held.reason.detail {
                     Text(detail)
                         .themeText(.mono)

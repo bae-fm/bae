@@ -39,7 +39,7 @@ struct MacImportImages: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            FormSectionHeader(title: String(localized: "Images"))
+            MacFormHeading(title: String(localized: "Images"))
             ImportMappingGallery(images: images, onOpen: onOpen)
         }
     }
@@ -60,7 +60,7 @@ struct ImportMappingGalleryTile: View {
         Button {
             onOpen(image.fileId)
         } label: {
-            ImageView(
+            Artwork(
                 content: .localFile(image.file),
                 pointSize: tileSize
             )

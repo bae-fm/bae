@@ -55,7 +55,7 @@ struct DeviceResetView: View {
         )
         let offer = ErrorAction("Reset from cloud…") { confirming = true }
         if let error {
-            Notice(
+            MacNotice(
                 title: error.step.title,
                 advice: nil,
                 error: error.error,
@@ -66,7 +66,7 @@ struct DeviceResetView: View {
             )
         }
         else {
-            Notice(
+            MacNotice(
                 title: BridgeErrorCategory.deviceResetRequired.localizedLine,
                 advice: nil,
                 error: nil,
@@ -91,7 +91,7 @@ struct DeviceResetView: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: WelcomeLayout.columnWidth)
             if let error {
-                Notice(
+                MacNotice(
                     title: error.step.title,
                     advice: error.step.advice,
                     error: error.error

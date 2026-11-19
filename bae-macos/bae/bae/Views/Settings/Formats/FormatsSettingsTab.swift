@@ -47,7 +47,7 @@ struct FormatsSettingsTab: View {
 
     private var namesSection: some View {
         Section {
-            SaveNameField(
+            MacFileNameField(
                 title: "File name",
                 pieces: configStore.config.filenamePieces,
                 error: configStore.config.filenamePatternError,
@@ -55,7 +55,7 @@ struct FormatsSettingsTab: View {
                 setPieces: outputs.setFilenamePieces,
                 fail: { uiStore.showError($0) }
             )
-            SaveNameField(
+            MacFileNameField(
                 title: "Folder name",
                 pieces: configStore.config.folderPieces,
                 error: configStore.config.folderPatternError,

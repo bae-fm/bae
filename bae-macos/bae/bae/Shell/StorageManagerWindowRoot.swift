@@ -7,7 +7,7 @@ struct StorageManagerWindowRoot: View {
 
     var body: some View {
         if let appService = appDelegate.appService {
-            appService.installEnvironment(StorageManagerView())
+            appService.installEnvironment(MacStorageWindow())
                 .environment(
                     \.openSettingsWindow,
                     OpenSettingsWindowAction {
@@ -31,9 +31,9 @@ struct StorageManagerNoLibrary: View {
             Text("Open a library first")
         }
         .frame(
-            minWidth: StorageManagerView.minimumWidth,
+            minWidth: MacStorageWindow.minimumWidth,
             maxWidth: .infinity,
-            minHeight: StorageManagerView.minimumHeight,
+            minHeight: MacStorageWindow.minimumHeight,
             maxHeight: .infinity
         )
         .storageManagerToolbar(

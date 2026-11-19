@@ -15,7 +15,7 @@ struct LightboxLoadingTests {
     func loadingSpins() async throws {
         let size = NSSize(width: 640, height: 480)
         try await SnapshotTestSupport.withHostedWindow(
-            LightboxView<LightboxItem>.loadingPreview()
+            MacLightbox<LightboxItem>.loadingPreview()
                 .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in

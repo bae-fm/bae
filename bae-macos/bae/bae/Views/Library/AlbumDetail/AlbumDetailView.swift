@@ -69,7 +69,7 @@ struct AlbumDetailView: View {
             if let detail = albumRead.value {
                 let selectedDetail = detail.shownRelease
                 let selectedReleaseId = selectedDetail.id
-                AlbumExpansionContent(
+                MacAlbumPanel(
                     detail: detail,
                     onBrowseImages: {
                         presentImages(release: selectedDetail)
@@ -252,7 +252,7 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private var detailPlaceholder: some View {
         if let error = albumRead.error {
-            Notice(
+            MacNotice(
                 error: error,
                 look: .centered,
                 action: error.retryAction {

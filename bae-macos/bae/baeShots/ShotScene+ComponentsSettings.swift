@@ -65,21 +65,21 @@ extension ShotScene {
         )
     }
 
-    /// `CastReceiverRow` in the cast popover.
+    /// `MacCastRow` in the cast popover.
     private static let castRowScenes: [ShotScene] = [
         component("mac.component.cast-row.receivers", height: 270) {
             ShotBox {
-                CastReceiverRow(
+                MacCastRow(
                     receiver: receiver("Living Room", .cast),
                     role: .casting(onDisconnect: {}),
                     place: .picker
                 )
-                CastReceiverRow(
+                MacCastRow(
                     receiver: receiver("Kitchen", .airPlay),
                     role: .found(onCast: {}),
                     place: .picker
                 )
-                CastReceiverRow(
+                MacCastRow(
                     receiver: receiver("Den receiver", .dlna),
                     role: .found(onCast: {}),
                     place: .picker
@@ -88,7 +88,7 @@ extension ShotScene {
         },
         component("mac.component.cast-row.long-name", height: 140) {
             ShotBox {
-                CastReceiverRow(
+                MacCastRow(
                     receiver: receiver(
                         "Denon AVR-X3800H Home Theater Receiver (Basement)",
                         .dlna
@@ -168,11 +168,11 @@ extension ShotScene {
         }
     }
 
-    /// `FormDisclosure` in a settings form.
+    /// `MacDisclosure` in a settings form.
     private static let disclosureScenes: [ShotScene] = [
         component("mac.component.disclosure.closed", height: 90) {
             ShotForm {
-                FormDisclosure(isExpanded: .constant(false)) {
+                MacDisclosure(isExpanded: .constant(false)) {
                 } label: {
                     Text("Advanced")
                 }
@@ -180,7 +180,7 @@ extension ShotScene {
         },
         component("mac.component.disclosure.open", height: 170) {
             ShotForm {
-                FormDisclosure(isExpanded: .constant(true)) {
+                MacDisclosure(isExpanded: .constant(true)) {
                     LabeledContent("Bit depth") {
                         MacPopUpButton("Bit depth", selection: .constant(16)) {
                             MacPopUpOption(verbatim: "16-bit", value: 16)
@@ -198,7 +198,7 @@ extension ShotScene {
         },
     ]
 
-    /// `DownloadRow` after a pin or a move-to-this-device failed.
+    /// `MacFailedTransferRow` after a pin or a move-to-this-device failed.
     private static let downloadRowScenes: [ShotScene] = [
         downloadRow("mac.component.failed-transfer-row.pin", kind: .pin),
         downloadRow(
@@ -221,7 +221,7 @@ extension ShotScene {
                 createdAt: 0,
                 state: .failed(error: "The network connection was lost.")
             )
-            return DownloadRow(
+            return MacFailedTransferRow(
                 entry: .download(
                     op,
                     transfer: .pin(
@@ -259,12 +259,12 @@ extension ShotScene {
             .frame(width: 160)
     }
 
-    /// `SaveNameField`: the file name pattern with its preview, the folder
+    /// `MacFileNameField`: the file name pattern with its preview, the folder
     /// pattern, and a pattern the name can't be made from.
     private static let fileNameFieldScenes: [ShotScene] = [
         component("mac.component.file-name-field.file-name", height: 200) {
             ShotBox {
-                SaveNameField(
+                MacFileNameField(
                     title: "File name",
                     pieces: PreviewData.exportFilenamePieces,
                     error: nil,
@@ -276,7 +276,7 @@ extension ShotScene {
         },
         component("mac.component.file-name-field.typed-text", height: 200) {
             ShotBox {
-                SaveNameField(
+                MacFileNameField(
                     title: "Folder name",
                     pieces: PreviewData.exportFolderPieces,
                     error: nil,
@@ -287,7 +287,7 @@ extension ShotScene {
         },
         component("mac.component.file-name-field.error", height: 200) {
             ShotBox {
-                SaveNameField<BridgeSaveFolderPiece>(
+                MacFileNameField<BridgeSaveFolderPiece>(
                     title: "Folder name",
                     pieces: [
                         .value(value: .artist), .text(text: " / "),

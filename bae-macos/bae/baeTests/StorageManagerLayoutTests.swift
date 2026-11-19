@@ -400,7 +400,7 @@ extension StorageManagerLayoutTests {
                 tableScrollView.documentView as? NSTableView
             )
             let coordinator = try XCTUnwrap(
-                tableView.delegate as? StorageTableView.Coordinator
+                tableView.delegate as? MacTable.Coordinator
             )
 
             let titles = coordinator.contextEntries(forRow: 0)

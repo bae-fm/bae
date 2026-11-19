@@ -208,7 +208,7 @@
         private func open() {
             guard let window = anchor.window, let frame = anchor.screenFrame
             else { return }
-            let menu = MacPopUpMenu(options, selection: selection) {
+            let menu = MacMenu(options, selection: selection) {
                 selection = $0
             }
             MacMenuSession.present(

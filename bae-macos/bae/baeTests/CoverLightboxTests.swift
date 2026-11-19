@@ -40,7 +40,7 @@ struct CoverLightboxTests {
             FocusingCoverGallery(
                 gallery: gallery(remote: [front, booklet], files: [file])
             ) { content, focusedCover in
-                CoverGalleryView(
+                MacCoverGallery(
                     content: content,
                     remoteItems: .linked([front, booklet]),
                     filter: .constant(.all),
@@ -104,7 +104,7 @@ struct CoverLightboxTests {
             FocusingCoverGallery(
                 gallery: gallery(remote: [front, booklet], files: [])
             ) { content, focusedCover in
-                CoverGalleryView(
+                MacCoverGallery(
                     content: content,
                     remoteItems: .linked([front, booklet]),
                     filter: .constant(.all),
@@ -180,7 +180,7 @@ struct CoverLightboxTests {
         let back = remote("Back")
         let size = NSSize(width: 800, height: 600)
         try await SnapshotTestSupport.withHostedWindow(
-            LightboxView(
+            MacLightbox(
                 place: LightboxPlace(
                     items: [item, back],
                     current: item,

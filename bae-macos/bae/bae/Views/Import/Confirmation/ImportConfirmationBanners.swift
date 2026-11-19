@@ -18,7 +18,7 @@ struct ImportConfirmationBanners: View {
     var body: some View {
         if let libStatus = libraryStatus {
             if libStatus.releaseInLibrary {
-                Notice(
+                MacNotice(
                     title: String(
                         localized: "This release is already in your library"
                     ),
@@ -31,7 +31,7 @@ struct ImportConfirmationBanners: View {
                 )
             }
             else if libStatus.albumInLibrary {
-                Notice(
+                MacNotice(
                     title: String(
                         localized:
                             "Another release of this album is in your library"
@@ -47,7 +47,7 @@ struct ImportConfirmationBanners: View {
         importFailureBanner
 
         if let error {
-            Notice(error: DisplayError(line: error))
+            MacNotice(error: DisplayError(line: error))
         }
     }
 
@@ -92,12 +92,12 @@ struct ImportConfirmationBanners: View {
         if case .error(let bridgeError) = importStatus,
             let displayed = DisplayError(bridgeError)
         {
-            Notice(error: displayed)
+            MacNotice(error: displayed)
         }
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {
-        Notice(
+        MacNotice(
             error: error,
             action: error.retryAction(isDisabled: !canEdit, perform: onRetry)
         )

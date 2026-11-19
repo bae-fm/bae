@@ -1,0 +1,221 @@
+import BaeKit
+import SwiftUI
+
+/// The mapping pane's table: every source the folder offers on the same row
+/// as the track committing makes of it.
+struct MacImportTable: View {
+    let table: BridgeMappingTable
+    /// The source window currently auditioning, if any — its row is accented.
+    let previewingTarget: BridgePreviewTarget?
+    let actions: ImportMappingActions
+    let editingCommands: EditingCommitCommands
+
+    @Environment(Library.self)
+    private var library
+    /// The width the pane leaves the table; the table is laid out at it or at
+    /// its own minimum, whichever is wider.
+    @State
+    private var paneWidth: CGFloat = ReleaseMetadataTrackColumns
+        .minimumTableWidth
+    private var tableWidth: CGFloat {
+        max(paneWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
+    }
+
+    private var columns: ReleaseMetadataTrackColumns {
+        ReleaseMetadataTrackColumns.resolved(tableWidth: tableWidth)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
+            tracksSection
+            if !table.files.isEmpty {
+                MacReleaseFiles(
+                    rows: table.files,
+                    onOpenDocument: actions.openDocument,
+                    sheetActions: actions
+                )
+            }
+        }
+    }
+
+    private func rowStack<Rows: View>(
+        @ViewBuilder _ rows: () -> Rows
+    ) -> some View {
+        VStack(spacing: 0) {
+            rows()
+        }
+        .frame(width: tableWidth, alignment: .leading)
+    }
+
+    // MARK: - Tracks
+
+    /// One header per side or disc, then its runs: track mappings, or one
+    /// sheet and its entries.
+    private var tracksSection: some View {
+        ScrollView(.horizontal) {
+            rowStack {
+                trackHeaderRow
+                ForEach(
+                    Array(table.trackSides.enumerated()),
+                    id: \.offset
+                ) { index, side in
+                    if !side.sideHeaderText.isEmpty {
+                        sideHeader(side.sideHeaderText, index: index)
+                    }
+                    ForEach(Array(side.runs.enumerated()), id: \.offset) {
+                        _,
+                        run in
+                        if case .sheet(let sheet, _) = run {
+                            sheetCaption(sheet)
+                        }
+                        trackRunRows(run)
+                    }
+                }
+            }
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .onGeometryChange(for: CGFloat.self) { geo in
+            geo.size.width
+        } action: {
+            paneWidth = $0
+        }
+    }
+
+    @ViewBuilder
+    private func trackRunRows(_ run: BridgeMappingTrackRun) -> some View {
+        switch run {
+        case .tracks(let mappings):
+            ForEach(mappings, id: \.rowId, content: trackRow)
+        case .sheet(_, let entries):
+            ForEach(entries, id: \.rowId, content: trackRow)
+        }
+    }
+
+    private func sideHeader(_ text: String, index: Int) -> some View {
+        MacEyebrow(verbatim: text)
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, index == 0 ? ThemeSpace.line : ThemeSpace.edge)
+            .padding(.bottom, ThemeSpace.compact)
+    }
+
+    /// The sheet's caption under a hairline.
+    private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.hairline)
+                .frame(height: 1)
+            sheetCaptionRow(sheet)
+                .padding(.horizontal, ImportMappingColumns.rowPadding)
+                .padding(.vertical, ThemeSpace.related)
+        }
+    }
+
+    private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
+        MacImportSheetCaption(
+            sheet: sheet,
+            showsDiscMenu: true,
+            actions: actions,
+        )
+    }
+
+    private func trackRow(_ mapping: BridgeTrackMapping) -> some View {
+        MacImportTrackRow(
+            mapping: mapping,
+            columns: columns,
+            previewingTarget: previewingTarget,
+            editingCommands: editingCommands,
+            actions: actions,
+            artistSearch: library.artistSearch,
+        )
+        .mappingRowChrome(
+            background: mapping.source.previewTarget == previewingTarget
+                ? Theme.accentSoft : .clear
+        )
+    }
+
+    // The leading cell names the section.
+    private var trackHeaderRow: some View {
+        headerRow {
+            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
+                MacEyebrow("Source")
+                Spacer(minLength: 0)
+            }
+            .frame(width: columns.source, alignment: .leading)
+            MacEyebrow("Track")
+                .frame(
+                    width: ReleaseMetadataTrackColumns.track,
+                    alignment: .leading
+                )
+            // Inset to line up with the fields' text.
+            eyebrow("ui.import.mapping.column.title")
+                .padding(.leading, FieldChrome.inlineHorizontalPadding)
+                .frame(width: columns.title, alignment: .leading)
+            eyebrow("ui.import.mapping.column.artist")
+                .padding(.leading, FieldChrome.inlineHorizontalPadding)
+                .frame(width: columns.artist, alignment: .leading)
+            eyebrow("ui.import.slots.column.length")
+                .frame(
+                    width: ReleaseMetadataTrackColumns.length,
+                    alignment: .leading
+                )
+        }
+    }
+
+    // MARK: - Shared chrome
+
+    private func eyebrow(_ key: String) -> some View {
+        MacEyebrow(verbatim: localizedCoreString(key))
+    }
+
+    private func headerRow<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: ImportMappingColumns.spacing) {
+            content()
+        }
+        .padding(.horizontal, ImportMappingColumns.rowPadding)
+        .padding(.top, ThemeSpace.inline)
+        .padding(.bottom, ThemeSpace.compact)
+    }
+}
+
+extension View {
+    /// What every row of the mapping table, and of a skipped folder's file
+    /// list, sits in: one leading edge, one height, and a hairline over it.
+    func mappingRowChrome(background: Color = .clear) -> some View {
+        padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.vertical, ThemeSpace.compact)
+            .frame(minHeight: 40)
+            .background(background)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
+            }
+    }
+}
+
+enum ImportMappingColumns {
+    static let spacing = ReleaseMetadataTrackColumns.spacing
+    static let rowPadding = ReleaseMetadataTrackColumns.rowPadding
+}
+
+extension BridgeMappingFileRow {
+    var rowId: String {
+        switch self {
+        case .file(let file): "file:\(file.fileId)"
+        case .sheet(let sheet): "sheet:\(sheet.sheetId)"
+        }
+    }
+}
+
+extension BridgeTrackMapping {
+    /// This mapping's identity in the table.
+    var rowId: String {
+        switch source {
+        case .file(let file): "file:\(file.fileId)"
+        case .sheetEntry(let entry): "entry:\(entry.sheetId):\(entry.index)"
+        }
+    }
+}

@@ -72,7 +72,7 @@ struct SortCriteriaRowTests {
     func thePillDrawsItsField() async throws {
         let size = NSSize(width: 240, height: 44)
         try await SnapshotTestSupport.withHostedWindow(
-            SortCriterionPill(
+            MacSortPill(
                 criterion: .constant(
                     BridgeSortCriterion(
                         field: .dateAdded,

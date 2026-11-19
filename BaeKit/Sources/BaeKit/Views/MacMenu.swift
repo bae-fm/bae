@@ -262,7 +262,7 @@
 
     /// The menu a pop-up opens: an item for each option, the one `selection`
     /// names checked, and a divider for each divider.
-    public struct MacPopUpMenu<Value: Hashable> {
+    public struct MacMenu<Value: Hashable> {
         public let entries: [MacMenuEntry]
         /// The line of the checked item, which the menu opens over the
         /// pop-up; `nil` when no option is `selection`.

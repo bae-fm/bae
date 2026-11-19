@@ -13,7 +13,7 @@ public struct UpcomingFailureRow: View {
     }
 
     public var body: some View {
-        Notice(
+        MacNotice(
             title: localizedCoreString("ui.queue.upcoming_failed"),
             advice: nil,
             error: failure,

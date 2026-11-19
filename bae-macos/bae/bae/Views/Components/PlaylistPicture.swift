@@ -13,7 +13,7 @@ struct PlaylistPicture: View {
     var body: some View {
         switch cover {
         case .single(let cover):
-            ImageView(imageRef: cover, pointSize: size)
+            Artwork(imageRef: cover, pointSize: size)
                 .frame(width: size, height: size)
         case .grid(let covers):
             let cell = (size - Self.gap) / 2
@@ -32,7 +32,7 @@ struct PlaylistPicture: View {
     ) -> some View {
         HStack(spacing: Self.gap) {
             ForEach(start..<start + 2, id: \.self) { index in
-                ImageView(
+                Artwork(
                     imageRef: index < covers.count ? covers[index] : nil,
                     pointSize: cell
                 )

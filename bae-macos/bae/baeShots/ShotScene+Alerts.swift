@@ -359,7 +359,7 @@ extension ShotScene {
                     )
                 ]
             )
-            let manager = StorageManagerView(
+            let manager = MacStorageWindow(
                 initialSelection: pinned,
                 initialInspectorPresented: fixture.initialInspectorPresented
             )

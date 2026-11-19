@@ -32,7 +32,7 @@ struct AdminChangesSection: View {
                     )
                 }
                 if let error {
-                    Notice(error: error)
+                    MacNotice(error: error)
                 }
             }
         }

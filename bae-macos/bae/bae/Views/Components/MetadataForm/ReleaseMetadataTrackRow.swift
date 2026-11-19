@@ -53,7 +53,7 @@ struct ReleaseMetadataTrackRow: View {
     }
 
     private var artistField: some View {
-        ArtistAssignmentsField(
+        MacAlbumArtistField(
             assignments: explicitArtists,
             standing: artistStanding,
             placeholder: localizedCoreString("ui.import.mapping.column.artist"),

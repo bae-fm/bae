@@ -61,7 +61,7 @@ struct MacAlbumTile: View {
     }
 
     private var albumArt: some View {
-        ImageView(imageRef: cover, pointSize: size)
+        Artwork(imageRef: cover, pointSize: size)
             .frame(width: size, height: size)
     }
 }

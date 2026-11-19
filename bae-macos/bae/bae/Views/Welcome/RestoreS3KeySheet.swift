@@ -13,12 +13,12 @@ struct RestoreS3KeySheet: View {
             message: "Enter your credentials for your S3 storage.",
             width: 440
         ) {
-            S3KeyFields(
+            MacS3KeyFields(
                 accessKey: $form.accessKey,
                 secretKey: $form.secretKey
             ) {
                 if let error = form.error {
-                    Notice(error: error, look: .quiet)
+                    MacNotice(error: error, look: .quiet)
                 }
             }
         } footer: {

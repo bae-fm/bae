@@ -94,7 +94,7 @@ struct ReleaseStorageSheet: View {
             .padding(.vertical, 14)
             Divider()
             if let releaseError {
-                Notice(error: releaseError)
+                MacNotice(error: releaseError)
                     .padding()
             }
             else {
@@ -161,7 +161,7 @@ struct ReleaseStorageSheet: View {
     private var filesSection: some View {
         VStack(spacing: 0) {
             HStack {
-                Eyebrow("Files")
+                MacEyebrow("Files")
                 Spacer()
             }
             .padding(.horizontal)
@@ -169,7 +169,7 @@ struct ReleaseStorageSheet: View {
             .padding(.bottom, ThemeSpace.inline)
 
             if let error {
-                Notice(
+                MacNotice(
                     error: error,
                     look: .centered,
                     action: error.retryAction {

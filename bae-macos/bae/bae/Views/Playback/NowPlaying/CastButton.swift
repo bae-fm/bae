@@ -93,11 +93,11 @@ struct MacCastPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             if let connectingName {
-                CastConnectingLine(name: connectingName)
+                MacCastConnectingLine(name: connectingName)
                 Divider()
             }
             if let endedFailure {
-                Notice(error: endedFailure, tone: .warning)
+                MacNotice(error: endedFailure, tone: .warning)
                     .padding(.vertical, ThemeSpace.line)
                 Divider()
             }
@@ -109,7 +109,7 @@ struct MacCastPopover: View {
                     .padding(.horizontal, ThemeSpace.inline)
             }
             else {
-                CastReceiverRows(
+                MacCastRows(
                     place: .picker,
                     receivers: receivers,
                     onCast: { receiver in asked = start.cast(to: receiver) },
