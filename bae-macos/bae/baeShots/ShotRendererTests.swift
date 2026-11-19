@@ -9,6 +9,12 @@ import Testing
 /// Mac has.
 @MainActor
 struct ShotRendererTests {
+    private let display: ShotDisplay
+
+    init() async throws {
+        display = try await ShotDisplay.add()
+    }
+
     /// A scene shown in a window 100 points wider than the shot display.
     private static func tooWide(
         _ view: some View = Color.clear
@@ -30,7 +36,7 @@ struct ShotRendererTests {
         let scene = try #require(
             ShotScene.all.first { $0.id == "mac.album.delete-album" }
         )
-        let capture = try await ShotRenderer.render(scene)
+        let capture = try await ShotRenderer.render(scene, on: display)
         let image = try #require(NSBitmapImageRep(data: capture.png))
         #expect(image.pixelsWide == 2_400)
         #expect(image.pixelsHigh == 2_000)
@@ -46,7 +52,7 @@ struct ShotRendererTests {
     @Test
     func aWindowWiderThanTheShotDisplayFails() async throws {
         let error = await #expect(throws: ShotError.self) {
-            try await ShotRenderer.render(Self.tooWide())
+            try await ShotRenderer.render(Self.tooWide(), on: display)
         }
         guard case .windowTooLarge = error else {
             Issue.record(
@@ -67,13 +73,13 @@ struct ShotRendererTests {
             )
         )
         await #expect(throws: ShotError.self) {
-            try await ShotRenderer.render(tooWide)
+            try await ShotRenderer.render(tooWide, on: display)
         }
 
         let next = try #require(
             ShotScene.all.first { $0.id == "mac.welcome.remove.failed" }
         )
-        let list = try await ShotRenderer.render(next).elements
+        let list = try await ShotRenderer.render(next, on: display).elements
         let json = try #require(String(bytes: try list.json(), encoding: .utf8))
         #expect(
             !list.elements.contains { $0.label == "Delete the MP3 format?" },

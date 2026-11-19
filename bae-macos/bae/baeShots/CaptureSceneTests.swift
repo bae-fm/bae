@@ -24,11 +24,12 @@ struct CaptureSceneTests {
     @Test
     func captureAllScenes() async throws {
         let out = try Self.outputDirectory()
+        let display = try await ShotDisplay.add()
 
         var failures: [String] = []
         for scene in try Self.selectedScenes() {
             do {
-                let capture = try await ShotRenderer.render(scene)
+                let capture = try await ShotRenderer.render(scene, on: display)
                 guard !capture.png.isEmpty else {
                     failures.append("\(scene.id): rendered no bytes")
                     continue

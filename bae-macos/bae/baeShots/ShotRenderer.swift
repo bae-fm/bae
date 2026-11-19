@@ -29,7 +29,11 @@ enum ShotRenderer {
     private static let tone = SurfaceTone.midnight
     private static let accent = AccentChoice.pink
 
-    static func render(_ scene: ShotScene) async throws -> Capture {
+    /// `scene` captured; a scene shown in its window is drawn on `display`.
+    static func render(
+        _ scene: ShotScene,
+        on display: ShotDisplay
+    ) async throws -> Capture {
         let suite = "fm.bae.appearance-shots"
         guard let defaults = UserDefaults(suiteName: suite) else {
             preconditionFailure("Cannot create screenshot preferences")
@@ -48,7 +52,11 @@ enum ShotRenderer {
                 $0.animation = nil
                 $0.disablesAnimations = true
             }
-        let (window, captured) = try await hostWindow(rootView, for: scene)
+        let (window, captured) = try hostWindow(
+            rootView,
+            for: scene,
+            on: display
+        )
         window.appearance = NSAppearance(
             named: mode == .dark ? .darkAqua : .aqua
         )
@@ -70,7 +78,7 @@ enum ShotRenderer {
             window.orderFront(nil)
             window.makeKey()
         case .window:
-            try place(window, on: try await ShotDisplay.shared(), scene: scene)
+            try place(window, on: display, scene: scene)
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.makeMain()
@@ -82,14 +90,20 @@ enum ShotRenderer {
             drawn: stage.isDrawn
         )
 
-        return try await capture(window, host: captured, scene: scene)
+        return try await capture(
+            window,
+            host: captured,
+            scene: scene,
+            on: display
+        )
     }
 
     /// The pixels of `host` and the elements below it, once settled.
     private static func capture(
         _ window: NSWindow,
         host: NSView,
-        scene: ShotScene
+        scene: ShotScene,
+        on display: ShotDisplay
     ) async throws -> Capture {
         let pixels: Data
         switch scene.frame {
@@ -108,7 +122,7 @@ enum ShotRenderer {
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
                 alerts: alerts,
-                on: try await ShotDisplay.shared().id,
+                on: display.id,
                 sceneId: scene.id
             )
         }
@@ -125,85 +139,15 @@ enum ShotRenderer {
         )
     }
 
-    /// Put `window` wholly on `display`, at the top left of its free area:
-    /// the screen capture takes only what is on a display, and would cut off
-    /// or refuse a window past a display's edge, or a title bar under the
-    /// menu bar.
-    ///
-    /// AppKit can shrink a titled window that is larger than its display
-    /// as it sizes it, so a window whose content is no longer the
-    /// scene's size did not fit either, and its capture would draw the scene
-    /// at a size its board never has.
-    private static func place(
-        _ window: NSWindow,
-        on display: ShotDisplay,
-        scene: ShotScene
-    ) throws {
-        let room = try display.screen().visibleFrame
-        guard let shown = window.contentView?.frame.size else {
-            throw ShotError.noContentView(scene.id)
-        }
-        guard
-            shown == scene.size,
-            window.frame.width <= room.width,
-            window.frame.height <= room.height
-        else {
-            throw ShotError.windowTooLarge(
-                scene.id,
-                content: scene.size,
-                window: window.frame.size,
-                shown: shown,
-                room: room.size
-            )
-        }
-        window.setFrameOrigin(
-            NSPoint(x: room.minX, y: room.maxY - window.frame.height)
-        )
-    }
-
-    /// Wait for `window`, or an alert over it, to be the key window of the active app, asking for
-    /// that again whenever the app or the window loses it: the window server
-    /// draws a title bar and toolbar as inactive otherwise, which the app
-    /// never shows in use. Fails when another app keeps the focus.
-    private static func becomeKey(
-        _ window: NSWindow,
-        scene: ShotScene
-    ) async throws {
-        let changes = [
-            NSWindow.didBecomeKeyNotification,
-            NSWindow.didResignKeyNotification,
-            NSApplication.didBecomeActiveNotification,
-            NSApplication.didResignActiveNotification,
-        ]
-        .map { Wait.Notice($0, of: nil) }
-        do {
-            try await Wait.until(notices: changes) {
-                // An alert over the window holds the key, and the window draws
-                // as active under it: the buttons of an alert whose panel is
-                // not key draw as inactive.
-                let keyed = AlertWindows.shared.panels.last ?? window
-                if NSApp.isActive, keyed.isKeyWindow { return true }
-                NSApp.activate(ignoringOtherApps: true)
-                keyed.makeKeyAndOrderFront(nil)
-                return false
-            }
-        }
-        catch is Wait.TimedOut {
-            throw ShotError.windowNotKey(scene.id)
-        }
-        // Draw the frame as active and hand it to the window server.
-        window.displayIfNeeded()
-        CATransaction.flush()
-    }
-
     /// The window `rootView` is shown in for `scene`, and the view the
     /// capture settles: the view alone in a borderless window, or for a
     /// scene shown in its window, the whole frame, title bar and toolbar
     /// included, the way the app's window controller hosts it.
     private static func hostWindow(
         _ rootView: some View,
-        for scene: ShotScene
-    ) async throws -> (NSWindow, NSView) {
+        for scene: ShotScene,
+        on display: ShotDisplay
+    ) throws -> (NSWindow, NSView) {
         let bounds = NSRect(origin: .zero, size: scene.size)
         switch scene.frame {
         case .content:
@@ -236,7 +180,7 @@ enum ShotRenderer {
             hosting.sizingOptions = []
             // Made on the shot display, so AppKit sizes it against that
             // display rather than the Mac's own.
-            let origin = try await ShotDisplay.shared().screen().visibleFrame
+            let origin = try display.screen().visibleFrame
                 .origin
             let window = ShotWindow(
                 contentRect: NSRect(origin: origin, size: scene.size),

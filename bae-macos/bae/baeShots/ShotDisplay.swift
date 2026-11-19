@@ -2,8 +2,8 @@ import AppKit
 import ObjectiveC
 
 /// The display every scene shown in its window is drawn on: a virtual display
-/// the renderer adds once per run, 1600 by 1200 points at 2 pixels a point,
-/// beside whatever displays the Mac has. A shot taken from a real display
+/// of 1600 by 1200 points at 2 pixels a point, beside whatever displays the
+/// Mac has, which a shot test adds and hands to each render. A shot taken from a real display
 /// would depend on that display: the CI runner's leaves 1024 by 674 points
 /// free, less than the library window's scenes, and a display at 1 pixel a
 /// point would back the window at half the shot's scale. On this display
@@ -32,16 +32,6 @@ final class ShotDisplay {
         self.display = display
     }
 
-    private static var adding: Task<ShotDisplay, any Error>?
-
-    /// The run's display, added the first time a scene asks for it.
-    static func shared() async throws -> ShotDisplay {
-        if let adding { return try await adding.value }
-        let task = Task { try await add() }
-        adding = task
-        return try await task.value
-    }
-
     /// The screen AppKit lists for the display, with its free area.
     func screen() throws -> NSScreen {
         guard
@@ -59,7 +49,8 @@ final class ShotDisplay {
             as? CGDirectDisplayID
     }
 
-    private static func add() async throws -> ShotDisplay {
+    /// Add the display, once AppKit lists it at its size and scale.
+    static func add() async throws -> ShotDisplay {
         let width = Int(size.width)
         let height = Int(size.height)
         let display = try virtualDisplay(

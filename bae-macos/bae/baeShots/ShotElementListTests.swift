@@ -10,9 +10,15 @@ import Testing
 /// over the welcome window.
 @MainActor
 struct ShotElementListTests {
+    private let display: ShotDisplay
+
+    init() async throws {
+        display = try await ShotDisplay.add()
+    }
+
     private func list(_ id: String) async throws -> ShotElementList {
         let scene = try #require(ShotScene.all.first { $0.id == id })
-        return try await ShotRenderer.render(scene).elements
+        return try await ShotRenderer.render(scene, on: display).elements
     }
 
     private func json(_ list: ShotElementList) throws -> String {
