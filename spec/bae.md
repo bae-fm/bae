@@ -3021,7 +3021,14 @@ everyone's plays or one person's. On a Mac History is a tab of the side pane,
 and the end of its first day's heading names whose plays it shows, *Everyone*
 or a person's name, in the accent with a ⌄, above the column of whose each play
 is, and opens a menu of those choices; on Android the same choice ends the
-screen's top bar.
+screen's top bar. On a Mac each play's row is a playlist page's track row with
+the play's time where the track's number would be, hanging left of the
+covers, then the cover, the track's title over its artist, and whose play it
+is at the row's end; the day headings start at the covers' edge. With no
+plays to show, History says *No plays yet*, or *No
+plays from* and the person's name when one person is picked; on a Mac, which
+then has no day heading, the choice sits under that line, so the person can
+always pick again.
 
 Each play is its own row, with a fresh id, so a play count is the number of
 rows, never a cell holding a number.

@@ -170,3 +170,9 @@
   function AndroidNote(props) {
     return h('div', { className: 'bae-a-note' }, props.children);
   }
+
+  // An empty or unavailable screen's one sentence, centred in what's left of the screen, in secondary text, with no glyph above it ("No albums yet"). The children are its actions, under it.
+  function AndroidContentUnavailable(props) {
+    var actions = React.Children.toArray(props.children).filter(Boolean);
+    return h('div', { className: 'bae-a-cu' }, h('div', { className: 'bae-a-cu-title' }, props.title), actions.length ? h('div', { className: 'bae-a-cu-actions' }, actions) : null);
+  }

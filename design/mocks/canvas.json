@@ -4490,6 +4490,38 @@
    "w": 1200,
    "x": 11332,
    "y": 11864
+  },
+  "mac.playback.side-history.empty.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the side pane's history, no plays",
+   "w": 1200,
+   "x": 12770,
+   "y": 4272
+  },
+  "mac.playback.side-history.none-from-person.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the side pane's history, none from the person picked",
+   "w": 1200,
+   "x": 14050,
+   "y": 4272
+  },
+  "android.history.empty.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "History, no plays",
+   "w": 412,
+   "x": 5324,
+   "y": 1720
+  },
+  "android.history.none-from-person.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "History, none from the person picked",
+   "w": 412,
+   "x": 5816,
+   "y": 1720
   }
  },
  "createdOnFiles": {
@@ -6026,6 +6058,22 @@
    "w": 420,
    "x": 0,
    "y": 2560
+  },
+  "code-history-empty": {
+   "page": "loading",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- History in the side pane, its whose-plays choice (Everyone or one person) at the end of the first day's heading, and one sentence when there are no plays to show: No plays yet, or No plays from and the person's name, with the choice under it as the empty state's action. Neither app lists plays today: the Mac's side pane is the queue alone (bae-macos/bae/bae/Views/Playback/Queue/MacQueuePanel.swift). Core has no live query of plays for the bridge: bae-people's history read (bae-people/src/people/history.rs) reaches no app. bae change, with the side pane's tabs.",
+   "w": 420,
+   "x": 15330,
+   "y": 4272
+  },
+  "code-history-empty-android": {
+   "page": "explore",
+   "size": 24,
+   "w": 420,
+   "x": 6308,
+   "y": 1720,
+   "text": "What the code needs for these boards:\n- A History screen listing plays, with the whose-plays choice at the end of its top bar; Android has none today. With no plays to show it says No plays yet, or No plays from and the person's name, as the library pages' EmptyList draws its line (bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryPageContent.kt). Core has no live query of plays for the bridge: bae-people's history read (bae-people/src/people/history.rs) reaches no app. bae change."
   }
  },
  "order": [

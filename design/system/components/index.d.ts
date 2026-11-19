@@ -184,6 +184,8 @@ export declare function AndroidDialogActions(props: AndroidDialogActionsProps): 
 /** A grey line under a card. */
 export interface AndroidNoteProps { children?: React.ReactNode }
 export declare function AndroidNote(props: AndroidNoteProps): React.ReactElement;
+/** An empty or unavailable screen's one sentence, centred in what's left of the screen, in secondary text, with no glyph above it. children are its actions, under it. */
+export declare function AndroidContentUnavailable(props: { title: string; children?: React.ReactNode }): React.ReactElement;
 
 /** What is happening now, over a bar. value from 0 to 1 when the length is known. */
 export interface AndroidProgressProps { label?: string; value?: number }
@@ -302,10 +304,12 @@ export declare function AndroidSearchSection(props: { title: string }): React.Re
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
-export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
+export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
-export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
+export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean; menu?: string; wide?: boolean; hang?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
+/** A choice that applies to a whole list: its current value in the accent with a ⌄, opening a menu of the choices (History's whose plays). */
+export declare function MacInlineMenu(props: { action?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacQueuePlaceholderRow(props: {}): React.ReactElement;
 export declare function AndroidQueuePlaceholderRow(): React.ReactElement;
 export declare function MacQueueInsertLine(props: {}): React.ReactElement;
@@ -383,7 +387,7 @@ export declare function MacLightbox(props: { title?: string; label?: string; sou
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
-export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean; wide?: boolean; hanging?: boolean; lifted?: boolean; dragging?: boolean }): React.ReactElement;
+export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; wide?: boolean; hanging?: boolean; leadWidth?: number; lifted?: boolean; dragging?: boolean }): React.ReactElement;
 export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;
 
 // ---- Logo and app icons ----

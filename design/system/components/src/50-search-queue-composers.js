@@ -36,7 +36,8 @@
     var head = h('div', { className: 'bae-m-queue-head bae-m-pane-head' },
       tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, props.back ? h(MacBackButton, { to: props.back }) : h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
       h(MacSegmentedControl, { options: 'Queue,Playlists,History', selected: tab }), h('span', { className: 'bae-m-pane-close' }, h(MacCloseButton)));
-    if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body' }, props.children));
+    // `hang`: the width of a leading column the rows hang into the margin (History's times), which the body leaves room for, so the headings and the rows' covers share one edge.
+    if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body', style: props.hang ? { paddingLeft: 8 + Number(props.hang) + 10 } : null }, props.children));
     return h('aside', { className: 'bae-m-queue' },
       head,
       props.title ? h('div', { className: 'bae-m-queue-np' },
@@ -51,12 +52,18 @@
   }
   // `wide`: more room at the end, for a list whose rows end in a person (History).
   function MacQueueSection(props) {
-    return h('div', { className: cx('bae-m-queue-section', props.wide && 'bae-m-queue-section-wide') },
+    // `hang`: under a pane whose rows hang their leading column, the heading starts at the rows' covers.
+    return h('div', { className: cx('bae-m-queue-section', props.wide && 'bae-m-queue-section-wide', props.hang && 'bae-m-queue-section-hang') },
       h('span', { className: 'bae-m-queue-section-title' }, props.title),
       props.clear ? h('span', { className: 'bae-m-queue-clear' }, 'Clear') : null,
       // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.
-      props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-m-queue-menu' }, props.menu, h(Glyph, { set: 'mac', name: 'down', size: 9 })) : null,
+      props.menu ? h(MacInlineMenu, null, props.menu) : null,
       props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 11 })) : null);
+  }
+  // A choice that applies to a whole list, shown as its current value in the accent with a ⌄, opening a menu of the choices: History's whose plays, at the end of the first day's heading, or under the empty History's line.
+  // `action`: the menu as an empty state's action, in body text under its line, rather than a heading's small text.
+  function MacInlineMenu(props) {
+    return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', props.action && 'bae-m-queue-menu-action') }, props.children, h(Glyph, { set: 'mac', name: 'down', size: props.action ? 11 : 9 }));
   }
   function MacQueuePlaceholderRow() {
     return h('div', { className: 'bae-m-qrow' }, h('div', { className: 'bae-ph', style: { width: 48, height: 48, borderRadius: 6 } }),
