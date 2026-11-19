@@ -194,7 +194,6 @@ internal fun deleteBeforeResetParts(
     DialogParts(
         title = stringResource(R.string.storage_delete_before_reset_title),
         message = stringResource(R.string.storage_delete_before_reset_body, rememberByteFormat()(bytes)),
-        action = DialogAction(stringResource(R.string.storage_delete), onConfirm),
+        action = DialogAction(stringResource(R.string.storage_delete), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )

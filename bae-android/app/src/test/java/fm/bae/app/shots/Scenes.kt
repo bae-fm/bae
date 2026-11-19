@@ -161,7 +161,7 @@ internal fun InPlaceDialogScene(
                             modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
                             contentAlignment = Alignment.CenterEnd,
                         ) {
-                            AndroidDialogActions(parts.action, parts.dismiss, parts.destructive, parts.filled)
+                            AndroidDialogActions(parts.action, parts.dismiss)
                         }
                     }
                 }

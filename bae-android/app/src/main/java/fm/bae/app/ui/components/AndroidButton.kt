@@ -43,8 +43,9 @@ enum class ButtonAlign { TEXT, FIELD }
  * Material's button of the [kind] given, with the shared primary fill for a filled one and no added
  * elevation. A [ButtonTone.DESTRUCTIVE] button is the danger colour, and the [ButtonTone.NEUTRAL] one
  * beside it (Cancel, Keep) the screen's text colour, so the accent and the danger colour never sit side
- * by side. [icon] leads the words, as the album page's pin control draws it. [large] is the welcome screen's size. [alignTo] moves a text button's words over the text
- * or field above it, cancelling the button's own 12dp side padding.
+ * by side. [icon] leads the words, as the album page's pin control draws it. [large] is the welcome
+ * screen's size. [alignTo] moves a text button's words over the text or field above it, cancelling the
+ * button's own 12dp side padding.
  */
 @Composable
 fun AndroidButton(

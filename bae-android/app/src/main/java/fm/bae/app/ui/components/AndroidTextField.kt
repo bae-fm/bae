@@ -67,9 +67,17 @@ internal fun AndroidTextField(
             },
         keyboardOptions =
             when (kind) {
-                TextFieldKind.PLAIN -> keyboardOptions
-                TextFieldKind.CODE -> KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false)
-                TextFieldKind.SECRET -> KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+                TextFieldKind.PLAIN -> {
+                    keyboardOptions
+                }
+
+                TextFieldKind.CODE -> {
+                    KeyboardOptions(keyboardType = KeyboardType.Ascii, autoCorrectEnabled = false)
+                }
+
+                TextFieldKind.SECRET -> {
+                    KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+                }
             },
         keyboardActions = keyboardActions,
         singleLine = !code,

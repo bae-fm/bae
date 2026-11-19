@@ -126,7 +126,9 @@ internal fun AndroidPinControl(
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = pinGlyph()) { Text(stringResource(R.string.pin)) }
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = pinGlyph()) {
+                Text(stringResource(R.string.pin))
+            }
         }
 
         BridgeReleaseDownloadStatus.Queued -> {
@@ -180,7 +182,9 @@ private fun DownloadFailedControl(
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
         look = NoticeLook.QUIET,
     )
-    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = Icons.Filled.Close) { Text(stringResource(R.string.cancel)) }
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = Icons.Filled.Close) {
+        Text(stringResource(R.string.cancel))
+    }
 }
 
 @Composable

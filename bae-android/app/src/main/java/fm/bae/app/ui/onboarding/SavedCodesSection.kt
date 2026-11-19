@@ -193,9 +193,8 @@ internal fun deleteSavedCodeParts(
     DialogParts(
         title = stringResource(R.string.onboarding_saved_code_delete_title),
         message = deleteSavedCodeMessage(entry),
-        action = DialogAction(stringResource(R.string.onboarding_saved_code_delete), onConfirm),
+        action = DialogAction(stringResource(R.string.onboarding_saved_code_delete), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )
 
 /** The confirmation's message: it names the library a readable code is for. */

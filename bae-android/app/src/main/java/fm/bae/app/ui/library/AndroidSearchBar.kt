@@ -50,7 +50,11 @@ internal fun AndroidSearchBar(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.close_search), onClick = onClose)
+            AndroidIconButton(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                stringResource(R.string.close_search),
+                onClick = onClose,
+            )
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,

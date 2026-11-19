@@ -190,9 +190,8 @@ fun AndroidSidePause(
                     )
                 }
             },
-            action = DialogAction(stringResource(R.string.play), { answer(true) }),
+            action = DialogAction(stringResource(R.string.play), { answer(true) }, filled = true),
             dismiss = DialogAction(stringResource(R.string.close), { answer(false) }),
-            filled = true,
         )
     }
 }

@@ -90,7 +90,7 @@ class ControlComponentShots : BoardShot() {
     @Test
     fun androidComponentDialogActionsDestructive() =
         component("android.component.dialog-actions.destructive", wide = true) {
-            AndroidDialogActions(action = DialogAction("Save", {}), dismiss = DialogAction("Cancel", {}), destructive = true)
+            AndroidDialogActions(action = DialogAction("Save", {}, destructive = true), dismiss = DialogAction("Cancel", {}))
         }
 
     @Test

@@ -62,9 +62,8 @@ internal fun DeviceResetDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.reset_device_confirm_title),
         message = LocalContext.current.coreString(prepared.warningKey),
-        action = DialogAction(stringResource(R.string.reset_device_confirm), onConfirm),
+        action = DialogAction(stringResource(R.string.reset_device_confirm), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )
 }
 

@@ -43,35 +43,43 @@ fun DialogHead(
     }
 }
 
-/** One button of a dialog's last row: its [label], what a tap does, and whether it takes a tap now. */
+/**
+ * One button of a dialog's last row: its [label], what a tap does, and whether it takes a tap now. An
+ * action is [destructive] when it loses something, and [filled] when it is what the dialog is for, such as
+ * Play after a side ends.
+ */
 internal class DialogAction(
     val label: String,
     val onClick: () -> Unit,
     val enabled: Boolean = true,
+    val destructive: Boolean = false,
+    val filled: Boolean = false,
 )
 
 /**
  * A dialog's last row, at its right: [dismiss] (Cancel) first, in the text colour, then the [action], in
- * the accent, or in the danger colour when [destructive]. A [filled] action is the accent's filled button,
- * for a dialog whose action is what it is for, such as Play after a side ends.
+ * the accent, in the danger colour when destructive, or as the accent's filled button when filled.
  */
 @Composable
 internal fun AndroidDialogActions(
     action: DialogAction?,
     dismiss: DialogAction?,
-    destructive: Boolean = false,
-    filled: Boolean = false,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related, Alignment.End)) {
         dismiss?.let {
-            AndroidButton(kind = ButtonKind.TEXT, tone = ButtonTone.NEUTRAL, onClick = it.onClick, enabled = it.enabled) {
+            AndroidButton(
+                kind = ButtonKind.TEXT,
+                tone = ButtonTone.NEUTRAL,
+                onClick = it.onClick,
+                enabled = it.enabled,
+            ) {
                 Text(it.label)
             }
         }
         action?.let {
             AndroidButton(
-                kind = if (filled) ButtonKind.FILLED else ButtonKind.TEXT,
-                tone = if (destructive) ButtonTone.DESTRUCTIVE else ButtonTone.DEFAULT,
+                kind = if (it.filled) ButtonKind.FILLED else ButtonKind.TEXT,
+                tone = if (it.destructive) ButtonTone.DESTRUCTIVE else ButtonTone.DEFAULT,
                 onClick = it.onClick,
                 enabled = it.enabled,
             ) {
@@ -82,15 +90,12 @@ internal fun AndroidDialogActions(
 }
 
 /**
- * What a dialog says and offers: its [title], [message] and [content], its [action] and [dismiss] buttons
- * ([destructive] when the action loses something, [filled] when it is what the dialog is for), and the
- * [width] it holds.
+ * What a dialog says and offers: its [title], [message] and [content], its [action] and [dismiss] buttons,
+ * and the [width] it holds.
  */
 internal class DialogParts(
     val action: DialogAction? = null,
     val dismiss: DialogAction? = null,
-    val destructive: Boolean = false,
-    val filled: Boolean = false,
     val title: String? = null,
     val message: String? = null,
     val content: @Composable (() -> Unit)? = null,
@@ -107,14 +112,12 @@ internal fun AndroidDialog(
     onDismissRequest: () -> Unit,
     action: DialogAction? = null,
     dismiss: DialogAction? = null,
-    destructive: Boolean = false,
-    filled: Boolean = false,
     title: String? = null,
     message: String? = null,
     content: @Composable (() -> Unit)? = null,
     width: Dp? = null,
 ) {
-    AndroidDialog(onDismissRequest, DialogParts(action, dismiss, destructive, filled, title, message, content, width))
+    AndroidDialog(onDismissRequest, DialogParts(action, dismiss, title, message, content, width))
 }
 
 /** The dialog [parts] in a window of their own. */
@@ -131,7 +134,7 @@ internal fun AndroidDialog(
         text = parts.content,
         confirmButton = {
             DialogScrim(BaeTheme.colors.scrim)
-            AndroidDialogActions(parts.action, parts.dismiss, parts.destructive, parts.filled)
+            AndroidDialogActions(parts.action, parts.dismiss)
         },
     )
 }

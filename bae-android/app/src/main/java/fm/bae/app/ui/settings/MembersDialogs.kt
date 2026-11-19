@@ -263,9 +263,8 @@ private fun RemovalConfirmDialog(
             forgottenKey?.let { key ->
                 { Text(context.coreString("core.access_key.forget", mapOf("key" to key.accessKeyId))) }
             },
-        action = DialogAction(stringResource(R.string.members_remove), onConfirm),
+        action = DialogAction(stringResource(R.string.members_remove), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )
 }
 
@@ -298,7 +297,12 @@ private fun SignOutDialog(
             } else {
                 DialogAction(stringResource(R.string.close), onDismiss)
             },
-        dismiss = if (step.offersCutOff) DialogAction(stringResource(R.string.device_cut_off_not_yet), onDismiss) else null,
+        dismiss =
+            if (step.offersCutOff) {
+                DialogAction(stringResource(R.string.device_cut_off_not_yet), onDismiss)
+            } else {
+                null
+            },
     )
 }
 

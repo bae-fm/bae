@@ -214,7 +214,12 @@ internal fun renameLibraryParts(
                 error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
             }
         },
-        action = DialogAction(stringResource(R.string.settings_rename_library), onSave, enabled = draft.isNotBlank() && !saving),
+        action =
+            DialogAction(
+                stringResource(R.string.settings_rename_library),
+                onSave,
+                enabled = draft.isNotBlank() && !saving,
+            ),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 

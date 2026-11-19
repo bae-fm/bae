@@ -40,7 +40,11 @@ internal fun LazyListScope.transferRows(
     item { AndroidEyebrow(LocalContext.current.coreString("core.activity.transfers")) }
     if (activity.syncing) {
         item {
-            AndroidTransferLine(title = LocalContext.current.coreString("core.activity.syncing"), count = null, share = null)
+            AndroidTransferLine(
+                title = LocalContext.current.coreString("core.activity.syncing"),
+                count = null,
+                share = null,
+            )
         }
     }
     activity.uploads?.let { uploads ->

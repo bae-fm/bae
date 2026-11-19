@@ -36,7 +36,12 @@ fun PasteCodeDialog(
                 kind = TextFieldKind.CODE,
             )
         },
-        action = DialogAction(text.confirmLabel, { onConfirm(pasteInput.trim()) }, enabled = pasteInput.trim().isNotEmpty()),
+        action =
+            DialogAction(
+                text.confirmLabel,
+                { onConfirm(pasteInput.trim()) },
+                enabled = pasteInput.trim().isNotEmpty(),
+            ),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }

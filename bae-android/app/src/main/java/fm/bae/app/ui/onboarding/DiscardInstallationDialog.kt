@@ -30,9 +30,8 @@ private fun discardInstallationParts(
     DialogParts(
         title = stringResource(R.string.onboarding_discard_join_title),
         message = stringResource(R.string.onboarding_discard_join_message),
-        action = DialogAction(stringResource(R.string.onboarding_discard_join_confirm), onConfirm),
+        action = DialogAction(stringResource(R.string.onboarding_discard_join_confirm), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )
 
 /**

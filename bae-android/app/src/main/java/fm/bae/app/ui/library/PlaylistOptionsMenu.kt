@@ -26,7 +26,11 @@ internal fun PlaylistOptionsMenu(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.playlist_options), onClick = { expanded = true })
+        AndroidIconButton(
+            Icons.Filled.MoreVert,
+            stringResource(R.string.playlist_options),
+            onClick = { expanded = true },
+        )
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.playlist_edit_menu)) },
@@ -69,7 +73,6 @@ internal fun deletePlaylistParts(
     DialogParts(
         title = stringResource(R.string.playlist_delete_title, name),
         message = stringResource(R.string.playlist_delete_message),
-        action = DialogAction(stringResource(R.string.playlist_delete_confirm), onConfirm),
+        action = DialogAction(stringResource(R.string.playlist_delete_confirm), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )

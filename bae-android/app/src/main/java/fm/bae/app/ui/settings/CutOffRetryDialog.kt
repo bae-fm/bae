@@ -38,6 +38,10 @@ internal fun cutOffRetryParts(
                 if (notGone) R.string.device_cut_off_not_gone_body else R.string.device_cut_off_running_body,
             ),
         action = DialogAction(stringResource(R.string.retry), onTryAgain),
-        dismiss = DialogAction(stringResource(if (notGone) R.string.device_cut_off_not_yet else R.string.cancel), onDismiss),
+        dismiss =
+            DialogAction(
+                stringResource(if (notGone) R.string.device_cut_off_not_yet else R.string.cancel),
+                onDismiss,
+            ),
     )
 }

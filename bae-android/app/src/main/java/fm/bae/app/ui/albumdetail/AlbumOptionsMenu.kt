@@ -63,8 +63,7 @@ internal fun DeleteAlbumDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.delete_album_confirm_title),
         message = stringResource(R.string.delete_album_confirm_body),
-        action = DialogAction(stringResource(R.string.delete_album_confirm), onConfirm),
+        action = DialogAction(stringResource(R.string.delete_album_confirm), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
-        destructive = true,
     )
 }
