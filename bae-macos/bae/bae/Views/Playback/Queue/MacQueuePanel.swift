@@ -44,11 +44,19 @@ struct MacQueuePanel<Content: View>: View {
         }
     }
 
+    /// Where `tab` sits among the control's segments, which list every tab.
+    private static func index(of tab: SidePaneTab) -> Int {
+        guard let index = SidePaneTab.allCases.firstIndex(of: tab) else {
+            preconditionFailure("the side pane's control lists every tab")
+        }
+        return index
+    }
+
     private var head: some View {
         ZStack {
             MacSegmentedControl(
                 selectedIndex: Binding(
-                    get: { SidePaneTab.allCases.firstIndex(of: tab) ?? 0 },
+                    get: { Self.index(of: tab) },
                     set: { onSelectTab(SidePaneTab.allCases[$0]) }
                 ),
                 segments: SidePaneTab.allCases.map {

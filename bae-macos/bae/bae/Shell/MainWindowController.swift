@@ -222,7 +222,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
     @objc
     func toggleQueue(_: Any?) {
         let uiStore = requireTarget().uiStore
-        uiStore.setSidePanePresented(!uiStore.showSidePane)
+        uiStore.toggleSidePane()
     }
 
     // MARK: - Playback

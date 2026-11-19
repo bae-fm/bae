@@ -194,9 +194,10 @@ struct QueueTabContent: View {
                 } action: { height in
                     upcoming.fit(height)
                 }
-                .onChange(of: manual.count, initial: true) {
-                    // The context section's cross-lane math needs this count.
-                    dragCoordinator.manualGapCount = manual.count
+                .onChange(of: upNextCount, initial: true) {
+                    // The context section's cross-lane math needs core's
+                    // count of the manual lane.
+                    dragCoordinator.manualGapCount = Int(upNextCount)
                 }
             }
         }

@@ -37,8 +37,10 @@ extension ShotScene {
                             {
                                 PlaylistOptionsMenu(
                                     onShuffle: {},
-                                    onEdit: {},
-                                    onDelete: {}
+                                    owner: PlaylistOptionsMenu.OwnerActions(
+                                        edit: {},
+                                        delete: {}
+                                    )
                                 )
                             },
                             highlighted: 1

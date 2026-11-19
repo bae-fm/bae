@@ -38,10 +38,9 @@ struct MacLibraryRow: View {
                     .fill(fill)
             )
             .overlay {
-                if dropping {
-                    RoundedRectangle(cornerRadius: ThemeRadius.control)
-                        .strokeBorder(Theme.accent, lineWidth: 2)
-                }
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
+                    .strokeBorder(Theme.accent, lineWidth: 2)
+                    .opacity(dropping ? 1 : 0)
             }
             .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
             .padding(.horizontal, bleed ? -ThemeSpace.related : 0)

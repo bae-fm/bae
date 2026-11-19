@@ -118,11 +118,15 @@ struct MacPlaylistPage: View {
                             onShuffle: {
                                 playback.playPlaylist(summary.id, nil, true)
                             },
-                            onEdit: summary.yours
-                                ? { editing = EditPlaylistSheetState(summary) }
-                                : nil,
-                            onDelete: summary.yours
-                                ? { deleting = summary } : nil
+                            owner: summary.yours
+                                ? PlaylistOptionsMenu.OwnerActions(
+                                    edit: {
+                                        editing = EditPlaylistSheetState(
+                                            summary
+                                        )
+                                    },
+                                    delete: { deleting = summary }
+                                ) : nil
                         )
                     }
                 }
