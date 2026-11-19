@@ -144,12 +144,10 @@ pub fn resolve_artist_detail_projection(
 /// An artist's page as its rows read it.
 fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     ArtistDetail {
+        artist: raw.artist,
         credit_names: raw.credit_names,
         albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
         credit_name_count: raw.credit_name_count,
-        album_count: u64::try_from(raw.artist.album_count)
-            .expect("an album count is never negative"),
-        artist: raw.artist,
     }
 }
 

@@ -493,16 +493,27 @@ impl BridgeArtistSummary {
     }
 }
 
-mirror_struct! {
-    BridgeArtistDetail = bae_views::album_detail::ArtistDetail,
-    from_core: pub(crate) fn,
-    fields: {
-        artist: (BridgeArtistSummary),
-        credit_names: (each crate::types::BridgeArtistCreditName),
-        albums: (each BridgeAlbum),
-        credit_name_count,
-        album_count,
-    },
+impl BridgeArtistDetail {
+    pub(crate) fn from_core(detail: bae_views::album_detail::ArtistDetail) -> Self {
+        let bae_views::album_detail::ArtistDetail {
+            artist,
+            credit_names,
+            albums,
+            credit_name_count,
+        } = detail;
+        BridgeArtistDetail {
+            // The page lists every album the artist's row counts.
+            album_count: u64::try_from(artist.album_count)
+                .expect("an album count is never negative"),
+            artist: BridgeArtistSummary::from_core(artist),
+            credit_names: credit_names
+                .into_iter()
+                .map(crate::types::BridgeArtistCreditName::from_core)
+                .collect(),
+            albums: albums.into_iter().map(BridgeAlbum::from_core).collect(),
+            credit_name_count,
+        }
+    }
 }
 
 impl BridgeWorkSummary {
