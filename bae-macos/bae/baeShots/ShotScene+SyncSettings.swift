@@ -22,14 +22,7 @@ extension ShotScene {
                         LibrarySettingsTabPreviewFixture(
                             storage: PreviewData.previewDropboxStorage
                         ),
-                        shown: BridgeSyncShown(
-                            status: .waitingToSync,
-                            statusKey: "core.sync.status.waiting_to_sync",
-                            tone: .neutral,
-                            cause: nil,
-                            fix: nil,
-                            lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
-                        )
+                        shown: dropboxAskedToWait
                     )
                 )
             },
@@ -139,6 +132,24 @@ extension ShotScene {
             s3SheetPage(.fields(nil), shown: signedOutOfS3)
         },
     ]
+
+    /// Waiting to sync while Dropbox asked bae to wait 42 more seconds, two
+    /// hours after the last sync: what core shows for coven's cooling-down
+    /// wait on a Dropbox library.
+    private static let dropboxAskedToWait = BridgeSyncShown(
+        status: .waitingToSync,
+        statusKey: "core.sync.status.waiting_to_sync",
+        tone: .warning,
+        cause: .message(
+            message: BridgeMessage(
+                key: "core.sync.cause.provider_wait",
+                args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
+            ),
+            resumesAt: Date(timeIntervalSinceNow: 42)
+        ),
+        fix: nil,
+        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+    )
 
     /// The new key the boards' sheets show typed.
     private static let typedKey = (

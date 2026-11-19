@@ -13,9 +13,13 @@ import fm.bae.app.ui.settings.SyncStatusBlock
 import org.junit.Test
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeStorageLocation
+import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import java.time.Instant
 
 /** The shots of the android.settings.sync.* boards. */
 class SyncShots : BoardShot() {
@@ -35,7 +39,8 @@ class SyncShots : BoardShot() {
                                     syncShown(
                                         BridgeSyncStatusWord.WAITING_TO_SYNC,
                                         "core.sync.status.waiting_to_sync",
-                                        BridgeSyncTone.NEUTRAL,
+                                        BridgeSyncTone.WARNING,
+                                        cause = dropboxAskedToWait(),
                                         lastSyncedAgo = twoHoursAgo,
                                     ),
                                 ),
@@ -53,6 +58,18 @@ class SyncShots : BoardShot() {
             }
         }
 }
+
+/**
+ * Dropbox asked bae to wait 42 more seconds: the cause core gives for coven's cooling-down wait on a Dropbox library.
+ * Each shot reads the moment from now, so the wait has 42 seconds left whenever the shot draws.
+ */
+private fun dropboxAskedToWait() =
+    BridgeSyncCause.Message(
+        message = BridgeMessage("core.sync.cause.provider_wait", listOf(BridgeMessageArg("provider", "Dropbox"))),
+        resumesAt = Instant.now().plusSeconds(WAIT_SECONDS_LEFT),
+    )
+
+private const val WAIT_SECONDS_LEFT = 42L
 
 private val accountDropbox =
     BridgeStorageLocation.Dropbox(
